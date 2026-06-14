@@ -1,9 +1,10 @@
 """Frozen domain value types shared across all packages."""
+
 from __future__ import annotations
 
-from datetime import datetime
+from collections.abc import Mapping
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 
 class Bar(BaseModel):
@@ -12,7 +13,7 @@ class Bar(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     symbol: str
-    ts: datetime
+    ts: AwareDatetime
     open: float
     high: float
     low: float
@@ -27,4 +28,4 @@ class ValidationOutcome(BaseModel):
 
     name: str
     passed: bool
-    detail: dict[str, float] = {}
+    detail: Mapping[str, float] = {}

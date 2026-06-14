@@ -1,4 +1,5 @@
 """Project ALPHA core domain package."""
+
 from __future__ import annotations
 
 from alpha_core.errors import AlphaError, DataError, LookAheadError

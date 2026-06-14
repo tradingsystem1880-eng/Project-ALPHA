@@ -1,4 +1,5 @@
 """Project ALPHA CLI. Phase 0 proves cross-package wiring end-to-end."""
+
 from __future__ import annotations
 
 import typer
@@ -11,7 +12,9 @@ app = typer.Typer(help="Project ALPHA command-line interface.")
 
 @app.callback(invoke_without_command=True)
 def _root(ctx: typer.Context) -> None:
-    """Project ALPHA — pass a subcommand (e.g. `alpha info`)."""
+    """Project ALPHA. Run a subcommand, e.g. `alpha info`."""
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
 
 
 @app.command()

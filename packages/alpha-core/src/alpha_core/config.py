@@ -1,4 +1,5 @@
 """Global configuration. Override via ALPHA_-prefixed env vars or a .env file."""
+
 from __future__ import annotations
 
 from pathlib import Path

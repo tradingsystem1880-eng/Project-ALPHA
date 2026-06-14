@@ -840,7 +840,7 @@ jobs:
       - name: Format check
         run: uv run ruff format --check .
       - name: Types
-        run: uv run mypy -p alpha_core -p alpha_data -p alpha_strategies -p alpha_backtest -p alpha_validation -p alpha_cli tests
+        run: uv run mypy packages apps tests
       - name: Architecture
         run: uv run lint-imports
       - name: Tests (incl. bias guards)
@@ -869,7 +869,7 @@ Dependency DAG: `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strat
 ## Commands
 - Install: `uv sync`
 - Test: `uv run pytest -q` · bias guards only: `uv run pytest -m bias_guard -q`
-- Lint/format/types/arch: `uv run ruff check . && uv run ruff format --check . && uv run mypy -p alpha_core -p alpha_data -p alpha_strategies -p alpha_backtest -p alpha_validation -p alpha_cli tests && uv run lint-imports`
+- Lint/format/types/arch: `uv run ruff check . && uv run ruff format --check . && uv run mypy packages apps tests && uv run lint-imports`
 - CLI: `uv run alpha info`
 ```
 
@@ -888,7 +888,7 @@ git commit -m "ci: add GitHub Actions gate (ruff, mypy, import-linter, pytest) a
 
 Run:
 ```bash
-uv run ruff check . && uv run ruff format --check . && uv run mypy -p alpha_core -p alpha_data -p alpha_strategies -p alpha_backtest -p alpha_validation -p alpha_cli tests && uv run lint-imports && uv run pytest -q
+uv run ruff check . && uv run ruff format --check . && uv run mypy packages apps tests && uv run lint-imports && uv run pytest -q
 ```
 Expected: ruff clean; format clean; mypy "Success: no issues found"; import-linter "5 kept, 0 broken"; pytest all PASS (3 tests).
 
@@ -919,5 +919,5 @@ git commit -m "chore: phase-0 gate green (ruff, mypy, import-linter, pytest)"
 ## Notes / risks
 
 - **uv workspace specifics** move fast. If `uv sync` errors on workspace sources, check current uv docs (Context7: `astral-sh/uv`) — the `[tool.uv.sources] { workspace = true }` + `[tool.uv.workspace] members` pattern is correct as of uv 0.6, but verify the installed version with `uv --version`.
-- **mypy + src-layout** can emit "Source file found twice" / namespace errors. The plan uses `mypy -p <pkg>` (import-system resolution of the editable installs) plus `explicit_package_bases` to avoid this; if the `tests` arg errors, check it per-directory. The `pydantic.mypy` plugin must be importable (it is, via `alpha-core`'s pydantic dependency).
+- **mypy + src-layout**: run `mypy packages apps tests` (path mode) with `explicit_package_bases = true` — verified clean. Do NOT mix `-p` package flags with positional paths (mypy errors "May only specify one of: module/package, files, or command"). `py.typed` markers ship in each package so package-mode checks and downstream consumers also see types. The `pydantic.mypy` plugin must be importable (it is, via `alpha-core`'s pydantic dependency).
 - **No remote yet.** Pushing to GitHub (so CI actually runs) is deferred until the owner chooses a remote; the workflow file is ready for when they do.

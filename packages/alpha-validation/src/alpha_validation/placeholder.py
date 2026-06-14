@@ -1,4 +1,5 @@
 """Phase-0 placeholder proving the alpha_validation -> alpha_core dependency edge."""
+
 from __future__ import annotations
 
 from alpha_core.types import ValidationOutcome

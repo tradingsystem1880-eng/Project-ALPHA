@@ -1,4 +1,5 @@
 """Structural interfaces. Concrete implementations live in higher packages."""
+
 from __future__ import annotations
 
 from datetime import datetime

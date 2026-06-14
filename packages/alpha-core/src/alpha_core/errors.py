@@ -1,4 +1,5 @@
 """Typed error hierarchy. Never raise bare Exception; never swallow these silently."""
+
 from __future__ import annotations
 
 
