@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Tooling caches
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# uv
+# (uv.lock IS committed — do not ignore it)
+
+# Env / secrets
+.env
+
+# Data is large + reproducible from snapshots; never commit it
+data/
