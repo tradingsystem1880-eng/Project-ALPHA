@@ -1,0 +1,16 @@
+[project]
+name = "alpha-validation"
+version = "0.0.0"
+description = "Statistical validation gauntlet (Phase 3+: arch, skfolio)."
+requires-python = ">=3.12"
+dependencies = ["alpha-core"]
+
+[tool.uv.sources]
+alpha-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/alpha_validation"]
