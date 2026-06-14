@@ -1,5 +1,6 @@
 """The future-poison template: poisoning post-cutoff data must not change pre-cutoff outputs.
 Later phases apply this same pattern to the real PIT accessor and strategy signals."""
+
 from __future__ import annotations
 
 import math
