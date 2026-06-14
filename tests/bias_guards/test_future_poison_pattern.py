@@ -27,3 +27,8 @@ def test_future_poison_does_not_change_past_outputs() -> None:
         causal_rolling_mean(clean, 3)[: cutoff + 1]
         == causal_rolling_mean(poisoned, 3)[: cutoff + 1]
     )
+    # the poison MUST change post-cutoff outputs, else the test has no discriminating power
+    assert (
+        causal_rolling_mean(clean, 3)[cutoff + 1 :]
+        != causal_rolling_mean(poisoned, 3)[cutoff + 1 :]
+    )

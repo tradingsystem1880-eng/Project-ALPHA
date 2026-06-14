@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8
         with:
           python-version: "3.12"
           enable-cache: true
@@ -19,9 +19,9 @@ jobs:
         run: uv run ruff check .
       - name: Format check
         run: uv run ruff format --check .
-      - name: Types
-        run: uv run mypy packages apps tests
       - name: Architecture
         run: uv run lint-imports
+      - name: Types
+        run: uv run mypy packages apps tests
       - name: Tests (incl. bias guards)
         run: uv run pytest -q
