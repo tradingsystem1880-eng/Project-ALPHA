@@ -13,7 +13,7 @@ TS = datetime(2024, 1, 2, tzinfo=UTC)
 def _bar(**kw: float) -> Bar:
     base = dict(symbol="X", ts=TS, open=10.0, high=11.0, low=9.0, close=10.5, volume=100.0)
     base.update(kw)
-    return Bar(**base)  # type: ignore[arg-type]
+    return Bar(**base)
 
 
 def test_valid_bar_constructs() -> None:

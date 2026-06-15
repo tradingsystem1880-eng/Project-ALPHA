@@ -1,0 +1,35 @@
+"""Parquet source-of-truth store for raw (unadjusted) bars and corporate actions."""
+from __future__ import annotations
+
+from pathlib import Path
+
+import polars as pl
+
+from alpha_core import DataError
+
+_BAR_COLUMNS = ["ts", "open", "high", "low", "close", "volume"]
+
+
+class ParquetStore:
+    """Stores raw bars as one Parquet file per symbol under ``<root>/bars/``."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = Path(root)
+
+    def _bars_path(self, symbol: str) -> Path:
+        return self.root / "bars" / f"{symbol}.parquet"
+
+    def write_bars(self, symbol: str, df: pl.DataFrame) -> Path:
+        missing = [c for c in _BAR_COLUMNS if c not in df.columns]
+        if missing:
+            raise DataError(f"bars for {symbol} missing columns: {missing}")
+        path = self._bars_path(symbol)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.select(_BAR_COLUMNS).sort("ts").write_parquet(path)
+        return path
+
+    def read_bars(self, symbol: str) -> pl.DataFrame:
+        path = self._bars_path(symbol)
+        if not path.exists():
+            raise DataError(f"no bars stored for symbol {symbol!r} at {path}")
+        return pl.read_parquet(path)
