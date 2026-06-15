@@ -12,13 +12,21 @@ _BAR_COLUMNS = ["ts", "open", "high", "low", "close", "volume"]
 
 
 class ParquetStore:
-    """Stores raw bars as one Parquet file per symbol under ``<root>/bars/``."""
+    """Stores raw bars as one Parquet file per symbol under ``<root>/bars/``.
+
+    This is a raw, unadjusted-storage layer that intentionally does NOT enforce
+    ``Bar`` invariants — vendor data may legitimately contain zero volume, etc.
+    Validation happens at ``Bar`` construction / ingest time, not here.
+    """
 
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
 
     def _bars_path(self, symbol: str) -> Path:
-        return self.root / "bars" / f"{symbol}.parquet"
+        if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):
+            raise DataError(f"invalid symbol for storage: {symbol!r}")
+        safe = symbol.replace("/", "_")  # e.g. BTC/USD -> BTC_USD (normalized, single dir level)
+        return self.root / "bars" / f"{safe}.parquet"
 
     def write_bars(self, symbol: str, df: pl.DataFrame) -> Path:
         missing = [c for c in _BAR_COLUMNS if c not in df.columns]

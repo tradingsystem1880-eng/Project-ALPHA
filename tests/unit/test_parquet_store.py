@@ -2,7 +2,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
+import pytest
 
+from alpha_core import DataError
 from alpha_data.store import ParquetStore
 
 SCHEMA = ["ts", "open", "high", "low", "close", "volume"]
@@ -31,9 +33,5 @@ def test_write_then_read_round_trips(tmp_path: Path) -> None:
 
 
 def test_read_missing_symbol_raises(tmp_path: Path) -> None:
-    import pytest
-
-    from alpha_core import DataError
-
     with pytest.raises(DataError):
         ParquetStore(tmp_path).read_bars("NOPE")

@@ -73,3 +73,14 @@ def test_multiple_splits_compound() -> None:
     assert split_factor(_date(2020, 6, 1), [s1, s2]) == pytest.approx(1 / 6)
     # a bar between them is divided by 3 only
     assert split_factor(_date(2021, 6, 1), [s1, s2]) == pytest.approx(1 / 3)
+
+
+def test_announce_after_ex_date_rejected() -> None:
+    with pytest.raises(ValidationError):
+        CorporateAction(
+            symbol="X",
+            action_type=ActionType.SPLIT,
+            ex_date=date(2021, 1, 5),
+            announce_date=date(2021, 1, 6),
+            ratio=2.0,
+        )
