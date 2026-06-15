@@ -16,14 +16,24 @@ def test_parse_extracts_raw_bars_and_actions() -> None:
     kinds = {(a.action_type, a.ex_date): a for a in result.actions}
     split = kinds[(ActionType.SPLIT, date(2020, 8, 31))]
     assert split.ratio == 4.0 and split.announce_date is None and split.knowledge_is_estimated
-    div = kinds[(ActionType.DIVIDEND, date(2020, 8, 31))]  # fixture puts the 0.82 div on the 8/31 row
+    # fixture puts the 0.82 div on the 8/31 row
+    div = kinds[(ActionType.DIVIDEND, date(2020, 8, 31))]
     assert div.amount == pytest.approx(0.82)
 
 
 def test_parse_fails_loud_on_inconsistent_ohlc() -> None:
     bad = yf_history(
-        [{"Open": 10.0, "High": 5.0, "Low": 9.0, "Close": 8.0, "Volume": 1.0,
-          "Dividends": 0.0, "Stock Splits": 0.0}],
+        [
+            {
+                "Open": 10.0,
+                "High": 5.0,
+                "Low": 9.0,
+                "Close": 8.0,
+                "Volume": 1.0,
+                "Dividends": 0.0,
+                "Stock Splits": 0.0,
+            }
+        ],
         [datetime(2024, 1, 2, tzinfo=UTC)],
     )
     with pytest.raises(DataError):

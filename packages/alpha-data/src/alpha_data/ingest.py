@@ -1,4 +1,5 @@
 """Persist a FetchResult to the store (bars + actions)."""
+
 from __future__ import annotations
 
 from alpha_data.adapters.base import FetchResult

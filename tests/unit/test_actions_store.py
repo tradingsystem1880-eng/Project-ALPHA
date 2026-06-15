@@ -9,10 +9,12 @@ from alpha_data.store import ParquetStore
 
 def _actions() -> list[CorporateAction]:
     return [
-        CorporateAction(symbol="AAPL", action_type=ActionType.SPLIT,
-                        ex_date=date(2020, 8, 31), ratio=4.0),
-        CorporateAction(symbol="AAPL", action_type=ActionType.DIVIDEND,
-                        ex_date=date(2020, 8, 7), amount=0.82),
+        CorporateAction(
+            symbol="AAPL", action_type=ActionType.SPLIT, ex_date=date(2020, 8, 31), ratio=4.0
+        ),
+        CorporateAction(
+            symbol="AAPL", action_type=ActionType.DIVIDEND, ex_date=date(2020, 8, 7), amount=0.82
+        ),
     ]
 
 

@@ -1,4 +1,3 @@
-from datetime import date
 from pathlib import Path
 
 from alpha_data.adapters.yfinance_adapter import parse_yfinance_history
