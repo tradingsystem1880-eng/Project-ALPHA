@@ -24,8 +24,20 @@ def test_pull_then_snapshot_then_verify(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     # inject the fake adapter so the CLI does no network
     monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"fake": _FakeAdapter})
-    r1 = runner.invoke(app, ["data", "pull", "AAPL", "--source", "fake",
-                             "--start", "2020-08-28", "--end", "2020-09-02"])
+    r1 = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-02",
+        ],
+    )
     assert r1.exit_code == 0, r1.output
     r2 = runner.invoke(app, ["data", "snapshot", "snap1", "AAPL", "--source", "fake"])
     assert r2.exit_code == 0, r2.output

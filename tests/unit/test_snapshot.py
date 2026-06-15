@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -21,9 +21,16 @@ def _store(tmp_path: Path) -> ParquetStore:
 
 def test_snapshot_writes_manifest_with_provenance(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    manifest = create_snapshot(store, tmp_path / "snaps", "snap1", ["AAPL"],
-                               source="yfinance", adapter_version="1", parser_version="1",
-                               created_at=WHEN)
+    manifest = create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
     assert manifest["source"] == "yfinance"
     assert manifest["adapter_version"] == "1"
     assert manifest["symbols"]["AAPL"]["bars_sha256"]
@@ -32,15 +39,31 @@ def test_snapshot_writes_manifest_with_provenance(tmp_path: Path) -> None:
 
 def test_verify_passes_for_intact_snapshot(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    create_snapshot(store, tmp_path / "snaps", "snap1", ["AAPL"], source="yfinance",
-                    adapter_version="1", parser_version="1", created_at=WHEN)
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
     verify_snapshot(tmp_path / "snaps" / "snap1")  # no raise
 
 
 def test_verify_detects_tampering(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    create_snapshot(store, tmp_path / "snaps", "snap1", ["AAPL"], source="yfinance",
-                    adapter_version="1", parser_version="1", created_at=WHEN)
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
     bars_file = next((tmp_path / "snaps" / "snap1").glob("bars/*.parquet"))
     bars_file.write_bytes(bars_file.read_bytes() + b"corruption")
     with pytest.raises(DataError):

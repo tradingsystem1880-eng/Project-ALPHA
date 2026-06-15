@@ -1,4 +1,5 @@
 """Immutable, content-hashed data snapshots with a provenance manifest."""
+
 from __future__ import annotations
 
 import hashlib
@@ -16,9 +17,17 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def create_snapshot(store: ParquetStore, snaps_root: Path, snapshot_id: str, symbols: list[str],
-                    *, source: str, adapter_version: str, parser_version: str,
-                    created_at: datetime) -> dict[str, Any]:
+def create_snapshot(
+    store: ParquetStore,
+    snaps_root: Path,
+    snapshot_id: str,
+    symbols: list[str],
+    *,
+    source: str,
+    adapter_version: str,
+    parser_version: str,
+    created_at: datetime,
+) -> dict[str, Any]:
     """Freeze bars + actions for `symbols` into snaps_root/snapshot_id/ with a manifest."""
     dest = snaps_root / snapshot_id
     if dest.exists():
@@ -34,7 +43,10 @@ def create_snapshot(store: ParquetStore, snaps_root: Path, snapshot_id: str, sym
         bars_dst = dest / "bars" / bars_src.name
         bars_dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(bars_src, bars_dst)
-        entry: dict[str, Any] = {"bars_sha256": _sha256(bars_dst), "bars_file": f"bars/{bars_src.name}"}
+        entry: dict[str, Any] = {
+            "bars_sha256": _sha256(bars_dst),
+            "bars_file": f"bars/{bars_src.name}",
+        }
         actions_src = store._actions_path(sym)  # noqa: SLF001
         if actions_src.exists():
             actions_dst = dest / "actions" / actions_src.name
@@ -45,8 +57,11 @@ def create_snapshot(store: ParquetStore, snaps_root: Path, snapshot_id: str, sym
         sym_manifest[sym] = entry
 
     manifest: dict[str, Any] = {
-        "snapshot_id": snapshot_id, "created_at": created_at.isoformat(), "source": source,
-        "adapter_version": adapter_version, "parser_version": parser_version,
+        "snapshot_id": snapshot_id,
+        "created_at": created_at.isoformat(),
+        "source": source,
+        "adapter_version": adapter_version,
+        "parser_version": parser_version,
         "symbols": sym_manifest,
     }
     (dest / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True))

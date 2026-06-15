@@ -1,4 +1,5 @@
 """`alpha data` subcommands: pull, snapshot, verify."""
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -27,15 +28,21 @@ def _snaps_root() -> Path:
 
 
 @data_app.command()
-def pull(symbol: str, source: str = "yfinance",
-         start: str = typer.Option(...), end: str = typer.Option(...)) -> None:
+def pull(
+    symbol: str,
+    source: str = "yfinance",
+    start: str = typer.Option(...),
+    end: str = typer.Option(...),
+) -> None:
     """Pull raw bars + corporate actions for SYMBOL and store them."""
     adapter_cls = _ADAPTERS.get(source)
     if adapter_cls is None:
         raise typer.BadParameter(f"unknown source {source!r}; known: {sorted(_ADAPTERS)}")
     result = adapter_cls().fetch(symbol, date.fromisoformat(start), date.fromisoformat(end))
     store_fetch_result(_store(), result)
-    typer.echo(f"pulled {symbol} from {source}: {result.bars.height} bars, {len(result.actions)} actions")
+    typer.echo(
+        f"pulled {symbol} from {source}: {result.bars.height} bars, {len(result.actions)} actions"
+    )
 
 
 @data_app.command()
@@ -45,9 +52,16 @@ def snapshot(snapshot_id: str, symbols: list[str], source: str = "yfinance") -> 
     if adapter_cls is None:
         raise typer.BadParameter(f"unknown source {source!r}; known: {sorted(_ADAPTERS)}")
     adapter = adapter_cls()
-    create_snapshot(_store(), _snaps_root(), snapshot_id, symbols, source=adapter.name,
-                    adapter_version=adapter.version, parser_version=adapter.version,
-                    created_at=datetime.now(UTC))
+    create_snapshot(
+        _store(),
+        _snaps_root(),
+        snapshot_id,
+        symbols,
+        source=adapter.name,
+        adapter_version=adapter.version,
+        parser_version=adapter.version,
+        created_at=datetime.now(UTC),
+    )
     typer.echo(f"snapshot {snapshot_id} created for {symbols}")
 
 
