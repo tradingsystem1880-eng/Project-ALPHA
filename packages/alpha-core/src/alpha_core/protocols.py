@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Protocol, runtime_checkable
+
+from pydantic import AwareDatetime
 
 from alpha_core.types import Bar, ValidationOutcome
 
@@ -14,7 +15,7 @@ class DataSource(Protocol):
 
     def available_symbols(self) -> list[str]: ...
 
-    def as_of(self, symbol: str, when: datetime) -> list[Bar]:
+    def as_of(self, symbol: str, when: AwareDatetime) -> list[Bar]:
         """Return bars for `symbol` whose data was knowable no later than `when`."""
         ...
 
