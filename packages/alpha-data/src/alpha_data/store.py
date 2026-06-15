@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import polars as pl
 
-from alpha_core import DataError
+from alpha_core import CorporateAction, DataError
 
 _BAR_COLUMNS = ["ts", "open", "high", "low", "close", "volume"]
 
@@ -43,3 +44,22 @@ class ParquetStore:
         if not path.exists():
             raise DataError(f"no bars stored for symbol {symbol!r} at {path}")
         return pl.read_parquet(path)
+
+    def _actions_path(self, symbol: str) -> Path:
+        if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):
+            raise DataError(f"invalid symbol for storage: {symbol!r}")
+        return self.root / "actions" / f"{symbol}.json"
+
+    def write_actions(self, symbol: str, actions: list[CorporateAction]) -> Path:
+        path = self._actions_path(symbol)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = [a.model_dump(mode="json") for a in actions]
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        return path
+
+    def read_actions(self, symbol: str) -> list[CorporateAction]:
+        path = self._actions_path(symbol)
+        if not path.exists():
+            return []
+        raw = json.loads(path.read_text())
+        return [CorporateAction.model_validate(d) for d in raw]
