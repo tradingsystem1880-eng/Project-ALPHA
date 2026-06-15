@@ -54,7 +54,8 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--strict-markers"
+addopts = "--strict-markers --import-mode=importlib"
+pythonpath = ["."]
 markers = [
     "bias_guard: tests that mechanically prevent look-ahead / survivorship bias (gated in CI)",
 ]
