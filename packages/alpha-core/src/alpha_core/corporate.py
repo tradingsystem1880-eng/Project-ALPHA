@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date
 from enum import StrEnum
 
@@ -43,9 +44,13 @@ class CorporateAction(BaseModel):
 
     @model_validator(mode="after")
     def _check_payload(self) -> CorporateAction:
-        if self.action_type is ActionType.SPLIT and (self.ratio is None or self.ratio <= 0):
+        if self.action_type is ActionType.SPLIT and (
+            self.ratio is None or self.ratio <= 0 or math.isnan(self.ratio)
+        ):
             raise ValueError("SPLIT requires ratio > 0")
-        if self.action_type is ActionType.DIVIDEND and (self.amount is None or self.amount <= 0):
+        if self.action_type is ActionType.DIVIDEND and (
+            self.amount is None or self.amount <= 0 or math.isnan(self.amount)
+        ):
             raise ValueError("DIVIDEND requires amount > 0")
         if self.announce_date is not None and self.announce_date > self.ex_date:
             raise ValueError("announce_date cannot be after ex_date")

@@ -14,7 +14,7 @@ def yf_history(rows: list[dict[str, float]], dates: list[datetime]) -> pd.DataFr
 
 
 def aapl_like() -> pd.DataFrame:
-    """3 daily bars; a 4:1 split on day 3 and a 0.82 dividend on day 2. Raw (unadjusted) prices."""
+    """3 daily bars; 4:1 split and 0.82 dividend both on day 2 (2020-08-31). Raw prices."""
     dates = [
         datetime(2020, 8, 28, tzinfo=UTC),
         datetime(2020, 8, 31, tzinfo=UTC),

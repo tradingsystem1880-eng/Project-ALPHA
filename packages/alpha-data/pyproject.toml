@@ -3,7 +3,7 @@ name = "alpha-data"
 version = "0.0.0"
 description = "Free-data ingestion, point-in-time storage, and snapshots."
 requires-python = ">=3.12"
-dependencies = ["alpha-core", "polars>=1.0", "yfinance>=0.2.40"]
+dependencies = ["alpha-core", "pandas>=2.0", "polars>=1.0", "yfinance>=0.2.40"]
 
 [tool.uv.sources]
 alpha-core = { workspace = true }

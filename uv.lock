@@ -83,6 +83,7 @@ version = "0.0.0"
 source = { editable = "packages/alpha-data" }
 dependencies = [
     { name = "alpha-core" },
+    { name = "pandas" },
     { name = "polars" },
     { name = "yfinance" },
 ]
@@ -90,6 +91,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "pandas", specifier = ">=2.0" },
     { name = "polars", specifier = ">=1.0" },
     { name = "yfinance", specifier = ">=0.2.40" },
 ]

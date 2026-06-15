@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import polars as pl
+from pydantic import ValidationError
 
 from alpha_core import CorporateAction, DataError
 
@@ -31,6 +32,7 @@ class ParquetStore:
         return self.root / "bars" / f"{symbol}.parquet"
 
     def write_bars(self, symbol: str, df: pl.DataFrame) -> Path:
+        """Write bars for symbol. REPLACES the symbol's data wholesale (no append/merge)."""
         missing = [c for c in _BAR_COLUMNS if c not in df.columns]
         if missing:
             raise DataError(f"bars for {symbol} missing columns: {missing}")
@@ -51,15 +53,21 @@ class ParquetStore:
         return self.root / "actions" / f"{symbol}.json"
 
     def write_actions(self, symbol: str, actions: list[CorporateAction]) -> Path:
+        """Write actions for symbol. REPLACES the symbol's data wholesale (no append/merge)."""
         path = self._actions_path(symbol)
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = [a.model_dump(mode="json") for a in actions]
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
         return path
 
     def read_actions(self, symbol: str) -> list[CorporateAction]:
         path = self._actions_path(symbol)
         if not path.exists():
             return []
-        raw = json.loads(path.read_text())
-        return [CorporateAction.model_validate(d) for d in raw]
+        try:
+            raw = json.loads(path.read_text())
+            return [CorporateAction.model_validate(d) for d in raw]
+        except json.JSONDecodeError as exc:
+            raise DataError(f"corrupt actions JSON for {symbol!r} at {path}") from exc
+        except ValidationError as exc:
+            raise DataError(f"invalid action data for {symbol!r} at {path}: {exc}") from exc

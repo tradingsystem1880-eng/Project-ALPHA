@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, date, datetime
 
 import pandas as pd
@@ -57,22 +58,24 @@ def parse_yfinance_history(df: pd.DataFrame, symbol: str) -> FetchResult:
             }
         )
         ex: date = ts.date()
-        if float(row["Stock Splits"]) != 0.0:
+        splits_val = float(row["Stock Splits"])
+        if splits_val != 0.0 and not math.isnan(splits_val):
             actions.append(
                 CorporateAction(
                     symbol=symbol,
                     action_type=ActionType.SPLIT,
                     ex_date=ex,
-                    ratio=float(row["Stock Splits"]),
+                    ratio=splits_val,
                 )
             )
-        if float(row["Dividends"]) != 0.0:
+        div_val = float(row["Dividends"])
+        if div_val != 0.0 and not math.isnan(div_val):
             actions.append(
                 CorporateAction(
                     symbol=symbol,
                     action_type=ActionType.DIVIDEND,
                     ex_date=ex,
-                    amount=float(row["Dividends"]),
+                    amount=div_val,
                 )
             )
     bars = pl.DataFrame(

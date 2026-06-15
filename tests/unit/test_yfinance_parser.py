@@ -38,3 +38,79 @@ def test_parse_fails_loud_on_inconsistent_ohlc() -> None:
     )
     with pytest.raises(DataError):
         parse_yfinance_history(bad, "X")  # high < open → invalid Bar
+
+
+def test_parse_no_actions_when_all_zero() -> None:
+    df = yf_history(
+        [
+            {
+                "Open": 10.0,
+                "High": 11.0,
+                "Low": 9.0,
+                "Close": 10.0,
+                "Volume": 1.0,
+                "Dividends": 0.0,
+                "Stock Splits": 0.0,
+            }
+        ],
+        [datetime(2024, 1, 2, tzinfo=UTC)],
+    )
+    assert parse_yfinance_history(df, "X").actions == []
+
+
+def test_parse_skips_nan_action_values() -> None:
+    df = yf_history(
+        [
+            {
+                "Open": 10.0,
+                "High": 11.0,
+                "Low": 9.0,
+                "Close": 10.0,
+                "Volume": 1.0,
+                "Dividends": float("nan"),
+                "Stock Splits": float("nan"),
+            }
+        ],
+        [datetime(2024, 1, 2, tzinfo=UTC)],
+    )
+    result = parse_yfinance_history(df, "X")
+    assert result.actions == []  # NaN is not an action
+    assert result.bars.height == 1
+
+
+def test_parse_dividend_only() -> None:
+    df = yf_history(
+        [
+            {
+                "Open": 10.0,
+                "High": 11.0,
+                "Low": 9.0,
+                "Close": 10.0,
+                "Volume": 1.0,
+                "Dividends": 0.5,
+                "Stock Splits": 0.0,
+            }
+        ],
+        [datetime(2024, 1, 2, tzinfo=UTC)],
+    )
+    acts = parse_yfinance_history(df, "X").actions
+    assert len(acts) == 1 and acts[0].action_type.value == "dividend"
+
+
+def test_parse_split_only() -> None:
+    df = yf_history(
+        [
+            {
+                "Open": 10.0,
+                "High": 11.0,
+                "Low": 9.0,
+                "Close": 10.0,
+                "Volume": 1.0,
+                "Dividends": 0.0,
+                "Stock Splits": 2.0,
+            }
+        ],
+        [datetime(2024, 1, 2, tzinfo=UTC)],
+    )
+    acts = parse_yfinance_history(df, "X").actions
+    assert len(acts) == 1 and acts[0].action_type.value == "split"
