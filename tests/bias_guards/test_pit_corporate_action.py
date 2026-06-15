@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import pytest
 
@@ -13,14 +14,13 @@ from tests.fixtures.pit_fixtures import aapl_4for1_split, linear_bars
 pytestmark = pytest.mark.bias_guard
 
 
-def _reader(tmp_path: object) -> PointInTimeReader:
-    store = ParquetStore(tmp_path)  # type: ignore[arg-type]
+def _reader(tmp_path: Path) -> PointInTimeReader:
+    store = ParquetStore(tmp_path)
     store.write_bars("AAPL", linear_bars("AAPL", date(2020, 8, 25), 12, first_close=100.0))
     return PointInTimeReader(store, actions={"AAPL": [aapl_4for1_split()]})
 
 
 def test_split_invisible_before_announce(tmp_path) -> None:  # type: ignore[no-untyped-def]
-    _reader(tmp_path)  # populates tmp_path with AAPL bars (side effect)
     # announce is 2020-07-30; as_of on 2020-08-28 is AFTER announce, so it's known.
     # Build a query BEFORE announce by using an earlier `when` that still has bars:
     # all fixture bars are >= 2020-08-25 (after announce), so instead assert the gate

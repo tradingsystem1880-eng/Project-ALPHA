@@ -17,7 +17,9 @@ def test_firewall_excludes_future_bars(tmp_path) -> None:  # type: ignore[no-unt
     r = _reader(tmp_path)
     when = datetime(2020, 8, 28, tzinfo=UTC)
     out = r.as_of("AAPL", when)
-    ts_max: datetime = out["ts"].max()  # type: ignore[assignment]
+    ts_max = out["ts"].max()
+    assert ts_max is not None
+    assert isinstance(ts_max, datetime)
     assert ts_max <= when  # no future bars
     assert out.height == 4  # 25,26,27,28
 

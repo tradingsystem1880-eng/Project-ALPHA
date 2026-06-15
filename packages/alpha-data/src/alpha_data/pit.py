@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime
 
 import polars as pl
+from pydantic import AwareDatetime
 
 from alpha_core import CorporateAction
 from alpha_data.corporate import known_actions, split_factor
@@ -15,7 +15,13 @@ _PRICE_COLS = ("open", "high", "low", "close")
 
 
 class PointInTimeReader:
-    """Returns split-adjusted bars visible at ``when`` — future bars are physically excluded."""
+    """Returns split-adjusted bars visible at ``when`` — future bars are physically excluded.
+
+    This is the **frame-returning** point-in-time firewall and is intentionally distinct from
+    the abstract ``DataSource`` protocol (which returns typed ``Bar`` objects and is reserved
+    for a later phase).  A ``PointInTimeReader`` does not need to structurally satisfy
+    ``DataSource``.
+    """
 
     def __init__(
         self, store: ParquetStore, actions: Mapping[str, Sequence[CorporateAction]]
@@ -23,7 +29,7 @@ class PointInTimeReader:
         self._store = store
         self._actions = actions
 
-    def as_of(self, symbol: str, when: datetime) -> pl.DataFrame:
+    def as_of(self, symbol: str, when: AwareDatetime) -> pl.DataFrame:
         bars = self._store.read_bars(symbol).filter(pl.col("ts") <= when)  # firewall
         known = known_actions(self._actions.get(symbol, []), when.date())  # knowledge gate
         if not known:
