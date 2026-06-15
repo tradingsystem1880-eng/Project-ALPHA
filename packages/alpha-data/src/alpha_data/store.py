@@ -25,8 +25,9 @@ class ParquetStore:
     def _bars_path(self, symbol: str) -> Path:
         if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):
             raise DataError(f"invalid symbol for storage: {symbol!r}")
-        safe = symbol.replace("/", "_")  # e.g. BTC/USD -> BTC_USD (normalized, single dir level)
-        return self.root / "bars" / f"{safe}.parquet"
+        # slash kept as a subdirectory (BTC/USD -> bars/BTC/USD.parquet) so it never
+        # collides with a literal BTC_USD; `..` etc. are rejected above for traversal safety.
+        return self.root / "bars" / f"{symbol}.parquet"
 
     def write_bars(self, symbol: str, df: pl.DataFrame) -> Path:
         missing = [c for c in _BAR_COLUMNS if c not in df.columns]

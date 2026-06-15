@@ -35,3 +35,11 @@ def test_write_then_read_round_trips(tmp_path: Path) -> None:
 def test_read_missing_symbol_raises(tmp_path: Path) -> None:
     with pytest.raises(DataError):
         ParquetStore(tmp_path).read_bars("NOPE")
+
+
+def test_slash_and_underscore_symbols_do_not_collide(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path)
+    store.write_bars("BTC/USD", _frame())
+    store.write_bars("BTC_USD", _frame().with_columns(pl.col("close") + 1000.0))
+    assert store.read_bars("BTC/USD")["close"].to_list() == [10.5, 11.0]
+    assert store.read_bars("BTC_USD")["close"].to_list() == [1010.5, 1011.0]

@@ -20,7 +20,7 @@ def _reader(tmp_path: Path) -> PointInTimeReader:
     return PointInTimeReader(store, actions={"AAPL": [aapl_4for1_split()]})
 
 
-def test_split_invisible_before_announce(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_split_invisible_before_announce(tmp_path: Path) -> None:
     # announce is 2020-07-30; as_of on 2020-08-28 is AFTER announce, so it's known.
     # Build a query BEFORE announce by using an earlier `when` that still has bars:
     # all fixture bars are >= 2020-08-25 (after announce), so instead assert the gate
@@ -41,7 +41,7 @@ def test_split_invisible_before_announce(tmp_path) -> None:  # type: ignore[no-u
     assert out["close"].to_list() == [100.0, 101.0, 102.0, 103.0, 104.0]  # unadjusted
 
 
-def test_split_applied_to_pre_ex_only_when_known(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_split_applied_to_pre_ex_only_when_known(tmp_path: Path) -> None:
     r = _reader(tmp_path)
     out = r.as_of("AAPL", datetime(2020, 9, 5, tzinfo=UTC))
     by_ts = {row["ts"].date(): row["close"] for row in out.iter_rows(named=True)}

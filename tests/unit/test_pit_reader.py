@@ -1,4 +1,5 @@
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import pytest
 
@@ -7,13 +8,13 @@ from alpha_data.store import ParquetStore
 from tests.fixtures.pit_fixtures import aapl_4for1_split, linear_bars
 
 
-def _reader(tmp_path) -> PointInTimeReader:  # type: ignore[no-untyped-def]
+def _reader(tmp_path: Path) -> PointInTimeReader:
     store = ParquetStore(tmp_path)
     store.write_bars("AAPL", linear_bars("AAPL", date(2020, 8, 25), 12))  # 25th..(25+11)
     return PointInTimeReader(store, actions={"AAPL": [aapl_4for1_split()]})
 
 
-def test_firewall_excludes_future_bars(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_firewall_excludes_future_bars(tmp_path: Path) -> None:
     r = _reader(tmp_path)
     when = datetime(2020, 8, 28, tzinfo=UTC)
     out = r.as_of("AAPL", when)
@@ -24,7 +25,7 @@ def test_firewall_excludes_future_bars(tmp_path) -> None:  # type: ignore[no-unt
     assert out.height == 4  # 25,26,27,28
 
 
-def test_split_applied_when_known(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_split_applied_when_known(tmp_path: Path) -> None:
     r = _reader(tmp_path)
     out = r.as_of("AAPL", datetime(2020, 9, 5, tzinfo=UTC))
     pre = out.filter(out["ts"] < datetime(2020, 8, 31, tzinfo=UTC))
