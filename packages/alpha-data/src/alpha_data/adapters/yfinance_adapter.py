@@ -13,6 +13,7 @@ from alpha_core import ActionType, Bar, CorporateAction, DataError
 from alpha_data.adapters.base import FetchResult
 
 _VERSION = "1"
+PARSER_VERSION = "1"
 _OHLCV = {"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}
 
 
@@ -97,6 +98,7 @@ class YFinanceAdapter:
 
     name = "yfinance"
     version = _VERSION
+    parser_version = PARSER_VERSION
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         import yfinance as yf  # type: ignore[import-untyped]  # yfinance has no stubs

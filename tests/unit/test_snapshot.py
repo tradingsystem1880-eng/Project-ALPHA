@@ -68,3 +68,47 @@ def test_verify_detects_tampering(tmp_path: Path) -> None:
     bars_file.write_bytes(bars_file.read_bytes() + b"corruption")
     with pytest.raises(DataError):
         verify_snapshot(tmp_path / "snaps" / "snap1")
+
+
+def test_snapshot_preserves_slash_symbols(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path / "work")
+    store_fetch_result(store, parse_yfinance_history(aapl_like(), "BTC/USD"))
+    store_fetch_result(store, parse_yfinance_history(aapl_like(), "ETH/USD"))
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "s",
+        ["BTC/USD", "ETH/USD"],
+        source="x",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
+    assert (tmp_path / "snaps" / "s" / "bars" / "BTC" / "USD.parquet").exists()
+    assert (tmp_path / "snaps" / "s" / "bars" / "ETH" / "USD.parquet").exists()
+    verify_snapshot(tmp_path / "snaps" / "s")  # both distinct → integrity holds
+
+
+def test_snapshot_refuses_overwrite(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
+    with pytest.raises(DataError):
+        create_snapshot(
+            store,
+            tmp_path / "snaps",
+            "snap1",
+            ["AAPL"],
+            source="yfinance",
+            adapter_version="1",
+            parser_version="1",
+            created_at=WHEN,
+        )

@@ -59,7 +59,7 @@ def snapshot(snapshot_id: str, symbols: list[str], source: str = "yfinance") -> 
         symbols,
         source=adapter.name,
         adapter_version=adapter.version,
-        parser_version=adapter.version,
+        parser_version=adapter.parser_version,
         created_at=datetime.now(UTC),
     )
     typer.echo(f"snapshot {snapshot_id} created for {symbols}")

@@ -15,6 +15,7 @@ runner = CliRunner()
 class _FakeAdapter:
     name = "fake"
     version = "1"
+    parser_version = "1"
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         return parse_yfinance_history(aapl_like(), symbol)

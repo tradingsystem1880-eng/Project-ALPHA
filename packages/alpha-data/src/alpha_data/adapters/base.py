@@ -25,5 +25,6 @@ class DataAdapter(Protocol):
 
     name: str
     version: str
+    parser_version: str
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult: ...

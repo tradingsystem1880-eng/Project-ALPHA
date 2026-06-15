@@ -40,20 +40,22 @@ def create_snapshot(
         bars_src = store._bars_path(sym)  # noqa: SLF001 — snapshot is a peer of the store
         if not bars_src.exists():
             raise DataError(f"cannot snapshot {sym!r}: no bars in store")
-        bars_dst = dest / "bars" / bars_src.name
+        bars_rel = bars_src.relative_to(store.root / "bars")  # preserve slash-symbol subdirs
+        bars_dst = dest / "bars" / bars_rel
         bars_dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(bars_src, bars_dst)
         entry: dict[str, Any] = {
             "bars_sha256": _sha256(bars_dst),
-            "bars_file": f"bars/{bars_src.name}",
+            "bars_file": f"bars/{bars_rel.as_posix()}",
         }
         actions_src = store._actions_path(sym)  # noqa: SLF001
         if actions_src.exists():
-            actions_dst = dest / "actions" / actions_src.name
+            actions_rel = actions_src.relative_to(store.root / "actions")
+            actions_dst = dest / "actions" / actions_rel
             actions_dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(actions_src, actions_dst)
             entry["actions_sha256"] = _sha256(actions_dst)
-            entry["actions_file"] = f"actions/{actions_src.name}"
+            entry["actions_file"] = f"actions/{actions_rel.as_posix()}"
         sym_manifest[sym] = entry
 
     manifest: dict[str, Any] = {
