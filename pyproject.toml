@@ -59,6 +59,7 @@ addopts = "--strict-markers --import-mode=importlib"
 pythonpath = ["."]
 markers = [
     "bias_guard: tests that mechanically prevent look-ahead / survivorship bias (gated in CI)",
+    "network: tests that hit the live network (skipped in CI / offline runs)",
 ]
 
 [tool.importlinter]

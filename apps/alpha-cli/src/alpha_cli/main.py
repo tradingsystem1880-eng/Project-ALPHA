@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import typer
 
+from alpha_cli.data_cmds import data_app
 from alpha_core import __version__ as core_version
 from alpha_core.config import AlphaSettings
 
 app = typer.Typer(help="Project ALPHA command-line interface.")
+app.add_typer(data_app, name="data")
 
 
 @app.callback(invoke_without_command=True)
