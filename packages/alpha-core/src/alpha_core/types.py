@@ -22,7 +22,7 @@ class Bar(BaseModel):
     volume: float
 
     @model_validator(mode="after")
-    def _check_invariants(self) -> "Bar":
+    def _check_invariants(self) -> Bar:
         prices = {"open": self.open, "high": self.high, "low": self.low, "close": self.close}
         for name, v in {**prices, "volume": self.volume}.items():
             if math.isnan(v) or math.isinf(v):
@@ -34,7 +34,8 @@ class Bar(BaseModel):
                 raise ValueError(f"Bar.{name} must be > 0, got {v}")
         if not (self.low <= self.open <= self.high and self.low <= self.close <= self.high):
             raise ValueError(
-                f"OHLC inconsistent: low={self.low} open={self.open} high={self.high} close={self.close}"
+                f"OHLC inconsistent: low={self.low} open={self.open}"
+                f" high={self.high} close={self.close}"
             )
         return self
 

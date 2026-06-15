@@ -1,4 +1,5 @@
 """Two-clock corporate-action math (splits). See spec §6.1."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence

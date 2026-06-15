@@ -1,4 +1,5 @@
 """Corporate-action / instrument-lifecycle types. See spec §6.1 (two-clock model)."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -29,7 +30,7 @@ class CorporateAction(BaseModel):
     announce_date: date | None = None
     record_date: date | None = None
     pay_date: date | None = None
-    ratio: float | None = None   # SPLIT: new/old shares (a 4-for-1 split → 4.0)
+    ratio: float | None = None  # SPLIT: new/old shares (a 4-for-1 split → 4.0)
     amount: float | None = None  # DIVIDEND: cash per share
 
     @property
@@ -41,7 +42,7 @@ class CorporateAction(BaseModel):
         return self.announce_date is None
 
     @model_validator(mode="after")
-    def _check_payload(self) -> "CorporateAction":
+    def _check_payload(self) -> CorporateAction:
         if self.action_type is ActionType.SPLIT and (self.ratio is None or self.ratio <= 0):
             raise ValueError("SPLIT requires ratio > 0")
         if self.action_type is ActionType.DIVIDEND and (self.amount is None or self.amount <= 0):

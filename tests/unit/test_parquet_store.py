@@ -12,8 +12,11 @@ def _frame() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "ts": [datetime(2024, 1, 2, tzinfo=UTC), datetime(2024, 1, 3, tzinfo=UTC)],
-            "open": [10.0, 10.5], "high": [11.0, 11.5], "low": [9.5, 10.0],
-            "close": [10.5, 11.0], "volume": [100.0, 120.0],
+            "open": [10.0, 10.5],
+            "high": [11.0, 11.5],
+            "low": [9.5, 10.0],
+            "close": [10.5, 11.0],
+            "volume": [100.0, 120.0],
         }
     )
 

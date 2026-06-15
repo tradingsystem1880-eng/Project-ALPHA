@@ -1,4 +1,5 @@
 """Parquet source-of-truth store for raw (unadjusted) bars and corporate actions."""
+
 from __future__ import annotations
 
 from pathlib import Path
