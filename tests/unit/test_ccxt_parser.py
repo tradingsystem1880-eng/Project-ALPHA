@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 
@@ -19,3 +20,14 @@ def test_parse_ccxt_fails_loud_on_bad_ohlc() -> None:
     bad = [[1704067200000, 10.0, 5.0, 9.0, 8.0, 1.0]]  # high < open
     with pytest.raises(DataError):
         parse_ccxt_ohlcv(bad, "X/Y")
+
+
+def test_parse_ccxt_none_volume_raises_dataerror() -> None:
+    bad: Any = [[1704067200000, 1.0, 2.0, 0.5, 1.5, None]]
+    with pytest.raises(DataError):
+        parse_ccxt_ohlcv(bad, "X/Y")
+
+
+def test_parse_ccxt_malformed_row_raises_dataerror() -> None:
+    with pytest.raises(DataError):
+        parse_ccxt_ohlcv([[1704067200000, 1.0, 2.0]], "X/Y")  # wrong length

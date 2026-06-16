@@ -20,9 +20,10 @@ def parse_ccxt_ohlcv(ohlcv: list[list[float]], symbol: str) -> FetchResult:
     Validates each row via Bar (1a invariants) — fails loud on bad data. No corporate actions.
     """
     rows: list[dict[str, object]] = []
-    for ms, o, h, low, c, v in ohlcv:
-        ts = datetime.fromtimestamp(ms / 1000, tz=UTC)
+    for i, row in enumerate(ohlcv):
         try:
+            ms, o, h, low, c, v = row
+            ts = datetime.fromtimestamp(ms / 1000, tz=UTC)
             Bar(
                 symbol=symbol,
                 ts=ts,
@@ -32,8 +33,8 @@ def parse_ccxt_ohlcv(ohlcv: list[list[float]], symbol: str) -> FetchResult:
                 close=float(c),
                 volume=float(v),
             )
-        except ValidationError as exc:
-            raise DataError(f"invalid ccxt bar for {symbol} at {ts}: {exc}") from exc
+        except (ValidationError, TypeError, ValueError) as exc:
+            raise DataError(f"invalid ccxt row {i} for {symbol} ({row!r}): {exc}") from exc
         rows.append(
             {
                 "ts": ts,
@@ -65,7 +66,10 @@ class CCXTAdapter:
     version = _VERSION
     parser_version = PARSER_VERSION
 
-    def __init__(self, exchange: str = "kraken") -> None:
+    def __init__(self, exchange: str = "coinbase") -> None:
+        # coinbase: US-accessible, key-free public OHLCV, accepts the unified ``BTC/USD``,
+        # and honours ``since`` for historical ranges (kraken's OHLC endpoint ignores
+        # ``since`` and returns only a recent ~720-bar window, breaking dated fetches).
         self._exchange = exchange
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
