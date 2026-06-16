@@ -13,6 +13,25 @@ def known_actions(actions: Sequence[CorporateAction], as_of: date) -> list[Corpo
     return [a for a in actions if a.knowledge_time <= as_of]
 
 
+def cash_dividends(actions: Sequence[CorporateAction]) -> list[CorporateAction]:
+    """The DIVIDEND actions among ``actions``, in input order.
+
+    Pulled out alongside ``split_factor`` so the two clocks stay separate: splits adjust
+    the price series; dividends are decoupled cash events (spec §6.1.4) credited at
+    ``pay_date`` by the engine — never folded into prices. Fails loud on a DIVIDEND
+    missing its ``amount`` (mirrors ``split_factor``'s ratio guard).
+    """
+    out: list[CorporateAction] = []
+    for a in actions:
+        if a.action_type is ActionType.DIVIDEND:
+            if a.amount is None:
+                raise DataError(
+                    f"DIVIDEND action for {a.symbol!r} has no amount (data integrity failure)"
+                )
+            out.append(a)
+    return out
+
+
 def split_factor(bar_date: date, actions: Sequence[CorporateAction]) -> float:
     """Back-adjustment multiplier for prices on ``bar_date``.
 

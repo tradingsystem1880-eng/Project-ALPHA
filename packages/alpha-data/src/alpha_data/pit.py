@@ -9,7 +9,7 @@ import polars as pl
 from pydantic import AwareDatetime
 
 from alpha_core import CorporateAction
-from alpha_data.corporate import known_actions, split_factor
+from alpha_data.corporate import cash_dividends, known_actions, split_factor
 from alpha_data.store import ParquetStore
 
 _PRICE_COLS = ("open", "high", "low", "close")
@@ -46,3 +46,15 @@ class PointInTimeReader:
             + [(pl.col("volume") / factor).alias("volume")]
         )
         return adjusted
+
+    def dividends_as_of(self, symbol: str, when: AwareDatetime) -> list[CorporateAction]:
+        """Cash dividends knowable at ``when`` (knowledge-gated), for crediting at pay_date.
+
+        The price channel (``as_of``) adjusts ONLY for splits — an ex-date dividend price
+        drop is a real move, left intact. Dividends ride this separate channel as decoupled
+        cash events (spec §6.1.4): a dividend is visible once ``knowledge_time <= when`` (on
+        the UTC session date, matching the bar/knowledge gate), regardless of whether it has
+        gone ex yet, and the engine schedules the cash credit for its ``pay_date``.
+        """
+        known = known_actions(self._actions.get(symbol, []), when.astimezone(UTC).date())
+        return cash_dividends(known)
