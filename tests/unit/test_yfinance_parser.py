@@ -114,3 +114,17 @@ def test_parse_split_only() -> None:
     )
     acts = parse_yfinance_history(df, "X").actions
     assert len(acts) == 1 and acts[0].action_type.value == "split"
+
+
+def test_parse_non_us_session_date_preserved() -> None:
+    from datetime import timedelta, timezone
+
+    tokyo = timezone(timedelta(hours=9))
+    df = yf_history(
+        [{"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": 100.0, "Volume": 1.0,
+          "Dividends": 0.0, "Stock Splits": 2.0}],
+        [datetime(2024, 3, 15, tzinfo=tokyo)],
+    )
+    result = parse_yfinance_history(df, "7203.T")
+    assert result.bars["ts"].to_list()[0] == datetime(2024, 3, 15, tzinfo=UTC)  # not 3/14
+    assert result.actions[0].ex_date == date(2024, 3, 15)  # split ex-date is the LOCAL session date

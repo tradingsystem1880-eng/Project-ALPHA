@@ -17,9 +17,15 @@ PARSER_VERSION = "1"
 _OHLCV = {"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}
 
 
-def _to_utc(ts: pd.Timestamp) -> datetime:
-    py = ts.to_pydatetime()
-    return py.replace(tzinfo=UTC) if py.tzinfo is None else py.astimezone(UTC)
+def _session_ts(ts: pd.Timestamp) -> datetime:
+    """Daily bar → midnight UTC of the bar's LOCAL session date.
+
+    A daily bar is date-keyed, not instant-keyed. yfinance's daily index is local-midnight;
+    taking the local calendar date and stamping it at 00:00 UTC makes `ts.date()` the session
+    date for ANY venue (US, Tokyo, Sydney) and keeps the corporate-action ex_date consistent.
+    """
+    d = ts.to_pydatetime().date()
+    return datetime(d.year, d.month, d.day, tzinfo=UTC)
 
 
 def parse_yfinance_history(df: pd.DataFrame, symbol: str) -> FetchResult:
@@ -34,7 +40,7 @@ def parse_yfinance_history(df: pd.DataFrame, symbol: str) -> FetchResult:
     bars_rows: list[dict[str, object]] = []
     actions: list[CorporateAction] = []
     for idx, row in df.iterrows():
-        ts = _to_utc(pd.Timestamp(idx))  # type: ignore[arg-type]  # iterrows index is Any
+        ts = _session_ts(pd.Timestamp(idx))  # type: ignore[arg-type]  # iterrows index is Any
         # fail-loud validation via the canonical Bar invariants
         try:
             Bar(
