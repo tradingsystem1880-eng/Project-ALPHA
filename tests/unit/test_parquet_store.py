@@ -43,3 +43,14 @@ def test_slash_and_underscore_symbols_do_not_collide(tmp_path: Path) -> None:
     store.write_bars("BTC_USD", _frame().with_columns(pl.col("close") + 1000.0))
     assert store.read_bars("BTC/USD")["close"].to_list() == [10.5, 11.0]
     assert store.read_bars("BTC_USD")["close"].to_list() == [1010.5, 1011.0]
+
+
+def test_list_symbols_reconstructs_slash_symbols(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path)
+    store.write_bars("AAPL", _frame())
+    store.write_bars("BTC/USD", _frame())
+    assert store.list_symbols() == ["AAPL", "BTC/USD"]  # sorted; slash subdir reconstructed
+
+
+def test_list_symbols_empty_when_no_bars(tmp_path: Path) -> None:
+    assert ParquetStore(tmp_path).list_symbols() == []
