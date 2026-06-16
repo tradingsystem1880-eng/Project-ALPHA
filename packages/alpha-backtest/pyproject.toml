@@ -3,7 +3,7 @@ name = "alpha-backtest"
 version = "0.0.0"
 description = "Event-driven backtest harness (Phase 2+: nautilus_trader)."
 requires-python = ">=3.12"
-dependencies = ["alpha-core", "alpha-data"]
+dependencies = ["alpha-core", "alpha-data", "nautilus-trader>=1.228"]
 
 [tool.uv.sources]
 alpha-core = { workspace = true }

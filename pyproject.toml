@@ -53,6 +53,12 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 explicit_package_bases = true
 
+[[tool.mypy.overrides]]
+# nautilus_trader ships py.typed, but its Cython extension submodules (model.data,
+# model.objects, ...) carry no stubs mypy can load — treat those imports as untyped.
+module = ["nautilus_trader.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers --import-mode=importlib"
