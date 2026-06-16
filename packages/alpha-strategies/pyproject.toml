@@ -3,7 +3,7 @@ name = "alpha-strategies"
 version = "0.0.0"
 description = "Trading strategies (Phase 2+: nautilus Strategy subclasses)."
 requires-python = ">=3.12"
-dependencies = ["alpha-core"]
+dependencies = ["alpha-core", "nautilus-trader>=1.228"]
 
 [tool.uv.sources]
 alpha-core = { workspace = true }

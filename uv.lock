@@ -240,10 +240,14 @@ version = "0.0.0"
 source = { editable = "packages/alpha-strategies" }
 dependencies = [
     { name = "alpha-core" },
+    { name = "nautilus-trader" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "alpha-core", editable = "packages/alpha-core" }]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "nautilus-trader", specifier = ">=1.228" },
+]
 
 [[package]]
 name = "alpha-validation"
