@@ -10,13 +10,18 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from nautilus_trader.core.data import Data
 from nautilus_trader.model.data import Bar as NautilusBar
-from nautilus_trader.model.data import BarType
+from nautilus_trader.model.data import BarType, QuoteTick
 from nautilus_trader.model.objects import Price, Quantity
 
 from alpha_core import Bar
 
 _NS_PER_SECOND = 1_000_000_000
+# A daily decision bar is "known" at its session close; we stamp it 23h after the session open.
+# Any offset in (0, 24h) keeps close(t) strictly before open(t+1), so the strategy decides on the
+# close of t and the next price event it sees is the open of t+1 (the execution convention).
+_SESSION_CLOSE_OFFSET_NS = 23 * 3600 * _NS_PER_SECOND
 
 
 def daily_bar_type(symbol: str, venue: str = "SIM") -> BarType:
@@ -62,3 +67,49 @@ def to_nautilus_bars(
         to_nautilus_bar(b, bar_type, price_precision=price_precision, size_precision=size_precision)
         for b in bars
     ]
+
+
+def to_execution_feed(
+    bars: Sequence[Bar],
+    bar_type: BarType,
+    *,
+    price_precision: int = 2,
+    size_precision: int = 0,
+    quote_size: float = 1_000_000_000.0,
+) -> list[Data]:
+    """Build a look-ahead-safe nautilus feed honoring decide-on-close-t / fill-at-open-t+1.
+
+    nautilus's default bar execution fills market orders at the bar *close*; the spec requires
+    fills at the *open of t+1*. So for each session we emit TWO chronological events:
+
+    * an open-priced ``QuoteTick`` stamped at the session **open** (``bar.ts``) — the price a
+      market order decided on the prior session's close fills against. ``quote_size`` is large by
+      default so the order fills fully at the open; realistic slippage is modeled separately by a
+      ``FillModel`` in a later increment, not by book depth here.
+    * the **decision** ``Bar`` (full OHLC) stamped at the session **close** (``+23h``), the event a
+      strategy reads to choose its target.
+
+    Run this feed with a venue configured ``bar_execution=False`` (see ``engine.run_backtest``) so
+    that only the quotes drive fills. The returned list is chronologically ordered.
+    """
+    iid = bar_type.instrument_id
+    size = Quantity(quote_size, size_precision)
+    out: list[Data] = []
+    for b in bars:
+        open_ns = int(b.ts.timestamp() * _NS_PER_SECOND)
+        close_ns = open_ns + _SESSION_CLOSE_OFFSET_NS
+        open_px = Price(b.open, price_precision)
+        out.append(QuoteTick(iid, open_px, open_px, size, size, open_ns, open_ns))
+        out.append(
+            NautilusBar(
+                bar_type,
+                open_px,
+                Price(b.high, price_precision),
+                Price(b.low, price_precision),
+                Price(b.close, price_precision),
+                Quantity(b.volume, size_precision),
+                close_ns,
+                close_ns,
+            )
+        )
+    return out
