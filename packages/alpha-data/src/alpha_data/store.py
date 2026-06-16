@@ -47,6 +47,16 @@ class ParquetStore:
             raise DataError(f"no bars stored for symbol {symbol!r} at {path}")
         return pl.read_parquet(path)
 
+    def list_symbols(self) -> list[str]:
+        """Every symbol with stored bars, sorted. Slash-symbols (BTC/USD) are reconstructed
+        from their subdir layout, inverting ``_bars_path``; empty when nothing is stored."""
+        bars_dir = self.root / "bars"
+        if not bars_dir.exists():
+            return []
+        return sorted(
+            str(p.relative_to(bars_dir).with_suffix("")) for p in bars_dir.rglob("*.parquet")
+        )
+
     def _actions_path(self, symbol: str) -> Path:
         if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):
             raise DataError(f"invalid symbol for storage: {symbol!r}")
