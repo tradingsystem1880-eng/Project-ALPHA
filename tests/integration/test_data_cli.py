@@ -36,8 +36,20 @@ class _FakeCrypto:
 def test_pull_crypto_slash_symbol(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _FakeCrypto})
-    r1 = runner.invoke(app, ["data", "pull", "BTC/USD", "--source", "ccxt",
-                             "--start", "2024-01-01", "--end", "2024-01-04"])
+    r1 = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "BTC/USD",
+            "--source",
+            "ccxt",
+            "--start",
+            "2024-01-01",
+            "--end",
+            "2024-01-04",
+        ],
+    )
     assert r1.exit_code == 0, r1.output
     r2 = runner.invoke(app, ["data", "snapshot", "csnap", "BTC/USD", "--source", "ccxt"])
     assert r2.exit_code == 0, r2.output

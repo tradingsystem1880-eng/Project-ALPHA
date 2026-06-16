@@ -1,4 +1,5 @@
 """Live ccxt smoke test — skipped in CI/offline (run locally with -m network)."""
+
 from __future__ import annotations
 
 from datetime import date

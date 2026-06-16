@@ -1,4 +1,5 @@
 """ccxt crypto adapter: raw daily OHLCV (UTC-native, no corporate actions)."""
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -22,15 +23,38 @@ def parse_ccxt_ohlcv(ohlcv: list[list[float]], symbol: str) -> FetchResult:
     for ms, o, h, low, c, v in ohlcv:
         ts = datetime.fromtimestamp(ms / 1000, tz=UTC)
         try:
-            Bar(symbol=symbol, ts=ts, open=float(o), high=float(h), low=float(low),
-                close=float(c), volume=float(v))
+            Bar(
+                symbol=symbol,
+                ts=ts,
+                open=float(o),
+                high=float(h),
+                low=float(low),
+                close=float(c),
+                volume=float(v),
+            )
         except ValidationError as exc:
             raise DataError(f"invalid ccxt bar for {symbol} at {ts}: {exc}") from exc
-        rows.append({"ts": ts, "open": float(o), "high": float(h), "low": float(low),
-                     "close": float(c), "volume": float(v)})
-    bars = pl.DataFrame(rows, schema={"ts": pl.Datetime(time_zone="UTC"), "open": pl.Float64,
-                                      "high": pl.Float64, "low": pl.Float64, "close": pl.Float64,
-                                      "volume": pl.Float64})
+        rows.append(
+            {
+                "ts": ts,
+                "open": float(o),
+                "high": float(h),
+                "low": float(low),
+                "close": float(c),
+                "volume": float(v),
+            }
+        )
+    bars = pl.DataFrame(
+        rows,
+        schema={
+            "ts": pl.Datetime(time_zone="UTC"),
+            "open": pl.Float64,
+            "high": pl.Float64,
+            "low": pl.Float64,
+            "close": pl.Float64,
+            "volume": pl.Float64,
+        },
+    )
     return FetchResult(symbol=symbol, bars=bars, actions=[])
 
 
@@ -45,7 +69,7 @@ class CCXTAdapter:
         self._exchange = exchange
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
-        import ccxt  # noqa: PLC0415 — lazy import keeps module import network-free  # type: ignore[import-untyped]  # ccxt has no stubs
+        import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs  # noqa: PLC0415
 
         ex = getattr(ccxt, self._exchange)()
         since = int(datetime(start.year, start.month, start.day, tzinfo=UTC).timestamp() * 1000)

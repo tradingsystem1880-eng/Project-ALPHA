@@ -33,7 +33,9 @@ class PointInTimeReader:
     def as_of(self, symbol: str, when: AwareDatetime) -> pl.DataFrame:
         # bars arrive ts-sorted from the store; downstream positional reads depend on it
         bars = self._store.read_bars(symbol).filter(pl.col("ts") <= when)  # firewall
-        known = known_actions(self._actions.get(symbol, []), when.astimezone(UTC).date())  # knowledge gate
+        known = known_actions(
+            self._actions.get(symbol, []), when.astimezone(UTC).date()
+        )  # knowledge gate
         if not known:
             return bars
         factor = pl.col("ts").map_elements(

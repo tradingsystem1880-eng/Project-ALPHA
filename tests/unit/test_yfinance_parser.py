@@ -121,8 +121,17 @@ def test_parse_non_us_session_date_preserved() -> None:
 
     tokyo = timezone(timedelta(hours=9))
     df = yf_history(
-        [{"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": 100.0, "Volume": 1.0,
-          "Dividends": 0.0, "Stock Splits": 2.0}],
+        [
+            {
+                "Open": 100.0,
+                "High": 101.0,
+                "Low": 99.0,
+                "Close": 100.0,
+                "Volume": 1.0,
+                "Dividends": 0.0,
+                "Stock Splits": 2.0,
+            }
+        ],
         [datetime(2024, 3, 15, tzinfo=tokyo)],
     )
     result = parse_yfinance_history(df, "7203.T")
