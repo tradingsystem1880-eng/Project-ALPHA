@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 
 from nautilus_trader.backtest.engine import BacktestEngine, BacktestEngineConfig
 from nautilus_trader.config import LoggingConfig
@@ -36,12 +37,16 @@ def run_backtest(
     *,
     starting_cash: float = 1_000_000.0,
     currency: Currency = USD,
+    account_type: AccountType = AccountType.CASH,
+    leverage: float = 1.0,
 ) -> BacktestResult:
     """Run ``strategy`` over ``data`` for ``instrument`` and return order/fill counts.
 
     ``data`` should come from ``feed.to_execution_feed`` (open quotes + close-stamped decision
-    bars). The venue uses a NETTING cash account and ``bar_execution=False`` so only the quotes
-    fill orders — a market order decided on the close of t fills at the open of t+1.
+    bars). The venue uses a NETTING account and ``bar_execution=False`` so only the quotes fill
+    orders — a market order decided on the close of t fills at the open of t+1. Defaults to a CASH
+    account (no shorting; equities are long-flat per spec §7); pass ``AccountType.MARGIN`` for the
+    long-short crypto/FX path.
     """
     engine = BacktestEngine(
         config=BacktestEngineConfig(
@@ -52,9 +57,10 @@ def run_backtest(
     engine.add_venue(
         venue=instrument.id.venue,
         oms_type=OmsType.NETTING,
-        account_type=AccountType.CASH,
+        account_type=account_type,
         base_currency=currency,
         starting_balances=[Money(starting_cash, currency)],
+        default_leverage=Decimal(str(leverage)),
         bar_execution=False,  # bars decide; quotes fill (t+1 open) — see module docstring
     )
     engine.add_instrument(instrument)
