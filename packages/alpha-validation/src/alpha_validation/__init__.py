@@ -30,6 +30,7 @@ from alpha_validation.tearsheet import (
     NullSummary,
     RunMetadata,
     build_outcomes,
+    render_tearsheet_html,
     report_to_manifest,
 )
 from alpha_validation.walkforward import Split, walk_forward_splits
@@ -56,6 +57,7 @@ __all__ = [
     "cagr",
     "max_drawdown",
     "randomized_price_null",
+    "render_tearsheet_html",
     "report_to_manifest",
     "sharpe_ratio",
     "stationary_bootstrap_indices",

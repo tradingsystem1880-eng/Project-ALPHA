@@ -12,12 +12,16 @@ honored without growing the dependency-free core.
 from __future__ import annotations
 
 import dataclasses
+import html
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-from alpha_core import ValidationOutcome
+from alpha_core import DataError, ValidationOutcome
+from alpha_validation.metrics import FloatArray
 
 _SCHEMA_VERSION = 1
 
@@ -187,3 +191,111 @@ def report_to_manifest(report: GauntletReport) -> dict[str, Any]:
         "passed": report.passed,
     }
     return {k: _sanitize(v) for k, v in manifest.items()}
+
+
+def _fmt(x: float) -> str:
+    """Human-readable float for the HTML tables; non-finite renders as ``n/a``."""
+    return f"{x:.4f}" if math.isfinite(x) else "n/a"
+
+
+def _validation_section_html(report: GauntletReport) -> str:
+    """The custom gauntlet section injected into the quantstats tear sheet.
+
+    Carries what quantstats does not: the walk-forward fold table, both randomized-null tiers, the
+    block-bootstrap BCa intervals, and the overall PASS/FAIL verdict.
+    """
+    verdict = "PASS" if report.passed else "FAIL"
+    colour = "#1a7f37" if report.passed else "#cf222e"
+
+    fold_rows = "".join(
+        f"<tr><td>{f.index}</td><td>{f.test_start}:{f.test_end}</td><td>{f.n_test}</td>"
+        f"<td>{_fmt(f.oos_return)}</td><td>{_fmt(f.oos_sharpe)}</td><td>{_fmt(f.oos_cagr)}</td></tr>"
+        for f in report.folds
+    )
+    null_rows = "".join(
+        f"<tr><td>{html.escape(n.tier)}</td><td>{_fmt(n.observed)}</td><td>{_fmt(n.percentile)}</td>"
+        f"<td>{_fmt(n.p_value)}</td><td>{_fmt(n.threshold)}</td>"
+        f"<td>{'PASS' if n.passed else 'FAIL'}</td><td>{n.n_paths}</td></tr>"
+        for n in report.nulls
+    )
+    ci_rows = "".join(
+        f"<tr><td>{html.escape(c.metric)}</td><td>{_fmt(c.point)}</td><td>{_fmt(c.lower)}</td>"
+        f"<td>{_fmt(c.upper)}</td><td>{_fmt(c.confidence)}</td></tr>"
+        for c in report.cis
+    )
+    return f"""
+<section style="font-family: Arial, sans-serif; margin: 24px; max-width: 960px;">
+  <h2>Validation Gauntlet</h2>
+  <p style="font-size: 18px;">Overall verdict:
+     <b style="color: {colour};">{verdict}</b>
+     &nbsp;<span style="color:#57606a;">({html.escape(report.metadata.symbol)},
+     run {html.escape(report.metadata.run_id)}, seed {report.metadata.seed})</span></p>
+  <h3>Walk-Forward OOS</h3>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <tr><th>Fold</th><th>Test window</th><th>n</th><th>Return</th><th>Sharpe</th><th>CAGR</th></tr>
+    {fold_rows}
+  </table>
+  <h3>Randomized-Price Null</h3>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <tr><th>Tier</th><th>Observed</th><th>Percentile</th><th>p-value</th>
+        <th>Threshold</th><th>Result</th><th>Paths</th></tr>
+    {null_rows}
+  </table>
+  <h3>Block-Bootstrap BCa Confidence Intervals</h3>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <tr><th>Metric</th><th>Point</th><th>Lower</th><th>Upper</th><th>Confidence</th></tr>
+    {ci_rows}
+  </table>
+</section>
+"""
+
+
+def render_tearsheet_html(
+    report: GauntletReport,
+    *,
+    oos_returns: FloatArray,
+    oos_timestamps: Sequence[datetime],
+    output_path: Path,
+    periods_per_year: int = 252,
+) -> None:
+    """Render the quantstats HTML tear sheet for the OOS returns + the gauntlet section.
+
+    The heavy rendering stack (matplotlib/quantstats) is imported lazily so merely importing
+    ``alpha_validation`` stays cheap. ``periods_per_year`` is passed through explicitly because
+    quantstats defaults to 365 (calendar) — our daily convention is 252, and the tear sheet must
+    agree with the manifest. The HTML carries volatile fields (timestamps, fonts) and is therefore
+    deliberately outside the byte-identity guarantee (spec §11.4).
+    """
+    if len(oos_returns) != len(oos_timestamps):
+        raise DataError(
+            f"oos_returns ({len(oos_returns)}) and oos_timestamps ({len(oos_timestamps)}) "
+            "must align one-to-one"
+        )
+    import logging
+
+    import matplotlib
+
+    matplotlib.use("Agg")  # headless: no display needed/available in CI
+    logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)  # silence font fallbacks
+    import pandas as pd
+    import quantstats_lumi as qs
+
+    index = pd.DatetimeIndex(list(oos_timestamps))
+    if index.tz is not None:
+        index = index.tz_localize(None)  # quantstats works on naive daily dates
+    series = pd.Series(oos_returns, index=index, name="strategy")
+
+    qs.reports.html(
+        series,
+        output=str(output_path),
+        title=f"ALPHA OOS — {report.metadata.symbol}",
+        periods_per_year=periods_per_year,
+    )
+    rendered = output_path.read_text(encoding="utf-8")
+    section = _validation_section_html(report)
+    marker = "</body>"
+    if marker in rendered:
+        injected = rendered.replace(marker, section + marker, 1)
+    else:
+        injected = rendered + section
+    output_path.write_text(injected, encoding="utf-8")
