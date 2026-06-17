@@ -19,10 +19,11 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from alpha_core import DataError
+from alpha_core import Bar, DataError
 from alpha_validation import (
     FloatArray,
     FoldSummary,
@@ -31,6 +32,100 @@ from alpha_validation import (
     to_returns,
     walk_forward_splits,
 )
+
+if TYPE_CHECKING:
+    from alpha_backtest.results import BacktestResult
+
+
+@dataclass(frozen=True)
+class RunSpec:
+    """The full, picklable specification of one backtest + walk-forward evaluation.
+
+    Bundles the (pre-registered, fixed) strategy parameters, the cost/account model, and the
+    walk-forward geometry so the same object drives the real run, every synthetic Tier-2 path, and
+    the manifest. ``account_type`` is a plain string (``"CASH"``/``"MARGIN"``) so the spec stays
+    free of nautilus imports and trivially picklable across a process pool.
+    """
+
+    lookback: int
+    skip: int
+    vol_window: int
+    target_vol: float
+    rebalance_every: int
+    max_leverage: float
+    allow_short: bool
+    periods_per_year: int
+    fee_bps: float
+    slippage_bps: float
+    starting_cash: float
+    account_type: str
+    train_size: int
+    test_size: int
+    embargo: int
+    anchored: bool
+
+    @property
+    def min_train(self) -> int:
+        """Warmup floor: the first scored OOS bar must have a valid signal and vol estimate."""
+        return max(self.lookback + self.skip + 1, self.vol_window + 1)
+
+
+def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
+    """Run the fixed-parameter TS-momentum strategy over ``bars`` once, net of costs.
+
+    The single source of truth for both ``alpha backtest run`` and the validation gauntlet (and
+    every synthetic Tier-2 path). Engine imports are lazy so the pure helpers above stay importable
+    without dragging in nautilus.
+    """
+    from nautilus_trader.model.enums import AccountType
+
+    from alpha_backtest.engine import run_backtest
+    from alpha_backtest.feed import daily_bar_type, to_execution_feed
+    from alpha_backtest.instruments import equity_instrument
+    from alpha_strategies.ts_momentum import TimeSeriesMomentum
+
+    symbol = bars[0].symbol
+    instrument = equity_instrument(symbol)
+    bar_type = daily_bar_type(symbol)
+    feed = to_execution_feed(bars, bar_type, slippage_bps=spec.slippage_bps)
+    strategy = TimeSeriesMomentum(
+        instrument_id=instrument.id,
+        bar_type=bar_type,
+        lookback=spec.lookback,
+        skip=spec.skip,
+        vol_window=spec.vol_window,
+        target_vol=spec.target_vol,
+        capital=spec.starting_cash,
+        max_leverage=spec.max_leverage,
+        rebalance_every=spec.rebalance_every,
+        periods_per_year=spec.periods_per_year,
+        allow_short=spec.allow_short,
+    )
+    account_type = AccountType.MARGIN if spec.account_type == "MARGIN" else AccountType.CASH
+    return run_backtest(
+        instrument,
+        feed,
+        strategy,
+        starting_cash=spec.starting_cash,
+        account_type=account_type,
+        leverage=spec.max_leverage,
+        fee_bps=spec.fee_bps,
+    )
+
+
+def walk_forward_oos_for_spec(
+    equity_curve: Sequence[tuple[datetime, float]], spec: RunSpec
+) -> OOSResult:
+    """``walk_forward_oos`` driven by a ``RunSpec`` (shared by the real run and synthetic paths)."""
+    return walk_forward_oos(
+        equity_curve,
+        train_size=spec.train_size,
+        test_size=spec.test_size,
+        embargo=spec.embargo,
+        anchored=spec.anchored,
+        periods_per_year=spec.periods_per_year,
+        min_train=spec.min_train,
+    )
 
 
 @dataclass(frozen=True)
