@@ -59,6 +59,8 @@ class _EquityRecorder(Actor):  # type: ignore[misc]  # nautilus Actor is untyped
         self.subscribe_quote_ticks(self._iid)
 
     def on_quote_tick(self, quote: QuoteTick) -> None:
+        # Sampled after the portfolio has marked to this quote; a strategy order that fills on the
+        # same quote is reflected here too (nautilus delivers the fill before this actor's handler).
         equity = (
             self._starting_cash
             + _sum_pnls(self.portfolio.realized_pnls(self._venue))
@@ -100,10 +102,10 @@ def run_backtest(
     """Run ``strategy`` over ``data`` for ``instrument``; return counts + trade log + equity curve.
 
     ``data`` should come from ``feed.to_execution_feed`` (open quotes + close-stamped decision
-    bars). The venue uses a NETTING account and ``bar_execution=False`` so only the quotes fill
-    orders — a market order decided on the close of t fills at the open of t+1. Defaults to a CASH
-    account (no shorting; equities are long-flat per spec §7); pass ``AccountType.MARGIN`` for the
-    long-short crypto/FX path.
+    bars). The venue uses a NETTING OMS with ``bar_execution=False`` so only the quotes fill orders
+    — a market order decided on the close of t fills at the open of t+1. The account defaults to
+    CASH (no shorting; equities are long-flat per spec §7); pass ``AccountType.MARGIN`` (where
+    ``leverage`` applies) for the long-short crypto/FX path.
     """
     engine = BacktestEngine(
         config=BacktestEngineConfig(

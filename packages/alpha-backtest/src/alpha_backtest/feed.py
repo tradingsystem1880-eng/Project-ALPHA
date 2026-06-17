@@ -1,9 +1,9 @@
-"""Translate point-in-time ``alpha_core.Bar`` objects into ``nautilus_trader`` bars.
+"""Translate point-in-time ``alpha_core.Bar`` objects into a ``nautilus_trader`` data feed.
 
-The PIT firewall (``alpha_data.PointInTimeSource``) is the ONLY source of bars; this module
-is the single seam that converts its typed, look-ahead-safe ``Bar`` objects into the engine's
-data-feed objects. Chronology and the bar-close timestamp are preserved; nothing is fetched
-or reordered here. Price/size precision is parameterised pending real instrument definitions.
+``to_execution_feed`` is the single seam that converts the look-ahead-safe daily bars produced by
+``alpha_data.source.PointInTimeSource.as_of`` into the engine's data stream, encoding the
+"decide on close of t, fill at open of t+1" convention (see ``engine.run_backtest``).
+``daily_bar_type`` names the matching nautilus ``BarType``.
 """
 
 from __future__ import annotations
@@ -19,8 +19,8 @@ from alpha_core import Bar
 
 _NS_PER_SECOND = 1_000_000_000
 # A daily decision bar is "known" at its session close; we stamp it 23h after the session open.
-# Any offset in (0, 24h) keeps close(t) strictly before open(t+1), so the strategy decides on the
-# close of t and the next price event it sees is the open of t+1 (the execution convention).
+# Any offset in (0, 24h) keeps close(t) strictly before open(t+1) for daily (calendar-spaced) bars,
+# so the strategy decides on the close of t and the next price event it sees is the open of t+1.
 _SESSION_CLOSE_OFFSET_NS = 23 * 3600 * _NS_PER_SECOND
 
 
@@ -31,42 +31,6 @@ def daily_bar_type(symbol: str, venue: str = "SIM") -> BarType:
     nautilus build them from ticks), and ``LAST`` keys them off the close price.
     """
     return BarType.from_str(f"{symbol}.{venue}-1-DAY-LAST-EXTERNAL")
-
-
-def to_nautilus_bar(
-    bar: Bar, bar_type: BarType, *, price_precision: int = 2, size_precision: int = 0
-) -> NautilusBar:
-    """Convert one ``alpha_core.Bar`` into a nautilus ``Bar`` under ``bar_type``.
-
-    ``ts_event`` and ``ts_init`` are both the bar-close instant in integer nanoseconds: a
-    daily bar is decided on the close of ``t`` and filled at the open of ``t+1`` by the engine,
-    so there is no intrabar instant to model here.
-    """
-    ts = int(bar.ts.timestamp() * _NS_PER_SECOND)
-    return NautilusBar(
-        bar_type,
-        Price(bar.open, price_precision),
-        Price(bar.high, price_precision),
-        Price(bar.low, price_precision),
-        Price(bar.close, price_precision),
-        Quantity(bar.volume, size_precision),
-        ts,
-        ts,
-    )
-
-
-def to_nautilus_bars(
-    bars: Sequence[Bar],
-    bar_type: BarType,
-    *,
-    price_precision: int = 2,
-    size_precision: int = 0,
-) -> list[NautilusBar]:
-    """Convert a chronological run of ``alpha_core.Bar``s (e.g. ``PointInTimeSource.as_of``)."""
-    return [
-        to_nautilus_bar(b, bar_type, price_precision=price_precision, size_precision=size_precision)
-        for b in bars
-    ]
 
 
 def to_execution_feed(
@@ -88,7 +52,8 @@ def to_execution_feed(
       quote into a side-aware half-spread around the open (bid = open·(1−s), ask = open·(1+s)), so a
       market buy fills at the ask and a sell at the bid — conservative slippage on the t+1 open
       (spec §7). ``quote_size`` is large by default so the order fills fully (book depth is not the
-      slippage model here).
+      slippage model here). Note: the spread is quantized to ``price_precision``, so a slippage
+      smaller than one tick at the instrument's price has no effect.
     * the **decision** ``Bar`` (full OHLC) stamped at the session **close** (``+23h``), the event a
       strategy reads to choose its target.
 

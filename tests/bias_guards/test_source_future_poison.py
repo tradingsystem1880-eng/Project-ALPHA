@@ -33,3 +33,17 @@ def test_typed_source_excludes_and_is_immune_to_future_data(tmp_path: Path) -> N
     after = PointInTimeSource(store, actions={}).as_of("X", when)
 
     assert after == baseline  # frozen Bars compare by value; future poison cannot leak in
+
+    # Non-vacuity: an IN-window change MUST be reflected, proving the firewall reads in-window
+    # data (so the future-invariance above isn't trivially true for an empty/ignored result).
+    # Bump the bar at `when` by +0.3 (within its OHLC range, so the typed Bar still validates).
+    edited = clean.with_columns(
+        pl.when(pl.col("ts") == when)
+        .then(pl.col("close") + 0.3)
+        .otherwise(pl.col("close"))
+        .alias("close")
+    )
+    store.write_bars("X", edited)
+    changed = PointInTimeSource(store, actions={}).as_of("X", when)
+    assert changed != baseline
+    assert changed[-1].close == pytest.approx(baseline[-1].close + 0.3)  # in-window edit is visible

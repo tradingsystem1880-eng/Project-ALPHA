@@ -9,7 +9,11 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, model_validator
 
 
 class Bar(BaseModel):
-    """A single OHLCV bar for one instrument. `ts` is the tz-aware bar-close time."""
+    """A single OHLCV bar for one instrument.
+
+    ``ts`` is the tz-aware bar timestamp; daily bars are date-keyed and stamped at the session
+    date at 00:00 UTC (see ``alpha_data`` ingestion), not an intraday close instant.
+    """
 
     model_config = ConfigDict(frozen=True)
 
