@@ -65,6 +65,12 @@ ignore_missing_imports = true
 module = ["scipy.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# quantstats-lumi (the numpy-2-safe quantstats fork) ships no stubs; it's used only at the
+# tear-sheet rendering edge (alpha_validation.tearsheet). pandas itself is typed via pandas-stubs.
+module = ["quantstats_lumi.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers --import-mode=importlib"
