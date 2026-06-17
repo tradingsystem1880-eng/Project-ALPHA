@@ -1,7 +1,6 @@
-"""Standard backtest result schema: the closed-trade log + the account-equity curve (spec §11).
+"""Standard backtest result schema: the closed-trade log + the equity curve (spec §11).
 
-This is the validatable output the Phase-3 gauntlet consumes. Frictions (fees/slippage) and a
-faithful per-session mark-to-market equity curve are layered on in a later increment (2d-ii).
+This is the validatable output the Phase-3 validation gauntlet consumes.
 """
 
 from __future__ import annotations

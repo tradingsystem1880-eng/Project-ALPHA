@@ -55,8 +55,9 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
         self._rebalance_every = rebalance_every
         self._periods_per_year = periods_per_year
         self._allow_short = allow_short  # spec §7: equities long-flat (False), crypto/FX long-short
+        self._min_history = max(skip + lookback + 1, vol_window + 1)
         self._closes: list[float] = []
-        self._bars_since_rebalance = 0
+        self._eligible_bars = 0  # bars seen once history suffices; drives the rebalance cadence
         self._target_units: float | None = None
         self.net_units = 0.0
         self.fills = 0
@@ -66,14 +67,15 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
         self.subscribe_quote_ticks(self._iid)
 
     def on_bar(self, bar: NautilusBar) -> None:
-        # decision happens on the close of t; execution is deferred to the next open (on_quote_tick)
+        # Decide on the close of t; the order is placed at the next open (see on_quote_tick).
         self._closes.append(float(bar.close))
-        self._bars_since_rebalance += 1
-        if self._bars_since_rebalance < self._rebalance_every:
+        if len(self._closes) < self._min_history:
+            return  # warming up — not enough history for the signal or the vol estimate
+        # Rebalance on the first eligible bar, then every `rebalance_every` bars from there.
+        rebalance_due = self._eligible_bars % self._rebalance_every == 0
+        self._eligible_bars += 1
+        if not rebalance_due:
             return
-        if len(self._closes) < max(self._skip + self._lookback + 1, self._vol_window + 1):
-            return
-        self._bars_since_rebalance = 0
         signal = ts_momentum_signal(self._closes, self._lookback, self._skip)
         if signal == 0 or (signal < 0 and not self._allow_short):
             self._target_units = 0.0  # flat: no signal, or a short we are not permitted to take
@@ -81,6 +83,9 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
         annualized_vol = realized_volatility(
             self._closes[-(self._vol_window + 1) :], periods_per_year=self._periods_per_year
         )
+        if annualized_vol <= 0.0:
+            self._target_units = 0.0  # no realized volatility to target this window -> hold flat
+            return
         self._target_units = vol_target_size(
             signal,
             self._closes[-1],

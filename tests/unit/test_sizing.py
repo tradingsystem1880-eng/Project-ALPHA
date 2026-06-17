@@ -63,3 +63,10 @@ def test_vol_target_fails_loud() -> None:
         vol_target_size(
             2, price=10.0, annualized_vol=0.2, target_vol=0.1, capital=1_000.0
         )  # bad signal
+
+
+def test_non_finite_inputs_fail_loud() -> None:
+    with pytest.raises(DataError):
+        realized_volatility([100.0, float("nan"), 102.0])
+    with pytest.raises(DataError):
+        vol_target_size(1, price=float("inf"), annualized_vol=0.2, target_vol=0.1, capital=1_000.0)
