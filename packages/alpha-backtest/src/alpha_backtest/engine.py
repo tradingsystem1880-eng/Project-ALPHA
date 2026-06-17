@@ -2,32 +2,61 @@
 
 Configured ``bar_execution=False`` so bars drive strategy *decisions* only — fills come from the
 open-priced quotes produced by ``feed.to_execution_feed``, giving the spec's "decide on close of t,
-fill at open of t+1" convention. The rich result schema (equity curve, trade log) is a later
-increment; for now we surface order/fill counts.
+fill at open of t+1" convention. Returns a ``BacktestResult`` (counts + closed-trade log +
+account-equity curve); frictions (fees/slippage) are a later increment.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from nautilus_trader.backtest.engine import BacktestEngine, BacktestEngineConfig
 from nautilus_trader.config import LoggingConfig
 from nautilus_trader.core.data import Data
 from nautilus_trader.model.currencies import USD
-from nautilus_trader.model.enums import AccountType, OmsType
+from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
+from nautilus_trader.model.identifiers import Venue
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
+from alpha_backtest.results import BacktestResult, Trade
 
-@dataclass(frozen=True)
-class BacktestResult:
-    """Headline outcome of a run. Extended with the equity curve / trade log in a later phase."""
+_NS_PER_SECOND = 1_000_000_000
 
-    orders: int
-    fills: int
+
+def _ns_to_dt(ns: int) -> datetime:
+    return datetime.fromtimestamp(ns / _NS_PER_SECOND, tz=UTC)
+
+
+def _closed_trades(engine: BacktestEngine) -> list[Trade]:
+    trades: list[Trade] = []
+    for p in engine.cache.positions_closed():
+        trades.append(
+            Trade(
+                instrument_id=str(p.instrument_id),
+                side="BUY" if p.entry == OrderSide.BUY else "SELL",
+                quantity=p.peak_qty.as_double(),
+                entry_price=float(p.avg_px_open),
+                exit_price=float(p.avg_px_close),
+                entry_ts=_ns_to_dt(p.ts_opened),
+                exit_ts=_ns_to_dt(p.ts_closed),
+                realized_pnl=p.realized_pnl.as_double(),
+                realized_return=float(p.realized_return),
+            )
+        )
+    return trades
+
+
+def _equity_curve(engine: BacktestEngine, venue: Venue) -> list[tuple[datetime, float]]:
+    report = engine.trader.generate_account_report(venue)
+    # account `total` at each state change; stable order preserves the initial balance first
+    return [
+        (ts.to_pydatetime(), float(total))
+        for ts, total in zip(report.index, report["total"], strict=True)
+    ]
 
 
 def run_backtest(
@@ -40,7 +69,7 @@ def run_backtest(
     account_type: AccountType = AccountType.CASH,
     leverage: float = 1.0,
 ) -> BacktestResult:
-    """Run ``strategy`` over ``data`` for ``instrument`` and return order/fill counts.
+    """Run ``strategy`` over ``data`` for ``instrument``; return counts + trade log + equity curve.
 
     ``data`` should come from ``feed.to_execution_feed`` (open quotes + close-stamped decision
     bars). The venue uses a NETTING account and ``bar_execution=False`` so only the quotes fill
@@ -71,6 +100,8 @@ def run_backtest(
         result = BacktestResult(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
+            trades=_closed_trades(engine),
+            equity_curve=_equity_curve(engine, instrument.id.venue),
         )
     finally:
         engine.dispose()

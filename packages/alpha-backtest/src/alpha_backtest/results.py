@@ -1,0 +1,48 @@
+"""Standard backtest result schema: the closed-trade log + the account-equity curve (spec §11).
+
+This is the validatable output the Phase-3 gauntlet consumes. Frictions (fees/slippage) and a
+faithful per-session mark-to-market equity curve are layered on in a later increment (2d-ii).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass(frozen=True)
+class Trade:
+    """One closed round-trip position."""
+
+    instrument_id: str
+    side: str  # entry direction: "BUY" (long) or "SELL" (short)
+    quantity: float
+    entry_price: float
+    exit_price: float
+    entry_ts: datetime
+    exit_ts: datetime
+    realized_pnl: float
+    realized_return: float
+
+
+@dataclass(frozen=True)
+class BacktestResult:
+    """Outcome of a run: order/fill counts, the closed-trade log, and the account-equity curve.
+
+    ``equity_curve`` is ``(timestamp, account total)`` at each account state change. For a CASH
+    account this tracks realized cash (it does not mark an open position to market); a MARGIN
+    account marks-to-market. A faithful per-session MtM curve arrives with frictions in 2d-ii.
+    """
+
+    orders: int
+    fills: int
+    trades: list[Trade]
+    equity_curve: list[tuple[datetime, float]]
+
+    @property
+    def starting_equity(self) -> float:
+        return self.equity_curve[0][1] if self.equity_curve else 0.0
+
+    @property
+    def final_equity(self) -> float:
+        return self.equity_curve[-1][1] if self.equity_curve else 0.0
