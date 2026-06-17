@@ -22,6 +22,7 @@ from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
+from alpha_backtest.frictions import BpsFeeModel
 from alpha_backtest.results import BacktestResult, Trade
 
 _NS_PER_SECOND = 1_000_000_000
@@ -68,6 +69,7 @@ def run_backtest(
     currency: Currency = USD,
     account_type: AccountType = AccountType.CASH,
     leverage: float = 1.0,
+    fee_bps: float = 0.0,
 ) -> BacktestResult:
     """Run ``strategy`` over ``data`` for ``instrument``; return counts + trade log + equity curve.
 
@@ -90,6 +92,7 @@ def run_backtest(
         base_currency=currency,
         starting_balances=[Money(starting_cash, currency)],
         default_leverage=Decimal(str(leverage)),
+        fee_model=BpsFeeModel(fee_bps) if fee_bps > 0 else None,
         bar_execution=False,  # bars decide; quotes fill (t+1 open) — see module docstring
     )
     engine.add_instrument(instrument)
