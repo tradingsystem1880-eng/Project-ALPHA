@@ -3,7 +3,11 @@ name = "alpha-validation"
 version = "0.0.0"
 description = "Statistical validation gauntlet (Phase 3+: arch, skfolio)."
 requires-python = ">=3.12"
-dependencies = ["alpha-core"]
+dependencies = [
+    "alpha-core",
+    "numpy>=2.4.6",
+    "scipy>=1.17.1",
+]
 
 [tool.uv.sources]
 alpha-core = { workspace = true }
