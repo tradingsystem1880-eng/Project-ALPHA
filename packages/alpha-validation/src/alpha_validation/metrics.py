@@ -16,9 +16,10 @@ import numpy.typing as npt
 from alpha_core import DataError
 
 FloatArray = npt.NDArray[np.float64]
+FloatSeq = Sequence[float] | FloatArray  # public functions accept a plain sequence or a numpy array
 
 
-def _as_equity(equity: Sequence[float], name: str) -> FloatArray:
+def _as_equity(equity: FloatSeq, name: str) -> FloatArray:
     arr = np.asarray(equity, dtype=np.float64)
     if arr.ndim != 1 or arr.size < 2:
         raise DataError(f"{name} needs >= 2 equity points, got shape {arr.shape}")
@@ -29,7 +30,7 @@ def _as_equity(equity: Sequence[float], name: str) -> FloatArray:
     return arr
 
 
-def _as_returns(returns: Sequence[float], name: str) -> FloatArray:
+def _as_returns(returns: FloatSeq, name: str) -> FloatArray:
     arr = np.asarray(returns, dtype=np.float64)
     if arr.ndim != 1 or arr.size < 2:
         raise DataError(f"{name} needs >= 2 returns, got shape {arr.shape}")
@@ -38,7 +39,7 @@ def _as_returns(returns: Sequence[float], name: str) -> FloatArray:
     return arr
 
 
-def to_returns(equity: Sequence[float]) -> FloatArray:
+def to_returns(equity: FloatSeq) -> FloatArray:
     """Simple per-period returns ``r_t = E_t / E_{t-1} - 1`` from an equity curve.
 
     Requires >= 2 finite, strictly-positive equity points; fails loud otherwise.
@@ -48,7 +49,7 @@ def to_returns(equity: Sequence[float]) -> FloatArray:
 
 
 def sharpe_ratio(
-    returns: Sequence[float], *, periods_per_year: int = 252, risk_free: float = 0.0
+    returns: FloatSeq, *, periods_per_year: int = 252, risk_free: float = 0.0
 ) -> float:
     """Annualized Sharpe ratio of a per-period return series.
 
@@ -65,7 +66,7 @@ def sharpe_ratio(
     return float(np.mean(excess)) / std * math.sqrt(periods_per_year)
 
 
-def annualized_volatility(returns: Sequence[float], *, periods_per_year: int = 252) -> float:
+def annualized_volatility(returns: FloatSeq, *, periods_per_year: int = 252) -> float:
     """Annualized volatility: sample std (ddof=1) of per-period returns × sqrt(periods_per_year)."""
     if periods_per_year < 1:
         raise DataError(f"periods_per_year must be >= 1, got {periods_per_year}")
@@ -73,7 +74,7 @@ def annualized_volatility(returns: Sequence[float], *, periods_per_year: int = 2
     return float(np.std(r, ddof=1)) * math.sqrt(periods_per_year)
 
 
-def cagr(equity: Sequence[float], *, periods_per_year: int = 252) -> float:
+def cagr(equity: FloatSeq, *, periods_per_year: int = 252) -> float:
     """Compound annual growth rate: ``(E_last / E_first) ** (periods_per_year / n_steps) - 1``.
 
     ``n_steps`` is the number of return periods (``len(equity) - 1``).
@@ -85,7 +86,7 @@ def cagr(equity: Sequence[float], *, periods_per_year: int = 252) -> float:
     return float((arr[-1] / arr[0]) ** (periods_per_year / n_steps) - 1.0)
 
 
-def max_drawdown(equity: Sequence[float]) -> float:
+def max_drawdown(equity: FloatSeq) -> float:
     """Worst peak-to-trough decline as a non-positive fraction (``0.0`` if monotonically rising).
 
     ``-0.25`` means the deepest trough sat 25% below its prior running peak.
