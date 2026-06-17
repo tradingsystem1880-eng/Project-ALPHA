@@ -76,6 +76,7 @@ def to_execution_feed(
     price_precision: int = 2,
     size_precision: int = 0,
     quote_size: float = 1_000_000_000.0,
+    slippage_bps: float = 0.0,
 ) -> list[Data]:
     """Build a look-ahead-safe nautilus feed honoring decide-on-close-t / fill-at-open-t+1.
 
@@ -83,9 +84,11 @@ def to_execution_feed(
     fills at the *open of t+1*. So for each session we emit TWO chronological events:
 
     * an open-priced ``QuoteTick`` stamped at the session **open** (``bar.ts``) — the price a
-      market order decided on the prior session's close fills against. ``quote_size`` is large by
-      default so the order fills fully at the open; realistic slippage is modeled separately by a
-      ``FillModel`` in a later increment, not by book depth here.
+      market order decided on the prior session's close fills against. ``slippage_bps`` widens the
+      quote into a side-aware half-spread around the open (bid = open·(1−s), ask = open·(1+s)), so a
+      market buy fills at the ask and a sell at the bid — conservative slippage on the t+1 open
+      (spec §7). ``quote_size`` is large by default so the order fills fully (book depth is not the
+      slippage model here).
     * the **decision** ``Bar`` (full OHLC) stamped at the session **close** (``+23h``), the event a
       strategy reads to choose its target.
 
@@ -94,16 +97,18 @@ def to_execution_feed(
     """
     iid = bar_type.instrument_id
     size = Quantity(quote_size, size_precision)
+    half_spread = slippage_bps / 10_000.0
     out: list[Data] = []
     for b in bars:
         open_ns = int(b.ts.timestamp() * _NS_PER_SECOND)
         close_ns = open_ns + _SESSION_CLOSE_OFFSET_NS
-        open_px = Price(b.open, price_precision)
-        out.append(QuoteTick(iid, open_px, open_px, size, size, open_ns, open_ns))
+        bid = Price(b.open * (1.0 - half_spread), price_precision)
+        ask = Price(b.open * (1.0 + half_spread), price_precision)
+        out.append(QuoteTick(iid, bid, ask, size, size, open_ns, open_ns))
         out.append(
             NautilusBar(
                 bar_type,
-                open_px,
+                Price(b.open, price_precision),
                 Price(b.high, price_precision),
                 Price(b.low, price_precision),
                 Price(b.close, price_precision),
