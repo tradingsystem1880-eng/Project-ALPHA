@@ -27,11 +27,11 @@ class Trade:
 
 @dataclass(frozen=True)
 class BacktestResult:
-    """Outcome of a run: order/fill counts, the closed-trade log, and the account-equity curve.
+    """Outcome of a run: order/fill counts, the closed-trade log, and the equity curve.
 
-    ``equity_curve`` is ``(timestamp, account total)`` at each account state change. For a CASH
-    account this tracks realized cash (it does not mark an open position to market); a MARGIN
-    account marks-to-market. A faithful per-session MtM curve arrives with frictions in 2d-ii.
+    ``equity_curve`` is ``(timestamp, equity)`` sampled once per session (at each open), where
+    ``equity = starting_cash + realized PnL + unrealized PnL`` — a net-of-fees, mark-to-market
+    net-liquidation value, so an open position is valued each session rather than only on close.
     """
 
     orders: int

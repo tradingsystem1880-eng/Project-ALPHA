@@ -3,7 +3,7 @@
 Configured ``bar_execution=False`` so bars drive strategy *decisions* only — fills come from the
 open-priced quotes produced by ``feed.to_execution_feed``, giving the spec's "decide on close of t,
 fill at open of t+1" convention. Returns a ``BacktestResult`` (counts + closed-trade log +
-account-equity curve); frictions (fees/slippage) are a later increment.
+per-session mark-to-market equity curve).
 """
 
 from __future__ import annotations
@@ -11,13 +11,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 from nautilus_trader.backtest.engine import BacktestEngine, BacktestEngineConfig
+from nautilus_trader.common.actor import Actor
 from nautilus_trader.config import LoggingConfig
 from nautilus_trader.core.data import Data
 from nautilus_trader.model.currencies import USD
+from nautilus_trader.model.data import QuoteTick
 from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
-from nautilus_trader.model.identifiers import Venue
+from nautilus_trader.model.identifiers import InstrumentId, Venue
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
@@ -30,6 +33,38 @@ _NS_PER_SECOND = 1_000_000_000
 
 def _ns_to_dt(ns: int) -> datetime:
     return datetime.fromtimestamp(ns / _NS_PER_SECOND, tz=UTC)
+
+
+def _sum_pnls(pnls: Any) -> float:
+    """Sum a nautilus per-currency PnL dict to a float (single base currency in v1)."""
+    return float(sum(money.as_double() for money in pnls.values()))
+
+
+class _EquityRecorder(Actor):  # type: ignore[misc]  # nautilus Actor is untyped (Cython)
+    """Snapshots net-liquidation equity once per session (on each open quote).
+
+    ``equity = starting_cash + realized PnL + unrealized PnL`` — account-type-agnostic and net of
+    commissions (nautilus realized PnL already nets fees), so an open position is marked to market
+    each session rather than reporting realized cash only.
+    """
+
+    def __init__(self, instrument_id: InstrumentId, venue: Venue, starting_cash: float) -> None:
+        super().__init__()
+        self._iid = instrument_id
+        self._venue = venue
+        self._starting_cash = starting_cash
+        self.curve: list[tuple[datetime, float]] = []
+
+    def on_start(self) -> None:
+        self.subscribe_quote_ticks(self._iid)
+
+    def on_quote_tick(self, quote: QuoteTick) -> None:
+        equity = (
+            self._starting_cash
+            + _sum_pnls(self.portfolio.realized_pnls(self._venue))
+            + _sum_pnls(self.portfolio.unrealized_pnls(self._venue))
+        )
+        self.curve.append((_ns_to_dt(quote.ts_event), equity))
 
 
 def _closed_trades(engine: BacktestEngine) -> list[Trade]:
@@ -49,15 +84,6 @@ def _closed_trades(engine: BacktestEngine) -> list[Trade]:
             )
         )
     return trades
-
-
-def _equity_curve(engine: BacktestEngine, venue: Venue) -> list[tuple[datetime, float]]:
-    report = engine.trader.generate_account_report(venue)
-    # account `total` at each state change; stable order preserves the initial balance first
-    return [
-        (ts.to_pydatetime(), float(total))
-        for ts, total in zip(report.index, report["total"], strict=True)
-    ]
 
 
 def run_backtest(
@@ -95,8 +121,10 @@ def run_backtest(
         fee_model=BpsFeeModel(fee_bps) if fee_bps > 0 else None,
         bar_execution=False,  # bars decide; quotes fill (t+1 open) — see module docstring
     )
+    recorder = _EquityRecorder(instrument.id, instrument.id.venue, starting_cash)
     engine.add_instrument(instrument)
     engine.add_data(list(data))
+    engine.add_actor(recorder)
     engine.add_strategy(strategy)
     try:
         engine.run()
@@ -104,7 +132,7 @@ def run_backtest(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
             trades=_closed_trades(engine),
-            equity_curve=_equity_curve(engine, instrument.id.venue),
+            equity_curve=recorder.curve,
         )
     finally:
         engine.dispose()
