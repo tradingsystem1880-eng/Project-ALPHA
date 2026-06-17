@@ -29,6 +29,8 @@ from alpha_validation.tearsheet import (
     GauntletReport,
     NullSummary,
     RunMetadata,
+    build_outcomes,
+    report_to_manifest,
 )
 from alpha_validation.walkforward import Split, walk_forward_splits
 
@@ -50,9 +52,11 @@ __all__ = [
     "__version__",
     "annualized_volatility",
     "block_bootstrap_ci",
+    "build_outcomes",
     "cagr",
     "max_drawdown",
     "randomized_price_null",
+    "report_to_manifest",
     "sharpe_ratio",
     "stationary_bootstrap_indices",
     "to_returns",
