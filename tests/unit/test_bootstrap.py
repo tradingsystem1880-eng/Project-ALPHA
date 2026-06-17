@@ -72,6 +72,31 @@ def test_wider_confidence_gives_wider_interval() -> None:
     assert (wide.upper - wide.lower) > (narrow.upper - narrow.lower)
 
 
+def test_default_mean_block_produces_a_valid_interval() -> None:
+    # omitting mean_block exercises the n**(1/3) default heuristic (216 -> 6)
+    data = np.random.default_rng(9).normal(0.0, 0.01, size=216)
+    ci = block_bootstrap_ci(data, lambda a: float(a.mean()), n_resamples=400, seed=1)
+    assert ci.lower < ci.point < ci.upper
+
+
+def test_bca_collapses_to_point_on_constant_data() -> None:
+    # constant data -> zero jackknife variation (the accel denom==0 early return) and degenerate
+    # replicates -> the interval collapses onto the point estimate without crashing
+    ci = block_bootstrap_ci(
+        np.full(20, 5.0), lambda a: float(a.mean()), n_resamples=200, mean_block=4.0, seed=0
+    )
+    assert ci.lower == pytest.approx(5.0) and ci.upper == pytest.approx(5.0)
+
+
+def test_bca_is_asymmetric_under_skew() -> None:
+    # the point of BCa over a plain percentile interval: skew shifts the two tails differently
+    data = np.random.default_rng(4).exponential(0.01, size=400)  # right-skewed
+    ci = block_bootstrap_ci(
+        data, lambda a: float(a.mean()), n_resamples=1000, mean_block=1.0, seed=2
+    )
+    assert abs((ci.upper - ci.point) - (ci.point - ci.lower)) > 1e-5
+
+
 def test_fails_loud_on_bad_input() -> None:
     data = np.array([0.01, -0.02, 0.0, 0.015])
     with pytest.raises(DataError):
@@ -82,3 +107,9 @@ def test_fails_loud_on_bad_input() -> None:
         stationary_bootstrap_indices(
             50, mean_block=0.0, n_resamples=10, rng=np.random.default_rng(0)
         )  # mean_block must be > 0
+
+
+def test_degenerate_statistic_fails_loud() -> None:
+    # a constant series makes every Sharpe resample zero-variance -> fail loud, never a silent NaN
+    with pytest.raises(DataError):
+        block_bootstrap_ci(np.full(50, 0.01), sharpe_ratio, n_resamples=100, mean_block=5.0, seed=0)

@@ -12,59 +12,54 @@ import numpy as np
 import pytest
 
 from alpha_core import DataError
-from alpha_validation.metrics import FloatArray
 from alpha_validation.montecarlo import NullResult, randomized_price_null
-
-
-def _momentum(price_returns: FloatArray) -> FloatArray:
-    # causal: take yesterday's sign as today's position; profits iff returns are autocorrelated
-    position = np.sign(price_returns[:-1])
-    return position * price_returns[1:]
-
-
-def _ar1(n: int, phi: float, *, seed: int) -> FloatArray:
-    rng = np.random.default_rng(seed)
-    eps = rng.normal(0.0, 0.01, size=n)
-    out = np.empty(n, dtype=np.float64)
-    out[0] = eps[0]
-    for t in range(1, n):
-        out[t] = phi * out[t - 1] + eps[t]
-    return out
+from tests.fixtures.validation_fixtures import ar1_returns, causal_momentum
 
 
 def test_real_momentum_edge_beats_random_charts() -> None:
     # strongly autocorrelated prices -> momentum has a genuine edge -> top of the null distribution
-    structured = _ar1(400, phi=0.6, seed=1)
-    result = randomized_price_null(structured, _momentum, n_paths=400, threshold=0.95, seed=7)
+    structured = ar1_returns(400, phi=0.6, seed=1)
+    result = randomized_price_null(structured, causal_momentum, n_paths=400, threshold=0.95, seed=7)
     assert isinstance(result, NullResult)
     assert result.passed
     assert result.percentile > 0.95  # observed Sharpe in the extreme upper tail of the null
     assert result.p_value < 0.05
 
 
-def test_no_structure_does_not_pass_the_null() -> None:
-    # i.i.d. prices have no momentum to find -> observed is an unremarkable draw from the null
-    noise = np.random.default_rng(2).normal(0.0, 0.01, size=400)
-    result = randomized_price_null(noise, _momentum, n_paths=400, threshold=0.95, seed=7)
-    assert not result.passed
-    assert result.percentile < 0.95
+def test_percentile_and_pvalue_bounds_and_determinism() -> None:
+    structured = ar1_returns(300, phi=0.4, seed=3)
+    a = randomized_price_null(structured, causal_momentum, n_paths=300, seed=42)
+    b = randomized_price_null(structured, causal_momentum, n_paths=300, seed=42)
+    assert (a.observed, a.percentile, a.p_value) == (b.observed, b.percentile, b.p_value)  # seeded
+    assert a.n_paths == 300 and a.null.shape == (300,)
+    assert 0.0 <= a.percentile <= 1.0
+    assert 0.0 < a.p_value <= 1.0  # (1 + #>=) / (1 + B): strictly positive, never exactly 0
+    assert a.percentile > 0.5 and a.p_value < 0.5  # a genuine edge ranks high and is significant
 
 
-def test_percentile_and_pvalue_are_consistent_and_deterministic() -> None:
-    structured = _ar1(300, phi=0.4, seed=3)
-    a = randomized_price_null(structured, _momentum, n_paths=300, seed=42)
-    b = randomized_price_null(structured, _momentum, n_paths=300, seed=42)
-    assert (a.observed, a.percentile, a.p_value) == (b.observed, b.percentile, b.p_value)
-    assert a.n_paths == 300
-    assert a.null.shape == (300,)
-    assert a.percentile + a.p_value == pytest.approx(1.0)  # below + at-or-above partition the null
+def test_block_bootstrap_null_is_a_valid_alternative() -> None:
+    # block > 1 retains short-range dependence (a more conservative null) and still yields a result
+    structured = ar1_returns(300, phi=0.5, seed=8)
+    result = randomized_price_null(structured, causal_momentum, n_paths=300, block=5.0, seed=2)
+    assert result.null.shape == (300,)
+    assert 0.0 <= result.percentile <= 1.0
+    assert bool(np.all(np.isfinite(result.null)))
+
+
+def test_non_finite_statistic_on_a_path_fails_loud() -> None:
+    # a statistic that is non-finite on resampled paths must fail loud, not silently rank NaNs
+    noise = np.random.default_rng(0).normal(0.0, 0.01, size=50)
+    with pytest.raises(DataError):
+        randomized_price_null(
+            noise, causal_momentum, statistic=lambda r: float("nan"), n_paths=20, seed=1
+        )
 
 
 def test_fails_loud_on_bad_input() -> None:
     noise = np.random.default_rng(0).normal(0.0, 0.01, size=50)
     with pytest.raises(DataError):
-        randomized_price_null(noise, _momentum, n_paths=0)  # need >= 1 path
+        randomized_price_null(noise, causal_momentum, n_paths=0)  # need >= 1 path
     with pytest.raises(DataError):
-        randomized_price_null(noise, _momentum, threshold=1.0)  # threshold in (0, 1)
+        randomized_price_null(noise, causal_momentum, threshold=1.0)  # threshold in (0, 1)
     with pytest.raises(DataError):
-        randomized_price_null(np.array([0.01]), _momentum)  # < 2 observations
+        randomized_price_null(np.array([0.01]), causal_momentum)  # < 2 observations

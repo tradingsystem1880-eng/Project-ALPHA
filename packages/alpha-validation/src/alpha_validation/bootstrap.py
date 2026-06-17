@@ -124,5 +124,10 @@ def block_bootstrap_ci(
 
 def _bca_percentile(replicates: FloatArray, z0: float, accel: float, prob: float) -> float:
     z = z0 + float(stats.norm.ppf(prob))
-    adjusted = float(stats.norm.cdf(z0 + z / (1.0 - accel * z)))
+    denom = 1.0 - accel * z
+    if denom <= 0.0:
+        # extreme acceleration would push the adjusted percentile past +/-inf; fail loud rather
+        # than silently collapse the interval to a raw min/max replicate.
+        raise DataError(f"BCa adjustment unstable: 1 - a*z = {denom:.3g} <= 0 (a={accel:.3g})")
+    adjusted = float(stats.norm.cdf(z0 + z / denom))
     return float(np.quantile(replicates, adjusted))

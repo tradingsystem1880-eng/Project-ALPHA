@@ -38,10 +38,14 @@ def test_sharpe_ratio_matches_manual_annualization() -> None:
     assert sharpe_ratio(rets) == pytest.approx(expected)
 
 
-def test_sharpe_ratio_subtracts_risk_free() -> None:
+def test_sharpe_ratio_subtracts_per_period_risk_free() -> None:
     rets = [0.01, 0.02, 0.015, 0.005]
-    # a positive risk-free rate lowers the Sharpe
-    assert sharpe_ratio(rets, risk_free=0.05) < sharpe_ratio(rets, risk_free=0.0)
+    ppy, rf = 252, 0.0252  # excess_t = r_t - rf/ppy
+    excess = [r - rf / ppy for r in rets]
+    mean = sum(excess) / len(excess)
+    var = sum((e - mean) ** 2 for e in excess) / (len(excess) - 1)
+    expected = mean / math.sqrt(var) * math.sqrt(ppy)
+    assert sharpe_ratio(rets, periods_per_year=ppy, risk_free=rf) == pytest.approx(expected)
 
 
 def test_sharpe_ratio_zero_variance_fails_loud() -> None:
@@ -64,6 +68,11 @@ def test_cagr_compounds_to_horizon() -> None:
     assert cagr([100.0, 200.0], periods_per_year=1) == pytest.approx(1.0)
     # doubling over half a year (ppy=2, 1 period) -> (2)^2 - 1 = 300%
     assert cagr([100.0, 200.0], periods_per_year=2) == pytest.approx(3.0)
+
+
+def test_cagr_fails_loud_on_overflow() -> None:
+    with pytest.raises(DataError):
+        cagr([1.0, 1e6], periods_per_year=200)  # (1e6) ** 200 overflows to a non-finite value
 
 
 def test_max_drawdown_is_worst_peak_to_trough() -> None:

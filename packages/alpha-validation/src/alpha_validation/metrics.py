@@ -83,7 +83,11 @@ def cagr(equity: FloatSeq, *, periods_per_year: int = 252) -> float:
         raise DataError(f"periods_per_year must be >= 1, got {periods_per_year}")
     arr = _as_equity(equity, "cagr")
     n_steps = arr.size - 1
-    return float((arr[-1] / arr[0]) ** (periods_per_year / n_steps) - 1.0)
+    with np.errstate(over="ignore"):  # an extreme ratio may overflow; caught loudly just below
+        result = float((arr[-1] / arr[0]) ** (periods_per_year / n_steps) - 1.0)
+    if not math.isfinite(result):
+        raise DataError(f"cagr overflowed to a non-finite value: {result!r}")
+    return result
 
 
 def max_drawdown(equity: FloatSeq) -> float:

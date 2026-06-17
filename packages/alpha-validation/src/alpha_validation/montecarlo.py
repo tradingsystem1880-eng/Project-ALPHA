@@ -8,8 +8,11 @@ more conservative null), re-evaluates the strategy on each synthetic path, and r
 observed statistic falls in the resulting null distribution.
 
 The strategy is supplied as a ``Callable[[price_returns], strategy_returns]`` so this package never
-imports the backtest engine (the architecture DAG). The CLI injects an engine-backed evaluation in
-Phase 5; tests inject a toy strategy.
+imports the backtest engine (the architecture DAG). Spec §7.4 describes a *two-tier* null — this
+cheap returns-level tier plus a smaller set of full-engine runs on synthetic price paths as a
+faithfulness check; only the returns-level tier lives here. The full-engine tier and the live
+strategy evaluation are wired by the CLI in Phase 5 (which may import the engine); tests here inject
+a toy strategy.
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ class NullResult:
     observed: float
     null: FloatArray
     percentile: float  # fraction of null paths strictly below the observed statistic
-    p_value: float  # fraction of null paths at least as good as observed (one-sided)
+    p_value: float  # one-sided MC p-value, (1 + #{null >= observed}) / (1 + n_paths)
     threshold: float
     passed: bool  # percentile >= threshold
     n_paths: int
@@ -78,7 +81,9 @@ def randomized_price_null(
         raise DataError("randomized-price null produced a non-finite statistic on some path")
 
     percentile = float(np.mean(null < observed))
-    p_value = float(np.mean(null >= observed))
+    at_least_as_good = int(np.sum(null >= observed))
+    # +1 (Davison & Hinkley 1997): the valid one-sided MC p-value — never exactly 0.
+    p_value = (1 + at_least_as_good) / (1 + n_paths)
     return NullResult(
         observed=observed,
         null=null,
