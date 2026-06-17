@@ -18,7 +18,8 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -68,6 +69,26 @@ class RunSpec:
     def min_train(self) -> int:
         """Warmup floor: the first scored OOS bar must have a valid signal and vol estimate."""
         return max(self.lookback + self.skip + 1, self.vol_window + 1)
+
+
+def load_bars(
+    symbol: str, *, data_dir: Path, snapshot_id: str | None = None
+) -> tuple[list[Bar], str | None]:
+    """Load the full point-in-time history for ``symbol`` from the CLI store (``data_dir/store``).
+
+    Reads through ``PointInTimeSource`` — the same look-ahead-safe seam strategies use — with a
+    far-future ``as_of`` so the whole series is returned (corporate actions applied). The
+    ``snapshot_id`` is recorded for provenance. Fails loud (``DataError``) on fewer than 2 bars.
+    """
+    from alpha_data.source import PointInTimeSource
+    from alpha_data.store import ParquetStore
+
+    store = ParquetStore(data_dir / "store")
+    source = PointInTimeSource(store, {symbol: store.read_actions(symbol)})
+    bars = source.as_of(symbol, datetime(2999, 1, 1, tzinfo=UTC))
+    if len(bars) < 2:
+        raise DataError(f"need >= 2 bars to backtest {symbol!r}, got {len(bars)}")
+    return bars, snapshot_id
 
 
 def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
