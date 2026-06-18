@@ -49,7 +49,7 @@ def run(
         slippage_bps=slippage_bps,
         starting_cash=starting_cash,
         account_type=account_type,
-        train_size=252,
+        train_size=504,  # walk-forward fields are unused by a plain backtest; kept coherent
         test_size=63,
         embargo=5,
         anchored=False,

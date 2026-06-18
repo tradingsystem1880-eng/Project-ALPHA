@@ -8,12 +8,14 @@ run id is a deterministic function of its inputs.
 
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pytest
 
-from alpha_cli._runner import run_id_for, walk_forward_oos
+from alpha_cli._runner import RunSpec, run_id_for, walk_forward_oos
+from alpha_cli.validate_cmds import validate
 from alpha_core import DataError
 from alpha_validation import walk_forward_splits
 
@@ -68,6 +70,31 @@ def test_warmup_floor_fails_loud() -> None:
             periods_per_year=252,
             min_train=20,  # train_size 10 < 20 -> first OOS bar would be un-warmed
         )
+
+
+def test_validate_defaults_clear_the_warmup_floor() -> None:
+    # regression: the documented `alpha validate <symbol>` happy path must not fail loud on its own
+    # defaults — the default train_size has to clear the warmup floor of the default strategy params
+    d = {k: p.default for k, p in inspect.signature(validate).parameters.items()}
+    spec = RunSpec(
+        lookback=d["lookback"],
+        skip=d["skip"],
+        vol_window=d["vol_window"],
+        target_vol=d["target_vol"],
+        rebalance_every=d["rebalance_every"],
+        max_leverage=d["max_leverage"],
+        allow_short=d["allow_short"],
+        periods_per_year=252,
+        fee_bps=d["fee_bps"],
+        slippage_bps=d["slippage_bps"],
+        starting_cash=d["starting_cash"],
+        account_type=d["account_type"],
+        train_size=d["train_size"],
+        test_size=d["test_size"],
+        embargo=d["embargo"],
+        anchored=d["anchored"],
+    )
+    assert spec.train_size >= spec.min_train
 
 
 def test_run_id_is_deterministic_and_sensitive() -> None:

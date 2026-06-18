@@ -102,10 +102,16 @@ def full_engine_null(
     cheap Tier-1 ``randomized_price_null`` so the tiers are directly comparable. Determinism comes
     from deterministic path generation (seeded) and a deterministic engine — order-preserving
     ``map`` makes the result independent of whether it ran serially or in a (spawn) process pool.
-    Fails loud on a bad ``threshold`` or a non-finite null statistic.
+    Fails loud on a bad ``threshold``, a non-finite ``observed`` (a flat/zero-variance real OOS —
+    ranking it against the null would be meaningless), or a non-finite null statistic.
     """
     if not 0.0 < threshold < 1.0:
         raise DataError(f"threshold must be in (0, 1), got {threshold}")
+    if not bool(np.isfinite(observed)):
+        raise DataError(
+            f"full-engine null needs a finite observed statistic, got {observed!r} "
+            "(the real OOS Sharpe is undefined — a flat/zero-variance OOS)"
+        )
     paths = synthetic_bar_paths(bars, n_paths=n_paths, mean_block=mean_block, seed=seed)
     tasks = [_SynthTask(bars=p, spec=spec) for p in paths]
 

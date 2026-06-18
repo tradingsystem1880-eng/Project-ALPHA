@@ -30,7 +30,7 @@ def validate(
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
-    train_size: int = 252,
+    train_size: int = 504,  # >= warmup floor for the default 252/21/63 params (max=274); ~2y train
     test_size: int = 63,
     embargo: int = 5,
     anchored: bool = False,
