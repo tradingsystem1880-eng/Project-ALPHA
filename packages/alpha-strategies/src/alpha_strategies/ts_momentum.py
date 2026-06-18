@@ -16,6 +16,7 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.objects import Quantity
 from nautilus_trader.trading.strategy import Strategy
 
+from alpha_core import AlphaError
 from alpha_strategies.signals import ts_momentum_signal
 from alpha_strategies.sizing import realized_volatility, vol_target_size
 
@@ -24,8 +25,9 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
     """Vol-targeted time-series momentum: decide on close of t, fill at open of t+1.
 
     Holds its own ``net_units`` (updated from fills) so the target→order delta is self-contained
-    and deterministic. Fractional sizing is rounded to whole lots; per-asset-class lot handling and
-    portfolio-level caps are later refinements.
+    and deterministic. The order quantity is rounded to the traded instrument's ``size_precision``:
+    whole lots for equities (precision 0), fractional for crypto (e.g. 6 dp) — so one class trades
+    any asset class. Portfolio-level caps are a later refinement.
     """
 
     def __init__(
@@ -101,13 +103,20 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
             return
         target = self._target_units
         self._target_units = None
-        lots = round(abs(target - self.net_units))
-        if lots <= 0:
-            return
-        side = OrderSide.BUY if target > self.net_units else OrderSide.SELL
+        delta = target - self.net_units
+        instrument = self.cache.instrument(self._iid)
+        if instrument is None:
+            raise AlphaError(f"instrument {self._iid} not in cache; cannot size order")
+        precision = instrument.size_precision
+        qty_value = round(abs(delta), precision)
+        if qty_value <= 0.0:
+            return  # below one size increment at this instrument's precision — nothing to trade
+        side = OrderSide.BUY if delta > 0.0 else OrderSide.SELL
         self.submit_order(
             self.order_factory.market(
-                instrument_id=self._iid, order_side=side, quantity=Quantity.from_int(lots)
+                instrument_id=self._iid,
+                order_side=side,
+                quantity=Quantity(qty_value, precision),
             )
         )
 
