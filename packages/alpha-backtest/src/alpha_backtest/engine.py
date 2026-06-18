@@ -25,8 +25,8 @@ from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
-from alpha_backtest.frictions import BpsFeeModel
-from alpha_backtest.results import BacktestResult, Trade
+from alpha_execution.frictions import BpsFeeModel
+from alpha_execution.results import BacktestResult, Trade
 
 _NS_PER_SECOND = 1_000_000_000
 

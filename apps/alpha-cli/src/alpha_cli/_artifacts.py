@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 
 if TYPE_CHECKING:
-    from alpha_backtest.results import Trade
+    from alpha_execution.results import Trade
 
 # schema for an EMPTY trade log (no rows to infer dtypes from); non-empty infers from the rows
 _EMPTY_TRADES_SCHEMA: dict[str, pl.DataType] = {

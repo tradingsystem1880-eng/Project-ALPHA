@@ -9,7 +9,7 @@ from nautilus_trader.model.enums import AccountType, OrderSide
 
 from alpha_backtest.engine import run_backtest
 from alpha_backtest.feed import daily_bar_type, to_execution_feed
-from alpha_backtest.instruments import equity_instrument
+from alpha_execution.instruments import equity_instrument
 from tests.fixtures.nautilus_fixtures import RoundTrip, ladder_bars
 
 

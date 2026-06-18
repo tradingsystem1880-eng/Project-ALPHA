@@ -8,6 +8,7 @@ dependencies = [
     "alpha-data",
     "alpha-strategies",
     "alpha-backtest",
+    "alpha-execution",
     "alpha-validation",
     "alpha-cli",
 ]
@@ -23,6 +24,7 @@ alpha-core = { workspace = true }
 alpha-data = { workspace = true }
 alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
+alpha-execution = { workspace = true }
 alpha-validation = { workspace = true }
 alpha-cli = { workspace = true }
 
@@ -44,7 +46,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_execution", "alpha_validation", "alpha_cli"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -86,6 +88,7 @@ root_packages = [
     "alpha_data",
     "alpha_strategies",
     "alpha_backtest",
+    "alpha_execution",
     "alpha_validation",
     "alpha_cli",
 ]
@@ -94,28 +97,34 @@ root_packages = [
 name = "alpha_core imports nothing internal"
 type = "forbidden"
 source_modules = ["alpha_core"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_execution", "alpha_validation", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_data depends only on core"
 type = "forbidden"
 source_modules = ["alpha_data"]
-forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_execution", "alpha_validation", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_strategies depends only on core"
 type = "forbidden"
 source_modules = ["alpha_strategies"]
-forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_execution", "alpha_validation", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_validation depends only on core"
 type = "forbidden"
 source_modules = ["alpha_validation"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_execution", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
-name = "alpha_backtest depends only on core + data"
+name = "alpha_execution depends only on core"
+type = "forbidden"
+source_modules = ["alpha_execution"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_backtest depends only on core + data + execution"
 type = "forbidden"
 source_modules = ["alpha_backtest"]
 forbidden_modules = ["alpha_strategies", "alpha_validation", "alpha_cli"]

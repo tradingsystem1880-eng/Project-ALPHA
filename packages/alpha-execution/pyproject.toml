@@ -1,0 +1,16 @@
+[project]
+name = "alpha-execution"
+version = "0.0.0"
+description = "Shared execution primitives: instruments, fee models, run-result schema (engine-neutral)."
+requires-python = ">=3.12"
+dependencies = ["alpha-core", "nautilus-trader>=1.228"]
+
+[tool.uv.sources]
+alpha-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/alpha_execution"]

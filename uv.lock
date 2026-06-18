@@ -19,6 +19,7 @@ members = [
     "alpha-cli",
     "alpha-core",
     "alpha-data",
+    "alpha-execution",
     "alpha-strategies",
     "alpha-validation",
     "project-alpha",
@@ -165,6 +166,7 @@ source = { editable = "packages/alpha-backtest" }
 dependencies = [
     { name = "alpha-core" },
     { name = "alpha-data" },
+    { name = "alpha-execution" },
     { name = "nautilus-trader" },
 ]
 
@@ -172,6 +174,7 @@ dependencies = [
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "alpha-data", editable = "packages/alpha-data" },
+    { name = "alpha-execution", editable = "packages/alpha-execution" },
     { name = "nautilus-trader", specifier = ">=1.228" },
 ]
 
@@ -183,6 +186,7 @@ dependencies = [
     { name = "alpha-backtest" },
     { name = "alpha-core" },
     { name = "alpha-data" },
+    { name = "alpha-execution" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
     { name = "typer" },
@@ -193,6 +197,7 @@ requires-dist = [
     { name = "alpha-backtest", editable = "packages/alpha-backtest" },
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "alpha-data", editable = "packages/alpha-data" },
+    { name = "alpha-execution", editable = "packages/alpha-execution" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "typer", specifier = ">=0.12" },
@@ -232,6 +237,21 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.0" },
     { name = "polars", specifier = ">=1.0" },
     { name = "yfinance", specifier = ">=0.2.40" },
+]
+
+[[package]]
+name = "alpha-execution"
+version = "0.0.0"
+source = { editable = "packages/alpha-execution" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "nautilus-trader" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "nautilus-trader", specifier = ">=1.228" },
 ]
 
 [[package]]
@@ -1812,6 +1832,7 @@ dependencies = [
     { name = "alpha-cli" },
     { name = "alpha-core" },
     { name = "alpha-data" },
+    { name = "alpha-execution" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
 ]
@@ -1832,6 +1853,7 @@ requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "alpha-data", editable = "packages/alpha-data" },
+    { name = "alpha-execution", editable = "packages/alpha-execution" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
 ]

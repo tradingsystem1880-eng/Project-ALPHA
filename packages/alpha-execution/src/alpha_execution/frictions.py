@@ -1,7 +1,8 @@
-"""Backtest frictions: a per-notional (bps) fee model (spec §7).
+"""Execution frictions: a per-notional (bps) fee model (spec §7).
 
+Shared by the backtest venue and the paper sandbox venue so both charge commissions identically.
 Slippage is modeled separately as a side-aware bid/ask spread on the execution quote — see
-``feed.to_execution_feed``'s ``slippage_bps``.
+``alpha_backtest.feed``'s ``slippage_bps``.
 """
 
 from __future__ import annotations

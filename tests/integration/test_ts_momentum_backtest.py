@@ -6,8 +6,8 @@ from nautilus_trader.model.enums import AccountType
 
 from alpha_backtest.engine import run_backtest
 from alpha_backtest.feed import daily_bar_type, to_execution_feed
-from alpha_backtest.instruments import equity_instrument
 from alpha_core import Bar
+from alpha_execution.instruments import equity_instrument
 from alpha_strategies.signals import ts_momentum_signal
 from alpha_strategies.sizing import realized_volatility, vol_target_size
 from alpha_strategies.ts_momentum import TimeSeriesMomentum

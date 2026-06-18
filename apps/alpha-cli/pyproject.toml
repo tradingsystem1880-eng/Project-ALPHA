@@ -8,6 +8,7 @@ dependencies = [
     "alpha-data",
     "alpha-strategies",
     "alpha-backtest",
+    "alpha-execution",
     "alpha-validation",
     "typer>=0.12",
 ]
@@ -20,6 +21,7 @@ alpha-core = { workspace = true }
 alpha-data = { workspace = true }
 alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
+alpha-execution = { workspace = true }
 alpha-validation = { workspace = true }
 
 [build-system]

@@ -43,7 +43,7 @@ from alpha_validation import (
 )
 
 if TYPE_CHECKING:
-    from alpha_backtest.results import BacktestResult
+    from alpha_execution.results import BacktestResult
 
 
 @dataclass(frozen=True)
