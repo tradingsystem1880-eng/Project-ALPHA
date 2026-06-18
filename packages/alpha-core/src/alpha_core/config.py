@@ -13,3 +13,12 @@ class AlphaSettings(BaseSettings):
 
     data_dir: Path = Field(default=Path("data"))
     random_seed: int = 7
+
+    # Paper trading (Phase 4). Defaulted so the public-data sandbox path needs no secrets; API
+    # credentials come ONLY from the environment / .env and are never written into any artifact.
+    paper_exchange: str = "coinbase"
+    paper_venue: str = "SANDBOX"
+    paper_symbol: str = "BTC/USDT"
+    paper_api_key: str | None = None
+    paper_api_secret: str | None = None
+    paper_use_testnet: bool = False
