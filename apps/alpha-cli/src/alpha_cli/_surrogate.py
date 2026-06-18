@@ -48,8 +48,9 @@ def make_ts_momentum_surrogate(
         raise DataError(f"rebalance_every must be >= 1, got {rebalance_every}")
     if vol_window < 3:
         raise DataError(f"vol_window must be >= 3 for a realized-vol estimate, got {vol_window}")
-    # first close index with enough history for BOTH a signal and a vol estimate
-    warm = max(skip + lookback, vol_window - 1)
+    # first close index with enough history for BOTH a signal and a vol estimate; matches the
+    # engine's _min_history = max(skip+lookback+1, vol_window+1) closes (here in 0-based bar terms)
+    warm = max(skip + lookback, vol_window)
     cost_rate = cost_bps / 10_000.0
 
     def surrogate(price_returns: FloatArray) -> FloatArray:
@@ -98,14 +99,15 @@ def _target_weight(
 ) -> float:
     """Target notional weight at this close: 0 when flat/short-disallowed or vol is degenerate.
 
-    Hands the pure strategy functions exactly the trailing windows they read (as ``list[float]``,
-    their declared input type): the signal needs the last ``skip + lookback + 1`` closes, the vol
-    estimate the last ``vol_window``. ``closes_prefix`` is guaranteed long enough (caller warms up).
+    Hands the pure strategy functions exactly the trailing windows the *engine* reads (as
+    ``list[float]``, their declared input type): the signal needs the last ``skip + lookback + 1``
+    closes, the vol estimate the last ``vol_window + 1`` closes (i.e. ``vol_window`` returns —
+    matching ``TimeSeriesMomentum``). ``closes_prefix`` is guaranteed long enough (caller warms up).
     """
     signal = ts_momentum_signal(closes_prefix[-(skip + lookback + 1) :].tolist(), lookback, skip)
     if signal == 0 or (signal < 0 and not allow_short):
         return 0.0
-    vol_closes = closes_prefix[-vol_window:].tolist()
+    vol_closes = closes_prefix[-(vol_window + 1) :].tolist()
     vol = realized_volatility(vol_closes, periods_per_year=periods_per_year)
     if vol <= 0.0:
         return 0.0  # no dispersion to target -> hold flat (not an error)

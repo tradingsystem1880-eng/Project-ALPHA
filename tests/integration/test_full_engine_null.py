@@ -83,3 +83,10 @@ def test_bad_threshold_fails_loud() -> None:
     bars = _trending_bars()
     with pytest.raises(DataError):
         full_engine_null(bars, observed=1.0, spec=_SPEC, n_paths=4, mean_block=5.0, threshold=1.5)
+
+
+def test_non_finite_observed_fails_loud() -> None:
+    # a flat real OOS (undefined Sharpe) must fail loud, not silently rank NaN at percentile 0
+    bars = _trending_bars()
+    with pytest.raises(DataError):
+        full_engine_null(bars, observed=float("nan"), spec=_SPEC, n_paths=4, mean_block=5.0)

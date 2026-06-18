@@ -15,7 +15,8 @@ from alpha_core.config import AlphaSettings
 
 
 def _fmt(x: Any) -> str:
-    return f"{x:.4f}" if isinstance(x, (int, float)) else "n/a"
+    # bool is an int subclass; never render True/False as "1.0000"
+    return f"{x:.4f}" if isinstance(x, int | float) and not isinstance(x, bool) else "n/a"
 
 
 def report(run_id: str) -> None:
