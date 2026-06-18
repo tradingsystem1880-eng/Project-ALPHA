@@ -9,7 +9,7 @@ imports keep working.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
@@ -41,6 +41,8 @@ class RunResult:
     fills: int
     trades: list[Trade]
     equity_curve: list[tuple[datetime, float]]
+    # ts-ordered (side, quantity) of every order — the engine-neutral sequence paper must match
+    order_log: list[tuple[str, float]] = field(default_factory=list)
 
     @property
     def starting_equity(self) -> float:

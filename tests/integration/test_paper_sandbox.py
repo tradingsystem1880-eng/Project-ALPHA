@@ -8,6 +8,8 @@ fills from the sandbox matching engine).
 
 from __future__ import annotations
 
+import asyncio
+
 from alpha_execution.instruments import crypto_instrument
 from alpha_paper.config import PaperSpec
 from alpha_paper.node import build_paper_node, run_node_for
@@ -24,7 +26,9 @@ from tests.fixtures.paper_fixtures import (
 _DAY_NS = 86_400_000_000_000
 
 
-def test_do_nothing_strategy_sees_all_data_and_places_no_orders() -> None:
+def test_do_nothing_strategy_sees_all_data_and_places_no_orders(
+    paper_loop: asyncio.AbstractEventLoop,
+) -> None:
     instrument = crypto_instrument("BTC/USDT")
     bar_type = daily_bar_type(instrument)
 
@@ -48,9 +52,7 @@ def test_do_nothing_strategy_sees_all_data_and_places_no_orders() -> None:
     node.trader.add_strategy(strategy)
     cache = node.cache
 
-    loop = node.get_event_loop()
-    assert loop is not None
-    loop.run_until_complete(run_node_for(node, duration_seconds=1.0))
+    paper_loop.run_until_complete(run_node_for(node, duration_seconds=1.0))
 
     assert strategy.bars_seen == 4  # every recorded decision bar reached the strategy
     assert strategy.quotes_seen == 4

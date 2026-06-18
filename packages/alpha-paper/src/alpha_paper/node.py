@@ -85,11 +85,12 @@ def build_paper_node(
     return node
 
 
-async def run_node_for(node: TradingNode, duration_seconds: float) -> None:
-    """Run ``node`` for ``duration_seconds`` then stop and dispose it cleanly.
+async def run_node_for(node: TradingNode, duration_seconds: float, *, dispose: bool = True) -> None:
+    """Run ``node`` for ``duration_seconds`` then stop it cleanly.
 
     Used for bounded sessions and deterministic offline tests. A live, open-ended session uses the
-    node's own blocking ``run()`` (which installs OS signal handlers) instead.
+    node's own blocking ``run()`` (which installs OS signal handlers). Pass ``dispose=False`` to
+    inspect the node's cache after stopping (``dispose`` clears it); the caller then disposes.
     """
     task = asyncio.ensure_future(node.run_async())
     try:
@@ -99,4 +100,5 @@ async def run_node_for(node: TradingNode, duration_seconds: float) -> None:
         await asyncio.sleep(0.1)
         if not task.done():
             task.cancel()
-        node.dispose()
+        if dispose:
+            node.dispose()

@@ -26,6 +26,7 @@ from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
 from alpha_execution.frictions import BpsFeeModel
+from alpha_execution.orders import order_signature
 from alpha_execution.results import BacktestResult, Trade
 
 _NS_PER_SECOND = 1_000_000_000
@@ -130,11 +131,13 @@ def run_backtest(
     engine.add_strategy(strategy)
     try:
         engine.run()
+        orders = sorted(engine.cache.orders(), key=lambda o: o.ts_init)
         result = BacktestResult(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
             trades=_closed_trades(engine),
             equity_curve=recorder.curve,
+            order_log=[order_signature(o) for o in orders],
         )
     finally:
         engine.dispose()

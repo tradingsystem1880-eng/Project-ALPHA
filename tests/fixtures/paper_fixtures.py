@@ -45,10 +45,16 @@ def register_fixture_events(key: str, events: Sequence[Data]) -> None:
 
 
 class FixtureDataClientConfig(LiveDataClientConfig, frozen=True):
-    """Config for the offline replay client: which recorded events, and the pre-replay delay."""
+    """Config for the offline replay client: which recorded events, plus replay timing.
+
+    ``feed_interval`` paces events apart so each order's async fill round-trip settles before the
+    next event — reproducing the spacing of real (e.g. daily) live data, under which a fill is long
+    confirmed before the next decision.
+    """
 
     key: str = "default"
     feed_delay: float = 0.2  # let the strategy's on_start subscriptions register before replay
+    feed_interval: float = 0.0  # delay between successive events (0 = deliver back-to-back)
 
 
 class FixtureLiveDataClient(LiveMarketDataClient):
@@ -76,12 +82,15 @@ class FixtureLiveDataClient(LiveMarketDataClient):
         )
         self._events = events
         self._delay = config.feed_delay
+        self._interval = config.feed_interval
 
     async def _connect(self) -> None:
         async def _feed() -> None:
             await asyncio.sleep(self._delay)
             for event in self._events:
                 self._handle_data(event)
+                if self._interval:
+                    await asyncio.sleep(self._interval)
 
         self._loop.create_task(_feed())
 
