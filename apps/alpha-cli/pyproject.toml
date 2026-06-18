@@ -10,6 +10,7 @@ dependencies = [
     "alpha-backtest",
     "alpha-execution",
     "alpha-validation",
+    "alpha-paper",
     "typer>=0.12",
 ]
 
@@ -23,6 +24,7 @@ alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
 alpha-execution = { workspace = true }
 alpha-validation = { workspace = true }
+alpha-paper = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

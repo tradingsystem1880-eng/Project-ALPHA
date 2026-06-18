@@ -3,10 +3,11 @@ name = "alpha-paper"
 version = "0.0.0"
 description = "Paper trading: nautilus SandboxExecutionClient sessions + on-disk run artifacts (Phase 4)."
 requires-python = ">=3.12"
-dependencies = ["alpha-core", "nautilus-trader>=1.228", "polars>=1.0"]
+dependencies = ["alpha-core", "alpha-execution", "nautilus-trader>=1.228", "polars>=1.0"]
 
 [tool.uv.sources]
 alpha-core = { workspace = true }
+alpha-execution = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
