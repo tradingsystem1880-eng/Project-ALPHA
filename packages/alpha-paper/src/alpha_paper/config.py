@@ -38,6 +38,7 @@ class PaperSpec:
     starting_cash: float = 1_000_000.0
     account_type: str = "MARGIN"
     duration_seconds: float | None = None  # None = run until stopped (Ctrl-C / kill-switch)
+    max_notional_per_order: float | None = None  # pre-trade RiskEngine cap (quote ccy); None = off
 
     @property
     def min_train(self) -> int:

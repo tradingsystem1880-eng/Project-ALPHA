@@ -33,6 +33,7 @@ from nautilus_trader.live.config import (
 )
 from nautilus_trader.live.factories import LiveDataClientFactory
 from nautilus_trader.live.node import TradingNode
+from nautilus_trader.model.enums import TradingState
 
 from alpha_paper.config import PaperSpec
 
@@ -68,12 +69,21 @@ def build_paper_node(
         default_leverage=Decimal(str(spec.max_leverage)),
         bar_execution=False,  # only quotes fill — preserves the backtest's t+1 execution convention
     )
+    # Pre-trade RiskEngine: an optional per-order notional cap (runaway-order safety net), in whole
+    # quote-currency units (nautilus types the cap as an int).
+    max_notional = (
+        {str(instrument.id): int(spec.max_notional_per_order)}
+        if spec.max_notional_per_order is not None
+        else {}
+    )
     config = TradingNodeConfig(
         trader_id=trader_id,
         logging=LoggingConfig(log_level=log_level),
         data_engine=LiveDataEngineConfig(graceful_shutdown_on_exception=True),
         exec_engine=LiveExecEngineConfig(graceful_shutdown_on_exception=True),
-        risk_engine=LiveRiskEngineConfig(graceful_shutdown_on_exception=True),
+        risk_engine=LiveRiskEngineConfig(
+            graceful_shutdown_on_exception=True, max_notional_per_order=max_notional
+        ),
         data_clients={data_client_name: data_client_config},
         exec_clients={venue: exec_config},
     )
@@ -102,3 +112,13 @@ async def run_node_for(node: TradingNode, duration_seconds: float, *, dispose: b
             task.cancel()
         if dispose:
             node.dispose()
+
+
+def halt_trading(node: TradingNode) -> None:
+    """Kill-switch: set the RiskEngine HALTED so all new orders are denied (existing ones stand)."""
+    node.kernel.risk_engine.set_trading_state(TradingState.HALTED)
+
+
+def resume_trading(node: TradingNode) -> None:
+    """Lift a halt: set the RiskEngine back to ACTIVE."""
+    node.kernel.risk_engine.set_trading_state(TradingState.ACTIVE)
