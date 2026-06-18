@@ -261,12 +261,14 @@ version = "0.0.0"
 source = { editable = "packages/alpha-paper" }
 dependencies = [
     { name = "alpha-core" },
+    { name = "nautilus-trader" },
     { name = "polars" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "nautilus-trader", specifier = ">=1.228" },
     { name = "polars", specifier = ">=1.0" },
 ]
 
