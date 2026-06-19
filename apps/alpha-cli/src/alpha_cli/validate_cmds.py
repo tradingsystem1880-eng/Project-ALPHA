@@ -41,6 +41,7 @@ def validate(
     n_resamples: int = 2000,
     mean_block: float = 5.0,
     threshold: float = 0.95,
+    null_model: str = "bootstrap",
     seed: int | None = None,
     max_workers: int | None = None,
     snapshot: str | None = None,
@@ -79,6 +80,7 @@ def validate(
         n_resamples=n_resamples,
         mean_block=mean_block,
         threshold=threshold,
+        null_model=null_model,
         max_workers=max_workers,
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)

@@ -43,6 +43,7 @@ from alpha_validation import (
     combinatorial_purged_splits,
     deflated_sharpe,
     max_drawdown,
+    parametric_price_null,
     randomized_price_null,
     sharpe_ratio,
     to_returns,
@@ -66,6 +67,7 @@ class GauntletParams:
     dsr_threshold: float = 0.95  # deflated-Sharpe pass bar (P(true SR > deflation benchmark))
     cpcv_groups: int = 6  # CPCV partition count over the OOS stream
     cpcv_test_groups: int = 2  # groups held out per CPCV fold
+    null_model: str = "bootstrap"  # Tier-1 null: "bootstrap" | "student_t" | "garch"
     max_workers: int | None = None
 
 
@@ -108,19 +110,33 @@ def run_gauntlet(
         cpcv = _degenerate_cpcv()
     else:
         safe_sharpe = _safe_sharpe(ppy)
-        # Tier 1 — cheap returns-level null: the strategy's surrogate on block-resampled returns.
+        # Tier 1 — cheap returns-level null: the strategy's surrogate on synthetic return paths.
+        # "bootstrap" resamples the observed returns; "student_t"/"garch" draw from a fat-tailed
+        # parametric model (heavier-tailed / volatility-clustered → a more adversarial null).
         price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
         surrogate = surrogate_for(spec)
-        tier1 = randomized_price_null(
-            price_returns,
-            surrogate,
-            statistic=safe_sharpe,
-            n_paths=params.tier1_paths,
-            block=params.mean_block,
-            threshold=params.threshold,
-            periods_per_year=ppy,
-            seed=t1_seed,
-        )
+        if params.null_model == "bootstrap":
+            tier1 = randomized_price_null(
+                price_returns,
+                surrogate,
+                statistic=safe_sharpe,
+                n_paths=params.tier1_paths,
+                block=params.mean_block,
+                threshold=params.threshold,
+                periods_per_year=ppy,
+                seed=t1_seed,
+            )
+        else:
+            tier1 = parametric_price_null(
+                price_returns,
+                surrogate,
+                model=params.null_model,
+                statistic=safe_sharpe,
+                n_paths=params.tier1_paths,
+                threshold=params.threshold,
+                periods_per_year=ppy,
+                seed=t1_seed,
+            )
         # Tier 2 — full-engine faithfulness check, observed = the engine's walk-forward OOS Sharpe.
         tier2 = full_engine_null(
             bars,
