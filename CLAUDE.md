@@ -34,13 +34,15 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Ruff: line-length 100, target py312, rules `E,F,I,B,UP,SIM`. Markers (`--strict-markers` on): `bias_guard` (look-ahead/survivorship guards, gated in CI), `network` (skipped in CI/offline).
 
 ## CLI surface (`apps/alpha-cli/src/alpha_cli/`)
-Entry point `alpha = alpha_cli.main:main`. `data`/`backtest` are Typer sub-apps; `validate`/`report` are root commands.
+Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim` are Typer sub-apps; `validate`/`report` are root commands.
 - `alpha info` — print resolved `AlphaSettings` + core version.
-- `alpha data pull SYMBOL --source {yfinance,ccxt} --start --end` — fetch + store raw bars/actions.
+- `alpha data pull SYMBOL --source {yfinance,ccxt,stooq} --start --end` — fetch + store raw bars/actions.
 - `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source]` — freeze store → immutable hashed snapshot.
 - `alpha data verify SNAPSHOT_ID` — re-hash snapshot vs manifest.
-- `alpha backtest run SYMBOL [...params, fee_bps=1.0, slippage_bps=2.0, account_type=CASH, snapshot]` — one fixed-param TS-momentum run → artifacts.
-- `alpha validate SYMBOL [...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the warmup floor `max(lookback+skip+1, vol_window+1)` or it fails loud.
+- `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout, --param name=value, ...params, snapshot]` — one fixed-param run → artifacts.
+- `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, ...params]` — diversified basket: per-symbol OOS streams combined → portfolio metrics + PSR + manifest (`data_dir/portfolio/<run_id>`).
+- `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud.
+- `alpha optim grid SYMBOL --grid name=v1,v2,... [--strategy, ...params, pbo_blocks, n_resamples, dsr_threshold, alpha, seed, max_workers]` — parameter sweep judged for overfitting (Deflated Sharpe + PBO + Reality-Check/SPA) → manifest (`data_dir/optim/<run_id>`).
 - `alpha report RUN_ID` — re-display a stored run from `data_dir/runs/<run_id>/manifest.json` (no engine re-run).
 Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.parquet, tearsheet.html}` (only the manifest+parquet are byte-pinned; HTML carries volatile fields).
 
@@ -67,13 +69,16 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `adapters/base.py` | Adapter seam | `FetchResult(symbol, bars, actions)`, `DataAdapter` protocol |
 | `adapters/yfinance_adapter.py` | Equities (splits+divs) | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
 | `adapters/ccxt_adapter.py` | Crypto daily OHLCV (UTC; default exchange `coinbase`) | `CCXTAdapter`, `parse_ccxt_ohlcv` (pure) |
+| `adapters/stooq_adapter.py` | Free EOD OHLCV (equities/ETF/commodity/index/FX; provider-adjusted, no actions) | `StooqAdapter`, `parse_stooq_csv` (pure) |
 
 ### `alpha_strategies` (`packages/alpha-strategies/src/alpha_strategies/`) — nautilus Strategy + pure decision fns. core only.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
-| `signals.py` | Pure momentum signal | `ts_momentum_signal(closes, lookback, skip) -> {-1,0,1}` |
+| `signals.py` | Pure signals (all `{-1,0,1}`, trailing-window only) | `ts_momentum_signal`, `ma_crossover_signal(closes, fast, slow)`, `zscore_reversion_signal(closes, window, entry_z)`, `breakout_signal(highs, lows, closes, window)` |
 | `sizing.py` | Pure vol-target sizing | `realized_volatility(closes, *, periods_per_year)`, `vol_target_size(signal, price, vol, *, target_vol, capital, max_leverage)` |
-| `ts_momentum.py` | nautilus wiring + position state | `TimeSeriesMomentum(Strategy)` (decide on `on_bar`/close-t, order on `on_quote_tick`/open-t+1) |
+| `base.py` | Shared nautilus lifecycle for vol-targeted signals | `VolTargetStrategy` (decide close-t / fill open-t+1; subclasses implement `_signal()`) |
+| `ts_momentum.py` | TS-momentum (standalone reference impl) | `TimeSeriesMomentum(Strategy)` |
+| `ma_crossover.py` · `mean_reversion.py` · `breakout.py` | `VolTargetStrategy` subclasses | `MovingAverageCrossover`, `MeanReversion`, `DonchianBreakout` |
 
 ### `alpha_backtest` (`packages/alpha-backtest/src/alpha_backtest/`) — nautilus run harness. core + data only.
 | Module | Responsibility | Key public symbols |
@@ -89,29 +94,40 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 |---|---|---|
 | `metrics.py` | Pure numpy return/risk metrics | `to_returns`, `sharpe_ratio`, `annualized_volatility`, `cagr`, `max_drawdown`, `FloatArray`/`FloatSeq` |
 | `walkforward.py` | Causal purged/embargoed splitter | `walk_forward_splits(n, *, train_size, test_size, embargo, anchored) -> list[Split]` |
+| `cpcv.py` | Combinatorial purged cross-validation | `combinatorial_purged_splits(n, *, n_groups, n_test_groups, embargo)`, `CPCVSplit`, `n_cpcv_splits` |
 | `bootstrap.py` | Stationary-bootstrap BCa CIs | `stationary_bootstrap_indices`, `block_bootstrap_ci`, `ConfidenceInterval`, `Statistic` |
-| `montecarlo.py` | Randomized-price null (Tier 1, returns-level) | `randomized_price_null`, `NullResult`, `StrategyFn` |
-| `tearsheet.py` | Report schema + render (pandas/quantstats edge) | `GauntletReport`, `RunMetadata`, `FoldSummary`, `NullSummary`, `CISummary`, `build_outcomes`, `report_to_manifest`, `render_tearsheet_html` |
+| `montecarlo.py` | Randomized-price null + fat-tailed generators | `randomized_price_null`, `parametric_price_null`, `student_t_paths`, `garch_paths`, `NullResult`, `StrategyFn` |
+| `dsr.py` | Probabilistic + Deflated Sharpe (Bailey–LdP) | `probabilistic_sharpe_ratio`, `deflated_sharpe`, `expected_max_sharpe`, `DeflatedSharpeResult` |
+| `overfitting.py` | PBO via CSCV (Bailey et al.) | `probability_of_backtest_overfitting`, `PBOResult` |
+| `reality_check.py` | White's Reality Check + Hansen's SPA | `reality_check`, `spa_test`, `DataSnoopingResult` |
+| `tearsheet.py` | Report schema + render (pandas/quantstats edge) | `GauntletReport`, `RunMetadata`, `FoldSummary`, `NullSummary`, `CISummary`, `DSRSummary`, `CPCVSummary`, `build_outcomes`, `report_to_manifest`, `render_tearsheet_html` |
 
 ### `alpha_cli` (`apps/alpha-cli/src/alpha_cli/`) — orchestration ONLY (allowed to compose engine + gauntlet). Engine imports are lazy.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
 | `main.py` | Typer app wiring | `app`, `info`, `main` |
 | `data_cmds.py` | `alpha data ...` | `data_app`; `_ADAPTERS` registry (monkeypatched in tests) |
-| `backtest_cmds.py` | `alpha backtest run` | `backtest_app`; `_load_bars` seam |
+| `backtest_cmds.py` | `alpha backtest run` / `portfolio` | `backtest_app`; `_load_bars` seam |
 | `validate_cmds.py` | `alpha validate` | `validate` |
+| `optim_cmds.py` | `alpha optim grid` | `optim_app` |
 | `report_cmds.py` | `alpha report` | `report` |
-| `_runner.py` | Engine↔gauntlet glue, OOS stitch, run id | `RunSpec`, `load_bars`, `run_full_backtest`, `walk_forward_oos`/`_for_spec`, `OOSResult`, `run_id_for` |
-| `_gauntlet.py` | Full gauntlet assembly | `run_gauntlet`, `GauntletParams`, `GauntletOutput` |
-| `_surrogate.py` | Tier-1 cheap engine-free TS-momentum analogue | `make_ts_momentum_surrogate` (reuses the pure signal/sizing fns; matches the engine's vol window + warmup) |
+| `_strategies.py` | Strategy registry (dispatch by `strategy_name`) | `STRATEGIES`, `build_strategy`, `warmup_for`, `surrogate_for`, `known_strategies` |
+| `_runner.py` | Engine↔gauntlet glue, OOS stitch, run id | `RunSpec` (`strategy_name`, `strategy_params`, `param()`), `load_bars`, `parse_strategy_params`, `run_full_backtest`, `walk_forward_oos`/`_for_spec`, `OOSResult`, `run_id_for` |
+| `_gauntlet.py` | Full gauntlet assembly (+ DSR, CPCV, null-model) | `run_gauntlet`, `GauntletParams`, `GauntletOutput` |
+| `_optim.py` | Parameter sweep + overfitting verdict | `run_optimization`, `expand_grid`, `OptimResult` |
+| `_portfolio.py` | Diversified-basket backtest | `run_portfolio`, `PortfolioResult`, `LegSummary` |
+| `_surrogate.py` | Tier-1 engine-free surrogates | `make_surrogate` (generic), `make_ts_momentum_surrogate` |
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
 | `_artifacts.py` | Run-dir layout + manifest/parquet IO | `run_dir`, `write_run`, `read_manifest` |
 
 ## Validation gauntlet gates (spec §8) — produced by `build_outcomes` → `ValidationOutcome`s
 - `walk_forward_oos` (gate 2): passes on a finite OOS Sharpe. OOS = concatenated contiguous test windows of ONE full-series run (fixed params → no refit; train windows are warmup only).
-- `randomized_price_null` (gate 3, headline): two tiers — Tier 1 `returns_level` (surrogate on block-resampled returns) + Tier 2 `full_engine` (real engine on synthetic OHLCV paths). Passes only if observed beats the `threshold` percentile in **every** tier (conservative). Headline OOS Sharpe is the engine value; Tier-1 `observed` is the surrogate's own statistic (internal faithfulness diagnostic).
+- `randomized_price_null` (gate 3, headline): two tiers — Tier 1 `returns_level` (surrogate on resampled returns; `--null-model` selects bootstrap/student_t/garch) + Tier 2 `full_engine` (real engine on synthetic OHLCV paths). Passes only if observed beats the `threshold` percentile in **every** tier (conservative).
 - `bootstrap_ci` (gate 4): passes when the Sharpe BCa lower bound > 0.
-Overall `passed` = all gates pass.
+- `deflated_sharpe`: PSR/DSR of the OOS stream (single run → n_trials=1, DSR=PSR); passes when DSR ≥ `dsr_threshold`.
+- `cpcv_oos`: distribution of OOS Sharpe across combinatorial purged CV folds of the OOS stream; passes when the mean fold Sharpe > 0.
+A degenerate (flat/zero-variance) OOS short-circuits to a clean FAIL (degenerate gates), never an undefined-Sharpe crash. Overall `passed` = all gates pass.
+- **Multi-trial gates (`alpha optim`):** Deflated Sharpe (deflated by the trial-Sharpe variance), PBO via CSCV, and White/Hansen Reality-Check/SPA judge a parameter sweep for selection bias — they only become meaningful with many configs, so they live in `_optim`, not the single-run gauntlet.
 
 ## Where do I add X?
 - **New strategy** → `alpha_strategies`: pure decision fn(s) in a new module + a `nautilus Strategy` subclass; bias-guard test required. Wire defaults via `_runner.RunSpec` / CLI flags.
@@ -121,4 +137,6 @@ Overall `passed` = all gates pass.
 - **New domain type / error / protocol / setting** → `alpha_core` (export via `__init__.py`).
 
 ## Build status
-Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅. Phase 4 (paper trading via nautilus `SandboxExecutionClient`) intentionally deferred to post-v1.
+Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅.
+Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · Stooq data source ✅. Remaining: cross-sectional ranking (needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
+Phase 4 (paper trading via nautilus `SandboxExecutionClient`) intentionally deferred to post-v1.
