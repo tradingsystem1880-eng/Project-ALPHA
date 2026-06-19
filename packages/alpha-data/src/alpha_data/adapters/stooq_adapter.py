@@ -24,6 +24,16 @@ _VERSION = "1"
 PARSER_VERSION = "1"
 _REQUIRED = ("date", "open", "high", "low", "close")
 
+# Stooq blocks the bare ``Python-urllib`` user-agent (HTTP 404) and, for fresh clients, serves a
+# SHA-256 proof-of-work "verify your browser" gate before releasing the CSV. A browser UA + solving
+# that gate is the documented browser flow; we still fail loud on its per-IP "Access denied" quota.
+_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+_CHALLENGE_MARKER = "verify your browser"
+_POW_MAX_ITERS = 8_000_000  # difficulty-4 needs ~65k hashes; this is a runaway backstop
+
 
 def parse_stooq_csv(text: str, symbol: str) -> FetchResult:
     """Parse a Stooq daily CSV into a ``FetchResult`` (no corporate actions).
@@ -75,6 +85,62 @@ def parse_stooq_csv(text: str, symbol: str) -> FetchResult:
     return FetchResult(symbol=symbol, bars=bars, actions=[])
 
 
+def _solve_pow(challenge: str, difficulty: int) -> str:
+    """Solve Stooq's browser-verification proof-of-work.
+
+    Find the smallest ``n`` such that ``hex(sha256(challenge + n))`` has ``difficulty`` leading
+    zeros — exactly what Stooq's ``<noscript>This site requires JavaScript to verify your
+    browser</noscript>`` page asks any JS-capable client to do. Difficulty 4 ≈ 65k hashes.
+    """
+    import hashlib  # noqa: PLC0415
+
+    target = "0" * difficulty
+    for n in range(_POW_MAX_ITERS):
+        if hashlib.sha256(f"{challenge}{n}".encode()).hexdigest().startswith(target):
+            return str(n)
+    raise DataError(
+        f"Stooq proof-of-work unsolved after {_POW_MAX_ITERS} iterations (difficulty={difficulty})"
+    )
+
+
+def _fetch_stooq_text(url: str) -> str:
+    """GET a Stooq CSV URL, transparently clearing the JS browser-verification gate if served.
+
+    Sends a browser user-agent (the bare ``Python-urllib`` UA 404s) and, if Stooq returns its
+    proof-of-work page instead of CSV, solves it like a browser would — POST ``/__verify`` then
+    reload carrying the auth cookie. Returns the raw response body; the caller decides whether the
+    body is CSV, "No data", or a still-blocked response and fails loud accordingly.
+    """
+    import http.cookiejar  # noqa: PLC0415
+    import re  # noqa: PLC0415
+    import urllib.parse  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    def _get(target: str, data: bytes | None = None, *, form: bool = False) -> str:
+        headers = {"User-Agent": _UA, "Accept": "text/csv,text/plain,*/*"}
+        if form:
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            headers["Origin"] = "https://stooq.com"
+            headers["Referer"] = url
+        req = urllib.request.Request(target, data=data, headers=headers)
+        with opener.open(req, timeout=30) as resp:  # noqa: S310 — fixed https host
+            body: str = resp.read().decode("utf-8", "replace")
+        return body
+
+    text = _get(url)
+    challenge = re.search(r'c="([^"]+)"', text)
+    if challenge is not None and _CHALLENGE_MARKER in text.lower():
+        diff_match = re.search(r"\bd=(\d+)", text)
+        nonce = _solve_pow(challenge.group(1), int(diff_match.group(1)) if diff_match else 4)
+        verify = urllib.parse.urlencode({"c": challenge.group(1), "n": nonce}).encode()
+        _get("https://stooq.com/__verify", data=verify, form=True)
+        text = _get(url)  # reload now carries the auth cookie set by /__verify
+    return text
+
+
 class StooqAdapter:
     """Live Stooq adapter: key-free daily CSV over HTTP.
 
@@ -86,11 +152,22 @@ class StooqAdapter:
     parser_version = PARSER_VERSION
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
-        import urllib.request  # noqa: PLC0415
-
         url = f"https://stooq.com/q/d/l/?s={symbol}&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
-        with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 — fixed https host
-            text = resp.read().decode("utf-8")
-        if "No data" in text or not text.strip():
+        text = _fetch_stooq_text(url)
+        stripped = text.strip()
+        if not stripped or "No data" in text:
             raise DataError(f"Stooq returned no data for {symbol} {start}..{end}")
+        # Stooq gates its free CSV behind an anti-bot challenge + per-IP download quota; a blocked
+        # client gets a bare "Access denied", a leftover challenge page, or HTML — fail loud, don't
+        # feed non-CSV to the parser.
+        if (
+            stripped == "Access denied"
+            or _CHALLENGE_MARKER in text.lower()
+            or stripped.startswith("<")
+        ):
+            raise DataError(
+                f"Stooq withheld the free CSV for {symbol} ({stripped[:40]!r}): the /q/d/l/ "
+                "endpoint is gated behind an anti-bot challenge + per-IP download quota. "
+                "Use --source yfinance for equities/ETFs."
+            )
         return parse_stooq_csv(text, symbol)
