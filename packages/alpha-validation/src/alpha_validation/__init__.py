@@ -33,7 +33,14 @@ from alpha_validation.metrics import (
     sharpe_ratio,
     to_returns,
 )
-from alpha_validation.montecarlo import NullResult, StrategyFn, randomized_price_null
+from alpha_validation.montecarlo import (
+    NullResult,
+    StrategyFn,
+    garch_paths,
+    parametric_price_null,
+    randomized_price_null,
+    student_t_paths,
+)
 from alpha_validation.overfitting import PBOResult, probability_of_backtest_overfitting
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
 from alpha_validation.tearsheet import (
@@ -75,8 +82,10 @@ __all__ = [
     "combinatorial_purged_splits",
     "deflated_sharpe",
     "expected_max_sharpe",
+    "garch_paths",
     "max_drawdown",
     "n_cpcv_splits",
+    "parametric_price_null",
     "probabilistic_sharpe_ratio",
     "probability_of_backtest_overfitting",
     "randomized_price_null",
@@ -86,6 +95,7 @@ __all__ = [
     "sharpe_ratio",
     "spa_test",
     "stationary_bootstrap_indices",
+    "student_t_paths",
     "to_returns",
     "walk_forward_splits",
 ]
