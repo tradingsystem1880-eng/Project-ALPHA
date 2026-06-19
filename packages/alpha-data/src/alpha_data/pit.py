@@ -10,6 +10,7 @@ from pydantic import AwareDatetime
 
 from alpha_core import CorporateAction
 from alpha_data.corporate import cash_dividends, known_actions, split_factor
+from alpha_data.schema import validate_bars
 from alpha_data.store import ParquetStore
 
 _PRICE_COLS = ("open", "high", "low", "close")
@@ -31,8 +32,11 @@ class PointInTimeReader:
         self._actions = actions
 
     def as_of(self, symbol: str, when: AwareDatetime) -> pl.DataFrame:
-        # bars arrive ts-sorted from the store; downstream positional reads depend on it
-        bars = self._store.read_bars(symbol).filter(pl.col("ts") <= when)  # firewall
+        # validate_bars enforces the ts-sorted/unique, finite, OHLC-consistent invariant that the
+        # filter + downstream positional reads depend on (fails loud); then apply the firewall cut.
+        bars = validate_bars(self._store.read_bars(symbol), symbol=symbol).filter(
+            pl.col("ts") <= when
+        )
         known = known_actions(
             self._actions.get(symbol, []), when.astimezone(UTC).date()
         )  # knowledge gate
