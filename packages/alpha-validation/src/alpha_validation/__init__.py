@@ -13,6 +13,11 @@ from alpha_validation.bootstrap import (
     block_bootstrap_ci,
     stationary_bootstrap_indices,
 )
+from alpha_validation.cpcv import (
+    CPCVSplit,
+    combinatorial_purged_splits,
+    n_cpcv_splits,
+)
 from alpha_validation.dsr import (
     DeflatedSharpeResult,
     deflated_sharpe,
@@ -45,6 +50,7 @@ __version__ = "0.0.0"
 
 __all__ = [
     "CISummary",
+    "CPCVSplit",
     "ConfidenceInterval",
     "DeflatedSharpeResult",
     "FloatArray",
@@ -62,9 +68,11 @@ __all__ = [
     "block_bootstrap_ci",
     "build_outcomes",
     "cagr",
+    "combinatorial_purged_splits",
     "deflated_sharpe",
     "expected_max_sharpe",
     "max_drawdown",
+    "n_cpcv_splits",
     "probabilistic_sharpe_ratio",
     "randomized_price_null",
     "render_tearsheet_html",
