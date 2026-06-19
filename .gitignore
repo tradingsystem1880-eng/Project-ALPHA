@@ -19,5 +19,8 @@ htmlcov/
 # Env / secrets
 .env
 
+# macOS
+.DS_Store
+
 # Data is large + reproducible from snapshots; never commit it
 data/
