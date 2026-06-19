@@ -13,6 +13,12 @@ from alpha_validation.bootstrap import (
     block_bootstrap_ci,
     stationary_bootstrap_indices,
 )
+from alpha_validation.dsr import (
+    DeflatedSharpeResult,
+    deflated_sharpe,
+    expected_max_sharpe,
+    probabilistic_sharpe_ratio,
+)
 from alpha_validation.metrics import (
     FloatArray,
     FloatSeq,
@@ -40,6 +46,7 @@ __version__ = "0.0.0"
 __all__ = [
     "CISummary",
     "ConfidenceInterval",
+    "DeflatedSharpeResult",
     "FloatArray",
     "FloatSeq",
     "FoldSummary",
@@ -55,7 +62,10 @@ __all__ = [
     "block_bootstrap_ci",
     "build_outcomes",
     "cagr",
+    "deflated_sharpe",
+    "expected_max_sharpe",
     "max_drawdown",
+    "probabilistic_sharpe_ratio",
     "randomized_price_null",
     "render_tearsheet_html",
     "report_to_manifest",
