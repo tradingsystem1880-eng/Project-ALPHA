@@ -45,6 +45,10 @@ def test_validate_writes_manifest_and_tearsheet(
         "walk_forward_oos",
         "randomized_price_null",
         "bootstrap_ci",
+        "deflated_sharpe",
+        "cpcv_oos",
     }
+    assert manifest["dsr"]["n_trials"] == 1  # single-config DSR reduces to PSR
+    assert manifest["cpcv"]["n_folds"] >= 1
     assert isinstance(manifest["passed"], bool)
     assert manifest["metadata"]["quantstats_version"]  # provenance recorded

@@ -28,6 +28,8 @@ from alpha_core import Bar
 from alpha_validation import (
     CISummary,
     ConfidenceInterval,
+    CPCVSummary,
+    DSRSummary,
     FloatArray,
     GauntletReport,
     NullResult,
@@ -38,6 +40,8 @@ from alpha_validation import (
     block_bootstrap_ci,
     build_outcomes,
     cagr,
+    combinatorial_purged_splits,
+    deflated_sharpe,
     max_drawdown,
     randomized_price_null,
     sharpe_ratio,
@@ -59,6 +63,9 @@ class GauntletParams:
     mean_block: float = 5.0
     threshold: float = 0.95
     confidence: float = 0.95
+    dsr_threshold: float = 0.95  # deflated-Sharpe pass bar (P(true SR > deflation benchmark))
+    cpcv_groups: int = 6  # CPCV partition count over the OOS stream
+    cpcv_test_groups: int = 2  # groups held out per CPCV fold
     max_workers: int | None = None
 
 
@@ -97,6 +104,8 @@ def run_gauntlet(
             _degenerate_ci("sharpe", params.confidence),
             _degenerate_ci("cagr", params.confidence),
         )
+        dsr = _degenerate_dsr(params.dsr_threshold)
+        cpcv = _degenerate_cpcv()
     else:
         safe_sharpe = _safe_sharpe(ppy)
         # Tier 1 — cheap returns-level null: the strategy's surrogate on block-resampled returns.
@@ -145,7 +154,12 @@ def run_gauntlet(
         )
         cis = (_ci_summary("sharpe", sharpe_ci), _ci_summary("cagr", cagr_ci))
 
-    outcomes = build_outcomes(oos_metrics=oos_metrics, nulls=nulls, cis=cis)
+        # Deflated/Probabilistic Sharpe on the OOS stream (single-config: n_trials=1 → DSR=PSR) and
+        # the CPCV distribution of OOS Sharpe across combinatorial time-slice folds.
+        dsr = _dsr_summary(oos.oos_returns, params.dsr_threshold)
+        cpcv = _cpcv_summary(oos.oos_returns, params, ppy)
+
+    outcomes = build_outcomes(oos_metrics=oos_metrics, nulls=nulls, cis=cis, dsr=dsr, cpcv=cpcv)
     report = GauntletReport(
         metadata=_metadata(run_id, bars, spec, params, snapshot_id),
         oos_metrics=oos_metrics,
@@ -154,6 +168,8 @@ def run_gauntlet(
         cis=cis,
         outcomes=outcomes,
         passed=all(o.passed for o in outcomes),
+        dsr=dsr,
+        cpcv=cpcv,
     )
     return GauntletOutput(report=report, oos=oos, result=result)
 
@@ -201,6 +217,73 @@ def _degenerate_ci(metric: str, confidence: float) -> CISummary:
     """A NaN confidence interval for when the OOS is flat (the bootstrap is undefined)."""
     return CISummary(
         metric=metric, point=math.nan, lower=math.nan, upper=math.nan, confidence=confidence
+    )
+
+
+def _dsr_summary(oos_returns: FloatArray, threshold: float) -> DSRSummary:
+    """Deflated/Probabilistic Sharpe of the OOS stream (single config → n_trials=1, DSR=PSR)."""
+    res = deflated_sharpe(oos_returns, threshold=threshold)
+    return DSRSummary(
+        sharpe=res.sharpe,
+        psr=res.psr,
+        dsr=res.dsr,
+        expected_max_sharpe=res.expected_max_sharpe,
+        n_trials=res.n_trials,
+        threshold=res.threshold,
+        passed=res.passed,
+    )
+
+
+def _degenerate_dsr(threshold: float) -> DSRSummary:
+    """A not-passed DSR summary for a flat OOS (PSR/DSR undefined on zero variance)."""
+    return DSRSummary(
+        sharpe=math.nan,
+        psr=math.nan,
+        dsr=math.nan,
+        expected_max_sharpe=math.nan,
+        n_trials=1,
+        threshold=threshold,
+        passed=False,
+    )
+
+
+def _cpcv_summary(
+    oos_returns: FloatArray, params: GauntletParams, periods_per_year: int
+) -> CPCVSummary:
+    """Distribution of OOS Sharpe across CPCV folds of the OOS stream (degenerate folds score 0)."""
+    if oos_returns.size < params.cpcv_groups:
+        return _degenerate_cpcv()  # too few OOS points to partition into groups
+    splits = combinatorial_purged_splits(
+        oos_returns.size,
+        n_groups=params.cpcv_groups,
+        n_test_groups=params.cpcv_test_groups,
+        embargo=0,  # the OOS stream is already purged/embargoed at the walk-forward level
+    )
+    sharpes = np.array(
+        [_fold_sharpe(oos_returns[sp.test], periods_per_year) for sp in splits], dtype=np.float64
+    )
+    mean = float(np.mean(sharpes))
+    std = float(np.std(sharpes, ddof=1)) if sharpes.size >= 2 else 0.0
+    return CPCVSummary(
+        n_folds=int(sharpes.size),
+        mean_sharpe=mean,
+        std_sharpe=std,
+        frac_positive=float(np.mean(sharpes > 0.0)),
+        passed=mean > 0.0,
+    )
+
+
+def _fold_sharpe(slice_: FloatArray, periods_per_year: int) -> float:
+    """Annualized Sharpe of one CPCV test slice; 0.0 for a degenerate (flat/short) slice."""
+    if slice_.size >= 2 and float(np.std(slice_, ddof=1)) > 0.0:
+        return sharpe_ratio(slice_, periods_per_year=periods_per_year)
+    return 0.0
+
+
+def _degenerate_cpcv() -> CPCVSummary:
+    """A not-passed CPCV summary for when the OOS is flat or too short to partition."""
+    return CPCVSummary(
+        n_folds=0, mean_sharpe=math.nan, std_sharpe=math.nan, frac_positive=math.nan, passed=False
     )
 
 

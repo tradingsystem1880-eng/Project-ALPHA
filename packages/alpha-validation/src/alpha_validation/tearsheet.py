@@ -66,6 +66,30 @@ class CISummary:
 
 
 @dataclass(frozen=True)
+class DSRSummary:
+    """Probabilistic + Deflated Sharpe verdict for the OOS returns (skew/kurtosis/length aware)."""
+
+    sharpe: float  # per-observation OOS Sharpe
+    psr: float  # P(true SR > 0)
+    dsr: float  # PSR deflated against the expected-max Sharpe over n_trials
+    expected_max_sharpe: float
+    n_trials: int
+    threshold: float
+    passed: bool  # dsr >= threshold
+
+
+@dataclass(frozen=True)
+class CPCVSummary:
+    """Distribution of OOS Sharpe across combinatorial purged cross-validation folds."""
+
+    n_folds: int
+    mean_sharpe: float
+    std_sharpe: float
+    frac_positive: float  # share of folds with a positive OOS Sharpe
+    passed: bool  # mean OOS Sharpe across folds is positive
+
+
+@dataclass(frozen=True)
 class RunMetadata:
     """Everything needed to attribute and reproduce a run (the manifest's provenance block)."""
 
@@ -107,6 +131,8 @@ class GauntletReport:
     cis: tuple[CISummary, ...]  # sharpe + cagr
     outcomes: tuple[ValidationOutcome, ...]  # one per gate (the alpha_core contract)
     passed: bool  # all gates passed
+    dsr: DSRSummary | None = None  # probabilistic/deflated Sharpe (optional, back-compat default)
+    cpcv: CPCVSummary | None = None  # combinatorial purged CV OOS distribution (optional)
 
 
 def build_outcomes(
@@ -114,8 +140,10 @@ def build_outcomes(
     oos_metrics: Mapping[str, float],
     nulls: Sequence[NullSummary],
     cis: Sequence[CISummary],
+    dsr: DSRSummary | None = None,
+    cpcv: CPCVSummary | None = None,
 ) -> tuple[ValidationOutcome, ...]:
-    """Map the gauntlet gates to ``alpha_core.ValidationOutcome``s (spec §8 gates 2–4).
+    """Map the gauntlet gates to ``alpha_core.ValidationOutcome``s (spec §8 gates 2–4 + extensions).
 
     - ``walk_forward_oos`` (gate 2): passes when a finite OOS Sharpe was produced.
     - ``randomized_price_null`` (gate 3): passes only when the observed statistic beats the
@@ -123,6 +151,11 @@ def build_outcomes(
       full-engine).
     - ``bootstrap_ci`` (gate 4): passes when the Sharpe BCa interval's lower bound clears zero (the
       risk-adjusted edge is bounded away from zero); the interval itself is always reported.
+    - ``deflated_sharpe`` (when provided): passes when the deflated Sharpe clears its threshold.
+    - ``cpcv_oos`` (when provided): passes when the mean OOS Sharpe across CPCV folds is positive.
+
+    The two trailing gates are appended only when their summaries are supplied, so the core
+    three-gate contract is unchanged for callers that don't compute them.
     """
     sharpe = float(oos_metrics.get("sharpe", math.nan))
     walk_forward = ValidationOutcome(
@@ -156,7 +189,29 @@ def build_outcomes(
         passed=sharpe_ci is not None and sharpe_ci.lower > 0.0,
         detail=ci_detail,
     )
-    return (walk_forward, null, bootstrap_ci)
+    outcomes = [walk_forward, null, bootstrap_ci]
+
+    if dsr is not None:
+        outcomes.append(
+            ValidationOutcome(
+                name="deflated_sharpe",
+                passed=dsr.passed,
+                detail={"psr": dsr.psr, "dsr": dsr.dsr, "n_trials": float(dsr.n_trials)},
+            )
+        )
+    if cpcv is not None:
+        outcomes.append(
+            ValidationOutcome(
+                name="cpcv_oos",
+                passed=cpcv.passed,
+                detail={
+                    "mean_sharpe": cpcv.mean_sharpe,
+                    "std_sharpe": cpcv.std_sharpe,
+                    "frac_positive": cpcv.frac_positive,
+                },
+            )
+        )
+    return tuple(outcomes)
 
 
 def _sanitize(obj: Any) -> Any:
@@ -190,6 +245,8 @@ def report_to_manifest(report: GauntletReport) -> dict[str, Any]:
         "outcomes": [
             {"name": o.name, "passed": o.passed, "detail": dict(o.detail)} for o in report.outcomes
         ],
+        "dsr": dataclasses.asdict(report.dsr) if report.dsr is not None else None,
+        "cpcv": dataclasses.asdict(report.cpcv) if report.cpcv is not None else None,
         "passed": report.passed,
     }
     return {k: _sanitize(v) for k, v in manifest.items()}
@@ -248,8 +305,37 @@ def _validation_section_html(report: GauntletReport) -> str:
     <tr><th>Metric</th><th>Point</th><th>Lower</th><th>Upper</th><th>Confidence</th></tr>
     {ci_rows}
   </table>
+  {_dsr_cpcv_html(report)}
 </section>
 """
+
+
+def _dsr_cpcv_html(report: GauntletReport) -> str:
+    """The Deflated-Sharpe + CPCV tables, rendered only when those gates were computed."""
+    parts: list[str] = []
+    if report.dsr is not None:
+        d = report.dsr
+        parts.append(
+            "<h3>Deflated / Probabilistic Sharpe</h3>"
+            '<table border="1" cellpadding="4" cellspacing="0">'
+            "<tr><th>PSR</th><th>DSR</th><th>E[max SR]</th><th>Trials</th>"
+            "<th>Threshold</th><th>Result</th></tr>"
+            f"<tr><td>{_fmt(d.psr)}</td><td>{_fmt(d.dsr)}</td>"
+            f"<td>{_fmt(d.expected_max_sharpe)}</td><td>{d.n_trials}</td>"
+            f"<td>{_fmt(d.threshold)}</td><td>{'PASS' if d.passed else 'FAIL'}</td></tr></table>"
+        )
+    if report.cpcv is not None:
+        c = report.cpcv
+        parts.append(
+            "<h3>Combinatorial Purged Cross-Validation (OOS Sharpe)</h3>"
+            '<table border="1" cellpadding="4" cellspacing="0">'
+            "<tr><th>Folds</th><th>Mean Sharpe</th><th>Std Sharpe</th>"
+            "<th>Frac &gt; 0</th><th>Result</th></tr>"
+            f"<tr><td>{c.n_folds}</td><td>{_fmt(c.mean_sharpe)}</td><td>{_fmt(c.std_sharpe)}</td>"
+            f"<td>{_fmt(c.frac_positive)}</td>"
+            f"<td>{'PASS' if c.passed else 'FAIL'}</td></tr></table>"
+        )
+    return "\n".join(parts)
 
 
 def render_tearsheet_html(

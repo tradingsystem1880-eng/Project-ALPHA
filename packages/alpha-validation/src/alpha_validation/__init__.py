@@ -45,6 +45,8 @@ from alpha_validation.overfitting import PBOResult, probability_of_backtest_over
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
 from alpha_validation.tearsheet import (
     CISummary,
+    CPCVSummary,
+    DSRSummary,
     FoldSummary,
     GauntletReport,
     NullSummary,
@@ -60,7 +62,9 @@ __version__ = "0.0.0"
 __all__ = [
     "CISummary",
     "CPCVSplit",
+    "CPCVSummary",
     "ConfidenceInterval",
+    "DSRSummary",
     "DataSnoopingResult",
     "DeflatedSharpeResult",
     "FloatArray",
