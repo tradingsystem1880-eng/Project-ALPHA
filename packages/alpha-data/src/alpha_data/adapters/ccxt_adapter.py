@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 
 import polars as pl
@@ -12,6 +13,41 @@ from alpha_data.adapters.base import FetchResult
 
 _VERSION = "1"
 PARSER_VERSION = "1"
+_DAY_MS = 86_400_000
+_PAGE_LIMIT = 300  # coinbase caps fetch_ohlcv at 300 candles/call; page forward past it
+
+
+def _paginate_ohlcv(
+    fetch_page: Callable[[int], list[list[float]]],
+    *,
+    since_ms: int,
+    end_ms: int,
+    page_limit: int = _PAGE_LIMIT,
+    step_ms: int = _DAY_MS,
+) -> list[list[float]]:
+    """Walk a page-capped ``fetch_ohlcv`` forward from ``since_ms`` until it covers ``end_ms``.
+
+    A single ``fetch_ohlcv`` call returns at most ``page_limit`` candles, so for any range wider
+    than that a lone call silently drops the tail. We advance the cursor past the last bar of each
+    page (``last_ts + step_ms``) and re-request until we pass ``end_ms`` or the exchange stops
+    yielding new data. The forward-progress guard (``last_ts <= prev_last``) ensures a broken
+    exchange that ignores ``since`` terminates instead of looping forever. Returns bars ascending;
+    page seams may overlap, so the caller dedupes by timestamp.
+    """
+    out: list[list[float]] = []
+    cursor = since_ms
+    prev_last: int | None = None
+    while cursor <= end_ms:
+        page = fetch_page(cursor)
+        if not page:
+            break
+        last_ts = int(page[-1][0])
+        if prev_last is not None and last_ts <= prev_last:
+            break  # no forward progress — stop rather than loop forever
+        out.extend(page)
+        prev_last = last_ts
+        cursor = last_ts + step_ms
+    return out
 
 
 def parse_ccxt_ohlcv(ohlcv: list[list[float]], symbol: str) -> FetchResult:
@@ -75,11 +111,20 @@ class CCXTAdapter:
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs  # noqa: PLC0415
 
-        ex = getattr(ccxt, self._exchange)()
+        # enableRateLimit: pagination issues one call per ~300-day page (≈9 for a 7y range);
+        # rate-limiting keeps us a good public-API citizen and avoids throttling/bans.
+        ex = getattr(ccxt, self._exchange)({"enableRateLimit": True})
         since = int(datetime(start.year, start.month, start.day, tzinfo=UTC).timestamp() * 1000)
-        raw = ex.fetch_ohlcv(symbol, timeframe="1d", since=since)
         end_ms = int(datetime(end.year, end.month, end.day, tzinfo=UTC).timestamp() * 1000)
-        raw = [r for r in raw if r[0] <= end_ms]
-        if not raw:
+
+        raw = _paginate_ohlcv(
+            lambda cur: ex.fetch_ohlcv(symbol, timeframe="1d", since=cur, limit=_PAGE_LIMIT),
+            since_ms=since,
+            end_ms=end_ms,
+        )
+        # Clip to the requested window and dedupe by timestamp (page seams can overlap), ascending.
+        by_ts = {int(r[0]): r for r in raw if since <= r[0] <= end_ms}
+        clipped = [by_ts[ts] for ts in sorted(by_ts)]
+        if not clipped:
             raise DataError(f"ccxt returned no data for {symbol} {start}..{end}")
-        return parse_ccxt_ohlcv(raw, symbol)
+        return parse_ccxt_ohlcv(clipped, symbol)
