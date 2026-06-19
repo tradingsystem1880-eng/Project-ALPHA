@@ -64,11 +64,47 @@ class RunSpec:
     test_size: int
     embargo: int
     anchored: bool
+    strategy_name: str = "ts_momentum"
+    # per-strategy params not promoted to first-class fields, as sorted (name, value) pairs so the
+    # spec stays one fixed, picklable, hashable shape across every strategy.
+    strategy_params: tuple[tuple[str, float], ...] = ()
+
+    def param(self, name: str, default: float) -> float:
+        """Read a per-strategy parameter from ``strategy_params``, or ``default`` if absent."""
+        for key, value in self.strategy_params:
+            if key == name:
+                return value
+        return default
 
     @property
     def min_train(self) -> int:
-        """Warmup floor: the first scored OOS bar must have a valid signal and vol estimate."""
-        return max(self.lookback + self.skip + 1, self.vol_window + 1)
+        """Warmup floor (strategy-specific): the first scored OOS bar must be fully warmed up."""
+        from alpha_cli import _strategies
+
+        return _strategies.warmup_for(self)
+
+
+def parse_strategy_params(items: Sequence[str] | None) -> tuple[tuple[str, float], ...]:
+    """Parse repeatable ``name=value`` CLI options into the spec's sorted ``strategy_params`` shape.
+
+    Sorted by name so the same params in any CLI order produce the same ``RunSpec`` (and run id).
+    Fails loud (``DataError``) on a malformed item or a non-numeric value.
+    """
+    if not items:
+        return ()
+    parsed: dict[str, float] = {}
+    for item in items:
+        if "=" not in item:
+            raise DataError(f"strategy param must be name=value, got {item!r}")
+        name, _, raw = item.partition("=")
+        name = name.strip()
+        if not name:
+            raise DataError(f"strategy param has empty name: {item!r}")
+        try:
+            parsed[name] = float(raw)
+        except ValueError:
+            raise DataError(f"strategy param {name!r} must be numeric, got {raw!r}") from None
+    return tuple(sorted(parsed.items()))
 
 
 def load_bars(
@@ -92,36 +128,25 @@ def load_bars(
 
 
 def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
-    """Run the fixed-parameter TS-momentum strategy over ``bars`` once, net of costs.
+    """Run ``spec``'s fixed-parameter strategy over ``bars`` once, net of costs.
 
     The single source of truth for both ``alpha backtest run`` and the validation gauntlet (and
-    every synthetic Tier-2 path). Engine imports are lazy so the pure helpers above stay importable
-    without dragging in nautilus.
+    every synthetic Tier-2 path). The concrete strategy is resolved through the registry
+    (``_strategies``); engine imports are lazy so the pure helpers above stay importable without
+    dragging in nautilus.
     """
     from nautilus_trader.model.enums import AccountType
 
     from alpha_backtest.engine import run_backtest
     from alpha_backtest.feed import daily_bar_type, to_execution_feed
     from alpha_backtest.instruments import equity_instrument
-    from alpha_strategies.ts_momentum import TimeSeriesMomentum
+    from alpha_cli import _strategies
 
     symbol = bars[0].symbol
     instrument = equity_instrument(symbol)
     bar_type = daily_bar_type(symbol)
     feed = to_execution_feed(bars, bar_type, slippage_bps=spec.slippage_bps)
-    strategy = TimeSeriesMomentum(
-        instrument_id=instrument.id,
-        bar_type=bar_type,
-        lookback=spec.lookback,
-        skip=spec.skip,
-        vol_window=spec.vol_window,
-        target_vol=spec.target_vol,
-        capital=spec.starting_cash,
-        max_leverage=spec.max_leverage,
-        rebalance_every=spec.rebalance_every,
-        periods_per_year=spec.periods_per_year,
-        allow_short=spec.allow_short,
-    )
+    strategy = _strategies.build_strategy(spec, instrument.id, bar_type)
     account_type = AccountType.MARGIN if spec.account_type == "MARGIN" else AccountType.CASH
     return run_backtest(
         instrument,

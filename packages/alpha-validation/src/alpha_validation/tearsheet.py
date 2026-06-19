@@ -92,6 +92,8 @@ class RunMetadata:
     first_ts: str  # ISO; provenance only
     last_ts: str
     quantstats_version: str
+    strategy_name: str = "ts_momentum"
+    strategy_params: tuple[tuple[str, float], ...] = ()  # per-strategy params, for full provenance
 
 
 @dataclass(frozen=True)

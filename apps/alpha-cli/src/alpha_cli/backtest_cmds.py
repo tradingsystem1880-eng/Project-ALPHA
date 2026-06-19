@@ -20,6 +20,7 @@ _load_bars = _runner.load_bars
 @backtest_app.command()
 def run(
     symbol: str,
+    strategy: str = "ts_momentum",
     lookback: int = 252,
     skip: int = 21,
     vol_window: int = 63,
@@ -31,9 +32,14 @@ def run(
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
+    param: list[str] | None = None,
     snapshot: str | None = None,
 ) -> None:
-    """Backtest SYMBOL with the fixed-parameter TS-momentum strategy; write the run artifacts."""
+    """Backtest SYMBOL with the fixed-parameter strategy; write the run artifacts.
+
+    ``--strategy`` selects the registered strategy; ``--param name=value`` (repeatable) supplies any
+    strategy-specific parameters beyond the shared ones.
+    """
     settings = AlphaSettings()
     # walk-forward fields are unused by a plain backtest; carry coherent defaults
     spec = _runner.RunSpec(
@@ -53,6 +59,8 @@ def run(
         test_size=63,
         embargo=5,
         anchored=False,
+        strategy_name=strategy,
+        strategy_params=_runner.parse_strategy_params(param),
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
     result = _runner.run_full_backtest(bars, spec)

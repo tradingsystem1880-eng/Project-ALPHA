@@ -19,6 +19,7 @@ _load_bars = _runner.load_bars
 
 def validate(
     symbol: str,
+    strategy: str = "ts_momentum",
     lookback: int = 252,
     skip: int = 21,
     vol_window: int = 63,
@@ -34,6 +35,7 @@ def validate(
     test_size: int = 63,
     embargo: int = 5,
     anchored: bool = False,
+    param: list[str] | None = None,
     tier1_paths: int = 1000,
     tier2_paths: int = 64,
     n_resamples: int = 2000,
@@ -43,7 +45,11 @@ def validate(
     max_workers: int | None = None,
     snapshot: str | None = None,
 ) -> None:
-    """Validate SYMBOL end-to-end and write the run artifacts (manifest, parquet, tear sheet)."""
+    """Validate SYMBOL end-to-end and write the run artifacts (manifest, parquet, tear sheet).
+
+    ``--strategy`` selects the registered strategy; ``--param name=value`` (repeatable) supplies any
+    strategy-specific parameters beyond the shared ones.
+    """
     settings = AlphaSettings()
     resolved_seed = seed if seed is not None else settings.random_seed
     spec = _runner.RunSpec(
@@ -63,6 +69,8 @@ def validate(
         test_size=test_size,
         embargo=embargo,
         anchored=anchored,
+        strategy_name=strategy,
+        strategy_params=_runner.parse_strategy_params(param),
     )
     gparams = _gauntlet.GauntletParams(
         seed=resolved_seed,

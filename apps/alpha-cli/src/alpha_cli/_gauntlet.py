@@ -22,7 +22,7 @@ from alpha_cli._runner import (
     run_full_backtest,
     walk_forward_oos_for_spec,
 )
-from alpha_cli._surrogate import make_ts_momentum_surrogate
+from alpha_cli._strategies import surrogate_for
 from alpha_cli._synth import full_engine_null
 from alpha_core import Bar
 from alpha_validation import (
@@ -85,19 +85,9 @@ def run_gauntlet(
 
     t1_seed, t2_seed, sharpe_seed, cagr_seed = _child_seeds(params.seed, 4)
 
-    # Tier 1 — cheap returns-level null: the surrogate run on block-resampled price returns.
+    # Tier 1 — cheap returns-level null: the strategy's surrogate run on block-resampled returns.
     price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
-    surrogate = make_ts_momentum_surrogate(
-        lookback=spec.lookback,
-        skip=spec.skip,
-        vol_window=spec.vol_window,
-        target_vol=spec.target_vol,
-        rebalance_every=spec.rebalance_every,
-        periods_per_year=ppy,
-        max_leverage=spec.max_leverage,
-        allow_short=spec.allow_short,
-        cost_bps=spec.fee_bps + spec.slippage_bps,  # turnover-cost proxy for the cheap analogue
-    )
+    surrogate = surrogate_for(spec)
     tier1 = randomized_price_null(
         price_returns,
         surrogate,
@@ -221,4 +211,6 @@ def _metadata(
         first_ts=bars[0].ts.isoformat(),
         last_ts=bars[-1].ts.isoformat(),
         quantstats_version=version("quantstats-lumi"),
+        strategy_name=spec.strategy_name,
+        strategy_params=spec.strategy_params,
     )
