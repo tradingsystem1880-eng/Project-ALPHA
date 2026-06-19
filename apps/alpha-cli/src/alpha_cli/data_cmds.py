@@ -9,6 +9,7 @@ import typer
 
 from alpha_core.config import AlphaSettings
 from alpha_data.adapters.ccxt_adapter import CCXTAdapter
+from alpha_data.adapters.stooq_adapter import StooqAdapter
 from alpha_data.adapters.yfinance_adapter import YFinanceAdapter
 from alpha_data.ingest import store_fetch_result
 from alpha_data.snapshot import create_snapshot, verify_snapshot
@@ -17,7 +18,11 @@ from alpha_data.store import ParquetStore
 data_app = typer.Typer(help="Data ingestion, snapshots, and integrity.")
 
 # adapter registry — tests monkeypatch this to inject offline fakes
-_ADAPTERS: dict[str, type] = {"yfinance": YFinanceAdapter, "ccxt": CCXTAdapter}
+_ADAPTERS: dict[str, type] = {
+    "yfinance": YFinanceAdapter,
+    "ccxt": CCXTAdapter,
+    "stooq": StooqAdapter,
+}
 
 
 def _store() -> ParquetStore:
