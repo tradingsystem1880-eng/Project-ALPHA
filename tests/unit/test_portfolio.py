@@ -1,0 +1,77 @@
+"""Diversified-basket portfolio backtest (``alpha_cli._portfolio``)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from alpha_cli._portfolio import run_portfolio
+from alpha_cli._runner import RunSpec
+from alpha_core import DataError
+from tests.fixtures.cli_fixtures import seed_store
+
+
+def _spec() -> RunSpec:
+    return RunSpec(
+        lookback=5,
+        skip=1,
+        vol_window=3,
+        target_vol=0.15,
+        rebalance_every=2,
+        max_leverage=1.0,
+        allow_short=True,
+        periods_per_year=252,
+        fee_bps=0.0,
+        slippage_bps=0.0,
+        starting_cash=100_000.0,
+        account_type="CASH",
+        train_size=15,
+        test_size=5,
+        embargo=1,
+        anchored=False,
+    )
+
+
+def _seed_universe(data_dir: Path) -> list[str]:
+    symbols = ["SPY", "QQQ", "IWM"]
+    for i, sym in enumerate(symbols):
+        seed_store(data_dir, symbol=sym, n=80, seed=i, drift=0.0015 + 0.0005 * i)
+    return symbols
+
+
+def test_equal_weight_basket_combines_legs(tmp_path: Path) -> None:
+    symbols = _seed_universe(tmp_path)
+    res = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="equal")
+    assert res.symbols == ("SPY", "QQQ", "IWM")
+    assert res.n_periods > 0
+    assert res.portfolio_returns.size == res.n_periods
+    assert len(res.legs) == 3
+    assert all(leg.weight == pytest.approx(1 / 3) for leg in res.legs)
+    assert res.metrics["sharpe"] == res.metrics["sharpe"]  # finite (not NaN)
+    assert 0.0 <= res.psr <= 1.0
+
+
+def test_inverse_vol_weights_differ_and_sum_to_one(tmp_path: Path) -> None:
+    symbols = _seed_universe(tmp_path)
+    res = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="inverse_vol")
+    weights = [leg.weight for leg in res.legs]
+    assert sum(weights) == pytest.approx(1.0)
+    assert len(set(round(w, 6) for w in weights)) > 1  # not all identical
+
+
+def test_deterministic(tmp_path: Path) -> None:
+    symbols = _seed_universe(tmp_path)
+    a = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="equal")
+    b = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="equal")
+    assert (a.portfolio_returns == b.portfolio_returns).all()
+
+
+def test_fails_loud(tmp_path: Path) -> None:
+    symbols = _seed_universe(tmp_path)
+    with pytest.raises(DataError):
+        run_portfolio(symbols[:1], _spec(), data_dir=tmp_path)  # < 2 symbols
+    with pytest.raises(DataError):
+        run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="nope")
+    with pytest.raises(DataError):
+        run_portfolio(["SPY", "SPY"], _spec(), data_dir=tmp_path)  # duplicates
