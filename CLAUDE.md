@@ -8,11 +8,11 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Python 3.12, `uv` virtual workspace (root is not a package). Members: `packages/*`, `apps/*`.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
-`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation` ← `alpha_core`; `alpha_cli` ← everything.
+`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_portfolio` ← `alpha_core`; `alpha_cli` ← everything.
 - `alpha_core` imports nothing internal.
-- `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_backtest` → core + data only.
-- `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
-- Contracts live in root `pyproject.toml` `[tool.importlinter]` (5 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
+- `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_portfolio` → core only. `alpha_backtest` → core + data only.
+- `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet (and the portfolio optimizers).
+- Contracts live in root `pyproject.toml` `[tool.importlinter]` (6 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
 - **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `docs:`).
@@ -20,7 +20,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - **Execution convention:** decide on close of bar `t`, fill at open of `t+1`. Mechanism: `feed.to_execution_feed` emits an open-priced `QuoteTick` (at `bar.ts`) + a close-stamped (+23h) decision `Bar`; venue runs `bar_execution=False` so only quotes fill.
 - **No empty `except`.** Raise/propagate typed `AlphaError`/`DataError`/`LookAheadError` with context, or re-raise. Fail loud on data gaps / NaN / inf / disorder / degenerate stats.
 - **Polars** is the default dataframe. pandas + `quantstats_lumi` ONLY at the tear-sheet rendering edge (`alpha_validation.tearsheet`). `numpy`/`scipy.stats.norm` only in the `alpha_validation` numeric layer.
-- **Strong typing.** `mypy --strict` is a CI gate. Overrides (do not "fix"): `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*` are `ignore_missing_imports` (no loadable stubs); nautilus Cython base classes get `# type: ignore[misc]`.
+- **Strong typing.** `mypy --strict` is a CI gate. Overrides (do not "fix"): `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*`, `skfolio.*` are `ignore_missing_imports` (no loadable stubs); nautilus Cython base classes get `# type: ignore[misc]`.
 - **Determinism (spec §11.4).** All seeds derive from `AlphaSettings.random_seed` (default 7); the gauntlet spawns independent child seeds via `np.random.SeedSequence(master).spawn(n)` so gate order can't change results. `run_id` = sha256 of canonical sorted-key JSON of the params (no wall-clock). Manifests are byte-stable (sorted keys, `allow_nan=False` → non-finite must already be `null`).
 - **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application. Splits adjust the price series; dividends are decoupled cash events credited at `pay_date` (never folded into prices). See spec §6.1.
 
@@ -59,7 +59,8 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
 | `store.py` | Raw unadjusted Parquet store (wholesale replace) | `ParquetStore(root)`: `write_bars/read_bars/list_symbols/write_actions/read_actions` |
-| `pit.py` | **Look-ahead firewall** (frame-level) | `PointInTimeReader.as_of` (split-adjusted, future-excluded), `.dividends_as_of` |
+| `pit.py` | **Look-ahead firewall** (frame-level) | `PointInTimeReader.as_of` (schema-validated, split-adjusted, future-excluded), `.dividends_as_of` |
+| `schema.py` | Fail-loud bar-frame contract (pandera[polars]) | `validate_bars` (ts strictly-increasing/unique, finite/positive OHLC, `high>=low`, `volume>=0`) → `DataError` |
 | `source.py` | Typed PIT `DataSource` seam | `PointInTimeSource.as_of` → `list[Bar]`, `.dividends_as_of` |
 | `corporate.py` | Two-clock split/div math | `known_actions`, `cash_dividends`, `split_factor` |
 | `snapshot.py` | Immutable hashed snapshots + manifest | `create_snapshot`, `verify_snapshot` |
@@ -84,14 +85,20 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `frictions.py` | Per-notional fee model | `BpsFeeModel(fee_bps)` (slippage modeled separately in `feed`) |
 | `results.py` | Result schema | `BacktestResult(orders, fills, trades, equity_curve)` (`starting_equity`/`final_equity`), `Trade` |
 
-### `alpha_validation` (`packages/alpha-validation/src/alpha_validation/`) — engine-agnostic stats primitives + tear sheet. core only (+ numpy/scipy; pandas/quantstats at the tearsheet edge).
+### `alpha_validation` (`packages/alpha-validation/src/alpha_validation/`) — engine-agnostic stats primitives + tear sheet. core only (+ numpy/scipy/arch; pandas/quantstats at the tearsheet edge).
 | Module | Responsibility | Key public symbols |
 |---|---|---|
 | `metrics.py` | Pure numpy return/risk metrics | `to_returns`, `sharpe_ratio`, `annualized_volatility`, `cagr`, `max_drawdown`, `FloatArray`/`FloatSeq` |
+| `volatility.py` | GARCH conditional-vol (arch); fail-loud | `garch_conditional_volatility` (in-sample diagnostic, NOT causal), `garch_volatility_forecast` (causal 1-step annualized) |
 | `walkforward.py` | Causal purged/embargoed splitter | `walk_forward_splits(n, *, train_size, test_size, embargo, anchored) -> list[Split]` |
 | `bootstrap.py` | Stationary-bootstrap BCa CIs | `stationary_bootstrap_indices`, `block_bootstrap_ci`, `ConfidenceInterval`, `Statistic` |
 | `montecarlo.py` | Randomized-price null (Tier 1, returns-level) | `randomized_price_null`, `NullResult`, `StrategyFn` |
 | `tearsheet.py` | Report schema + render (pandas/quantstats edge) | `GauntletReport`, `RunMetadata`, `FoldSummary`, `NullSummary`, `CISummary`, `build_outcomes`, `report_to_manifest`, `render_tearsheet_html` |
+
+### `alpha_portfolio` (`packages/alpha-portfolio/src/alpha_portfolio/`) — pure multi-asset allocation primitives. core only (+ numpy/skfolio). Composed by the CLI; not yet wired to a command.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `optimize.py` | Fail-loud, deterministic allocators over an `(n_obs, n_assets)` returns matrix | `min_variance_weights`, `hierarchical_risk_parity_weights`, `ReturnsMatrix`/`FloatArray` |
 
 ### `alpha_cli` (`apps/alpha-cli/src/alpha_cli/`) — orchestration ONLY (allowed to compose engine + gauntlet). Engine imports are lazy.
 | Module | Responsibility | Key public symbols |
@@ -117,6 +124,7 @@ Overall `passed` = all gates pass.
 - **New strategy** → `alpha_strategies`: pure decision fn(s) in a new module + a `nautilus Strategy` subclass; bias-guard test required. Wire defaults via `_runner.RunSpec` / CLI flags.
 - **New data source** → `alpha_data/adapters/<name>_adapter.py`: a pure parser fn + a `DataAdapter` class (`name`/`version`/`parser_version`); register in `alpha_cli/data_cmds.py::_ADAPTERS`. Live-net code under `@pytest.mark.network`.
 - **New validation gate / statistic** → `alpha_validation`: engine-agnostic primitive (numpy/scipy, fail-loud), then wire into `alpha_cli/_gauntlet.py` and extend `tearsheet.build_outcomes`/the report schema.
+- **New portfolio optimizer / allocation rule** → `alpha_portfolio/optimize.py`: pure, fail-loud, deterministic fn over an `(n_obs, n_assets)` returns matrix (core only). Compose into a workflow from `alpha_cli`.
 - **Anything composing engine + gauntlet / multi-package orchestration** → `alpha_cli` ONLY (the DAG forbids it elsewhere). Keep engine imports lazy.
 - **New domain type / error / protocol / setting** → `alpha_core` (export via `__init__.py`).
 
