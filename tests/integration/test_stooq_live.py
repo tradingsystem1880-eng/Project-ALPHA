@@ -20,4 +20,4 @@ def test_stooq_live_pull_spy() -> None:
     assert result.bars.height > 30  # ~60 trading days in the window
     assert result.actions == []  # Stooq is provider-adjusted: no separate corporate actions
     # OHLC invariants held (every row was validated through Bar in the parser)
-    assert result.bars["close"].min() > 0
+    assert all(c > 0 for c in result.bars["close"].to_list())
