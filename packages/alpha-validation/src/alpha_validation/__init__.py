@@ -33,6 +33,10 @@ from alpha_validation.tearsheet import (
     render_tearsheet_html,
     report_to_manifest,
 )
+from alpha_validation.volatility import (
+    garch_conditional_volatility,
+    garch_volatility_forecast,
+)
 from alpha_validation.walkforward import Split, walk_forward_splits
 
 __version__ = "0.0.0"
@@ -55,6 +59,8 @@ __all__ = [
     "block_bootstrap_ci",
     "build_outcomes",
     "cagr",
+    "garch_conditional_volatility",
+    "garch_volatility_forecast",
     "max_drawdown",
     "randomized_price_null",
     "render_tearsheet_html",
