@@ -40,7 +40,8 @@ Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim` are Typer s
 - `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source]` — freeze store → immutable hashed snapshot.
 - `alpha data verify SNAPSHOT_ID` — re-hash snapshot vs manifest.
 - `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout, --param name=value, ...params, snapshot]` — one fixed-param run → artifacts.
-- `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, ...params]` — diversified basket: per-symbol OOS streams combined → portfolio metrics + PSR + manifest (`data_dir/portfolio/<run_id>`).
+- `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, ...params]` — diversified basket: per-symbol OOS streams combined → portfolio metrics + PSR + BCa CIs + manifest (`data_dir/portfolio/<run_id>`).
+- `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, ...params]` — relative-strength book: rank the universe, long winners / short losers, vol-targeted → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
 - `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud.
 - `alpha optim grid SYMBOL --grid name=v1,v2,... [--strategy, ...params, pbo_blocks, n_resamples, dsr_threshold, alpha, seed, max_workers]` — parameter sweep judged for overfitting (Deflated Sharpe + PBO + Reality-Check/SPA) → manifest (`data_dir/optim/<run_id>`).
 - `alpha report RUN_ID` — re-display a stored run from `data_dir/runs/<run_id>/manifest.json` (no engine re-run).
@@ -116,6 +117,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `_gauntlet.py` | Full gauntlet assembly (+ DSR, CPCV, null-model) | `run_gauntlet`, `GauntletParams`, `GauntletOutput` |
 | `_optim.py` | Parameter sweep + overfitting verdict | `run_optimization`, `expand_grid`, `OptimResult` |
 | `_portfolio.py` | Diversified-basket backtest | `run_portfolio`, `PortfolioResult`, `LegSummary` |
+| `_cross_sectional.py` | Cross-sectional momentum (returns-level panel) | `run_cross_sectional`, `CrossSectionalResult` |
 | `_surrogate.py` | Tier-1 engine-free surrogates | `make_surrogate` (generic), `make_ts_momentum_surrogate` |
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
 | `_artifacts.py` | Run-dir layout + manifest/parquet IO | `run_dir`, `write_run`, `read_manifest` |
@@ -138,5 +140,5 @@ A degenerate (flat/zero-variance) OOS short-circuits to a clean FAIL (degenerate
 
 ## Build status
 Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅.
-Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · Stooq data source ✅. Remaining: cross-sectional ranking (needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
+Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · cross-sectional momentum (returns-level panel, `alpha backtest cross-sectional`) ✅ · Stooq data source ✅. Remaining: full-engine cross-sectional (per-instrument t+1 fills; needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
 Phase 4 (paper trading via nautilus `SandboxExecutionClient`) intentionally deferred to post-v1.

@@ -191,3 +191,86 @@ def portfolio(
         f"PSR {result.psr:.3f} over {result.n_periods} periods; "
         f"manifest at {rdir / 'manifest.json'}"
     )
+
+
+@backtest_app.command(name="cross-sectional")
+def cross_sectional(
+    symbols: list[str],
+    lookback: int = 252,
+    skip: int = 21,
+    vol_window: int = 63,
+    target_vol: float = 0.15,
+    rebalance_every: int = 21,
+    top_quantile: float = 0.3,
+    long_short: bool = True,
+    max_leverage: float = 2.0,
+) -> None:
+    """Backtest a cross-sectional momentum book: long the universe's winners, short its losers.
+
+    Ranks SYMBOLS each rebalance by trailing return; longs the top ``--top-quantile`` and (unless
+    ``--no-long-short``) shorts the bottom, vol-targeted. Reports OOS metrics + PSR + BCa intervals
+    and writes a manifest under ``data_dir/cross_sectional``.
+    """
+    import json
+
+    from alpha_cli import _cross_sectional
+    from alpha_core import DataError
+
+    settings = AlphaSettings()
+    try:
+        result = _cross_sectional.run_cross_sectional(
+            symbols,
+            data_dir=settings.data_dir,
+            lookback=lookback,
+            skip=skip,
+            vol_window=vol_window,
+            target_vol=target_vol,
+            rebalance_every=rebalance_every,
+            top_quantile=top_quantile,
+            long_short=long_short,
+            max_leverage=max_leverage,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    run_id = _runner.run_id_for(
+        {
+            "command": "cross_sectional",
+            "symbols": sorted(symbols),
+            "lookback": lookback,
+            "skip": skip,
+            "vol_window": vol_window,
+            "target_vol": target_vol,
+            "rebalance_every": rebalance_every,
+            "top_quantile": top_quantile,
+            "long_short": long_short,
+            "max_leverage": max_leverage,
+        }
+    )
+    rdir = settings.data_dir / "cross_sectional" / run_id
+    rdir.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "schema_version": 1,
+        "run_id": run_id,
+        "command": "cross_sectional",
+        "symbols": list(result.symbols),
+        "long_short": result.long_short,
+        "n_long": result.n_long,
+        "n_periods": result.n_periods,
+        "metrics": {k: (v if v == v else None) for k, v in result.metrics.items()},
+        "psr": result.psr if result.psr == result.psr else None,
+        "dsr": result.dsr if result.dsr == result.dsr else None,
+        "sharpe_ci": {"lower": result.sharpe_ci.lower, "upper": result.sharpe_ci.upper},
+        "cagr_ci": {"lower": result.cagr_ci.lower, "upper": result.cagr_ci.upper},
+    }
+    (rdir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
+    )
+    book = "long-short" if long_short else "long-only"
+    typer.echo(
+        f"cross-sectional [{', '.join(result.symbols)}] ({book}, {result.n_long}/leg) -> "
+        f"run {run_id}: OOS Sharpe {result.metrics['sharpe']:.3f} "
+        f"[{result.sharpe_ci.lower:.2f}, {result.sharpe_ci.upper:.2f}], "
+        f"CAGR {result.metrics['cagr']:.3f}, PSR {result.psr:.3f} "
+        f"over {result.n_periods} periods; manifest at {rdir / 'manifest.json'}"
+    )
