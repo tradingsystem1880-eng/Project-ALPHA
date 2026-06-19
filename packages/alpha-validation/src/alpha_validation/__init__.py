@@ -34,6 +34,7 @@ from alpha_validation.metrics import (
     to_returns,
 )
 from alpha_validation.montecarlo import NullResult, StrategyFn, randomized_price_null
+from alpha_validation.overfitting import PBOResult, probability_of_backtest_overfitting
 from alpha_validation.tearsheet import (
     CISummary,
     FoldSummary,
@@ -59,6 +60,7 @@ __all__ = [
     "GauntletReport",
     "NullResult",
     "NullSummary",
+    "PBOResult",
     "RunMetadata",
     "Split",
     "Statistic",
@@ -74,6 +76,7 @@ __all__ = [
     "max_drawdown",
     "n_cpcv_splits",
     "probabilistic_sharpe_ratio",
+    "probability_of_backtest_overfitting",
     "randomized_price_null",
     "render_tearsheet_html",
     "report_to_manifest",
