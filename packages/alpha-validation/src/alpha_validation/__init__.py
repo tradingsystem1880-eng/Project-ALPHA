@@ -35,6 +35,7 @@ from alpha_validation.metrics import (
 )
 from alpha_validation.montecarlo import NullResult, StrategyFn, randomized_price_null
 from alpha_validation.overfitting import PBOResult, probability_of_backtest_overfitting
+from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
 from alpha_validation.tearsheet import (
     CISummary,
     FoldSummary,
@@ -53,6 +54,7 @@ __all__ = [
     "CISummary",
     "CPCVSplit",
     "ConfidenceInterval",
+    "DataSnoopingResult",
     "DeflatedSharpeResult",
     "FloatArray",
     "FloatSeq",
@@ -78,9 +80,11 @@ __all__ = [
     "probabilistic_sharpe_ratio",
     "probability_of_backtest_overfitting",
     "randomized_price_null",
+    "reality_check",
     "render_tearsheet_html",
     "report_to_manifest",
     "sharpe_ratio",
+    "spa_test",
     "stationary_bootstrap_indices",
     "to_returns",
     "walk_forward_splits",
