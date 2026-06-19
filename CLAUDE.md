@@ -34,7 +34,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Ruff: line-length 100, target py312, rules `E,F,I,B,UP,SIM`. Markers (`--strict-markers` on): `bias_guard` (look-ahead/survivorship guards, gated in CI), `network` (skipped in CI/offline).
 
 ## CLI surface (`apps/alpha-cli/src/alpha_cli/`)
-Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim` are Typer sub-apps; `validate`/`report` are root commands.
+Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim`/`paper` are Typer sub-apps; `validate`/`report` are root commands.
 - `alpha info` — print resolved `AlphaSettings` + core version.
 - `alpha data pull SYMBOL --source {yfinance,ccxt,stooq} --start --end` — fetch + store raw bars/actions.
 - `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source]` — freeze store → immutable hashed snapshot.
@@ -44,7 +44,8 @@ Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim` are Typer s
 - `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, ...params]` — relative-strength book: rank the universe, long winners / short losers, vol-targeted → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
 - `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud.
 - `alpha optim grid SYMBOL --grid name=v1,v2,... [--strategy, ...params, pbo_blocks, n_resamples, dsr_threshold, alpha, seed, max_workers]` — parameter sweep judged for overfitting (Deflated Sharpe + PBO + Reality-Check/SPA) → manifest (`data_dir/optim/<run_id>`).
-- `alpha report RUN_ID` — re-display a stored run from `data_dir/runs/<run_id>/manifest.json` (no engine re-run).
+- `alpha paper preflight SYMBOL [--strategy, --venue, --account-type, --starting-cash, --currency, --param]` — validate the Phase-4 paper wiring offline: build the sandbox exec + node configs + the parity strategy; reports the remaining live-data-adapter step.
+- `alpha report RUN_ID` — re-display any stored run (runs/optim/portfolio/cross_sectional) from its manifest (no engine re-run).
 Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.parquet, tearsheet.html}` (only the manifest+parquet are byte-pinned; HTML carries volatile fields).
 
 ## MODULE MAP
@@ -111,13 +112,15 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `backtest_cmds.py` | `alpha backtest run` / `portfolio` | `backtest_app`; `_load_bars` seam |
 | `validate_cmds.py` | `alpha validate` | `validate` |
 | `optim_cmds.py` | `alpha optim grid` | `optim_app` |
-| `report_cmds.py` | `alpha report` | `report` |
+| `paper_cmds.py` | `alpha paper preflight` | `paper_app` |
+| `report_cmds.py` | `alpha report` (all run types) | `report` |
 | `_strategies.py` | Strategy registry (dispatch by `strategy_name`) | `STRATEGIES`, `build_strategy`, `warmup_for`, `surrogate_for`, `known_strategies` |
 | `_runner.py` | Engine↔gauntlet glue, OOS stitch, run id | `RunSpec` (`strategy_name`, `strategy_params`, `param()`), `load_bars`, `parse_strategy_params`, `run_full_backtest`, `walk_forward_oos`/`_for_spec`, `OOSResult`, `run_id_for` |
 | `_gauntlet.py` | Full gauntlet assembly (+ DSR, CPCV, null-model) | `run_gauntlet`, `GauntletParams`, `GauntletOutput` |
 | `_optim.py` | Parameter sweep + overfitting verdict | `run_optimization`, `expand_grid`, `OptimResult` |
 | `_portfolio.py` | Diversified-basket backtest | `run_portfolio`, `PortfolioResult`, `LegSummary` |
 | `_cross_sectional.py` | Cross-sectional momentum (returns-level panel) | `run_cross_sectional`, `CrossSectionalResult` |
+| `_paper.py` | Phase-4 paper scaffold (sandbox exec + parity) | `build_sandbox_exec_config`, `build_paper_node_config`, `run_paper` (live run network-gated) |
 | `_surrogate.py` | Tier-1 engine-free surrogates | `make_surrogate` (generic), `make_ts_momentum_surrogate` |
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
 | `_artifacts.py` | Run-dir layout + manifest/parquet IO | `run_dir`, `write_run`, `read_manifest` |
@@ -141,4 +144,4 @@ A degenerate (flat/zero-variance) OOS short-circuits to a clean FAIL (degenerate
 ## Build status
 Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅.
 Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · cross-sectional momentum (returns-level panel, `alpha backtest cross-sectional`) ✅ · Stooq data source ✅. Remaining: full-engine cross-sectional (per-instrument t+1 fills; needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
-Phase 4 (paper trading via nautilus `SandboxExecutionClient`) intentionally deferred to post-v1.
+Phase 4 (paper trading) — scaffolded: nautilus `SandboxExecutionClient` venue (backtest-parity fills) + node-config assembly + a `alpha paper preflight` parity check, all offline-verified. Remaining (post-v1, network-bound): wiring a live market-data adapter + credentials to `_paper.run_paper`.

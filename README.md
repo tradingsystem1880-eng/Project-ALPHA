@@ -55,6 +55,9 @@ uv run alpha backtest cross-sectional SPY QQQ IWM GLD USO --top-quantile 0.3
 
 # 7. Re-display any stored run (no engine re-run)
 uv run alpha report <run_id>
+
+# 8. Paper-trading preflight: validate the sandbox exec venue + strategy parity (see Caveats)
+uv run alpha paper preflight AAPL --strategy ma_crossover
 ```
 
 Every command writes a byte-stable JSON manifest (and parquet/HTML where relevant) under
@@ -76,8 +79,17 @@ reproducible to the byte (`--seed` defaults to 7). Run any command with `--help`
 - **Validation has been exercised on synthetic + offline-fixture data.** It has not yet been run
   against a live market pull end-to-end (blocked by the above network constraint).
 
+## Paper trading (Phase 4 — scaffolded)
+
+The execution side is wired: `alpha paper preflight` builds a nautilus `SandboxExecutionClient`
+venue (fills with the *same* close-decide / next-open convention as the backtest) and constructs the
+**same strategy class** a backtest runs — verifying backtest↔paper parity offline. Going live needs
+the one piece the spec defers post-v1: a **live market-data adapter + credentials + network** (e.g. a
+nautilus Binance/Bybit testnet config). Supply it as `data_clients` to
+`alpha_cli._paper.run_paper(...)` on a networked host.
+
 ## Not yet built (intentional)
 
-- Paper trading (Phase 4, nautilus `SandboxExecutionClient`) — needs live feeds / crypto testnets.
+- Live paper-trading data feed (the user-supplied adapter described above).
 - Full-engine cross-sectional with per-instrument t+1 fills (a returns-level panel version ships now).
 - FRED macro / regime filters (needs a non-OHLCV store).
