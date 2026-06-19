@@ -64,6 +64,15 @@ def run(
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
     result = _runner.run_full_backtest(bars, spec)
+    # Fail loud (golden rule): a run that submitted orders but filled none — every order rejected —
+    # would otherwise report a misleading flat equity. The usual cause is a vol-targeted notional
+    # that exceeds CASH buying power once fees apply.
+    if result.fills == 0 and result.rejected > 0:
+        raise typer.BadParameter(
+            f"all {result.rejected} orders were rejected (no fills) for {symbol}: the vol-targeted "
+            f"notional exceeds buying power. Use --account-type MARGIN, lower --target-vol, or set "
+            f"--max-leverage below 1."
+        )
     run_id = _runner.run_id_for(
         {"command": "backtest_run", "symbol": symbol, "snapshot_id": snapshot_id, **vars(spec)}
     )
@@ -77,14 +86,16 @@ def run(
         "params": vars(spec),
         "orders": result.orders,
         "fills": result.fills,
+        "rejected": result.rejected,
         "n_trades": len(result.trades),
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,
     }
     _artifacts.write_run(rdir, manifest=manifest, equity=result.equity_curve, trades=result.trades)
+    warn = f" ({result.rejected} orders rejected)" if result.rejected else ""
     typer.echo(
-        f"backtest {symbol} -> run {run_id}: {result.orders} orders, "
-        f"{len(result.trades)} trades, final equity {result.final_equity:.2f}"
+        f"backtest {symbol} -> run {run_id}: {result.orders} orders, {result.fills} fills, "
+        f"{len(result.trades)} trades, final equity {result.final_equity:.2f}{warn}"
     )
 
 
