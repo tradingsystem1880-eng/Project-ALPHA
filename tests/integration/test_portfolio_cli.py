@@ -36,6 +36,12 @@ def test_portfolio_writes_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert len(manifest["legs"]) == 2
     assert manifest["n_periods"] > 0
     assert "sharpe_ci" in manifest and "lower" in manifest["sharpe_ci"]
+    assert (rdir / "tearsheet.html").exists()  # reporting parity with `alpha validate`
+
+    # the stored run is re-displayable via `alpha report`
+    report_out = runner.invoke(app, ["report", manifest["run_id"]])
+    assert report_out.exit_code == 0, report_out.output
+    assert "metrics:" in report_out.output and "leg[SPY]" in report_out.output
 
 
 def test_portfolio_rejects_single_symbol(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

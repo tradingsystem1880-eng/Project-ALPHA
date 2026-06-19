@@ -194,6 +194,23 @@ def portfolio(
     (rdir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
     )
+    from alpha_validation import render_returns_tearsheet
+
+    render_returns_tearsheet(
+        result.portfolio_returns,
+        result.portfolio_timestamps,
+        title=f"ALPHA Portfolio — {', '.join(result.symbols)} ({weighting})",
+        summary_rows=[
+            ("OOS Sharpe", f"{result.metrics['sharpe']:.3f}"),
+            ("Sharpe 95% CI", f"[{result.sharpe_ci.lower:.2f}, {result.sharpe_ci.upper:.2f}]"),
+            ("CAGR", f"{result.metrics['cagr']:.3f}"),
+            ("Max drawdown", f"{result.metrics['max_drawdown']:.3f}"),
+            ("Probabilistic Sharpe", f"{result.psr:.3f}"),
+            ("Periods", str(result.n_periods)),
+            ("Legs", ", ".join(f"{leg.symbol}={leg.weight:.2f}" for leg in result.legs)),
+        ],
+        output_path=rdir / "tearsheet.html",
+    )
     typer.echo(
         f"portfolio [{', '.join(result.symbols)}] ({weighting}) -> run {run_id}: "
         f"OOS Sharpe {result.metrics['sharpe']:.3f} "
@@ -278,6 +295,23 @@ def cross_sectional(
         json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
     )
     book = "long-short" if long_short else "long-only"
+    from alpha_validation import render_returns_tearsheet
+
+    render_returns_tearsheet(
+        result.returns,
+        result.timestamps,
+        title=f"ALPHA Cross-Sectional — {', '.join(result.symbols)} ({book}, {result.n_long}/leg)",
+        summary_rows=[
+            ("OOS Sharpe", f"{result.metrics['sharpe']:.3f}"),
+            ("Sharpe 95% CI", f"[{result.sharpe_ci.lower:.2f}, {result.sharpe_ci.upper:.2f}]"),
+            ("CAGR", f"{result.metrics['cagr']:.3f}"),
+            ("Max drawdown", f"{result.metrics['max_drawdown']:.3f}"),
+            ("Probabilistic Sharpe", f"{result.psr:.3f}"),
+            ("Book", f"{book}, {result.n_long} names/leg"),
+            ("Periods", str(result.n_periods)),
+        ],
+        output_path=rdir / "tearsheet.html",
+    )
     typer.echo(
         f"cross-sectional [{', '.join(result.symbols)}] ({book}, {result.n_long}/leg) -> "
         f"run {run_id}: OOS Sharpe {result.metrics['sharpe']:.3f} "

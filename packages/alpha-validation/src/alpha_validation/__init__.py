@@ -52,6 +52,7 @@ from alpha_validation.tearsheet import (
     NullSummary,
     RunMetadata,
     build_outcomes,
+    render_returns_tearsheet,
     render_tearsheet_html,
     report_to_manifest,
 )
@@ -94,6 +95,7 @@ __all__ = [
     "probability_of_backtest_overfitting",
     "randomized_price_null",
     "reality_check",
+    "render_returns_tearsheet",
     "render_tearsheet_html",
     "report_to_manifest",
     "sharpe_ratio",

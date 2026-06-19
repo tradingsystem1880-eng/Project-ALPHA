@@ -36,6 +36,11 @@ def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.Mon
     assert manifest["long_short"] is True
     assert manifest["n_periods"] > 0
     assert "sharpe_ci" in manifest
+    assert (rdir / "tearsheet.html").exists()  # reporting parity with `alpha validate`
+
+    report_out = runner.invoke(app, ["report", manifest["run_id"]])
+    assert report_out.exit_code == 0, report_out.output
+    assert "metrics:" in report_out.output
 
 
 def test_cross_sectional_rejects_single_symbol(

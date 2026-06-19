@@ -338,26 +338,25 @@ def _dsr_cpcv_html(report: GauntletReport) -> str:
     return "\n".join(parts)
 
 
-def render_tearsheet_html(
-    report: GauntletReport,
+def _render_with_section(
+    returns: FloatArray,
+    timestamps: Sequence[datetime],
     *,
-    oos_returns: FloatArray,
-    oos_timestamps: Sequence[datetime],
+    title: str,
+    section_html: str,
     output_path: Path,
-    periods_per_year: int = 252,
+    periods_per_year: int,
 ) -> None:
-    """Render the quantstats HTML tear sheet for the OOS returns + the gauntlet section.
+    """Write a quantstats HTML report for ``returns`` and inject a custom section near the end.
 
     The heavy rendering stack (matplotlib/quantstats) is imported lazily so merely importing
     ``alpha_validation`` stays cheap. ``periods_per_year`` is passed through explicitly because
-    quantstats defaults to 365 (calendar) — our daily convention is 252, and the tear sheet must
-    agree with the manifest. The HTML carries volatile fields (timestamps, fonts) and is therefore
-    deliberately outside the byte-identity guarantee (spec §11.4).
+    quantstats defaults to 365 (calendar) — our daily convention is 252. The HTML carries volatile
+    fields (timestamps, fonts) and is deliberately outside the byte-identity guarantee (spec §11.4).
     """
-    if len(oos_returns) != len(oos_timestamps):
+    if len(returns) != len(timestamps):
         raise DataError(
-            f"oos_returns ({len(oos_returns)}) and oos_timestamps ({len(oos_timestamps)}) "
-            "must align one-to-one"
+            f"returns ({len(returns)}) and timestamps ({len(timestamps)}) must align one-to-one"
         )
     import logging
 
@@ -368,22 +367,71 @@ def render_tearsheet_html(
     import pandas as pd
     import quantstats_lumi as qs
 
-    index = pd.DatetimeIndex(list(oos_timestamps))
+    index = pd.DatetimeIndex(list(timestamps))
     if index.tz is not None:
         index = index.tz_localize(None)  # quantstats works on naive daily dates
-    series = pd.Series(oos_returns, index=index, name="strategy")
+    series = pd.Series(returns, index=index, name="strategy")
 
-    qs.reports.html(
-        series,
-        output=str(output_path),
+    qs.reports.html(series, output=str(output_path), title=title, periods_per_year=periods_per_year)
+    rendered = output_path.read_text(encoding="utf-8")
+    marker = "</body>"
+    injected = (
+        rendered.replace(marker, section_html + marker, 1)
+        if marker in rendered
+        else rendered + section_html
+    )
+    output_path.write_text(injected, encoding="utf-8")
+
+
+def render_tearsheet_html(
+    report: GauntletReport,
+    *,
+    oos_returns: FloatArray,
+    oos_timestamps: Sequence[datetime],
+    output_path: Path,
+    periods_per_year: int = 252,
+) -> None:
+    """Render the quantstats HTML tear sheet for the OOS returns + the gauntlet section."""
+    _render_with_section(
+        oos_returns,
+        oos_timestamps,
         title=f"ALPHA OOS — {report.metadata.symbol}",
+        section_html=_validation_section_html(report),
+        output_path=output_path,
         periods_per_year=periods_per_year,
     )
-    rendered = output_path.read_text(encoding="utf-8")
-    section = _validation_section_html(report)
-    marker = "</body>"
-    if marker in rendered:
-        injected = rendered.replace(marker, section + marker, 1)
-    else:
-        injected = rendered + section
-    output_path.write_text(injected, encoding="utf-8")
+
+
+def render_returns_tearsheet(
+    returns: FloatArray,
+    timestamps: Sequence[datetime],
+    *,
+    title: str,
+    summary_rows: Sequence[tuple[str, str]],
+    output_path: Path,
+    periods_per_year: int = 252,
+) -> None:
+    """Render a quantstats tear sheet for an arbitrary return stream + a key/value summary table.
+
+    Used by the portfolio and cross-sectional commands (which have no single-run ``GauntletReport``)
+    to reach reporting parity with ``alpha validate``. ``summary_rows`` are ``(label, value)`` pairs
+    shown above the quantstats body.
+    """
+    rows = "".join(
+        f"<tr><td><b>{html.escape(label)}</b></td><td>{html.escape(value)}</td></tr>"
+        for label, value in summary_rows
+    )
+    section = (
+        '<section style="font-family: Arial, sans-serif; margin: 24px; max-width: 960px;">'
+        f"<h2>{html.escape(title)}</h2>"
+        '<table border="1" cellpadding="4" cellspacing="0">'
+        f"{rows}</table></section>"
+    )
+    _render_with_section(
+        returns,
+        timestamps,
+        title=title,
+        section_html=section,
+        output_path=output_path,
+        periods_per_year=periods_per_year,
+    )
