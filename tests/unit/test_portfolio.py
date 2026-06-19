@@ -50,6 +50,8 @@ def test_equal_weight_basket_combines_legs(tmp_path: Path) -> None:
     assert all(leg.weight == pytest.approx(1 / 3) for leg in res.legs)
     assert res.metrics["sharpe"] == res.metrics["sharpe"]  # finite (not NaN)
     assert 0.0 <= res.psr <= 1.0
+    assert res.sharpe_ci.lower <= res.sharpe_ci.point <= res.sharpe_ci.upper
+    assert res.cagr_ci.lower <= res.cagr_ci.upper
 
 
 def test_inverse_vol_weights_differ_and_sum_to_one(tmp_path: Path) -> None:

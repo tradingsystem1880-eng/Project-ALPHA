@@ -26,8 +26,10 @@ import numpy as np
 from alpha_cli._runner import RunSpec, load_bars, run_full_backtest, walk_forward_oos_for_spec
 from alpha_core import DataError
 from alpha_validation import (
+    ConfidenceInterval,
     FloatArray,
     annualized_volatility,
+    block_bootstrap_ci,
     cagr,
     deflated_sharpe,
     max_drawdown,
@@ -59,6 +61,8 @@ class PortfolioResult:
     metrics: dict[str, float]  # sharpe, cagr, annualized_vol, max_drawdown, total_return
     psr: float  # probabilistic Sharpe of the basket
     dsr: float  # deflated Sharpe (single basket → equals PSR)
+    sharpe_ci: ConfidenceInterval  # block-bootstrap BCa interval for the basket Sharpe
+    cagr_ci: ConfidenceInterval  # block-bootstrap BCa interval for the basket CAGR
     legs: tuple[LegSummary, ...]
 
 
@@ -95,9 +99,15 @@ def run_portfolio(
     *,
     data_dir: Path,
     weighting: str = "equal",
+    n_resamples: int = 2000,
+    mean_block: float = 5.0,
+    confidence: float = 0.95,
+    seed: int | None = 7,
 ) -> PortfolioResult:
     """Backtest a basket of ``symbols`` under ``spec`` and combine their OOS streams.
 
+    Reports the basket's headline metrics, Probabilistic/Deflated Sharpe, and block-bootstrap BCa
+    confidence intervals for its Sharpe and CAGR (the uncertainty band on what you'd trade).
     Fails loud (``DataError``) on an unknown ``weighting``, fewer than 2 symbols, a degenerate
     (flat) combined stream, or any leg whose data won't load / clear the warmup floor.
     """
@@ -129,6 +139,22 @@ def run_portfolio(
     ppy = spec.periods_per_year
     equity = np.concatenate(([1.0], np.cumprod(1.0 + returns)))
     dsr_res = deflated_sharpe(returns, threshold=0.95)
+    sharpe_ci = block_bootstrap_ci(
+        returns,
+        lambda r: sharpe_ratio(r, periods_per_year=ppy),
+        confidence=confidence,
+        n_resamples=n_resamples,
+        mean_block=mean_block,
+        seed=seed,
+    )
+    cagr_ci = block_bootstrap_ci(
+        returns,
+        lambda r: cagr(np.concatenate(([1.0], np.cumprod(1.0 + r))), periods_per_year=ppy),
+        confidence=confidence,
+        n_resamples=n_resamples,
+        mean_block=mean_block,
+        seed=seed,
+    )
     legs = tuple(
         LegSummary(
             symbol=s,
@@ -153,6 +179,8 @@ def run_portfolio(
         },
         psr=dsr_res.psr,
         dsr=dsr_res.dsr,
+        sharpe_ci=sharpe_ci,
+        cagr_ci=cagr_ci,
         legs=legs,
     )
 

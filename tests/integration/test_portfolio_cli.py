@@ -35,6 +35,7 @@ def test_portfolio_writes_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert manifest["weighting"] == "equal"
     assert len(manifest["legs"]) == 2
     assert manifest["n_periods"] > 0
+    assert "sharpe_ci" in manifest and "lower" in manifest["sharpe_ci"]
 
 
 def test_portfolio_rejects_single_symbol(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

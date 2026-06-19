@@ -168,6 +168,8 @@ def portfolio(
         "metrics": {k: (v if v == v else None) for k, v in result.metrics.items()},
         "psr": result.psr if result.psr == result.psr else None,
         "dsr": result.dsr if result.dsr == result.dsr else None,
+        "sharpe_ci": {"lower": result.sharpe_ci.lower, "upper": result.sharpe_ci.upper},
+        "cagr_ci": {"lower": result.cagr_ci.lower, "upper": result.cagr_ci.upper},
         "legs": [
             {
                 "symbol": leg.symbol,
@@ -183,7 +185,9 @@ def portfolio(
     )
     typer.echo(
         f"portfolio [{', '.join(result.symbols)}] ({weighting}) -> run {run_id}: "
-        f"OOS Sharpe {result.metrics['sharpe']:.3f}, CAGR {result.metrics['cagr']:.3f}, "
-        f"maxDD {result.metrics['max_drawdown']:.3f}, PSR {result.psr:.3f} "
-        f"over {result.n_periods} periods; manifest at {rdir / 'manifest.json'}"
+        f"OOS Sharpe {result.metrics['sharpe']:.3f} "
+        f"[{result.sharpe_ci.lower:.2f}, {result.sharpe_ci.upper:.2f}], "
+        f"CAGR {result.metrics['cagr']:.3f}, maxDD {result.metrics['max_drawdown']:.3f}, "
+        f"PSR {result.psr:.3f} over {result.n_periods} periods; "
+        f"manifest at {rdir / 'manifest.json'}"
     )
