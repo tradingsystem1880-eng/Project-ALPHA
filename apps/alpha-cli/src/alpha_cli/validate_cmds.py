@@ -112,11 +112,18 @@ def validate(
         periods_per_year=spec.periods_per_year,
     )
 
-    verdict = "PASS" if out.report.passed else "FAIL"
+    status = "PASS" if out.report.passed else "FAIL"
     sharpe = out.report.oos_metrics["sharpe"]
+    v = out.report.verdict
+    grade = (
+        f"Verdict {v.overall} "
+        f"(edge {v.edge}/robustness {v.robustness}/risk {v.risk}/sample {v.sample}), "
+        if v is not None
+        else ""
+    )
     typer.echo(
-        f"validate {symbol} -> run {run_id}: {verdict} "
-        f"(OOS Sharpe {sharpe:.3f}, "
+        f"validate {symbol} -> run {run_id}: {status} "
+        f"({grade}OOS Sharpe {sharpe:.3f}, "
         f"null pct {out.report.nulls[0].percentile:.2f}/{out.report.nulls[1].percentile:.2f}); "
         f"tear sheet at {rdir / 'tearsheet.html'}"
     )

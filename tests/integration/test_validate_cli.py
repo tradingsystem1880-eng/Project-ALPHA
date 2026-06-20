@@ -31,6 +31,7 @@ def test_validate_writes_manifest_and_tearsheet(
     assert result.exit_code == 0, result.output
     assert "validate SPY" in result.output
     assert "PASS" in result.output or "FAIL" in result.output
+    assert "Verdict" in result.output  # the A-F grade is echoed alongside PASS/FAIL
 
     (rdir,) = list((tmp_path / "runs").iterdir())
     assert (rdir / "tearsheet.html").exists()
@@ -53,11 +54,17 @@ def test_validate_writes_manifest_and_tearsheet(
     assert isinstance(manifest["passed"], bool)
     assert manifest["metadata"]["quantstats_version"]  # provenance recorded
 
+    # the A-F Verdict + tail-risk metrics (the QuantPad-style headline)
+    assert manifest["verdict"]["overall"] in {"A", "B", "C", "D", "F"}
+    assert set(manifest["verdict"]) >= {"edge", "robustness", "risk", "sample", "overall", "detail"}
+    assert {"value_at_risk", "expected_shortfall", "risk_of_ruin"} <= set(manifest["oos_metrics"])
+
     # `report` on a gauntlet run renders the DSR block, not a spurious/contradictory `dsr: n/a`.
     report_out = runner.invoke(app, ["report", manifest["run_id"]])
     assert report_out.exit_code == 0, report_out.output
     assert "dsr: n/a" not in report_out.output
     assert "dsr: dsr=" in report_out.output
+    assert "grade:" in report_out.output  # the verdict grade is surfaced on re-display
 
 
 def test_validate_rejects_unknown_null_model(

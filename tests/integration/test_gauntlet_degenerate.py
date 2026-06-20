@@ -67,3 +67,7 @@ def test_flat_oos_yields_a_clean_fail_report() -> None:
     assert by_name["walk_forward_oos"].passed is False
     assert by_name["randomized_price_null"].passed is False
     assert by_name["bootstrap_ci"].passed is False
+    # a no-edge run still produces a Verdict, and it is nowhere near a passing grade
+    assert out.report.verdict is not None
+    assert out.report.verdict.overall not in ("A", "B")
+    assert math.isnan(out.report.oos_metrics["risk_of_ruin"])  # ruin undefined on a flat OOS

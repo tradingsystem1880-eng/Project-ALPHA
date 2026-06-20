@@ -36,21 +36,29 @@ from alpha_validation import (
     NullSummary,
     RunMetadata,
     Statistic,
+    VerdictSummary,
     annualized_volatility,
     block_bootstrap_ci,
     build_outcomes,
     cagr,
     combinatorial_purged_splits,
     deflated_sharpe,
+    expected_shortfall,
+    grade_verdict,
     max_drawdown,
     parametric_price_null,
     randomized_price_null,
+    risk_of_ruin,
     sharpe_ratio,
     to_returns,
+    value_at_risk,
 )
 
 if TYPE_CHECKING:
     from alpha_backtest.results import BacktestResult
+
+_RUIN_PATHS = 1000  # stationary-bootstrap paths behind the risk-of-ruin estimate
+_RUIN_DRAWDOWN = 0.5  # "ruin" = a 50% peak-to-trough loss of the OOS equity
 
 
 @dataclass(frozen=True)
@@ -100,7 +108,21 @@ def run_gauntlet(
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     oos_metrics = _oos_metrics(oos, ppy)
 
-    t1_seed, t2_seed, sharpe_seed, cagr_seed = _child_seeds(params.seed, 4)
+    t1_seed, t2_seed, sharpe_seed, cagr_seed, ruin_seed = _child_seeds(params.seed, 5)
+
+    # Risk-of-ruin is undefined on a flat OOS (no path to draw down); leave it NaN there so the
+    # Verdict's risk dimension fails rather than reading a spurious 0.0 "no ruin".
+    oos_metrics["risk_of_ruin"] = (
+        risk_of_ruin(
+            oos.oos_returns,
+            ruin_drawdown=_RUIN_DRAWDOWN,
+            n_paths=_RUIN_PATHS,
+            mean_block=params.mean_block,
+            seed=ruin_seed,
+        )
+        if _has_variance(oos.oos_returns)
+        else math.nan
+    )
 
     if not _has_variance(oos.oos_returns):
         # A flat / zero-variance OOS (e.g. a long-flat strategy whose only signals are disallowed
@@ -182,6 +204,7 @@ def run_gauntlet(
         cpcv = _cpcv_summary(oos.oos_returns, params, ppy)
 
     outcomes = build_outcomes(oos_metrics=oos_metrics, nulls=nulls, cis=cis, dsr=dsr, cpcv=cpcv)
+    verdict = _verdict_summary(oos_metrics, nulls, cis, dsr, cpcv, n_oos=int(oos.oos_returns.size))
     report = GauntletReport(
         metadata=_metadata(run_id, bars, spec, params, snapshot_id),
         oos_metrics=oos_metrics,
@@ -192,8 +215,32 @@ def run_gauntlet(
         passed=all(o.passed for o in outcomes),
         dsr=dsr,
         cpcv=cpcv,
+        verdict=verdict,
     )
     return GauntletOutput(report=report, oos=oos, result=result)
+
+
+def _verdict_summary(
+    oos_metrics: dict[str, float],
+    nulls: Sequence[NullSummary],
+    cis: Sequence[CISummary],
+    dsr: DSRSummary,
+    cpcv: CPCVSummary,
+    *,
+    n_oos: int,
+) -> VerdictSummary:
+    """Grade the run A-F from the computed gates (robustness = the four pass/fail checks)."""
+    sharpe_ci = next((c for c in cis if c.metric == "sharpe"), None)
+    return grade_verdict(
+        oos_sharpe=oos_metrics.get("sharpe", math.nan),
+        null_tiers_passed=len(nulls) > 0 and all(n.passed for n in nulls),
+        dsr_passed=dsr.passed,
+        cpcv_passed=cpcv.passed,
+        ci_lower_positive=sharpe_ci is not None and sharpe_ci.lower > 0.0,
+        max_drawdown=oos_metrics.get("max_drawdown", math.nan),
+        risk_of_ruin=oos_metrics.get("risk_of_ruin", math.nan),
+        n_oos=n_oos,
+    )
 
 
 def _child_seeds(master: int | None, n: int) -> list[int]:
@@ -310,17 +357,24 @@ def _degenerate_cpcv() -> CPCVSummary:
 
 
 def _oos_metrics(oos: OOSResult, periods_per_year: int) -> dict[str, float]:
-    """Headline engine OOS metrics; NaN where a degenerate (flat) curve leaves one undefined."""
+    """Headline engine OOS metrics; NaN where a degenerate (flat) curve leaves one undefined.
+
+    Risk-of-ruin is added later by ``run_gauntlet`` (it needs a child seed); VaR and expected
+    shortfall are pure quantile statistics and computed here from the OOS return stream.
+    """
     r, eq = oos.oos_returns, oos.oos_equity
     has_var = _has_variance(r)
+    enough = r.size >= 2
     return {
         "sharpe": sharpe_ratio(r, periods_per_year=periods_per_year) if has_var else math.nan,
         "cagr": cagr(eq, periods_per_year=periods_per_year) if bool(np.all(eq > 0.0)) else math.nan,
         "annualized_vol": (
-            annualized_volatility(r, periods_per_year=periods_per_year) if r.size >= 2 else math.nan
+            annualized_volatility(r, periods_per_year=periods_per_year) if enough else math.nan
         ),
         "max_drawdown": max_drawdown(eq),
         "total_return": float(eq[-1] / eq[0] - 1.0),
+        "value_at_risk": value_at_risk(r) if enough else math.nan,
+        "expected_shortfall": expected_shortfall(r) if enough else math.nan,
     }
 
 

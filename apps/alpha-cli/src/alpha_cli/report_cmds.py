@@ -54,6 +54,13 @@ def report(run_id: str) -> None:
 
     if "passed" in manifest:
         typer.echo(f"verdict: {'PASS' if manifest['passed'] else 'FAIL'}")
+    verdict = manifest.get("verdict")
+    if isinstance(verdict, dict):  # the A-F grade (gauntlet runs)
+        typer.echo(
+            f"grade: {verdict.get('overall')} "
+            f"(edge {verdict.get('edge')}/robustness {verdict.get('robustness')}/"
+            f"risk {verdict.get('risk')}/sample {verdict.get('sample')})"
+        )
     if "oos_metrics" in manifest:
         metrics = ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(manifest["oos_metrics"].items()))
         typer.echo(f"OOS metrics: {metrics}")
