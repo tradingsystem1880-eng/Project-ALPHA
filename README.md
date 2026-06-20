@@ -32,9 +32,11 @@ uv run ruff check . && uv run ruff format --check . && uv run lint-imports \
 
 ```bash
 # 1. Pull raw, unadjusted data into the point-in-time store (needs network — see Caveats)
-uv run alpha data pull AAPL  --source yfinance --start 2010-01-01 --end 2024-12-31
-uv run alpha data pull spy.us --source stooq   --start 2010-01-01 --end 2024-12-31   # equities/ETF/commodity/FX
-uv run alpha data pull BTC/USD --source ccxt    --start 2018-01-01 --end 2024-12-31   # crypto
+uv run alpha data pull AAPL    --source yfinance --start 2010-01-01 --end 2024-12-31   # equities
+uv run alpha data pull SPY     --source yfinance --start 2010-01-01 --end 2024-12-31   # ETF — yfinance is the reliable equity/ETF source
+uv run alpha data pull BTC/USD --source ccxt     --start 2018-01-01 --end 2024-12-31   # crypto (Coinbase, paginated)
+# Stooq adds $0 FX / commodities / indices (e.g. `--source stooq` for `spy.us`, `^spx`) but is
+# best-effort: it now sits behind an anti-bot gate and then fails loud — see Caveats.
 
 # 2. (optional) Freeze an immutable, content-hashed snapshot for reproducibility
 uv run alpha data snapshot snap-2024 AAPL SPY BTC/USD
@@ -47,7 +49,7 @@ uv run alpha backtest run AAPL --strategy ma_crossover --param fast=20 --param s
 uv run alpha validate AAPL --strategy ts_momentum            # --null-model bootstrap|student_t|garch
 
 # 5. Search parameters with overfitting controls (Deflated Sharpe + PBO + SPA), not a bare best Sharpe
-uv run alpha optim grid AAPL --grid lookback=126,252,504 --grid vol-window=21,63
+uv run alpha optim grid AAPL --grid lookback=126,252,504 --grid vol_window=21,63
 
 # 6. Multi-asset: a diversified basket, or a cross-sectional long/short book
 uv run alpha backtest portfolio SPY QQQ GLD BTC/USD --weighting inverse_vol
@@ -66,18 +68,24 @@ reproducible to the byte (`--seed` defaults to 7). Run any command with `--help`
 
 ## Caveats (read before trusting a result)
 
-- **Live data needs outbound network.** `alpha data pull` hits Yahoo / Stooq / ccxt. In a sandbox
-  with a restricted egress allowlist these hosts may be blocked (HTTP 403); run on a machine (or in
-  an environment whose network policy permits them) with internet access. The pure parsers are
-  unit-tested offline; the live `fetch` paths are `@pytest.mark.network` (run with `-m network`).
+- **Live data needs outbound network.** `alpha data pull` hits Yahoo (yfinance) and Coinbase (ccxt)
+  — both verified working end-to-end. **Stooq is best-effort:** it now gates its free CSV behind an
+  anti-bot challenge + a per-IP download quota, so `--source stooq` often **fails loud** with a
+  `DataError` (it does *not* silently 404) — prefer `--source yfinance` for equities/ETFs. In a
+  sandbox with a restricted egress allowlist any host may be blocked; run where the network policy
+  permits them. The pure parsers are unit-tested offline; the live `fetch` paths are
+  `@pytest.mark.network` (run with `-m network`).
 - **CASH accounts can't be levered or overspend.** With the default `--account-type CASH`, a
   vol-targeted notional that exceeds buying power (e.g. a low-volatility asset plus fees) has its
   orders rejected — the run **fails loud** with guidance rather than silently reporting flat equity.
   Use `--account-type MARGIN`, a lower `--target-vol`, or `--max-leverage` below 1.
 - **Free data is survivorship-biased and (for Stooq) provider-adjusted.** Documented limitations of
   the $0 data tier; the bias-guard tests make the assumptions explicit.
-- **Validation has been exercised on synthetic + offline-fixture data.** It has not yet been run
-  against a live market pull end-to-end (blocked by the above network constraint).
+- **Validation has been run end-to-end against real market data.** yfinance (AAPL, incl. the 2020
+  4:1 split) and Coinbase (BTC/USD, 2018–2024) feed the full gauntlet. On real AAPL it correctly
+  **rejects** single-name `ts_momentum` (OOS Sharpe 0.65, but the returns-level null and a
+  zero-straddling bootstrap CI fail it); a diversified `inverse_vol` basket clears it (OOS Sharpe
+  ~1.18, PSR ~1.0). The parsers and gauntlet primitives are also covered offline.
 
 ## Paper trading (Phase 4 — scaffolded)
 

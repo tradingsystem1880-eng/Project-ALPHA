@@ -70,8 +70,8 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `ingest.py` | Persist a `FetchResult` | `store_fetch_result` |
 | `adapters/base.py` | Adapter seam | `FetchResult(symbol, bars, actions)`, `DataAdapter` protocol |
 | `adapters/yfinance_adapter.py` | Equities (splits+divs) | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
-| `adapters/ccxt_adapter.py` | Crypto daily OHLCV (UTC; default exchange `coinbase`) | `CCXTAdapter`, `parse_ccxt_ohlcv` (pure) |
-| `adapters/stooq_adapter.py` | Free EOD OHLCV (equities/ETF/commodity/index/FX; provider-adjusted, no actions) | `StooqAdapter`, `parse_stooq_csv` (pure) |
+| `adapters/ccxt_adapter.py` | Crypto daily OHLCV (UTC; default exchange `coinbase`; **paginated** past coinbase's 300-candle/call cap via `_paginate_ohlcv`) | `CCXTAdapter`, `parse_ccxt_ohlcv` (pure) |
+| `adapters/stooq_adapter.py` | Free EOD OHLCV (FX/commodity/index/ETF; provider-adjusted, no actions). **Anti-bot gated:** browser-UA + SHA-256 PoW solve, then **fails loud** (`_csv_or_raise`) on Stooq's per-IP "Access denied" — yfinance is the reliable equity/ETF source | `StooqAdapter`, `parse_stooq_csv` (pure) |
 
 ### `alpha_strategies` (`packages/alpha-strategies/src/alpha_strategies/`) — nautilus Strategy + pure decision fns. core only.
 | Module | Responsibility | Key public symbols |
@@ -143,5 +143,6 @@ A degenerate (flat/zero-variance) OOS short-circuits to a clean FAIL (degenerate
 
 ## Build status
 Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅.
+**Live data spine verified against real markets** ✅ (yfinance + ccxt/coinbase end-to-end; gauntlet correctly rejects single-name `ts_momentum` on AAPL and accepts a diversified basket. Stooq is anti-bot-gated → fails loud).
 Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · cross-sectional momentum (returns-level panel, `alpha backtest cross-sectional`) ✅ · Stooq data source ✅. Remaining: full-engine cross-sectional (per-instrument t+1 fills; needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
 Phase 4 (paper trading) — scaffolded: nautilus `SandboxExecutionClient` venue (backtest-parity fills) + node-config assembly + a `alpha paper preflight` parity check, all offline-verified. Remaining (post-v1, network-bound): wiring a live market-data adapter + credentials to `_paper.run_paper`.
