@@ -45,6 +45,12 @@ from alpha_validation.montecarlo import (
     student_t_paths,
 )
 from alpha_validation.overfitting import PBOResult, probability_of_backtest_overfitting
+from alpha_validation.propfirm import (
+    FIRM_PRESETS,
+    PropFirmResult,
+    PropFirmRules,
+    simulate_propfirm,
+)
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
 from alpha_validation.tearsheet import (
     CISummary,
@@ -76,9 +82,12 @@ __all__ = [
     "FloatSeq",
     "FoldSummary",
     "GauntletReport",
+    "FIRM_PRESETS",
     "NullResult",
     "NullSummary",
     "PBOResult",
+    "PropFirmResult",
+    "PropFirmRules",
     "RunMetadata",
     "Split",
     "Statistic",
@@ -107,6 +116,7 @@ __all__ = [
     "report_to_manifest",
     "risk_of_ruin",
     "sharpe_ratio",
+    "simulate_propfirm",
     "spa_test",
     "stationary_bootstrap_indices",
     "student_t_paths",
