@@ -9,6 +9,7 @@ from __future__ import annotations
 import typer
 
 from alpha_cli import _artifacts, _runner
+from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
 backtest_app = typer.Typer(help="Run the v1 strategy through the backtest engine.")
@@ -62,8 +63,11 @@ def run(
         strategy_name=strategy,
         strategy_params=_runner.parse_strategy_params(param),
     )
-    bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-    result = _runner.run_full_backtest(bars, spec)
+    try:
+        bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        result = _runner.run_full_backtest(bars, spec)
+    except DataError as exc:  # no bars stored, unknown strategy, bad account-type, etc.
+        raise typer.BadParameter(str(exc)) from exc
     # Fail loud (golden rule): a run that submitted orders but filled none — every order rejected —
     # would otherwise report a misleading flat equity. The usual cause is a vol-targeted notional
     # that exceeds CASH buying power once fees apply.
@@ -129,7 +133,6 @@ def portfolio(
     import json
 
     from alpha_cli import _portfolio
-    from alpha_core import DataError
 
     settings = AlphaSettings()
     spec = _runner.RunSpec(
@@ -242,7 +245,6 @@ def cross_sectional(
     import json
 
     from alpha_cli import _cross_sectional
-    from alpha_core import DataError
 
     settings = AlphaSettings()
     try:

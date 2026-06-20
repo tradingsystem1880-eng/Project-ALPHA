@@ -147,7 +147,11 @@ def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
     bar_type = daily_bar_type(symbol)
     feed = to_execution_feed(bars, bar_type, slippage_bps=spec.slippage_bps)
     strategy = _strategies.build_strategy(spec, instrument.id, bar_type)
-    account_type = AccountType.MARGIN if spec.account_type == "MARGIN" else AccountType.CASH
+    # Fail loud (golden rule): don't silently coerce a typo'd/cased value to CASH and drop leverage.
+    account_kind = spec.account_type.upper()
+    if account_kind not in ("CASH", "MARGIN"):
+        raise DataError(f"account_type must be 'CASH' or 'MARGIN', got {spec.account_type!r}")
+    account_type = AccountType.MARGIN if account_kind == "MARGIN" else AccountType.CASH
     return run_backtest(
         instrument,
         feed,

@@ -61,8 +61,11 @@ def report(run_id: str) -> None:
         metrics = ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(manifest["metrics"].items()))
         typer.echo(f"metrics: {metrics}")
     for key in ("psr", "dsr", "best_sharpe"):
-        if key in manifest and manifest[key] is not None:
-            typer.echo(f"{key}: {_fmt(manifest[key])}")
+        val = manifest.get(key)
+        # Only scalar values here; a dict-valued `dsr` (gauntlet/optim) is rendered by the block
+        # loop below — printing it here would emit a spurious, contradictory `dsr: n/a` line.
+        if isinstance(val, int | float) and not isinstance(val, bool):
+            typer.echo(f"{key}: {_fmt(val)}")
     if manifest.get("folds"):
         typer.echo(f"walk-forward: {len(manifest['folds'])} OOS folds")
     for n in manifest.get("nulls", []):

@@ -42,4 +42,29 @@ def test_unknown_symbol_fails_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     seed_store(tmp_path, symbol="SPY", n=60)
     result = runner.invoke(app, ["backtest", "run", "NOPE", *_SMALL])
-    assert result.exit_code != 0  # DataError bubbles up; no run directory written
+    # Clean, actionable error — a typed DataError surfaces as a tidy BadParameter (exit 2), NOT a
+    # raw Python traceback. No run directory is written.
+    assert result.exit_code == 2
+    assert "Traceback" not in result.output
+    assert not (tmp_path / "runs").exists()
+
+
+def test_bad_account_type_fails_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Fail-loud golden rule: a typo'd --account-type must error, not silently run as CASH.
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=60)
+    result = runner.invoke(app, ["backtest", "run", "SPY", "--account-type", "BOGUS", *_SMALL])
+    assert result.exit_code == 2
+    assert "CASH" in result.output and "MARGIN" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_account_type_is_case_insensitive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # "margin" (lowercase) is accepted as MARGIN, not silently coerced to an unlevered CASH account.
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=60)
+    result = runner.invoke(
+        app,
+        ["backtest", "run", "SPY", "--account-type", "margin", "--max-leverage", "2.0", *_SMALL],
+    )
+    assert result.exit_code == 0, result.output

@@ -10,6 +10,7 @@ from __future__ import annotations
 import typer
 
 from alpha_cli import _artifacts, _gauntlet, _runner
+from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import render_tearsheet_html, report_to_manifest
 
@@ -83,17 +84,20 @@ def validate(
         null_model=null_model,
         max_workers=max_workers,
     )
-    bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-    run_id = _runner.run_id_for(
-        {
-            "command": "validate",
-            "symbol": symbol,
-            "snapshot_id": snapshot_id,
-            **vars(spec),
-            **vars(gparams),
-        }
-    )
-    out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)
+    try:
+        bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        run_id = _runner.run_id_for(
+            {
+                "command": "validate",
+                "symbol": symbol,
+                "snapshot_id": snapshot_id,
+                **vars(spec),
+                **vars(gparams),
+            }
+        )
+        out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)
+    except DataError as exc:  # no bars, unknown strategy/null-model, train < warmup floor, etc.
+        raise typer.BadParameter(str(exc)) from exc
 
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     equity = list(zip(out.oos.oos_timestamps, out.oos.oos_equity.tolist(), strict=True))

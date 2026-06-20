@@ -24,7 +24,7 @@ from alpha_cli._runner import (
 )
 from alpha_cli._strategies import surrogate_for
 from alpha_cli._synth import full_engine_null
-from alpha_core import Bar
+from alpha_core import Bar, DataError
 from alpha_validation import (
     CISummary,
     ConfidenceInterval,
@@ -89,6 +89,12 @@ def run_gauntlet(
     snapshot_id: str | None,
 ) -> GauntletOutput:
     """Run the full gauntlet over ``bars`` and assemble the ``GauntletReport``."""
+    # Validate the Tier-1 null choice up front with the full accepted set (the deeper parametric
+    # check only knows student_t/garch and would omit the default, "bootstrap").
+    if params.null_model not in ("bootstrap", "student_t", "garch"):
+        raise DataError(
+            f"unknown null model {params.null_model!r}; known: 'bootstrap', 'student_t', 'garch'"
+        )
     ppy = spec.periods_per_year
     result = run_full_backtest(bars, spec)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)

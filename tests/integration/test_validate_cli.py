@@ -52,3 +52,22 @@ def test_validate_writes_manifest_and_tearsheet(
     assert manifest["cpcv"]["n_folds"] >= 1
     assert isinstance(manifest["passed"], bool)
     assert manifest["metadata"]["quantstats_version"]  # provenance recorded
+
+    # `report` on a gauntlet run renders the DSR block, not a spurious/contradictory `dsr: n/a`.
+    report_out = runner.invoke(app, ["report", manifest["run_id"]])
+    assert report_out.exit_code == 0, report_out.output
+    assert "dsr: n/a" not in report_out.output
+    assert "dsr: dsr=" in report_out.output
+
+
+def test_validate_rejects_unknown_null_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=60)
+    result = runner.invoke(app, ["validate", "SPY", "--null-model", "bogus", *_ARGS])
+    assert result.exit_code == 2  # clean BadParameter, not a traceback
+    # The accepted set must include the default `bootstrap`, not only the parametric models.
+    assert "bootstrap" in result.output
+    assert "student_t" in result.output and "garch" in result.output
+    assert "Traceback" not in result.output
