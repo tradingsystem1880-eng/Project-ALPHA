@@ -141,6 +141,26 @@ def _fetch_stooq_text(url: str) -> str:
     return text
 
 
+def _csv_or_raise(text: str, symbol: str, window: str) -> FetchResult:
+    """Turn a raw Stooq response body into a ``FetchResult``, failing loud if it isn't CSV.
+
+    Stooq gates its free CSV behind an anti-bot challenge + per-IP download quota; a blocked client
+    gets an empty body, a bare ``Access denied``, a leftover proof-of-work page, or HTML. Rather
+    than feed non-CSV to the parser, raise a clear ``DataError``. Pure and offline-testable — the
+    network lives in ``_fetch_stooq_text``.
+    """
+    stripped = text.strip()
+    if not stripped or "No data" in text:
+        raise DataError(f"Stooq returned no data for {symbol} {window}")
+    if stripped == "Access denied" or _CHALLENGE_MARKER in text.lower() or stripped.startswith("<"):
+        raise DataError(
+            f"Stooq withheld the free CSV for {symbol} ({stripped[:40]!r}): the /q/d/l/ endpoint "
+            "is gated behind an anti-bot challenge + per-IP download quota. "
+            "Use --source yfinance for equities/ETFs."
+        )
+    return parse_stooq_csv(text, symbol)
+
+
 class StooqAdapter:
     """Live Stooq adapter: key-free daily CSV over HTTP.
 
@@ -153,21 +173,4 @@ class StooqAdapter:
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         url = f"https://stooq.com/q/d/l/?s={symbol}&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
-        text = _fetch_stooq_text(url)
-        stripped = text.strip()
-        if not stripped or "No data" in text:
-            raise DataError(f"Stooq returned no data for {symbol} {start}..{end}")
-        # Stooq gates its free CSV behind an anti-bot challenge + per-IP download quota; a blocked
-        # client gets a bare "Access denied", a leftover challenge page, or HTML — fail loud, don't
-        # feed non-CSV to the parser.
-        if (
-            stripped == "Access denied"
-            or _CHALLENGE_MARKER in text.lower()
-            or stripped.startswith("<")
-        ):
-            raise DataError(
-                f"Stooq withheld the free CSV for {symbol} ({stripped[:40]!r}): the /q/d/l/ "
-                "endpoint is gated behind an anti-bot challenge + per-IP download quota. "
-                "Use --source yfinance for equities/ETFs."
-            )
-        return parse_stooq_csv(text, symbol)
+        return _csv_or_raise(_fetch_stooq_text(url), symbol, f"{start}..{end}")
