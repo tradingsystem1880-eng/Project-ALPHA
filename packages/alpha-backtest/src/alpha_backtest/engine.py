@@ -113,13 +113,17 @@ def run_backtest(
             logging=LoggingConfig(bypass_logging=True),
         )
     )
+    # CASH accounts are inherently unlevered — nautilus rejects a non-1 leverage on them — so only a
+    # MARGIN venue takes the configured leverage. (An oversized notional on CASH is then denied at
+    # order time and surfaced via the rejection count, not crashed at venue setup.)
+    venue_leverage = Decimal(str(leverage)) if account_type == AccountType.MARGIN else Decimal(1)
     engine.add_venue(
         venue=instrument.id.venue,
         oms_type=OmsType.NETTING,
         account_type=account_type,
         base_currency=currency,
         starting_balances=[Money(starting_cash, currency)],
-        default_leverage=Decimal(str(leverage)),
+        default_leverage=venue_leverage,
         fee_model=BpsFeeModel(fee_bps) if fee_bps > 0 else None,
         bar_execution=False,  # bars decide; quotes fill (t+1 open) — see module docstring
     )
@@ -135,6 +139,7 @@ def run_backtest(
             fills=len(engine.trader.generate_order_fills_report()),
             trades=_closed_trades(engine),
             equity_curve=recorder.curve,
+            rejected=int(getattr(strategy, "rejections", 0)),
         )
     finally:
         engine.dispose()

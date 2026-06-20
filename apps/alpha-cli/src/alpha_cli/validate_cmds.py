@@ -10,6 +10,7 @@ from __future__ import annotations
 import typer
 
 from alpha_cli import _artifacts, _gauntlet, _runner
+from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import render_tearsheet_html, report_to_manifest
 
@@ -19,6 +20,7 @@ _load_bars = _runner.load_bars
 
 def validate(
     symbol: str,
+    strategy: str = "ts_momentum",
     lookback: int = 252,
     skip: int = 21,
     vol_window: int = 63,
@@ -34,16 +36,22 @@ def validate(
     test_size: int = 63,
     embargo: int = 5,
     anchored: bool = False,
+    param: list[str] | None = None,
     tier1_paths: int = 1000,
     tier2_paths: int = 64,
     n_resamples: int = 2000,
     mean_block: float = 5.0,
     threshold: float = 0.95,
+    null_model: str = "bootstrap",
     seed: int | None = None,
     max_workers: int | None = None,
     snapshot: str | None = None,
 ) -> None:
-    """Validate SYMBOL end-to-end and write the run artifacts (manifest, parquet, tear sheet)."""
+    """Validate SYMBOL end-to-end and write the run artifacts (manifest, parquet, tear sheet).
+
+    ``--strategy`` selects the registered strategy; ``--param name=value`` (repeatable) supplies any
+    strategy-specific parameters beyond the shared ones.
+    """
     settings = AlphaSettings()
     resolved_seed = seed if seed is not None else settings.random_seed
     spec = _runner.RunSpec(
@@ -63,6 +71,8 @@ def validate(
         test_size=test_size,
         embargo=embargo,
         anchored=anchored,
+        strategy_name=strategy,
+        strategy_params=_runner.parse_strategy_params(param),
     )
     gparams = _gauntlet.GauntletParams(
         seed=resolved_seed,
@@ -71,19 +81,23 @@ def validate(
         n_resamples=n_resamples,
         mean_block=mean_block,
         threshold=threshold,
+        null_model=null_model,
         max_workers=max_workers,
     )
-    bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-    run_id = _runner.run_id_for(
-        {
-            "command": "validate",
-            "symbol": symbol,
-            "snapshot_id": snapshot_id,
-            **vars(spec),
-            **vars(gparams),
-        }
-    )
-    out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)
+    try:
+        bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        run_id = _runner.run_id_for(
+            {
+                "command": "validate",
+                "symbol": symbol,
+                "snapshot_id": snapshot_id,
+                **vars(spec),
+                **vars(gparams),
+            }
+        )
+        out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)
+    except DataError as exc:  # no bars, unknown strategy/null-model, train < warmup floor, etc.
+        raise typer.BadParameter(str(exc)) from exc
 
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     equity = list(zip(out.oos.oos_timestamps, out.oos.oos_equity.tolist(), strict=True))

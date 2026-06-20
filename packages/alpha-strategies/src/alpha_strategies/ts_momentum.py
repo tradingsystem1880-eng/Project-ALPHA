@@ -61,6 +61,7 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
         self._target_units: float | None = None
         self.net_units = 0.0
         self.fills = 0
+        self.rejections = 0  # orders denied (risk/buying-power) or rejected by the venue
 
     def on_start(self) -> None:
         self.subscribe_bars(self._bar_type)
@@ -115,3 +116,10 @@ class TimeSeriesMomentum(Strategy):  # type: ignore[misc]  # nautilus Strategy i
         self.fills += 1
         qty = float(event.last_qty)
         self.net_units += qty if event.order_side == OrderSide.BUY else -qty
+
+    def on_order_denied(self, event: object) -> None:
+        # pre-trade risk denial (e.g. notional exceeds CASH buying power) — count, never swallow
+        self.rejections += 1
+
+    def on_order_rejected(self, event: object) -> None:
+        self.rejections += 1

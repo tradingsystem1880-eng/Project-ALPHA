@@ -37,6 +37,7 @@ class BacktestResult:
     fills: int
     trades: list[Trade]
     equity_curve: list[tuple[datetime, float]]
+    rejected: int = 0  # orders denied (risk/buying-power) or rejected by the venue (none filled)
 
     @property
     def starting_equity(self) -> float:

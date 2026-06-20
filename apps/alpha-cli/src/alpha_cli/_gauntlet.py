@@ -22,21 +22,28 @@ from alpha_cli._runner import (
     run_full_backtest,
     walk_forward_oos_for_spec,
 )
-from alpha_cli._surrogate import make_ts_momentum_surrogate
+from alpha_cli._strategies import surrogate_for
 from alpha_cli._synth import full_engine_null
-from alpha_core import Bar
+from alpha_core import Bar, DataError
 from alpha_validation import (
     CISummary,
     ConfidenceInterval,
+    CPCVSummary,
+    DSRSummary,
+    FloatArray,
     GauntletReport,
     NullResult,
     NullSummary,
     RunMetadata,
+    Statistic,
     annualized_volatility,
     block_bootstrap_ci,
     build_outcomes,
     cagr,
+    combinatorial_purged_splits,
+    deflated_sharpe,
     max_drawdown,
+    parametric_price_null,
     randomized_price_null,
     sharpe_ratio,
     to_returns,
@@ -57,6 +64,10 @@ class GauntletParams:
     mean_block: float = 5.0
     threshold: float = 0.95
     confidence: float = 0.95
+    dsr_threshold: float = 0.95  # deflated-Sharpe pass bar (P(true SR > deflation benchmark))
+    cpcv_groups: int = 6  # CPCV partition count over the OOS stream
+    cpcv_test_groups: int = 2  # groups held out per CPCV fold
+    null_model: str = "bootstrap"  # Tier-1 null: "bootstrap" | "student_t" | "garch"
     max_workers: int | None = None
 
 
@@ -78,6 +89,12 @@ def run_gauntlet(
     snapshot_id: str | None,
 ) -> GauntletOutput:
     """Run the full gauntlet over ``bars`` and assemble the ``GauntletReport``."""
+    # Validate the Tier-1 null choice up front with the full accepted set (the deeper parametric
+    # check only knows student_t/garch and would omit the default, "bootstrap").
+    if params.null_model not in ("bootstrap", "student_t", "garch"):
+        raise DataError(
+            f"unknown null model {params.null_model!r}; known: 'bootstrap', 'student_t', 'garch'"
+        )
     ppy = spec.periods_per_year
     result = run_full_backtest(bars, spec)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
@@ -85,61 +102,86 @@ def run_gauntlet(
 
     t1_seed, t2_seed, sharpe_seed, cagr_seed = _child_seeds(params.seed, 4)
 
-    # Tier 1 — cheap returns-level null: the surrogate run on block-resampled price returns.
-    price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
-    surrogate = make_ts_momentum_surrogate(
-        lookback=spec.lookback,
-        skip=spec.skip,
-        vol_window=spec.vol_window,
-        target_vol=spec.target_vol,
-        rebalance_every=spec.rebalance_every,
-        periods_per_year=ppy,
-        max_leverage=spec.max_leverage,
-        allow_short=spec.allow_short,
-        cost_bps=spec.fee_bps + spec.slippage_bps,  # turnover-cost proxy for the cheap analogue
-    )
-    tier1 = randomized_price_null(
-        price_returns,
-        surrogate,
-        n_paths=params.tier1_paths,
-        block=params.mean_block,
-        threshold=params.threshold,
-        periods_per_year=ppy,
-        seed=t1_seed,
-    )
-    # Tier 2 — full-engine faithfulness check, observed = the engine's walk-forward OOS Sharpe.
-    tier2 = full_engine_null(
-        bars,
-        observed=oos_metrics["sharpe"],
-        spec=spec,
-        n_paths=params.tier2_paths,
-        mean_block=params.mean_block,
-        threshold=params.threshold,
-        seed=t2_seed,
-        max_workers=params.max_workers,
-    )
-    nulls = (_null_summary("returns_level", tier1), _null_summary("full_engine", tier2))
+    if not _has_variance(oos.oos_returns):
+        # A flat / zero-variance OOS (e.g. a long-flat strategy whose only signals are disallowed
+        # shorts) has no measurable risk-adjusted edge: the headline Sharpe is undefined and ranking
+        # it against a null or bootstrapping it is meaningless. Fail gracefully — degenerate gates,
+        # overall FAIL — instead of letting an undefined-Sharpe error abort the run.
+        nulls = (_degenerate_null("returns_level"), _degenerate_null("full_engine"))
+        cis = (
+            _degenerate_ci("sharpe", params.confidence),
+            _degenerate_ci("cagr", params.confidence),
+        )
+        dsr = _degenerate_dsr(params.dsr_threshold)
+        cpcv = _degenerate_cpcv()
+    else:
+        safe_sharpe = _safe_sharpe(ppy)
+        # Tier 1 — cheap returns-level null: the strategy's surrogate on synthetic return paths.
+        # "bootstrap" resamples the observed returns; "student_t"/"garch" draw from a fat-tailed
+        # parametric model (heavier-tailed / volatility-clustered → a more adversarial null).
+        price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
+        surrogate = surrogate_for(spec)
+        if params.null_model == "bootstrap":
+            tier1 = randomized_price_null(
+                price_returns,
+                surrogate,
+                statistic=safe_sharpe,
+                n_paths=params.tier1_paths,
+                block=params.mean_block,
+                threshold=params.threshold,
+                periods_per_year=ppy,
+                seed=t1_seed,
+            )
+        else:
+            tier1 = parametric_price_null(
+                price_returns,
+                surrogate,
+                model=params.null_model,
+                statistic=safe_sharpe,
+                n_paths=params.tier1_paths,
+                threshold=params.threshold,
+                periods_per_year=ppy,
+                seed=t1_seed,
+            )
+        # Tier 2 — full-engine faithfulness check, observed = the engine's walk-forward OOS Sharpe.
+        tier2 = full_engine_null(
+            bars,
+            observed=oos_metrics["sharpe"],
+            spec=spec,
+            n_paths=params.tier2_paths,
+            mean_block=params.mean_block,
+            threshold=params.threshold,
+            seed=t2_seed,
+            max_workers=params.max_workers,
+        )
+        nulls = (_null_summary("returns_level", tier1), _null_summary("full_engine", tier2))
 
-    # Block-bootstrap BCa CIs on the OOS returns (cagr is computed from the resampled equity path).
-    sharpe_ci = block_bootstrap_ci(
-        oos.oos_returns,
-        lambda r: sharpe_ratio(r, periods_per_year=ppy),
-        confidence=params.confidence,
-        n_resamples=params.n_resamples,
-        mean_block=params.mean_block,
-        seed=sharpe_seed,
-    )
-    cagr_ci = block_bootstrap_ci(
-        oos.oos_returns,
-        lambda r: cagr(np.concatenate(([1.0], np.cumprod(1.0 + r))), periods_per_year=ppy),
-        confidence=params.confidence,
-        n_resamples=params.n_resamples,
-        mean_block=params.mean_block,
-        seed=cagr_seed,
-    )
-    cis = (_ci_summary("sharpe", sharpe_ci), _ci_summary("cagr", cagr_ci))
+        # Block-bootstrap BCa CIs on the OOS returns (cagr from the resampled equity path). The
+        # safe Sharpe treats a zero-variance resample as 0.0 so a sparse OOS can't abort the CI.
+        sharpe_ci = block_bootstrap_ci(
+            oos.oos_returns,
+            safe_sharpe,
+            confidence=params.confidence,
+            n_resamples=params.n_resamples,
+            mean_block=params.mean_block,
+            seed=sharpe_seed,
+        )
+        cagr_ci = block_bootstrap_ci(
+            oos.oos_returns,
+            lambda r: cagr(np.concatenate(([1.0], np.cumprod(1.0 + r))), periods_per_year=ppy),
+            confidence=params.confidence,
+            n_resamples=params.n_resamples,
+            mean_block=params.mean_block,
+            seed=cagr_seed,
+        )
+        cis = (_ci_summary("sharpe", sharpe_ci), _ci_summary("cagr", cagr_ci))
 
-    outcomes = build_outcomes(oos_metrics=oos_metrics, nulls=nulls, cis=cis)
+        # Deflated/Probabilistic Sharpe on the OOS stream (single-config: n_trials=1 → DSR=PSR) and
+        # the CPCV distribution of OOS Sharpe across combinatorial time-slice folds.
+        dsr = _dsr_summary(oos.oos_returns, params.dsr_threshold)
+        cpcv = _cpcv_summary(oos.oos_returns, params, ppy)
+
+    outcomes = build_outcomes(oos_metrics=oos_metrics, nulls=nulls, cis=cis, dsr=dsr, cpcv=cpcv)
     report = GauntletReport(
         metadata=_metadata(run_id, bars, spec, params, snapshot_id),
         oos_metrics=oos_metrics,
@@ -148,6 +190,8 @@ def run_gauntlet(
         cis=cis,
         outcomes=outcomes,
         passed=all(o.passed for o in outcomes),
+        dsr=dsr,
+        cpcv=cpcv,
     )
     return GauntletOutput(report=report, oos=oos, result=result)
 
@@ -157,10 +201,118 @@ def _child_seeds(master: int | None, n: int) -> list[int]:
     return [int(s.generate_state(1)[0]) for s in np.random.SeedSequence(master).spawn(n)]
 
 
+def _has_variance(returns: FloatArray) -> bool:
+    """True when there are >= 2 returns with non-zero dispersion (a Sharpe is well defined)."""
+    return bool(returns.size >= 2 and float(np.std(returns, ddof=1)) > 0.0)
+
+
+def _safe_sharpe(periods_per_year: int) -> Statistic:
+    """A Sharpe statistic that scores a zero-variance resample as 0.0 instead of raising.
+
+    Used for the bootstrap CI + Tier-1 null so a sparse (mostly-flat) OOS — where individual block
+    resamples can land all-identical — yields a finite distribution rather than aborting the run. A
+    flat resample has no excess return per unit risk, so 0.0 is the natural convention here.
+    """
+
+    def stat(returns: FloatArray) -> float:
+        if not _has_variance(returns):
+            return 0.0
+        return sharpe_ratio(returns, periods_per_year=periods_per_year)
+
+    return stat
+
+
+def _degenerate_null(tier: str) -> NullSummary:
+    """A not-passed null tier for when the real OOS is flat (no statistic to rank)."""
+    return NullSummary(
+        tier=tier,
+        observed=math.nan,
+        percentile=math.nan,
+        p_value=math.nan,
+        threshold=math.nan,
+        passed=False,
+        n_paths=0,
+    )
+
+
+def _degenerate_ci(metric: str, confidence: float) -> CISummary:
+    """A NaN confidence interval for when the OOS is flat (the bootstrap is undefined)."""
+    return CISummary(
+        metric=metric, point=math.nan, lower=math.nan, upper=math.nan, confidence=confidence
+    )
+
+
+def _dsr_summary(oos_returns: FloatArray, threshold: float) -> DSRSummary:
+    """Deflated/Probabilistic Sharpe of the OOS stream (single config → n_trials=1, DSR=PSR)."""
+    res = deflated_sharpe(oos_returns, threshold=threshold)
+    return DSRSummary(
+        sharpe=res.sharpe,
+        psr=res.psr,
+        dsr=res.dsr,
+        expected_max_sharpe=res.expected_max_sharpe,
+        n_trials=res.n_trials,
+        threshold=res.threshold,
+        passed=res.passed,
+    )
+
+
+def _degenerate_dsr(threshold: float) -> DSRSummary:
+    """A not-passed DSR summary for a flat OOS (PSR/DSR undefined on zero variance)."""
+    return DSRSummary(
+        sharpe=math.nan,
+        psr=math.nan,
+        dsr=math.nan,
+        expected_max_sharpe=math.nan,
+        n_trials=1,
+        threshold=threshold,
+        passed=False,
+    )
+
+
+def _cpcv_summary(
+    oos_returns: FloatArray, params: GauntletParams, periods_per_year: int
+) -> CPCVSummary:
+    """Distribution of OOS Sharpe across CPCV folds of the OOS stream (degenerate folds score 0)."""
+    if oos_returns.size < params.cpcv_groups:
+        return _degenerate_cpcv()  # too few OOS points to partition into groups
+    splits = combinatorial_purged_splits(
+        oos_returns.size,
+        n_groups=params.cpcv_groups,
+        n_test_groups=params.cpcv_test_groups,
+        embargo=0,  # the OOS stream is already purged/embargoed at the walk-forward level
+    )
+    sharpes = np.array(
+        [_fold_sharpe(oos_returns[sp.test], periods_per_year) for sp in splits], dtype=np.float64
+    )
+    mean = float(np.mean(sharpes))
+    std = float(np.std(sharpes, ddof=1)) if sharpes.size >= 2 else 0.0
+    return CPCVSummary(
+        n_folds=int(sharpes.size),
+        mean_sharpe=mean,
+        std_sharpe=std,
+        frac_positive=float(np.mean(sharpes > 0.0)),
+        passed=mean > 0.0,
+    )
+
+
+def _fold_sharpe(slice_: FloatArray, periods_per_year: int) -> float:
+    """Annualized Sharpe of one CPCV test slice; 0.0 for a degenerate (flat/short) slice."""
+    if slice_.size >= 2 and float(np.std(slice_, ddof=1)) > 0.0:
+        return sharpe_ratio(slice_, periods_per_year=periods_per_year)
+    return 0.0
+
+
+def _degenerate_cpcv() -> CPCVSummary:
+    """A not-passed CPCV summary for when the OOS is flat or too short to partition."""
+    return CPCVSummary(
+        n_folds=0, mean_sharpe=math.nan, std_sharpe=math.nan, frac_positive=math.nan, passed=False
+    )
+
+
 def _oos_metrics(oos: OOSResult, periods_per_year: int) -> dict[str, float]:
     """Headline engine OOS metrics; NaN where a degenerate (flat) curve leaves one undefined."""
     r, eq = oos.oos_returns, oos.oos_equity
-    has_var = r.size >= 2 and float(np.std(r, ddof=1)) > 0.0
+    has_var = _has_variance(r)
     return {
         "sharpe": sharpe_ratio(r, periods_per_year=periods_per_year) if has_var else math.nan,
         "cagr": cagr(eq, periods_per_year=periods_per_year) if bool(np.all(eq > 0.0)) else math.nan,
@@ -221,4 +373,6 @@ def _metadata(
         first_ts=bars[0].ts.isoformat(),
         last_ts=bars[-1].ts.isoformat(),
         quantstats_version=version("quantstats-lumi"),
+        strategy_name=spec.strategy_name,
+        strategy_params=spec.strategy_params,
     )

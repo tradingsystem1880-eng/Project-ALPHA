@@ -6,7 +6,7 @@ from alpha_core.corporate import ActionType, CorporateAction
 from alpha_core.errors import AlphaError, DataError, LookAheadError
 from alpha_core.types import Bar, ValidationOutcome
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "ActionType",

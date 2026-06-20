@@ -1,17 +1,22 @@
-"""``alpha report <run_id>``: re-display a stored run from its manifest (no engine re-run).
+"""``alpha report <run_id>``: re-display any stored run from its manifest (no engine re-run).
 
-Reads ``data_dir/runs/<run_id>/manifest.json`` and prints the gate table, CIs, and verdict. The
-manifest is self-sufficient, so this never loads data or touches the backtest engine.
+Searches every run-type directory (``runs/`` gauntlet + backtest runs, ``portfolio/``,
+``cross_sectional/``, ``optim/``) for ``<run_id>/manifest.json`` and prints a summary appropriate to
+whatever the manifest contains. The manifest is self-sufficient, so this never loads data or touches
+the backtest engine.
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import typer
 
-from alpha_cli import _artifacts
 from alpha_core.config import AlphaSettings
+
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim")
 
 
 def _fmt(x: Any) -> str:
@@ -19,37 +24,85 @@ def _fmt(x: Any) -> str:
     return f"{x:.4f}" if isinstance(x, int | float) and not isinstance(x, bool) else "n/a"
 
 
+def _find_manifest(data_dir: Path, run_id: str) -> dict[str, Any] | None:
+    for sub in _RUN_DIRS:
+        path = data_dir / sub / run_id / "manifest.json"
+        if path.exists():
+            result: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+            result["__dir"] = str(path.parent)
+            return result
+    return None
+
+
 def report(run_id: str) -> None:
-    """Print the stored gauntlet result for RUN_ID (gates, CIs, verdict) from its manifest."""
+    """Print the stored result for RUN_ID (any run type: gauntlet, backtest, portfolio, etc.)."""
     settings = AlphaSettings()
-    rdir = _artifacts.run_dir(settings.data_dir, run_id)
-    if not (rdir / "manifest.json").exists():
-        raise typer.BadParameter(f"no run {run_id!r} under {settings.data_dir / 'runs'}")
-    manifest = _artifacts.read_manifest(rdir)
+    manifest = _find_manifest(settings.data_dir, run_id)
+    if manifest is None:
+        raise typer.BadParameter(
+            f"no run {run_id!r} under {settings.data_dir} ({'/'.join(_RUN_DIRS)})"
+        )
 
     metadata = manifest.get("metadata", {})
-    symbol = metadata.get("symbol", manifest.get("symbol", "?"))
-    typer.echo(f"run {run_id}  symbol={symbol}  schema_version={manifest.get('schema_version')}")
+    symbol = metadata.get("symbol") or manifest.get("symbol")
+    symbols = manifest.get("symbols")
+    label = symbol or (", ".join(symbols) if symbols else "?")
+    typer.echo(
+        f"run {run_id}  {manifest.get('command', 'gauntlet')}  "
+        f"[{label}]  schema_version={manifest.get('schema_version')}"
+    )
 
     if "passed" in manifest:
         typer.echo(f"verdict: {'PASS' if manifest['passed'] else 'FAIL'}")
     if "oos_metrics" in manifest:
         metrics = ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(manifest["oos_metrics"].items()))
         typer.echo(f"OOS metrics: {metrics}")
+    if "metrics" in manifest:  # portfolio / cross-sectional
+        metrics = ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(manifest["metrics"].items()))
+        typer.echo(f"metrics: {metrics}")
+    for key in ("psr", "dsr", "best_sharpe"):
+        val = manifest.get(key)
+        # Only scalar values here; a dict-valued `dsr` (gauntlet/optim) is rendered by the block
+        # loop below — printing it here would emit a spurious, contradictory `dsr: n/a` line.
+        if isinstance(val, int | float) and not isinstance(val, bool):
+            typer.echo(f"{key}: {_fmt(val)}")
     if manifest.get("folds"):
         typer.echo(f"walk-forward: {len(manifest['folds'])} OOS folds")
     for n in manifest.get("nulls", []):
-        verdict = "PASS" if n["passed"] else "FAIL"
+        v = "PASS" if n["passed"] else "FAIL"
         typer.echo(
-            f"null[{n['tier']}]: percentile={_fmt(n['percentile'])} "
-            f"p={_fmt(n['p_value'])} -> {verdict}"
+            f"null[{n['tier']}]: percentile={_fmt(n['percentile'])} p={_fmt(n['p_value'])} -> {v}"
         )
-    for c in manifest.get("cis", []):
+    for key in ("sharpe_ci", "cagr_ci"):  # portfolio / cross-sectional intervals
+        ci = manifest.get(key)
+        if isinstance(ci, dict):
+            typer.echo(f"{key}: [{_fmt(ci.get('lower'))}, {_fmt(ci.get('upper'))}]")
+    for c in manifest.get("cis", []):  # gauntlet intervals
         typer.echo(
             f"CI[{c['metric']}]: {_fmt(c['point'])} [{_fmt(c['lower'])}, {_fmt(c['upper'])}] "
             f"@ {_fmt(c['confidence'])}"
         )
+    for key in ("dsr", "pbo", "spa", "reality_check"):  # optim verdict blocks (nested dicts)
+        block = manifest.get(key)
+        if isinstance(block, dict):
+            inner = ", ".join(
+                f"{k}={_fmt(v) if isinstance(v, float) else v}" for k, v in block.items()
+            )
+            typer.echo(f"{key}: {inner}")
+    if manifest.get("best_config"):
+        best = ", ".join(f"{name}={val:g}" for name, val in manifest["best_config"])
+        typer.echo(f"best config: {best}")
+    for leg in manifest.get("legs", []):
+        sharpe = _fmt(leg.get("oos_sharpe"))
+        typer.echo(f"leg[{leg['symbol']}]: weight={_fmt(leg['weight'])} oos_sharpe={sharpe}")
     for o in manifest.get("outcomes", []):
         typer.echo(f"gate[{o['name']}]: {'PASS' if o['passed'] else 'FAIL'}")
-    if (rdir / "tearsheet.html").exists():
-        typer.echo(f"tear sheet: {rdir / 'tearsheet.html'}")
+    if "orders" in manifest:  # plain backtest run
+        typer.echo(
+            f"orders={manifest['orders']} fills={manifest.get('fills')} "
+            f"rejected={manifest.get('rejected', 0)} "
+            f"final_equity={_fmt(manifest.get('final_equity'))}"
+        )
+    tearsheet = Path(manifest["__dir"]) / "tearsheet.html"
+    if tearsheet.exists():
+        typer.echo(f"tear sheet: {tearsheet}")

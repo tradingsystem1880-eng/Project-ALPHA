@@ -6,6 +6,8 @@ import typer
 
 from alpha_cli.backtest_cmds import backtest_app
 from alpha_cli.data_cmds import data_app
+from alpha_cli.optim_cmds import optim_app
+from alpha_cli.paper_cmds import paper_app
 from alpha_cli.report_cmds import report as _report
 from alpha_cli.validate_cmds import validate as _validate
 from alpha_core import __version__ as core_version
@@ -14,6 +16,8 @@ from alpha_core.config import AlphaSettings
 app = typer.Typer(help="Project ALPHA command-line interface.")
 app.add_typer(data_app, name="data")
 app.add_typer(backtest_app, name="backtest")
+app.add_typer(optim_app, name="optim")
+app.add_typer(paper_app, name="paper")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)
 

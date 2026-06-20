@@ -1,6 +1,6 @@
 [project]
 name = "alpha-validation"
-version = "0.0.0"
+version = "1.0.0"
 description = "Statistical validation gauntlet + quantstats tear sheet."
 requires-python = ">=3.12"
 dependencies = [
