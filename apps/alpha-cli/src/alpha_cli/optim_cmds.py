@@ -32,7 +32,9 @@ def _parse_axes(axes: list[str] | None) -> dict[str, list[float]]:
         if "=" not in item:
             raise typer.BadParameter(f"--grid must be name=v1,v2,..., got {item!r}")
         name, _, raw = item.partition("=")
-        name = name.strip()
+        # Accept CLI-conventional hyphens (e.g. `vol-window`) and map to the canonical snake_case
+        # RunSpec field (`vol_window`); else the axis silently becomes an ignored strategy param.
+        name = name.strip().replace("-", "_")
         try:
             values = [float(v) for v in raw.split(",") if v != ""]
         except ValueError as exc:

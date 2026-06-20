@@ -44,3 +44,26 @@ def test_optim_rejects_empty_grid(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     seed_store(tmp_path, symbol="SPY", n=90)
     result = runner.invoke(app, ["optim", "grid", "SPY", "--train-size", "15"])
     assert result.exit_code != 0  # no --grid axis provided
+
+
+def test_optim_grid_accepts_hyphenated_axis_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # CLI-conventional `vol-window` must map to the canonical RunSpec field `vol_window`, not
+    # silently become an ignored strategy param that leaves vol_window fixed at its default.
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=90)
+    args = [
+        "--grid", "vol-window=2,4",  # hyphenated axis — must normalize to vol_window
+        "--lookback", "5", "--skip", "1", "--rebalance-every", "2",
+        "--train-size", "15", "--test-size", "5", "--embargo", "1",
+        "--fee-bps", "0", "--slippage-bps", "0", "--starting-cash", "100000",
+        "--pbo-blocks", "6", "--n-resamples", "120", "--seed", "7",
+    ]  # fmt: skip
+    result = runner.invoke(app, ["optim", "grid", "SPY", *args])
+    assert result.exit_code == 0, result.output
+
+    (rdir,) = list((tmp_path / "optim").iterdir())
+    manifest = json.loads((rdir / "manifest.json").read_text())
+    axis_names = {name for config in manifest["configs"] for name, _ in config}
+    assert axis_names == {"vol_window"}  # normalized to the canonical field, swept as intended
