@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
+from alpha_core import DataError
+
 if TYPE_CHECKING:
     from alpha_backtest.results import Trade
 
@@ -62,3 +64,17 @@ def read_manifest(rdir: Path) -> dict[str, Any]:
     """Load a run's ``manifest.json`` back into a dict."""
     result: dict[str, Any] = json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
     return result
+
+
+def read_equity(rdir: Path) -> list[tuple[datetime, float]]:
+    """Load a run's ``equity_curve.parquet`` back into ``(timestamp, equity)`` pairs (ts order).
+
+    The symmetric reader for :func:`write_run`'s equity column — used by ``alpha propfirm
+    --from-run`` to recover a prior run's return stream without re-running the engine. Fails loud
+    (``DataError``) if the run has no equity curve (e.g. an optim/portfolio run).
+    """
+    path = rdir / "equity_curve.parquet"
+    if not path.exists():
+        raise DataError(f"run at {rdir} has no equity_curve.parquet")
+    frame = pl.read_parquet(path)
+    return list(zip(frame["ts"].to_list(), frame["equity"].to_list(), strict=True))
