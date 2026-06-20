@@ -26,6 +26,40 @@ IndexArray = npt.NDArray[np.intp]
 Statistic = Callable[[FloatArray], float]
 
 
+def risk_of_ruin(
+    returns: FloatSeq,
+    *,
+    ruin_drawdown: float = 0.5,
+    n_paths: int = 1000,
+    mean_block: float = 5.0,
+    seed: int | None = None,
+) -> float:
+    """Probability an equity path breaches ``ruin_drawdown`` peak-to-trough (stationary bootstrap).
+
+    Resamples ``returns`` into ``n_paths`` synthetic per-period paths (preserving short-range
+    dependence via geometric-length blocks), compounds each into an equity curve, and returns the
+    fraction whose worst peak-to-trough drawdown is at least ``ruin_drawdown`` (e.g. ``0.5`` = a 50%
+    loss from a high-water mark). Lives here, not in ``metrics``, because it is a resampling
+    estimator built on the stationary bootstrap. Fails loud (``DataError``) on ``ruin_drawdown``
+    outside ``(0, 1]``, ``n_paths < 1``, or fewer than 2 finite returns.
+    """
+    if not 0.0 < ruin_drawdown <= 1.0:
+        raise DataError(f"ruin_drawdown must be in (0, 1], got {ruin_drawdown}")
+    r = np.asarray(returns, dtype=np.float64)
+    if r.ndim != 1 or r.size < 2:
+        raise DataError(f"risk_of_ruin needs >= 2 returns, got shape {r.shape}")
+    if not bool(np.all(np.isfinite(r))):
+        raise DataError("risk_of_ruin requires finite returns")
+
+    rng = np.random.default_rng(seed)
+    idx = stationary_bootstrap_indices(r.size, mean_block=mean_block, n_resamples=n_paths, rng=rng)
+    # (n_paths, n+1) equity paths, each starting at 1.0, then per-path worst drawdown.
+    equity = np.cumprod(1.0 + r[idx], axis=1)
+    equity = np.concatenate([np.ones((n_paths, 1)), equity], axis=1)
+    drawdowns = (equity / np.maximum.accumulate(equity, axis=1) - 1.0).min(axis=1)
+    return float(np.mean(drawdowns <= -ruin_drawdown))
+
+
 @dataclass(frozen=True)
 class ConfidenceInterval:
     """A two-sided confidence interval around a point estimate."""

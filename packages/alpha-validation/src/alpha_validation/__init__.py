@@ -11,6 +11,7 @@ from alpha_validation.bootstrap import (
     ConfidenceInterval,
     Statistic,
     block_bootstrap_ci,
+    risk_of_ruin,
     stationary_bootstrap_indices,
 )
 from alpha_validation.cpcv import (
@@ -29,9 +30,11 @@ from alpha_validation.metrics import (
     FloatSeq,
     annualized_volatility,
     cagr,
+    expected_shortfall,
     max_drawdown,
     sharpe_ratio,
     to_returns,
+    value_at_risk,
 )
 from alpha_validation.montecarlo import (
     NullResult,
@@ -56,6 +59,7 @@ from alpha_validation.tearsheet import (
     render_tearsheet_html,
     report_to_manifest,
 )
+from alpha_validation.verdict import VerdictSummary, grade_verdict
 from alpha_validation.walkforward import Split, walk_forward_splits
 
 __version__ = "0.0.0"
@@ -79,6 +83,7 @@ __all__ = [
     "Split",
     "Statistic",
     "StrategyFn",
+    "VerdictSummary",
     "__version__",
     "annualized_volatility",
     "block_bootstrap_ci",
@@ -87,7 +92,9 @@ __all__ = [
     "combinatorial_purged_splits",
     "deflated_sharpe",
     "expected_max_sharpe",
+    "expected_shortfall",
     "garch_paths",
+    "grade_verdict",
     "max_drawdown",
     "n_cpcv_splits",
     "parametric_price_null",
@@ -98,10 +105,12 @@ __all__ = [
     "render_returns_tearsheet",
     "render_tearsheet_html",
     "report_to_manifest",
+    "risk_of_ruin",
     "sharpe_ratio",
     "spa_test",
     "stationary_bootstrap_indices",
     "student_t_paths",
     "to_returns",
+    "value_at_risk",
     "walk_forward_splits",
 ]

@@ -98,3 +98,33 @@ def max_drawdown(equity: FloatSeq) -> float:
     arr = _as_equity(equity, "max_drawdown")
     running_peak = np.maximum.accumulate(arr)
     return float((arr / running_peak - 1.0).min())
+
+
+def value_at_risk(returns: FloatSeq, *, confidence: float = 0.95) -> float:
+    """Historical Value-at-Risk as a non-negative per-period loss fraction.
+
+    The ``1 - confidence`` quantile of the return distribution, sign-flipped so a worse tail reads
+    as a larger positive loss (``0.03`` ≈ "5%-of-the-time the period loses at least 3%"). A
+    non-negative profit at that quantile clamps to ``0.0`` (no loss). Fails loud on < 2 returns,
+    non-finite values, or ``confidence`` outside ``(0, 1)``.
+    """
+    if not 0.0 < confidence < 1.0:
+        raise DataError(f"confidence must be in (0, 1), got {confidence}")
+    r = _as_returns(returns, "value_at_risk")
+    quantile = float(np.quantile(r, 1.0 - confidence))
+    return max(0.0, -quantile)
+
+
+def expected_shortfall(returns: FloatSeq, *, confidence: float = 0.95) -> float:
+    """Expected shortfall (CVaR) as a non-negative per-period loss fraction.
+
+    The mean of the returns at or below the ``1 - confidence`` quantile — the average loss *given*
+    that the VaR threshold was breached. Always at least as heavy as :func:`value_at_risk` because
+    it averages the worst tail (which includes the VaR point). Same fail-loud contract as VaR.
+    """
+    if not 0.0 < confidence < 1.0:
+        raise DataError(f"confidence must be in (0, 1), got {confidence}")
+    r = _as_returns(returns, "expected_shortfall")
+    quantile = float(np.quantile(r, 1.0 - confidence))
+    tail = r[r <= quantile]  # min return always satisfies r <= quantile, so tail is never empty
+    return max(0.0, -float(np.mean(tail)))

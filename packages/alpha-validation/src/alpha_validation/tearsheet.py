@@ -22,6 +22,7 @@ from typing import Any
 
 from alpha_core import DataError, ValidationOutcome
 from alpha_validation.metrics import FloatArray
+from alpha_validation.verdict import VerdictSummary
 
 _SCHEMA_VERSION = 1
 
@@ -133,6 +134,7 @@ class GauntletReport:
     passed: bool  # all gates passed
     dsr: DSRSummary | None = None  # probabilistic/deflated Sharpe (optional, back-compat default)
     cpcv: CPCVSummary | None = None  # combinatorial purged CV OOS distribution (optional)
+    verdict: VerdictSummary | None = None  # A-F grade (a headline summary, not a pass/fail gate)
 
 
 def build_outcomes(
@@ -247,6 +249,7 @@ def report_to_manifest(report: GauntletReport) -> dict[str, Any]:
         ],
         "dsr": dataclasses.asdict(report.dsr) if report.dsr is not None else None,
         "cpcv": dataclasses.asdict(report.cpcv) if report.cpcv is not None else None,
+        "verdict": dataclasses.asdict(report.verdict) if report.verdict is not None else None,
         "passed": report.passed,
     }
     return {k: _sanitize(v) for k, v in manifest.items()}
@@ -305,9 +308,47 @@ def _validation_section_html(report: GauntletReport) -> str:
     <tr><th>Metric</th><th>Point</th><th>Lower</th><th>Upper</th><th>Confidence</th></tr>
     {ci_rows}
   </table>
+  {_verdict_html(report)}
   {_dsr_cpcv_html(report)}
 </section>
 """
+
+
+# (oos_metrics key, human label) for the risk-metrics table, in display order.
+_RISK_METRIC_LABELS: tuple[tuple[str, str], ...] = (
+    ("value_at_risk", "Value-at-Risk (95%)"),
+    ("expected_shortfall", "Expected Shortfall (95%)"),
+    ("risk_of_ruin", "Risk of Ruin"),
+    ("max_drawdown", "Max Drawdown"),
+)
+
+
+def _verdict_html(report: GauntletReport) -> str:
+    """The A-F Verdict grade table + the tail-risk metrics table (QuantPad-style headline)."""
+    parts: list[str] = []
+    if report.verdict is not None:
+        v = report.verdict
+        parts.append(
+            "<h3>Verdict</h3>"
+            '<table border="1" cellpadding="4" cellspacing="0">'
+            "<tr><th>Edge</th><th>Robustness</th><th>Risk</th><th>Sample</th><th>Overall</th></tr>"
+            f"<tr><td>{html.escape(v.edge)}</td><td>{html.escape(v.robustness)}</td>"
+            f"<td>{html.escape(v.risk)}</td><td>{html.escape(v.sample)}</td>"
+            f"<td><b>{html.escape(v.overall)}</b></td></tr></table>"
+        )
+    risk_rows = "".join(
+        f"<tr><td>{label}</td><td>{_fmt(report.oos_metrics[key])}</td></tr>"
+        for key, label in _RISK_METRIC_LABELS
+        if key in report.oos_metrics
+    )
+    if risk_rows:
+        parts.append(
+            "<h3>Risk Metrics</h3>"
+            '<table border="1" cellpadding="4" cellspacing="0">'
+            "<tr><th>Metric</th><th>Value</th></tr>"
+            f"{risk_rows}</table>"
+        )
+    return "\n".join(parts)
 
 
 def _dsr_cpcv_html(report: GauntletReport) -> str:

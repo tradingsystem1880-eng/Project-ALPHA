@@ -19,6 +19,7 @@ from alpha_validation import (
     GauntletReport,
     NullSummary,
     RunMetadata,
+    VerdictSummary,
     build_outcomes,
     report_to_manifest,
 )
@@ -99,6 +100,28 @@ def test_manifest_is_deterministic() -> None:
     a = json.dumps(report_to_manifest(_report()), sort_keys=True)
     b = json.dumps(report_to_manifest(_report()), sort_keys=True)
     assert a == b  # byte-identical for identical runs (spec §11.4)
+
+
+def test_manifest_verdict_is_null_when_absent() -> None:
+    # The Verdict is an optional, back-compat field; absent it serializes as `verdict: null`.
+    manifest = report_to_manifest(_report())
+    assert manifest["verdict"] is None
+
+
+def test_manifest_serializes_the_verdict_block() -> None:
+    verdict = VerdictSummary(
+        edge="B",
+        robustness="A",
+        risk="C",
+        sample="A",
+        overall="B",
+        detail={"edge_sharpe": 1.2, "risk_of_ruin": 0.04, "overall_gpa": 2.75},
+    )
+    manifest = report_to_manifest(dataclasses.replace(_report(), verdict=verdict))
+    assert manifest["verdict"]["overall"] == "B"
+    assert manifest["verdict"]["edge"] == "B"
+    assert manifest["verdict"]["detail"]["risk_of_ruin"] == pytest.approx(0.04)
+    json.dumps(manifest, allow_nan=False, sort_keys=True)  # raises if a NaN leaked into the block
 
 
 def test_build_outcomes_gate_pass_logic() -> None:

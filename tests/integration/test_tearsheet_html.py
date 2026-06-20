@@ -18,6 +18,7 @@ from alpha_validation import (
     GauntletReport,
     NullSummary,
     RunMetadata,
+    VerdictSummary,
     render_tearsheet_html,
 )
 
@@ -50,7 +51,14 @@ def _report() -> GauntletReport:
     )
     return GauntletReport(
         metadata=meta,
-        oos_metrics={"sharpe": 0.9, "cagr": 0.11, "max_drawdown": -0.08},
+        oos_metrics={
+            "sharpe": 0.9,
+            "cagr": 0.11,
+            "max_drawdown": -0.08,
+            "value_at_risk": 0.018,
+            "expected_shortfall": 0.026,
+            "risk_of_ruin": 0.03,
+        },
         folds=(
             FoldSummary(0, 0, 60, 60, 80, 20, 0.03, 0.7, 0.10),
             FoldSummary(1, 0, 80, 80, 100, 20, 0.01, 0.4, 0.05),
@@ -65,6 +73,14 @@ def _report() -> GauntletReport:
         ),
         outcomes=(ValidationOutcome(name="walk_forward_oos", passed=True, detail={"sharpe": 0.9}),),
         passed=True,
+        verdict=VerdictSummary(
+            edge="B",
+            robustness="A",
+            risk="C",
+            sample="A",
+            overall="B",
+            detail={"overall_gpa": 2.75},
+        ),
     )
 
 
@@ -91,5 +107,8 @@ def test_renders_html_with_quantstats_body_and_gauntlet_section(tmp_path: Path) 
         "BCa",
         "PASS",
         "full_engine",
+        "Verdict",  # the A-F grade table
+        "Risk Metrics",  # VaR / expected-shortfall / risk-of-ruin table
+        "Risk of Ruin",
     ):
         assert marker in body, marker
