@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -21,10 +22,12 @@ _ARGS = [
 
 def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    # Realistic signal-to-noise: sigma comparable to the drifts keeps the book non-deterministic, so
+    # the Sharpe is sane and the tear-sheet renderer doesn't trip a degenerate sqrt warning.
     for i, (sym, drift) in enumerate(
         {"AAA": 0.012, "BBB": -0.004, "CCC": -0.012, "DDD": 0.004}.items()
     ):
-        seed_store(tmp_path, symbol=sym, n=120, seed=i, drift=drift, sigma=0.003)
+        seed_store(tmp_path, symbol=sym, n=120, seed=i, drift=drift, sigma=0.012)
 
     result = runner.invoke(app, ["backtest", "cross-sectional", "AAA", "BBB", "CCC", "DDD", *_ARGS])
     assert result.exit_code == 0, result.output
@@ -35,7 +38,13 @@ def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.Mon
     assert manifest["symbols"] == ["AAA", "BBB", "CCC", "DDD"]
     assert manifest["long_short"] is True
     assert manifest["n_periods"] > 0
-    assert "sharpe_ci" in manifest
+    # Don't just check membership: pin that the BCa interval is finite and brackets a finite point
+    # Sharpe, so a future degenerate-stats regression (None / absurd CI) is caught, not serialized.
+    sharpe = manifest["metrics"]["sharpe"]
+    ci = manifest["sharpe_ci"]
+    assert isinstance(sharpe, float) and math.isfinite(sharpe)
+    assert math.isfinite(ci["lower"]) and math.isfinite(ci["upper"])
+    assert ci["lower"] <= sharpe <= ci["upper"]
     assert (rdir / "tearsheet.html").exists()  # reporting parity with `alpha validate`
 
     report_out = runner.invoke(app, ["report", manifest["run_id"]])
