@@ -1,6 +1,6 @@
 [project]
 name = "alpha-cli"
-version = "0.0.0"
+version = "1.0.0"
 description = "Project ALPHA command-line interface."
 requires-python = ">=3.12"
 dependencies = [

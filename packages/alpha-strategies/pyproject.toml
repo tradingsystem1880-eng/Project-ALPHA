@@ -1,6 +1,6 @@
 [project]
 name = "alpha-strategies"
-version = "0.0.0"
+version = "1.0.0"
 description = "Trading strategies (Phase 2+: nautilus Strategy subclasses)."
 requires-python = ">=3.12"
 dependencies = ["alpha-core", "nautilus-trader>=1.228"]

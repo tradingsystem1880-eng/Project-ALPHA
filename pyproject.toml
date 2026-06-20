@@ -1,6 +1,6 @@
 [project]
 name = "project-alpha"
-version = "0.0.0"
+version = "1.0.0"
 description = "Personal quantitative research platform (backtest + validation + paper)."
 requires-python = ">=3.12"
 dependencies = [
