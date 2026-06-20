@@ -7,6 +7,7 @@ run's stored equity curve. Runs offline against the deterministic fixture store 
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -124,3 +125,19 @@ def test_propfirm_requires_exactly_one_input(
     assert neither.exit_code != 0  # no symbol and no --from-run
     both = runner.invoke(app, ["propfirm", "run", "SPY", "--from-run", "abc", "--firm", "topstep"])
     assert both.exit_code != 0  # ambiguous: both a symbol and --from-run
+
+
+def test_report_renders_a_propfirm_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=60)
+    run = runner.invoke(app, ["propfirm", "run", "SPY", "--firm", "topstep", *_BT_ARGS, *_MC_ARGS])
+    assert run.exit_code == 0, run.output
+    (rdir,) = list((tmp_path / "propfirm").iterdir())
+    run_id = rdir.name
+
+    shutil.rmtree(tmp_path / "store")  # report must rely only on the manifest
+    out = runner.invoke(app, ["report", run_id])
+    assert out.exit_code == 0, out.output
+    assert run_id in out.output
+    assert "topstep" in out.output  # firm headline
+    assert "pass_probability" in out.output  # the simulation metrics

@@ -16,7 +16,7 @@ import typer
 
 from alpha_core.config import AlphaSettings
 
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
 
 
 def _fmt(x: Any) -> str:
@@ -52,6 +52,14 @@ def report(run_id: str) -> None:
         f"[{label}]  schema_version={manifest.get('schema_version')}"
     )
 
+    if manifest.get("command") == "propfirm":  # prop-firm Monte Carlo run
+        rules = manifest.get("rules", {})
+        typer.echo(f"prop-firm: {manifest.get('firm')} (source {manifest.get('source')})")
+        typer.echo(
+            f"rules: account ${_fmt(rules.get('account_size'))}, "
+            f"target ${_fmt(rules.get('profit_target'))}, "
+            f"max-dd ${_fmt(rules.get('max_drawdown'))}"
+        )
     if "passed" in manifest:
         typer.echo(f"verdict: {'PASS' if manifest['passed'] else 'FAIL'}")
     verdict = manifest.get("verdict")
