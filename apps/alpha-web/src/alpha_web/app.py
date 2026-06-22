@@ -8,16 +8,18 @@ app, its subprocesses, and the CLI share one store. Binds loopback only (local s
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sse_starlette.sse import EventSourceResponse
 
 from alpha_core.config import AlphaSettings
-from alpha_web import _charts, _runs
+from alpha_web import _charts, _invoke, _runs
 
 _PKG = Path(__file__).resolve().parent
 
@@ -102,6 +104,33 @@ def create_app() -> FastAPI:
         if path is None:
             raise HTTPException(status_code=404, detail="no tear sheet for this run")
         return FileResponse(path, media_type="text/html")
+
+    @app.get("/new")
+    def new_run(request: Request) -> Response:
+        commands = [*_invoke.RUN_TYPE, "data pull"]
+        return templates.TemplateResponse(request, "new.html", {"commands": commands})
+
+    @app.get("/console")
+    def console(request: Request) -> Response:
+        return templates.TemplateResponse(request, "console.html", {})
+
+    @app.post("/runs")
+    def launch_run(command: str = Form(...), args: str = Form("")) -> JSONResponse:
+        argv = command.split() + shlex.split(args)
+        job = _invoke.launch(argv, data_dir=_data_dir(), run_type=_invoke.RUN_TYPE.get(command))
+        return JSONResponse({"job_id": job.job_id})
+
+    @app.post("/console/run")
+    def console_run(args: str = Form("")) -> JSONResponse:
+        job = _invoke.launch(shlex.split(args), data_dir=_data_dir(), run_type=None)
+        return JSONResponse({"job_id": job.job_id})
+
+    @app.get("/jobs/{job_id}/stream")
+    async def job_stream(job_id: str) -> EventSourceResponse:
+        job = _invoke.JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="unknown job")
+        return EventSourceResponse(_invoke.event_stream(job))
 
     return app
 

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}New run &middot; ALPHA{% endblock %}
+{% block content %}
+<h1>New run</h1>
+<form id="run-form" class="run-form">
+  <label for="command">Command</label>
+  <select id="command" name="command">
+    {% for c in commands %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+  </select>
+  <label for="args">Arguments &amp; flags</label>
+  <input id="args" name="args" autocomplete="off"
+         placeholder="SPY --strategy ts_momentum --lookback 100 --fee-bps 0">
+  <button type="submit">Run</button>
+</form>
+<h2>Output</h2>
+<pre class="console" id="console"></pre>
+<script src="/static/console.js"></script>
+<script>attachRunner("run-form", "console", "/runs");</script>
+{% endblock %}

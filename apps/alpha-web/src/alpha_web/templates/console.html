@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Console &middot; ALPHA{% endblock %}
+{% block content %}
+<h1>Command console</h1>
+<p class="meta">Run any <code>alpha</code> command and watch it live. For true conversational
+control, connect the <code>alpha</code> MCP server to a Claude client (see the README).</p>
+<form id="console-form" class="run-form">
+  <label for="cargs"><code>alpha</code></label>
+  <input id="cargs" name="args" autocomplete="off"
+         placeholder="propfirm run AAPL --firm topstep --horizon 252">
+  <button type="submit">Run</button>
+</form>
+<h2>Output</h2>
+<pre class="console" id="console"></pre>
+<script src="/static/console.js"></script>
+<script>attachRunner("console-form", "console", "/console/run");</script>
+{% endblock %}
