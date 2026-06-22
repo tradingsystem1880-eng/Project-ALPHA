@@ -11,6 +11,7 @@ dependencies = [
     "alpha-validation",
     "alpha-cli",
     "alpha-mcp",
+    "alpha-web",
 ]
 
 [tool.uv]
@@ -27,6 +28,7 @@ alpha-backtest = { workspace = true }
 alpha-validation = { workspace = true }
 alpha-cli = { workspace = true }
 alpha-mcp = { workspace = true }
+alpha-web = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -46,7 +48,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli", "alpha_mcp"]
+known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli", "alpha_mcp", "alpha_web"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -91,6 +93,7 @@ root_packages = [
     "alpha_validation",
     "alpha_cli",
     "alpha_mcp",
+    "alpha_web",
 ]
 
 [[tool.importlinter.contracts]]
@@ -128,3 +131,9 @@ name = "alpha_mcp sits atop the DAG (nothing imports it)"
 type = "forbidden"
 source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
 forbidden_modules = ["alpha_mcp"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_web sits atop the DAG (nothing imports it)"
+type = "forbidden"
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli", "alpha_mcp"]
+forbidden_modules = ["alpha_web"]
