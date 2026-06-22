@@ -116,6 +116,20 @@ Desktop, add to `claude_desktop_config.json`:
 Then drive ALPHA in plain language: *"pull AAPL, run the gauntlet on a momentum strategy, then
 check it against a Topstep combine."* No API keys, $0.
 
+## Web IDE
+
+`uv run alpha-web` serves a local web IDE at **http://127.0.0.1:8800** (loopback only, no auth):
+
+- **Run browser** (`/`) — every stored run with pass / A–F Verdict badges.
+- **Run detail** (`/runs/{id}`) — the manifest, an inline equity chart, and the embedded HTML tear
+  sheet.
+- **New run** (`/new`) — pick a command + arguments and watch it run **live** (streamed output).
+- **Console** (`/console`) — run any `alpha` command and stream it.
+
+Server-rendered FastAPI + Jinja + native `EventSource` (no build step, no CDN). Like the MCP
+server it's purely additive — it subprocesses the `alpha` CLI and reads the artifacts. For true
+conversational control, pair it with the `alpha` MCP server (above) in a Claude client.
+
 ## Not yet built (intentional)
 
 - Live paper-trading data feed (the user-supplied adapter described above).
