@@ -46,7 +46,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli", "alpha_mcp"]
 
 [tool.mypy]
 python_version = "3.12"
