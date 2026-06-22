@@ -10,6 +10,7 @@ dependencies = [
     "alpha-backtest",
     "alpha-validation",
     "alpha-cli",
+    "alpha-mcp",
 ]
 
 [tool.uv]
@@ -25,6 +26,7 @@ alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
 alpha-validation = { workspace = true }
 alpha-cli = { workspace = true }
+alpha-mcp = { workspace = true }
 
 [dependency-groups]
 dev = [
