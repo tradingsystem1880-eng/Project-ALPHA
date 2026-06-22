@@ -107,6 +107,7 @@ def run_propfirm(
     n_paths: int,
     mean_block: float,
     seed: int | None,
+    horizon_days: int | None,
 ) -> PropFirmRunResult:
     """Resolve the return stream + rules and run the prop-firm Monte Carlo.
 
@@ -123,5 +124,7 @@ def run_propfirm(
         raise DataError("provide a SYMBOL or --from-run RUN_ID")
 
     rules = resolve_rules(firm, overrides)
-    result = simulate_propfirm(returns, rules, n_paths=n_paths, mean_block=mean_block, seed=seed)
+    result = simulate_propfirm(
+        returns, rules, n_paths=n_paths, mean_block=mean_block, seed=seed, horizon_days=horizon_days
+    )
     return PropFirmRunResult(firm=firm or "custom", source=source, rules=rules, result=result)

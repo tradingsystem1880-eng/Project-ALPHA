@@ -59,6 +59,9 @@ def run(
     # Monte-Carlo knobs
     n_paths: int = 5000,
     mean_block: float = 5.0,
+    horizon: int | None = typer.Option(
+        None, help="cap the simulation to N trading days (default: the full return series)"
+    ),
     seed: int | None = None,
     # backtest knobs (used only for a fresh inline backtest of SYMBOL)
     lookback: int = 252,
@@ -123,6 +126,7 @@ def run(
         "overrides": dict(sorted(overrides.items())),
         "n_paths": n_paths,
         "mean_block": mean_block,
+        "horizon": horizon,
         "seed": resolved_seed,
     }
     if from_run is not None:
@@ -145,6 +149,7 @@ def run(
             n_paths=n_paths,
             mean_block=mean_block,
             seed=resolved_seed,
+            horizon_days=horizon,
         )
     except DataError as exc:  # missing run, unknown firm, degenerate returns, bad rule override
         raise typer.BadParameter(str(exc)) from exc

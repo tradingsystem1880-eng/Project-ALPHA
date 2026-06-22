@@ -71,27 +71,39 @@ class ConfidenceInterval:
 
 
 def stationary_bootstrap_indices(
-    n: int, *, mean_block: float, n_resamples: int, rng: np.random.Generator
+    n: int,
+    *,
+    mean_block: float,
+    n_resamples: int,
+    rng: np.random.Generator,
+    length: int | None = None,
 ) -> IndexArray:
-    """``(n_resamples, n)`` matrix of resampling indices for the stationary bootstrap.
+    """``(n_resamples, length)`` matrix of resampling indices for the stationary bootstrap.
 
     Each step either continues the current block (advance one index, wrapping circularly) or, with
     probability ``1 / mean_block``, restarts at a fresh uniform index — giving geometric block
-    lengths of mean ``mean_block``. Fails loud (``DataError``) on ``n < 2``,
-    non-positive ``n_resamples``, or non-positive / non-finite ``mean_block``.
+    lengths of mean ``mean_block``. Indices are always drawn from ``[0, n)``; ``length`` is the
+    output path length and defaults to ``n`` (the common case — and at the default the RNG draws are
+    identical to the no-``length`` call, so existing seeded callers are byte-for-byte unchanged).
+    A ``length`` other than ``n`` lets callers replay a longer or shorter horizon than the source
+    series. Fails loud (``DataError``) on ``n < 2``, non-positive ``n_resamples`` / ``length``, or
+    non-positive / non-finite ``mean_block``.
     """
     if n < 2:
         raise DataError(f"stationary_bootstrap_indices needs n >= 2, got {n}")
     if n_resamples < 1:
         raise DataError(f"n_resamples must be >= 1, got {n_resamples}")
+    out_len = n if length is None else length
+    if out_len < 1:
+        raise DataError(f"length must be >= 1, got {out_len}")
     if not np.isfinite(mean_block) or mean_block <= 0.0:
         raise DataError(f"mean_block must be finite > 0, got {mean_block!r}")
     restart_prob = 1.0 / mean_block
-    restart = rng.random((n_resamples, n)) < restart_prob
-    fresh = rng.integers(0, n, size=(n_resamples, n))
-    idx = np.empty((n_resamples, n), dtype=np.intp)
+    restart = rng.random((n_resamples, out_len)) < restart_prob
+    fresh = rng.integers(0, n, size=(n_resamples, out_len))
+    idx = np.empty((n_resamples, out_len), dtype=np.intp)
     idx[:, 0] = fresh[:, 0]  # every row begins with a fresh draw
-    for t in range(1, n):
+    for t in range(1, out_len):
         continued = (idx[:, t - 1] + 1) % n
         idx[:, t] = np.where(restart[:, t], fresh[:, t], continued)
     return idx

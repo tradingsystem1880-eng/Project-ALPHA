@@ -69,6 +69,21 @@ def test_propfirm_manifest_is_byte_stable(tmp_path: Path, monkeypatch: pytest.Mo
     assert text_a == text_b  # byte-identical (spec §11.4)
 
 
+def test_propfirm_horizon_flag_caps_the_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=60)
+    result = runner.invoke(
+        app,
+        ["propfirm", "run", "SPY", "--firm", "topstep", "--horizon", "20", *_BT_ARGS, *_MC_ARGS],
+    )
+    assert result.exit_code == 0, result.output
+    (rdir,) = list((tmp_path / "propfirm").iterdir())
+    manifest = json.loads((rdir / "manifest.json").read_text())
+    assert manifest["horizon_days"] == 20  # the simulation window, not the full return series
+
+
 def test_propfirm_from_run_reuses_stored_equity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

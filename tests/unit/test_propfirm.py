@@ -122,6 +122,26 @@ def test_flat_stream_yields_zero_metrics() -> None:
     assert math.isnan(out.median_days_to_pass)
 
 
+def test_horizon_caps_the_simulation() -> None:
+    # A 4%-trailing drawdown against a +/-2% whipsaw: over many days a breach is near-certain, but
+    # capping the horizon to a handful of days gives the drawdown little room to form.
+    rets = [(-0.02 if i % 2 else 0.02) for i in range(120)]
+    rules = _rules(
+        profit_target=100_000.0
+    )  # unreachable target -> only the drawdown resolves paths
+    full = simulate_propfirm(rets, rules, n_paths=400, seed=7)
+    short = simulate_propfirm(rets, rules, n_paths=400, seed=7, horizon_days=4)
+    assert full.horizon_days == 120 and short.horizon_days == 4
+    assert short.bust_probability < full.bust_probability
+
+
+def test_horizon_can_exceed_the_series_length() -> None:
+    # The horizon may replay more days than the track record (resampled from the same series).
+    out = simulate_propfirm([0.01] * 40, _rules(), n_paths=50, seed=7, horizon_days=200)
+    assert out.horizon_days == 200
+    assert 0.0 <= out.pass_probability <= 1.0 and 0.0 <= out.bust_probability <= 1.0
+
+
 def test_simulate_fails_loud_on_degenerate_input() -> None:
     with pytest.raises(DataError):
         simulate_propfirm([0.01], _rules(), n_paths=10, seed=7)  # < 2 returns

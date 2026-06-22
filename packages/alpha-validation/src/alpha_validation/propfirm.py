@@ -135,28 +135,36 @@ def simulate_propfirm(
     n_paths: int = 5000,
     mean_block: float = 5.0,
     seed: int | None = None,
+    horizon_days: int | None = None,
 ) -> PropFirmResult:
     """Estimate pass / bust / payout probabilities for ``daily_returns`` against ``rules``.
 
-    Stationary-bootstraps the daily return series into ``n_paths`` synthetic histories (each the
-    length of the input — the strategy's demonstrated track record, reshuffled, no extrapolation),
-    then walks each through the EVAL → FUNDED state machine. The evaluation phase is vectorised
-    (compound the balance, ratchet the trailing floor, find the first pass/bust day); the funded
-    phase is walked per passing path. ``expected_payout`` is the mean trader take across *all* paths
-    net of ``eval_fee`` (every path pays the fee to attempt). Fails loud (``DataError``) on fewer
-    than 2 finite returns; a flat (no-edge) stream yields all-zero probabilities, NaN
-    days-to-pass, and ``-eval_fee`` expected payout (here ``0`` when the fee is ``0``).
+    Stationary-bootstraps the daily return series into ``n_paths`` synthetic histories of
+    ``horizon_days`` length (default: the input length — the strategy's demonstrated track record,
+    reshuffled), then walks each through the EVAL → FUNDED state machine. The evaluation phase is
+    vectorised (compound the balance, ratchet the trailing floor, find the first pass/bust day); the
+    funded phase is walked per passing path. ``expected_payout`` is the mean trader take across
+    *all* paths net of ``eval_fee`` (every path pays the fee to attempt). A shorter ``horizon_days``
+    bounds the window — useful because over a full multi-year record the trailing drawdown is almost
+    surely breached eventually (bust probability saturates). Fails loud (``DataError``) on fewer
+    than 2 finite returns or a non-positive horizon; a flat (no-edge) stream yields all-zero
+    probabilities, NaN days-to-pass, and ``-eval_fee`` expected payout (here ``0`` when fee ``0``).
     """
     r = np.asarray(daily_returns, dtype=np.float64)
     if r.ndim != 1 or r.size < 2:
         raise DataError(f"simulate_propfirm needs >= 2 returns, got shape {r.shape}")
     if not bool(np.all(np.isfinite(r))):
         raise DataError("simulate_propfirm requires finite returns")
+    horizon = int(r.size) if horizon_days is None else int(horizon_days)
+    if horizon < 1:
+        raise DataError(f"horizon_days must be >= 1, got {horizon}")
 
     n = int(r.size)
     rng = np.random.default_rng(seed)
-    idx = stationary_bootstrap_indices(n, mean_block=mean_block, n_resamples=n_paths, rng=rng)
-    paths = r[idx]  # (n_paths, n) synthetic daily-return histories
+    idx = stationary_bootstrap_indices(
+        n, mean_block=mean_block, n_resamples=n_paths, rng=rng, length=horizon
+    )
+    paths = r[idx]  # (n_paths, horizon) synthetic daily-return histories
 
     # --- vectorised evaluation phase ---------------------------------------------------------
     acct = rules.account_size
@@ -179,13 +187,15 @@ def simulate_propfirm(
     if rules.daily_loss_limit is not None:
         bust = bust | (pnl <= -rules.daily_loss_limit)
 
-    can_pass = (np.arange(n) + 1) >= rules.min_trading_days
+    can_pass = (np.arange(horizon) + 1) >= rules.min_trading_days
     passed_today = (balance >= acct + rules.profit_target) & can_pass
 
-    first_pass = np.where(passed_today.any(axis=1), passed_today.argmax(axis=1), n)
-    first_bust = np.where(bust.any(axis=1), bust.argmax(axis=1), n)
+    # the "never" sentinel is the horizon (>= any real event index), kept consistent across both so
+    # the pass-vs-bust ordering holds even when the horizon exceeds the source-series length.
+    first_pass = np.where(passed_today.any(axis=1), passed_today.argmax(axis=1), horizon)
+    first_bust = np.where(bust.any(axis=1), bust.argmax(axis=1), horizon)
     passed_eval = first_pass < first_bust  # a bust on the same day disqualifies the pass
-    busted_eval = (~passed_eval) & (first_bust < n)
+    busted_eval = (~passed_eval) & (first_bust < horizon)
 
     # --- funded phase (only the paths that passed the eval) ----------------------------------
     total_withdrawn = np.zeros(n_paths, dtype=np.float64)
@@ -210,7 +220,7 @@ def simulate_propfirm(
         median_days_to_pass=median,
         expected_payout=float(payout_cash.mean()),
         n_paths=n_paths,
-        horizon_days=n,
+        horizon_days=horizon,
     )
 
 

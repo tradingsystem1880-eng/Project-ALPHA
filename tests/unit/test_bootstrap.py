@@ -26,6 +26,23 @@ def test_bootstrap_indices_shape_bounds_and_determinism() -> None:
     assert np.array_equal(idx_a, idx_b)  # same seed -> identical resamples
 
 
+def test_bootstrap_indices_respects_explicit_length() -> None:
+    # an explicit output length decouples the path length from the index range (samples in [0, n))
+    idx = stationary_bootstrap_indices(
+        20, mean_block=5.0, n_resamples=10, rng=np.random.default_rng(7), length=50
+    )
+    assert idx.shape == (10, 50)
+    assert idx.min() >= 0 and idx.max() < 20  # indices still drawn from the 20-long source
+    # length=n reproduces the no-length call byte-for-byte (existing callers stay unchanged)
+    a = stationary_bootstrap_indices(
+        20, mean_block=5.0, n_resamples=8, rng=np.random.default_rng(3)
+    )
+    b = stationary_bootstrap_indices(
+        20, mean_block=5.0, n_resamples=8, rng=np.random.default_rng(3), length=20
+    )
+    assert np.array_equal(a, b)
+
+
 def test_unit_mean_block_advances_one_step_within_a_block() -> None:
     # mean_block >> n -> restart prob ~0 -> each row is a single circular block (contiguous mod n)
     idx = stationary_bootstrap_indices(
