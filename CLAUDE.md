@@ -8,11 +8,12 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Python 3.12, `uv` virtual workspace (root is not a package). Members: `packages/*`, `apps/*`.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
-`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation` ← `alpha_core`; `alpha_cli` ← everything.
+`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp` ← `alpha_cli` (top of DAG).
 - `alpha_core` imports nothing internal.
 - `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_backtest` → core + data only.
 - `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
-- Contracts live in root `pyproject.toml` `[tool.importlinter]` (5 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
+- `alpha_mcp` sits atop the DAG and composes nothing — it subprocesses the `alpha` CLI; nothing imports it.
+- Contracts live in root `pyproject.toml` `[tool.importlinter]` (6 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
 - **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `docs:`).
@@ -129,6 +130,15 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
 | `_artifacts.py` | Run-dir layout + manifest/parquet IO | `run_dir`, `write_run`, `read_manifest`, `read_equity` |
 
+### `alpha_mcp` (`apps/alpha-mcp/src/alpha_mcp/`) — MCP server (top of DAG; subprocesses the `alpha` CLI, composes nothing). Launch: `uv run alpha-mcp` (repo `.mcp.json` auto-launches it in Claude Code).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `server.py` | FastMCP instance + ~10 tools + `main()` (stdio) | `mcp`, `main`; action tools `data_pull`/`backtest_run`/`backtest_portfolio`/`backtest_cross_sectional`/`validate`/`optim_grid`/`propfirm_run`; read tools `get_run`/`list_runs`/`list_strategies` |
+| `_invoke.py` | Subprocess core: run `alpha`, parse `-> run <id>`, read manifest (fail-loud on non-zero exit) | `run_alpha(args, *, data_dir, run_type)` |
+| `_runs.py` | Filesystem reads over the run store | `get_run`, `list_runs` |
+
+Tools take typed common knobs + an `options` dict mapping any CLI flag (`{"lookback":"5"}` → `--lookback 5`) and a `params` dict for strategy `--param name=value`. Adding/removing a CLI command? Update `server.py`'s tool surface to match.
+
 ## Validation gauntlet gates (spec §8) — produced by `build_outcomes` → `ValidationOutcome`s
 - `walk_forward_oos` (gate 2): passes on a finite OOS Sharpe. OOS = concatenated contiguous test windows of ONE full-series run (fixed params → no refit; train windows are warmup only).
 - `randomized_price_null` (gate 3, headline): two tiers — Tier 1 `returns_level` (surrogate on resampled returns; `--null-model` selects bootstrap/student_t/garch) + Tier 2 `full_engine` (real engine on synthetic OHLCV paths). Passes only if observed beats the `threshold` percentile in **every** tier (conservative).
@@ -150,3 +160,4 @@ Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + stra
 **Live data spine verified against real markets** ✅ (yfinance + ccxt/coinbase end-to-end; gauntlet correctly rejects single-name `ts_momentum` on AAPL and accepts a diversified basket. Stooq is anti-bot-gated → fails loud).
 Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · cross-sectional momentum (returns-level panel, `alpha backtest cross-sectional`) ✅ · Stooq data source ✅ · prop-firm Monte Carlo (`alpha propfirm`, QuantPad-style pass/payout probabilities) ✅. Remaining: full-engine cross-sectional (per-instrument t+1 fills; needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
 Phase 4 (paper trading) — scaffolded: nautilus `SandboxExecutionClient` venue (backtest-parity fills) + node-config assembly + a `alpha paper preflight` parity check, all offline-verified. Remaining (post-v1, network-bound): wiring a live market-data adapter + credentials to `_paper.run_paper`.
+QuantPad-parity track (separate from the internal phase numbers above): A–F Verdict + tail-risk ✅ · prop-firm Monte Carlo ✅ · conversational agent = MCP server (`alpha_mcp`, subprocesses the CLI; `uv run alpha-mcp` / repo `.mcp.json`) ✅. Remaining: web IDE/GUI.

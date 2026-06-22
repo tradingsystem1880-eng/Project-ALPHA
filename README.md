@@ -96,6 +96,26 @@ the one piece the spec defers post-v1: a **live market-data adapter + credential
 nautilus Binance/Bybit testnet config). Supply it as `data_clients` to
 `alpha_cli._paper.run_paper(...)` on a networked host.
 
+## Conversational agent (MCP server)
+
+`alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the whole
+research loop as ~10 tools — `data_pull`, `backtest_run`, `validate`, `optim_grid`,
+`propfirm_run`, `backtest_portfolio` / `cross_sectional`, plus `get_run` / `list_runs` /
+`list_strategies`. It is purely additive: each action tool **subprocesses the `alpha` CLI** and
+returns the byte-stable manifest the run wrote, so the agent and the CLI share one store and the
+CLI stays the single source of truth.
+
+The repo ships a `.mcp.json`, so **Claude Code auto-launches it** (`uv run alpha-mcp`). For Claude
+Desktop, add to `claude_desktop_config.json`:
+
+```json
+{ "mcpServers": { "alpha": { "command": "uv", "args": ["run", "alpha-mcp"],
+  "cwd": "/path/to/Project-ALPHA" } } }
+```
+
+Then drive ALPHA in plain language: *"pull AAPL, run the gauntlet on a momentum strategy, then
+check it against a Topstep combine."* No API keys, $0.
+
 ## Not yet built (intentional)
 
 - Live paper-trading data feed (the user-supplied adapter described above).

@@ -90,6 +90,7 @@ root_packages = [
     "alpha_backtest",
     "alpha_validation",
     "alpha_cli",
+    "alpha_mcp",
 ]
 
 [[tool.importlinter.contracts]]
@@ -121,3 +122,9 @@ name = "alpha_backtest depends only on core + data"
 type = "forbidden"
 source_modules = ["alpha_backtest"]
 forbidden_modules = ["alpha_strategies", "alpha_validation", "alpha_cli"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_mcp sits atop the DAG (nothing imports it)"
+type = "forbidden"
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_mcp"]
