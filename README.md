@@ -99,7 +99,7 @@ nautilus Binance/Bybit testnet config). Supply it as `data_clients` to
 ## Conversational agent (MCP server)
 
 `alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the whole
-research loop as ~10 tools — `data_pull`, `backtest_run`, `validate`, `optim_grid`,
+research loop as 10 tools — `data_pull`, `backtest_run`, `validate`, `optim_grid`,
 `propfirm_run`, `backtest_portfolio` / `cross_sectional`, plus `get_run` / `list_runs` /
 `list_strategies`. It is purely additive: each action tool **subprocesses the `alpha` CLI** and
 returns the byte-stable manifest the run wrote, so the agent and the CLI share one store and the

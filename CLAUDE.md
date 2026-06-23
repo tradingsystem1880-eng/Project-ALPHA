@@ -142,7 +142,7 @@ Tools take typed common knobs + an `options` dict mapping any CLI flag (`{"lookb
 ### `alpha_web` (`apps/alpha-web/src/alpha_web/`) — local web IDE (top of DAG; subprocesses the `alpha` CLI). Launch: `uv run alpha-web` → http://127.0.0.1:8800 (loopback only).
 | Module | Responsibility | Key public symbols |
 |---|---|---|
-| `app.py` | FastAPI factory + routes + `main()` (uvicorn) | `create_app`, `main`; routes `/` (run browser), `/runs/{id}` (+ `/tearsheet`), `/new`, `/console`, `POST /runs` + `/console/run`, `GET /jobs/{id}/stream` (SSE) |
+| `app.py` | FastAPI factory + routes + `main()` (uvicorn) | `create_app`, `main`; routes `/healthz`, `/` (run browser), `/runs/{id}` (+ `/tearsheet`), `/new`, `/console`, `POST /runs` + `/console/run`, `GET /jobs/{id}/stream` (SSE) |
 | `_invoke.py` | Background job runner: spawn `alpha`, tail stdout, parse run id, SSE `event_stream` | `Job`, `launch`, `event_stream`, `JOBS`, `RUN_TYPE` |
 | `_runs.py` | Filesystem reads | `list_runs`, `get_run`, `equity_values`, `tearsheet_file` |
 | `_charts.py` | Server-side inline equity SVG (no JS charting lib) | `equity_svg` |
