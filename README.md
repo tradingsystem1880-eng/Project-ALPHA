@@ -9,8 +9,11 @@ whether a strategy's edge is real or just luck. Built and operated by AI agents.
 > null, bootstrap confidence intervals, the Deflated Sharpe Ratio, CPCV, and (for parameter sweeps)
 > PBO + Reality-Check/SPA. On data with no edge, ALPHA correctly says *no edge*.
 
-For the architecture, invariants, and module map see [`CLAUDE.md`](CLAUDE.md); the design rationale
-lives in [`docs/superpowers/specs/`](docs/superpowers/specs/) and [`research/`](research/).
+For the current-state architecture — the enforced dependency DAG, data flow, and the decision
+records behind the load-bearing choices — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (+ the
+[ADRs](docs/adr/)). For the agent operating manual, invariants, and module map see
+[`CLAUDE.md`](CLAUDE.md); the original design rationale lives in
+[`docs/superpowers/specs/`](docs/superpowers/specs/) and [`research/`](research/).
 
 ## Install
 
