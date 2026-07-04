@@ -56,7 +56,7 @@ def _summarize(manifest: dict[str, Any]) -> list[tuple[str, str]]:
             f"{k} {verdict.get(k)}" for k in ("edge", "robustness", "risk", "sample")
         )
         rows.append(("verdict", f"{verdict.get('overall')} ({grades})"))
-    for block in ("metrics", "oos_metrics"):
+    for block in ("metrics", "oos_metrics", "summary"):
         values = manifest.get(block)
         if isinstance(values, dict):
             rows.extend((f"{block}.{k}", _fmt(v)) for k, v in sorted(values.items()))
@@ -85,6 +85,8 @@ def create_app() -> FastAPI:
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         values = _runs.equity_values(run_id, data_dir=_data_dir())
+        fan = _runs.fan_chart_data(run_id, data_dir=_data_dir())
+        pretrain = manifest.get("pretrain") or {}
         return templates.TemplateResponse(
             request,
             "run_detail.html",
@@ -94,6 +96,15 @@ def create_app() -> FastAPI:
                 "label": manifest.get("symbol") or manifest.get("source"),
                 "summary": _summarize(manifest),
                 "equity_svg": _charts.equity_svg(values) if values else None,
+                "fan_svg": (
+                    _charts.fan_chart_svg(
+                        fan["history"], {k: fan[k] for k in ("q05", "q25", "q50", "q75", "q95")}
+                    )
+                    if fan
+                    else None
+                ),
+                "pretrain_overlap": bool(pretrain.get("overlap")),
+                "pretrain_cutoff": pretrain.get("cutoff"),
                 "has_tearsheet": _runs.tearsheet_file(run_id, data_dir=_data_dir()) is not None,
             },
         )

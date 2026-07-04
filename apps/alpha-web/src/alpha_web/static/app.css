@@ -44,3 +44,4 @@ form.run-form textarea { font-family: var(--mono); min-height: 4rem; }
 button { margin-top: 1rem; padding: .55rem 1.2rem; background: var(--accent); color: #06122b; border: 0; border-radius: 6px; font-weight: 700; cursor: pointer; }
 pre.console { background: #06080c; border: 1px solid var(--line); border-radius: 8px; padding: 1rem; min-height: 12rem; max-height: 32rem; overflow: auto; font-family: var(--mono); font-size: .86rem; white-space: pre-wrap; }
 .console-done { color: var(--pass); } .console-error { color: var(--fail); }
+.warn { color: var(--grade); font-size: .85rem; margin: 0 0 .5rem; }
