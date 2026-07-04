@@ -18,7 +18,7 @@ full-engine null exists precisely to catch any material divergence this introduc
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
@@ -113,6 +113,48 @@ def make_surrogate(
         return weights, costs
 
     return Surrogate(weights_and_costs)
+
+
+def make_replay_surrogate(
+    *,
+    signals_by_bar: Sequence[int | None],
+    warmup: int,
+    vol_window: int,
+    target_vol: float,
+    rebalance_every: int,
+    periods_per_year: int = 252,
+    max_leverage: float = 1.0,
+    allow_short: bool = True,
+    cost_bps: float = 0.0,
+) -> StrategyFn:
+    """Tier-1 surrogate for cache-replay strategies (kronos): the OBSERVED signal sequence
+    is replayed by bar index against each resampled return path.
+
+    Honest semantics (ADR-0009): this tests the timing-vs-returns association of the
+    realized signals under the null — it does NOT re-derive model signals on counterfactual
+    paths (that is the expensive ``--tier2-mode model``). An uncovered rebalance index is a
+    ``DataError``, mirroring the engine-side ``SignalReplay``.
+    """
+    signals = list(signals_by_bar)
+
+    def signal_fn(closes_prefix: FloatArray) -> int:
+        index = len(closes_prefix) - 1  # prefix ends at close t -> bar index t
+        value = signals[index] if index < len(signals) else None
+        if value is None:
+            raise DataError(f"replay surrogate: signal cache does not cover rebalance bar {index}")
+        return int(value)
+
+    return make_surrogate(
+        signal_fn=signal_fn,
+        warmup=warmup,
+        vol_window=vol_window,
+        target_vol=target_vol,
+        rebalance_every=rebalance_every,
+        periods_per_year=periods_per_year,
+        max_leverage=max_leverage,
+        allow_short=allow_short,
+        cost_bps=cost_bps,
+    )
 
 
 def make_ts_momentum_surrogate(

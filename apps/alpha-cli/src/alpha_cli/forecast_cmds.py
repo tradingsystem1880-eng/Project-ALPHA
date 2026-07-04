@@ -22,7 +22,6 @@ from alpha_cli import _forecast, _forecast_eval, _runner
 from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
-from alpha_forecast import Forecaster
 
 forecast_app = typer.Typer(
     help="Kronos foundation-model forecasting (probabilistic outcome cones)."
@@ -30,46 +29,9 @@ forecast_app = typer.Typer(
 
 _load_bars = _runner.load_bars  # module seam: monkeypatched in tests
 
-
-def _forecaster_factory(
-    *,
-    model: str,
-    model_revision: str,
-    tokenizer: str,
-    tokenizer_revision: str,
-    device: str,
-) -> Forecaster:
-    """``fake`` -> the offline double; anything else -> a HF id / local checkpoint path."""
-    if model == "fake":
-        from alpha_forecast import FakeForecaster
-
-        return FakeForecaster()
-    from alpha_forecast import KronosForecaster
-
-    return KronosForecaster(
-        model_id=model,
-        model_revision=model_revision,
-        tokenizer_id=tokenizer,
-        tokenizer_revision=tokenizer_revision,
-        device=device,
-    )
-
-
-def _provenance(forecaster: Forecaster, *, model: str) -> dict[str, Any]:
-    prov = getattr(forecaster, "provenance", None)
-    if callable(prov):
-        result: dict[str, Any] = dict(prov())
-        return result
-    return {
-        "model_id": model,
-        "model_revision": None,
-        "tokenizer_id": None,
-        "tokenizer_revision": None,
-        "device": None,
-        "torch_version": None,
-        "vendor_sha": None,
-        "determinism": "exact",
-    }
+# shared with the strategy signal-cache precompute (alpha_cli._forecast_cache)
+_forecaster_factory = _forecast._forecaster_factory
+_provenance = _forecast._provenance
 
 
 @forecast_app.command()

@@ -258,6 +258,62 @@ def _breakout_surrogate(spec: RunSpec) -> Surrogate:
     )
 
 
+# --- kronos (foundation-model forecast replay) ---------------------------------------------------
+
+
+def _kronos_warmup(spec: RunSpec) -> int:
+    from alpha_cli._forecast_cache import kronos_params
+
+    return max(kronos_params(spec).context, spec.vol_window + 1)
+
+
+def _kronos_signals(spec: RunSpec) -> list[int | None]:
+    from alpha_cli._forecast_cache import read_signals
+    from alpha_core.config import AlphaSettings
+
+    if spec.forecast_cache is None:
+        raise DataError(
+            "kronos needs a precomputed forecast signal cache: run through `alpha backtest "
+            "run` / `alpha validate` / `alpha optim grid`, which auto-precompute it "
+            "(data_dir/forecasts/<key>)"
+        )
+    return read_signals(AlphaSettings().data_dir, spec.forecast_cache)
+
+
+def _kronos_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType) -> Strategy:
+    from alpha_strategies.signal_replay import SignalReplay
+
+    return SignalReplay(
+        instrument_id=instrument_id,
+        bar_type=bar_type,
+        signals=_kronos_signals(spec),
+        min_history=_kronos_warmup(spec),
+        vol_window=spec.vol_window,
+        target_vol=spec.target_vol,
+        capital=spec.starting_cash,
+        max_leverage=spec.max_leverage,
+        rebalance_every=spec.rebalance_every,
+        periods_per_year=spec.periods_per_year,
+        allow_short=spec.allow_short,
+    )
+
+
+def _kronos_surrogate(spec: RunSpec) -> StrategyFn:
+    from alpha_cli._surrogate import make_replay_surrogate
+
+    return make_replay_surrogate(
+        signals_by_bar=_kronos_signals(spec),
+        warmup=_kronos_warmup(spec) - 1,
+        vol_window=spec.vol_window,
+        target_vol=spec.target_vol,
+        rebalance_every=spec.rebalance_every,
+        periods_per_year=spec.periods_per_year,
+        max_leverage=spec.max_leverage,
+        allow_short=spec.allow_short,
+        cost_bps=spec.fee_bps + spec.slippage_bps,
+    )
+
+
 STRATEGIES: dict[str, StrategyDef] = {
     "ts_momentum": StrategyDef(
         warmup=_ts_momentum_warmup,
@@ -282,6 +338,11 @@ STRATEGIES: dict[str, StrategyDef] = {
         build=_breakout_build,
         surrogate=_breakout_surrogate,
         params=frozenset({"window"}),
+    ),
+    "kronos": StrategyDef(
+        warmup=_kronos_warmup,
+        build=_kronos_build,
+        surrogate=_kronos_surrogate,
     ),
 }
 
