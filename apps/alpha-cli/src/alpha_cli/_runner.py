@@ -68,6 +68,10 @@ class RunSpec:
     # per-strategy params not promoted to first-class fields, as sorted (name, value) pairs so the
     # spec stays one fixed, picklable, hashable shape across every strategy.
     strategy_params: tuple[tuple[str, float], ...] = ()
+    # kronos only: the content-addressed signal-cache key (data_dir/forecasts/<key>), set by
+    # the CLI's auto-precompute. A KEY, never a path, so run ids stay machine-independent.
+    # Adding this field shifted run ids for all runs created after it landed (no pinned ids).
+    forecast_cache: str | None = None
 
     def param(self, name: str, default: float) -> float:
         """Read a per-strategy parameter from ``strategy_params``, or ``default`` if absent."""
