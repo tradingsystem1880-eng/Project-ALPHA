@@ -19,8 +19,7 @@ _SIGMA_FLOOR = 1e-4
 
 def _window_fingerprint(bars: Sequence[Bar]) -> int:
     payload = "|".join(
-        f"{b.ts.isoformat()},{b.open!r},{b.high!r},{b.low!r},{b.close!r},{b.volume!r}"
-        for b in bars
+        f"{b.ts.isoformat()},{b.open!r},{b.high!r},{b.low!r},{b.close!r},{b.volume!r}" for b in bars
     )
     return int.from_bytes(hashlib.sha256(payload.encode()).digest()[:8], "big")
 

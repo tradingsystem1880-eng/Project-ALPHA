@@ -8,19 +8,19 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Python 3.12, `uv` virtual workspace (root is not a package). Members: `packages/*`, `apps/*`.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
-`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_cli` (top of DAG).
+`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_cli` (top of DAG).
 - `alpha_core` imports nothing internal.
-- `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_backtest` → core + data only.
+- `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_forecast` → core only (only `alpha_cli` may import it). `alpha_backtest` → core + data only.
 - `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
 - `alpha_mcp` and `alpha_web` sit atop the DAG and compose nothing — they subprocess the `alpha` CLI; nothing imports them.
-- Contracts live in root `pyproject.toml` `[tool.importlinter]` (7 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
+- Contracts live in root `pyproject.toml` `[tool.importlinter]` (8 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
 - **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `docs:`).
 - **No look-ahead, ever.** Strategies/backtests read data ONLY via the point-in-time accessor `as_of`. Every data/strategy unit gets a `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
 - **Execution convention:** decide on close of bar `t`, fill at open of `t+1`. Mechanism: `feed.to_execution_feed` emits an open-priced `QuoteTick` (at `bar.ts`) + a close-stamped (+23h) decision `Bar`; venue runs `bar_execution=False` so only quotes fill.
 - **No empty `except`.** Raise/propagate typed `AlphaError`/`DataError`/`LookAheadError` with context, or re-raise. Fail loud on data gaps / NaN / inf / disorder / degenerate stats.
-- **Polars** is the default dataframe. pandas + `quantstats_lumi` ONLY at the tear-sheet rendering edge (`alpha_validation.tearsheet`). `numpy`/`scipy.stats.norm` only in the `alpha_validation` numeric layer.
+- **Polars** is the default dataframe. pandas ONLY at two sanctioned edges: the tear-sheet renderer (`alpha_validation.tearsheet`, with `quantstats_lumi`) and the Kronos model facade (`alpha_forecast.kronos` — upstream API speaks DataFrames). `numpy`/`scipy.stats.norm` in the `alpha_validation` numeric layer; numpy/torch also live inside `alpha_forecast` internals (never at its public seam, which is plain floats/tuples).
 - **Strong typing.** `mypy --strict` is a CI gate. Overrides (do not "fix"): `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*` are `ignore_missing_imports` (no loadable stubs); nautilus Cython base classes get `# type: ignore[misc]`.
 - **Determinism (spec §11.4).** All seeds derive from `AlphaSettings.random_seed` (default 7); the gauntlet spawns independent child seeds via `np.random.SeedSequence(master).spawn(n)` so gate order can't change results. `run_id` = sha256 of canonical sorted-key JSON of the params (no wall-clock). Manifests are byte-stable (sorted keys, `allow_nan=False` → non-finite must already be `null`).
 - **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application (a known-but-future split does NOT rescale prices yet). Splits adjust the price series; dividends are decoupled cash events **credited by the engine at `pay_date`** against the pre-ex holding (shorts debited; never folded into prices; threaded through every run path incl. Tier-2 nulls — Tier-1 stays price-only by design). Yahoo serves split-adjusted OHLCV, so the yfinance parser reconstructs RAW prices from in-window split events (fails loud if the vendor convention drifts). See spec §6.1.
@@ -108,6 +108,17 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `reality_check.py` | White's Reality Check + Hansen's SPA | `reality_check`, `spa_test`, `DataSnoopingResult` |
 | `tearsheet.py` | Report schema + render (pandas/quantstats edge) | `GauntletReport`, `RunMetadata`, `FoldSummary`, `NullSummary`, `CISummary`, `DSRSummary`, `CPCVSummary`, `build_outcomes`, `report_to_manifest`, `render_tearsheet_html` |
 
+### `alpha_forecast` (`packages/alpha-forecast/src/alpha_forecast/`) — Kronos foundation-model forecasting. core only; only `alpha_cli` may import it. Importing the package never imports torch (facade imports are method-level).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `types.py` | Frozen forecast values + protocol (numpy-free seam) | `SampledPath` (finite, close>0; OHLC coherence deliberately NOT enforced on model output), `ForecastResult(symbol, origin_ts, horizon, step_ts, samples)`, `Forecaster` protocol |
+| `timestamps.py` | Future session timestamps | `future_session_ts(recent_ts, horizon)` — weekend bar in history ⇒ calendar cadence (crypto), else Mon–Fri; no holiday calendar (documented approximation) |
+| `quantiles.py` | Per-step close quantiles across samples | `close_quantiles(result, qs=DEFAULT_QS)`, `DEFAULT_QS=(.05,.25,.5,.75,.95)` |
+| `signals.py` | Pure quantile→signal rule | `kronos_signal(origin_close, q25_end, q50_end, q75_end, *, min_edge, require_band_agreement)` → {-1,0,1} |
+| `fake.py` | Offline deterministic test double (rng keyed on seed + window content hash — window-pure by construction) | `FakeForecaster(vol_scale)` |
+| `kronos.py` | **torch/pandas edge**; lazy-loads the vendored model | `KronosForecaster(model_id, model_revision, tokenizer_id, tokenizer_revision, device, max_context, clip)`, `.provenance()`, `VENDORED_KRONOS_SHA`. Upstream `predict(sample_count=S)` AVERAGES paths → facade uses `predict_batch` with S copies @ `sample_count=1` (chunk 32, per-chunk torch seeds). cpu = bit-exact; mps/cuda best-effort |
+| `_vendor/kronos/` | Pinned upstream model code (@ `67b630e6`, MIT; ruff/mypy-excluded) | `Kronos`, `KronosTokenizer`, `KronosPredictor` — facade-only import |
+
 ### `alpha_cli` (`apps/alpha-cli/src/alpha_cli/`) — orchestration ONLY (allowed to compose engine + gauntlet). Engine imports are lazy.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
@@ -171,5 +182,6 @@ A degenerate (flat/zero-variance) OOS short-circuits to a clean FAIL (degenerate
 Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅.
 **Live data spine verified against real markets** ✅ (yfinance + ccxt/coinbase end-to-end; gauntlet correctly rejects single-name `ts_momentum` on AAPL and accepts a diversified basket. Stooq is anti-bot-gated → fails loud).
 Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · cross-sectional momentum (returns-level panel, `alpha backtest cross-sectional`) ✅ · Stooq data source ✅ · prop-firm Monte Carlo (`alpha propfirm`, QuantPad-style pass/payout probabilities) ✅. Remaining: full-engine cross-sectional (per-instrument t+1 fills; needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
+Kronos foundation-model track (spec `docs/superpowers/specs/2026-07-04-kronos-forecast-integration-design.md`) — in progress: `alpha_forecast` package (vendored pinned model, typed facade, FakeForecaster, settings, torch-cpu CI index) ✅ · forecast run CLI/artifacts/MCP · web fan chart · forecast-skill eval · `kronos` strategy via signal caches · ADRs 0008/0009 — upcoming in the stacked PR chain.
 Phase 4 (paper trading) — scaffolded: nautilus `SandboxExecutionClient` venue (backtest-parity fills) + node-config assembly + a `alpha paper preflight` parity check, all offline-verified. Remaining (post-v1, network-bound): wiring a live market-data adapter + credentials to `_paper.run_paper`.
 QuantPad-parity track (separate from the internal phase numbers above): A–F Verdict + tail-risk ✅ · prop-firm Monte Carlo ✅ · conversational agent = MCP server (`alpha_mcp`, subprocesses the CLI; `uv run alpha-mcp` / repo `.mcp.json`) ✅ · local web IDE (`alpha_web`, FastAPI + Jinja + SSE; `uv run alpha-web`) ✅. All four QuantPad-parity surfaces shipped.

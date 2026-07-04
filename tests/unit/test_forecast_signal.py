@@ -30,9 +30,7 @@ from alpha_forecast import kronos_signal
 def test_signal_table(
     q25: float, q50: float, q75: float, min_edge: float, band: bool, expected: int
 ) -> None:
-    got = kronos_signal(
-        100.0, q25, q50, q75, min_edge=min_edge, require_band_agreement=band
-    )
+    got = kronos_signal(100.0, q25, q50, q75, min_edge=min_edge, require_band_agreement=band)
     assert got == expected
 
 
