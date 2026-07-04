@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from alpha_cli import _artifacts, _runner
+from alpha_cli import _artifacts, _forecast_cache, _runner
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -72,6 +72,11 @@ def run(
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
         dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        # kronos: precompute the signal cache (slow model, runs once) and pin its key on the
+        # spec; every other strategy passes through untouched.
+        spec, forecast_meta = _forecast_cache.prepare_spec_for_engine(
+            bars, spec, data_dir=settings.data_dir, seed=settings.random_seed
+        )
         result = _runner.run_full_backtest(bars, spec, dividends=dividends)
     except DataError as exc:  # no bars stored, unknown strategy, bad account-type, etc.
         raise typer.BadParameter(str(exc)) from exc
@@ -102,12 +107,21 @@ def run(
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,
     }
+    if forecast_meta is not None:
+        manifest["forecast"] = forecast_meta
     _artifacts.write_run(rdir, manifest=manifest, equity=result.equity_curve, trades=result.trades)
     warn = f" ({result.rejected} orders rejected)" if result.rejected else ""
     typer.echo(
         f"backtest {symbol} -> run {run_id}: {result.orders} orders, {result.fills} fills, "
         f"{len(result.trades)} trades, final equity {result.final_equity:.2f}{warn}"
     )
+    if forecast_meta is not None and forecast_meta["pretrain"]["overlap"]:
+        typer.secho(
+            "WARNING: the forecast windows overlap the assumed Kronos pretraining period "
+            f"(<= {forecast_meta['pretrain']['cutoff']}) — backtest may reflect memorization "
+            "(ADR-0009)",
+            fg=typer.colors.YELLOW,
+        )
 
 
 @backtest_app.command()

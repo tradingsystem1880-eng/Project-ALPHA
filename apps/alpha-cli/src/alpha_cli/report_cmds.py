@@ -90,6 +90,21 @@ def report(run_id: str) -> None:
                 f"— results may be memorized (ADR-0009)",
                 fg=typer.colors.YELLOW,
             )
+    forecast_block = manifest.get("forecast")
+    if isinstance(forecast_block, dict):  # kronos strategy runs (backtest/validate)
+        fmodel = forecast_block.get("model") or {}
+        typer.echo(
+            f"forecast model: {fmodel.get('model_id')}@{fmodel.get('model_revision')} "
+            f"cache={forecast_block.get('cache_key')} "
+            f"tier2={forecast_block.get('tier2_policy', 'n/a')}"
+        )
+        fp = forecast_block.get("pretrain") or {}
+        if fp.get("overlap"):
+            typer.secho(
+                f"PRETRAIN OVERLAP: forecasts consumed bars <= assumed cutoff "
+                f"{fp.get('cutoff')} — results may be memorized (ADR-0009)",
+                fg=typer.colors.YELLOW,
+            )
     if manifest.get("command") == "propfirm":  # prop-firm Monte Carlo run
         rules = manifest.get("rules", {})
         typer.echo(f"prop-firm: {manifest.get('firm')} (source {manifest.get('source')})")
