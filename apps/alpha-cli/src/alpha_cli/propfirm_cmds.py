@@ -18,25 +18,13 @@ from typing import Any
 import typer
 
 from alpha_cli import _propfirm, _runner
+from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
 propfirm_app = typer.Typer(
     help="Prop-firm Monte Carlo: pass/payout probabilities for a funded-trader evaluation."
 )
-
-
-def _sanitize(value: Any) -> Any:
-    """Non-finite floats → None so the manifest is strict-JSON valid (like the gauntlet writer)."""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    if isinstance(value, dict):
-        return {k: _sanitize(v) for k, v in value.items()}
-    if isinstance(value, list | tuple):
-        return [_sanitize(v) for v in value]
-    return value
 
 
 @propfirm_app.command()
@@ -208,4 +196,4 @@ def _manifest(out: _propfirm.PropFirmRunResult, *, run_id: str, seed: int) -> di
         "horizon_days": res.horizon_days,
         "seed": seed,
     }
-    return {k: _sanitize(v) for k, v in manifest.items()}
+    return {k: sanitize(v) for k, v in manifest.items()}

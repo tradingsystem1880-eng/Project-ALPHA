@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,23 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 
 from alpha_core import DataError
+
+
+def sanitize(value: Any) -> Any:
+    """Non-finite floats → None so manifests stay valid under ``allow_nan=False``.
+
+    The one shared manifest sanitizer (propfirm/optim/forecast all write manifests).
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: sanitize(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [sanitize(v) for v in value]
+    return value
+
 
 if TYPE_CHECKING:
     from alpha_backtest.results import Trade
