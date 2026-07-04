@@ -1,0 +1,25 @@
+[project]
+name = "alpha-forecast"
+version = "1.0.0"
+description = "Kronos foundation-model forecasting facade (probabilistic OHLCV sample paths)."
+requires-python = ">=3.12"
+dependencies = [
+    "alpha-core",
+    "torch>=2.6",
+    "einops>=0.8.1",
+    "huggingface-hub>=0.33.1",
+    "safetensors>=0.6.2",
+    "tqdm>=4.67",
+    "pandas>=2.2",
+    "numpy>=2.4.6",
+]
+
+[tool.uv.sources]
+alpha-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/alpha_forecast"]
