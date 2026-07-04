@@ -72,6 +72,10 @@ class RunSpec:
     # optimizer reject them because the Tier-1 surrogate cannot model equity-path-dependent sizing)
     size_on_equity: bool = False
     halt_drawdown: float | None = None
+    # kronos only: the content-addressed signal-cache key (data_dir/forecasts/<key>), set by
+    # the CLI's auto-precompute. A KEY, never a path, so run ids stay machine-independent.
+    # Adding this field shifted run ids for all runs created after it landed (no pinned ids).
+    forecast_cache: str | None = None
 
     def param(self, name: str, default: float) -> float:
         """Read a per-strategy parameter from ``strategy_params``, or ``default`` if absent."""
