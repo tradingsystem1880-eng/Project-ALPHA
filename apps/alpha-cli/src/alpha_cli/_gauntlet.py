@@ -9,7 +9,7 @@ child seed from one master seed, so the result is reproducible and order-indepen
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from importlib.metadata import version
 from typing import TYPE_CHECKING
@@ -86,6 +86,11 @@ class GauntletParams:
     # signals, not evidence against the strategy. 0.25 sits between the near-zero divergence of
     # low-turnover strategies (~0.03-0.09 measured) and the regime where the sign flips (~0.4+).
     tier1_divergence_tol: float = 0.25
+    # Tier-2 policy for model-backed strategies (kronos): "replay" reruns the engine with the
+    # observed signal cache (cheap, tests execution + timing); "model" re-derives forecasts on
+    # every synthetic path (honest but ~n_paths x the model cost). Ordinary strategies always
+    # recompute their signals in-engine, so only "replay" is meaningful for them.
+    tier2_mode: str = "replay"
 
 
 @dataclass(frozen=True)
@@ -105,6 +110,7 @@ def run_gauntlet(
     run_id: str,
     snapshot_id: str | None,
     dividends: Sequence[CorporateAction] = (),
+    tier2_spec_for_path: Callable[[list[Bar]], RunSpec] | None = None,
 ) -> GauntletOutput:
     """Run the full gauntlet over ``bars`` and assemble the ``GauntletReport``."""
     # Validate the Tier-1 null choice up front with the full accepted set (the deeper parametric
@@ -124,6 +130,10 @@ def run_gauntlet(
         # SeedSequence(None) draws OS entropy: the run would be irreproducible while the manifest
         # still records a seed - a silent violation of the determinism contract (spec 11.4).
         raise DataError("gauntlet seed must be an explicit integer for reproducibility, got None")
+    if params.tier2_mode not in ("replay", "model"):
+        raise DataError(f"unknown tier2 mode {params.tier2_mode!r}; known: 'replay', 'model'")
+    if params.tier2_mode == "model" and tier2_spec_for_path is None:
+        raise DataError("tier2_mode='model' needs a per-path spec builder (kronos only)")
     ppy = spec.periods_per_year
     result = run_full_backtest(bars, spec, dividends=dividends)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
@@ -201,6 +211,7 @@ def run_gauntlet(
             seed=t2_seed,
             max_workers=params.max_workers,
             dividends=dividends,
+            spec_for_path=tier2_spec_for_path if params.tier2_mode == "model" else None,
         )
         divergence = _convention_divergence(bars, price_returns, surrogate, oos_idx, safe_sharpe)
         nulls = (

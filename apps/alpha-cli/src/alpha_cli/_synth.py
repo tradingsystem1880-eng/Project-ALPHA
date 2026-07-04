@@ -8,7 +8,7 @@ paths; the full-engine orchestration that runs them through ``run_backtest`` is 
 from __future__ import annotations
 
 import multiprocessing
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 
@@ -120,6 +120,7 @@ def full_engine_null(
     seed: int | None = None,
     max_workers: int | None = None,
     dividends: Sequence[CorporateAction] = (),
+    spec_for_path: Callable[[list[Bar]], RunSpec] | None = None,
 ) -> NullResult:
     """Tier-2 faithfulness check: the OOS Sharpe null from re-running the engine on synthetic paths.
 
@@ -140,7 +141,17 @@ def full_engine_null(
             "(the real OOS Sharpe is undefined — a flat/zero-variance OOS)"
         )
     paths = synthetic_bar_paths(bars, n_paths=n_paths, mean_block=mean_block, seed=seed)
-    tasks = [_SynthTask(bars=p, spec=spec, dividends=tuple(dividends)) for p in paths]
+    # spec_for_path lets model-backed strategies re-derive per-path state (e.g. a kronos
+    # signal cache computed IN THE PARENT for each synthetic path) while workers stay
+    # torch-free; None keeps the default one-spec-for-all behavior byte-identically.
+    tasks = [
+        _SynthTask(
+            bars=p,
+            spec=spec if spec_for_path is None else spec_for_path(p),
+            dividends=tuple(dividends),
+        )
+        for p in paths
+    ]
 
     if max_workers is not None and max_workers > 1 and n_paths > _SERIAL_THRESHOLD:
         # spawn (not fork): the engine pulls in nautilus/Cython, and forking such a process is a
