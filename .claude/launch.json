@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "alpha-web",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "alpha-web"],
+      "port": 8800
+    }
+  ]
+}
