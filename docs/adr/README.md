@@ -13,6 +13,8 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0005](0005-point-in-time-firewall.md) | A single point-in-time `as_of` firewall | Accepted | 2026-06-26 |
 | [0006](0006-two-tier-null-model.md) | Two-tier null model (returns-level + full-engine) | Accepted | 2026-06-26 |
 | [0007](0007-deterministic-run-id-and-seeds.md) | Content-addressed run id + independent child seeds | Accepted | 2026-06-26 |
+| [0008](0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted | 2026-07-04 |
+| [0009](0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration | Accepted | 2026-07-04 |
 
 ## Conventions
 
@@ -25,5 +27,5 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 
 Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`CLAUDE.md`](../../CLAUDE.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
 
-- **Polars as the default dataframe** (pandas/`quantstats_lumi` confined to the tear-sheet rendering edge).
+- **Polars as the default dataframe** (pandas/`quantstats_lumi` confined to the tear-sheet rendering edge and the Kronos facade — see ADR-0008).
 - **Fat-tailed null generators** (`student_t` / `garch`) as selectable alternatives to the block-bootstrap null.
