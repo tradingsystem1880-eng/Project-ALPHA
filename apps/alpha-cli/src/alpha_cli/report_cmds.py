@@ -72,6 +72,16 @@ def report(run_id: str) -> None:
             typer.echo(
                 "summary: " + ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(summary.items()))
             )
+        for key, split_label in (
+            ("summary_pre_cutoff", "pre-cutoff"),
+            ("summary_post_cutoff", "post-cutoff"),
+        ):
+            split = manifest.get(key)
+            if isinstance(split, dict):
+                typer.echo(
+                    f"{split_label}: "
+                    + ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(split.items()))
+                )
         pretrain = manifest.get("pretrain") or {}
         if pretrain.get("overlap"):
             typer.secho(
