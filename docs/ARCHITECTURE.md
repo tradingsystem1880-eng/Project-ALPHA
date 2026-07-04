@@ -25,6 +25,7 @@ graph TD
     data[alpha_data]
     strat[alpha_strategies]
     val[alpha_validation]
+    fc[alpha_forecast]
     core[alpha_core]
 
     mcp -. subprocess .-> cli
@@ -33,12 +34,14 @@ graph TD
     cli --> data
     cli --> strat
     cli --> val
+    cli --> fc
     cli --> core
     bt --> data
     bt --> core
     data --> core
     strat --> core
     val --> core
+    fc --> core
 ```
 
 <details><summary>ASCII fallback</summary>
@@ -49,19 +52,19 @@ graph TD
              ▼  (subprocess + thin static import for the CLI entry/settings only)
          alpha_cli                sole composer — may import every package below
              │
-   ┌─────────┼───────────────┬───────────────────┐
-   ▼         ▼               ▼                   ▼
-alpha_strategies   alpha_validation       alpha_backtest ──▶ alpha_data
-   │         │               │                   │              │
-   └─────────┴───────┬───────┴───────────────────┴──────────────┘
+   ┌─────────┼───────────────┬────────────────┬──────────────────┐
+   ▼         ▼               ▼                ▼                  ▼
+alpha_strategies   alpha_validation   alpha_forecast     alpha_backtest ──▶ alpha_data
+   │         │               │                │                  │              │
+   └─────────┴───────┬───────┴────────────────┴──────────────────┴──────────────┘
                      ▼
                 alpha_core               imports nothing internal
 ```
 </details>
 
-**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies` and `alpha_validation` depend on `alpha_core` only; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_cli`, and **nothing imports them**.
+**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, and `alpha_forecast` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_cli`, and **nothing imports them**.
 
-**Enforcement:** seven `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode exactly these boundaries. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), between the format check and the type check. The contracts have been verified against the actual per-package `pyproject.toml` dependencies — declared deps, real imports, and contracts agree. See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
+**Enforcement:** eight `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode exactly these boundaries. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), between the format check and the type check. The contracts have been verified against the actual per-package `pyproject.toml` dependencies — declared deps, real imports, and contracts agree. See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
 
 ## 3. Layer Responsibilities
 
@@ -72,7 +75,8 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | `alpha_core` | 0 — domain | Frozen domain types (`Bar`, `CorporateAction`, `ValidationOutcome`), typed error hierarchy (`AlphaError`/`DataError`/`LookAheadError`), structural `Protocol`s, and typed settings. | *(nothing internal)* |
 | `alpha_data` | 1 — data | Ingestion adapters, the raw unadjusted Parquet store, the **point-in-time `as_of` firewall**, two-clock corporate-action math, immutable hashed snapshots. | `core` |
 | `alpha_strategies` | 1 — strategy | Pure decision signals (`{-1,0,1}`, trailing-window only) + vol-target sizing + the shared nautilus `Strategy` lifecycle. | `core` |
-| `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, DSR/PSR, PBO, prop-firm, reality-check, tear sheet. | `core` |
+| `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
+| `alpha_forecast` | 1 — model | Kronos foundation-model facade: vendored pinned weights code, typed `Forecaster` protocol, per-sample OHLCV paths, deterministic seeding, offline `FakeForecaster`. torch/pandas confined inside; importing the package never imports torch. See [ADR-0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md). | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
 | `alpha_cli` | 3 — compose | The **only** layer allowed to compose the engine with the gauntlet. Typer app; owns the deterministic run id, OOS stitch, gauntlet assembly, optimization, portfolio/cross-sectional, prop-firm, artifacts. Engine imports are lazy. | everything |
 | `alpha_mcp` | 4 — surface | stdio MCP server exposing the loop as ~10 tools. **Subprocesses the `alpha` CLI**, composes nothing. | `cli` |
@@ -147,8 +151,9 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **Two-clock corporate actions.** Knowledge time gates visibility; ex-date gates split application; dividends are decoupled cash events. → [ADR-0004](adr/0004-two-clock-corporate-actions.md)
 - **Determinism.** `run_id` = sha256 of the canonical sorted-key JSON of params (no wall-clock); all seeds derive from `random_seed` (default 7) via independent `SeedSequence.spawn` children; manifests are byte-stable. → [ADR-0007](adr/0007-deterministic-run-id-and-seeds.md)
 - **Fail loud.** No empty `except`; raise/propagate typed `AlphaError`/`DataError`/`LookAheadError` with context on gaps, NaN/inf, disorder, or degenerate stats.
-- **TDD + strong typing.** Failing test → minimal code → green → atomic conventional commit. `mypy --strict` is a CI gate (with three documented third-party stub overrides: `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*`).
-- **Polars by default.** Polars is the dataframe; pandas + `quantstats_lumi` appear *only* at the tear-sheet rendering edge (`alpha_validation.tearsheet`); numpy/scipy only in the validation numeric layer.
+- **TDD + strong typing.** Failing test → minimal code → green → atomic conventional commit. `mypy --strict` is a CI gate (with documented third-party overrides: `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*`, and the vendored `alpha_forecast._vendor.*`).
+- **Polars by default.** Polars is the dataframe; pandas appears *only* at two sanctioned edges — the tear-sheet renderer (`alpha_validation.tearsheet`) and the Kronos facade (`alpha_forecast.kronos`); numpy/scipy in the validation numeric layer (numpy/torch also inside `alpha_forecast`, never at its public seam).
+- **Model leakage is labeled, never silent.** Pretrained-forecaster runs record `pretrain` overlap vs the assumed training cutoff, warn loudly, and split eval metrics pre/post cutoff. → [ADR-0009](adr/0009-forecast-leakage-and-tier2-cost-policy.md)
 
 ## 6. Key Decisions (ADR index)
 
@@ -161,6 +166,8 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 | [0005](adr/0005-point-in-time-firewall.md) | A single point-in-time `as_of` firewall, guarded by future-poison tests | Accepted |
 | [0006](adr/0006-two-tier-null-model.md) | Two-tier null (returns-level surrogate + full-engine synthetic OHLCV); both must pass | Accepted |
 | [0007](adr/0007-deterministic-run-id-and-seeds.md) | Content-addressed `run_id` + independent `SeedSequence` child seeds | Accepted |
+| [0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted |
+| [0009](adr/0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration for model strategies | Accepted |
 
 ## 7. References
 
