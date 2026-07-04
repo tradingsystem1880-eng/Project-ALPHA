@@ -8,12 +8,12 @@ is flagged rather than trusted. Artifacts land under ``data_dir/optim/<run_id>/m
 from __future__ import annotations
 
 import json
-import math
 from typing import Annotated, Any
 
 import typer
 
 from alpha_cli import _optim, _runner
+from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -46,19 +46,6 @@ def _parse_axes(axes: list[str] | None) -> dict[str, list[float]]:
     if not grid:
         raise typer.BadParameter("provide at least one --grid name=v1,v2,... axis")
     return grid
-
-
-def _sanitize(value: Any) -> Any:
-    """Non-finite floats → None so the manifest is strict-JSON valid (like the gauntlet writer)."""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    if isinstance(value, dict):
-        return {k: _sanitize(v) for k, v in value.items()}
-    if isinstance(value, list | tuple):
-        return [_sanitize(v) for v in value]
-    return value
 
 
 @optim_app.command()
@@ -206,4 +193,4 @@ def _manifest(
         "sharpes": result.sharpes.tolist(),
         "passed": result.passed,
     }
-    return {k: _sanitize(v) for k, v in manifest.items()}
+    return {k: sanitize(v) for k, v in manifest.items()}

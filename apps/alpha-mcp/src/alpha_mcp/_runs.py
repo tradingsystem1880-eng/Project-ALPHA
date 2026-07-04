@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 # the run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 # run ids are always 16 hex chars (_runner.run_id_for); reject anything else before it touches a
 # filesystem path (the id arrives from the MCP client)
 _RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")

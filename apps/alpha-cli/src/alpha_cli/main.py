@@ -6,6 +6,7 @@ import typer
 
 from alpha_cli.backtest_cmds import backtest_app
 from alpha_cli.data_cmds import data_app
+from alpha_cli.forecast_cmds import forecast_app
 from alpha_cli.optim_cmds import optim_app
 from alpha_cli.paper_cmds import paper_app
 from alpha_cli.propfirm_cmds import propfirm_app
@@ -17,6 +18,7 @@ from alpha_core.config import AlphaSettings
 app = typer.Typer(help="Project ALPHA command-line interface.")
 app.add_typer(data_app, name="data")
 app.add_typer(backtest_app, name="backtest")
+app.add_typer(forecast_app, name="forecast")
 app.add_typer(optim_app, name="optim")
 app.add_typer(paper_app, name="paper")
 app.add_typer(propfirm_app, name="propfirm")
