@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
 import numpy as np
@@ -13,7 +14,7 @@ from alpha_forecast import ForecastResult, SampledPath, close_quantiles
 _T0 = datetime(2026, 6, 1, tzinfo=UTC)
 
 
-def _result(closes_by_sample: list[tuple[float, ...]]) -> ForecastResult:
+def _result(closes_by_sample: Sequence[tuple[float, ...]]) -> ForecastResult:
     h = len(closes_by_sample[0])
     return ForecastResult(
         symbol="X",

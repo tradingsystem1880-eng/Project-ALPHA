@@ -22,6 +22,4 @@ def close_quantiles(
         if not 0.0 < q < 1.0:
             raise DataError(f"quantile levels must be in (0, 1), got {q}")
     arr = np.array([p.close for p in result.samples], dtype=np.float64)  # (S, H)
-    return {
-        float(q): tuple(float(v) for v in np.quantile(arr, q, axis=0)) for q in qs
-    }
+    return {float(q): tuple(float(v) for v in np.quantile(arr, q, axis=0)) for q in qs}
