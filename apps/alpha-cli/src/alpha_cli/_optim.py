@@ -23,6 +23,7 @@ from collections.abc import Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, replace
 from itertools import product
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -130,6 +131,7 @@ def run_optimization(
     alpha: float = 0.05,
     seed: int | None = 7,
     max_workers: int | None = None,
+    data_dir: Path | None = None,
 ) -> OptimResult:
     """Run the sweep and return its overfitting-aware verdict (DSR + PBO + Reality Check + SPA)."""
     configs = expand_grid(grid)
@@ -145,6 +147,18 @@ def run_optimization(
             f"train_size {base_spec.train_size} < warmup floor {max(floors)} for some config; "
             "raise --train-size or shrink the grid so every config's OOS window aligns"
         )
+
+    if base_spec.strategy_name == "kronos":
+        # each swept config gets its own content-addressed signal cache, precomputed here in
+        # the parent (workers stay torch-free; the cache key changes with the swept params)
+        if data_dir is None:
+            raise DataError("kronos optimization needs data_dir for signal-cache precompute")
+        from alpha_cli._forecast_cache import prepare_spec_for_engine
+
+        cache_seed = seed if seed is not None else 7
+        specs = [
+            prepare_spec_for_engine(bars, s, data_dir=data_dir, seed=cache_seed)[0] for s in specs
+        ]
 
     oos_list = _run_configs([_ConfigTask(bars=list(bars), spec=s) for s in specs], max_workers)
     lengths = {r.size for r in oos_list}

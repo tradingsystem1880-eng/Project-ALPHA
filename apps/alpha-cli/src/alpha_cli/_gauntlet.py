@@ -9,7 +9,7 @@ child seed from one master seed, so the result is reproducible and order-indepen
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from importlib.metadata import version
 from typing import TYPE_CHECKING
@@ -77,6 +77,11 @@ class GauntletParams:
     cpcv_test_groups: int = 2  # groups held out per CPCV fold
     null_model: str = "bootstrap"  # Tier-1 null: "bootstrap" | "student_t" | "garch"
     max_workers: int | None = None
+    # Tier-2 policy for model-backed strategies (kronos): "replay" reruns the engine with the
+    # observed signal cache (cheap, tests execution + timing); "model" re-derives forecasts on
+    # every synthetic path (honest but ~n_paths x the model cost). Ordinary strategies always
+    # recompute their signals in-engine, so only "replay" is meaningful for them.
+    tier2_mode: str = "replay"
 
 
 @dataclass(frozen=True)
@@ -95,6 +100,7 @@ def run_gauntlet(
     *,
     run_id: str,
     snapshot_id: str | None,
+    tier2_spec_for_path: Callable[[list[Bar]], RunSpec] | None = None,
 ) -> GauntletOutput:
     """Run the full gauntlet over ``bars`` and assemble the ``GauntletReport``."""
     # Validate the Tier-1 null choice up front with the full accepted set (the deeper parametric
@@ -103,6 +109,10 @@ def run_gauntlet(
         raise DataError(
             f"unknown null model {params.null_model!r}; known: 'bootstrap', 'student_t', 'garch'"
         )
+    if params.tier2_mode not in ("replay", "model"):
+        raise DataError(f"unknown tier2 mode {params.tier2_mode!r}; known: 'replay', 'model'")
+    if params.tier2_mode == "model" and tier2_spec_for_path is None:
+        raise DataError("tier2_mode='model' needs a per-path spec builder (kronos only)")
     ppy = spec.periods_per_year
     result = run_full_backtest(bars, spec)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
@@ -175,6 +185,7 @@ def run_gauntlet(
             threshold=params.threshold,
             seed=t2_seed,
             max_workers=params.max_workers,
+            spec_for_path=tier2_spec_for_path if params.tier2_mode == "model" else None,
         )
         nulls = (_null_summary("returns_level", tier1), _null_summary("full_engine", tier2))
 

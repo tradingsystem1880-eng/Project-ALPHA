@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import typer
 
-from alpha_cli import _artifacts, _gauntlet, _runner
-from alpha_core import DataError
+from alpha_cli import _artifacts, _forecast_cache, _gauntlet, _runner
+from alpha_core import Bar, DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import render_tearsheet_html, report_to_manifest
 
@@ -43,6 +43,11 @@ def validate(
     mean_block: float = 5.0,
     threshold: float = 0.95,
     null_model: str = "bootstrap",
+    tier2_mode: str = typer.Option(
+        "replay",
+        help="kronos Tier-2 policy: replay (cached signals, cheap) | model (re-forecast "
+        "every synthetic path — honest but ~tier2-paths x the model cost)",
+    ),
     seed: int | None = None,
     max_workers: int | None = None,
     snapshot: str | None = None,
@@ -83,9 +88,28 @@ def validate(
         threshold=threshold,
         null_model=null_model,
         max_workers=max_workers,
+        tier2_mode=tier2_mode,
     )
+    if tier2_mode == "model" and strategy != "kronos":
+        raise typer.BadParameter(
+            "--tier2-mode model re-derives forecasts per synthetic path and applies only to "
+            "the kronos strategy"
+        )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        # kronos: precompute the signal cache and pin its key on the spec (no-op otherwise)
+        spec, forecast_meta = _forecast_cache.prepare_spec_for_engine(
+            bars, spec, data_dir=settings.data_dir, seed=resolved_seed
+        )
+        tier2_spec_for_path = None
+        if tier2_mode == "model":
+            prepared_spec = spec
+
+            def tier2_spec_for_path(path_bars: list[Bar]) -> _runner.RunSpec:
+                return _forecast_cache.prepare_spec_for_engine(
+                    path_bars, prepared_spec, data_dir=settings.data_dir, seed=resolved_seed
+                )[0]
+
         run_id = _runner.run_id_for(
             {
                 "command": "validate",
@@ -95,15 +119,23 @@ def validate(
                 **vars(gparams),
             }
         )
-        out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)
+        out = _gauntlet.run_gauntlet(
+            bars,
+            spec,
+            gparams,
+            run_id=run_id,
+            snapshot_id=snapshot_id,
+            tier2_spec_for_path=tier2_spec_for_path,
+        )
     except DataError as exc:  # no bars, unknown strategy/null-model, train < warmup floor, etc.
         raise typer.BadParameter(str(exc)) from exc
 
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     equity = list(zip(out.oos.oos_timestamps, out.oos.oos_equity.tolist(), strict=True))
-    _artifacts.write_run(
-        rdir, manifest=report_to_manifest(out.report), equity=equity, trades=out.result.trades
-    )
+    manifest = report_to_manifest(out.report)
+    if forecast_meta is not None:
+        manifest["forecast"] = {**forecast_meta, "tier2_policy": tier2_mode}
+    _artifacts.write_run(rdir, manifest=manifest, equity=equity, trades=out.result.trades)
     render_tearsheet_html(
         out.report,
         oos_returns=out.oos.oos_returns,
@@ -127,3 +159,12 @@ def validate(
         f"null pct {out.report.nulls[0].percentile:.2f}/{out.report.nulls[1].percentile:.2f}); "
         f"tear sheet at {rdir / 'tearsheet.html'}"
     )
+    if forecast_meta is not None:
+        typer.echo(f"  kronos: cache {forecast_meta['cache_key']}, tier2 policy {tier2_mode}")
+        if forecast_meta["pretrain"]["overlap"]:
+            typer.secho(
+                "WARNING: the forecast windows overlap the assumed Kronos pretraining "
+                f"period (<= {forecast_meta['pretrain']['cutoff']}) — the verdict may "
+                "reflect memorization (ADR-0009)",
+                fg=typer.colors.YELLOW,
+            )

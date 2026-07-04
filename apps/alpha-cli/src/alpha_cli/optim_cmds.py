@@ -131,6 +131,7 @@ def grid(
             alpha=alpha,
             seed=resolved_seed,
             max_workers=max_workers,
+            data_dir=settings.data_dir,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
