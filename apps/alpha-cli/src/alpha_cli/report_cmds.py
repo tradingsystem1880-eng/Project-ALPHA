@@ -17,7 +17,7 @@ import typer
 
 from alpha_core.config import AlphaSettings
 
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 _RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")  # ids are 16 hex chars; reject before path-joining
 
 
@@ -56,6 +56,30 @@ def report(run_id: str) -> None:
         f"[{label}]  schema_version={manifest.get('schema_version')}"
     )
 
+    if manifest.get("command") in ("forecast_run", "forecast_eval"):  # Kronos forecasting
+        model = manifest.get("model") or {}
+        params = manifest.get("params") or {}
+        typer.echo(
+            f"model: {model.get('model_id')}@{model.get('model_revision')} "
+            f"device={model.get('device')} determinism={model.get('determinism')}"
+        )
+        typer.echo(
+            f"params: context={params.get('context')} horizon={params.get('horizon')} "
+            f"samples={params.get('samples')} seed={params.get('seed')}"
+        )
+        summary = manifest.get("summary")
+        if isinstance(summary, dict):
+            typer.echo(
+                "summary: " + ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(summary.items()))
+            )
+        pretrain = manifest.get("pretrain") or {}
+        if pretrain.get("overlap"):
+            typer.secho(
+                f"PRETRAIN OVERLAP: window {pretrain.get('overlap_start')}"
+                f"..{pretrain.get('overlap_end')} <= assumed cutoff {pretrain.get('cutoff')} "
+                f"— results may be memorized (ADR-0009)",
+                fg=typer.colors.YELLOW,
+            )
     if manifest.get("command") == "propfirm":  # prop-firm Monte Carlo run
         rules = manifest.get("rules", {})
         typer.echo(f"prop-firm: {manifest.get('firm')} (source {manifest.get('source')})")

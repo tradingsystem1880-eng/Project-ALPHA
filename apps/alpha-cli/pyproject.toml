@@ -9,6 +9,7 @@ dependencies = [
     "alpha-strategies",
     "alpha-backtest",
     "alpha-validation",
+    "alpha-forecast",
     "typer>=0.12",
     "numpy>=1.26",
     "polars>=1.0",
@@ -23,6 +24,7 @@ alpha-data = { workspace = true }
 alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
 alpha-validation = { workspace = true }
+alpha-forecast = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

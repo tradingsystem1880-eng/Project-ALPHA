@@ -1,10 +1,33 @@
-"""Deterministic bar builders for alpha_forecast tests (no RNG, no network)."""
+"""Deterministic bar builders + store writers for alpha_forecast tests (no RNG, no network)."""
 
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+
+import polars as pl
 
 from alpha_core import Bar
+
+
+def store_bars(data_dir: Path, bars: list[Bar]) -> None:
+    """Write ``bars`` into the CLI store (``data_dir/store``) for one symbol."""
+    from alpha_data.store import ParquetStore
+
+    frame = pl.DataFrame(
+        [
+            {
+                "ts": b.ts,
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "volume": b.volume,
+            }
+            for b in bars
+        ]
+    )
+    ParquetStore(data_dir / "store").write_bars(bars[0].symbol, frame)
 
 
 def daily_bars(

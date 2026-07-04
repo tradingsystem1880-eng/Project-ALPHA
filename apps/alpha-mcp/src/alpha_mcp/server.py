@@ -128,6 +128,19 @@ def optim_grid(
 
 
 @mcp.tool()
+def forecast_run(symbol: str, options: dict[str, str] | None = None) -> dict[str, Any]:
+    """Sample probabilistic future OHLCV paths for SYMBOL with the Kronos foundation model.
+
+    Returns the outcome-cone manifest (quantile summary, P(up), pretrain-overlap flag).
+    Common ``options``: ``{"horizon": "21", "samples": "100", "context": "400",
+    "model": "NeoQuasar/Kronos-small", "device": "cpu", "as-of": "2026-06-30"}``.
+    """
+    args = ["forecast", "run", symbol]
+    args += _option_flags(options)
+    return _invoke.run_alpha(args, data_dir=_data_dir(), run_type="forecast")
+
+
+@mcp.tool()
 def propfirm_run(
     symbol: str | None = None,
     from_run: str | None = None,

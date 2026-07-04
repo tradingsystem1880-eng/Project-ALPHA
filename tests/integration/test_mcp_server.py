@@ -55,6 +55,21 @@ def test_propfirm_from_run_tool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert pf["firm"] == "topstep"
 
 
+def test_forecast_run_tool_returns_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=30)
+
+    manifest = server.forecast_run(
+        "SPY", options={"model": "fake", "context": "8", "horizon": "4", "samples": "6"}
+    )
+    assert manifest["command"] == "forecast_run"
+    assert manifest["model"]["model_id"] == "fake"
+    assert server.get_run(manifest["run_id"])["run_id"] == manifest["run_id"]
+    assert any(r["run_id"] == manifest["run_id"] for r in server.list_runs())
+
+
 def test_failed_run_surfaces_the_cli_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     seed_store(tmp_path, symbol="SPY", n=60)
@@ -77,6 +92,7 @@ def test_all_expected_tools_are_registered() -> None:
         "validate",
         "optim_grid",
         "propfirm_run",
+        "forecast_run",
         "get_run",
         "list_runs",
         "list_strategies",
