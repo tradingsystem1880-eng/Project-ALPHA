@@ -15,7 +15,7 @@ from typing import Any
 import polars as pl
 
 # run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 # run ids are always 16 hex chars (_runner.run_id_for); anything else is rejected BEFORE it is
 # joined into a filesystem path (URL-supplied ids must never traverse out of data_dir)
 _RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")
@@ -74,6 +74,32 @@ def equity_values(run_id: str, *, data_dir: Path) -> list[float]:
     if not path.exists():
         return []
     return [float(v) for v in pl.read_parquet(path)["equity"].to_list()]
+
+
+def fan_chart_data(run_id: str, *, data_dir: Path) -> dict[str, list[float]] | None:
+    """History closes + per-step close quantile bands for a forecast run's cone chart.
+
+    Reads the ``quantiles.parquet`` + ``history.parquet`` the forecast CLI wrote; ``None``
+    when the run has no quantiles (not a forecast run).
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return None
+    qpath = rdir / "quantiles.parquet"
+    if not qpath.exists():
+        return None
+    quantiles = pl.read_parquet(qpath)
+    hpath = rdir / "history.parquet"
+    history = (
+        [float(v) for v in pl.read_parquet(hpath)["close"].to_list()] if hpath.exists() else []
+    )
+    return {
+        "history": history,
+        **{
+            band: [float(v) for v in quantiles[band].to_list()]
+            for band in ("q05", "q25", "q50", "q75", "q95")
+        },
+    }
 
 
 def tearsheet_file(run_id: str, *, data_dir: Path) -> Path | None:

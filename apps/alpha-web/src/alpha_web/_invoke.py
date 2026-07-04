@@ -29,6 +29,7 @@ RUN_TYPE: dict[str, str] = {
     "backtest cross-sectional": "cross_sectional",
     "optim grid": "optim",
     "propfirm run": "propfirm",
+    "forecast run": "forecast",
 }
 
 
