@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.data import QuoteTick
 
 from alpha_backtest.feed import daily_bar_type, to_execution_feed
+from alpha_core import Bar
 from tests.fixtures.nautilus_fixtures import bars_from_closes, ns
 
 
@@ -42,3 +44,69 @@ def test_feed_respects_price_precision() -> None:
     )
     assert float(bar.close) == 1.23456
     assert float(quote.bid_price) == 1.23456  # no slippage -> bid == open at full precision
+
+
+def test_sub_daily_bars_fail_loud() -> None:
+    # The +23h decision stamp assumes calendar-daily sessions; an hourly feed would interleave
+    # events non-chronologically and the engine would run to completion with zero fills.
+    from datetime import timedelta
+
+    from alpha_core import DataError
+
+    t0 = datetime(2024, 1, 2, tzinfo=UTC)
+    hourly = [
+        Bar(
+            symbol="X",
+            ts=t0 + timedelta(hours=i),
+            open=10.0,
+            high=11.0,
+            low=9.0,
+            close=10.0,
+            volume=1.0,
+        )  # noqa: E501
+        for i in range(3)
+    ]
+    with pytest.raises(DataError, match="24h"):
+        to_execution_feed(hourly, daily_bar_type("X"))
+
+
+def test_duplicate_or_disordered_bars_fail_loud() -> None:
+    from alpha_core import DataError
+
+    t0 = datetime(2024, 1, 2, tzinfo=UTC)
+    dup = [
+        Bar(symbol="X", ts=t0, open=10.0, high=11.0, low=9.0, close=10.0, volume=1.0),
+        Bar(symbol="X", ts=t0, open=10.0, high=11.0, low=9.0, close=10.0, volume=1.0),
+    ]
+    with pytest.raises(DataError):
+        to_execution_feed(dup, daily_bar_type("X"))
+
+
+def test_negative_slippage_fails_loud() -> None:
+    from datetime import timedelta
+
+    from alpha_core import DataError
+
+    t0 = datetime(2024, 1, 2, tzinfo=UTC)
+    bars = [
+        Bar(
+            symbol="X",
+            ts=t0 + timedelta(days=i),
+            open=10.0,
+            high=11.0,
+            low=9.0,
+            close=10.0,
+            volume=1.0,
+        )  # noqa: E501
+        for i in range(2)
+    ]
+    with pytest.raises(DataError, match="slippage"):
+        to_execution_feed(bars, daily_bar_type("X"), slippage_bps=-1.0)
+
+
+def test_negative_fee_fails_loud() -> None:
+    from alpha_backtest.frictions import BpsFeeModel
+    from alpha_core import DataError
+
+    with pytest.raises(DataError, match="fee_bps"):
+        BpsFeeModel(-1.0)
