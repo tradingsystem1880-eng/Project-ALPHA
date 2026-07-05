@@ -84,6 +84,13 @@ def test_fan_chart_svg_draws_bands_and_median() -> None:
     assert 'class="fan-chart"' in svg
 
 
+def test_fan_chart_svg_has_price_scale_and_origin_marker() -> None:
+    svg = _charts.fan_chart_svg([98.0, 99.0, 100.0], _BANDS)
+    assert svg.count("<line") >= 5  # horizontal price gridlines + the origin marker
+    assert "forecast start" in svg  # the origin marker is labeled
+    assert 'text-anchor="end"' in svg  # right-edge price labels
+
+
 def test_fan_chart_svg_placeholder_when_empty() -> None:
     svg = _charts.fan_chart_svg([], {k: [] for k in _BANDS})
     assert svg.startswith("<svg") and "<polygon" not in svg and "<polyline" not in svg
