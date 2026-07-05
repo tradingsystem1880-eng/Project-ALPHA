@@ -189,13 +189,18 @@ def run_full_backtest(
 
     from alpha_backtest.engine import run_backtest
     from alpha_backtest.feed import daily_bar_type, to_execution_feed
-    from alpha_backtest.instruments import equity_instrument
+    from alpha_backtest.instruments import instrument_for
     from alpha_cli import _strategies
 
     symbol = bars[0].symbol
-    instrument = equity_instrument(symbol)
+    instrument = instrument_for(symbol)  # slash pairs -> 5-decimal crypto, else equity
     bar_type = daily_bar_type(symbol)
-    feed = to_execution_feed(bars, bar_type, slippage_bps=spec.slippage_bps)
+    feed = to_execution_feed(
+        bars,
+        bar_type,
+        price_precision=instrument.price_precision,  # sub-dollar tokens need the finer ticks
+        slippage_bps=spec.slippage_bps,
+    )
     strategy = _strategies.build_strategy(spec, instrument.id, bar_type)
     # Fail loud (golden rule): don't silently coerce a typo'd/cased value to CASH and drop leverage.
     account_kind = spec.account_type.upper()
@@ -209,6 +214,11 @@ def run_full_backtest(
             "allow_short=True is incompatible with a CASH account: short-entry sells are denied "
             "wholesale, stranding stale long positions. Use --account-type MARGIN for a "
             "long-short book, or --no-allow-short (the default) for long-flat."
+        )
+    if account_kind == "CASH" and "/" in symbol:
+        raise DataError(
+            f"crypto pair {symbol!r} needs --account-type MARGIN: the SIM venue cannot hold a "
+            "currency pair in a single-currency CASH account."
         )
     account_type = AccountType.MARGIN if account_kind == "MARGIN" else AccountType.CASH
     return run_backtest(
