@@ -77,3 +77,22 @@ def test_paginate_terminates_on_no_forward_progress() -> None:
 def test_paginate_handles_empty_first_page() -> None:
     out = _paginate_ohlcv(lambda _s: [], since_ms=0, end_ms=_DAY_MS * 10, page_limit=300)
     assert out == []
+
+
+def test_clip_ohlcv_drops_in_progress_daily_candle() -> None:
+    from alpha_data.adapters.ccxt_adapter import clip_ohlcv
+
+    day = 86_400_000
+    rows = [[float(t * day), 1.0, 2.0, 0.5, 1.5, 10.0] for t in range(5)]
+    # "now" is midway through day 4 -> day 4's candle is still forming and must be dropped
+    out = clip_ohlcv(rows, since_ms=0, end_ms=10 * day, now_ms=4 * day + day // 2)
+    assert [int(r[0]) // day for r in out] == [0, 1, 2, 3]
+
+
+def test_clip_ohlcv_dedupes_page_seams_and_clips_window() -> None:
+    from alpha_data.adapters.ccxt_adapter import clip_ohlcv
+
+    day = 86_400_000
+    rows = [[float(t * day), 1.0, 2.0, 0.5, 1.5, 10.0] for t in (0, 1, 1, 2, 3)]
+    out = clip_ohlcv(rows, since_ms=1 * day, end_ms=2 * day, now_ms=100 * day)
+    assert [int(r[0]) // day for r in out] == [1, 2]

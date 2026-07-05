@@ -50,6 +50,21 @@ def _paginate_ohlcv(
     return out
 
 
+def clip_ohlcv(
+    raw: list[list[float]], *, since_ms: int, end_ms: int, now_ms: int
+) -> list[list[float]]:
+    """Clip candles to the requested window, dedupe page-seam overlaps, drop the live candle.
+
+    Crypto trades 24/7, so the daily candle whose session contains ``now_ms`` is still forming -
+    storing it would freeze a partial OHLCV row in the PIT store that silently disagrees with the
+    finished candle on the next pull. Candles from the current (incomplete) UTC day are excluded;
+    ascending, timestamp-deduped output.
+    """
+    today_start_ms = (now_ms // _DAY_MS) * _DAY_MS
+    by_ts = {int(r[0]): r for r in raw if since_ms <= r[0] <= end_ms and r[0] < today_start_ms}
+    return [by_ts[ts] for ts in sorted(by_ts)]
+
+
 def parse_ccxt_ohlcv(ohlcv: list[list[float]], symbol: str) -> FetchResult:
     """Convert a ccxt fetch_ohlcv list ([ms, o, h, l, c, v], ...) to a FetchResult.
 
@@ -122,9 +137,8 @@ class CCXTAdapter:
             since_ms=since,
             end_ms=end_ms,
         )
-        # Clip to the requested window and dedupe by timestamp (page seams can overlap), ascending.
-        by_ts = {int(r[0]): r for r in raw if since <= r[0] <= end_ms}
-        clipped = [by_ts[ts] for ts in sorted(by_ts)]
+        now_ms = int(datetime.now(UTC).timestamp() * 1000)
+        clipped = clip_ohlcv(raw, since_ms=since, end_ms=end_ms, now_ms=now_ms)
         if not clipped:
             raise DataError(f"ccxt returned no data for {symbol} {start}..{end}")
         return parse_ccxt_ohlcv(clipped, symbol)

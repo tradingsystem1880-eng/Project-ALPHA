@@ -172,5 +172,8 @@ class StooqAdapter:
     parser_version = PARSER_VERSION
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
-        url = f"https://stooq.com/q/d/l/?s={symbol}&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
+        import urllib.parse  # noqa: PLC0415
+
+        quoted = urllib.parse.quote(symbol, safe="^.")  # ^spx etc. stay literal; &/? cannot inject
+        url = f"https://stooq.com/q/d/l/?s={quoted}&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
         return _csv_or_raise(_fetch_stooq_text(url), symbol, f"{start}..{end}")
