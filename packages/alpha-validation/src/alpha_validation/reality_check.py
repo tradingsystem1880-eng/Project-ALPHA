@@ -106,13 +106,23 @@ def spa_test(
     alpha: float = 0.05,
     seed: int | None = None,
 ) -> DataSnoopingResult:
-    """Hansen's SPA (consistent) p-value for the best of ``S`` strategies (spec §8)."""
+    """Hansen's SPA (consistent) p-value for the best of ``S`` strategies (spec §8).
+
+    Studentization uses Hansen's bootstrap estimate of each strategy's LONG-RUN variance —
+    ``omega_k = sqrt(n) * std(bootstrap column means)`` — not the i.i.d. sample std: on serially
+    dependent returns the i.i.d. std understates the variance of the mean, inflating both the
+    observed statistic and the recentring threshold. The same stationary bootstrap draws feed the
+    variance estimate and the null distribution, so the test stays seed-deterministic.
+    """
     m = np.asarray(perf_matrix, dtype=np.float64)
     _validate(m, n_resamples, mean_block, alpha)
     n = m.shape[0]
     sqrt_n = math.sqrt(n)
     f_bar = m.mean(axis=0)
-    omega = np.std(m, axis=0, ddof=1)
+
+    boot = _bootstrap_means(m, n_resamples=n_resamples, mean_block=mean_block, seed=seed)
+    # Hansen (2005) eq. 8: bootstrap long-run std of sqrt(n) * mean
+    omega = sqrt_n * np.std(boot, axis=0, ddof=1)
     safe = omega > 0.0  # zero-variance columns carry no studentized signal
 
     t_stats = np.zeros_like(f_bar)
@@ -124,7 +134,6 @@ def spa_test(
     keep_threshold = np.where(safe, omega / sqrt_n * math.sqrt(max(log_log, 0.0)), np.inf)
     g = np.where(f_bar >= -keep_threshold, f_bar, 0.0)
 
-    boot = _bootstrap_means(m, n_resamples=n_resamples, mean_block=mean_block, seed=seed)
     z = np.zeros_like(boot)
     z[:, safe] = sqrt_n * (boot[:, safe] - g[safe]) / omega[safe]
     null_max = np.maximum(0.0, np.max(z, axis=1))

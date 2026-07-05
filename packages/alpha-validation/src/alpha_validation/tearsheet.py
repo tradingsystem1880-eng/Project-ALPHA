@@ -440,7 +440,12 @@ def _render_with_section(
         index = index.tz_localize(None)  # quantstats works on naive daily dates
     series = pd.Series(returns, index=index, name="strategy")
 
-    qs.reports.html(series, output=str(output_path), title=title, periods_per_year=periods_per_year)
+    # quantstats interpolates the title into its HTML unescaped; strip markup-significant
+    # characters so a hostile symbol string cannot inject script into the served tear sheet
+    safe_title = title.replace("<", "").replace(">", "").replace("&", "")
+    qs.reports.html(
+        series, output=str(output_path), title=safe_title, periods_per_year=periods_per_year
+    )
     rendered = output_path.read_text(encoding="utf-8")
     marker = "</body>"
     injected = (

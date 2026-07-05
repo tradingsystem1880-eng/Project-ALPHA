@@ -33,10 +33,20 @@ class ParquetStore:
         return self.root / "bars" / f"{symbol}.parquet"
 
     def write_bars(self, symbol: str, df: pl.DataFrame) -> Path:
-        """Write bars for symbol. REPLACES the symbol's data wholesale (no append/merge)."""
+        """Write bars for symbol. REPLACES the symbol's data wholesale (no append/merge).
+
+        Fails loud on duplicate or tz-naive timestamps: every downstream positional read (the PIT
+        firewall, the feed's session math) assumes one tz-aware row per session, and a silent
+        duplicate would surface much later as an inexplicable off-by-one.
+        """
         missing = [c for c in _BAR_COLUMNS if c not in df.columns]
         if missing:
             raise DataError(f"bars for {symbol} missing columns: {missing}")
+        ts_dtype = df.schema["ts"]
+        if not isinstance(ts_dtype, pl.Datetime) or ts_dtype.time_zone is None:
+            raise DataError(f"bars for {symbol} need a tz-aware ts column, got {ts_dtype}")
+        if df["ts"].n_unique() != df.height:
+            raise DataError(f"bars for {symbol} contain duplicate timestamps")
         path = self._bars_path(symbol)
         path.parent.mkdir(parents=True, exist_ok=True)
         # atomic wholesale replace: a crash mid-write must never destroy the only stored copy
