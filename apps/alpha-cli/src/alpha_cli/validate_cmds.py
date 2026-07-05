@@ -14,8 +14,9 @@ from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import render_tearsheet_html, report_to_manifest
 
-# monkeypatchable bar-load seam (mirrors backtest_cmds); tests point it at a fixture store
+# monkeypatchable load seams (mirror backtest_cmds); tests point them at fixture stores
 _load_bars = _runner.load_bars
+_load_dividends = _runner.load_dividends
 
 
 def validate(
@@ -89,6 +90,7 @@ def validate(
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
         # max_workers is an execution-only knob (results are order-preserving and identical
         # serial or pooled), so it must NOT change the run id (same params -> same id).
         gauntlet_knobs = {k: v for k, v in vars(gparams).items() if k != "max_workers"}
@@ -101,7 +103,9 @@ def validate(
                 **gauntlet_knobs,
             }
         )
-        out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)
+        out = _gauntlet.run_gauntlet(
+            bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id, dividends=dividends
+        )
     except DataError as exc:  # no bars, unknown strategy/null-model, train < warmup floor, etc.
         raise typer.BadParameter(str(exc)) from exc
 

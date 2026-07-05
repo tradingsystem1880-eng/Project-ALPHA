@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from alpha_core import Bar, DataError
+from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import (
     FloatArray,
     FoldSummary,
@@ -148,7 +148,32 @@ def load_bars(
     return bars, snapshot_id
 
 
-def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
+def load_dividends(
+    symbol: str, *, data_dir: Path, snapshot_id: str | None = None
+) -> list[CorporateAction]:
+    """The symbol's knowledge-complete DIVIDEND actions from the store (or a frozen snapshot).
+
+    Same store-selection rules as :func:`load_bars` (a snapshot read is integrity-verified);
+    returns ``[]`` for symbols with no stored actions (crypto, stooq). The engine credits these
+    at pay date against the pre-ex holding — decoupled from prices (spec §6.1.4).
+    """
+    from alpha_data.snapshot import verify_snapshot
+    from alpha_data.source import PointInTimeSource
+    from alpha_data.store import ParquetStore
+
+    if snapshot_id is not None:
+        snap_dir = data_dir / "snapshots" / snapshot_id
+        verify_snapshot(snap_dir)
+        store = ParquetStore(snap_dir)
+    else:
+        store = ParquetStore(data_dir / "store")
+    source = PointInTimeSource(store, {symbol: store.read_actions(symbol)})
+    return source.dividends_as_of(symbol, datetime(2999, 1, 1, tzinfo=UTC))
+
+
+def run_full_backtest(
+    bars: Sequence[Bar], spec: RunSpec, *, dividends: Sequence[CorporateAction] = ()
+) -> BacktestResult:
     """Run ``spec``'s fixed-parameter strategy over ``bars`` once, net of costs.
 
     The single source of truth for both ``alpha backtest run`` and the validation gauntlet (and
@@ -190,6 +215,7 @@ def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
         account_type=account_type,
         leverage=spec.max_leverage,
         fee_bps=spec.fee_bps,
+        dividends=dividends,
     )
 
 
