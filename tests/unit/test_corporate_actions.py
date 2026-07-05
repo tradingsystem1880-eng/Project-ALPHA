@@ -21,6 +21,21 @@ def test_split_requires_positive_ratio() -> None:
         CorporateAction(symbol="AAPL", action_type=ActionType.SPLIT, ex_date=date(2020, 8, 31))
 
 
+def test_split_ratio_and_dividend_amount_must_be_finite() -> None:
+    for bad in (float("inf"), float("-inf"), float("nan")):
+        with pytest.raises(ValidationError):
+            CorporateAction(
+                symbol="AAPL", action_type=ActionType.SPLIT, ex_date=date(2020, 8, 31), ratio=bad
+            )
+        with pytest.raises(ValidationError):
+            CorporateAction(
+                symbol="AAPL",
+                action_type=ActionType.DIVIDEND,
+                ex_date=date(2020, 8, 31),
+                amount=bad,
+            )
+
+
 def test_knowledge_time_falls_back_to_ex_date_when_announce_missing() -> None:
     a = CorporateAction(
         symbol="X", action_type=ActionType.SPLIT, ex_date=date(2021, 1, 5), ratio=2.0
