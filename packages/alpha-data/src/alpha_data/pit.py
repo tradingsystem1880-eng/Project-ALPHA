@@ -33,13 +33,17 @@ class PointInTimeReader:
     def as_of(self, symbol: str, when: AwareDatetime) -> pl.DataFrame:
         # bars arrive ts-sorted from the store; downstream positional reads depend on it
         bars = self._store.read_bars(symbol).filter(pl.col("ts") <= when)  # firewall
-        known = known_actions(
-            self._actions.get(symbol, []), when.astimezone(UTC).date()
-        )  # knowledge gate
-        if not known:
+        when_date = when.astimezone(UTC).date()
+        known = known_actions(self._actions.get(symbol, []), when_date)  # knowledge gate
+        # Price channel: only actions that have already gone ex may rescale prices. A split that
+        # is announced but still in the future has not happened yet - every visible bar trades at
+        # the old basis, so applying it would return prices nobody traded (spec 6.1 two clocks:
+        # knowledge gates visibility, ex_date gates application).
+        occurred = [a for a in known if a.ex_date <= when_date]
+        if not occurred:
             return bars
         factor = pl.col("ts").map_elements(
-            lambda ts: split_factor(ts.date(), known), return_dtype=pl.Float64
+            lambda ts: split_factor(ts.date(), occurred), return_dtype=pl.Float64
         )
         adjusted = bars.with_columns(
             [(pl.col(c) * factor).alias(c) for c in _PRICE_COLS]

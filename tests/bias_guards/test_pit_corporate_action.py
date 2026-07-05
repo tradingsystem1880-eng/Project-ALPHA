@@ -47,3 +47,13 @@ def test_split_applied_to_pre_ex_only_when_known(tmp_path: Path) -> None:
     by_ts = {row["ts"].date(): row["close"] for row in out.iter_rows(named=True)}
     assert by_ts[date(2020, 8, 30)] == pytest.approx(105.0 / 4)  # pre-ex quartered
     assert by_ts[date(2020, 8, 31)] == pytest.approx(106.0)  # ex day unadjusted
+
+
+def test_announced_but_not_yet_ex_split_leaves_prices_untouched(tmp_path: Path) -> None:
+    # Between announce (07-30) and ex (08-31) the split is KNOWN but has not happened: every
+    # visible bar still trades at the old basis, so as_of must return unscaled prices. The old
+    # behavior divided the entire visible series by the ratio, returning prices nobody traded.
+    r = _reader(tmp_path)
+    out = r.as_of("AAPL", datetime(2020, 8, 28, tzinfo=UTC))  # known, pre-ex
+    closes = out["close"].to_list()
+    assert closes == pytest.approx([100.0, 101.0, 102.0, 103.0])  # 08-25..08-28, unscaled
