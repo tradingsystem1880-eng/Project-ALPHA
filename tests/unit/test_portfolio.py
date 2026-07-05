@@ -77,3 +77,23 @@ def test_fails_loud(tmp_path: Path) -> None:
         run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="nope")
     with pytest.raises(DataError):
         run_portfolio(["SPY", "SPY"], _spec(), data_dir=tmp_path)  # duplicates
+
+
+def test_inverse_vol_weights_are_causal_no_lookahead(tmp_path: Path) -> None:
+    # Future poison (golden rule: no look-ahead, ever): appending FUTURE bars to one leg must not
+    # change the portfolio's returns on earlier dates. The old implementation set one static
+    # weight per leg from its FULL OOS volatility, so future data re-weighted the past.
+    symbols = _seed_universe(tmp_path)
+    before = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="inverse_vol")
+
+    # extend one leg with 12 extra future bars (same seed/params -> identical first 80 bars,
+    # since the rng draws are sequential and the extension only appends)
+    seed_store(tmp_path, symbol="QQQ", n=92, seed=1, drift=0.0020)
+    after = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="inverse_vol")
+
+    overlap = {d: r for d, r in zip(before.portfolio_timestamps, before.portfolio_returns)}
+    changed = {d: r for d, r in zip(after.portfolio_timestamps, after.portfolio_returns)}
+    common = [d for d in overlap if d in changed]
+    assert len(common) > 5
+    for d in common:
+        assert changed[d] == pytest.approx(overlap[d]), f"return at {d} changed with future data"

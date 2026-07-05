@@ -7,15 +7,18 @@ the edge amplifier — and because each leg reuses the fully-tested single-asset
 (``run_full_backtest`` + walk-forward OOS), this adds portfolio-level value with zero engine risk.
 
 Streams are aligned by date; on each date the portfolio return is the weighted average over the
-symbols trading that date (equal weight, or inverse-volatility from each leg's own OOS vol),
-renormalized over the symbols present so a short-history leg never silently drags the basket. The
-combined stream is scored with the same metrics + Probabilistic/Deflated Sharpe as a single run.
+symbols trading that date (equal weight, or CAUSAL inverse-volatility: each leg's weight at date d
+comes from the trailing window of its own OOS returns realized strictly before d — never from the
+full sample, which would leak future volatility into past weights), renormalized over the symbols
+present so a short-history leg never silently drags the basket. The combined stream is scored with
+the same metrics + Probabilistic/Deflated Sharpe as a single run.
 (Cross-sectional ranking — long winners / short losers *relative* to peers — needs a
 multi-instrument engine and is future work; this is the TS-momentum-across-a-universe form.)
 """
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -46,7 +49,7 @@ class LegSummary:
     symbol: str
     n_oos: int
     oos_sharpe: float
-    weight: float  # nominal portfolio weight (pre per-date renormalization)
+    weight: float  # mean normalized weight across the dates the leg traded
 
 
 @dataclass(frozen=True)
@@ -75,22 +78,34 @@ def _leg_series(spec: RunSpec, *, data_dir: Path, symbol: str) -> dict[datetime,
     return dict(zip(dates, oos.oos_returns.tolist(), strict=True))
 
 
-def _leg_weights(
-    series: Mapping[str, Mapping[datetime, float]], weighting: str
+def _causal_inverse_vol(
+    present: Sequence[str],
+    when: datetime,
+    *,
+    leg_dates: Mapping[str, list[datetime]],
+    leg_values: Mapping[str, FloatArray],
+    vol_window: int,
 ) -> dict[str, float]:
-    """Nominal weights per symbol: equal, or inverse-volatility from each leg's own OOS returns."""
-    symbols = list(series)
-    if weighting == "equal":
-        return {s: 1.0 / len(symbols) for s in symbols}
-    inv = {}
-    for s in symbols:
-        rets = np.array(list(series[s].values()), dtype=np.float64)
-        vol = float(np.std(rets, ddof=1)) if rets.size >= 2 else 0.0
-        inv[s] = 1.0 / vol if vol > 0.0 else 0.0
-    total = sum(inv.values())
-    if total <= 0.0:
-        raise DataError("inverse-vol weighting undefined: every leg has zero volatility")
-    return {s: w / total for s, w in inv.items()}
+    """Unnormalized inverse-vol weights at ``when`` from returns realized strictly before it.
+
+    Causal by construction: each leg's estimate is the sample std of the trailing ``vol_window``
+    of its OWN OOS returns before ``when`` — never the full sample, which would let future
+    volatility set past weights. A leg without >= 2 prior returns (or with zero dispersion) takes
+    the mean inverse-vol of the estimated legs; while no leg has an estimate, the date is
+    equal-weighted.
+    """
+    est: dict[str, float] = {}
+    for s in present:
+        k = bisect_left(leg_dates[s], when)
+        hist = leg_values[s][max(0, k - vol_window) : k]
+        if hist.size >= 2:
+            sd = float(np.std(hist, ddof=1))
+            if sd > 0.0:
+                est[s] = 1.0 / sd
+    if not est:
+        return dict.fromkeys(present, 1.0)
+    default = sum(est.values()) / len(est)
+    return {s: est.get(s, default) for s in present}
 
 
 def run_portfolio(
@@ -119,18 +134,34 @@ def run_portfolio(
         raise DataError(f"duplicate symbols in portfolio: {symbols}")
 
     series = {s: _leg_series(spec, data_dir=data_dir, symbol=s) for s in symbols}
-    weights = _leg_weights(series, weighting)
+    leg_dates = {s: sorted(series[s]) for s in symbols}
+    leg_values = {
+        s: np.array([series[s][d] for d in leg_dates[s]], dtype=np.float64) for s in symbols
+    }
 
     all_dates = sorted(set().union(*(set(s) for s in series.values())))
     port_dates: list[datetime] = []
     port_returns: list[float] = []
+    weight_sums = dict.fromkeys(symbols, 0.0)
+    weight_dates = dict.fromkeys(symbols, 0)
     for d in all_dates:
-        present = [(s, series[s][d]) for s in symbols if d in series[s]]
-        norm = sum(weights[s] for s, _ in present)
-        if norm <= 0.0:
-            continue  # only zero-weight legs trade this date
-        port_returns.append(sum(weights[s] * r for s, r in present) / norm)
+        present = [s for s in symbols if d in series[s]]
+        if weighting == "equal":
+            raw = dict.fromkeys(present, 1.0)
+        else:
+            raw = _causal_inverse_vol(
+                present,
+                d,
+                leg_dates=leg_dates,
+                leg_values=leg_values,
+                vol_window=spec.vol_window,
+            )
+        norm = sum(raw.values())
+        port_returns.append(sum(raw[s] * series[s][d] for s in present) / norm)
         port_dates.append(d)
+        for s in present:
+            weight_sums[s] += raw[s] / norm
+            weight_dates[s] += 1
 
     returns = np.array(port_returns, dtype=np.float64)
     if returns.size < 2 or float(np.std(returns, ddof=1)) <= 0.0:
@@ -159,8 +190,8 @@ def run_portfolio(
         LegSummary(
             symbol=s,
             n_oos=len(series[s]),
-            oos_sharpe=_safe_sharpe(np.array(list(series[s].values()), dtype=np.float64), ppy),
-            weight=weights[s],
+            oos_sharpe=_safe_sharpe(leg_values[s], ppy),
+            weight=weight_sums[s] / weight_dates[s] if weight_dates[s] else 0.0,
         )
         for s in symbols
     )
