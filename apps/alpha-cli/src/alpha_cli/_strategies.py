@@ -35,11 +35,17 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class StrategyDef:
-    """The three seams a strategy must provide to plug into the engine + gauntlet."""
+    """The seams a strategy must provide to plug into the engine + gauntlet.
+
+    ``params`` declares the strategy-specific ``--param`` names it reads; anything else in
+    ``RunSpec.strategy_params`` is a typo that would otherwise be silently ignored (results
+    attributed to parameters that were never applied), so it fails loud instead.
+    """
 
     warmup: Callable[[RunSpec], int]
     build: Callable[[RunSpec, InstrumentId, BarType], Strategy]
     surrogate: Callable[[RunSpec], Surrogate]
+    params: frozenset[str] = frozenset()
 
 
 # --- ts_momentum (the v1 strategy) -------------------------------------------------------------
@@ -249,21 +255,25 @@ STRATEGIES: dict[str, StrategyDef] = {
         warmup=_ts_momentum_warmup,
         build=_ts_momentum_build,
         surrogate=_ts_momentum_surrogate,
+        params=frozenset(),  # its knobs (lookback/skip/...) are first-class RunSpec fields
     ),
     "ma_crossover": StrategyDef(
         warmup=_ma_crossover_warmup,
         build=_ma_crossover_build,
         surrogate=_ma_crossover_surrogate,
+        params=frozenset({"fast", "slow"}),
     ),
     "mean_reversion": StrategyDef(
         warmup=_mean_reversion_warmup,
         build=_mean_reversion_build,
         surrogate=_mean_reversion_surrogate,
+        params=frozenset({"window", "entry_z"}),
     ),
     "breakout": StrategyDef(
         warmup=_breakout_warmup,
         build=_breakout_build,
         surrogate=_breakout_surrogate,
+        params=frozenset({"window"}),
     ),
 }
 
@@ -275,6 +285,17 @@ def _resolve(name: str) -> StrategyDef:
         raise DataError(f"unknown strategy {name!r}; known: {known_strategies()}") from None
 
 
+def _check_params(spec: RunSpec, sdef: StrategyDef) -> None:
+    """Fail loud on ``--param`` names the strategy never reads (silently-ignored typos)."""
+    unknown = {name for name, _ in spec.strategy_params} - sdef.params
+    if unknown:
+        known = sorted(sdef.params) if sdef.params else "none (all knobs are first-class flags)"
+        raise DataError(
+            f"unknown --param name(s) {sorted(unknown)} for strategy "
+            f"{spec.strategy_name!r}; known strategy params: {known}"
+        )
+
+
 def known_strategies() -> list[str]:
     """The registered strategy names, sorted (for stable CLI help + error messages)."""
     return sorted(STRATEGIES)
@@ -282,14 +303,20 @@ def known_strategies() -> list[str]:
 
 def warmup_for(spec: RunSpec) -> int:
     """Warmup floor for ``spec``'s strategy (pure; safe to call without nautilus installed)."""
-    return _resolve(spec.strategy_name).warmup(spec)
+    sdef = _resolve(spec.strategy_name)
+    _check_params(spec, sdef)
+    return sdef.warmup(spec)
 
 
 def build_strategy(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType) -> Strategy:
     """Construct the nautilus ``Strategy`` for ``spec`` (engine imports happen lazily inside)."""
-    return _resolve(spec.strategy_name).build(spec, instrument_id, bar_type)
+    sdef = _resolve(spec.strategy_name)
+    _check_params(spec, sdef)
+    return sdef.build(spec, instrument_id, bar_type)
 
 
 def surrogate_for(spec: RunSpec) -> Surrogate:
     """Build the Tier-1 engine-free surrogate for ``spec``'s strategy."""
-    return _resolve(spec.strategy_name).surrogate(spec)
+    sdef = _resolve(spec.strategy_name)
+    _check_params(spec, sdef)
+    return sdef.surrogate(spec)

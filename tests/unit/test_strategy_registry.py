@@ -86,3 +86,25 @@ def test_parse_strategy_params_fails_loud_on_malformed() -> None:
         parse_strategy_params(["=5"])
     with pytest.raises(DataError):
         parse_strategy_params(["fast=abc"])
+
+
+def test_unknown_strategy_param_fails_loud() -> None:
+    # A typo'd --param was silently ignored, attributing results to a knob never applied.
+    import pytest
+
+    from alpha_cli._strategies import build_strategy, surrogate_for, warmup_for
+    from alpha_core import DataError
+
+    spec = _spec(strategy_name="mean_reversion", strategy_params=(("windoww", 10.0),))
+    with pytest.raises(DataError, match="windoww"):
+        warmup_for(spec)
+    with pytest.raises(DataError, match="known strategy params"):
+        surrogate_for(spec)
+    with pytest.raises(DataError, match="windoww"):
+        build_strategy(spec, None, None)  # type: ignore[arg-type]  # fails before construction
+    # a VALID param passes validation
+    ok = _spec(strategy_name="mean_reversion", strategy_params=(("window", 10.0),))
+    assert warmup_for(ok) > 0
+    ts = _spec(strategy_name="ts_momentum", strategy_params=(("anything", 1.0),))
+    with pytest.raises(DataError, match="first-class"):
+        warmup_for(ts)
