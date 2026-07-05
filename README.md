@@ -63,7 +63,7 @@ uv run alpha paper preflight AAPL --strategy ma_crossover
 ```
 
 Every command writes a byte-stable JSON manifest (and parquet/HTML where relevant) under
-`data_dir/{runs,optim,portfolio,cross_sectional}/<run_id>/`. Re-running with the same inputs is
+`data_dir/{runs,optim,portfolio,cross_sectional,propfirm}/<run_id>/`. Re-running with the same inputs is
 reproducible to the byte (`--seed` defaults to 7). Run any command with `--help` for all options.
 
 ## Caveats (read before trusting a result)

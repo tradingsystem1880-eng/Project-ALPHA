@@ -101,7 +101,7 @@ def test_unknown_strategy_param_fails_loud() -> None:
     with pytest.raises(DataError, match="known strategy params"):
         surrogate_for(spec)
     with pytest.raises(DataError, match="windoww"):
-        build_strategy(spec, None, None)  # type: ignore[arg-type]  # fails before construction
+        build_strategy(spec, None, None)  # fails at validation, before construction
     # a VALID param passes validation
     ok = _spec(strategy_name="mean_reversion", strategy_params=(("window", 10.0),))
     assert warmup_for(ok) > 0

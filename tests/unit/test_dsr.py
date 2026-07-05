@@ -120,9 +120,13 @@ def test_deflated_sharpe_fail_branch_flows_through_the_gate() -> None:
     assert res.dsr < 0.95 and res.passed is False
 
     dsr = DSRSummary(
-        sharpe=res.sharpe, psr=res.psr, dsr=res.dsr,
-        expected_max_sharpe=res.expected_max_sharpe, n_trials=res.n_trials,
-        threshold=res.threshold, passed=res.passed,
+        sharpe=res.sharpe,
+        psr=res.psr,
+        dsr=res.dsr,
+        expected_max_sharpe=res.expected_max_sharpe,
+        n_trials=res.n_trials,
+        threshold=res.threshold,
+        passed=res.passed,
     )
     outcomes = build_outcomes(oos_metrics={"sharpe": 0.1}, nulls=(), cis=(), dsr=dsr, cpcv=None)
     gate = next(o for o in outcomes if o.name == "deflated_sharpe")

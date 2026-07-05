@@ -23,7 +23,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - **Polars** is the default dataframe. pandas + `quantstats_lumi` ONLY at the tear-sheet rendering edge (`alpha_validation.tearsheet`). `numpy`/`scipy.stats.norm` only in the `alpha_validation` numeric layer.
 - **Strong typing.** `mypy --strict` is a CI gate. Overrides (do not "fix"): `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*` are `ignore_missing_imports` (no loadable stubs); nautilus Cython base classes get `# type: ignore[misc]`.
 - **Determinism (spec §11.4).** All seeds derive from `AlphaSettings.random_seed` (default 7); the gauntlet spawns independent child seeds via `np.random.SeedSequence(master).spawn(n)` so gate order can't change results. `run_id` = sha256 of canonical sorted-key JSON of the params (no wall-clock). Manifests are byte-stable (sorted keys, `allow_nan=False` → non-finite must already be `null`).
-- **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application. Splits adjust the price series; dividends are decoupled cash events credited at `pay_date` (never folded into prices). See spec §6.1.
+- **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application (a known-but-future split does NOT rescale prices yet). Splits adjust the price series; dividends are decoupled cash events credited at `pay_date` (never folded into prices; the crediting engine hook is still open — see audit report). Yahoo serves split-adjusted OHLCV, so the yfinance parser reconstructs RAW prices from in-window split events (fails loud if the vendor convention drifts). See spec §6.1.
 
 ## Commands
 - Install: `uv sync`
@@ -41,9 +41,9 @@ Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim`/`paper` are
 - `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source]` — freeze store → immutable hashed snapshot.
 - `alpha data verify SNAPSHOT_ID` — re-hash snapshot vs manifest.
 - `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout, --param name=value, ...params, snapshot]` — one fixed-param run → artifacts.
-- `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, ...params]` — diversified basket: per-symbol OOS streams combined → portfolio metrics + PSR + BCa CIs + manifest (`data_dir/portfolio/<run_id>`).
-- `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, ...params]` — relative-strength book: rank the universe, long winners / short losers, vol-targeted → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
-- `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud.
+- `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, --seed, ...params]` — diversified basket (canonical sorted symbol order): per-symbol OOS streams combined (inverse-vol weights are CAUSAL — per-date trailing vol, never full-sample) → portfolio metrics + PSR + BCa CIs + manifest (`data_dir/portfolio/<run_id>`).
+- `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, --fee-bps, --slippage-bps, --seed, ...params]` — relative-strength book: rank the universe (canonical sorted order), long winners / short losers, vol-targeted, fee+slippage charged on rebalance turnover → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
+- `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, tier1_divergence_tol=0.25, periods_per_year=252, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud. `--allow-short` defaults by account: MARGIN→short-ok, CASH→long-flat; an explicit `--allow-short` on CASH fails loud (the venue denies short sells wholesale). `--snapshot` verifies + reads the frozen snapshot (not the live store). `run_id` excludes `max_workers` (execution-only).
 - `alpha optim grid SYMBOL --grid name=v1,v2,... [--strategy, ...params, pbo_blocks, n_resamples, dsr_threshold, alpha, seed, max_workers]` — parameter sweep judged for overfitting (Deflated Sharpe + PBO + Reality-Check/SPA) → manifest (`data_dir/optim/<run_id>`).
 - `alpha paper preflight SYMBOL [--strategy, --venue, --account-type, --starting-cash, --currency, --param]` — validate the Phase-4 paper wiring offline: build the sandbox exec + node configs + the parity strategy; reports the remaining live-data-adapter step.
 - `alpha propfirm run [SYMBOL] [--firm topstep|apex|takeprofit, --from-run RUN_ID, --account-size, --profit-target, --max-drawdown, --daily-loss, --profit-split, --min-trading-days, --n-paths, --mean-block, --horizon, seed, ...backtest params]` — prop-firm Monte Carlo: resample a strategy's daily return stream (fresh backtest of SYMBOL, or `--from-run`'s stored equity curve) and walk it through a firm's eval→funded→payout rules (return-scaled, EOD granularity) → pass/bust/payout probabilities + expected payout → manifest (`data_dir/propfirm/<run_id>`). Exactly one of SYMBOL / `--from-run`. Presets are illustrative, not authoritative firm terms.
@@ -71,7 +71,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `snapshot.py` | Immutable hashed snapshots + manifest | `create_snapshot`, `verify_snapshot` |
 | `ingest.py` | Persist a `FetchResult` | `store_fetch_result` |
 | `adapters/base.py` | Adapter seam | `FetchResult(symbol, bars, actions)`, `DataAdapter` protocol |
-| `adapters/yfinance_adapter.py` | Equities (splits+divs) | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
+| `adapters/yfinance_adapter.py` | Equities (splits+divs); reconstructs RAW prices from Yahoo's split-adjusted series, fail-loud discontinuity check | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
 | `adapters/ccxt_adapter.py` | Crypto daily OHLCV (UTC; default exchange `coinbase`; **paginated** past coinbase's 300-candle/call cap via `_paginate_ohlcv`) | `CCXTAdapter`, `parse_ccxt_ohlcv` (pure) |
 | `adapters/stooq_adapter.py` | Free EOD OHLCV (FX/commodity/index/ETF; provider-adjusted, no actions). **Anti-bot gated:** browser-UA + SHA-256 PoW solve, then **fails loud** (`_csv_or_raise`) on Stooq's per-IP "Access denied" — yfinance is the reliable equity/ETF source | `StooqAdapter`, `parse_stooq_csv` (pure) |
 
@@ -104,6 +104,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `dsr.py` | Probabilistic + Deflated Sharpe (Bailey–LdP) | `probabilistic_sharpe_ratio`, `deflated_sharpe`, `expected_max_sharpe`, `DeflatedSharpeResult` |
 | `overfitting.py` | PBO via CSCV (Bailey et al.) | `probability_of_backtest_overfitting`, `PBOResult` |
 | `propfirm.py` | Prop-firm Monte Carlo (return-scaled, multi-phase eval→funded→payout; reuses `stationary_bootstrap_indices`) | `PropFirmRules`, `PropFirmResult`, `simulate_propfirm`, `FIRM_PRESETS` |
+| `verdict.py` | A–F grade over the computed gates (pure, threshold-banded) | `VerdictSummary`, `grade_verdict` |
 | `reality_check.py` | White's Reality Check + Hansen's SPA | `reality_check`, `spa_test`, `DataSnoopingResult` |
 | `tearsheet.py` | Report schema + render (pandas/quantstats edge) | `GauntletReport`, `RunMetadata`, `FoldSummary`, `NullSummary`, `CISummary`, `DSRSummary`, `CPCVSummary`, `build_outcomes`, `report_to_manifest`, `render_tearsheet_html` |
 
@@ -126,7 +127,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `_cross_sectional.py` | Cross-sectional momentum (returns-level panel) | `run_cross_sectional`, `CrossSectionalResult` |
 | `_paper.py` | Phase-4 paper scaffold (sandbox exec + parity) | `build_sandbox_exec_config`, `build_paper_node_config`, `run_paper` (live run network-gated) |
 | `_propfirm.py` | Prop-firm run glue (resolve returns from fresh backtest / `--from-run`; resolve preset + overrides) | `run_propfirm`, `resolve_rules`, `PropFirmRunResult` |
-| `_surrogate.py` | Tier-1 engine-free surrogates | `make_surrogate` (generic), `make_ts_momentum_surrogate` |
+| `_surrogate.py` | Tier-1 engine-free surrogates (weights exposed for the convention-divergence guard) | `Surrogate`, `make_surrogate` (generic), `make_ts_momentum_surrogate` |
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
 | `_artifacts.py` | Run-dir layout + manifest/parquet IO | `run_dir`, `write_run`, `read_manifest`, `read_equity` |
 
@@ -152,7 +153,7 @@ Server-rendered (Jinja + native EventSource, no HTMX/CDN). Action endpoints subp
 
 ## Validation gauntlet gates (spec §8) — produced by `build_outcomes` → `ValidationOutcome`s
 - `walk_forward_oos` (gate 2): passes on a finite OOS Sharpe. OOS = concatenated contiguous test windows of ONE full-series run (fixed params → no refit; train windows are warmup only).
-- `randomized_price_null` (gate 3, headline): two tiers — Tier 1 `returns_level` (surrogate on resampled returns; `--null-model` selects bootstrap/student_t/garch) + Tier 2 `full_engine` (real engine on synthetic OHLCV paths). Passes only if observed beats the `threshold` percentile in **every** tier (conservative).
+- `randomized_price_null` (gate 3, headline): two tiers — Tier 1 `returns_level` (surrogate on resampled returns, scored on the walk-forward OOS window; `--null-model` selects bootstrap/student_t/garch) + Tier 2 `full_engine` (real engine on level-continuous synthetic OHLCV paths). Passes only if observed beats the `threshold` percentile in **every** tier (conservative) — except that a Tier-1 FAIL is demoted to advisory (`flagged_low_fidelity`, reported but not vetoing) when Tier-2 passed AND the measured close-fill vs t+1-open-fill `convention_divergence` of the same surrogate weights exceeds `tier1_divergence_tol` (the documented Tier-1 crediting bias for high-turnover strategies; see `docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md`). A Tier-2 fail is never rescued.
 - `bootstrap_ci` (gate 4): passes when the Sharpe BCa lower bound > 0.
 - `deflated_sharpe`: PSR/DSR of the OOS stream (single run → n_trials=1, DSR=PSR); passes when DSR ≥ `dsr_threshold`.
 - `cpcv_oos`: distribution of OOS Sharpe across combinatorial purged CV folds of the OOS stream; passes when the mean fold Sharpe > 0.

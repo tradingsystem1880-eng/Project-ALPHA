@@ -44,11 +44,11 @@ def _trending_bars(seed: int = 0) -> list[Bar]:
     # drift-heavy nulls score as well as the observed. The old raw-row-splice null hid that by
     # polluting every null path with fictitious seam jumps.)
     rng = np.random.default_rng(seed)
-    rets = []
+    rets: list[float] = []
     for k in range(4):
         sign = 1.0 if k % 2 == 0 else -1.0
-        rets.extend((sign * 0.01 + rng.normal(0.0, 0.002)) for _ in range(25))
-    closes = 100.0 * np.cumprod(1.0 + np.array(rets))
+        rets.extend(float(sign * 0.01 + rng.normal(0.0, 0.002)) for _ in range(25))
+    closes = 100.0 * np.cumprod(1.0 + np.array(rets, dtype=np.float64))
     start = datetime(2020, 1, 1, tzinfo=UTC)
     return [
         Bar(symbol="AAPL", ts=start + timedelta(days=i), open=c, high=c, low=c, close=c, volume=1e3)
