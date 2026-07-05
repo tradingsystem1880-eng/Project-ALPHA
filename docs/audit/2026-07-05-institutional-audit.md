@@ -174,6 +174,17 @@ Severity · finding · root cause → impact · **status**.
 37. DSR/CPCV gate fail-branches had no regression tests (an inverted flag would ship green) →
     tests added.
 
+### Found during end-to-end verification (follow-up commits)
+
+38. **Insolvent boundary fill silently truncated the run** (`engine.py`, `_strategies.py`;
+    found by running the platform end-to-end on a seeded store). When realized vol sits below
+    `target_vol`, the leverage cap sizes the FULL CASH balance; the commission then tips the
+    account negative and nautilus stops the run *without raising* — with logging bypassed, the
+    result was a silently truncated equity curve surfacing as a baffling walk-forward error (or,
+    worse, quietly wrong stats). **FIXED** — vol-target sizing reserves friction headroom on CASH
+    accounts (`notional ≤ cash/((1+slip)(1+fee))`, a ~3bp haircut), and `run_backtest` fails loud
+    with an actionable message whenever the engine records fewer sessions than the feed contains.
+
 ### Findings reviewed and *not* treated as defects
 - CPCV's one-sided (post-test) embargo — documented, correct for the daily horizon-1 labels used.
 - Prop-firm presets' exact terms (e.g. Topstep lock level) — explicitly illustrative.

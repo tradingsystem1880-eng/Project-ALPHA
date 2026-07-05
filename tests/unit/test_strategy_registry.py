@@ -108,3 +108,15 @@ def test_unknown_strategy_param_fails_loud() -> None:
     ts = _spec(strategy_name="ts_momentum", strategy_params=(("anything", 1.0),))
     with pytest.raises(DataError, match="first-class"):
         warmup_for(ts)
+
+
+def test_cash_sizing_capital_reserves_friction_headroom() -> None:
+    # CASH boundary fills consume notional*(1+slip)*(1+fee); sizing must reserve that headroom
+    # (nautilus otherwise stops the run on the negative balance - see the engine guard test).
+    from alpha_cli._strategies import _sizing_capital
+
+    cash = _spec(account_type="CASH", allow_short=False, fee_bps=1.0, slippage_bps=2.0)
+    expected = 100_000.0 / ((1.0 + 0.0002) * (1.0 + 0.0001))
+    assert _sizing_capital(cash) == pytest.approx(expected)
+    margin = _spec(account_type="MARGIN", fee_bps=1.0, slippage_bps=2.0)
+    assert _sizing_capital(margin) == 100_000.0
