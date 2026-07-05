@@ -127,6 +127,19 @@ class RunMetadata:
     quantstats_version: str
     strategy_name: str = "ts_momentum"
     strategy_params: tuple[tuple[str, float], ...] = ()  # per-strategy params, for full provenance
+    # result-affecting inputs added for full reproducibility (defaults keep old readers working)
+    account_type: str = "CASH"
+    null_model: str = "bootstrap"
+    tier1_paths: int = 0
+    tier2_paths: int = 0
+    n_resamples: int = 0
+    mean_block: float = 0.0
+    threshold: float = 0.0
+    confidence: float = 0.0
+    dsr_threshold: float = 0.0
+    cpcv_groups: int = 0
+    cpcv_test_groups: int = 0
+    tier1_divergence_tol: float = 0.0
 
 
 @dataclass(frozen=True)

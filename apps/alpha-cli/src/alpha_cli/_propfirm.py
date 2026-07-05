@@ -13,6 +13,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from alpha_cli import _artifacts, _runner
 from alpha_core import DataError
 from alpha_validation import (
@@ -80,6 +82,18 @@ def resolve_rules(firm: str | None, overrides: Mapping[str, float]) -> PropFirmR
     return replace(base, **changes)
 
 
+def trim_warmup(returns: FloatArray) -> FloatArray:
+    """Drop the leading flat (all-zero) warmup span of a strategy's return stream.
+
+    A fresh backtest's equity curve is flat until the strategy warms up and first trades;
+    resampling those structural zeros into the Monte Carlo dilutes the return distribution and
+    biases pass/bust/payout probabilities toward "nothing happens". Interior flat days (real
+    no-position days) are kept — only the leading span goes.
+    """
+    nonzero = np.flatnonzero(returns != 0.0)
+    return returns if nonzero.size == 0 else returns[int(nonzero[0]) :]
+
+
 def _returns_from_run(data_dir: Path, run_id: str) -> FloatArray:
     """Daily returns from a prior run's stored equity curve (``data_dir/runs/<run_id>``)."""
     equity = _artifacts.read_equity(_artifacts.run_dir(data_dir, run_id))
@@ -115,10 +129,10 @@ def run_propfirm(
     (``DataError``) on a missing run, an unknown firm, or a degenerate return stream.
     """
     if from_run is not None:
-        returns: Sequence[float] | FloatArray = _returns_from_run(data_dir, from_run)
+        returns: Sequence[float] | FloatArray = trim_warmup(_returns_from_run(data_dir, from_run))
         source = f"run:{from_run}"
     elif symbol is not None:
-        returns = _returns_from_backtest(symbol, spec, data_dir, snapshot)
+        returns = trim_warmup(_returns_from_backtest(symbol, spec, data_dir, snapshot))
         source = f"symbol:{symbol}"
     else:  # pragma: no cover - the CLI guarantees one input is set
         raise DataError("provide a SYMBOL or --from-run RUN_ID")
