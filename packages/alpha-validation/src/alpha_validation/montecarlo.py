@@ -176,6 +176,8 @@ def garch_paths(
     uncond_var = float(np.var(pr, ddof=1))
     omega = uncond_var * (1.0 - alpha - beta)
     dof = _infer_df(pr) if df is None else df
+    if dof <= 2.0:
+        raise DataError(f"garch df must be > 2 for finite variance, got {dof}")
     rng = np.random.default_rng(seed)
     n = pr.size
     paths = np.empty((n_paths, n), dtype=np.float64)

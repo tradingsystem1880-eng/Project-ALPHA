@@ -98,3 +98,14 @@ def test_failed_actions_write_leaves_prior_data_intact(
         store.write_actions("AAPL", [])
     monkeypatch.undo()
     assert store.read_actions("AAPL") == [action]  # old data survives
+
+
+def test_duplicate_and_naive_timestamps_fail_loud(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path)
+    base = _frame()
+    dup = pl.concat([base, base.tail(1)])
+    with pytest.raises(DataError, match="duplicate"):
+        store.write_bars("AAPL", dup)
+    naive = base.with_columns(pl.col("ts").dt.replace_time_zone(None))
+    with pytest.raises(DataError, match="tz-aware"):
+        store.write_bars("AAPL", naive)

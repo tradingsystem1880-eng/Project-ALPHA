@@ -95,3 +95,16 @@ class TestParametricPriceNull:
     def test_unknown_model_fails_loud(self) -> None:
         with pytest.raises(DataError):
             parametric_price_null(_sample(), lambda r: r, model="nope", n_paths=10)
+
+
+def test_garch_df_at_or_below_two_fails_loud() -> None:
+    import numpy as np
+    import pytest
+
+    from alpha_core import DataError
+    from alpha_validation import garch_paths
+
+    pr = np.random.default_rng(0).normal(0.0, 0.01, 100)
+    for bad in (2.0, 1.5):
+        with pytest.raises(DataError, match="df"):
+            garch_paths(pr, n_paths=2, df=bad, seed=1)
