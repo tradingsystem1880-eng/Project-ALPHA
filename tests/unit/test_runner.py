@@ -103,3 +103,45 @@ def test_run_id_is_deterministic_and_sensitive() -> None:
     assert len(rid) == 16 and all(c in "0123456789abcdef" for c in rid)
     assert run_id_for(dict(base)) == rid  # order-independent, value-determined
     assert run_id_for({**base, "seed": 8}) != rid  # any input change moves the id
+
+
+def test_resolve_allow_short_defaults_follow_account_type() -> None:
+    from alpha_cli._runner import resolve_allow_short
+
+    assert resolve_allow_short(None, "MARGIN") is True
+    assert resolve_allow_short(None, "CASH") is False
+    assert resolve_allow_short(None, "cash") is False
+    assert resolve_allow_short(False, "MARGIN") is False
+    assert resolve_allow_short(True, "MARGIN") is True
+    assert resolve_allow_short(True, "CASH") is True  # passed through; engine fails loud
+
+
+def test_cash_account_with_shorts_fails_loud() -> None:
+    # Empirically verified: a CASH venue denies a short-entry SELL wholesale, so the strategy
+    # cannot even flatten and silently rides a stale long through drawdowns.
+    import pytest
+
+    from alpha_cli._runner import RunSpec, run_full_backtest
+    from alpha_core import DataError
+    from tests.fixtures.nautilus_fixtures import trend_bars
+
+    spec = RunSpec(
+        lookback=5,
+        skip=1,
+        vol_window=5,
+        target_vol=0.15,
+        rebalance_every=5,
+        max_leverage=1.0,
+        allow_short=True,
+        periods_per_year=252,
+        fee_bps=0.0,
+        slippage_bps=0.0,
+        starting_cash=1_000_000.0,
+        account_type="CASH",
+        train_size=10,
+        test_size=5,
+        embargo=0,
+        anchored=False,
+    )
+    with pytest.raises(DataError, match="allow_short.*CASH|CASH.*allow_short"):
+        run_full_backtest(trend_bars("AAPL", 1.0), spec)

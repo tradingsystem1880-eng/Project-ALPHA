@@ -73,7 +73,7 @@ def grid(
     target_vol: float = 0.15,
     rebalance_every: int = 21,
     max_leverage: float = 1.0,
-    allow_short: bool = True,
+    allow_short: bool | None = None,  # default: MARGIN->True, CASH->False
     fee_bps: float = 1.0,
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
@@ -103,7 +103,7 @@ def grid(
         target_vol=target_vol,
         rebalance_every=rebalance_every,
         max_leverage=max_leverage,
-        allow_short=allow_short,
+        allow_short=_runner.resolve_allow_short(allow_short, account_type),
         periods_per_year=252,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,

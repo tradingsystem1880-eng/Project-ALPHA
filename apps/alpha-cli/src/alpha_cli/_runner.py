@@ -84,6 +84,18 @@ class RunSpec:
         return _strategies.warmup_for(self)
 
 
+def resolve_allow_short(allow_short: bool | None, account_type: str) -> bool:
+    """Resolve the CLI's tri-state ``--allow-short`` default from the account type.
+
+    ``None`` (flag omitted) becomes ``True`` on MARGIN and ``False`` on CASH — the only
+    combination a CASH account can actually hold is long-flat. An explicit ``--allow-short`` on
+    CASH is passed through so ``run_full_backtest`` fails loud instead of silently coercing.
+    """
+    if allow_short is None:
+        return account_type.upper() == "MARGIN"
+    return allow_short
+
+
 def parse_strategy_params(items: Sequence[str] | None) -> tuple[tuple[str, float], ...]:
     """Parse repeatable ``name=value`` CLI options into the spec's sorted ``strategy_params`` shape.
 
@@ -151,6 +163,15 @@ def run_full_backtest(bars: Sequence[Bar], spec: RunSpec) -> BacktestResult:
     account_kind = spec.account_type.upper()
     if account_kind not in ("CASH", "MARGIN"):
         raise DataError(f"account_type must be 'CASH' or 'MARGIN', got {spec.account_type!r}")
+    # Fail loud (golden rule): a CASH venue denies a short-entry SELL wholesale, so the strategy
+    # cannot even flatten - it silently rides a stale long through drawdowns (verified against the
+    # engine). The combination is a configuration lie, not a runnable book.
+    if account_kind == "CASH" and spec.allow_short:
+        raise DataError(
+            "allow_short=True is incompatible with a CASH account: short-entry sells are denied "
+            "wholesale, stranding stale long positions. Use --account-type MARGIN for a "
+            "long-short book, or --no-allow-short (the default) for long-flat."
+        )
     account_type = AccountType.MARGIN if account_kind == "MARGIN" else AccountType.CASH
     return run_backtest(
         instrument,
