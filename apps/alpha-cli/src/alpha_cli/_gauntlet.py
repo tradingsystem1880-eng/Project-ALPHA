@@ -23,6 +23,7 @@ from alpha_cli._runner import (
     walk_forward_oos_for_spec,
 )
 from alpha_cli._strategies import surrogate_for
+from alpha_cli._surrogate import Surrogate
 from alpha_cli._synth import full_engine_null
 from alpha_core import Bar, DataError
 from alpha_validation import (
@@ -52,6 +53,7 @@ from alpha_validation import (
     sharpe_ratio,
     to_returns,
     value_at_risk,
+    walk_forward_splits,
 )
 
 if TYPE_CHECKING:
@@ -77,6 +79,13 @@ class GauntletParams:
     cpcv_test_groups: int = 2  # groups held out per CPCV fold
     null_model: str = "bootstrap"  # Tier-1 null: "bootstrap" | "student_t" | "garch"
     max_workers: int | None = None
+    # Tier-1 convention-divergence tolerance (annualized Sharpe units): when the close-fill and
+    # t+1-open-fill scores of the SAME surrogate weights differ by more than this on the observed
+    # OOS window, a Tier-1 FAIL with a Tier-2 PASS is demoted to advisory (flagged, not vetoing) -
+    # the fail is a documented fidelity artifact of the close-fill convention for high-turnover
+    # signals, not evidence against the strategy. 0.25 sits between the near-zero divergence of
+    # low-turnover strategies (~0.03-0.09 measured) and the regime where the sign flips (~0.4+).
+    tier1_divergence_tol: float = 0.25
 
 
 @dataclass(frozen=True)
@@ -141,13 +150,17 @@ def run_gauntlet(
         # Tier 1 — cheap returns-level null: the strategy's surrogate on synthetic return paths.
         # "bootstrap" resamples the observed returns; "student_t"/"garch" draw from a fat-tailed
         # parametric model (heavier-tailed / volatility-clustered → a more adversarial null).
+        # The statistic is scored on the walk-forward OOS index window (not the full sample), so
+        # Tier-1's observed measures the same window as Tier-2 and every other gate.
         price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
         surrogate = surrogate_for(spec)
+        oos_idx = _oos_return_indices(price_returns.size, spec)
+        oos_stat = _windowed(safe_sharpe, oos_idx)
         if params.null_model == "bootstrap":
             tier1 = randomized_price_null(
                 price_returns,
                 surrogate,
-                statistic=safe_sharpe,
+                statistic=oos_stat,
                 n_paths=params.tier1_paths,
                 block=params.mean_block,
                 threshold=params.threshold,
@@ -159,7 +172,7 @@ def run_gauntlet(
                 price_returns,
                 surrogate,
                 model=params.null_model,
-                statistic=safe_sharpe,
+                statistic=oos_stat,
                 n_paths=params.tier1_paths,
                 threshold=params.threshold,
                 periods_per_year=ppy,
@@ -176,7 +189,16 @@ def run_gauntlet(
             seed=t2_seed,
             max_workers=params.max_workers,
         )
-        nulls = (_null_summary("returns_level", tier1), _null_summary("full_engine", tier2))
+        divergence = _convention_divergence(bars, price_returns, surrogate, oos_idx, safe_sharpe)
+        nulls = (
+            _tier1_summary(
+                tier1,
+                tier2_passed=tier2.passed,
+                divergence=divergence,
+                tolerance=params.tier1_divergence_tol,
+            ),
+            _null_summary("full_engine", tier2),
+        )
 
         # Block-bootstrap BCa CIs on the OOS returns (cagr from the resampled equity path). The
         # safe Sharpe treats a zero-variance resample as 0.0 so a sparse OOS can't abort the CI.
@@ -240,6 +262,82 @@ def _verdict_summary(
         max_drawdown=oos_metrics.get("max_drawdown", math.nan),
         risk_of_ruin=oos_metrics.get("risk_of_ruin", math.nan),
         n_oos=n_oos,
+    )
+
+
+def _oos_return_indices(n_returns: int, spec: RunSpec) -> np.ndarray:
+    """Concatenated walk-forward test-window indices over a length-``n_returns`` return series.
+
+    The engine's equity curve has one point per session, so its return count equals the
+    close-to-close return count — the same walk-forward geometry tiles both, letting Tier-1 score
+    the surrogate on the same OOS window the engine gates use.
+    """
+    splits = walk_forward_splits(
+        n_returns,
+        train_size=spec.train_size,
+        test_size=spec.test_size,
+        embargo=spec.embargo,
+        anchored=spec.anchored,
+    )
+    return np.concatenate([np.arange(sp.test.start, sp.test.stop) for sp in splits])
+
+
+def _windowed(statistic: Statistic, idx: np.ndarray) -> Statistic:
+    """A statistic evaluated on ``returns[idx]`` (the OOS window) of a full-length series."""
+
+    def stat(returns: FloatArray) -> float:
+        return statistic(returns[idx])
+
+    return stat
+
+
+def _convention_divergence(
+    bars: Sequence[Bar],
+    price_returns: FloatArray,
+    surrogate: Surrogate,
+    oos_idx: np.ndarray,
+    statistic: Statistic,
+) -> float:
+    """|close-fill − t+1-open-fill| score of the SAME Tier-1 weights on the observed OOS window.
+
+    The surrogate credits weight ``w_t`` with the close-to-close move ``pr[t]``; the engine fills
+    at the next open, so ``w_t`` earns ``O_{t+2}/O_{t+1} − 1``. The two differ by the overnight
+    gap × the weight change — near zero for low-turnover strategies, structurally large for
+    high-turnover ones (the documented Tier-1 crediting bias). Scoring both conventions on the
+    real opens quantifies, per run, how much of a Tier-1 verdict is convention artifact.
+    """
+    weights, costs = surrogate.weights_and_costs(price_returns)
+    opens = np.array([b.open for b in bars], dtype=np.float64)
+    open_moves = opens[2:] / opens[1:-1] - 1.0  # decision t fills O_{t+1}, exits into O_{t+2}
+    open_fill = weights[:-1] * open_moves - costs[:-1]
+    close_fill = (weights * price_returns - costs)[:-1]
+    idx = oos_idx[oos_idx < close_fill.size]
+    if idx.size < 2:
+        return 0.0  # window too short to score either convention
+    return abs(statistic(close_fill[idx]) - statistic(open_fill[idx]))
+
+
+def _tier1_summary(
+    tier1: NullResult, *, tier2_passed: bool, divergence: float, tolerance: float
+) -> NullSummary:
+    """The returns_level summary, demoted to advisory when its FAIL is a convention artifact.
+
+    A Tier-1 FAIL is flagged (reported, not vetoing) only when ALL of: Tier-1 failed, the
+    faithful full-engine tier passed, and the measured convention divergence exceeds
+    ``tolerance``. A Tier-2 fail is never rescued — the conservative AND-gate stands wherever
+    the faithful tier agrees with Tier-1.
+    """
+    flagged = (not tier1.passed) and tier2_passed and divergence > tolerance
+    return NullSummary(
+        tier="returns_level",
+        observed=tier1.observed,
+        percentile=tier1.percentile,
+        p_value=tier1.p_value,
+        threshold=tier1.threshold,
+        passed=tier1.passed,
+        n_paths=tier1.n_paths,
+        convention_divergence=divergence,
+        flagged_low_fidelity=flagged,
     )
 
 

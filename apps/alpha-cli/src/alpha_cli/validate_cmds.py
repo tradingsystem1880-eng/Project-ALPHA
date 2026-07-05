@@ -43,6 +43,7 @@ def validate(
     mean_block: float = 5.0,
     threshold: float = 0.95,
     null_model: str = "bootstrap",
+    tier1_divergence_tol: float = 0.25,
     seed: int | None = None,
     max_workers: int | None = None,
     snapshot: str | None = None,
@@ -83,6 +84,7 @@ def validate(
         threshold=threshold,
         null_model=null_model,
         max_workers=max_workers,
+        tier1_divergence_tol=tier1_divergence_tol,
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)

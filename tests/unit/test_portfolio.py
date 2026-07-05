@@ -91,8 +91,8 @@ def test_inverse_vol_weights_are_causal_no_lookahead(tmp_path: Path) -> None:
     seed_store(tmp_path, symbol="QQQ", n=92, seed=1, drift=0.0020)
     after = run_portfolio(symbols, _spec(), data_dir=tmp_path, weighting="inverse_vol")
 
-    overlap = {d: r for d, r in zip(before.portfolio_timestamps, before.portfolio_returns)}
-    changed = {d: r for d, r in zip(after.portfolio_timestamps, after.portfolio_returns)}
+    overlap = dict(zip(before.portfolio_timestamps, before.portfolio_returns, strict=True))
+    changed = dict(zip(after.portfolio_timestamps, after.portfolio_returns, strict=True))
     common = [d for d in overlap if d in changed]
     assert len(common) > 5
     for d in common:

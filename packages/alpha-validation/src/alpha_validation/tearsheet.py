@@ -24,7 +24,7 @@ from alpha_core import DataError, ValidationOutcome
 from alpha_validation.metrics import FloatArray
 from alpha_validation.verdict import VerdictSummary
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2  # 2: null tiers carry convention_divergence / flagged_low_fidelity
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,14 @@ class NullSummary:
     threshold: float
     passed: bool
     n_paths: int
+    # Tier-1 only: |Sharpe(close-fill) - Sharpe(t+1-open-fill)| of the SAME surrogate weights on
+    # the observed OOS window. Large values mark the close-fill convention as structurally
+    # low-fidelity for this strategy (high signal-correlated turnover) - see
+    # docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md.
+    convention_divergence: float | None = None
+    # True when this tier FAILED but was demoted to advisory: the divergence exceeded tolerance
+    # while the faithful full-engine tier passed, so the fail is a surrogate-fidelity artifact.
+    flagged_low_fidelity: bool = False
 
 
 @dataclass(frozen=True)
@@ -150,7 +158,9 @@ def build_outcomes(
     - ``walk_forward_oos`` (gate 2): passes when a finite OOS Sharpe was produced.
     - ``randomized_price_null`` (gate 3): passes only when the observed statistic beats the
       threshold percentile in *every* tier (conservative — Tier-1 returns-level AND Tier-2
-      full-engine).
+      full-engine). A tier marked ``flagged_low_fidelity`` counts as advisory: its FAIL is a
+      documented surrogate-convention artifact (the faithful tier passed and the convention
+      divergence exceeded tolerance), so it reports but does not veto.
     - ``bootstrap_ci`` (gate 4): passes when the Sharpe BCa interval's lower bound clears zero (the
       risk-adjusted edge is bounded away from zero); the interval itself is always reported.
     - ``deflated_sharpe`` (when provided): passes when the deflated Sharpe clears its threshold.
@@ -170,9 +180,13 @@ def build_outcomes(
     for n in nulls:
         null_detail[f"{n.tier}_percentile"] = n.percentile
         null_detail[f"{n.tier}_p_value"] = n.p_value
+        if n.convention_divergence is not None:
+            null_detail[f"{n.tier}_convention_divergence"] = n.convention_divergence
+        if n.flagged_low_fidelity:
+            null_detail[f"{n.tier}_flagged_low_fidelity"] = 1.0
     null = ValidationOutcome(
         name="randomized_price_null",
-        passed=len(nulls) > 0 and all(n.passed for n in nulls),
+        passed=len(nulls) > 0 and all(n.passed or n.flagged_low_fidelity for n in nulls),
         detail=null_detail,
     )
 

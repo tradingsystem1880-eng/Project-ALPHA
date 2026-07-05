@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from alpha_core import DataError
-from alpha_validation import FloatArray, StrategyFn
+from alpha_validation import FloatArray
 
 if TYPE_CHECKING:
     from nautilus_trader.model.data import BarType
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from nautilus_trader.trading.strategy import Strategy
 
     from alpha_cli._runner import RunSpec
+    from alpha_cli._surrogate import Surrogate
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,7 @@ class StrategyDef:
 
     warmup: Callable[[RunSpec], int]
     build: Callable[[RunSpec, InstrumentId, BarType], Strategy]
-    surrogate: Callable[[RunSpec], StrategyFn]
+    surrogate: Callable[[RunSpec], Surrogate]
 
 
 # --- ts_momentum (the v1 strategy) -------------------------------------------------------------
@@ -66,7 +67,7 @@ def _ts_momentum_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Bar
     )
 
 
-def _ts_momentum_surrogate(spec: RunSpec) -> StrategyFn:
+def _ts_momentum_surrogate(spec: RunSpec) -> Surrogate:
     from alpha_cli._surrogate import make_ts_momentum_surrogate
 
     return make_ts_momentum_surrogate(
@@ -113,7 +114,7 @@ def _ma_crossover_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Ba
     )
 
 
-def _ma_crossover_surrogate(spec: RunSpec) -> StrategyFn:
+def _ma_crossover_surrogate(spec: RunSpec) -> Surrogate:
     from alpha_cli._surrogate import make_surrogate
     from alpha_strategies.signals import ma_crossover_signal
 
@@ -168,7 +169,7 @@ def _mean_reversion_build(
     )
 
 
-def _mean_reversion_surrogate(spec: RunSpec) -> StrategyFn:
+def _mean_reversion_surrogate(spec: RunSpec) -> Surrogate:
     from alpha_cli._surrogate import make_surrogate
     from alpha_strategies.signals import zscore_reversion_signal
 
@@ -218,7 +219,7 @@ def _breakout_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarTyp
     )
 
 
-def _breakout_surrogate(spec: RunSpec) -> StrategyFn:
+def _breakout_surrogate(spec: RunSpec) -> Surrogate:
     from alpha_cli._surrogate import make_surrogate
     from alpha_strategies.signals import breakout_signal
 
@@ -289,6 +290,6 @@ def build_strategy(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType
     return _resolve(spec.strategy_name).build(spec, instrument_id, bar_type)
 
 
-def surrogate_for(spec: RunSpec) -> StrategyFn:
+def surrogate_for(spec: RunSpec) -> Surrogate:
     """Build the Tier-1 engine-free surrogate for ``spec``'s strategy."""
     return _resolve(spec.strategy_name).surrogate(spec)
