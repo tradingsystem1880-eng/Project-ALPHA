@@ -31,6 +31,9 @@ class BacktestResult:
     ``equity_curve`` is ``(timestamp, equity)`` sampled once per session (at each open), where
     ``equity = starting_cash + realized PnL + unrealized PnL`` — a net-of-fees, mark-to-market
     net-liquidation value, so an open position is valued each session rather than only on close.
+    Convention: a session's sample is taken at its open BEFORE any same-open fill settles, so a
+    fill's fee/spread appears from the next session's sample; the final point is re-sampled from
+    the terminal portfolio state so a last-session fill is always included.
     """
 
     orders: int

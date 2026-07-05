@@ -60,8 +60,10 @@ class _EquityRecorder(Actor):  # type: ignore[misc]  # nautilus Actor is untyped
         self.subscribe_quote_ticks(self._iid)
 
     def on_quote_tick(self, quote: QuoteTick) -> None:
-        # Sampled after the portfolio has marked to this quote; a strategy order that fills on the
-        # same quote is reflected here too (nautilus delivers the fill before this actor's handler).
+        # Sampled after the portfolio has marked to this quote but BEFORE a strategy order
+        # submitted on the same quote settles (the order fills after this snapshot), so a fill
+        # session's fee/spread shows up from the NEXT sample; run_backtest re-samples the terminal
+        # state so a final-session fill is never lost.
         equity = (
             self._starting_cash
             + _sum_pnls(self.portfolio.realized_pnls(self._venue))
@@ -137,6 +139,15 @@ def run_backtest(
     engine.add_strategy(strategy)
     try:
         engine.run()
+        # A fill on the FINAL quote settles after that session's snapshot; without this terminal
+        # re-sample its fee/spread would be permanently missing and final_equity overstated.
+        if recorder.curve:
+            terminal = (
+                starting_cash
+                + _sum_pnls(recorder.portfolio.realized_pnls(instrument.id.venue))
+                + _sum_pnls(recorder.portfolio.unrealized_pnls(instrument.id.venue))
+            )
+            recorder.curve[-1] = (recorder.curve[-1][0], terminal)
         result = BacktestResult(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
