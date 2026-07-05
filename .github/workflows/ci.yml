@@ -2,19 +2,25 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6.0.3
       - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Install
-        run: uv sync
+      - name: Install (locked)
+        run: uv sync --locked
       - name: Lint
         run: uv run ruff check .
       - name: Format check
