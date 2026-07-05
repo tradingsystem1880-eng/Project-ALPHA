@@ -23,7 +23,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - **Polars** is the default dataframe. pandas + `quantstats_lumi` ONLY at the tear-sheet rendering edge (`alpha_validation.tearsheet`). `numpy`/`scipy.stats.norm` only in the `alpha_validation` numeric layer.
 - **Strong typing.** `mypy --strict` is a CI gate. Overrides (do not "fix"): `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*` are `ignore_missing_imports` (no loadable stubs); nautilus Cython base classes get `# type: ignore[misc]`.
 - **Determinism (spec §11.4).** All seeds derive from `AlphaSettings.random_seed` (default 7); the gauntlet spawns independent child seeds via `np.random.SeedSequence(master).spawn(n)` so gate order can't change results. `run_id` = sha256 of canonical sorted-key JSON of the params (no wall-clock). Manifests are byte-stable (sorted keys, `allow_nan=False` → non-finite must already be `null`).
-- **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application (a known-but-future split does NOT rescale prices yet). Splits adjust the price series; dividends are decoupled cash events credited at `pay_date` (never folded into prices; the crediting engine hook is still open — see audit report). Yahoo serves split-adjusted OHLCV, so the yfinance parser reconstructs RAW prices from in-window split events (fails loud if the vendor convention drifts). See spec §6.1.
+- **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application (a known-but-future split does NOT rescale prices yet). Splits adjust the price series; dividends are decoupled cash events **credited by the engine at `pay_date`** against the pre-ex holding (shorts debited; never folded into prices; threaded through every run path incl. Tier-2 nulls — Tier-1 stays price-only by design). Yahoo serves split-adjusted OHLCV, so the yfinance parser reconstructs RAW prices from in-window split events (fails loud if the vendor convention drifts). See spec §6.1.
 
 ## Commands
 - Install: `uv sync`
@@ -40,7 +40,7 @@ Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim`/`paper` are
 - `alpha data pull SYMBOL --source {yfinance,ccxt,stooq} --start --end` — fetch + store raw bars/actions.
 - `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source]` — freeze store → immutable hashed snapshot.
 - `alpha data verify SNAPSHOT_ID` — re-hash snapshot vs manifest.
-- `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout, --param name=value, ...params, snapshot]` — one fixed-param run → artifacts.
+- `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout, --param name=value, --periods-per-year, --size-on-equity, --halt-drawdown F, ...params, snapshot]` — one fixed-param run → artifacts. Slash symbols (`BTC/USD`) dispatch to a 5-decimal crypto instrument and require `--account-type MARGIN`. `--size-on-equity` re-bases vol sizing on current net-liq; `--halt-drawdown F` is a flatten-for-good kill-switch at `peak×(1−F)` (both opt-in; REJECTED by `validate`/`optim` — Tier-1 can't model equity-path-dependent sizing).
 - `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, --seed, ...params]` — diversified basket (canonical sorted symbol order): per-symbol OOS streams combined (inverse-vol weights are CAUSAL — per-date trailing vol, never full-sample) → portfolio metrics + PSR + BCa CIs + manifest (`data_dir/portfolio/<run_id>`).
 - `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, --fee-bps, --slippage-bps, --seed, ...params]` — relative-strength book: rank the universe (canonical sorted order), long winners / short losers, vol-targeted, fee+slippage charged on rebalance turnover → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
 - `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, tier1_divergence_tol=0.25, periods_per_year=252, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud. `--allow-short` defaults by account: MARGIN→short-ok, CASH→long-flat; an explicit `--allow-short` on CASH fails loud (the venue denies short sells wholesale). `--snapshot` verifies + reads the frozen snapshot (not the live store). `run_id` excludes `max_workers` (execution-only).
@@ -80,16 +80,16 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 |---|---|---|
 | `signals.py` | Pure signals (all `{-1,0,1}`, trailing-window only) | `ts_momentum_signal`, `ma_crossover_signal(closes, fast, slow)`, `zscore_reversion_signal(closes, window, entry_z)`, `breakout_signal(highs, lows, closes, window)` |
 | `sizing.py` | Pure vol-target sizing | `realized_volatility(closes, *, periods_per_year)`, `vol_target_size(signal, price, vol, *, target_vol, capital, max_leverage)` |
-| `base.py` | Shared nautilus lifecycle for vol-targeted signals | `VolTargetStrategy` (decide close-t / fill open-t+1; subclasses implement `_signal()`) |
-| `ts_momentum.py` | TS-momentum (standalone reference impl) | `TimeSeriesMomentum(Strategy)` |
+| `base.py` | Shared nautilus lifecycle for vol-targeted signals (+ opt-in `size_on_equity`, `halt_drawdown` kill-switch) | `VolTargetStrategy` (decide close-t / fill open-t+1; subclasses implement `_signal()`) |
+| `ts_momentum.py` | TS-momentum (a `VolTargetStrategy` subclass since the 2026-07 audit) | `TimeSeriesMomentum` |
 | `ma_crossover.py` · `mean_reversion.py` · `breakout.py` | `VolTargetStrategy` subclasses | `MovingAverageCrossover`, `MeanReversion`, `DonchianBreakout` |
 
 ### `alpha_backtest` (`packages/alpha-backtest/src/alpha_backtest/`) — nautilus run harness. core + data only.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
 | `feed.py` | Bar → nautilus feed (t+1-fill encoding) | `to_execution_feed(bars, bar_type, *, slippage_bps=...)`, `daily_bar_type(symbol, venue="SIM")` |
-| `engine.py` | `BacktestEngine` harness (`bar_execution=False`) | `run_backtest(instrument, data, strategy, *, starting_cash, account_type, leverage, fee_bps)` → `BacktestResult` |
-| `instruments.py` | Per-asset instruments | `equity_instrument(symbol, venue="SIM")` |
+| `engine.py` | `BacktestEngine` harness (`bar_execution=False`; credits dividend cash at pay_date) | `run_backtest(instrument, data, strategy, *, starting_cash, account_type, leverage, fee_bps, dividends)` → `BacktestResult` |
+| `instruments.py` | Per-asset instruments (slash pairs → 5-decimal crypto) | `instrument_for(symbol)`, `equity_instrument`, `crypto_instrument` |
 | `frictions.py` | Per-notional fee model | `BpsFeeModel(fee_bps)` (slippage modeled separately in `feed`) |
 | `results.py` | Result schema | `BacktestResult(orders, fills, trades, equity_curve)` (`starting_equity`/`final_equity`), `Trade` |
 
@@ -120,7 +120,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `propfirm_cmds.py` | `alpha propfirm run` | `propfirm_app` |
 | `report_cmds.py` | `alpha report` (all run types) | `report` |
 | `_strategies.py` | Strategy registry (dispatch by `strategy_name`) | `STRATEGIES`, `build_strategy`, `warmup_for`, `surrogate_for`, `known_strategies` |
-| `_runner.py` | Engine↔gauntlet glue, OOS stitch, run id | `RunSpec` (`strategy_name`, `strategy_params`, `param()`), `load_bars`, `parse_strategy_params`, `run_full_backtest`, `walk_forward_oos`/`_for_spec`, `OOSResult`, `run_id_for` |
+| `_runner.py` | Engine↔gauntlet glue, OOS stitch, run id | `RunSpec` (`strategy_name`, `strategy_params`, `param()`), `load_bars`, `load_dividends`, `parse_strategy_params`, `resolve_allow_short`, `run_full_backtest`, `walk_forward_oos`/`_for_spec`, `OOSResult`, `run_id_for` |
 | `_gauntlet.py` | Full gauntlet assembly (+ DSR, CPCV, null-model) | `run_gauntlet`, `GauntletParams`, `GauntletOutput` |
 | `_optim.py` | Parameter sweep + overfitting verdict | `run_optimization`, `expand_grid`, `OptimResult` |
 | `_portfolio.py` | Diversified-basket backtest | `run_portfolio`, `PortfolioResult`, `LegSummary` |

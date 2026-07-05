@@ -95,9 +95,10 @@ Severity · finding · root cause → impact · **status**.
    `verify_snapshot` re-hashes it.
 
 6. **Dividend cash never credited anywhere** (`pit.dividends_as_of` has no consumer).
-   Equity total returns systematically exclude dividends; the two-clock channel exists but the
-   engine hook was never built. **NOT FIXED — top remaining recommendation** (§6.1): requires a
-   cash-event actor in the engine layer; documented in CLAUDE.md so the gap is explicit.
+   Equity total returns systematically excluded dividends; the two-clock channel existed but the
+   engine hook was never built. **FIXED (follow-up)** — the equity recorder entitles the pre-ex
+   holding and credits cash at pay date (shorts debited); dividends load snapshot-aware and
+   thread through backtest/validate (observed + Tier-2 nulls)/optim/portfolio/prop-firm.
 
 ### Medium
 
@@ -141,8 +142,9 @@ Severity · finding · root cause → impact · **status**.
     **FIXED** — `--locked`, concurrency group, timeout, push-on-main only.
 20. **Vol-target sizing uses static starting cash, never current equity; no kill-switch**
     (`base.py`). Real risk-control gap on MARGIN (leverage drifts up in drawdowns).
-    **NOT FIXED — recommendation** (§6.2): changes every backtest's results; needs a deliberate
-    design pass (equity-fraction sizing + max-drawdown halt).
+    **FIXED (follow-up, opt-in)** — `--size-on-equity` re-bases sizing on current net-liq and
+    `--halt-drawdown F` flattens for good at `peak×(1−F)`; defaults preserve prior results, and
+    the gauntlet/optimizer reject the knobs (Tier-1 cannot model equity-path-dependent sizing).
 
 ### Low / hardening (all FIXED)
 
@@ -223,20 +225,21 @@ Behavioral changes are all bug-fix-motivated; none change public APIs' shapes:
 
 ## 6. Remaining recommendations (ranked)
 
-1. **Dividend crediting engine hook** — consume `dividends_as_of` via a cash-event actor at
-   `pay_date` (short positions debited); until then equity total returns exclude dividends.
-2. **Equity-based vol sizing + drawdown kill-switch** — sizing currently uses static starting
-   cash; on MARGIN the effective leverage grows as equity draws down.
-3. **Tier-1 root-cause fix (investigation §7.2)** — bar-pair `(gap, intraday)` resampling so the
-   surrogate can fill at synthetic opens; retires the close-fill convention entirely.
-4. **Per-asset instrument definitions** — precision-2 integer-lot equities quantize sub-dollar
-   crypto to garbage; nautilus instrument specs per asset class.
-5. **Realistic composed-run fixtures** — integration fixtures use open=high=low=close bars and
-   no corporate actions; they cannot catch fill-convention or action-wiring regressions.
-6. **Fresh-process byte-stability check** — manifest byte-identity is asserted in-process only.
-7. **SPA/RC block-length sensitivity** — expose `mean_block` per test and document the
+Items 1 (dividend crediting), 2 (equity sizing + kill-switch), 4 (crypto instruments), and 6
+(fresh-process byte check) from the original list were implemented in the follow-up commits on
+this branch. Still open, ranked:
+
+1. **Tier-1 root-cause fix (investigation §7.2)** — bar-pair `(gap, intraday)` resampling so the
+   surrogate can fill at synthetic opens; retires the close-fill convention entirely (the
+   divergence guard neutralizes the false-FAIL harm meanwhile).
+2. **Exchange-true instrument specs** — the new 5-decimal crypto pair fixes sub-dollar pricing,
+   but real per-venue tick sizes, lot sizes, and fee schedules are still generic.
+3. **Realistic composed-run fixtures** — most integration fixtures still use
+   open=high=low=close bars; the new gapped/dividend fixtures cover the highest-risk paths, but
+   broad fixture realism remains worthwhile.
+4. **SPA/RC block-length sensitivity** — expose `mean_block` per test and document the
    Politis-White automatic choice as a future refinement (noted in `bootstrap.py`).
-8. **GARCH path generation is a Python loop** (~1000 paths × n days × per-step RNG calls);
+5. **GARCH path generation is a Python loop** (~1000 paths × n days × per-step RNG calls);
    vectorize per-path innovations if `--null-model garch` becomes a default workflow.
-9. **FRED/macro store** (non-OHLCV) and the multi-instrument engine for full-engine
+6. **FRED/macro store** (non-OHLCV) and the multi-instrument engine for full-engine
    cross-sectional — carried over from the roadmap, unchanged.
