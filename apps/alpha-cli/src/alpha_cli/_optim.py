@@ -139,6 +139,11 @@ def run_optimization(
     dividends: Sequence[CorporateAction] = (),
 ) -> OptimResult:
     """Run the sweep and return its overfitting-aware verdict (DSR + PBO + Reality Check + SPA)."""
+    if base_spec.size_on_equity or base_spec.halt_drawdown is not None:
+        raise DataError(
+            "size_on_equity / halt_drawdown are not supported by the optimizer (see the "
+            "gauntlet's Tier-1 fidelity constraint)"
+        )
     configs = expand_grid(grid)
     if len(configs) < 2:
         raise DataError(

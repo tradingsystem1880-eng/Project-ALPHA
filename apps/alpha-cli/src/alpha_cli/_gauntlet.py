@@ -113,6 +113,13 @@ def run_gauntlet(
         raise DataError(
             f"unknown null model {params.null_model!r}; known: 'bootstrap', 'student_t', 'garch'"
         )
+    if spec.size_on_equity or spec.halt_drawdown is not None:
+        raise DataError(
+            "size_on_equity / halt_drawdown are not supported by the gauntlet: the Tier-1 "
+            "returns-level surrogate cannot model equity-path-dependent sizing, so its null "
+            "would be silently unfaithful. Use them on plain backtests, portfolios, and "
+            "prop-firm runs."
+        )
     if params.seed is None:
         # SeedSequence(None) draws OS entropy: the run would be irreproducible while the manifest
         # still records a seed - a silent violation of the determinism contract (spec 11.4).

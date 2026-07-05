@@ -70,6 +70,8 @@ def _ts_momentum_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Bar
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        size_on_equity=spec.size_on_equity,
+        halt_drawdown=spec.halt_drawdown,
     )
 
 
@@ -117,6 +119,8 @@ def _ma_crossover_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Ba
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        size_on_equity=spec.size_on_equity,
+        halt_drawdown=spec.halt_drawdown,
     )
 
 
@@ -172,6 +176,8 @@ def _mean_reversion_build(
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        size_on_equity=spec.size_on_equity,
+        halt_drawdown=spec.halt_drawdown,
     )
 
 
@@ -222,6 +228,8 @@ def _breakout_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarTyp
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        size_on_equity=spec.size_on_equity,
+        halt_drawdown=spec.halt_drawdown,
     )
 
 

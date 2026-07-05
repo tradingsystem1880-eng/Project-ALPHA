@@ -10,6 +10,8 @@ remains the standalone reference implementation; this base is the template for t
 
 from __future__ import annotations
 
+from typing import Any
+
 from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.data import BarType, QuoteTick
 from nautilus_trader.model.enums import OrderSide
@@ -18,7 +20,13 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.objects import Quantity
 from nautilus_trader.trading.strategy import Strategy
 
+from alpha_core import DataError
 from alpha_strategies.sizing import realized_volatility, vol_target_size
+
+
+def _sum_money(pnls: Any) -> float:
+    """Sum a nautilus per-currency PnL dict to a float (single base currency in v1)."""
+    return float(sum(money.as_double() for money in pnls.values()))
 
 
 class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is untyped (Cython)
@@ -42,8 +50,12 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         rebalance_every: int = 21,
         periods_per_year: int = 252,
         allow_short: bool = True,
+        size_on_equity: bool = False,
+        halt_drawdown: float | None = None,
     ) -> None:
         super().__init__()
+        if halt_drawdown is not None and not 0.0 < halt_drawdown < 1.0:
+            raise DataError(f"halt_drawdown must be in (0, 1) or None, got {halt_drawdown}")
         self._iid = instrument_id
         self._bar_type = bar_type
         self._vol_window = vol_window
@@ -53,6 +65,14 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self._rebalance_every = rebalance_every
         self._periods_per_year = periods_per_year
         self._allow_short = allow_short  # spec §7: equities long-flat (False), crypto/FX long-short
+        # risk controls (both opt-in; defaults preserve the fixed-capital, no-halt behavior):
+        # size_on_equity re-bases the vol-target notional on CURRENT net-liq each rebalance, so
+        # exposure de-levers in drawdowns instead of silently gearing up; halt_drawdown is a
+        # kill-switch - once net-liq breaches peak*(1-halt_drawdown) the book goes flat for good.
+        self._size_on_equity = size_on_equity
+        self._halt_drawdown = halt_drawdown
+        self._peak_equity = capital
+        self.halted = False
         self._min_history = max(min_history, vol_window + 1)
         self._closes: list[float] = []
         self._highs: list[float] = []
@@ -62,6 +82,15 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self.net_units = 0.0
         self.fills = 0
         self.rejections = 0  # orders denied (risk/buying-power) or rejected by the venue
+
+    def _net_liq(self) -> float:
+        """Current net-liquidation equity (same formula as the engine's recorder)."""
+        venue = self._iid.venue
+        return (
+            self._capital
+            + _sum_money(self.portfolio.realized_pnls(venue))
+            + _sum_money(self.portfolio.unrealized_pnls(venue))
+        )
 
     def _signal(self) -> int:
         """Return the {-1, 0, 1} signal from the accumulated history. Implemented by subclasses."""
@@ -82,6 +111,21 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self._eligible_bars += 1
         if not rebalance_due:
             return
+        capital = self._capital
+        if self._size_on_equity or self._halt_drawdown is not None:
+            equity = self._net_liq()
+            self._peak_equity = max(self._peak_equity, equity)
+            if self._halt_drawdown is not None and (
+                self.halted or equity <= self._peak_equity * (1.0 - self._halt_drawdown)
+            ):
+                self.halted = True  # kill-switch: flatten at the next open, never re-enter
+                self._target_units = 0.0
+                return
+            if self._size_on_equity:
+                if equity <= 0.0:
+                    self._target_units = 0.0  # blown-up book cannot be vol-sized; stay flat
+                    return
+                capital = equity
         signal = self._signal()
         if signal == 0 or (signal < 0 and not self._allow_short):
             self._target_units = 0.0  # flat: no signal, or a short we are not permitted to take
@@ -97,7 +141,7 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             self._closes[-1],
             annualized_vol,
             target_vol=self._target_vol,
-            capital=self._capital,
+            capital=capital,
             max_leverage=self._max_leverage,
         )
 

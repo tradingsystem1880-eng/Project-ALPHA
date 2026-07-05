@@ -35,6 +35,8 @@ def run(
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
     periods_per_year: int = 252,
+    size_on_equity: bool = False,
+    halt_drawdown: float | None = None,
     param: list[str] | None = None,
     snapshot: str | None = None,
 ) -> None:
@@ -64,6 +66,8 @@ def run(
         anchored=False,
         strategy_name=strategy,
         strategy_params=_runner.parse_strategy_params(param),
+        size_on_equity=size_on_equity,
+        halt_drawdown=halt_drawdown,
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
@@ -123,6 +127,8 @@ def portfolio(
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
     periods_per_year: int = 252,
+    size_on_equity: bool = False,
+    halt_drawdown: float | None = None,
     train_size: int = 504,
     test_size: int = 63,
     embargo: int = 5,
@@ -163,6 +169,8 @@ def portfolio(
         anchored=anchored,
         strategy_name=strategy,
         strategy_params=_runner.parse_strategy_params(param),
+        size_on_equity=size_on_equity,
+        halt_drawdown=halt_drawdown,
     )
     try:
         result = _portfolio.run_portfolio(

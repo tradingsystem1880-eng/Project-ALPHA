@@ -76,6 +76,8 @@ def run(
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
     periods_per_year: int = 252,
+    size_on_equity: bool = False,
+    halt_drawdown: float | None = None,
     param: list[str] | None = None,
     snapshot: str | None = None,
 ) -> None:
@@ -118,6 +120,8 @@ def run(
         anchored=False,
         strategy_name=strategy,
         strategy_params=_runner.parse_strategy_params(param),
+        size_on_equity=size_on_equity,
+        halt_drawdown=halt_drawdown,
     )
     # The run id pins only what the result depends on: the source, the firm + overrides, and the MC
     # knobs. A fresh backtest also depends on the strategy/cost spec; --from-run depends on the run.

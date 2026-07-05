@@ -68,6 +68,10 @@ class RunSpec:
     # per-strategy params not promoted to first-class fields, as sorted (name, value) pairs so the
     # spec stays one fixed, picklable, hashable shape across every strategy.
     strategy_params: tuple[tuple[str, float], ...] = ()
+    # opt-in risk controls (defaults preserve fixed-capital, no-halt behavior; the gauntlet and
+    # optimizer reject them because the Tier-1 surrogate cannot model equity-path-dependent sizing)
+    size_on_equity: bool = False
+    halt_drawdown: float | None = None
 
     def param(self, name: str, default: float) -> float:
         """Read a per-strategy parameter from ``strategy_params``, or ``default`` if absent."""
