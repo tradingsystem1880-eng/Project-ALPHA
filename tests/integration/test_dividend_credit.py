@@ -126,3 +126,21 @@ def test_non_dividend_action_fails_loud() -> None:
     )
     with pytest.raises(DataError, match="DIVIDEND"):
         _run([split])
+
+
+def test_insolvent_fill_fails_loud_not_truncated() -> None:
+    # A full-balance CASH fill whose commission tips the account negative makes nautilus STOP the
+    # run without raising; with logging bypassed that silently yielded a truncated curve and
+    # nonsense downstream statistics. run_backtest must fail loud with an actionable message.
+    inst = equity_instrument("AAPL")
+    bar_type = daily_bar_type("AAPL")
+    from tests.fixtures.nautilus_fixtures import BuyAndHold as _BH
+
+    with pytest.raises(DataError, match="stopped after"):
+        run_backtest(
+            inst,
+            to_execution_feed(ladder_bars("AAPL"), bar_type),
+            _BH(inst.id, qty=100),  # 100 sh @ open 100 = the entire 10k balance
+            starting_cash=10_000.0,
+            fee_bps=100.0,  # 1% commission tips the account negative on the fill
+        )

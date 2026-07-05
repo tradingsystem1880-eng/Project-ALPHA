@@ -186,6 +186,16 @@ def run_backtest(
     engine.add_strategy(strategy)
     try:
         engine.run()
+        # nautilus stops the run (without raising) when the account balance goes negative or a
+        # handler errors; with logging bypassed that would silently yield a TRUNCATED curve and
+        # nonsense downstream stats. Fail loud instead.
+        n_sessions = sum(1 for d in data if isinstance(d, QuoteTick))
+        if len(recorder.curve) != n_sessions:
+            raise DataError(
+                f"engine stopped after {len(recorder.curve)} of {n_sessions} sessions - "
+                "usually the account balance went negative (fees/slippage on a full-balance "
+                "fill). Lower target_vol or max_leverage, or raise starting_cash."
+            )
         # A fill on the FINAL quote settles after that session's snapshot; without this terminal
         # re-sample its fee/spread would be permanently missing and final_equity overstated.
         if recorder.curve:

@@ -65,7 +65,7 @@ def _ts_momentum_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Bar
         skip=spec.skip,
         vol_window=spec.vol_window,
         target_vol=spec.target_vol,
-        capital=spec.starting_cash,
+        capital=_sizing_capital(spec),
         max_leverage=spec.max_leverage,
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
@@ -114,7 +114,7 @@ def _ma_crossover_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Ba
         slow=slow,
         vol_window=spec.vol_window,
         target_vol=spec.target_vol,
-        capital=spec.starting_cash,
+        capital=_sizing_capital(spec),
         max_leverage=spec.max_leverage,
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
@@ -171,7 +171,7 @@ def _mean_reversion_build(
         entry_z=entry_z,
         vol_window=spec.vol_window,
         target_vol=spec.target_vol,
-        capital=spec.starting_cash,
+        capital=_sizing_capital(spec),
         max_leverage=spec.max_leverage,
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
@@ -223,7 +223,7 @@ def _breakout_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarTyp
         window=_breakout_window(spec),
         vol_window=spec.vol_window,
         target_vol=spec.target_vol,
-        capital=spec.starting_cash,
+        capital=_sizing_capital(spec),
         max_leverage=spec.max_leverage,
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
@@ -284,6 +284,22 @@ STRATEGIES: dict[str, StrategyDef] = {
         params=frozenset({"window"}),
     ),
 }
+
+
+def _sizing_capital(spec: RunSpec) -> float:
+    """The capital handed to vol-target sizing: friction-derated on CASH accounts.
+
+    A CASH fill consumes ``notional*(1+slippage)*(1+fee)``; when realized vol sits below
+    ``target_vol`` the leverage cap sizes the FULL balance, and the frictions then tip the
+    account negative - nautilus stops the backtest at that point. Reserving the friction
+    headroom up front keeps the worst-case boundary fill solvent (a ~3bp sizing haircut at the
+    default frictions). MARGIN accounts have buying-power headroom and are left untouched.
+    """
+    if spec.account_type.upper() == "MARGIN":
+        return spec.starting_cash
+    slip = spec.slippage_bps / 10_000.0
+    fee = spec.fee_bps / 10_000.0
+    return spec.starting_cash / ((1.0 + slip) * (1.0 + fee))
 
 
 def _resolve(name: str) -> StrategyDef:
