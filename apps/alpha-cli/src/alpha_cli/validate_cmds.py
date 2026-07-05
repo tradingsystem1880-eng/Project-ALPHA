@@ -88,13 +88,16 @@ def validate(
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        # max_workers is an execution-only knob (results are order-preserving and identical
+        # serial or pooled), so it must NOT change the run id (same params -> same id).
+        gauntlet_knobs = {k: v for k, v in vars(gparams).items() if k != "max_workers"}
         run_id = _runner.run_id_for(
             {
                 "command": "validate",
                 "symbol": symbol,
                 "snapshot_id": snapshot_id,
                 **vars(spec),
-                **vars(gparams),
+                **gauntlet_knobs,
             }
         )
         out = _gauntlet.run_gauntlet(bars, spec, gparams, run_id=run_id, snapshot_id=snapshot_id)

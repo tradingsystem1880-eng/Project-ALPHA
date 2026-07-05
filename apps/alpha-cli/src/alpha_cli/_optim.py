@@ -85,6 +85,11 @@ def _spec_for(base: RunSpec, config: Config) -> RunSpec:
     extra = dict(base.strategy_params)
     for name, value in config:
         if name in _INT_FIELDS:
+            if not float(value).is_integer():
+                raise DataError(
+                    f"grid axis {name!r} is integer-valued; {value!r} would be silently "
+                    f"truncated to {int(value)} (a duplicate trial skews PBO/DSR/SPA)"
+                )
             overrides[name] = int(value)
         elif name in _FLOAT_FIELDS:
             overrides[name] = float(value)

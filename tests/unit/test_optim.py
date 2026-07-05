@@ -91,3 +91,30 @@ def test_warmup_floor_misalignment_fails_loud() -> None:
     # a vol_window of 40 needs train_size >= 41, but base train_size is 15 → the OOS would misalign
     with pytest.raises(DataError):
         run_optimization(_bars(), _base(), {"vol_window": [3, 40]}, pbo_blocks=6, n_resamples=50)
+
+
+def test_non_integer_grid_value_for_integer_axis_fails_loud() -> None:
+    from alpha_cli._optim import _spec_for
+    from alpha_cli._runner import RunSpec
+
+    base = RunSpec(
+        lookback=5,
+        skip=1,
+        vol_window=3,
+        target_vol=0.15,
+        rebalance_every=2,
+        max_leverage=1.0,
+        allow_short=False,
+        periods_per_year=252,
+        fee_bps=0.0,
+        slippage_bps=0.0,
+        starting_cash=100_000.0,
+        account_type="CASH",
+        train_size=15,
+        test_size=5,
+        embargo=1,
+        anchored=False,
+    )
+    with pytest.raises(DataError, match="truncated"):
+        _spec_for(base, (("lookback", 5.5),))
+    assert _spec_for(base, (("lookback", 6.0),)).lookback == 6  # exact integers still work

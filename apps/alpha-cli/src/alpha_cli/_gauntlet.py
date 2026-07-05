@@ -112,6 +112,10 @@ def run_gauntlet(
         raise DataError(
             f"unknown null model {params.null_model!r}; known: 'bootstrap', 'student_t', 'garch'"
         )
+    if params.seed is None:
+        # SeedSequence(None) draws OS entropy: the run would be irreproducible while the manifest
+        # still records a seed - a silent violation of the determinism contract (spec 11.4).
+        raise DataError("gauntlet seed must be an explicit integer for reproducibility, got None")
     ppy = spec.periods_per_year
     result = run_full_backtest(bars, spec)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
