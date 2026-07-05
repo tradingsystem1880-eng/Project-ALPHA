@@ -139,3 +139,60 @@ def test_gauntlet_and_optimizer_reject_equity_path_knobs() -> None:
         run_gauntlet(bars, spec, GauntletParams(), run_id="x" * 16, snapshot_id=None)
     with pytest.raises(DataError, match="size_on_equity"):
         run_optimization(bars, spec, {"lookback": [4, 5]})
+
+
+def test_sub_dollar_crypto_prices_survive_the_instrument() -> None:
+    # A precision-2 equity instrument quantizes a $0.074 token to $0.07 (and <$0.005 to zero);
+    # slash symbols must dispatch to the 5-decimal crypto pair and fill at real prices.
+    from alpha_backtest.instruments import instrument_for
+    from alpha_cli._runner import RunSpec, run_full_backtest
+
+    inst = instrument_for("DOGE/USD")
+    assert inst.price_precision == 5
+    assert instrument_for("AAPL").price_precision == 2  # equities unchanged
+
+    import numpy as np
+
+    rng = np.random.default_rng(2)
+    closes = (0.074 * np.cumprod(1 + 0.004 + rng.normal(0.0, 0.01, 60))).tolist()
+    start_bars = _bars(closes)
+    doge = [
+        Bar(
+            symbol="DOGE/USD",
+            ts=b.ts,
+            open=b.open,
+            high=b.high,
+            low=b.low,
+            close=b.close,
+            volume=b.volume,
+        )
+        for b in start_bars
+    ]
+    spec = RunSpec(
+        lookback=5,
+        skip=1,
+        vol_window=3,
+        target_vol=0.15,
+        rebalance_every=2,
+        max_leverage=1.0,
+        allow_short=True,
+        periods_per_year=365,
+        fee_bps=0.0,
+        slippage_bps=0.0,
+        starting_cash=100_000.0,
+        account_type="MARGIN",
+        train_size=15,
+        test_size=5,
+        embargo=1,
+        anchored=False,
+    )
+    result = run_full_backtest(doge, spec)
+    assert result.fills > 0  # the book actually trades at token prices
+    assert all(t.entry_price > 0.0 for t in result.trades)
+
+    # a currency pair cannot live in a single-currency CASH account: fail loud, not a venue crash
+    from dataclasses import replace
+
+    cash_spec = replace(spec, account_type="CASH", allow_short=False)
+    with pytest.raises(DataError, match="MARGIN"):
+        run_full_backtest(doge, cash_spec)
