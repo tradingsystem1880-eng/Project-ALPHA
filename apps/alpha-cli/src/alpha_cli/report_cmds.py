@@ -9,6 +9,7 @@ the backtest engine.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,7 @@ import typer
 from alpha_core.config import AlphaSettings
 
 _RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")  # ids are 16 hex chars; reject before path-joining
 
 
 def _fmt(x: Any) -> str:
@@ -25,6 +27,8 @@ def _fmt(x: Any) -> str:
 
 
 def _find_manifest(data_dir: Path, run_id: str) -> dict[str, Any] | None:
+    if _RUN_ID_RE.fullmatch(run_id) is None:
+        return None  # not a run id -> the standard not-found error, no filesystem probe
     for sub in _RUN_DIRS:
         path = data_dir / sub / run_id / "manifest.json"
         if path.exists():

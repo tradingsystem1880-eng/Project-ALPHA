@@ -42,7 +42,7 @@ def _seed_run(data_dir: Path) -> None:
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     _seed_run(tmp_path)
-    return TestClient(create_app())
+    return TestClient(create_app(), base_url="http://127.0.0.1")
 
 
 def test_index_lists_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -69,3 +69,27 @@ def test_run_detail_unknown_is_404(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_tearsheet_route_serves_the_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     resp = _client(tmp_path, monkeypatch).get(f"/runs/{_RUN_ID}/tearsheet")
     assert resp.status_code == 200 and "TEARSHEET-MARKER" in resp.text
+
+
+def test_run_id_path_traversal_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A crafted run id must 404 without ever being joined into a filesystem path.
+    client = _client(tmp_path, monkeypatch)
+    for bad in ("..%2F..%2Fetc", "../secret", "a" * 16, "ABCDEF0123456789"):  # non-hex/traversal
+        assert client.get(f"/runs/{bad}").status_code == 404
+        assert client.get(f"/runs/{bad}/tearsheet").status_code == 404
+
+
+def test_cross_site_and_foreign_host_requests_are_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Loopback binding does not stop CSRF (a foreign page can POST to 127.0.0.1) or DNS
+    # rebinding (foreign Host resolving to us). Both must be refused before any subprocess runs.
+    client = _client(tmp_path, monkeypatch)
+    r = client.post(
+        "/console/run", data={"args": "info"}, headers={"Origin": "https://evil.example"}
+    )
+    assert r.status_code == 403
+    assert client.get("/", headers={"Host": "evil.example"}).status_code == 403
+    # same-origin POST (browser) and origin-less POST (curl/local tooling) still work
+    ok = client.post("/console/run", data={"args": "info"}, headers={"Origin": "http://127.0.0.1"})
+    assert ok.status_code == 200

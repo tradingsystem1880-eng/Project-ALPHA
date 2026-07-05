@@ -18,6 +18,7 @@ from typing import Any
 
 _ALPHA_BIN = "alpha"  # console script; resolvable on PATH inside the workspace venv
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
+_TIMEOUT_S = 3600.0  # generous ceiling for a full gauntlet; a hung child must not hang the server
 
 
 def run_alpha(args: list[str], *, data_dir: Path, run_type: str | None) -> dict[str, Any]:
@@ -29,7 +30,20 @@ def run_alpha(args: list[str], *, data_dir: Path, run_type: str | None) -> dict[
     when the expected manifest is missing.
     """
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
-    proc = subprocess.run([_ALPHA_BIN, *args], capture_output=True, text=True, env=env, check=False)
+    try:
+        proc = subprocess.run(
+            [_ALPHA_BIN, *args],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+            timeout=_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"`alpha {' '.join(args)}` exceeded {_TIMEOUT_S:.0f}s and was killed - a hung data "
+            "pull or runaway run must not hang the MCP server"
+        ) from exc
     if proc.returncode != 0:
         detail = proc.stderr.strip() or proc.stdout.strip() or "(no output)"
         raise RuntimeError(f"`alpha {' '.join(args)}` failed (exit {proc.returncode}): {detail}")

@@ -26,14 +26,14 @@ def _stream_text(client: TestClient, job_id: str) -> str:
 
 
 def test_new_and_console_pages_render() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(), base_url="http://127.0.0.1")
     assert client.get("/new").status_code == 200
     assert client.get("/console").status_code == 200
 
 
 def test_console_run_launches_and_streams(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake(monkeypatch, "print('hello from alpha')")
-    client = TestClient(create_app())
+    client = TestClient(create_app(), base_url="http://127.0.0.1")
     resp = client.post("/console/run", data={"args": "info"})
     assert resp.status_code == 200
     job_id = resp.json()["job_id"]
@@ -43,7 +43,7 @@ def test_console_run_launches_and_streams(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_structured_run_streams_and_links_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake(monkeypatch, "print('validate SPY -> run 0123456789abcdef: PASS')")
-    client = TestClient(create_app())
+    client = TestClient(create_app(), base_url="http://127.0.0.1")
     resp = client.post("/runs", data={"command": "validate", "args": "SPY"})
     assert resp.status_code == 200
     job_id = resp.json()["job_id"]
@@ -52,4 +52,4 @@ def test_structured_run_streams_and_links_run_id(monkeypatch: pytest.MonkeyPatch
 
 
 def test_stream_unknown_job_is_404() -> None:
-    assert TestClient(create_app()).get("/jobs/nope/stream").status_code == 404
+    assert TestClient(create_app(), base_url="http://127.0.0.1").get("/jobs/nope/stream").status_code == 404

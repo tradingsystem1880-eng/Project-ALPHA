@@ -8,15 +8,21 @@ locates a run, so the MCP read tools and the CLI agree on what exists.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 # the run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
 _RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+# run ids are always 16 hex chars (_runner.run_id_for); reject anything else before it touches a
+# filesystem path (the id arrives from the MCP client)
+_RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 
 
 def get_run(run_id: str, *, data_dir: Path) -> dict[str, Any]:
     """Return a stored run's manifest by id, searching every run-type dir. Fail loud if absent."""
+    if _RUN_ID_RE.fullmatch(run_id) is None:
+        raise FileNotFoundError(f"invalid run id {run_id!r} (expected 16 hex chars)")
     for sub in _RUN_DIRS:
         path = data_dir / sub / run_id / "manifest.json"
         if path.exists():

@@ -67,12 +67,23 @@ class Job:
 
 
 JOBS: dict[str, Job] = {}
+_MAX_JOBS = 100  # completed jobs kept for the console; oldest finished ones are pruned
+
+
+def _prune_finished() -> None:
+    """Drop the oldest FINISHED jobs once the registry exceeds ``_MAX_JOBS`` (insertion order)."""
+    excess = len(JOBS) - _MAX_JOBS
+    if excess <= 0:
+        return
+    for job_id in [k for k, j in JOBS.items() if j.finished][:excess]:
+        JOBS.pop(job_id, None)
 
 
 def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
     """Spawn ``alpha <args>`` (sharing ``data_dir`` via the env) and tail its output in a thread."""
     job = Job(args, run_type)
     JOBS[job.job_id] = job
+    _prune_finished()
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
     proc = subprocess.Popen(
         _command(args),
