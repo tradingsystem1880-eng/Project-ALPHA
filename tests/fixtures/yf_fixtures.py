@@ -14,7 +14,13 @@ def yf_history(rows: list[dict[str, float]], dates: list[datetime]) -> pd.DataFr
 
 
 def aapl_like() -> pd.DataFrame:
-    """3 daily bars; 4:1 split and 0.82 dividend both on day 2 (2020-08-31). Raw prices."""
+    """3 daily bars; 4:1 split and 0.82 dividend both on day 2 (2020-08-31).
+
+    Mirrors what Yahoo actually serves with ``auto_adjust=False``: the OHLCV series is
+    retroactively SPLIT-adjusted (the pre-split session shows 125, not the 500 that traded;
+    its volume is shown multiplied by the ratio). The parser reconstructs the raw 500-scale
+    prices from the in-window split event.
+    """
     dates = [
         datetime(2020, 8, 28, tzinfo=UTC),
         datetime(2020, 8, 31, tzinfo=UTC),
@@ -22,11 +28,11 @@ def aapl_like() -> pd.DataFrame:
     ]
     rows = [
         {
-            "Open": 500.0,
-            "High": 505.0,
-            "Low": 498.0,
-            "Close": 500.0,
-            "Volume": 1e6,
+            "Open": 125.0,  # traded 500.0; Yahoo shows it /4 after the 4:1 split
+            "High": 126.25,
+            "Low": 124.5,
+            "Close": 125.0,
+            "Volume": 4e6,  # traded 1e6 shares; Yahoo shows them x4
             "Dividends": 0.0,
             "Stock Splits": 0.0,
         },
@@ -38,7 +44,7 @@ def aapl_like() -> pd.DataFrame:
             "Volume": 2e6,
             "Dividends": 0.82,
             "Stock Splits": 4.0,
-        },  # split ex-day: price already post-split
+        },  # split ex-day: price post-split, no further adjustment
         {
             "Open": 132.0,
             "High": 134.0,
