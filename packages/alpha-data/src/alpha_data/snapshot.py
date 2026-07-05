@@ -17,6 +17,18 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _check_snapshot_id(snapshot_id: str) -> None:
+    """Reject ids that could escape the snapshots root when joined into a path."""
+    if (
+        not snapshot_id
+        or ".." in snapshot_id
+        or "/" in snapshot_id
+        or "\\" in snapshot_id
+        or snapshot_id.startswith(".")
+    ):
+        raise DataError(f"invalid snapshot id for storage: {snapshot_id!r}")
+
+
 def create_snapshot(
     store: ParquetStore,
     snaps_root: Path,
@@ -29,6 +41,7 @@ def create_snapshot(
     created_at: datetime,
 ) -> dict[str, Any]:
     """Freeze bars + actions for `symbols` into snaps_root/snapshot_id/ with a manifest."""
+    _check_snapshot_id(snapshot_id)
     dest = snaps_root / snapshot_id
     if dest.exists():
         raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}")

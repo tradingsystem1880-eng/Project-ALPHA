@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import polars as pl
@@ -38,7 +39,13 @@ class ParquetStore:
             raise DataError(f"bars for {symbol} missing columns: {missing}")
         path = self._bars_path(symbol)
         path.parent.mkdir(parents=True, exist_ok=True)
-        df.select(_BAR_COLUMNS).sort("ts").write_parquet(path)
+        # atomic wholesale replace: a crash mid-write must never destroy the only stored copy
+        tmp = path.with_name(path.name + ".tmp")
+        try:
+            df.select(_BAR_COLUMNS).sort("ts").write_parquet(tmp)
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
         return path
 
     def read_bars(self, symbol: str) -> pl.DataFrame:
@@ -67,7 +74,13 @@ class ParquetStore:
         path = self._actions_path(symbol)
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = [a.model_dump(mode="json") for a in actions]
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+        # atomic wholesale replace (mirrors write_bars)
+        tmp = path.with_name(path.name + ".tmp")
+        try:
+            tmp.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
         return path
 
     def read_actions(self, symbol: str) -> list[CorporateAction]:
