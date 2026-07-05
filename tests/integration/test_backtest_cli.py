@@ -68,3 +68,64 @@ def test_account_type_is_case_insensitive(tmp_path: Path, monkeypatch: pytest.Mo
         ["backtest", "run", "SPY", "--account-type", "margin", "--max-leverage", "2.0", *_SMALL],
     )
     assert result.exit_code == 0, result.output
+
+
+def test_stored_dividends_flow_into_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # End-to-end: a DIVIDEND action in the store must raise the run's final equity by the credit.
+    import json
+    from datetime import date
+
+    from alpha_core import ActionType, CorporateAction
+    from alpha_data.store import ParquetStore
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=60, seed=0, drift=0.002)
+    runner = CliRunner()
+    args = [
+        "backtest",
+        "run",
+        "SPY",
+        "--lookback",
+        "5",
+        "--skip",
+        "1",
+        "--vol-window",
+        "5",
+        "--rebalance-every",
+        "5",
+        "--fee-bps",
+        "0",
+        "--slippage-bps",
+        "0",
+    ]
+
+    plain = runner.invoke(app, args)
+    assert plain.exit_code == 0, plain.output
+
+    # add a mid-series dividend (ex + pay well inside the window) and re-run
+    ParquetStore(tmp_path / "store").write_actions(
+        "SPY",
+        [
+            CorporateAction(
+                symbol="SPY",
+                action_type=ActionType.DIVIDEND,
+                ex_date=date(2020, 2, 15),
+                pay_date=date(2020, 2, 20),
+                amount=1.0,
+            )
+        ],
+    )
+    paid = runner.invoke(app, args)
+    assert paid.exit_code == 0, paid.output
+
+    def final_equity(output: str) -> float:
+        return float(output.split("final equity ")[1].split(" ")[0].rstrip("\n"))
+
+    # both runs share a run_id (same params; the store is the mutable input), so compare the
+    # reported equities, and confirm the manifest holds the latest (dividend-credited) value
+    assert final_equity(paid.output) > final_equity(plain.output)
+    run_id = paid.output.split("-> run ")[1].split(":")[0]
+    manifest = json.loads((tmp_path / "runs" / run_id / "manifest.json").read_text())
+    assert float(manifest["final_equity"]) == pytest.approx(final_equity(paid.output), abs=0.01)

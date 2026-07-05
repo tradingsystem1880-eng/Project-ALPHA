@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from alpha_cli._runner import RunSpec, run_full_backtest, walk_forward_oos_for_spec
-from alpha_core import Bar, DataError
+from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import NullResult, sharpe_ratio, stationary_bootstrap_indices
 
 # below this path count the pool's spin-up costs more than it saves; run in-process
@@ -82,10 +82,16 @@ def synthetic_bar_paths(
 
 @dataclass(frozen=True)
 class _SynthTask:
-    """One picklable unit of full-engine work: a synthetic path + the run spec."""
+    """One picklable unit of full-engine work: a synthetic path + the run spec.
+
+    ``dividends`` are the observed run's cash events, applied identically to every synthetic
+    path (same amounts, same dates, each path's own positions) so the null and the observed are
+    scored under one cash-crediting convention.
+    """
 
     bars: list[Bar]
     spec: RunSpec
+    dividends: tuple[CorporateAction, ...] = ()
 
 
 def _oos_sharpe_for_path(task: _SynthTask) -> float:
@@ -95,7 +101,7 @@ def _oos_sharpe_for_path(task: _SynthTask) -> float:
     has no risk-adjusted edge, so it scores 0.0 rather than raising. Top-level and picklable so a
     process pool can dispatch it.
     """
-    result = run_full_backtest(task.bars, task.spec)
+    result = run_full_backtest(task.bars, task.spec, dividends=task.dividends)
     oos = walk_forward_oos_for_spec(result.equity_curve, task.spec)
     returns = oos.oos_returns
     if returns.size >= 2 and float(np.std(returns, ddof=1)) > 0.0:
@@ -113,6 +119,7 @@ def full_engine_null(
     threshold: float = 0.95,
     seed: int | None = None,
     max_workers: int | None = None,
+    dividends: Sequence[CorporateAction] = (),
 ) -> NullResult:
     """Tier-2 faithfulness check: the OOS Sharpe null from re-running the engine on synthetic paths.
 
@@ -133,7 +140,7 @@ def full_engine_null(
             "(the real OOS Sharpe is undefined — a flat/zero-variance OOS)"
         )
     paths = synthetic_bar_paths(bars, n_paths=n_paths, mean_block=mean_block, seed=seed)
-    tasks = [_SynthTask(bars=p, spec=spec) for p in paths]
+    tasks = [_SynthTask(bars=p, spec=spec, dividends=tuple(dividends)) for p in paths]
 
     if max_workers is not None and max_workers > 1 and n_paths > _SERIAL_THRESHOLD:
         # spawn (not fork): the engine pulls in nautilus/Cython, and forking such a process is a

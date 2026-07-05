@@ -14,8 +14,9 @@ from alpha_core.config import AlphaSettings
 
 backtest_app = typer.Typer(help="Run the v1 strategy through the backtest engine.")
 
-# monkeypatchable bar-load seam (mirrors data_cmds._ADAPTERS); tests point it at a fixture store
+# monkeypatchable load seams (mirror data_cmds._ADAPTERS); tests point them at fixture stores
 _load_bars = _runner.load_bars
+_load_dividends = _runner.load_dividends
 
 
 @backtest_app.command()
@@ -66,7 +67,8 @@ def run(
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-        result = _runner.run_full_backtest(bars, spec)
+        dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        result = _runner.run_full_backtest(bars, spec, dividends=dividends)
     except DataError as exc:  # no bars stored, unknown strategy, bad account-type, etc.
         raise typer.BadParameter(str(exc)) from exc
     # Fail loud (golden rule): a run that submitted orders but filled none — every order rejected —

@@ -105,7 +105,8 @@ def _returns_from_backtest(
 ) -> FloatArray:
     """Daily returns from a fresh full backtest of ``symbol`` (the equity curve, net of costs)."""
     bars, _ = _runner.load_bars(symbol, data_dir=data_dir, snapshot_id=snapshot)
-    result = _runner.run_full_backtest(bars, spec)
+    dividends = _runner.load_dividends(symbol, data_dir=data_dir, snapshot_id=snapshot)
+    result = _runner.run_full_backtest(bars, spec, dividends=dividends)
     return to_returns([value for _, value in result.equity_curve])
 
 

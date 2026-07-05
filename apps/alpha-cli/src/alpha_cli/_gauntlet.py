@@ -25,7 +25,7 @@ from alpha_cli._runner import (
 from alpha_cli._strategies import surrogate_for
 from alpha_cli._surrogate import Surrogate
 from alpha_cli._synth import full_engine_null
-from alpha_core import Bar, DataError
+from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import (
     CISummary,
     ConfidenceInterval,
@@ -104,6 +104,7 @@ def run_gauntlet(
     *,
     run_id: str,
     snapshot_id: str | None,
+    dividends: Sequence[CorporateAction] = (),
 ) -> GauntletOutput:
     """Run the full gauntlet over ``bars`` and assemble the ``GauntletReport``."""
     # Validate the Tier-1 null choice up front with the full accepted set (the deeper parametric
@@ -117,7 +118,7 @@ def run_gauntlet(
         # still records a seed - a silent violation of the determinism contract (spec 11.4).
         raise DataError("gauntlet seed must be an explicit integer for reproducibility, got None")
     ppy = spec.periods_per_year
-    result = run_full_backtest(bars, spec)
+    result = run_full_backtest(bars, spec, dividends=dividends)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     oos_metrics = _oos_metrics(oos, ppy)
 
@@ -192,6 +193,7 @@ def run_gauntlet(
             threshold=params.threshold,
             seed=t2_seed,
             max_workers=params.max_workers,
+            dividends=dividends,
         )
         divergence = _convention_divergence(bars, price_returns, surrogate, oos_idx, safe_sharpe)
         nulls = (

@@ -26,7 +26,13 @@ from pathlib import Path
 
 import numpy as np
 
-from alpha_cli._runner import RunSpec, load_bars, run_full_backtest, walk_forward_oos_for_spec
+from alpha_cli._runner import (
+    RunSpec,
+    load_bars,
+    load_dividends,
+    run_full_backtest,
+    walk_forward_oos_for_spec,
+)
 from alpha_core import DataError
 from alpha_validation import (
     ConfidenceInterval,
@@ -72,7 +78,8 @@ class PortfolioResult:
 def _leg_series(spec: RunSpec, *, data_dir: Path, symbol: str) -> dict[datetime, float]:
     """One symbol's OOS return-by-date series (returns[i] keyed by the date it realizes)."""
     bars, _ = load_bars(symbol, data_dir=data_dir)
-    result = run_full_backtest(bars, spec)
+    dividends = load_dividends(symbol, data_dir=data_dir)
+    result = run_full_backtest(bars, spec, dividends=dividends)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     dates = oos.oos_timestamps[1:]  # return i realizes at equity point i+1
     return dict(zip(dates, oos.oos_returns.tolist(), strict=True))

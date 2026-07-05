@@ -23,6 +23,7 @@ optim_app = typer.Typer(
 
 # monkeypatchable bar-load seam (mirrors validate_cmds); tests point it at a fixture store
 _load_bars = _runner.load_bars
+_load_dividends = _runner.load_dividends
 
 
 def _parse_axes(axes: list[str] | None) -> dict[str, list[float]]:
@@ -118,6 +119,7 @@ def grid(
         strategy_params=_runner.parse_strategy_params(param),
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+    dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
     run_id = _runner.run_id_for(
         {
             "command": "optim_grid",
@@ -145,6 +147,7 @@ def grid(
             alpha=alpha,
             seed=resolved_seed,
             max_workers=max_workers,
+            dividends=dividends,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc

@@ -28,7 +28,7 @@ from typing import Any
 import numpy as np
 
 from alpha_cli._runner import RunSpec, run_full_backtest, walk_forward_oos_for_spec
-from alpha_core import Bar, DataError
+from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import (
     DataSnoopingResult,
     DeflatedSharpeResult,
@@ -104,11 +104,12 @@ class _ConfigTask:
 
     bars: list[Bar]
     spec: RunSpec
+    dividends: tuple[CorporateAction, ...] = ()
 
 
 def _oos_returns_for(task: _ConfigTask) -> FloatArray:
     """Run one config through the engine + walk-forward and return its OOS return stream."""
-    result = run_full_backtest(task.bars, task.spec)
+    result = run_full_backtest(task.bars, task.spec, dividends=task.dividends)
     return walk_forward_oos_for_spec(result.equity_curve, task.spec).oos_returns
 
 
@@ -135,6 +136,7 @@ def run_optimization(
     alpha: float = 0.05,
     seed: int | None = 7,
     max_workers: int | None = None,
+    dividends: Sequence[CorporateAction] = (),
 ) -> OptimResult:
     """Run the sweep and return its overfitting-aware verdict (DSR + PBO + Reality Check + SPA)."""
     configs = expand_grid(grid)
@@ -151,7 +153,10 @@ def run_optimization(
             "raise --train-size or shrink the grid so every config's OOS window aligns"
         )
 
-    oos_list = _run_configs([_ConfigTask(bars=list(bars), spec=s) for s in specs], max_workers)
+    oos_list = _run_configs(
+        [_ConfigTask(bars=list(bars), spec=s, dividends=tuple(dividends)) for s in specs],
+        max_workers,
+    )
     lengths = {r.size for r in oos_list}
     if len(lengths) != 1:
         raise DataError(f"OOS streams misaligned across configs: lengths {sorted(lengths)}")
