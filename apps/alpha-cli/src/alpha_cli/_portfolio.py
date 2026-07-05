@@ -19,7 +19,7 @@ multi-instrument engine and is future work; this is the TS-momentum-across-a-uni
 from __future__ import annotations
 
 from bisect import bisect_left
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -76,6 +76,21 @@ def _leg_series(spec: RunSpec, *, data_dir: Path, symbol: str) -> dict[datetime,
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     dates = oos.oos_timestamps[1:]  # return i realizes at equity point i+1
     return dict(zip(dates, oos.oos_returns.tolist(), strict=True))
+
+
+def _resample_sharpe(periods_per_year: int) -> Callable[[FloatArray], float]:
+    """Sharpe for bootstrap resamples: a zero-variance block resample scores 0.0, not a crash.
+
+    Mirrors the gauntlet's convention - a sparse/flat resample has no excess return per unit risk,
+    and one degenerate draw must not abort the whole CI.
+    """
+
+    def stat(r: FloatArray) -> float:
+        if r.size >= 2 and float(np.std(r, ddof=1)) > 0.0:
+            return sharpe_ratio(r, periods_per_year=periods_per_year)
+        return 0.0
+
+    return stat
 
 
 def _causal_inverse_vol(
@@ -172,7 +187,7 @@ def run_portfolio(
     dsr_res = deflated_sharpe(returns, threshold=0.95)
     sharpe_ci = block_bootstrap_ci(
         returns,
-        lambda r: sharpe_ratio(r, periods_per_year=ppy),
+        _resample_sharpe(ppy),
         confidence=confidence,
         n_resamples=n_resamples,
         mean_block=mean_block,

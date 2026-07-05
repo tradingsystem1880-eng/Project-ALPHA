@@ -32,6 +32,7 @@ def validate(
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
+    periods_per_year: int = 252,
     train_size: int = 504,  # >= warmup floor for the default 252/21/63 params (max=274); ~2y train
     test_size: int = 63,
     embargo: int = 5,
@@ -63,7 +64,7 @@ def validate(
         rebalance_every=rebalance_every,
         max_leverage=max_leverage,
         allow_short=_runner.resolve_allow_short(allow_short, account_type),
-        periods_per_year=252,
+        periods_per_year=periods_per_year,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
         starting_cash=starting_cash,

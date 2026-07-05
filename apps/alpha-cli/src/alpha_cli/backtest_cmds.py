@@ -33,6 +33,7 @@ def run(
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
+    periods_per_year: int = 252,
     param: list[str] | None = None,
     snapshot: str | None = None,
 ) -> None:
@@ -51,7 +52,7 @@ def run(
         rebalance_every=rebalance_every,
         max_leverage=max_leverage,
         allow_short=_runner.resolve_allow_short(allow_short, account_type),
-        periods_per_year=252,
+        periods_per_year=periods_per_year,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
         starting_cash=starting_cash,
@@ -119,10 +120,12 @@ def portfolio(
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
+    periods_per_year: int = 252,
     train_size: int = 504,
     test_size: int = 63,
     embargo: int = 5,
     anchored: bool = False,
+    seed: int | None = None,
     param: list[str] | None = None,
 ) -> None:
     """Backtest a diversified basket: run the strategy across SYMBOLS and combine the OOS streams.
@@ -135,6 +138,10 @@ def portfolio(
     from alpha_cli import _portfolio
 
     settings = AlphaSettings()
+    # canonical (sorted) symbol order: the run_id already sorts, and rank ties / float-summation
+    # order must not depend on how the shell happened to order the arguments
+    symbols = sorted(symbols)
+    resolved_seed = seed if seed is not None else settings.random_seed
     spec = _runner.RunSpec(
         lookback=lookback,
         skip=skip,
@@ -143,7 +150,7 @@ def portfolio(
         rebalance_every=rebalance_every,
         max_leverage=max_leverage,
         allow_short=_runner.resolve_allow_short(allow_short, account_type),
-        periods_per_year=252,
+        periods_per_year=periods_per_year,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
         starting_cash=starting_cash,
@@ -157,7 +164,7 @@ def portfolio(
     )
     try:
         result = _portfolio.run_portfolio(
-            symbols, spec, data_dir=settings.data_dir, weighting=weighting
+            symbols, spec, data_dir=settings.data_dir, weighting=weighting, seed=resolved_seed
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -165,8 +172,9 @@ def portfolio(
     run_id = _runner.run_id_for(
         {
             "command": "backtest_portfolio",
-            "symbols": sorted(symbols),
+            "symbols": symbols,
             "weighting": weighting,
+            "seed": resolved_seed,
             **vars(spec),
         }
     )
@@ -176,6 +184,7 @@ def portfolio(
         "schema_version": 1,
         "run_id": run_id,
         "command": "backtest_portfolio",
+        "seed": resolved_seed,
         "symbols": list(result.symbols),
         "weighting": result.weighting,
         "n_periods": result.n_periods,
@@ -235,6 +244,10 @@ def cross_sectional(
     top_quantile: float = 0.3,
     long_short: bool = True,
     max_leverage: float = 2.0,
+    fee_bps: float = 1.0,
+    slippage_bps: float = 2.0,
+    periods_per_year: int = 252,
+    seed: int | None = None,
 ) -> None:
     """Backtest a cross-sectional momentum book: long the universe's winners, short its losers.
 
@@ -247,6 +260,8 @@ def cross_sectional(
     from alpha_cli import _cross_sectional
 
     settings = AlphaSettings()
+    symbols = sorted(symbols)  # canonical order (see portfolio)
+    resolved_seed = seed if seed is not None else settings.random_seed
     try:
         result = _cross_sectional.run_cross_sectional(
             symbols,
@@ -259,6 +274,10 @@ def cross_sectional(
             top_quantile=top_quantile,
             long_short=long_short,
             max_leverage=max_leverage,
+            fee_bps=fee_bps,
+            slippage_bps=slippage_bps,
+            periods_per_year=periods_per_year,
+            seed=resolved_seed,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -266,7 +285,7 @@ def cross_sectional(
     run_id = _runner.run_id_for(
         {
             "command": "cross_sectional",
-            "symbols": sorted(symbols),
+            "symbols": symbols,
             "lookback": lookback,
             "skip": skip,
             "vol_window": vol_window,
@@ -275,6 +294,10 @@ def cross_sectional(
             "top_quantile": top_quantile,
             "long_short": long_short,
             "max_leverage": max_leverage,
+            "fee_bps": fee_bps,
+            "slippage_bps": slippage_bps,
+            "periods_per_year": periods_per_year,
+            "seed": resolved_seed,
         }
     )
     rdir = settings.data_dir / "cross_sectional" / run_id
@@ -283,6 +306,7 @@ def cross_sectional(
         "schema_version": 1,
         "run_id": run_id,
         "command": "cross_sectional",
+        "seed": resolved_seed,
         "symbols": list(result.symbols),
         "long_short": result.long_short,
         "n_long": result.n_long,

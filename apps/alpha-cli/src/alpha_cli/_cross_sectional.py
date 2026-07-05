@@ -13,7 +13,7 @@ needs a multi-instrument engine and is future work.)
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -64,6 +64,21 @@ def _close_panel(symbols: Sequence[str], *, data_dir: Path) -> tuple[list[dateti
     return common, panel
 
 
+def _resample_sharpe(periods_per_year: int) -> Callable[[FloatArray], float]:
+    """Sharpe for bootstrap resamples: a zero-variance block resample scores 0.0, not a crash.
+
+    Mirrors the gauntlet's convention - a sparse/flat resample has no excess return per unit risk,
+    and one degenerate draw must not abort the whole CI.
+    """
+
+    def stat(r: FloatArray) -> float:
+        if r.size >= 2 and float(np.std(r, ddof=1)) > 0.0:
+            return sharpe_ratio(r, periods_per_year=periods_per_year)
+        return 0.0
+
+    return stat
+
+
 def run_cross_sectional(
     symbols: Sequence[str],
     *,
@@ -76,6 +91,8 @@ def run_cross_sectional(
     top_quantile: float = 0.3,
     long_short: bool = True,
     max_leverage: float = 2.0,
+    fee_bps: float = 1.0,
+    slippage_bps: float = 2.0,
     periods_per_year: int = 252,
     n_resamples: int = 2000,
     mean_block: float = 5.0,
@@ -109,18 +126,24 @@ def run_cross_sectional(
     if warmup + 1 >= n_dates:
         raise DataError(f"not enough history ({n_dates} dates) for lookback+skip={warmup}")
 
+    cost_rate = (fee_bps + slippage_bps) / 10_000.0
     weights = np.zeros(n_symbols, dtype=np.float64)
     out_returns: list[float] = []
     out_dates: list[datetime] = []
     realized: list[float] = []  # portfolio returns so far, for trailing-vol scaling
     for step, t in enumerate(range(warmup, n_dates - 1)):  # decide at t, earn the t -> t+1 move
+        cost = 0.0
         if step % rebalance_every == 0:
-            weights = _target_weights(
+            new_weights = _target_weights(
                 panel[t], panel[t - skip], panel[t - skip - lookback], k=k, long_short=long_short
             )
-            weights *= _vol_scale(realized, target_vol, vol_window, max_leverage, periods_per_year)
+            new_weights *= _vol_scale(
+                realized, target_vol, vol_window, max_leverage, periods_per_year
+            )
+            cost = cost_rate * float(np.abs(new_weights - weights).sum())  # turnover frictions
+            weights = new_weights
         asset_returns = panel[t + 1] / panel[t] - 1.0
-        r = float(np.dot(weights, asset_returns))
+        r = float(np.dot(weights, asset_returns)) - cost
         realized.append(r)
         out_returns.append(r)
         out_dates.append(dates[t + 1])
@@ -133,7 +156,7 @@ def run_cross_sectional(
     dsr_res = deflated_sharpe(returns, threshold=0.95)
     sharpe_ci = block_bootstrap_ci(
         returns,
-        lambda x: sharpe_ratio(x, periods_per_year=periods_per_year),
+        _resample_sharpe(periods_per_year),
         confidence=confidence,
         n_resamples=n_resamples,
         mean_block=mean_block,

@@ -27,11 +27,11 @@ def test_portfolio_writes_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     result = runner.invoke(app, ["backtest", "portfolio", "SPY", "QQQ", *_ARGS])
     assert result.exit_code == 0, result.output
-    assert "portfolio [SPY, QQQ]" in result.output
+    assert "portfolio [QQQ, SPY]" in result.output  # canonical (sorted) symbol order
 
     (rdir,) = list((tmp_path / "portfolio").iterdir())
     manifest = json.loads((rdir / "manifest.json").read_text())
-    assert manifest["symbols"] == ["SPY", "QQQ"]
+    assert manifest["symbols"] == ["QQQ", "SPY"]  # canonical (sorted) order
     assert manifest["weighting"] == "equal"
     assert len(manifest["legs"]) == 2
     assert manifest["n_periods"] > 0

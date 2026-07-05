@@ -75,6 +75,7 @@ def run(
     slippage_bps: float = 2.0,
     starting_cash: float = 1_000_000.0,
     account_type: str = "CASH",
+    periods_per_year: int = 252,
     param: list[str] | None = None,
     snapshot: str | None = None,
 ) -> None:
@@ -106,7 +107,7 @@ def run(
         rebalance_every=rebalance_every,
         max_leverage=max_leverage,
         allow_short=_runner.resolve_allow_short(allow_short, account_type),
-        periods_per_year=252,
+        periods_per_year=periods_per_year,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
         starting_cash=starting_cash,
