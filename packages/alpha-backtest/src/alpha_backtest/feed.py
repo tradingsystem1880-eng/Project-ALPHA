@@ -15,7 +15,7 @@ from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.data import BarType, QuoteTick
 from nautilus_trader.model.objects import Price, Quantity
 
-from alpha_core import Bar
+from alpha_core import Bar, DataError
 
 _NS_PER_SECOND = 1_000_000_000
 # A daily decision bar is "known" at its session close; we stamp it 23h after the session open.
@@ -60,6 +60,19 @@ def to_execution_feed(
     Run this feed with a venue configured ``bar_execution=False`` (see ``engine.run_backtest``) so
     that only the quotes drive fills. The returned list is chronologically ordered.
     """
+    if slippage_bps < 0.0:
+        raise DataError(
+            f"slippage_bps must be >= 0 (a negative value pays you), got {slippage_bps}"
+        )
+    # The +23h close stamp encodes DAILY (calendar-spaced) sessions; anything tighter would emit a
+    # non-chronological feed the engine silently runs with zero fills. Fail loud instead.
+    for prev, cur in zip(bars, bars[1:], strict=False):
+        gap_s = (cur.ts - prev.ts).total_seconds()
+        if gap_s < 24 * 3600:
+            raise DataError(
+                f"to_execution_feed requires daily (>= 24h-spaced, strictly increasing) bars; "
+                f"got {prev.ts.isoformat()} -> {cur.ts.isoformat()} ({gap_s / 3600:.1f}h apart)"
+            )
     iid = bar_type.instrument_id
     size = Quantity(quote_size, size_precision)
     half_spread = slippage_bps / 10_000.0

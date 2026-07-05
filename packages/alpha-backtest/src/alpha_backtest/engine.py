@@ -27,6 +27,7 @@ from nautilus_trader.trading.strategy import Strategy
 
 from alpha_backtest.frictions import BpsFeeModel
 from alpha_backtest.results import BacktestResult, Trade
+from alpha_core import DataError
 
 _NS_PER_SECOND = 1_000_000_000
 
@@ -107,6 +108,8 @@ def run_backtest(
     CASH (no shorting; equities are long-flat per spec §7); pass ``AccountType.MARGIN`` (where
     ``leverage`` applies) for the long-short crypto/FX path.
     """
+    if fee_bps < 0.0:
+        raise DataError(f"fee_bps must be >= 0 (a negative fee pays you to trade), got {fee_bps}")
     engine = BacktestEngine(
         config=BacktestEngineConfig(
             trader_id="BACKTESTER-001",
