@@ -11,9 +11,10 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
@@ -63,11 +64,38 @@ def _summarize(manifest: dict[str, Any]) -> list[tuple[str, str]]:
     return rows
 
 
+# hostnames the local single-user server answers to; anything else is a DNS-rebinding or
+# cross-site request and is refused (the POST endpoints launch subprocesses)
+_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost"})
+
+
+def _hostname(value: str | None) -> str | None:
+    """The bare hostname of a Host/Origin header value (port stripped), or None."""
+    if not value:
+        return None
+    netloc = urlsplit(value).netloc if "//" in value else value
+    return netloc.rsplit(":", 1)[0] if netloc else None
+
+
 def create_app() -> FastAPI:
     """Build the FastAPI app (factory so tests can construct a fresh instance)."""
     app = FastAPI(title="Project ALPHA — Web IDE")
     templates = Jinja2Templates(directory=str(_PKG / "templates"))
     app.mount("/static", StaticFiles(directory=str(_PKG / "static")), name="static")
+
+    @app.middleware("http")
+    async def _reject_cross_site(request: Request, call_next):  # type: ignore[no-untyped-def]
+        # Loopback binding does not stop a malicious website in the same browser: a cross-origin
+        # form POST reaches 127.0.0.1 (CSRF) and DNS rebinding forges the Host. Refuse both -
+        # unknown Host on any request, and a POST whose Origin (browsers always send it
+        # cross-origin) is not our own. Non-browser local clients omit Origin and pass.
+        if _hostname(request.headers.get("host")) not in _ALLOWED_HOSTS:
+            return PlainTextResponse("unknown host", status_code=403)
+        if request.method == "POST":
+            origin = _hostname(request.headers.get("origin"))
+            if origin is not None and origin not in _ALLOWED_HOSTS:
+                return PlainTextResponse("cross-site request refused", status_code=403)
+        return await call_next(request)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

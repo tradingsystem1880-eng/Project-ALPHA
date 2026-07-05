@@ -8,6 +8,7 @@ back for the run browser and run-detail pages — no engine, no subprocess.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +16,14 @@ import polars as pl
 
 # run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
 _RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+# run ids are always 16 hex chars (_runner.run_id_for); anything else is rejected BEFORE it is
+# joined into a filesystem path (URL-supplied ids must never traverse out of data_dir)
+_RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
+    if _RUN_ID_RE.fullmatch(run_id) is None:
+        return None  # not a run id -> 404, without touching the filesystem
     for sub in _RUN_DIRS:
         rdir = data_dir / sub / run_id
         if (rdir / "manifest.json").exists():
