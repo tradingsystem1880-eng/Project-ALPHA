@@ -54,3 +54,47 @@ def test_list_symbols_reconstructs_slash_symbols(tmp_path: Path) -> None:
 
 def test_list_symbols_empty_when_no_bars(tmp_path: Path) -> None:
     assert ParquetStore(tmp_path).list_symbols() == []
+
+
+def test_failed_bar_write_leaves_prior_data_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Wholesale-replace must be atomic: a crash mid-write cannot destroy the only copy.
+    store = ParquetStore(tmp_path)
+    store.write_bars("AAPL", _frame())
+    original = store.read_bars("AAPL")
+
+    def explode(self: pl.DataFrame, path: object, **kwargs: object) -> None:
+        Path(str(path)).write_bytes(b"partial garbage")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(pl.DataFrame, "write_parquet", explode)
+    with pytest.raises(OSError):
+        store.write_bars("AAPL", _frame().with_columns(pl.col("close") + 1.0))
+    monkeypatch.undo()
+    assert store.read_bars("AAPL").equals(original)  # old data survives
+    leftovers = [p for p in (tmp_path / "bars").iterdir() if p.suffix != ".parquet"]
+    assert leftovers == []  # no temp-file litter
+
+
+def test_failed_actions_write_leaves_prior_data_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import date as _d
+
+    from alpha_core import ActionType, CorporateAction
+
+    store = ParquetStore(tmp_path)
+    action = CorporateAction(
+        symbol="AAPL", action_type=ActionType.SPLIT, ex_date=_d(2020, 8, 31), ratio=4.0
+    )
+    store.write_actions("AAPL", [action])
+
+    def explode(self: Path, *args: object, **kwargs: object) -> int:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Path, "write_text", explode)
+    with pytest.raises(OSError):
+        store.write_actions("AAPL", [])
+    monkeypatch.undo()
+    assert store.read_actions("AAPL") == [action]  # old data survives

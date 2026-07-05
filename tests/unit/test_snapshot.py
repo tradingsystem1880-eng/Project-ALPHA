@@ -112,3 +112,21 @@ def test_snapshot_refuses_overwrite(tmp_path: Path) -> None:
             parser_version="1",
             created_at=WHEN,
         )
+
+
+def test_snapshot_id_cannot_escape_snapshots_root(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    store = _store(tmp_path)
+    for bad in ("../evil", "a/../../b", "", ".hidden", "x/y"):
+        with pytest.raises(DataError):
+            create_snapshot(
+                store,
+                tmp_path / "snaps",
+                bad,
+                ["AAPL"],
+                source="yfinance",
+                adapter_version="1",
+                parser_version="1",
+                created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            )

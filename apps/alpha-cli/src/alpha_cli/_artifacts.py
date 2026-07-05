@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -47,17 +48,27 @@ def write_run(
     equity: Sequence[tuple[datetime, float]],
     trades: Sequence[Trade],
 ) -> None:
-    """Write ``manifest.json`` + ``equity_curve.parquet`` + ``trades.parquet`` into ``rdir``."""
+    """Write ``equity_curve.parquet`` + ``trades.parquet`` + ``manifest.json`` into ``rdir``.
+
+    The manifest is written LAST (atomically): every reader treats ``manifest.json`` as the
+    marker that a run exists, so a crash mid-write leaves an invisible partial directory, never a
+    listed run with missing series.
+    """
     rdir.mkdir(parents=True, exist_ok=True)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
     pl.DataFrame({"ts": [ts for ts, _ in equity], "equity": [v for _, v in equity]}).write_parquet(
         rdir / "equity_curve.parquet"
     )
     rows = [dataclasses.asdict(t) for t in trades]
     frame = pl.DataFrame(rows) if rows else pl.DataFrame(schema=_EMPTY_TRADES_SCHEMA)
     frame.write_parquet(rdir / "trades.parquet")
+    tmp = rdir / "manifest.json.tmp"
+    try:
+        tmp.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
+        )
+        os.replace(tmp, rdir / "manifest.json")
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def read_manifest(rdir: Path) -> dict[str, Any]:
