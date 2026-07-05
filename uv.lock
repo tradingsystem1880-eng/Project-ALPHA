@@ -166,14 +166,12 @@ version = "1.0.0"
 source = { editable = "packages/alpha-backtest" }
 dependencies = [
     { name = "alpha-core" },
-    { name = "alpha-data" },
     { name = "nautilus-trader" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
-    { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "nautilus-trader", specifier = ">=1.228" },
 ]
 
@@ -187,6 +185,8 @@ dependencies = [
     { name = "alpha-data" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
+    { name = "numpy" },
+    { name = "polars" },
     { name = "typer" },
 ]
 
@@ -197,6 +197,8 @@ requires-dist = [
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "polars", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
 ]
 
@@ -233,7 +235,7 @@ requires-dist = [
     { name = "ccxt", specifier = ">=4.0" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "polars", specifier = ">=1.0" },
-    { name = "yfinance", specifier = ">=0.2.40" },
+    { name = "yfinance", specifier = ">=1.0" },
 ]
 
 [[package]]
@@ -293,6 +295,7 @@ version = "1.0.0"
 source = { editable = "apps/alpha-web" }
 dependencies = [
     { name = "alpha-cli" },
+    { name = "anyio" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "polars" },
@@ -303,6 +306,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
+    { name = "anyio", specifier = ">=4.0" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "polars", specifier = ">=1.0" },

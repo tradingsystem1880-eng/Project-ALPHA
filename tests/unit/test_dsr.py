@@ -105,3 +105,37 @@ class TestDeflatedSharpe:
             deflated_sharpe(r, threshold=1.5)
         with pytest.raises(DataError):
             deflated_sharpe(r, trial_sharpes=[float("nan"), 0.1])
+
+
+def test_deflated_sharpe_fail_branch_flows_through_the_gate() -> None:
+    # The extension gates' FAIL branches must actually veto: a weak/noisy stream scores a low
+    # DSR, and build_outcomes must carry passed=False through (an inverted flag would ship green).
+    import numpy as np
+
+    from alpha_validation import build_outcomes, deflated_sharpe
+    from alpha_validation.tearsheet import DSRSummary
+
+    weak = np.random.default_rng(0).normal(0.0, 0.01, 60)  # no edge
+    res = deflated_sharpe(weak, threshold=0.95)
+    assert res.dsr < 0.95 and res.passed is False
+
+    dsr = DSRSummary(
+        sharpe=res.sharpe, psr=res.psr, dsr=res.dsr,
+        expected_max_sharpe=res.expected_max_sharpe, n_trials=res.n_trials,
+        threshold=res.threshold, passed=res.passed,
+    )
+    outcomes = build_outcomes(oos_metrics={"sharpe": 0.1}, nulls=(), cis=(), dsr=dsr, cpcv=None)
+    gate = next(o for o in outcomes if o.name == "deflated_sharpe")
+    assert gate.passed is False
+
+
+def test_cpcv_gate_fail_branch_flows_through() -> None:
+    from alpha_validation import build_outcomes
+    from alpha_validation.tearsheet import CPCVSummary
+
+    cpcv = CPCVSummary(
+        n_folds=15, mean_sharpe=-0.3, std_sharpe=0.5, frac_positive=0.2, passed=False
+    )
+    outcomes = build_outcomes(oos_metrics={"sharpe": 0.1}, nulls=(), cis=(), dsr=None, cpcv=cpcv)
+    gate = next(o for o in outcomes if o.name == "cpcv_oos")
+    assert gate.passed is False
