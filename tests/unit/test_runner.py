@@ -145,3 +145,54 @@ def test_cash_account_with_shorts_fails_loud() -> None:
     )
     with pytest.raises(DataError, match="allow_short.*CASH|CASH.*allow_short"):
         run_full_backtest(trend_bars("AAPL", 1.0), spec)
+
+
+def test_load_bars_with_snapshot_reads_the_frozen_data(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    # --snapshot was previously provenance-only: the manifest recorded the id while the run read
+    # the live (mutable, wholesale-replaced) store. The snapshot must be what the run consumes.
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+
+    import polars as pl
+    import pytest
+
+    from alpha_cli._runner import load_bars
+    from alpha_core import DataError
+    from alpha_data.snapshot import create_snapshot
+    from alpha_data.store import ParquetStore
+
+    def frame(closes: list[float]) -> pl.DataFrame:
+        return pl.DataFrame(
+            {
+                "ts": [_dt(2024, 1, 2 + i, tzinfo=_UTC) for i in range(len(closes))],
+                "open": closes,
+                "high": [c + 1 for c in closes],
+                "low": [c - 1 for c in closes],
+                "close": closes,
+                "volume": [1.0] * len(closes),
+            }
+        )
+
+    data_dir = tmp_path
+    store = ParquetStore(data_dir / "store")
+    store.write_bars("AAPL", frame([100.0, 101.0, 102.0]))
+    create_snapshot(
+        store,
+        data_dir / "snapshots",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="2",
+        created_at=_dt(2026, 1, 1, tzinfo=_UTC),
+    )
+    # the live store moves on; the snapshot must not
+    store.write_bars("AAPL", frame([500.0, 501.0, 502.0]))
+
+    live, _ = load_bars("AAPL", data_dir=data_dir)
+    frozen, sid = load_bars("AAPL", data_dir=data_dir, snapshot_id="snap1")
+    assert [b.close for b in live] == [500.0, 501.0, 502.0]
+    assert [b.close for b in frozen] == [100.0, 101.0, 102.0]  # the frozen data, not the store
+    assert sid == "snap1"
+    with pytest.raises(DataError):
+        load_bars("AAPL", data_dir=data_dir, snapshot_id="no-such-snapshot")

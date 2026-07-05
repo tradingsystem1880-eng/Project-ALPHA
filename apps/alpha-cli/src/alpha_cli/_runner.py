@@ -122,16 +122,25 @@ def parse_strategy_params(items: Sequence[str] | None) -> tuple[tuple[str, float
 def load_bars(
     symbol: str, *, data_dir: Path, snapshot_id: str | None = None
 ) -> tuple[list[Bar], str | None]:
-    """Load the full point-in-time history for ``symbol`` from the CLI store (``data_dir/store``).
+    """Load the full point-in-time history for ``symbol`` — live store or a frozen snapshot.
 
     Reads through ``PointInTimeSource`` — the same look-ahead-safe seam strategies use — with a
-    far-future ``as_of`` so the whole series is returned (corporate actions applied). The
-    ``snapshot_id`` is recorded for provenance. Fails loud (``DataError``) on fewer than 2 bars.
+    far-future ``as_of`` so the whole series is returned (corporate actions applied). With a
+    ``snapshot_id`` the read is rooted at ``data_dir/snapshots/<id>`` (integrity-verified first),
+    so the manifest's provenance claim is what the run actually consumed — the live store is
+    wholesale-replaced by pulls and cannot back a reproducibility claim. Fails loud (``DataError``)
+    on a missing/tampered snapshot or fewer than 2 bars.
     """
+    from alpha_data.snapshot import verify_snapshot
     from alpha_data.source import PointInTimeSource
     from alpha_data.store import ParquetStore
 
-    store = ParquetStore(data_dir / "store")
+    if snapshot_id is not None:
+        snap_dir = data_dir / "snapshots" / snapshot_id
+        verify_snapshot(snap_dir)  # re-hash against the manifest before trusting the bytes
+        store = ParquetStore(snap_dir)
+    else:
+        store = ParquetStore(data_dir / "store")
     source = PointInTimeSource(store, {symbol: store.read_actions(symbol)})
     bars = source.as_of(symbol, datetime(2999, 1, 1, tzinfo=UTC))
     if len(bars) < 2:
