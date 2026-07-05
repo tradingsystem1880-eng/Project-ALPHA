@@ -30,6 +30,8 @@ class MovingAverageCrossover(VolTargetStrategy):
         rebalance_every: int = 21,
         periods_per_year: int = 252,
         allow_short: bool = True,
+        size_on_equity: bool = False,
+        halt_drawdown: float | None = None,
     ) -> None:
         super().__init__(
             instrument_id=instrument_id,
@@ -42,6 +44,8 @@ class MovingAverageCrossover(VolTargetStrategy):
             rebalance_every=rebalance_every,
             periods_per_year=periods_per_year,
             allow_short=allow_short,
+            size_on_equity=size_on_equity,
+            halt_drawdown=halt_drawdown,
         )
         self._fast = fast
         self._slow = slow
