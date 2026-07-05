@@ -73,3 +73,14 @@ def test_long_flat_sits_out_a_downtrend_but_short_profits() -> None:
 def test_bad_rebalance_fails_loud() -> None:
     with pytest.raises(DataError):
         _surrogate(rebalance_every=0)
+
+
+def test_weights_and_costs_reproduce_the_surrogate_exactly() -> None:
+    # The exposed series must be the SAME arithmetic the callable uses: w*pr - costs, bit-for-bit.
+    import numpy as np
+
+    f = _surrogate(cost_bps=10.0)
+    pr = np.random.default_rng(6).normal(0.001, 0.005, 300)
+    weights, costs = f.weights_and_costs(pr)  # type: ignore[attr-defined]
+    assert np.array_equal(weights * pr - costs, f(pr))
+    assert weights.shape == pr.shape and costs.shape == pr.shape

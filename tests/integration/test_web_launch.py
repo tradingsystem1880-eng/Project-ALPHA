@@ -52,4 +52,7 @@ def test_structured_run_streams_and_links_run_id(monkeypatch: pytest.MonkeyPatch
 
 
 def test_stream_unknown_job_is_404() -> None:
-    assert TestClient(create_app(), base_url="http://127.0.0.1").get("/jobs/nope/stream").status_code == 404
+    assert (
+        TestClient(create_app(), base_url="http://127.0.0.1").get("/jobs/nope/stream").status_code
+        == 404
+    )

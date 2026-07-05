@@ -25,10 +25,34 @@ import numpy as np
 from alpha_core import DataError
 from alpha_strategies.signals import ts_momentum_signal
 from alpha_strategies.sizing import realized_volatility, vol_target_size
-from alpha_validation import FloatArray, StrategyFn
+from alpha_validation import FloatArray
 
 # a pure signal from a close-path prefix (closes[: t+1]); must read trailing closes only
 SignalOfCloses = Callable[[FloatArray], int]
+
+
+class Surrogate:
+    """A callable Tier-1 surrogate that also exposes its weight/cost series.
+
+    ``surrogate(pr)`` returns the close-fill strategy returns (``weights * pr - costs``), exactly
+    as before. ``weights_and_costs(pr)`` exposes the underlying series so the gauntlet can score
+    the SAME weights under the engine's t+1-open fill convention — the convention-divergence
+    diagnostic that marks when the close-fill Tier-1 is structurally low-fidelity for a strategy
+    (see docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md).
+    """
+
+    def __init__(
+        self, weights_and_costs_fn: Callable[[FloatArray], tuple[FloatArray, FloatArray]]
+    ) -> None:
+        self._weights_and_costs = weights_and_costs_fn
+
+    def weights_and_costs(self, price_returns: FloatArray) -> tuple[FloatArray, FloatArray]:
+        """``(weights, costs)`` arrays aligned with ``price_returns`` (weights[t] earns pr[t])."""
+        return self._weights_and_costs(np.asarray(price_returns, dtype=np.float64))
+
+    def __call__(self, price_returns: FloatArray) -> FloatArray:
+        weights, costs = self.weights_and_costs(price_returns)
+        return weights * np.asarray(price_returns, dtype=np.float64) - costs
 
 
 def make_surrogate(
@@ -42,15 +66,16 @@ def make_surrogate(
     max_leverage: float = 1.0,
     allow_short: bool = True,
     cost_bps: float = 0.0,
-) -> StrategyFn:
+) -> Surrogate:
     """Build ``f(price_returns) -> strategy_returns`` for any vol-targeted long/flat/short signal.
 
     ``warmup`` is the first return index at which both the signal and the vol estimate are defined
     (in 0-based bar terms, matching the engine's ``_min_history`` of warmup+1 closes). On each
     rebalance bar (once warmed up) ``signal_fn`` is called with the reconstructed close prefix and
     the result is sized to ``target_vol``; the weight is held between rebalances and ``cost_bps`` is
-    charged on turnover ``|Δweight|`` the bar a rebalance changes it. Returns an array the same
-    length as ``price_returns``. Fails loud (``DataError``) on ``rebalance_every < 1`` or
+    charged on turnover ``|Δweight|`` the bar a rebalance changes it. The returned ``Surrogate``
+    is a plain ``f(price_returns) -> strategy_returns`` callable that also exposes
+    ``weights_and_costs``. Fails loud (``DataError``) on ``rebalance_every < 1`` or
     ``vol_window < 3``.
     """
     if rebalance_every < 1:
@@ -59,8 +84,7 @@ def make_surrogate(
         raise DataError(f"vol_window must be >= 3 for a realized-vol estimate, got {vol_window}")
     cost_rate = cost_bps / 10_000.0
 
-    def surrogate(price_returns: FloatArray) -> FloatArray:
-        pr = np.asarray(price_returns, dtype=np.float64)
+    def weights_and_costs(pr: FloatArray) -> tuple[FloatArray, FloatArray]:
         n = pr.size
         # reconstruct a synthetic close path: closes[0]=1, closes[t]=prod(1+pr[:t]); length n+1.
         # pr[t] == closes[t+1]/closes[t] - 1, so a weight decided from closes[:t+1] never peeks.
@@ -86,9 +110,9 @@ def make_surrogate(
                     costs[t] = cost_rate * abs(target - weight)
                 weight = target
             weights[t] = weight
-        return weights * pr - costs
+        return weights, costs
 
-    return surrogate
+    return Surrogate(weights_and_costs)
 
 
 def make_ts_momentum_surrogate(
@@ -102,7 +126,7 @@ def make_ts_momentum_surrogate(
     max_leverage: float = 1.0,
     allow_short: bool = True,
     cost_bps: float = 0.0,
-) -> StrategyFn:
+) -> Surrogate:
     """The Tier-1 surrogate for ``TimeSeriesMomentum`` — a thin wrapper over ``make_surrogate``."""
 
     def signal_fn(closes_prefix: FloatArray) -> int:
