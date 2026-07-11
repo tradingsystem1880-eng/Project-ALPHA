@@ -147,6 +147,24 @@ def propfirm_run(
     return _invoke.run_alpha(args, data_dir=_data_dir(), run_type="propfirm")
 
 
+@mcp.tool()
+def forecast_run(
+    symbol: str,
+    model: str = "base",
+    horizon: int = 30,
+    options: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Forecast SYMBOL's next N OHLCV bars with the Kronos foundation model (mini|small|base).
+
+    Weights must be pulled first via ``alpha forecast pull --model <name>`` (network —
+    deliberately not exposed as a tool). CPU cost scales hard with model size: mini is
+    seconds, base can be minutes per (uncached) forecast.
+    """
+    args = ["forecast", "run", symbol, "--model", model, "--horizon", str(horizon)]
+    args += _option_flags(options)
+    return _invoke.run_alpha(args, data_dir=_data_dir(), run_type="forecast")
+
+
 # --- read tools (no subprocess) --------------------------------------------------------------
 
 

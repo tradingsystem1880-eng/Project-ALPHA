@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 # the run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 
 
 def get_run(run_id: str, *, data_dir: Path) -> dict[str, Any]:

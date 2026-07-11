@@ -77,6 +77,7 @@ def test_all_expected_tools_are_registered() -> None:
         "validate",
         "optim_grid",
         "propfirm_run",
+        "forecast_run",
         "get_run",
         "list_runs",
         "list_strategies",
