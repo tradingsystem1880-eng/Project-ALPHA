@@ -15,6 +15,7 @@ from tests.fixtures.forecast_fixtures import daily_bars
 _KW: dict[str, Any] = {
     "model": "base",
     "revision": None,
+    "tokenizer_revision": None,
     "horizon": 5,
     "temperature": 1.0,
     "top_p": 0.9,
@@ -35,6 +36,7 @@ def test_key_sensitive_to_every_field() -> None:
     for field, value in [
         ("model", "mini"),
         ("revision", "abc123"),
+        ("tokenizer_revision", "def456"),
         ("horizon", 6),
         ("temperature", 1.1),
         ("top_p", 0.8),

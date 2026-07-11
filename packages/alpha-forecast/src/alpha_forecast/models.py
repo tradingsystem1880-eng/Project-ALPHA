@@ -23,8 +23,15 @@ class ModelSpec:
     tokenizer_repo: str
     params_m: float  # millions of parameters, for display + cost warnings
     max_context: int
-    revision: str | None = None  # pinned HF revision; None until verifiable (needs network)
+    # Pinned HF commit shas (repo-specific: a model pin can never be reused for its
+    # tokenizer repo). Pinned from the HF main branches on 2026-07-11; the base pair was
+    # additionally verified on disk by the first networked `alpha forecast pull`.
+    revision: str | None = None
+    tokenizer_revision: str | None = None
 
+
+_TOKENIZER_2K_REV = "26966d0035065a0cae0ebad7af8ece35bc1fb51c"
+_TOKENIZER_BASE_REV = "0e0117387f39004a9016484a186a908917e22426"
 
 MODEL_SPECS: dict[str, ModelSpec] = {
     "mini": ModelSpec(
@@ -33,6 +40,8 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         tokenizer_repo="NeoQuasar/Kronos-Tokenizer-2k",
         params_m=4.1,
         max_context=2048,
+        revision="f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
+        tokenizer_revision=_TOKENIZER_2K_REV,
     ),
     "small": ModelSpec(
         name="small",
@@ -40,6 +49,8 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         tokenizer_repo="NeoQuasar/Kronos-Tokenizer-base",
         params_m=24.7,
         max_context=512,
+        revision="901c26c1332695a2a8f243eb2f37243a37bea320",
+        tokenizer_revision=_TOKENIZER_BASE_REV,
     ),
     "base": ModelSpec(
         name="base",
@@ -47,6 +58,8 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         tokenizer_repo="NeoQuasar/Kronos-Tokenizer-base",
         params_m=102.3,
         max_context=512,
+        revision="2b554741eca47781b64468546e77fef3e85130e6",
+        tokenizer_revision=_TOKENIZER_BASE_REV,
     ),
 }
 

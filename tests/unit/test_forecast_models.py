@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -25,6 +26,24 @@ def test_registry_has_the_three_open_models() -> None:
     assert resolve_model("mini").max_context == 2048
     assert resolve_model("mini").tokenizer_repo == "NeoQuasar/Kronos-Tokenizer-2k"
     assert resolve_model("small").tokenizer_repo == "NeoQuasar/Kronos-Tokenizer-base"
+
+
+def test_specs_pin_hf_revisions() -> None:
+    """Spec open item 1: every repo pin is a full commit sha (verified 2026-07-11 pull)."""
+    hex40 = re.compile(r"^[0-9a-f]{40}$")
+    for spec in MODEL_SPECS.values():
+        assert spec.revision is not None and hex40.fullmatch(spec.revision), spec.name
+        assert spec.tokenizer_revision is not None and hex40.fullmatch(spec.tokenizer_revision), (
+            spec.name
+        )
+        # model and tokenizer live in different repos: their pins can never be one sha
+        assert spec.revision != spec.tokenizer_revision, spec.name
+    # small and base share Kronos-Tokenizer-base, so they must share its pin
+    assert MODEL_SPECS["small"].tokenizer_repo == MODEL_SPECS["base"].tokenizer_repo
+    assert MODEL_SPECS["small"].tokenizer_revision == MODEL_SPECS["base"].tokenizer_revision
+    # the shas actually verified on disk by the first networked `alpha forecast pull`
+    assert MODEL_SPECS["base"].revision == "2b554741eca47781b64468546e77fef3e85130e6"
+    assert MODEL_SPECS["base"].tokenizer_revision == "0e0117387f39004a9016484a186a908917e22426"
 
 
 def test_unknown_model_fails_loud() -> None:

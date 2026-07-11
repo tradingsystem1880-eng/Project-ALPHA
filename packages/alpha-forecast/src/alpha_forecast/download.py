@@ -27,12 +27,15 @@ def pull_model(name: str, weights_dir: Path, *, force: bool = False) -> dict[str
         ) from exc
     weights_dir.mkdir(parents=True, exist_ok=True)
     paths: dict[str, str] = {}
-    for repo in (spec.tokenizer_repo, spec.model_repo):
+    for repo, revision in (
+        (spec.tokenizer_repo, spec.tokenizer_revision),
+        (spec.model_repo, spec.revision),
+    ):
         try:
             paths[repo] = snapshot_download(
                 repo_id=repo,
                 cache_dir=str(weights_dir),
-                revision=spec.revision,
+                revision=revision,
                 force_download=force,
             )
         except Exception as exc:  # noqa: BLE001 - re-raised typed with context
@@ -46,7 +49,7 @@ def pull_model(name: str, weights_dir: Path, *, force: bool = False) -> dict[str
             spec.tokenizer_repo,
             cache_dir=str(weights_dir),
             local_files_only=True,
-            revision=spec.revision,
+            revision=spec.tokenizer_revision,
         )
         Kronos.from_pretrained(
             spec.model_repo,

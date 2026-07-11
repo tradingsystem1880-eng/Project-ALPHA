@@ -103,6 +103,7 @@ class KronosForecaster:
         key = _cache.cache_key(
             model=self._spec.name,
             revision=self._spec.revision,
+            tokenizer_revision=self._spec.tokenizer_revision,
             window=bars,
             horizon=horizon,
             temperature=self._temperature,
@@ -152,7 +153,7 @@ class KronosForecaster:
                 self._spec.tokenizer_repo,
                 cache_dir=str(self._weights_dir),
                 local_files_only=True,
-                revision=self._spec.revision,
+                revision=self._spec.tokenizer_revision,
             )
             model = Kronos.from_pretrained(
                 self._spec.model_repo,

@@ -155,6 +155,7 @@ def run(
             "tokenizer_repo": model_spec.tokenizer_repo,
             "max_context": model_spec.max_context,
             "revision": model_spec.revision,
+            "tokenizer_revision": model_spec.tokenizer_revision,
             "torch_version": _torch_version(),  # provenance only; excluded from the run id
         },
         "params": {
