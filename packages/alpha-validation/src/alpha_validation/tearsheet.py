@@ -44,7 +44,12 @@ class FoldSummary:
 
 @dataclass(frozen=True)
 class NullSummary:
-    """Where the observed statistic falls in one tier of the randomized-price null."""
+    """Where the observed statistic falls in one tier of the randomized-price null.
+
+    A tier that could not run at all (e.g. a strategy with no engine-free Tier-1 surrogate)
+    is recorded with ``skipped=True`` + a human-readable ``reason`` instead of being silently
+    omitted: the manifest and tear sheet must show which tiers actually gated the verdict.
+    """
 
     tier: str  # "returns_level" (Tier 1) | "full_engine" (Tier 2)
     observed: float
@@ -53,6 +58,8 @@ class NullSummary:
     threshold: float
     passed: bool
     n_paths: int
+    skipped: bool = False
+    reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -168,11 +175,17 @@ def build_outcomes(
 
     null_detail: dict[str, float] = {}
     for n in nulls:
-        null_detail[f"{n.tier}_percentile"] = n.percentile
-        null_detail[f"{n.tier}_p_value"] = n.p_value
+        if n.skipped:
+            null_detail[f"{n.tier}_skipped"] = 1.0
+        else:
+            null_detail[f"{n.tier}_percentile"] = n.percentile
+            null_detail[f"{n.tier}_p_value"] = n.p_value
+    ran = [n for n in nulls if not n.skipped]
     null = ValidationOutcome(
         name="randomized_price_null",
-        passed=len(nulls) > 0 and all(n.passed for n in nulls),
+        # every tier that actually ran must pass, and at least one tier must have run —
+        # an all-skipped null can never pass by omission
+        passed=len(ran) > 0 and all(n.passed for n in ran),
         detail=null_detail,
     )
 
@@ -275,9 +288,18 @@ def _validation_section_html(report: GauntletReport) -> str:
         for f in report.folds
     )
     null_rows = "".join(
-        f"<tr><td>{html.escape(n.tier)}</td><td>{_fmt(n.observed)}</td><td>{_fmt(n.percentile)}</td>"
-        f"<td>{_fmt(n.p_value)}</td><td>{_fmt(n.threshold)}</td>"
-        f"<td>{'PASS' if n.passed else 'FAIL'}</td><td>{n.n_paths}</td></tr>"
+        (
+            f"<tr><td>{html.escape(n.tier)}</td>"
+            f'<td colspan="5">SKIPPED - {html.escape(n.reason or "no reason recorded")}</td>'
+            f"<td>{n.n_paths}</td></tr>"
+        )
+        if n.skipped
+        else (
+            f"<tr><td>{html.escape(n.tier)}</td><td>{_fmt(n.observed)}</td>"
+            f"<td>{_fmt(n.percentile)}</td>"
+            f"<td>{_fmt(n.p_value)}</td><td>{_fmt(n.threshold)}</td>"
+            f"<td>{'PASS' if n.passed else 'FAIL'}</td><td>{n.n_paths}</td></tr>"
+        )
         for n in report.nulls
     )
     ci_rows = "".join(
