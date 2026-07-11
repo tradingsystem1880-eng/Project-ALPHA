@@ -13,7 +13,7 @@ from typing import Annotated, Any
 
 import typer
 
-from alpha_cli import _optim, _runner
+from alpha_cli import _optim, _runner, _strategies
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -117,6 +117,8 @@ def grid(
         strategy_params=_runner.parse_strategy_params(param),
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+    for warning in _strategies.pre_run_warnings(base, bars):
+        typer.secho(warning, err=True, fg="yellow")
     run_id = _runner.run_id_for(
         {
             "command": "optim_grid",

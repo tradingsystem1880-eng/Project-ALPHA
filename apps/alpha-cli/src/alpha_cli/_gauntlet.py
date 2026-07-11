@@ -22,7 +22,7 @@ from alpha_cli._runner import (
     run_full_backtest,
     walk_forward_oos_for_spec,
 )
-from alpha_cli._strategies import surrogate_for
+from alpha_cli._strategies import has_tier1_surrogate, surrogate_for
 from alpha_cli._synth import full_engine_null
 from alpha_core import Bar, DataError
 from alpha_validation import (
@@ -141,29 +141,43 @@ def run_gauntlet(
         # Tier 1 — cheap returns-level null: the strategy's surrogate on synthetic return paths.
         # "bootstrap" resamples the observed returns; "student_t"/"garch" draw from a fat-tailed
         # parametric model (heavier-tailed / volatility-clustered → a more adversarial null).
-        price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
-        surrogate = surrogate_for(spec)
-        if params.null_model == "bootstrap":
-            tier1 = randomized_price_null(
-                price_returns,
-                surrogate,
-                statistic=safe_sharpe,
-                n_paths=params.tier1_paths,
-                block=params.mean_block,
-                threshold=params.threshold,
-                periods_per_year=ppy,
-                seed=t1_seed,
-            )
+        # A strategy with NO engine-free surrogate (e.g. kronos_forecast) gets an explicit
+        # skipped Tier-1 — visible in the manifest/tear sheet — and the null gate then rests on
+        # Tier-2 alone.
+        tier1_summary: NullSummary
+        if has_tier1_surrogate(spec):
+            price_returns = to_returns(np.array([b.close for b in bars], dtype=np.float64))
+            surrogate = surrogate_for(spec)
+            if params.null_model == "bootstrap":
+                tier1 = randomized_price_null(
+                    price_returns,
+                    surrogate,
+                    statistic=safe_sharpe,
+                    n_paths=params.tier1_paths,
+                    block=params.mean_block,
+                    threshold=params.threshold,
+                    periods_per_year=ppy,
+                    seed=t1_seed,
+                )
+            else:
+                tier1 = parametric_price_null(
+                    price_returns,
+                    surrogate,
+                    model=params.null_model,
+                    statistic=safe_sharpe,
+                    n_paths=params.tier1_paths,
+                    threshold=params.threshold,
+                    periods_per_year=ppy,
+                    seed=t1_seed,
+                )
+            tier1_summary = _null_summary("returns_level", tier1)
         else:
-            tier1 = parametric_price_null(
-                price_returns,
-                surrogate,
-                model=params.null_model,
-                statistic=safe_sharpe,
-                n_paths=params.tier1_paths,
-                threshold=params.threshold,
-                periods_per_year=ppy,
-                seed=t1_seed,
+            tier1_summary = _skipped_null(
+                "returns_level",
+                reason=(
+                    f"{spec.strategy_name} has no engine-free Tier-1 surrogate; the "
+                    "randomized-price gate rests on the Tier-2 full-engine null only"
+                ),
             )
         # Tier 2 — full-engine faithfulness check, observed = the engine's walk-forward OOS Sharpe.
         tier2 = full_engine_null(
@@ -176,7 +190,7 @@ def run_gauntlet(
             seed=t2_seed,
             max_workers=params.max_workers,
         )
-        nulls = (_null_summary("returns_level", tier1), _null_summary("full_engine", tier2))
+        nulls = (tier1_summary, _null_summary("full_engine", tier2))
 
         # Block-bootstrap BCa CIs on the OOS returns (cagr from the resampled equity path). The
         # safe Sharpe treats a zero-variance resample as 0.0 so a sparse OOS can't abort the CI.
@@ -231,9 +245,10 @@ def _verdict_summary(
 ) -> VerdictSummary:
     """Grade the run A-F from the computed gates (robustness = the four pass/fail checks)."""
     sharpe_ci = next((c for c in cis if c.metric == "sharpe"), None)
+    ran = [n for n in nulls if not n.skipped]  # skipped tiers neither pass nor veto
     return grade_verdict(
         oos_sharpe=oos_metrics.get("sharpe", math.nan),
-        null_tiers_passed=len(nulls) > 0 and all(n.passed for n in nulls),
+        null_tiers_passed=len(ran) > 0 and all(n.passed for n in ran),
         dsr_passed=dsr.passed,
         cpcv_passed=cpcv.passed,
         ci_lower_positive=sharpe_ci is not None and sharpe_ci.lower > 0.0,
@@ -279,6 +294,21 @@ def _degenerate_null(tier: str) -> NullSummary:
         threshold=math.nan,
         passed=False,
         n_paths=0,
+    )
+
+
+def _skipped_null(tier: str, *, reason: str) -> NullSummary:
+    """A tier that could not run at all — recorded, never silently omitted, never passing."""
+    return NullSummary(
+        tier=tier,
+        observed=math.nan,
+        percentile=math.nan,
+        p_value=math.nan,
+        threshold=math.nan,
+        passed=False,
+        n_paths=0,
+        skipped=True,
+        reason=reason,
     )
 
 

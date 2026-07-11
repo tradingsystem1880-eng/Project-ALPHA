@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from alpha_cli import _artifacts, _runner
+from alpha_cli import _artifacts, _runner, _strategies
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -65,6 +65,9 @@ def run(
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        warnings = _strategies.pre_run_warnings(spec, bars)
+        for warning in warnings:
+            typer.secho(warning, err=True, fg="yellow")
         result = _runner.run_full_backtest(bars, spec)
     except DataError as exc:  # no bars stored, unknown strategy, bad account-type, etc.
         raise typer.BadParameter(str(exc)) from exc
@@ -94,6 +97,7 @@ def run(
         "n_trades": len(result.trades),
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,
+        "leakage_warning": warnings[0] if warnings else None,
     }
     _artifacts.write_run(rdir, manifest=manifest, equity=result.equity_curve, trades=result.trades)
     warn = f" ({result.rejected} orders rejected)" if result.rejected else ""

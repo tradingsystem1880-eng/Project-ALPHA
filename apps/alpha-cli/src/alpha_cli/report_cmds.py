@@ -16,7 +16,7 @@ import typer
 
 from alpha_core.config import AlphaSettings
 
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 
 
 def _fmt(x: Any) -> str:
@@ -52,6 +52,34 @@ def report(run_id: str) -> None:
         f"[{label}]  schema_version={manifest.get('schema_version')}"
     )
 
+    if manifest.get("command") == "forecast_run":  # Kronos forecast run
+        model = manifest.get("model", {})
+        params = manifest.get("params", {})
+        fc = manifest.get("forecast", {})
+        window = manifest.get("window", {})
+        direction = {1: "LONG", -1: "SHORT", 0: "FLAT"}.get(fc.get("direction"), "?")
+        typer.echo(
+            f"model: Kronos-{model.get('name')} ({model.get('model_repo')}, "
+            f"torch {model.get('torch_version') or 'n/a'})"
+        )
+        typer.echo(
+            f"params: horizon={params.get('horizon')} context={params.get('context')} "
+            f"T={params.get('temperature')} top_p={params.get('top_p')} "
+            f"samples={params.get('sample_count')} seed={params.get('seed')}"
+        )
+        typer.echo(
+            f"window: {window.get('n_bars')} bars ending {window.get('last_ts')} "
+            f"@ close {_fmt(window.get('last_close'))}"
+        )
+        ret = fc.get("expected_log_return")
+        ret_pct = f"{ret * 100:+.2f}%" if isinstance(ret, int | float) else "n/a"
+        typer.echo(
+            f"forecast: end close {_fmt(fc.get('end_close'))} ({ret_pct}) by "
+            f"{fc.get('last_ts')} -> {direction}"
+        )
+        if manifest.get("leakage_warning"):
+            typer.secho(manifest["leakage_warning"], err=True, fg="yellow")
+
     if manifest.get("command") == "propfirm":  # prop-firm Monte Carlo run
         rules = manifest.get("rules", {})
         typer.echo(f"prop-firm: {manifest.get('firm')} (source {manifest.get('source')})")
@@ -84,6 +112,9 @@ def report(run_id: str) -> None:
     if manifest.get("folds"):
         typer.echo(f"walk-forward: {len(manifest['folds'])} OOS folds")
     for n in manifest.get("nulls", []):
+        if n.get("skipped"):
+            typer.echo(f"null[{n['tier']}]: SKIPPED - {n.get('reason') or 'no reason recorded'}")
+            continue
         v = "PASS" if n["passed"] else "FAIL"
         typer.echo(
             f"null[{n['tier']}]: percentile={_fmt(n['percentile'])} p={_fmt(n['p_value'])} -> {v}"

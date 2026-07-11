@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import typer
 
-from alpha_cli import _artifacts, _gauntlet, _runner
+from alpha_cli import _artifacts, _gauntlet, _runner, _strategies
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import render_tearsheet_html, report_to_manifest
@@ -86,6 +86,8 @@ def validate(
     )
     try:
         bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        for warning in _strategies.pre_run_warnings(spec, bars):
+            typer.secho(warning, err=True, fg="yellow")
         run_id = _runner.run_id_for(
             {
                 "command": "validate",
@@ -101,9 +103,10 @@ def validate(
 
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     equity = list(zip(out.oos.oos_timestamps, out.oos.oos_equity.tolist(), strict=True))
-    _artifacts.write_run(
-        rdir, manifest=report_to_manifest(out.report), equity=equity, trades=out.result.trades
-    )
+    manifest = report_to_manifest(out.report)
+    leakage_warnings = _strategies.pre_run_warnings(spec, bars)
+    manifest["leakage_warning"] = leakage_warnings[0] if leakage_warnings else None
+    _artifacts.write_run(rdir, manifest=manifest, equity=equity, trades=out.result.trades)
     render_tearsheet_html(
         out.report,
         oos_returns=out.oos.oos_returns,
@@ -121,9 +124,12 @@ def validate(
         if v is not None
         else ""
     )
+    null_pcts = "/".join(
+        "SKIPPED" if n.skipped else f"{n.percentile:.2f}" for n in out.report.nulls
+    )
     typer.echo(
         f"validate {symbol} -> run {run_id}: {status} "
         f"({grade}OOS Sharpe {sharpe:.3f}, "
-        f"null pct {out.report.nulls[0].percentile:.2f}/{out.report.nulls[1].percentile:.2f}); "
+        f"null pct {null_pcts}); "
         f"tear sheet at {rdir / 'tearsheet.html'}"
     )
