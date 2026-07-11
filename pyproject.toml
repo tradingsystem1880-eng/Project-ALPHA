@@ -9,6 +9,7 @@ dependencies = [
     "alpha-strategies",
     "alpha-backtest",
     "alpha-validation",
+    "alpha-forecast",
     "alpha-cli",
     "alpha-mcp",
     "alpha-web",
@@ -26,6 +27,7 @@ alpha-data = { workspace = true }
 alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
 alpha-validation = { workspace = true }
+alpha-forecast = { workspace = true }
 alpha-cli = { workspace = true }
 alpha-mcp = { workspace = true }
 alpha-web = { workspace = true }
@@ -39,16 +41,24 @@ dev = [
     "import-linter>=2.1",
     "pandas-stubs>=2.0",
 ]
+# Opt-in torch stack for the Kronos forecaster: `uv sync --group kronos`.
+# Kept out of the default install: torch is ~2.5 GB of CUDA wheels on Linux/PyPI and the
+# sandbox/CI never run real inference (they use stub forecasters; weights need network anyway).
+kronos = [
+    "alpha-forecast[kronos]",
+]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Vendored Kronos code stays byte-faithful to upstream; never lint/format it.
+extend-exclude = ["packages/alpha-forecast/src/alpha_forecast/_vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli", "alpha_mcp", "alpha_web"]
+known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli", "alpha_mcp", "alpha_web"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -75,6 +85,17 @@ ignore_missing_imports = true
 module = ["quantstats_lumi.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Vendored upstream Kronos code (MIT) — kept byte-faithful; it will never pass --strict.
+module = ["alpha_forecast._vendor.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# The optional torch stack (installed via `uv sync --group kronos`) is imported lazily and
+# only in the sanctioned pandas/torch edge of alpha_forecast; no loadable stubs assumed.
+module = ["torch.*", "einops.*", "huggingface_hub.*", "tqdm.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers --import-mode=importlib"
@@ -91,6 +112,7 @@ root_packages = [
     "alpha_strategies",
     "alpha_backtest",
     "alpha_validation",
+    "alpha_forecast",
     "alpha_cli",
     "alpha_mcp",
     "alpha_web",
@@ -100,40 +122,46 @@ root_packages = [
 name = "alpha_core imports nothing internal"
 type = "forbidden"
 source_modules = ["alpha_core"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_data depends only on core"
 type = "forbidden"
 source_modules = ["alpha_data"]
-forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_strategies depends only on core"
 type = "forbidden"
 source_modules = ["alpha_strategies"]
-forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_validation depends only on core"
 type = "forbidden"
 source_modules = ["alpha_validation"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_forecast", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_backtest depends only on core + data"
 type = "forbidden"
 source_modules = ["alpha_backtest"]
-forbidden_modules = ["alpha_strategies", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_strategies", "alpha_validation", "alpha_forecast", "alpha_cli"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_forecast depends only on core"
+type = "forbidden"
+source_modules = ["alpha_forecast"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_mcp sits atop the DAG (nothing imports it)"
 type = "forbidden"
-source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
 forbidden_modules = ["alpha_mcp"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_web sits atop the DAG (nothing imports it)"
 type = "forbidden"
-source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli", "alpha_mcp"]
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli", "alpha_mcp"]
 forbidden_modules = ["alpha_web"]
