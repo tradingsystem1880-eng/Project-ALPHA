@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
 from pydantic import AwareDatetime
@@ -17,6 +18,21 @@ class DataSource(Protocol):
 
     def as_of(self, symbol: str, when: AwareDatetime) -> list[Bar]:
         """Return bars for `symbol` whose data was knowable no later than `when`."""
+        ...
+
+
+@runtime_checkable
+class BarForecaster(Protocol):
+    """Forecasts the next `horizon` bars from trailing history ONLY.
+
+    Implementations must never read data beyond `bars` (accessor-level discipline).
+    NOTE: a pretrained model's weights may still embed knowledge of the forecast period
+    (weight-level look-ahead) — that caveat is documented at the implementation and cannot
+    be enforced here.
+    """
+
+    def forecast(self, bars: Sequence[Bar], horizon: int) -> list[Bar]:
+        """Return exactly `horizon` future bars (finite, OHLC-consistent — `Bar` validates)."""
         ...
 
 

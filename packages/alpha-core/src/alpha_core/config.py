@@ -13,3 +13,10 @@ class AlphaSettings(BaseSettings):
 
     data_dir: Path = Field(default=Path("data"))
     random_seed: int = 7
+    # Foundation-model weights cache (env ALPHA_WEIGHTS_DIR). None -> data_dir / "models".
+    # Named weights_dir (not model_dir) to stay clear of pydantic's protected model_* namespace.
+    weights_dir: Path | None = None
+
+    @property
+    def resolved_weights_dir(self) -> Path:
+        return self.weights_dir if self.weights_dir is not None else self.data_dir / "models"
