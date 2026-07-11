@@ -131,3 +131,29 @@ def breakout_signal(
     if last_close < min(prior_lows):
         return -1
     return 0
+
+
+def forecast_signal(
+    last_close: float, forecast_closes: Sequence[float], deadband_bps: float
+) -> int:
+    """Sign of the horizon-end expected log-return, with a deadband.
+
+    ``r = ln(forecast_closes[-1] / last_close)``; returns ``+1`` when ``r`` exceeds
+    ``deadband_bps`` basis points, ``-1`` below ``-deadband_bps``, else ``0`` (a forecast
+    inside the deadband is noise — don't trade it). The forecast values are produced by a
+    ``BarForecaster`` fed trailing bars only; this mapping itself reads nothing but its
+    arguments. Fails loud (``DataError``) on an empty forecast, a negative deadband, or
+    non-finite/non-positive prices.
+    """
+    if deadband_bps < 0:
+        raise DataError(f"deadband_bps must be >= 0, got {deadband_bps}")
+    if len(forecast_closes) == 0:
+        raise DataError("forecast_closes is empty")
+    _check_prices("forecast_signal last_close", [last_close])
+    _check_prices("forecast_signal forecast", forecast_closes)
+    r_bps = math.log(forecast_closes[-1] / last_close) * 1e4
+    if r_bps > deadband_bps:
+        return 1
+    if r_bps < -deadband_bps:
+        return -1
+    return 0
