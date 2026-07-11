@@ -14,7 +14,7 @@ from typing import Any
 import polars as pl
 
 # run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm")
+_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
@@ -68,6 +68,28 @@ def equity_values(run_id: str, *, data_dir: Path) -> list[float]:
     if not path.exists():
         return []
     return [float(v) for v in pl.read_parquet(path)["equity"].to_list()]
+
+
+def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
+    """History + forecast closes (and the optional p10/p90 band) for a forecast run's chart.
+
+    Returns None for runs that wrote no forecast artifacts (every non-forecast run type).
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return None
+    fpath, hpath = rdir / "forecast.parquet", rdir / "history.parquet"
+    if not (fpath.exists() and hpath.exists()):
+        return None
+    forecast = pl.read_parquet(fpath)
+    history = pl.read_parquet(hpath)
+    has_band = "close_p10" in forecast.columns and "close_p90" in forecast.columns
+    return {
+        "history": [float(v) for v in history["close"].to_list()],
+        "forecast": [float(v) for v in forecast["close"].to_list()],
+        "p10": [float(v) for v in forecast["close_p10"].to_list()] if has_band else None,
+        "p90": [float(v) for v in forecast["close_p90"].to_list()] if has_band else None,
+    }
 
 
 def tearsheet_file(run_id: str, *, data_dir: Path) -> Path | None:

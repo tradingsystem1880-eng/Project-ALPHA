@@ -12,6 +12,19 @@
 </section>
 {% endif %}
 
+{% if forecast_svg %}
+<section class="chart">
+  <h2>Forecast <span class="meta">(solid = history, dashed = Kronos forecast)</span></h2>
+  {{ forecast_svg | safe }}
+</section>
+{% endif %}
+
+{% if leakage_warning %}
+<section class="warning">
+  <p class="meta" style="color:#d4a72c">{{ leakage_warning }}</p>
+</section>
+{% endif %}
+
 <section class="metrics">
   <h2>Manifest</h2>
   <table class="kv">

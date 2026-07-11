@@ -85,6 +85,11 @@ def create_app() -> FastAPI:
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         values = _runs.equity_values(run_id, data_dir=_data_dir())
+        forecast = (
+            _runs.forecast_series(run_id, data_dir=_data_dir())
+            if manifest.get("command") == "forecast_run"
+            else None
+        )
         return templates.TemplateResponse(
             request,
             "run_detail.html",
@@ -94,6 +99,17 @@ def create_app() -> FastAPI:
                 "label": manifest.get("symbol") or manifest.get("source"),
                 "summary": _summarize(manifest),
                 "equity_svg": _charts.equity_svg(values) if values else None,
+                "forecast_svg": (
+                    _charts.forecast_svg(
+                        forecast["history"],
+                        forecast["forecast"],
+                        p10=forecast["p10"],
+                        p90=forecast["p90"],
+                    )
+                    if forecast
+                    else None
+                ),
+                "leakage_warning": manifest.get("leakage_warning"),
                 "has_tearsheet": _runs.tearsheet_file(run_id, data_dir=_data_dir()) is not None,
             },
         )
