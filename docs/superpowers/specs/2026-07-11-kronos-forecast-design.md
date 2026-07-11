@@ -90,15 +90,20 @@ fixable.
 - `run_id = run_id_for({command, symbol, snapshot, model, horizon, context, T, top_p,
   sample_count, seed, window_sha})`.
 
-## Runtime cost (CPU, order-of-magnitude — replace with measured numbers from
-`tests/integration/test_kronos_live.py` timing output)
+## Runtime cost (measured 2026-07-11: Apple-silicon macOS, torch 2.13.0, CPU)
 
 | Scenario | mini | small | base (default) |
 |---|---|---|---|
-| One forecast (ctx 400, h 30) | ~2–10 s | ~15–60 s | ~1–5 min |
-| 10y daily backtest (~100 rebalance forecasts), cold cache | ~5–15 min | ~30–90 min | ~2–8 h |
-| Same, warm cache | seconds | seconds | seconds |
-| `alpha validate --tier2-paths 8` (synthetic paths defeat the cache) | ~20–60 min | hours | not recommended |
+| `alpha forecast pull` (network-bound; one-time) | ~1 min | unmeasured | ~8.5 min |
+| One forecast (ctx 400, h 30), incl. model load | seconds | unmeasured | ~5–8 s wall (~3 s CPU) |
+| Same, warm forecast cache | ~1 s | ~1 s | ~1 s |
+| 10y daily backtest (~100 rebalance forecasts), cold cache | minutes | unmeasured | ~10–15 min (extrapolated) |
+| `alpha validate --tier2-paths 8` (synthetic paths defeat the cache) | ~1 h (extrapolated) | unmeasured | ~several h (extrapolated) |
+
+The original order-of-magnitude estimates were 10–40x too pessimistic for base on
+Apple-silicon CPU; `uv sync --group kronos` itself took ~28 min (torch wheel download,
+network-bound). `tests/integration/test_kronos_live.py` (mini pull + real inference +
+determinism) completes in ~68 s total.
 
 ## Determinism
 
@@ -110,8 +115,12 @@ manifests record `torch_version`.
 
 ## Open items / risks
 
-1. `ModelSpec.revision` is None (HF unreachable from the build sandbox): pin the
-   `NeoQuasar/*` snapshot revisions after the first `alpha forecast pull` and commit them.
+1. ~~`ModelSpec.revision` is None (HF unreachable from the build sandbox)~~ RESOLVED
+   2026-07-11: all five `NeoQuasar/*` repos pinned to full commit shas in `models.py`
+   (`revision` + the new repo-specific `tokenizer_revision` — one sha can never serve
+   both repos). base + Tokenizer-base verified by the first networked `alpha forecast
+   pull --model base`; mini + Tokenizer-2k verified by the live test's pull; small
+   pinned from the HF API main sha (same commit a pull would fetch, not yet downloaded).
 2. `_vendor/README.md` records that the vendored files were retrieved via a text pipeline and
    functionally verified (tiny-random-weights end-to-end test) but not git-diffed against a
    specific upstream commit — re-verify + record the sha when github.com is reachable.
