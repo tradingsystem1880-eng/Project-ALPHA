@@ -298,7 +298,7 @@ def _kronos_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType)
     )
 
 
-def _kronos_surrogate(spec: RunSpec) -> StrategyFn:
+def _kronos_surrogate(spec: RunSpec) -> Surrogate:
     from alpha_cli._surrogate import make_replay_surrogate
 
     return make_replay_surrogate(
@@ -343,6 +343,9 @@ STRATEGIES: dict[str, StrategyDef] = {
         warmup=_kronos_warmup,
         build=_kronos_build,
         surrogate=_kronos_surrogate,
+        params=frozenset(
+            {"context", "horizon", "samples", "temperature", "top_p", "top_k", "min_edge", "band"}
+        ),
     ),
 }
 

@@ -51,7 +51,7 @@ def _seed_forecast_run(data_dir: Path) -> None:
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     _seed_forecast_run(tmp_path)
-    return TestClient(create_app())
+    return TestClient(create_app(), base_url="http://127.0.0.1")
 
 
 def test_run_detail_renders_forecast_cone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
