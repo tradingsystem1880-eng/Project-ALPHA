@@ -126,7 +126,7 @@ def make_replay_surrogate(
     max_leverage: float = 1.0,
     allow_short: bool = True,
     cost_bps: float = 0.0,
-) -> StrategyFn:
+) -> Surrogate:
     """Tier-1 surrogate for cache-replay strategies (kronos): the OBSERVED signal sequence
     is replayed by bar index against each resampled return path.
 

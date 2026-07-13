@@ -29,7 +29,7 @@ def _kronos_spec(**params: float) -> _runner.RunSpec:
         fee_bps=0.0,
         slippage_bps=0.0,
         starting_cash=100_000.0,
-        account_type="CASH",
+        account_type="MARGIN",  # allow_short=True is a config lie on CASH (audit invariant)
         train_size=12,
         test_size=6,
         embargo=1,
