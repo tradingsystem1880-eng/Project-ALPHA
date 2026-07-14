@@ -13,7 +13,7 @@ from typing import Any
 
 import polars as pl
 
-from alpha_cli._artifacts import RUN_DIRS
+from alpha_cli import RUN_DIRS
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:

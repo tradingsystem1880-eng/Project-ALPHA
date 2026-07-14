@@ -172,7 +172,7 @@ def portfolio(
             **vars(spec),
         }
     )
-    rdir = settings.data_dir / "portfolio" / run_id
+    rdir = _artifacts.run_dir(settings.data_dir, run_id, "portfolio")
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
@@ -274,7 +274,7 @@ def cross_sectional(
             "max_leverage": max_leverage,
         }
     )
-    rdir = settings.data_dir / "cross_sectional" / run_id
+    rdir = _artifacts.run_dir(settings.data_dir, run_id, "cross_sectional")
     manifest = {
         "schema_version": 1,
         "run_id": run_id,

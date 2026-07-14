@@ -14,7 +14,7 @@ from typing import Any
 
 import typer
 
-from alpha_cli._artifacts import RUN_DIRS
+from alpha_cli import RUN_DIRS
 from alpha_core.config import AlphaSettings
 
 

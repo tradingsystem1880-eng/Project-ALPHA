@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from alpha_cli._artifacts import RUN_DIRS
+from alpha_cli import RUN_DIRS
 
 
 def get_run(run_id: str, *, data_dir: Path) -> dict[str, Any]:

@@ -16,7 +16,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Contracts live in root `pyproject.toml` `[tool.importlinter]` (8 forbidden contracts). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
-- **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `docs:`).
+- **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `refactor(...)`, `ci:`, `docs:`).
 - **No look-ahead, ever.** Strategies/backtests read data ONLY via the point-in-time accessor `as_of`. Every data/strategy unit gets a `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
 - **Execution convention:** decide on close of bar `t`, fill at open of `t+1`. Mechanism: `feed.to_execution_feed` emits an open-priced `QuoteTick` (at `bar.ts`) + a close-stamped (+23h) decision `Bar`; venue runs `bar_execution=False` so only quotes fill.
 - **No empty `except`.** Raise/propagate typed `AlphaError`/`DataError`/`LookAheadError` with context, or re-raise. Fail loud on data gaps / NaN / inf / disorder / degenerate stats.
@@ -29,8 +29,8 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 ## Commands
 - Install: `uv sync` (torch-free). Kronos torch stack (opt-in; heavy CUDA wheels on Linux, small on macOS): `uv sync --group kronos` — without it, torch-requiring tests skip visibly and real Kronos inference fails loud with instructions.
 - Full gate (run before every commit; mirrors CI `.github/workflows/ci.yml`):
-  `uv run ruff check . && uv run ruff format --check . && uv run lint-imports && uv run mypy packages apps tests && uv run pytest -q -m "not network"`
-- Bias guards only: `uv run pytest -m bias_guard -q`
+  `uv run ruff check . && uv run ruff format --check . && uv run lint-imports && uv run mypy packages apps tests && uv run pytest -q -m "not network" && uv run pytest -q -m bias_guard`
+- Bias guards only: `uv run pytest -m bias_guard -q` (also a dedicated CI step, so the guard suite can never silently select zero tests)
 - Live-network tests (off by default, hit real APIs): `uv run pytest -m network -q`
 - CLI smoke: `uv run alpha info`
 - Ruff: line-length 100, target py312, rules `E,F,I,B,UP,SIM`. Markers (`--strict-markers` on): `bias_guard` (look-ahead/survivorship guards, gated in CI), `network` (skipped in CI/offline).
@@ -142,7 +142,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `_propfirm.py` | Prop-firm run glue (resolve returns from fresh backtest / `--from-run`; resolve preset + overrides) | `run_propfirm`, `resolve_rules`, `PropFirmRunResult` |
 | `_surrogate.py` | Tier-1 engine-free surrogates | `make_surrogate` (generic), `make_ts_momentum_surrogate` |
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
-| `_artifacts.py` | Run-dir layout + manifest/parquet IO (single byte-stable manifest writer; run-type registry shared with web/mcp) | `RUN_DIRS`, `run_dir`, `write_manifest`, `write_run`, `read_manifest`, `read_equity` |
+| `_artifacts.py` | Run-dir layout + manifest/parquet IO: `run_dir(..., kind=...)` validates against the `alpha_cli.RUN_DIRS` registry (registry lives at the package root, polars-free, so web/mcp import it cheaply); `write_manifest` is the single byte-stable manifest writer | `run_dir`, `write_manifest`, `write_run`, `read_manifest`, `read_equity` (+ root `RUN_DIRS`) |
 
 ### `alpha_mcp` (`apps/alpha-mcp/src/alpha_mcp/`) — MCP server (top of DAG; subprocesses the `alpha` CLI, composes nothing). Launch: `uv run alpha-mcp` (repo `.mcp.json` auto-launches it in Claude Code).
 | Module | Responsibility | Key public symbols |

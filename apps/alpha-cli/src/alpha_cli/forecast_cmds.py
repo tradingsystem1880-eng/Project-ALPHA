@@ -96,8 +96,9 @@ def run(
 
     ``--start/--end`` (YYYY-MM-DD) slice the history first for an as-of historical forecast.
     NOTE: Kronos weights saw market data up to ~2025-08 — a pre-cutoff window may be
-    memorized, not forecast (a loud warning is echoed and recorded). CPU cost scales hard
-    with model size: mini is seconds, base can be minutes per forecast.
+    memorized, not forecast (a loud warning is echoed and recorded). CPU cost scales with
+    model size but stays interactive: measured ~5-8 s per base forecast on an Apple-silicon
+    CPU (mini is faster); sample_count multiplies it.
     """
     settings = AlphaSettings()
     resolved_seed = seed if seed is not None else settings.random_seed
@@ -182,7 +183,7 @@ def run(
         },
         "leakage_warning": warning,
     }
-    rdir = settings.data_dir / "forecast" / run_id
+    rdir = _artifacts.run_dir(settings.data_dir, run_id, "forecast")
     _artifacts.write_manifest(rdir, manifest)
     _bars_frame(result.path, p10=result.close_p10, p90=result.close_p90).write_parquet(
         rdir / "forecast.parquet"

@@ -43,7 +43,8 @@ the defaults work out of the box.
 
 ```bash
 uv run ruff check . && uv run ruff format --check . && uv run lint-imports \
-  && uv run mypy packages apps tests && uv run pytest -q -m "not network"
+  && uv run mypy packages apps tests && uv run pytest -q -m "not network" \
+  && uv run pytest -q -m bias_guard
 ```
 
 ## Workflow
@@ -89,8 +90,9 @@ uv run alpha paper preflight AAPL --strategy ma_crossover
 
 Every command writes a byte-stable JSON manifest (and parquet/HTML where relevant) under
 `data_dir/{runs,optim,portfolio,cross_sectional,propfirm,forecast}/<run_id>/`. Re-running with the
-same inputs is reproducible to the byte (`--seed` defaults to 7). Run any command with `--help`
-for all options.
+same inputs is reproducible to the byte (`--seed` defaults to 7) — except Kronos forecast series,
+which are CPU-deterministic only for a given torch build. Run any command with `--help` for all
+options.
 
 ## Caveats (read before trusting a result)
 

@@ -153,7 +153,7 @@ def run(
     except DataError as exc:  # missing run, unknown firm, degenerate returns, bad rule override
         raise typer.BadParameter(str(exc)) from exc
 
-    rdir = settings.data_dir / "propfirm" / run_id
+    rdir = _artifacts.run_dir(settings.data_dir, run_id, "propfirm")
     manifest = _manifest(out, run_id=run_id, seed=resolved_seed)
     _artifacts.write_manifest(rdir, manifest)
 

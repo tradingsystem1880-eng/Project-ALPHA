@@ -149,7 +149,7 @@ def grid(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    rdir = settings.data_dir / "optim" / run_id
+    rdir = _artifacts.run_dir(settings.data_dir, run_id, "optim")
     manifest = _manifest(result, run_id=run_id, symbol=symbol, snapshot_id=snapshot_id)
     _artifacts.write_manifest(rdir, manifest)
 

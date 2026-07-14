@@ -1,8 +1,10 @@
-"""Run-artifact layout: ``data_dir/runs/<run_id>/`` with a JSON manifest + Parquet series.
+"""Run-artifact layout + manifest IO for every run type: ``data_dir/<kind>/<run_id>/``.
 
-The ``manifest.json`` is the byte-stable reproducibility artifact (sorted keys, ``allow_nan=False``
-so non-finite values must already be ``null``); the equity curve and trade log ride alongside as
-Parquet. The HTML tear sheet is written separately by the renderer and is not byte-pinned.
+``run_dir`` resolves (and validates) a run's directory against the ``alpha_cli.RUN_DIRS``
+registry; ``write_manifest`` is the single byte-stable manifest writer (sorted keys,
+``allow_nan=False`` so non-finite values must already be ``null``) used by every command.
+Engine runs additionally get an equity curve + trade log as Parquet via ``write_run``. The HTML
+tear sheet is written separately by the renderer and is not byte-pinned.
 """
 
 from __future__ import annotations
@@ -16,14 +18,11 @@ from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
+from alpha_cli import RUN_DIRS
 from alpha_core import DataError
 
 if TYPE_CHECKING:
     from alpha_backtest.results import Trade
-
-# every run-type subdirectory the CLI writes under data_dir; `alpha report`, the MCP read
-# tools, and the web IDE all search runs across exactly this registry
-RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 
 # schema for an EMPTY trade log (no rows to infer dtypes from); non-empty infers from the rows
 _EMPTY_TRADES_SCHEMA: dict[str, pl.DataType] = {
@@ -39,9 +38,15 @@ _EMPTY_TRADES_SCHEMA: dict[str, pl.DataType] = {
 }
 
 
-def run_dir(data_dir: Path, run_id: str) -> Path:
-    """The artifact directory for a run: ``data_dir/runs/<run_id>``."""
-    return data_dir / "runs" / run_id
+def run_dir(data_dir: Path, run_id: str, kind: str = "runs") -> Path:
+    """The artifact directory for a run: ``data_dir/<kind>/<run_id>``.
+
+    ``kind`` must be in the ``alpha_cli.RUN_DIRS`` registry — writing anywhere else would
+    create runs that ``alpha report``, the MCP read tools, and the web IDE can never find.
+    """
+    if kind not in RUN_DIRS:
+        raise DataError(f"unknown run kind {kind!r}; registered kinds: {', '.join(RUN_DIRS)}")
+    return data_dir / kind / run_id
 
 
 def write_manifest(rdir: Path, manifest: dict[str, Any]) -> None:
