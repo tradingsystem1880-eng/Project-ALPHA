@@ -21,6 +21,24 @@ uv sync
 uv run alpha info        # smoke test: prints resolved settings + core version
 ```
 
+The Kronos foundation-model stack (torch) is opt-in — everything else works without it:
+
+```bash
+uv sync --group kronos   # heavy CUDA wheels on Linux, small on macOS
+```
+
+## Configuration
+
+Settings come from `AlphaSettings` (pydantic-settings): environment variables prefixed `ALPHA_`,
+or a `.env` file at the repo root (copy [`.env.example`](.env.example)). Everything is optional —
+the defaults work out of the box.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ALPHA_DATA_DIR` | `data` | Root for the raw store, snapshots, and all run artifacts. |
+| `ALPHA_RANDOM_SEED` | `7` | Master seed; every stochastic component derives child seeds from it. |
+| `ALPHA_WEIGHTS_DIR` | `<data_dir>/models` | Where `alpha forecast pull` stores Kronos weights. |
+
 ## The full quality gate (run before every commit; mirrors CI)
 
 ```bash
@@ -55,16 +73,24 @@ uv run alpha optim grid AAPL --grid lookback=126,252,504 --grid vol_window=21,63
 uv run alpha backtest portfolio SPY QQQ GLD BTC/USD --weighting inverse_vol
 uv run alpha backtest cross-sectional SPY QQQ IWM GLD USO --top-quantile 0.3
 
-# 7. Re-display any stored run (no engine re-run)
+# 7. Kronos foundation-model forecast (opt-in: `uv sync --group kronos`, then pull weights once)
+uv run alpha forecast pull --model mini
+uv run alpha forecast run BTC/USD --model mini --horizon 30   # next-30-bars OHLCV + p10/p90 band
+
+# 8. Prop-firm Monte Carlo: eval→funded→payout probabilities for a strategy's return stream
+uv run alpha propfirm run SPY --firm topstep --strategy ma_crossover
+
+# 9. Re-display any stored run (no engine re-run)
 uv run alpha report <run_id>
 
-# 8. Paper-trading preflight: validate the sandbox exec venue + strategy parity (see Caveats)
+# 10. Paper-trading preflight: validate the sandbox exec venue + strategy parity (see Caveats)
 uv run alpha paper preflight AAPL --strategy ma_crossover
 ```
 
 Every command writes a byte-stable JSON manifest (and parquet/HTML where relevant) under
-`data_dir/{runs,optim,portfolio,cross_sectional}/<run_id>/`. Re-running with the same inputs is
-reproducible to the byte (`--seed` defaults to 7). Run any command with `--help` for all options.
+`data_dir/{runs,optim,portfolio,cross_sectional,propfirm,forecast}/<run_id>/`. Re-running with the
+same inputs is reproducible to the byte (`--seed` defaults to 7). Run any command with `--help`
+for all options.
 
 ## Caveats (read before trusting a result)
 
@@ -81,6 +107,10 @@ reproducible to the byte (`--seed` defaults to 7). Run any command with `--help`
   Use `--account-type MARGIN`, a lower `--target-vol`, or `--max-leverage` below 1.
 - **Free data is survivorship-biased and (for Stooq) provider-adjusted.** Documented limitations of
   the $0 data tier; the bias-guard tests make the assumptions explicit.
+- **Kronos pretrained weights saw market data up to ~2025-08.** Point-in-time guards cannot catch
+  weight-level leakage, so any `alpha forecast run` (or `kronos_forecast` validation) whose window
+  starts earlier echoes a loud warning and records `leakage_warning` in the manifest — treat such
+  results as upper bounds, never as edge evidence.
 - **Validation has been run end-to-end against real market data.** yfinance (AAPL, incl. the 2020
   4:1 split) and Coinbase (BTC/USD, 2018–2024) feed the full gauntlet. On real AAPL it correctly
   **rejects** single-name `ts_momentum` (OOS Sharpe 0.65, but the returns-level null and a
@@ -99,9 +129,9 @@ nautilus Binance/Bybit testnet config). Supply it as `data_clients` to
 ## Conversational agent (MCP server)
 
 `alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the whole
-research loop as 10 tools — `data_pull`, `backtest_run`, `validate`, `optim_grid`,
-`propfirm_run`, `backtest_portfolio` / `cross_sectional`, plus `get_run` / `list_runs` /
-`list_strategies`. It is purely additive: each action tool **subprocesses the `alpha` CLI** and
+research loop as 11 tools — `data_pull`, `backtest_run`, `validate`, `optim_grid`,
+`propfirm_run`, `forecast_run`, `backtest_portfolio` / `cross_sectional`, plus `get_run` /
+`list_runs` / `list_strategies`. It is purely additive: each action tool **subprocesses the `alpha` CLI** and
 returns the byte-stable manifest the run wrote, so the agent and the CLI share one store and the
 CLI stays the single source of truth.
 
