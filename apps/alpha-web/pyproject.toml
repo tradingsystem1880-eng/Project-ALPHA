@@ -4,18 +4,21 @@ version = "1.0.0"
 description = "Local web IDE for Project ALPHA (run browser, launcher, live console)."
 requires-python = ">=3.12"
 dependencies = [
+    "alpha-core",
     "alpha-cli",
     "fastapi>=0.110",
     "jinja2>=3.1",
     "uvicorn>=0.30",
     "sse-starlette>=2.1",
     "polars>=1.0",
+    "anyio>=4.0",
 ]
 
 [project.scripts]
 alpha-web = "alpha_web.app:main"
 
 [tool.uv.sources]
+alpha-core = { workspace = true }
 alpha-cli = { workspace = true }
 
 [build-system]

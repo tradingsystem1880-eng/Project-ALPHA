@@ -189,6 +189,8 @@ dependencies = [
     { name = "alpha-forecast" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
+    { name = "numpy" },
+    { name = "polars" },
     { name = "typer" },
 ]
 
@@ -200,6 +202,8 @@ requires-dist = [
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "polars", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
 ]
 
@@ -279,12 +283,14 @@ version = "1.0.0"
 source = { editable = "apps/alpha-mcp" }
 dependencies = [
     { name = "alpha-cli" },
+    { name = "alpha-core" },
     { name = "mcp" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
+    { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "mcp", specifier = ">=1.2" },
 ]
 
@@ -309,6 +315,7 @@ version = "1.0.0"
 source = { editable = "packages/alpha-validation" }
 dependencies = [
     { name = "alpha-core" },
+    { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "quantstats-lumi" },
@@ -318,6 +325,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "matplotlib", specifier = ">=3.8" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "quantstats-lumi", specifier = ">=1.1.5" },
@@ -330,6 +338,8 @@ version = "1.0.0"
 source = { editable = "apps/alpha-web" }
 dependencies = [
     { name = "alpha-cli" },
+    { name = "alpha-core" },
+    { name = "anyio" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "polars" },
@@ -340,6 +350,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "anyio", specifier = ">=4.0" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "polars", specifier = ">=1.0" },

@@ -9,6 +9,7 @@ dependencies = [
     "scipy>=1.17.1",
     "pandas>=2.0",
     "quantstats-lumi>=1.1.5",
+    "matplotlib>=3.8",
 ]
 
 [tool.uv.sources]
