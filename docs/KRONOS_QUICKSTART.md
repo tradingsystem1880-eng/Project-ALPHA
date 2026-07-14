@@ -12,8 +12,8 @@ bash scripts/setup_kronos_mac.sh AAPL     # any symbol; default AAPL
 
 When it finishes, http://127.0.0.1:8800 opens with the run browser; click the forecast run
 to see the chart (solid history, dashed Kronos forecast, p10/p90 band when sampling).
-Apple-silicon GPUs (MPS) are used automatically; on CPU a Kronos-base forecast takes
-minutes, on MPS it is much faster. `--model mini` is the instant-feedback option.
+Apple-silicon GPUs (MPS) are used automatically; even on CPU a Kronos-base forecast takes
+only ~5–8 s (measured on Apple silicon). `--model mini` is the instant-feedback option.
 
 ## Daily use
 

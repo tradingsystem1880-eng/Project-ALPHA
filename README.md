@@ -74,7 +74,8 @@ uv run alpha optim grid AAPL --grid lookback=126,252,504 --grid vol_window=21,63
 uv run alpha backtest portfolio SPY QQQ GLD BTC/USD --weighting inverse_vol
 uv run alpha backtest cross-sectional SPY QQQ IWM GLD USO --top-quantile 0.3
 
-# 7. Kronos foundation-model forecast (opt-in: `uv sync --group kronos`, then pull weights once)
+# 7. Kronos foundation-model forecast (opt-in: `uv sync --group kronos`, then pull weights once;
+#    macOS one-command setup: docs/KRONOS_QUICKSTART.md)
 uv run alpha forecast pull --model mini
 uv run alpha forecast run BTC/USD --model mini --horizon 30   # next-30-bars OHLCV + p10/p90 band
 
