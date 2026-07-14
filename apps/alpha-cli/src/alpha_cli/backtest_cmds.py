@@ -134,8 +134,6 @@ def portfolio(
     ``--weighting`` is ``equal`` or ``inverse_vol``. Reports the basket's headline metrics +
     Probabilistic Sharpe and each leg's OOS Sharpe; writes a manifest under ``data_dir/portfolio``.
     """
-    import json
-
     from alpha_cli import _portfolio
 
     settings = AlphaSettings()
@@ -175,7 +173,6 @@ def portfolio(
         }
     )
     rdir = settings.data_dir / "portfolio" / run_id
-    rdir.mkdir(parents=True, exist_ok=True)
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
@@ -198,9 +195,7 @@ def portfolio(
             for leg in result.legs
         ],
     }
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    _artifacts.write_manifest(rdir, manifest)
     from alpha_validation import render_returns_tearsheet
 
     render_returns_tearsheet(
@@ -246,8 +241,6 @@ def cross_sectional(
     ``--no-long-short``) shorts the bottom, vol-targeted. Reports OOS metrics + PSR + BCa intervals
     and writes a manifest under ``data_dir/cross_sectional``.
     """
-    import json
-
     from alpha_cli import _cross_sectional
 
     settings = AlphaSettings()
@@ -282,7 +275,6 @@ def cross_sectional(
         }
     )
     rdir = settings.data_dir / "cross_sectional" / run_id
-    rdir.mkdir(parents=True, exist_ok=True)
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
@@ -297,9 +289,7 @@ def cross_sectional(
         "sharpe_ci": {"lower": result.sharpe_ci.lower, "upper": result.sharpe_ci.upper},
         "cagr_ci": {"lower": result.cagr_ci.lower, "upper": result.cagr_ci.upper},
     }
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    _artifacts.write_manifest(rdir, manifest)
     book = "long-short" if long_short else "long-only"
     from alpha_validation import render_returns_tearsheet
 

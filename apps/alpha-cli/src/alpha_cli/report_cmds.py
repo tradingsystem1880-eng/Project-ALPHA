@@ -14,9 +14,8 @@ from typing import Any
 
 import typer
 
+from alpha_cli._artifacts import RUN_DIRS
 from alpha_core.config import AlphaSettings
-
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 
 
 def _fmt(x: Any) -> str:
@@ -25,7 +24,7 @@ def _fmt(x: Any) -> str:
 
 
 def _find_manifest(data_dir: Path, run_id: str) -> dict[str, Any] | None:
-    for sub in _RUN_DIRS:
+    for sub in RUN_DIRS:
         path = data_dir / sub / run_id / "manifest.json"
         if path.exists():
             result: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
@@ -40,7 +39,7 @@ def report(run_id: str) -> None:
     manifest = _find_manifest(settings.data_dir, run_id)
     if manifest is None:
         raise typer.BadParameter(
-            f"no run {run_id!r} under {settings.data_dir} ({'/'.join(_RUN_DIRS)})"
+            f"no run {run_id!r} under {settings.data_dir} ({'/'.join(RUN_DIRS)})"
         )
 
     metadata = manifest.get("metadata", {})

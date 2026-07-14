@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 import typer
 
-from alpha_cli import _runner
+from alpha_cli import _artifacts, _runner
 from alpha_core import Bar, DataError
 from alpha_core.config import AlphaSettings
 from alpha_forecast import resolve_model, training_overlap_warning
@@ -183,10 +183,7 @@ def run(
         "leakage_warning": warning,
     }
     rdir = settings.data_dir / "forecast" / run_id
-    rdir.mkdir(parents=True, exist_ok=True)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    _artifacts.write_manifest(rdir, manifest)
     _bars_frame(result.path, p10=result.close_p10, p90=result.close_p90).write_parquet(
         rdir / "forecast.parquet"
     )

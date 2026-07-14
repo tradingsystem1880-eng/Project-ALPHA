@@ -21,6 +21,10 @@ from alpha_core import DataError
 if TYPE_CHECKING:
     from alpha_backtest.results import Trade
 
+# every run-type subdirectory the CLI writes under data_dir; `alpha report`, the MCP read
+# tools, and the web IDE all search runs across exactly this registry
+RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
+
 # schema for an EMPTY trade log (no rows to infer dtypes from); non-empty infers from the rows
 _EMPTY_TRADES_SCHEMA: dict[str, pl.DataType] = {
     "instrument_id": pl.String(),
@@ -40,6 +44,14 @@ def run_dir(data_dir: Path, run_id: str) -> Path:
     return data_dir / "runs" / run_id
 
 
+def write_manifest(rdir: Path, manifest: dict[str, Any]) -> None:
+    """Write the byte-stable ``manifest.json`` (sorted keys, ``allow_nan=False``) into ``rdir``."""
+    rdir.mkdir(parents=True, exist_ok=True)
+    (rdir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
+    )
+
+
 def write_run(
     rdir: Path,
     *,
@@ -48,10 +60,7 @@ def write_run(
     trades: Sequence[Trade],
 ) -> None:
     """Write ``manifest.json`` + ``equity_curve.parquet`` + ``trades.parquet`` into ``rdir``."""
-    rdir.mkdir(parents=True, exist_ok=True)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    write_manifest(rdir, manifest)
     pl.DataFrame({"ts": [ts for ts, _ in equity], "equity": [v for _, v in equity]}).write_parquet(
         rdir / "equity_curve.parquet"
     )

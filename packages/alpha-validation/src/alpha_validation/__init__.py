@@ -68,7 +68,7 @@ from alpha_validation.tearsheet import (
 from alpha_validation.verdict import VerdictSummary, grade_verdict
 from alpha_validation.walkforward import Split, walk_forward_splits
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "CISummary",

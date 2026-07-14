@@ -11,24 +11,23 @@ import json
 from pathlib import Path
 from typing import Any
 
-# the run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
+from alpha_cli._artifacts import RUN_DIRS
 
 
 def get_run(run_id: str, *, data_dir: Path) -> dict[str, Any]:
     """Return a stored run's manifest by id, searching every run-type dir. Fail loud if absent."""
-    for sub in _RUN_DIRS:
+    for sub in RUN_DIRS:
         path = data_dir / sub / run_id / "manifest.json"
         if path.exists():
             result: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
             return result
-    raise FileNotFoundError(f"no run {run_id!r} under {data_dir} ({'/'.join(_RUN_DIRS)})")
+    raise FileNotFoundError(f"no run {run_id!r} under {data_dir} ({'/'.join(RUN_DIRS)})")
 
 
 def list_runs(*, data_dir: Path) -> list[dict[str, Any]]:
     """Index every stored run as ``{run_id, command, label}`` across all run-type dirs."""
     runs: list[dict[str, Any]] = []
-    for sub in _RUN_DIRS:
+    for sub in RUN_DIRS:
         base = data_dir / sub
         if not base.is_dir():
             continue

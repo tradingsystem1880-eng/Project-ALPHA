@@ -13,12 +13,11 @@ from typing import Any
 
 import polars as pl
 
-# run-type subdirectories `alpha` writes to (matches report_cmds._RUN_DIRS)
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
+from alpha_cli._artifacts import RUN_DIRS
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
-    for sub in _RUN_DIRS:
+    for sub in RUN_DIRS:
         rdir = data_dir / sub / run_id
         if (rdir / "manifest.json").exists():
             return rdir
@@ -28,7 +27,7 @@ def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
 def list_runs(*, data_dir: Path) -> list[dict[str, Any]]:
     """Index every stored run for the browser: run_id, command, label, pass/Verdict badges."""
     runs: list[dict[str, Any]] = []
-    for sub in _RUN_DIRS:
+    for sub in RUN_DIRS:
         base = data_dir / sub
         if not base.is_dir():
             continue

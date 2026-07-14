@@ -7,13 +7,12 @@ is flagged rather than trusted. Artifacts land under ``data_dir/optim/<run_id>/m
 
 from __future__ import annotations
 
-import json
 import math
 from typing import Annotated, Any
 
 import typer
 
-from alpha_cli import _optim, _runner, _strategies
+from alpha_cli import _artifacts, _optim, _runner, _strategies
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -151,11 +150,8 @@ def grid(
         raise typer.BadParameter(str(exc)) from exc
 
     rdir = settings.data_dir / "optim" / run_id
-    rdir.mkdir(parents=True, exist_ok=True)
     manifest = _manifest(result, run_id=run_id, symbol=symbol, snapshot_id=snapshot_id)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    _artifacts.write_manifest(rdir, manifest)
 
     verdict = "PASS" if result.passed else "FAIL"
     best = ", ".join(f"{k}={v:g}" for k, v in result.best_config)
