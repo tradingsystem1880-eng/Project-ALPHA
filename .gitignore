@@ -10,8 +10,13 @@ build/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.hypothesis/
+.import_linter_cache/
 .coverage
 htmlcov/
+
+# Claude Code per-machine settings
+.claude/settings.local.json
 
 # uv
 # (uv.lock IS committed — do not ignore it)
