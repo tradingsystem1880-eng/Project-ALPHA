@@ -142,7 +142,7 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 | `_propfirm.py` | Prop-firm run glue (resolve returns from fresh backtest / `--from-run`; resolve preset + overrides) | `run_propfirm`, `resolve_rules`, `PropFirmRunResult` |
 | `_surrogate.py` | Tier-1 engine-free surrogates | `make_surrogate` (generic), `make_ts_momentum_surrogate` |
 | `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
-| `_artifacts.py` | Run-dir layout + manifest/parquet IO | `run_dir`, `write_run`, `read_manifest`, `read_equity` |
+| `_artifacts.py` | Run-dir layout + manifest/parquet IO (single byte-stable manifest writer; run-type registry shared with web/mcp) | `RUN_DIRS`, `run_dir`, `write_manifest`, `write_run`, `read_manifest`, `read_equity` |
 
 ### `alpha_mcp` (`apps/alpha-mcp/src/alpha_mcp/`) — MCP server (top of DAG; subprocesses the `alpha` CLI, composes nothing). Launch: `uv run alpha-mcp` (repo `.mcp.json` auto-launches it in Claude Code).
 | Module | Responsibility | Key public symbols |
