@@ -59,12 +59,15 @@ _MANIFEST: dict[str, Any] = {
             "params": [],
         },
         {
-            "id": "ai-console",
-            "title": "AI Console",
+            "id": "ai-research",
+            "title": "AI Research",
             "component": "AiConsole",
-            "linked": False,
-            "data": [{"endpoint": "/api/jobs", "method": "POST"}],
-            "params": [],
+            "linked": True,
+            "data": [
+                {"endpoint": "/api/research/compare", "method": "GET"},
+                {"endpoint": "/api/jobs", "method": "POST"},
+            ],
+            "params": [{"name": "symbol", "type": "symbol", "default": None}],
         },
         {
             "id": "workspaces",

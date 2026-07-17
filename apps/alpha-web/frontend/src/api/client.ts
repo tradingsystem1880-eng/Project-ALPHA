@@ -10,6 +10,7 @@ import type {
   JobSummary,
   OptionCurve,
   OptionGreeks,
+  ResearchReport,
   RiskReport,
   RunDetail,
   RunList,
@@ -81,4 +82,6 @@ export const api = {
     getJSON(`/api/screener/quote?symbol=${encodeURIComponent(symbol)}`),
   screenerNews: (symbol: string, days = 7, limit = 20): Promise<ScreenerNews> =>
     getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
+  researchCompare: (symbol: string): Promise<ResearchReport> =>
+    getJSON(`/api/research/compare?symbol=${encodeURIComponent(symbol)}`),
 }

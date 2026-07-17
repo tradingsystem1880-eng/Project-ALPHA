@@ -22,6 +22,7 @@ from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import manifest as manifest_api
 from alpha_web.api import options as options_api
+from alpha_web.api import research as research_api
 from alpha_web.api import risk as risk_api
 from alpha_web.api import runs as runs_api
 from alpha_web.api import screener as screener_api
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(options_api.router)
     app.include_router(risk_api.router)
     app.include_router(screener_api.router)
+    app.include_router(research_api.router)
 
     def _spa() -> FileResponse:
         if not _APP_INDEX.exists():

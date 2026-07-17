@@ -165,8 +165,9 @@ auth) — a dockable, multi-workspace research terminal (Bloomberg / OpenBB clas
 - **Options** — Black-Scholes greeks + a price/delta-vs-spot curve.
 - **Risk** — stress a run under vol-scaling and tail-shock scenarios (follows the selected run).
 - **Screener** — finnhub quote + news for the linked symbol (opt-in; set `ALPHA_FINNHUB_API_KEY`).
-- **Data Explorer** · **Workspaces** (save/load layouts) · **AI Console** (run any `alpha` command,
-  or pair with the MCP server for natural-language control).
+- **AI Research** — a $0 strategy-comparison leaderboard + a bridge to the MCP server for true
+  conversational, multi-agent research (no API key), plus a free-form command console.
+- **Data Explorer** · **Workspaces** (save/load layouts).
 - ⌘K command palette, global symbol search, dockable/floating panels, dark theme.
 
 Thin **FastAPI JSON+SSE** backend + a **Vite/React/Dockview** single-page app. Like the MCP server

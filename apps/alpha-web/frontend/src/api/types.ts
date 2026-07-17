@@ -193,6 +193,20 @@ export interface ScreenerNews {
   items: ScreenerNewsItem[]
 }
 
+export interface ResearchRow {
+  strategy: string
+  total_return: number | null
+  final_equity?: number
+  n_trades?: number
+  error: string | null
+}
+
+export interface ResearchReport {
+  symbol: string
+  n_bars: number
+  ranked: ResearchRow[]
+}
+
 export interface OptionGreeks {
   spot: number
   strike: number

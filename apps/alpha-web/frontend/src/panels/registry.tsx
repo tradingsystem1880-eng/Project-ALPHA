@@ -43,6 +43,6 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'OptionsGreeks', title: 'Options', hint: 'greeks' },
   { component: 'RiskMonitor', title: 'Risk', hint: 'scenarios' },
   { component: 'Screener', title: 'Screener', hint: 'quote·news' },
-  { component: 'AiConsole', title: 'AI Console', hint: 'command' },
+  { component: 'AiConsole', title: 'AI Research', hint: 'compare·console' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
 ]
