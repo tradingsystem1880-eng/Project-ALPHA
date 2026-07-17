@@ -5,19 +5,15 @@ import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { ScreenerNewsItem, ScreenerQuote } from '../api/types'
-import { setLinked, useLinked } from '../context/linked'
+import { setLinked, useLinkedField } from '../context/linked'
 import { fmtNum, fmtTime } from '../util/format'
+import { Placeholder } from '../components/Placeholder'
 
 export function Screener() {
-  const linked = useLinked()
-  const [symbol, setSymbol] = useState(linked.symbol ?? 'AAPL')
+  const [symbol, setSymbol] = useLinkedField('symbol', 'AAPL')
   const [quote, setQuote] = useState<ScreenerQuote | null>(null)
   const [news, setNews] = useState<ScreenerNewsItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (linked.symbol) setSymbol(linked.symbol)
-  }, [linked.symbol])
 
   useEffect(() => {
     if (!symbol) return
@@ -59,7 +55,7 @@ export function Screener() {
             <strong>Screener needs a finnhub key.</strong> {error}
           </div>
         ) : !quote ? (
-          <div className="placeholder">loading…</div>
+          <Placeholder>loading…</Placeholder>
         ) : (
           <>
             <div className="quote-hero">

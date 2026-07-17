@@ -49,6 +49,15 @@ def run_dir(data_dir: Path, run_id: str, kind: str = "runs") -> Path:
     return data_dir / kind / run_id
 
 
+def find_run_dir(data_dir: Path, run_id: str) -> Path | None:
+    """Locate a run's directory across all ``RUN_DIRS`` by its manifest (``None`` if absent)."""
+    for kind in RUN_DIRS:
+        rdir = run_dir(data_dir, run_id, kind)
+        if (rdir / "manifest.json").exists():
+            return rdir
+    return None
+
+
 def write_manifest(rdir: Path, manifest: dict[str, Any]) -> None:
     """Write the byte-stable ``manifest.json`` (sorted keys, ``allow_nan=False``) into ``rdir``."""
     rdir.mkdir(parents=True, exist_ok=True)

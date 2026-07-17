@@ -6,13 +6,12 @@ import { useState } from 'react'
 
 import { api } from '../api/client'
 import type { ResearchRow } from '../api/types'
-import { useLinked } from '../context/linked'
+import { useLinkedField } from '../context/linked'
 import { JobConsole } from '../components/JobConsole'
 import { fmtNum, fmtPct } from '../util/format'
 
 export function AiConsole() {
-  const linked = useLinked()
-  const [symbol, setSymbol] = useState(linked.symbol ?? 'SPY')
+  const [symbol, setSymbol] = useLinkedField('symbol', 'SPY')
   const [ranked, setRanked] = useState<ResearchRow[] | null>(null)
   const [researching, setResearching] = useState(false)
   const [researchErr, setResearchErr] = useState<string | null>(null)

@@ -25,20 +25,12 @@ def scenario(
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Re-evaluate risk under vol-scaling and tail-shock scenarios for a stored run."""
-    from alpha_cli import RUN_DIRS
-    from alpha_cli._artifacts import read_equity, run_dir
+    from alpha_cli._artifacts import find_run_dir, read_equity
     from alpha_validation import scenario_metrics
     from alpha_validation.metrics import to_returns
 
     data_dir = AlphaSettings().data_dir
-    rdir = next(
-        (
-            run_dir(data_dir, from_run, kind=kind)
-            for kind in RUN_DIRS
-            if (run_dir(data_dir, from_run, kind=kind) / "manifest.json").exists()
-        ),
-        None,
-    )
+    rdir = find_run_dir(data_dir, from_run)
     if rdir is None:
         raise typer.BadParameter(f"no run {from_run!r} found")
     try:

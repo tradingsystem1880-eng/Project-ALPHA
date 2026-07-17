@@ -31,7 +31,7 @@ def _write_run(
         pl.DataFrame({"ts": ts, "equity": equity}).write_parquet(rdir / "equity_curve.parquet")
 
 
-def test_list_runs_indexes_every_run_type(tmp_path: Path) -> None:
+def test_query_runs_indexes_every_run_type(tmp_path: Path) -> None:
     _write_run(
         tmp_path,
         "runs",
@@ -41,27 +41,29 @@ def test_list_runs_indexes_every_run_type(tmp_path: Path) -> None:
     _write_run(
         tmp_path, "propfirm", "bbbb000000000002", {"command": "propfirm", "source": "symbol:AAPL"}
     )
-    runs = {r["run_id"]: r for r in _runs.list_runs(data_dir=tmp_path)}
-    assert set(runs) == {"aaaa000000000001", "bbbb000000000002"}
+    body = _runs.query_runs(data_dir=tmp_path)
+    runs = {r["run_id"]: r for r in body["items"]}
+    assert body["total"] == 2 and set(runs) == {"aaaa000000000001", "bbbb000000000002"}
     assert runs["aaaa000000000001"]["command"] == "validate"
     assert runs["aaaa000000000001"]["label"] == "SPY"
-    assert runs["aaaa000000000001"]["passed"] is True
+    assert runs["aaaa000000000001"]["kind"] == "runs"
     assert runs["bbbb000000000002"]["label"] == "symbol:AAPL"
 
 
-def test_get_run_returns_manifest_or_fails_loud(tmp_path: Path) -> None:
+def test_run_detail_returns_manifest_or_fails_loud(tmp_path: Path) -> None:
     _write_run(
         tmp_path,
         "runs",
         "cccc000000000003",
         {"command": "backtest_run", "run_id": "cccc000000000003"},
     )
-    assert _runs.get_run("cccc000000000003", data_dir=tmp_path)["command"] == "backtest_run"
+    detail = _runs.run_detail("cccc000000000003", data_dir=tmp_path)
+    assert detail["manifest"]["command"] == "backtest_run" and detail["kind"] == "runs"
     with pytest.raises(FileNotFoundError):
-        _runs.get_run("nope", data_dir=tmp_path)
+        _runs.run_detail("nope", data_dir=tmp_path)
 
 
-def test_equity_values_reads_the_parquet(tmp_path: Path) -> None:
+def test_equity_series_reads_the_parquet(tmp_path: Path) -> None:
     _write_run(
         tmp_path,
         "runs",
@@ -69,15 +71,14 @@ def test_equity_values_reads_the_parquet(tmp_path: Path) -> None:
         {"command": "backtest_run"},
         equity=[100.0, 101.0, 99.5],
     )
-    vals = _runs.equity_values("dddd000000000004", data_dir=tmp_path)
-    assert vals == [100.0, 101.0, 99.5]
+    series = _runs.equity_series("dddd000000000004", data_dir=tmp_path)
+    assert series["equity"] == [100.0, 101.0, 99.5]
+    assert len(series["ts"]) == 3 and len(series["drawdown"]) == 3
 
 
-def test_equity_values_is_empty_without_a_curve(tmp_path: Path) -> None:
-    _write_run(
-        tmp_path, "optim", "eeee000000000005", {"command": "optim_grid"}
-    )  # no equity parquet
-    assert _runs.equity_values("eeee000000000005", data_dir=tmp_path) == []
+def test_equity_series_is_empty_without_a_curve(tmp_path: Path) -> None:
+    _write_run(tmp_path, "optim", "eeee000000000005", {"command": "optim_grid"})  # no curve
+    assert _runs.equity_series("eeee000000000005", data_dir=tmp_path)["equity"] == []
 
 
 def test_tearsheet_file_present_only_when_written(tmp_path: Path) -> None:

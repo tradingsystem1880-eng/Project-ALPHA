@@ -20,7 +20,6 @@ from fastapi.staticfiles import StaticFiles
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
-from alpha_web.api import manifest as manifest_api
 from alpha_web.api import options as options_api
 from alpha_web.api import research as research_api
 from alpha_web.api import risk as risk_api
@@ -41,7 +40,6 @@ def create_app() -> FastAPI:
     app.include_router(jobs_api.router)
     app.include_router(catalog_api.router)
     app.include_router(candles_api.router)
-    app.include_router(manifest_api.router)
     app.include_router(workspaces_api.router)
     app.include_router(options_api.router)
     app.include_router(risk_api.router)

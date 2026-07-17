@@ -65,22 +65,20 @@ def bs_greeks(spot: float, strike: float, rate: float, vol: float, t: float, kin
     disc = math.exp(-rate * t)
     gamma = pdf / (spot * vol * sqrt_t)
     vega = spot * pdf * sqrt_t / 100.0
+    # reuse the cdf values below for both greeks and the price (avoids re-calling bs_price → _check)
     if kind == "call":
-        delta = float(norm.cdf(d1))
-        theta = (-(spot * pdf * vol) / (2 * sqrt_t) - rate * strike * disc * norm.cdf(d2)) / 365.0
-        rho = strike * t * disc * float(norm.cdf(d2)) / 100.0
+        cdf_d1, cdf_d2 = float(norm.cdf(d1)), float(norm.cdf(d2))
+        price = spot * cdf_d1 - strike * disc * cdf_d2
+        delta = cdf_d1
+        theta = (-(spot * pdf * vol) / (2 * sqrt_t) - rate * strike * disc * cdf_d2) / 365.0
+        rho = strike * t * disc * cdf_d2 / 100.0
     else:
+        cdf_neg_d1, cdf_neg_d2 = float(norm.cdf(-d1)), float(norm.cdf(-d2))
+        price = strike * disc * cdf_neg_d2 - spot * cdf_neg_d1
         delta = float(norm.cdf(d1)) - 1.0
-        theta = (-(spot * pdf * vol) / (2 * sqrt_t) + rate * strike * disc * norm.cdf(-d2)) / 365.0
-        rho = -strike * t * disc * float(norm.cdf(-d2)) / 100.0
-    return Greeks(
-        price=bs_price(spot, strike, rate, vol, t, kind),
-        delta=delta,
-        gamma=gamma,
-        vega=vega,
-        theta=float(theta),
-        rho=rho,
-    )
+        theta = (-(spot * pdf * vol) / (2 * sqrt_t) + rate * strike * disc * cdf_neg_d2) / 365.0
+        rho = -strike * t * disc * cdf_neg_d2 / 100.0
+    return Greeks(price=price, delta=delta, gamma=gamma, vega=vega, theta=float(theta), rho=rho)
 
 
 def implied_vol(

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { setLinked } from '../context/linked'
 import { JobConsole } from '../components/JobConsole'
+import { Placeholder } from '../components/Placeholder'
 
 export function DataExplorer() {
   const [symbols, setSymbols] = useState<string[] | null>(null)
@@ -42,7 +43,7 @@ export function DataExplorer() {
       <div className="panel-body panel-pad de">
         <div className="rd-head">Stored symbols</div>
         {symbols === null ? (
-          <div className="placeholder">loading…</div>
+          <Placeholder>loading…</Placeholder>
         ) : symbols.length === 0 ? (
           <div className="muted">No symbols stored yet — pull some below.</div>
         ) : (

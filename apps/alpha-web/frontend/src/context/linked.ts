@@ -3,7 +3,7 @@
 // A module-level store (not React context) so it works across Dockview's panel portals: any panel
 // can read it with useLinked() and any producer (run/symbol select) can broadcast with setLinked().
 
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 export interface LinkedState {
   symbol: string | null
@@ -33,4 +33,18 @@ function subscribe(cb: () => void): () => void {
 
 export function useLinked(): LinkedState {
   return useSyncExternalStore(subscribe, getLinked, getLinked)
+}
+
+// Local state for a panel input that seeds from, and follows, one linked-context field. The panel
+// still calls setLinked({...}) itself to broadcast a new value to other panels.
+export function useLinkedField(
+  field: keyof LinkedState,
+  fallback: string,
+): [string, (value: string) => void] {
+  const current = useLinked()[field]
+  const [value, setValue] = useState(current ?? fallback)
+  useEffect(() => {
+    if (current) setValue(current)
+  }, [current])
+  return [value, setValue]
 }

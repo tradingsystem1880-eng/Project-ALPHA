@@ -113,27 +113,6 @@ export interface JobDetail extends JobSummary {
   lines: string[]
 }
 
-export interface PanelParam {
-  name: string
-  type: string
-  default: unknown
-}
-
-export interface PanelDef {
-  id: string
-  title: string
-  component: string
-  linked: boolean
-  data: { endpoint: string; method: string }[]
-  params: PanelParam[]
-}
-
-export interface AppsManifest {
-  panels: PanelDef[]
-  commands: string
-  strategies: string
-}
-
 export type TradeRow = Record<string, string | number | null>
 
 export interface WorkspaceMeta {

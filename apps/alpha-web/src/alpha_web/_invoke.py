@@ -50,7 +50,6 @@ class Job:
         self.args = list(args)
         self.command_str = " ".join(args)
         self.run_type = run_type
-        self.kind = run_type
         self.created_at = time.time()  # memory-only wall-clock; never enters a byte-stable manifest
         self.lines: list[str] = []
         self.finished = False
@@ -93,7 +92,7 @@ class Job:
         return {
             "job_id": self.job_id,
             "command": self.command_str,
-            "kind": self.kind,
+            "kind": self.run_type,
             "status": self.status,
             "created_at": self.created_at,
             "run_id": self.run_id,

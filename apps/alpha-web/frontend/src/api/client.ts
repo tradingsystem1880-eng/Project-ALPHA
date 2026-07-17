@@ -1,7 +1,6 @@
 // Thin typed client over the FastAPI JSON layer. Same-origin (loopback), so no base URL.
 
 import type {
-  AppsManifest,
   Candles,
   CommandDef,
   EquitySeries,
@@ -43,7 +42,6 @@ export const api = {
   strategies: (): Promise<StrategyDef[]> => getJSON('/api/strategies'),
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
-  apps: (): Promise<AppsManifest> => getJSON('/api/apps'),
   jobs: (): Promise<JobSummary[]> => getJSON('/api/jobs'),
   job: (id: string): Promise<JobDetail> => getJSON(`/api/jobs/${id}`),
   async launch(command: string, args: string): Promise<{ job_id: string; status: string }> {

@@ -8,8 +8,9 @@ import type uPlot from 'uplot'
 
 import { api } from '../api/client'
 import type { EquitySeries, ForecastSeries, RunDetail as RunDetailData, TradeRow } from '../api/types'
-import { CHART } from '../util/chartTheme'
+import { AXIS, CHART } from '../util/chartTheme'
 import { fmtNum, fmtPct } from '../util/format'
+import { Placeholder } from '../components/Placeholder'
 import { UplotChart } from '../components/UplotChart'
 
 // ---- safe manifest accessors ------------------------------------------------------------------
@@ -79,23 +80,13 @@ function MetricGrid({ metrics }: { metrics: Dict }) {
   return (
     <div className="metric-grid">
       {entries.map(([k, v]) => (
-        <div className="metric" key={k}>
-          <span className="eyebrow">{METRIC_LABEL[k] ?? k}</span>
-          <span className="metric-val num">{fmtNum(v, k === 'sharpe' ? 2 : 4)}</span>
-        </div>
+        <Metric key={k} label={METRIC_LABEL[k] ?? k} value={v} digits={k === 'sharpe' ? 2 : 4} />
       ))}
     </div>
   )
 }
 
 // ---- charts -----------------------------------------------------------------------------------
-
-const AXIS = {
-  stroke: CHART.muted,
-  font: CHART.font,
-  grid: { stroke: CHART.grid, width: 1 },
-  ticks: { stroke: CHART.grid, width: 1 },
-}
 
 function equityOptions(): Omit<uPlot.Options, 'width' | 'height'> {
   return {
@@ -323,9 +314,10 @@ export function RunDetail(props: IDockviewPanelProps) {
     }
   }, [runId])
 
-  if (!runId) return <div className="placeholder">no run selected</div>
-  if (error) return <div className="placeholder"><div className="big">error</div>{error}</div>
-  if (!detail) return <div className="placeholder">loading…</div>
+  if (!runId) return <Placeholder>no run selected</Placeholder>
+  if (error)
+    return <Placeholder big="error">{error}</Placeholder>
+  if (!detail) return <Placeholder>loading…</Placeholder>
 
   const m = detail.manifest
   const verdict = asObj(m.verdict)
@@ -339,9 +331,11 @@ export function RunDetail(props: IDockviewPanelProps) {
   const bestSharpe = asNum(m.best_sharpe)
   const legs = asArr(m.legs)
   const firm = asStr(m.firm)
-  const propfirm = firm ? asObj(m.metrics) : null // propfirm's metrics are pass/bust/payout probs
+  // discriminate on the run's kind, not on the incidental presence of a manifest key
+  const isPropfirm = detail.kind === 'propfirm'
+  const propfirm = isPropfirm ? asObj(m.metrics) : null // metrics = pass/bust/payout probs
   const rules = asObj(m.rules)
-  const oos = asObj(m.oos_metrics) ?? (firm ? null : asObj(m.metrics))
+  const oos = asObj(m.oos_metrics) ?? (isPropfirm ? null : asObj(m.metrics))
   const controls = dsr || cpcv || pbo || rc || spa || bestSharpe !== null
   const command = asStr(m.command) ?? (detail.kind === 'runs' ? 'gauntlet' : detail.kind)
   const leak = asStr(m.leakage_warning)

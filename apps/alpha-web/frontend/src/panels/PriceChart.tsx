@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { Candle } from '../api/types'
 import { setLinked, useLinked } from '../context/linked'
+import { Placeholder } from '../components/Placeholder'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
 
 export function PriceChart() {
@@ -55,19 +56,13 @@ export function PriceChart() {
       </div>
       <div className="panel-body price-body">
         {error ? (
-          <div className="placeholder">
-            <div className="big">no data</div>
-            {error}
-          </div>
+          <Placeholder big="no data">{error}</Placeholder>
         ) : !symbol ? (
-          <div className="placeholder">
-            <div className="big">no symbol</div>
-            Pick one in Data Explorer or a run, or type it above
-          </div>
+          <Placeholder big="no symbol">Pick one in Data Explorer or a run, or type it above</Placeholder>
         ) : !bars ? (
-          <div className="placeholder">loading…</div>
+          <Placeholder>loading…</Placeholder>
         ) : bars.length === 0 ? (
-          <div className="placeholder">no bars in window</div>
+          <Placeholder>no bars in window</Placeholder>
         ) : (
           <PriceChartCanvas bars={bars} />
         )}

@@ -13,3 +13,11 @@ export const CHART = {
   band: 'rgba(79, 141, 255, 0.14)',
   font: '11px "JetBrains Mono", ui-monospace, monospace',
 } as const
+
+// Shared uPlot axis style (spread into per-axis configs, e.g. `{ ...AXIS, scale: 'y' }`).
+export const AXIS = {
+  stroke: CHART.muted,
+  font: CHART.font,
+  grid: { stroke: CHART.grid, width: 1 },
+  ticks: { stroke: CHART.grid, width: 1 },
+}

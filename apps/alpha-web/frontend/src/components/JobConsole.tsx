@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { api } from '../api/client'
+import { shortId } from '../util/format'
 
 type Status = 'running' | 'done' | 'failed' | 'cancelled'
 
@@ -69,7 +70,7 @@ export function JobConsole({ jobId, onRun, onDone }: Props) {
         ) : null}
         {runId ? (
           <button className="btn primary" onClick={() => onRunRef.current?.(runId)}>
-            open run {runId.slice(0, 8)}
+            open run {shortId(runId)}
           </button>
         ) : null}
       </div>

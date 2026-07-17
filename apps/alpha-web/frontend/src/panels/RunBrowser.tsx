@@ -8,6 +8,8 @@ import { api } from '../api/client'
 import type { RunListItem } from '../api/types'
 import { setLinked } from '../context/linked'
 import { fmtTime, shortId } from '../util/format'
+import { Placeholder } from '../components/Placeholder'
+import { openRunDetail } from './actions'
 
 export function RunBrowser(props: IDockviewPanelProps) {
   const [items, setItems] = useState<RunListItem[] | null>(null)
@@ -31,18 +33,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
   }
 
   function openDetail(run: RunListItem): void {
-    const id = `run-detail-${run.run_id}`
-    const existing = props.containerApi.getPanel(id)
-    if (existing) {
-      existing.api.setActive()
-      return
-    }
-    props.containerApi.addPanel({
-      id,
-      component: 'RunDetail',
-      title: shortId(run.run_id),
-      params: { runId: run.run_id },
-    })
+    openRunDetail(props.containerApi, run.run_id)
   }
 
   return (
@@ -53,17 +44,13 @@ export function RunBrowser(props: IDockviewPanelProps) {
       </div>
       <div className="panel-body">
         {error ? (
-          <div className="placeholder">
-            <div className="big">error</div>
-            {error}
-          </div>
+          <Placeholder big="error">{error}</Placeholder>
         ) : items === null ? (
-          <div className="placeholder">loading…</div>
+          <Placeholder>loading…</Placeholder>
         ) : items.length === 0 ? (
-          <div className="placeholder">
-            <div className="big">no runs yet</div>
+          <Placeholder big="no runs yet">
             Launch one from the console or CLI, e.g. <code>alpha backtest run SPY</code>
-          </div>
+          </Placeholder>
         ) : (
           <table className="blotter">
             <thead>

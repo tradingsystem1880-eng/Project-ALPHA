@@ -97,7 +97,6 @@ def _command_catalog() -> list[dict[str, Any]]:
         args: list[dict[str, Any]] = []
         options: list[dict[str, Any]] = []
         for param in cmd.params:
-            choices = getattr(param.type, "choices", None)
             if param.param_type_name == "argument":
                 args.append(
                     {
@@ -108,6 +107,7 @@ def _command_catalog() -> list[dict[str, Any]]:
                     }
                 )
             else:  # option
+                choices = getattr(param.type, "choices", None)
                 options.append(
                     {
                         "name": param.name,

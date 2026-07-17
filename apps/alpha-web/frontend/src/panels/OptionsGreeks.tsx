@@ -6,16 +6,9 @@ import type uPlot from 'uplot'
 
 import { api } from '../api/client'
 import type { OptionCurvePoint, OptionGreeks as Greeks } from '../api/types'
-import { CHART } from '../util/chartTheme'
+import { AXIS, CHART } from '../util/chartTheme'
 import { fmtNum } from '../util/format'
 import { UplotChart } from '../components/UplotChart'
-
-const AXIS = {
-  stroke: CHART.muted,
-  font: CHART.font,
-  grid: { stroke: CHART.grid, width: 1 },
-  ticks: { stroke: CHART.grid, width: 1 },
-}
 
 function curveOptions(): Omit<uPlot.Options, 'width' | 'height'> {
   return {
@@ -55,18 +48,30 @@ export function OptionsGreeks() {
   const [curve, setCurve] = useState<OptionCurvePoint[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // greeks depend on spot — refetch on any input
   useEffect(() => {
     let live = true
     const timer = setTimeout(() => {
       setError(null)
-      const g = new URLSearchParams({ spot, strike, vol, days, rate, kind })
+      const q = new URLSearchParams({ spot, strike, vol, days, rate, kind })
       api
-        .optionsGreeks(g.toString())
+        .optionsGreeks(q.toString())
         .then((r) => live && setGreeks(r))
         .catch((e: unknown) => live && setError(String(e)))
-      const c = new URLSearchParams({ strike, vol, days, rate, kind, points: '61' })
+    }, 180)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [spot, strike, vol, days, rate, kind])
+
+  // the curve is spot-independent — only refetch when its inputs change
+  useEffect(() => {
+    let live = true
+    const timer = setTimeout(() => {
+      const q = new URLSearchParams({ strike, vol, days, rate, kind, points: '61' })
       api
-        .optionsCurve(c.toString())
+        .optionsCurve(q.toString())
         .then((r) => live && setCurve(r.points))
         .catch(() => live && setCurve(null))
     }, 180)
@@ -74,7 +79,7 @@ export function OptionsGreeks() {
       live = false
       clearTimeout(timer)
     }
-  }, [spot, strike, vol, days, rate, kind])
+  }, [strike, vol, days, rate, kind])
 
   const data = useMemo<uPlot.AlignedData | null>(
     () =>

@@ -5,18 +5,14 @@ import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { RiskScenario } from '../api/types'
-import { useLinked } from '../context/linked'
+import { useLinkedField } from '../context/linked'
 import { fmtNum, fmtPct } from '../util/format'
+import { Placeholder } from '../components/Placeholder'
 
 export function RiskMonitor() {
-  const linked = useLinked()
-  const [runId, setRunId] = useState(linked.runId ?? '')
+  const [runId, setRunId] = useLinkedField('runId', '')
   const [scenarios, setScenarios] = useState<RiskScenario[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (linked.runId) setRunId(linked.runId)
-  }, [linked.runId])
 
   useEffect(() => {
     if (!runId) {
@@ -50,17 +46,11 @@ export function RiskMonitor() {
       </div>
       <div className="panel-body">
         {error ? (
-          <div className="placeholder">
-            <div className="big">no data</div>
-            {error}
-          </div>
+          <Placeholder big="no data">{error}</Placeholder>
         ) : !runId ? (
-          <div className="placeholder">
-            <div className="big">no run</div>
-            Select a run in the browser (or paste a run id)
-          </div>
+          <Placeholder big="no run">Select a run in the browser (or paste a run id)</Placeholder>
         ) : !scenarios ? (
-          <div className="placeholder">loading…</div>
+          <Placeholder>loading…</Placeholder>
         ) : (
           <table className="blotter">
             <thead>
