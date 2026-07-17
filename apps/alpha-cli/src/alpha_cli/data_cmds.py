@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 
 import typer
@@ -81,6 +81,43 @@ def snapshot(snapshot_id: str, symbols: list[str], source: str = "yfinance") -> 
     except DataError as exc:  # e.g. a symbol with no bars in the store
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"snapshot {snapshot_id} created for {symbols}")
+
+
+@data_app.command()
+def candles(
+    symbol: str,
+    start: str = typer.Option(None, help="lower bound YYYY-MM-DD (inclusive)"),
+    end: str = typer.Option(None, help="as-of cutoff YYYY-MM-DD (inclusive)"),
+    snapshot: str = typer.Option(None, help="snapshot id for provenance"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Point-in-time OHLCV candles for SYMBOL (split-adjusted; ``--end`` is an as-of cutoff).
+
+    Reads through the same look-ahead firewall a backtest uses, so a chart can never show a bar past
+    its window nor a split not yet known at ``--end``.
+    """
+    from alpha_cli._runner import load_bars
+
+    try:
+        when = datetime.combine(date.fromisoformat(end), time.max, tzinfo=UTC) if end else None
+        lower = date.fromisoformat(start) if start else None
+    except ValueError as exc:
+        raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
+    try:
+        bars, snap = load_bars(
+            symbol, data_dir=AlphaSettings().data_dir, snapshot_id=snapshot, as_of=when
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    rows = [
+        {"t": b.ts.timestamp(), "o": b.open, "h": b.high, "l": b.low, "c": b.close, "v": b.volume}
+        for b in bars
+        if lower is None or b.ts.date() >= lower
+    ]
+    if json_out:
+        typer.echo(json.dumps({"symbol": symbol, "snapshot_id": snap, "bars": rows}))
+    else:
+        typer.echo(f"{symbol}: {len(rows)} candles")
 
 
 @data_app.command()

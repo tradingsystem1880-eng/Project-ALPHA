@@ -20,6 +20,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from alpha_core.config import AlphaSettings
 from alpha_web import _charts, _invoke, _runs
+from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import runs as runs_api
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(runs_api.router)
     app.include_router(jobs_api.router)
     app.include_router(catalog_api.router)
+    app.include_router(candles_api.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
