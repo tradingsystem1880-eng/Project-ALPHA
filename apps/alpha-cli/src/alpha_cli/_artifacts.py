@@ -115,6 +115,32 @@ def write_equity_curve(
     frame.write_parquet(rdir / "equity_curve.parquet")
 
 
+def write_nulls(rdir: Path, *, tiers: Sequence[tuple[str, Sequence[float]]]) -> None:
+    """Write ``nulls.parquet`` — the raw per-tier null distributions behind a gauntlet run.
+
+    One row per (tier, path): ``tier`` String, ``path_index`` Int64, ``statistic`` Float64,
+    sorted by (tier, path_index) regardless of caller order. Statistics are finite by construction
+    (the null generators fail loud on non-finite paths). Deterministic: fixed column order, pinned
+    dtypes, no wall-clock. Callers must write this BEFORE the manifest (the run-exists marker).
+    """
+    names = [name for name, _ in tiers]
+    if len(set(names)) != len(names):
+        raise DataError(f"duplicate null tiers: {names}")
+    tier_col: list[str] = []
+    idx_col: list[int] = []
+    stat_col: list[float] = []
+    for name, stats in sorted(tiers, key=lambda pair: pair[0]):
+        tier_col.extend([name] * len(stats))
+        idx_col.extend(range(len(stats)))
+        stat_col.extend(float(v) for v in stats)
+    frame = pl.DataFrame(
+        {"tier": tier_col, "path_index": idx_col, "statistic": stat_col},
+        schema={"tier": pl.String(), "path_index": pl.Int64(), "statistic": pl.Float64()},
+    )
+    rdir.mkdir(parents=True, exist_ok=True)
+    frame.write_parquet(rdir / "nulls.parquet")
+
+
 def write_run(
     rdir: Path,
     *,
