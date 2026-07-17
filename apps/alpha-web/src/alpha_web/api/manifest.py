@@ -93,6 +93,17 @@ _MANIFEST: dict[str, Any] = {
             "data": [{"endpoint": "/api/risk/scenario", "method": "GET"}],
             "params": [{"name": "run_id", "type": "run", "default": None}],
         },
+        {
+            "id": "screener",
+            "title": "Screener",
+            "component": "Screener",
+            "linked": True,
+            "data": [
+                {"endpoint": "/api/screener/quote", "method": "GET"},
+                {"endpoint": "/api/screener/news", "method": "GET"},
+            ],
+            "params": [{"name": "symbol", "type": "symbol", "default": None}],
+        },
     ],
     "commands": "/api/commands",
     "strategies": "/api/strategies",

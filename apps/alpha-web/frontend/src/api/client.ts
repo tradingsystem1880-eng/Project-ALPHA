@@ -13,6 +13,8 @@ import type {
   RiskReport,
   RunDetail,
   RunList,
+  ScreenerNews,
+  ScreenerQuote,
   StrategyDef,
   TradeRow,
   WorkspaceDoc,
@@ -75,4 +77,8 @@ export const api = {
   optionsCurve: (query: string): Promise<OptionCurve> => getJSON(`/api/options/curve?${query}`),
   riskScenario: (runId: string, confidence = 0.95): Promise<RiskReport> =>
     getJSON(`/api/risk/scenario?run_id=${encodeURIComponent(runId)}&confidence=${confidence}`),
+  screenerQuote: (symbol: string): Promise<ScreenerQuote> =>
+    getJSON(`/api/screener/quote?symbol=${encodeURIComponent(symbol)}`),
+  screenerNews: (symbol: string, days = 7, limit = 20): Promise<ScreenerNews> =>
+    getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
 }

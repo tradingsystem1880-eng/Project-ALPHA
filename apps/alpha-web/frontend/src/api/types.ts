@@ -169,6 +169,30 @@ export interface RiskReport {
   scenarios: RiskScenario[]
 }
 
+export interface ScreenerQuote {
+  symbol: string
+  current: number
+  change: number
+  percent_change: number
+  high: number
+  low: number
+  open: number
+  prev_close: number
+}
+
+export interface ScreenerNewsItem {
+  headline: string
+  source: string
+  url: string
+  datetime: number
+  summary: string
+}
+
+export interface ScreenerNews {
+  symbol: string
+  items: ScreenerNewsItem[]
+}
+
 export interface OptionGreeks {
   spot: number
   strike: number

@@ -10,6 +10,7 @@ import { OptionsGreeks } from './OptionsGreeks'
 import { PriceChart } from './PriceChart'
 import { RiskMonitor } from './RiskMonitor'
 import { RunBrowser } from './RunBrowser'
+import { Screener } from './Screener'
 import { RunDetail } from './RunDetail'
 import { StrategyLab } from './StrategyLab'
 import { Workspaces } from './Workspaces'
@@ -28,6 +29,7 @@ export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   DataExplorer,
   OptionsGreeks,
   RiskMonitor,
+  Screener,
   Workspaces,
   AiConsole,
 }
@@ -40,6 +42,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },
   { component: 'OptionsGreeks', title: 'Options', hint: 'greeks' },
   { component: 'RiskMonitor', title: 'Risk', hint: 'scenarios' },
+  { component: 'Screener', title: 'Screener', hint: 'quote·news' },
   { component: 'AiConsole', title: 'AI Console', hint: 'command' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
 ]

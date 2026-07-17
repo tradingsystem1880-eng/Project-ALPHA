@@ -24,6 +24,7 @@ from alpha_web.api import manifest as manifest_api
 from alpha_web.api import options as options_api
 from alpha_web.api import risk as risk_api
 from alpha_web.api import runs as runs_api
+from alpha_web.api import screener as screener_api
 from alpha_web.api import workspaces as workspaces_api
 
 _PKG = Path(__file__).resolve().parent
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(workspaces_api.router)
     app.include_router(options_api.router)
     app.include_router(risk_api.router)
+    app.include_router(screener_api.router)
 
     def _spa() -> FileResponse:
         if not _APP_INDEX.exists():
