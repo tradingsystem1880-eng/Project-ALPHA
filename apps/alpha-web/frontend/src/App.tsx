@@ -30,7 +30,7 @@ export function App() {
       }
     }
     if (!restored) {
-      event.api.addPanel({ id: 'run-browser', component: 'RunBrowser', title: 'Run Browser' })
+      event.api.addPanel({ id: 'RunBrowser-0', component: 'RunBrowser', title: 'Run Browser' })
     }
     event.api.onDidLayoutChange(() => {
       try {
@@ -44,7 +44,8 @@ export function App() {
   const openPanel = useCallback((component: string, title: string) => {
     const dv = dockRef.current
     if (!dv) return
-    const existing = dv.panels.find((p) => p.id.startsWith(component))
+    // singleton panels share the `${Component}-${n}` id scheme (incl. the default RunBrowser-0)
+    const existing = dv.panels.find((p) => p.id.startsWith(`${component}-`))
     if (existing) {
       existing.api.setActive()
       return

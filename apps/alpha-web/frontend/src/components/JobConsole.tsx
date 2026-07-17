@@ -47,7 +47,8 @@ export function JobConsole({ jobId, onRun, onDone }: Props) {
       setStatus('cancelled')
       es.close()
     })
-    es.onerror = () => es.close()
+    // Don't close on a transient error — let EventSource auto-reconnect; it resends Last-Event-ID
+    // so the backend replays only the lines missed (a terminal event above already closed us).
     return () => es.close()
   }, [jobId])
 

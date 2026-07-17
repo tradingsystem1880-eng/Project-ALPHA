@@ -22,6 +22,16 @@ const asNum = (v: unknown): number | null =>
   typeof v === 'number' && Number.isFinite(v) ? v : null
 const asStr = (v: unknown): string | null => (typeof v === 'string' ? v : null)
 
+// A gate's `detail` is a flat {name: number} dict (e.g. {psr, dsr, n_trials}); render it compactly.
+function detailText(v: unknown): string {
+  if (typeof v === 'string') return v
+  const o = asObj(v)
+  if (!o) return ''
+  return Object.entries(o)
+    .map(([k, val]) => (asNum(val) !== null ? `${k} ${fmtNum(val, 2)}` : `${k} ${String(val)}`))
+    .join(' · ')
+}
+
 const METRIC_LABEL: Record<string, string> = {
   sharpe: 'Sharpe',
   cagr: 'CAGR',
@@ -208,7 +218,7 @@ function Outcomes({ outcomes }: { outcomes: Dict[] }) {
             <div className="gate" key={i}>
               <span className={`chip ${passed ? 'pass' : 'fail'}`}>{passed ? 'PASS' : 'FAIL'}</span>
               <span className="gate-name mono">{asStr(o.name) ?? '—'}</span>
-              <span className="gate-detail muted">{asStr(o.detail) ?? ''}</span>
+              <span className="gate-detail muted">{detailText(o.detail)}</span>
             </div>
           )
         })}
@@ -236,8 +246,8 @@ function FoldsTable({ folds }: { folds: Dict[] }) {
           {folds.map((f, i) => (
             <tr key={i}>
               <td className="num">{asNum(f.index) ?? i}</td>
-              <td className="num">{asStr(f.test_start) ?? '—'}</td>
-              <td className="num">{asStr(f.test_end) ?? '—'}</td>
+              <td className="num">{asNum(f.test_start) ?? '—'}</td>
+              <td className="num">{asNum(f.test_end) ?? '—'}</td>
               <td className="num">{asNum(f.n_test) ?? '—'}</td>
               <td className="num">{fmtNum(f.oos_sharpe, 2)}</td>
               <td className="num">{fmtNum(f.oos_cagr, 3)}</td>

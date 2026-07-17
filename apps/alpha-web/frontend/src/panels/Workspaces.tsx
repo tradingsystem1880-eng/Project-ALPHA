@@ -33,8 +33,22 @@ export function Workspaces(props: IDockviewPanelProps) {
 
   function open(slug: string): void {
     api.getWorkspace(slug).then((doc) => {
-      // `dockview` is a Dockview SerializedDockview; typed loosely across the wire.
-      props.containerApi.fromJSON(doc.dockview as never)
+      try {
+        // `dockview` is a Dockview SerializedDockview; typed loosely across the wire.
+        props.containerApi.fromJSON(doc.dockview as never)
+      } catch (e) {
+        // fromJSON clears the dock BEFORE validating, so a malformed/incompatible layout would
+        // otherwise leave it blank (and get that blank autosaved) — recover with a default panel.
+        console.error('workspace restore failed', e)
+        if (props.containerApi.panels.length === 0) {
+          props.containerApi.addPanel({
+            id: 'RunBrowser-0',
+            component: 'RunBrowser',
+            title: 'Run Browser',
+          })
+        }
+        return
+      }
       if (doc.linked_context) setLinked(doc.linked_context)
     })
   }

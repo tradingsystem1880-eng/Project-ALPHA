@@ -24,8 +24,11 @@ def candles(
     snapshot: str | None = None,
 ) -> dict[str, Any]:
     """``{symbol, snapshot_id, bars:[{t,o,h,l,c,v}]}`` for ``symbol`` over the window."""
+    # Guard the cache-key mtime probe against traversal (a crafted ``../`` symbol must not stat
+    # files outside the store). The real read is ParquetStore-guarded and fails loud regardless.
+    safe = ".." not in symbol and "\\" not in symbol and not symbol.startswith("/")
     parquet = data_dir / "store" / "bars" / f"{symbol}.parquet"
-    mtime = parquet.stat().st_mtime if parquet.exists() else None
+    mtime = parquet.stat().st_mtime if (safe and parquet.exists()) else None
     key = (str(data_dir), symbol, start, end, snapshot, mtime)
     if key in _CACHE:
         return _CACHE[key]
