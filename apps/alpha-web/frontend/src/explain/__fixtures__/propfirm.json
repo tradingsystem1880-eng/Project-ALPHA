@@ -1,0 +1,30 @@
+{
+  "command": "propfirm",
+  "firm": "topstep",
+  "horizon_days": 252,
+  "metrics": {
+    "bust_probability": 0.787,
+    "expected_payout": 1925.720382106368,
+    "median_days_to_pass": 76.0,
+    "pass_probability": 0.521,
+    "payout_probability": 0.4
+  },
+  "n_paths": 1000,
+  "rules": {
+    "account_size": 50000.0,
+    "daily_loss_limit": null,
+    "eval_fee": 165.0,
+    "lock_at_profit": 3000.0,
+    "max_drawdown": 2000.0,
+    "min_funded_days": 5,
+    "min_payout": 1000.0,
+    "min_trading_days": 2,
+    "profit_split": 0.9,
+    "profit_target": 3000.0,
+    "trailing": true
+  },
+  "run_id": "0d7e47fba8f92081",
+  "schema_version": 1,
+  "seed": 7,
+  "source": "symbol:AAPL"
+}

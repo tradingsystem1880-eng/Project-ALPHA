@@ -7,6 +7,7 @@ import type { FunctionComponent } from 'react'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
+import { Glossary } from './Glossary'
 import { OptionsGreeks } from './OptionsGreeks'
 import { PriceChart } from './PriceChart'
 import { RiskMonitor } from './RiskMonitor'
@@ -48,6 +49,7 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   Screener,
   Workspaces,
   AiConsole,
+  Glossary,
 }
 
 export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = Object.fromEntries(
@@ -65,4 +67,5 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'Screener', title: 'Screener', hint: 'quote·news' },
   { component: 'AiConsole', title: 'AI Research', hint: 'compare·console' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
+  { component: 'Glossary', title: 'Glossary', hint: 'metric definitions' },
 ]
