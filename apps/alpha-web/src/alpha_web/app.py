@@ -20,6 +20,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from alpha_core.config import AlphaSettings
 from alpha_web import _charts, _invoke, _runs
+from alpha_web.api import runs as runs_api
 
 _PKG = Path(__file__).resolve().parent
 
@@ -65,9 +66,11 @@ def _summarize(manifest: dict[str, Any]) -> list[tuple[str, str]]:
 
 def create_app() -> FastAPI:
     """Build the FastAPI app (factory so tests can construct a fresh instance)."""
-    app = FastAPI(title="Project ALPHA — Web IDE")
+    app = FastAPI(title="Project ALPHA — Workstation")
     templates = Jinja2Templates(directory=str(_PKG / "templates"))
     app.mount("/static", StaticFiles(directory=str(_PKG / "static")), name="static")
+
+    app.include_router(runs_api.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
