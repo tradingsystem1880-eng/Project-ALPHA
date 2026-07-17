@@ -8,13 +8,17 @@ link to the finished run. Jobs live in an in-process registry keyed by an opaque
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
+import signal
 import subprocess
 import threading
+import time
 import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any
 
 import anyio
 
@@ -44,17 +48,23 @@ class Job:
     def __init__(self, args: list[str], run_type: str | None) -> None:
         self.job_id = uuid.uuid4().hex
         self.args = list(args)
+        self.command_str = " ".join(args)
         self.run_type = run_type
+        self.created_at = time.time()  # memory-only wall-clock; never enters a byte-stable manifest
         self.lines: list[str] = []
         self.finished = False
+        self.cancelled = False
         self.returncode: int | None = None
         self.run_id: str | None = None
+        self._proc: subprocess.Popen[str] | None = None
         self._lock = threading.Lock()
 
     @property
     def status(self) -> str:
         if not self.finished:
             return "running"
+        if self.cancelled:
+            return "cancelled"
         return "done" if self.returncode == 0 else "failed"
 
     def tail(self, start: int) -> list[str]:
@@ -66,25 +76,51 @@ class Job:
         with self._lock:
             self.lines.append(line)
 
+    def cancel(self) -> None:
+        """Terminate the job's process group (engine + any grandchildren). Idempotent."""
+        with self._lock:
+            if self.finished or self._proc is None:
+                return
+            self.cancelled = True
+            pid = self._proc.pid
+        # already gone / not our group — `_pump` still finalizes the terminal status
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(os.getpgid(pid), signal.SIGTERM)
+
+    def summary(self) -> dict[str, Any]:
+        """A compact status record for the job list / detail endpoints."""
+        return {
+            "job_id": self.job_id,
+            "command": self.command_str,
+            "kind": self.run_type,
+            "status": self.status,
+            "created_at": self.created_at,
+            "run_id": self.run_id,
+            "returncode": self.returncode,
+            "n_lines": len(self.lines),
+        }
+
 
 JOBS: dict[str, Job] = {}
-_MAX_JOBS = 100  # completed jobs kept for the console; oldest finished ones are pruned
 
 
-def _prune_finished() -> None:
-    """Drop the oldest FINISHED jobs once the registry exceeds ``_MAX_JOBS`` (insertion order)."""
-    excess = len(JOBS) - _MAX_JOBS
-    if excess <= 0:
-        return
-    for job_id in [k for k, j in JOBS.items() if j.finished][:excess]:
-        JOBS.pop(job_id, None)
+def list_jobs() -> list[dict[str, Any]]:
+    """All known jobs (live + this-session-finished), newest first."""
+    return [j.summary() for j in sorted(JOBS.values(), key=lambda j: j.created_at, reverse=True)]
+
+
+def cancel_job(job_id: str) -> Job | None:
+    """Cancel a job by id; returns the Job (post-signal) or None if unknown."""
+    job = JOBS.get(job_id)
+    if job is not None:
+        job.cancel()
+    return job
 
 
 def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
     """Spawn ``alpha <args>`` (sharing ``data_dir`` via the env) and tail its output in a thread."""
     job = Job(args, run_type)
     JOBS[job.job_id] = job
-    _prune_finished()
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
     proc = subprocess.Popen(
         _command(args),
@@ -93,7 +129,9 @@ def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
         text=True,
         bufsize=1,
         env=env,
+        start_new_session=True,  # own process group → cancellation can killpg the whole tree
     )
+    job._proc = proc
     threading.Thread(target=_pump, args=(job, proc), daemon=True).start()
     return job
 
@@ -112,15 +150,19 @@ def _pump(job: Job, proc: subprocess.Popen[str]) -> None:
     job.finished = True
 
 
-async def event_stream(job: Job) -> AsyncIterator[dict[str, str]]:
-    """SSE events for a job: a ``line`` per output line, then a terminal ``done`` / ``failed``."""
-    sent = 0
+async def event_stream(job: Job, start: int = 0) -> AsyncIterator[dict[str, str]]:
+    """SSE events for a job: a ``line`` per output line (carrying its ``id`` for ``Last-Event-ID``
+    replay), then a terminal ``done`` / ``failed`` / ``cancelled``. ``start`` resumes at a line
+    index (a reconnecting client passes ``Last-Event-ID`` so only missed lines are re-sent)."""
+    sent = start
     while True:
         for line in job.tail(sent):
+            yield {"event": "line", "id": str(sent), "data": line}
             sent += 1
-            yield {"event": "line", "data": line}
         if job.finished:
-            if job.status == "done":
+            if job.status == "cancelled":
+                yield {"event": "cancelled", "data": f"exit {job.returncode}"}
+            elif job.status == "done":
                 yield {"event": "done", "data": job.run_id or ""}
             else:
                 yield {"event": "failed", "data": f"exit {job.returncode}"}

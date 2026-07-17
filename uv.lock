@@ -24,6 +24,8 @@ members = [
     "alpha-data",
     "alpha-forecast",
     "alpha-mcp",
+    "alpha-options",
+    "alpha-screener",
     "alpha-strategies",
     "alpha-validation",
     "alpha-web",
@@ -188,6 +190,8 @@ dependencies = [
     { name = "alpha-core" },
     { name = "alpha-data" },
     { name = "alpha-forecast" },
+    { name = "alpha-options" },
+    { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
     { name = "numpy" },
@@ -201,6 +205,8 @@ requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
+    { name = "alpha-options", editable = "packages/alpha-options" },
+    { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "numpy", specifier = ">=1.26" },
@@ -289,6 +295,38 @@ requires-dist = [
 ]
 
 [[package]]
+name = "alpha-options"
+version = "1.0.0"
+source = { editable = "packages/alpha-options" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "numpy", specifier = ">=2.4.6" },
+    { name = "scipy", specifier = ">=1.17.1" },
+]
+
+[[package]]
+name = "alpha-screener"
+version = "1.0.0"
+source = { editable = "packages/alpha-screener" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "finnhub-python" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "finnhub-python", specifier = ">=2.4" },
+]
+
+[[package]]
 name = "alpha-strategies"
 version = "1.0.0"
 source = { editable = "packages/alpha-strategies" }
@@ -330,9 +368,9 @@ version = "1.0.0"
 source = { editable = "apps/alpha-web" }
 dependencies = [
     { name = "alpha-cli" },
+    { name = "alpha-core" },
     { name = "anyio" },
     { name = "fastapi" },
-    { name = "jinja2" },
     { name = "polars" },
     { name = "sse-starlette" },
     { name = "uvicorn" },
@@ -341,9 +379,9 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
+    { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "anyio", specifier = ">=4.0" },
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "jinja2", specifier = ">=3.1" },
     { name = "polars", specifier = ">=1.0" },
     { name = "sse-starlette", specifier = ">=2.1" },
     { name = "uvicorn", specifier = ">=0.30" },
@@ -867,6 +905,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e3/ee/29c668c50888588c432a702f7c2e8ee8a0c9e5286028d91f170308d6b2e9/filelock-3.29.5.tar.gz", hash = "sha256:6e6034c57a00a020e767f2614a5539863f056de7e7991d6d1473aef7ff73f156", size = 68927, upload-time = "2026-07-03T03:50:31.818Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/e3/f1fae3647d170919c2cf2a898e77e7d1a4e5c7cae0aed7bb4bd3f5ebff6f/filelock-3.29.5-py3-none-any.whl", hash = "sha256:8af830889ba3a0ffcefbd6c7d2af8a54012058103771f2e10848222f476a1693", size = 45073, upload-time = "2026-07-03T03:50:30.445Z" },
+]
+
+[[package]]
+name = "finnhub-python"
+version = "2.4.29"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/02/0f/2b6327059da93579183607f662f11ba6d3947604b89ce223e6195a6a86c2/finnhub_python-2.4.29.tar.gz", hash = "sha256:0aaab7c60bd663cb97937fbdd95006e109aae81ed7982a3f97391cf70968533e", size = 13694, upload-time = "2026-06-24T07:14:16.189Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/71/a190a7bd7ba86ed4a1dc2b938a23eca37a34464e409af15e3d46fa6d9cca/finnhub_python-2.4.29-py3-none-any.whl", hash = "sha256:5fbec39b40b9501d4165d94cb6fc7600017059d29719edbb01ae5c1ed13374c5", size = 12092, upload-time = "2026-06-24T07:14:14.138Z" },
 ]
 
 [[package]]
@@ -2183,6 +2233,8 @@ dependencies = [
     { name = "alpha-data" },
     { name = "alpha-forecast" },
     { name = "alpha-mcp" },
+    { name = "alpha-options" },
+    { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
     { name = "alpha-web" },
@@ -2206,6 +2258,8 @@ requires-dist = [
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-mcp", editable = "apps/alpha-mcp" },
+    { name = "alpha-options", editable = "packages/alpha-options" },
+    { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "alpha-web", editable = "apps/alpha-web" },
