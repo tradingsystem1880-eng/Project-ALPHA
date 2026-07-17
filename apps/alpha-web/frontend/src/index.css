@@ -783,3 +783,52 @@ select.field:focus {
   color: var(--ink-dim);
 }
 
+/* ==========================================================================
+   Price chart + data explorer
+   ========================================================================== */
+
+.price-body {
+  overflow: hidden;
+  padding: 6px;
+}
+.price-host {
+  width: 100%;
+  height: 100%;
+}
+.sym-input {
+  width: 92px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.de {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 860px;
+}
+.de-pull {
+  margin-top: 10px;
+}
+.sym-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.sym-chip {
+  all: unset;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--r);
+  border: 1px solid var(--line-strong);
+  background: var(--panel-2);
+  color: var(--ink-dim);
+  transition: all 0.12s;
+}
+.sym-chip:hover {
+  border-color: var(--accent-line);
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+

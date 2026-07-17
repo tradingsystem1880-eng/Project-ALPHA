@@ -10,15 +10,18 @@ type Status = 'running' | 'done' | 'failed' | 'cancelled'
 interface Props {
   jobId: string
   onRun?: (runId: string) => void
+  onDone?: () => void
 }
 
-export function JobConsole({ jobId, onRun }: Props) {
+export function JobConsole({ jobId, onRun, onDone }: Props) {
   const [lines, setLines] = useState<string[]>([])
   const [status, setStatus] = useState<Status>('running')
   const [runId, setRunId] = useState<string | null>(null)
   const preRef = useRef<HTMLPreElement>(null)
   const onRunRef = useRef(onRun)
   onRunRef.current = onRun
+  const onDoneRef = useRef(onDone)
+  onDoneRef.current = onDone
 
   useEffect(() => {
     setLines([])
@@ -33,6 +36,7 @@ export function JobConsole({ jobId, onRun }: Props) {
         setRunId(rid)
         onRunRef.current?.(rid)
       }
+      onDoneRef.current?.()
       es.close()
     })
     es.addEventListener('failed', () => {
