@@ -37,10 +37,12 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 
 ## CLI surface (`apps/alpha-cli/src/alpha_cli/`)
 Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim`/`paper` are Typer sub-apps; `validate`/`report` are root commands.
-- `alpha info` — print resolved `AlphaSettings` + core version.
+- `alpha info` — print resolved `AlphaSettings` + core version. Subcommands `alpha info strategies [--json]` / `alpha info commands [--json]` emit machine-readable catalogs (strategy `--param` axes; the Typer command tree with defaults) that the Workstation forms consume.
 - `alpha data pull SYMBOL --source {yfinance,ccxt,stooq} --start --end` — fetch + store raw bars/actions.
 - `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source]` — freeze store → immutable hashed snapshot.
 - `alpha data verify SNAPSHOT_ID` — re-hash snapshot vs manifest.
+- `alpha data candles SYMBOL [--start --end --snapshot] [--json]` — point-in-time-adjusted OHLCV via `load_bars` (`--end` is an as-of cutoff; bias-guarded). Powers the Workstation price chart.
+- `alpha data symbols [--json]` — list symbols with stored bars.
 - `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout|kronos_forecast, --param name=value, ...params, snapshot]` — one fixed-param run → artifacts.
 - `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, ...params]` — diversified basket: per-symbol OOS streams combined → portfolio metrics + PSR + BCa CIs + manifest (`data_dir/portfolio/<run_id>`).
 - `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, ...params]` — relative-strength book: rank the universe, long winners / short losers, vol-targeted → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
@@ -123,8 +125,10 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 ### `alpha_cli` (`apps/alpha-cli/src/alpha_cli/`) — orchestration ONLY (allowed to compose engine + gauntlet). Engine imports are lazy.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
-| `main.py` | Typer app wiring | `app`, `info`, `main` |
-| `data_cmds.py` | `alpha data ...` | `data_app`; `_ADAPTERS` registry (monkeypatched in tests) |
+| `main.py` | Typer app wiring | `app`, `main` |
+| `data_cmds.py` | `alpha data ...` (pull/snapshot/verify/**candles**/**symbols**) | `data_app`; `_ADAPTERS` registry (monkeypatched in tests) |
+| `info_cmds.py` | `alpha info` (settings) + `info strategies`/`info commands` `--json` catalogs (Typer→Click introspection) for the workstation forms | `info_app` |
+| `_schemas.py` | Declarative strategy `--param` axes (names/defaults/ranges) mirrored from `_strategies` | `STRATEGY_PARAM_SCHEMA`, `ParamSpec` |
 | `backtest_cmds.py` | `alpha backtest run` / `portfolio` | `backtest_app`; `_load_bars` seam |
 | `validate_cmds.py` | `alpha validate` | `validate` |
 | `optim_cmds.py` | `alpha optim grid` | `optim_app` |
@@ -153,16 +157,19 @@ Artifacts: `data_dir/runs/<run_id>/{manifest.json, equity_curve.parquet, trades.
 
 Tools take typed common knobs + an `options` dict mapping any CLI flag (`{"lookback":"5"}` → `--lookback 5`) and a `params` dict for strategy `--param name=value`. Adding/removing a CLI command? Update `server.py`'s tool surface to match.
 
-### `alpha_web` (`apps/alpha-web/src/alpha_web/`) — local web IDE (top of DAG; subprocesses the `alpha` CLI). Launch: `uv run alpha-web` → http://127.0.0.1:8800 (loopback only).
+### `alpha_web` (`apps/alpha-web/`) — the **Workstation**: a dockable research terminal (top of DAG; subprocesses the `alpha` CLI). Launch: `uv run alpha-web` → http://127.0.0.1:8800 (loopback only). A thin FastAPI JSON+SSE backend serves a built **Vite/React/Dockview SPA** (`frontend/` → committed assets in `static/app`); the engine never runs in-process.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
-| `app.py` | FastAPI factory + routes + `main()` (uvicorn) | `create_app`, `main`; routes `/healthz`, `/` (run browser), `/runs/{id}` (+ `/tearsheet`), `/new`, `/console`, `POST /runs` + `/console/run`, `GET /jobs/{id}/stream` (SSE) |
-| `_invoke.py` | Background job runner: spawn `alpha`, tail stdout, parse run id, SSE `event_stream` | `Job`, `launch`, `event_stream`, `JOBS`, `RUN_TYPE` |
-| `_runs.py` | Filesystem reads | `list_runs`, `get_run`, `equity_values`, `tearsheet_file` |
-| `_charts.py` | Server-side inline equity SVG (no JS charting lib) | `equity_svg` |
-| `templates/` · `static/` | Jinja pages + dark CSS + `console.js` (native `EventSource`, no build step) | — |
+| `app.py` | FastAPI factory: mount `/api` routers + serve the SPA at `/` and `/app` (assets via `/static`) + `main()` (uvicorn) | `create_app`, `main` |
+| `api/runs.py` | Run store as JSON | `/api/runs` (filter/paginate, mtime-desc), `/api/runs/{id}` (+ `/equity` `/trades` `/forecast` `/tearsheet`) |
+| `api/jobs.py` | Job lifecycle | `POST /api/jobs` · `GET /api/jobs[/{id}]` · `GET /api/jobs/{id}/stream` (SSE, `Last-Event-ID` replay) · `DELETE /api/jobs/{id}` (cancel) |
+| `api/catalog.py` · `api/candles.py` · `api/manifest.py` · `api/workspaces.py` | JSON projections | `/api/{strategies,commands,symbols}` · `/api/candles/{symbol}` · `/api/apps` (panel manifest) · `/api/workspaces` (save/load layouts) |
+| `_invoke.py` | Background job runner: spawn `alpha` (own process group), tail stdout, parse run id, SSE `event_stream` w/ replay + `cancel` | `Job`, `launch`, `event_stream`, `list_jobs`, `cancel_job`, `JOBS`, `RUN_TYPE` |
+| `_runs.py` | Filesystem reads | `query_runs`, `run_detail`, `equity_series`, `trades`, `forecast_series`, `tearsheet_file` |
+| `_catalog.py` · `_candles.py` · `_workspaces.py` | subprocess+cache the CLI's `--json` catalogs · PIT candles (cached on store mtime) · named-layout store (`data_dir/web/workspaces`) | `strategies`/`commands`/`symbols` · `candles` · `list/get/save/delete_workspace` |
+| `frontend/` | SPA source (Vite/React/TS): Dockview shell, cmdk palette, linked symbol/date context, panels (Run Browser, Run Detail, Strategy Lab, Price, Data Explorer, AI Console, Workspaces), charts (Lightweight Charts + uPlot) | built to `static/app` (committed) |
 
-Server-rendered (Jinja + native EventSource, no HTMX/CDN). Action endpoints subprocess `alpha` and stream output live; reads come from the manifests. The real conversational path is `alpha_mcp`, not an in-app LLM (the console panel links to it).
+The SPA composes nothing — every action is `POST /api/jobs` (subprocess `alpha`) streamed over SSE; reads come from the manifests. The **frontend** is excluded from the Python gate (ruff/mypy/pytest) and its built assets are committed, so CI needs no Node (see README). The real conversational path is `alpha_mcp` (the AI Console links to it), not an in-app LLM.
 
 ## Validation gauntlet gates (spec §8) — produced by `build_outcomes` → `ValidationOutcome`s
 - `walk_forward_oos` (gate 2): passes on a finite OOS Sharpe. OOS = concatenated contiguous test windows of ONE full-series run (fixed params → no refit; train windows are warmup only).
@@ -187,4 +194,6 @@ Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + stra
 Phase 6 (broaden) — in progress: strategy registry + 3 more strategies (MA-crossover, mean-reversion, breakout) ✅ · institutional gauntlet (DSR/PSR, CPCV, PBO, Reality-Check/SPA, fat-tailed nulls) ✅ · parameter optimization with overfitting controls (`alpha optim`) ✅ · multi-asset basket portfolio (`alpha backtest portfolio`) ✅ · cross-sectional momentum (returns-level panel, `alpha backtest cross-sectional`) ✅ · Stooq data source ✅ · prop-firm Monte Carlo (`alpha propfirm`, QuantPad-style pass/payout probabilities) ✅. Remaining: full-engine cross-sectional (per-instrument t+1 fills; needs a multi-instrument engine), more data sources (FRED macro needs a non-OHLCV store).
 Phase 7 (Kronos foundation model) ✅ — `alpha_forecast` package (vendored MIT Kronos, lazy torch via `uv sync --group kronos`), `kronos_forecast` registry strategy (bias-guarded; Tier-1 skipped-with-reason), `alpha forecast pull|run` + forecast artifacts + web chart + MCP `forecast_run`, loud weight-leakage warnings. HF revisions pinned (repo-specific `revision` + `tokenizer_revision`, verified by real pulls of base+mini 2026-07-11) and real CPU timings measured (spec 2026-07-11: base forecast ~5-8 s on Apple-silicon CPU, not minutes). Vendored files git-verified against upstream `67b630e6` (2026-07-14; identical modulo the documented import patch + whitespace normalization — see `_vendor/README.md`). No open items.
 Phase 4 (paper trading) — scaffolded: nautilus `SandboxExecutionClient` venue (backtest-parity fills) + node-config assembly + a `alpha paper preflight` parity check, all offline-verified. Remaining (post-v1, network-bound): wiring a live market-data adapter + credentials to `_paper.run_paper`.
-QuantPad-parity track (separate from the internal phase numbers above): A–F Verdict + tail-risk ✅ · prop-firm Monte Carlo ✅ · conversational agent = MCP server (`alpha_mcp`, subprocesses the CLI; `uv run alpha-mcp` / repo `.mcp.json`) ✅ · local web IDE (`alpha_web`, FastAPI + Jinja + SSE; `uv run alpha-web`) ✅. All four QuantPad-parity surfaces shipped.
+QuantPad-parity track (separate from the internal phase numbers above): A–F Verdict + tail-risk ✅ · prop-firm Monte Carlo ✅ · conversational agent = MCP server (`alpha_mcp`, subprocesses the CLI; `uv run alpha-mcp` / repo `.mcp.json`) ✅ · local web IDE (`alpha_web`; `uv run alpha-web`) ✅. All four QuantPad-parity surfaces shipped.
+
+**Workstation** (institutional research & trading terminal) ✅ — `alpha_web` evolved into a dockable, multi-workspace SPA (Vite/React/**Dockview** + **Lightweight Charts**/uPlot + cmdk, dark "instrument-panel" theme) over a thin FastAPI **JSON+SSE** backend: `/api/{runs,jobs,strategies,commands,symbols,candles,apps,workspaces}` (subprocess `alpha`, read manifests). Panels: Run Browser · Run Detail (A–F verdict, gauntlet gates/folds, equity+drawdown, per-command optim/propfirm/portfolio blocks, embedded tear sheet) · Strategy Lab (catalog-driven launch + live console) · Price (PIT candles, linked symbol/date context) · Data Explorer · AI Console (→ MCP) · Workspaces (save/load layouts). New CLI: `data candles/symbols`, `info strategies/commands` (`--json`). Frontend excluded from the Python gate; built assets committed so CI needs no Node. Roadmap (next): Options/Derivatives · Screener/News + providers · Risk/scenario · multi-agent AI desk (each a new package + CLI command + manifest-described panel, no shell redesign).

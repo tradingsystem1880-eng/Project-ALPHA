@@ -104,7 +104,7 @@ def tearsheet_file(run_id: str, *, data_dir: Path) -> Path | None:
     return path if path.exists() else None
 
 
-# --- workstation JSON API helpers (richer than the legacy Jinja readers above) ----------------
+# --- workstation JSON API helpers (richer indexing/series for the SPA panels) ------------------
 
 
 def _index_runs(*, data_dir: Path) -> list[dict[str, Any]]:

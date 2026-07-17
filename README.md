@@ -149,19 +149,31 @@ Desktop, add to `claude_desktop_config.json`:
 Then drive ALPHA in plain language: *"pull AAPL, run the gauntlet on a momentum strategy, then
 check it against a Topstep combine."* No API keys, $0.
 
-## Web IDE
+## Workstation
 
-`uv run alpha-web` serves a local web IDE at **http://127.0.0.1:8800** (loopback only, no auth):
+`uv run alpha-web` serves the **ALPHA Workstation** at **http://127.0.0.1:8800** (loopback only, no
+auth) — a dockable, multi-workspace research terminal (Bloomberg / OpenBB class):
 
-- **Run browser** (`/`) — every stored run with pass / A–F Verdict badges.
-- **Run detail** (`/runs/{id}`) — the manifest, an inline equity chart, and the embedded HTML tear
-  sheet.
-- **New run** (`/new`) — pick a command + arguments and watch it run **live** (streamed output).
-- **Console** (`/console`) — run any `alpha` command and stream it.
+- **Run Browser** — every stored run, newest first, with pass / A–F Verdict badges.
+- **Run Detail** — A–F verdict + dimensions, OOS metrics, an equity + drawdown chart, the gauntlet
+  gate outcomes / walk-forward folds / statistical controls (DSR, PBO, Reality-Check, SPA),
+  per-command blocks (prop-firm probabilities, portfolio legs), trades, forecast band, and the
+  embedded tear sheet.
+- **Strategy Lab** — a catalog-driven launch form (command + symbol + strategy + params); runs
+  stream **live** and link to their Run Detail.
+- **Price** — point-in-time-adjusted candlesticks for the linked symbol/date context.
+- **Data Explorer** · **Workspaces** (save/load layouts) · **AI Console** (run any `alpha` command,
+  or pair with the MCP server for natural-language control).
+- ⌘K command palette, global symbol search, dockable/floating panels, dark theme.
 
-Server-rendered FastAPI + Jinja + native `EventSource` (no build step, no CDN). Like the MCP
-server it's purely additive — it subprocesses the `alpha` CLI and reads the artifacts. For true
-conversational control, pair it with the `alpha` MCP server (above) in a Claude client.
+Thin **FastAPI JSON+SSE** backend + a **Vite/React/Dockview** single-page app. Like the MCP server
+it's purely additive — it subprocesses the `alpha` CLI and reads the artifacts. The built SPA assets
+are committed under `apps/alpha-web/src/alpha_web/static/app`, so `uv run alpha-web` and CI need
+**no Node**. To change the UI, rebuild and commit the assets:
+
+```bash
+cd apps/alpha-web/frontend && npm ci && npm run build   # emits ../src/alpha_web/static/app
+```
 
 ## Not yet built (intentional)
 
