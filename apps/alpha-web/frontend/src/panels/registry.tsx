@@ -5,6 +5,7 @@ import type { IDockviewPanelProps } from 'dockview-react'
 import type { FunctionComponent } from 'react'
 
 import { RunBrowser } from './RunBrowser'
+import { RunDetail } from './RunDetail'
 
 export interface PanelMenuItem {
   component: string
@@ -14,8 +15,10 @@ export interface PanelMenuItem {
 
 export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RunBrowser,
+  RunDetail,
 }
 
+// Panels openable from the ⌘K palette (Run Detail is opened from a run row, so it's not listed).
 export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'RunBrowser', title: 'Run Browser', hint: 'runs' },
 ]

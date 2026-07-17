@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 from alpha_web import _runs
 from alpha_web.api._common import data_dir
@@ -61,3 +62,12 @@ def run_forecast(run_id: str) -> dict[str, Any]:
     if series is None:
         raise HTTPException(status_code=404, detail="no forecast for this run")
     return series
+
+
+@router.get("/runs/{run_id}/tearsheet")
+def run_tearsheet(run_id: str) -> FileResponse:
+    """The run's rendered quantstats tear sheet (embedded in Run Detail via an iframe)."""
+    path = _runs.tearsheet_file(run_id, data_dir=data_dir())
+    if path is None:
+        raise HTTPException(status_code=404, detail="no tear sheet for this run")
+    return FileResponse(path, media_type="text/html")

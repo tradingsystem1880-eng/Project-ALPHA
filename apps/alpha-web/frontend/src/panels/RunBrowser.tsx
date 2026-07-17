@@ -1,6 +1,7 @@
 // Run Browser — the stored-run blotter. Newest-first, click a row to broadcast its symbol to the
 // linked context (and, once Run Detail lands, to open it).
 
+import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
@@ -8,7 +9,7 @@ import type { RunListItem } from '../api/types'
 import { setLinked } from '../context/linked'
 import { fmtTime, shortId } from '../util/format'
 
-export function RunBrowser() {
+export function RunBrowser(props: IDockviewPanelProps) {
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +28,21 @@ export function RunBrowser() {
   function selectRow(run: RunListItem): void {
     setSelected(run.run_id)
     if (run.symbol) setLinked({ symbol: run.symbol })
+  }
+
+  function openDetail(run: RunListItem): void {
+    const id = `run-detail-${run.run_id}`
+    const existing = props.containerApi.getPanel(id)
+    if (existing) {
+      existing.api.setActive()
+      return
+    }
+    props.containerApi.addPanel({
+      id,
+      component: 'RunDetail',
+      title: shortId(run.run_id),
+      params: { runId: run.run_id },
+    })
   }
 
   return (
@@ -67,6 +83,7 @@ export function RunBrowser() {
                   key={r.run_id}
                   className={selected === r.run_id ? 'sel' : ''}
                   onClick={() => selectRow(r)}
+                  onDoubleClick={() => openDetail(r)}
                 >
                   <td className="id">{shortId(r.run_id)}</td>
                   <td>

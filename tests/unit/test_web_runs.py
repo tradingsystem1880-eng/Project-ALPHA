@@ -1,7 +1,7 @@
-"""Web IDE filesystem reads + the server-side equity chart.
+"""Web filesystem reads over the run store.
 
-`_runs` indexes the run store the same way the CLI's `report` does; `_charts.equity_svg` turns an
-equity series into an inline SVG polyline so the run-detail page needs no JS charting library.
+`_runs` indexes the run store the same way the CLI's `report` does (the workstation JSON API is a
+thin layer over these readers).
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from alpha_web import _charts, _runs
+from alpha_web import _runs
 
 
 def _write_run(
@@ -85,13 +85,3 @@ def test_tearsheet_file_present_only_when_written(tmp_path: Path) -> None:
     assert _runs.tearsheet_file("ffff000000000006", data_dir=tmp_path) is None
     (tmp_path / "runs" / "ffff000000000006" / "tearsheet.html").write_text("<html></html>")
     assert _runs.tearsheet_file("ffff000000000006", data_dir=tmp_path) is not None
-
-
-def test_equity_svg_draws_a_polyline_for_a_series() -> None:
-    svg = _charts.equity_svg([100.0, 102.0, 101.0, 105.0])
-    assert svg.startswith("<svg") and "polyline" in svg and "points=" in svg
-
-
-def test_equity_svg_is_a_placeholder_when_empty() -> None:
-    svg = _charts.equity_svg([])
-    assert svg.startswith("<svg") and "polyline" not in svg  # no crash, no line
