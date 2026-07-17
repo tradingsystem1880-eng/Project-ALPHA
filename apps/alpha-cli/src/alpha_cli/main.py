@@ -7,13 +7,16 @@ import typer
 from alpha_cli.backtest_cmds import backtest_app
 from alpha_cli.data_cmds import data_app
 from alpha_cli.forecast_cmds import forecast_app
+from alpha_cli.info_cmds import info_app
 from alpha_cli.optim_cmds import optim_app
+from alpha_cli.options_cmds import options_app
 from alpha_cli.paper_cmds import paper_app
 from alpha_cli.propfirm_cmds import propfirm_app
 from alpha_cli.report_cmds import report as _report
+from alpha_cli.research_cmds import research_app
+from alpha_cli.risk_cmds import risk_app
+from alpha_cli.screener_cmds import screener_app
 from alpha_cli.validate_cmds import validate as _validate
-from alpha_core import __version__ as core_version
-from alpha_core.config import AlphaSettings
 
 app = typer.Typer(help="Project ALPHA command-line interface.")
 app.add_typer(data_app, name="data")
@@ -22,6 +25,11 @@ app.add_typer(optim_app, name="optim")
 app.add_typer(forecast_app, name="forecast")
 app.add_typer(paper_app, name="paper")
 app.add_typer(propfirm_app, name="propfirm")
+app.add_typer(options_app, name="options")
+app.add_typer(risk_app, name="risk")
+app.add_typer(screener_app, name="screener")
+app.add_typer(research_app, name="research")
+app.add_typer(info_app, name="info")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)
 
@@ -31,16 +39,6 @@ def _root(ctx: typer.Context) -> None:
     """Project ALPHA. Run a subcommand, e.g. `alpha info`."""
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
-
-
-@app.command()
-def info() -> None:
-    """Print resolved configuration and the core version."""
-    settings = AlphaSettings()
-    typer.echo(f"alpha-core {core_version}")
-    typer.echo(f"data_dir={settings.data_dir}")
-    typer.echo(f"random_seed={settings.random_seed}")
-    typer.echo(f"weights_dir={settings.resolved_weights_dir}")
 
 
 def main() -> None:

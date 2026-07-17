@@ -1,8 +1,8 @@
-"""Filesystem reads over the run store for the web IDE (same store the CLI + MCP server use).
+"""Filesystem reads over the run store for the workstation (same store the CLI + MCP server use).
 
 ``alpha`` writes a byte-stable ``manifest.json`` per run under one of a few run-type directories
 (plus an ``equity_curve.parquet`` and ``tearsheet.html`` for engine runs). These helpers read them
-back for the run browser and run-detail pages — no engine, no subprocess.
+back for the run browser and run detail — no engine, no subprocess.
 """
 
 from __future__ import annotations
@@ -14,59 +14,11 @@ from typing import Any
 import polars as pl
 
 from alpha_cli import RUN_DIRS
+from alpha_cli._artifacts import find_run_dir
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
-    for sub in RUN_DIRS:
-        rdir = data_dir / sub / run_id
-        if (rdir / "manifest.json").exists():
-            return rdir
-    return None
-
-
-def list_runs(*, data_dir: Path) -> list[dict[str, Any]]:
-    """Index every stored run for the browser: run_id, command, label, pass/Verdict badges."""
-    runs: list[dict[str, Any]] = []
-    for sub in RUN_DIRS:
-        base = data_dir / sub
-        if not base.is_dir():
-            continue
-        for rdir in sorted(p for p in base.iterdir() if (p / "manifest.json").exists()):
-            manifest = json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
-            symbols = manifest.get("symbols")
-            verdict = manifest.get("verdict")
-            runs.append(
-                {
-                    "run_id": rdir.name,
-                    "command": manifest.get("command"),
-                    "label": manifest.get("symbol")
-                    or (", ".join(symbols) if symbols else None)
-                    or manifest.get("source"),
-                    "passed": manifest.get("passed"),
-                    "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
-                }
-            )
-    return runs
-
-
-def get_run(run_id: str, *, data_dir: Path) -> dict[str, Any]:
-    """Return a stored run's full manifest by id. Fail loud (``FileNotFoundError``) if absent."""
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
-        raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
-    result: dict[str, Any] = json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
-    return result
-
-
-def equity_values(run_id: str, *, data_dir: Path) -> list[float]:
-    """The run's equity values in order, or ``[]`` when it wrote no curve (optim/portfolio)."""
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
-        return []
-    path = rdir / "equity_curve.parquet"
-    if not path.exists():
-        return []
-    return [float(v) for v in pl.read_parquet(path)["equity"].to_list()]
+    return find_run_dir(data_dir, run_id)
 
 
 def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
@@ -88,6 +40,10 @@ def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
         "forecast": [float(v) for v in forecast["close"].to_list()],
         "p10": [float(v) for v in forecast["close_p10"].to_list()] if has_band else None,
         "p90": [float(v) for v in forecast["close_p90"].to_list()] if has_band else None,
+        # timestamps (epoch seconds) for the JSON API's client-side chart (additive; the legacy
+        # server-SVG path above ignores them).
+        "history_ts": [t.timestamp() for t in history["ts"].to_list()],
+        "forecast_ts": [t.timestamp() for t in forecast["ts"].to_list()],
     }
 
 
@@ -98,3 +54,124 @@ def tearsheet_file(run_id: str, *, data_dir: Path) -> Path | None:
         return None
     path = rdir / "tearsheet.html"
     return path if path.exists() else None
+
+
+# --- workstation JSON API helpers (richer indexing/series for the SPA panels) ------------------
+
+
+def _index_runs(*, data_dir: Path) -> list[dict[str, Any]]:
+    """Every stored run as a rich record (run_id, kind, command, label, verdict, mtime), unsorted.
+
+    ``mtime`` is the ``manifest.json`` filesystem timestamp — deliberately NOT a manifest field, so
+    time-ordering the browser never touches the byte-stable, wall-clock-free manifests.
+    """
+    records: list[dict[str, Any]] = []
+    for sub in RUN_DIRS:
+        base = data_dir / sub
+        if not base.is_dir():
+            continue
+        for rdir in base.iterdir():
+            mpath = rdir / "manifest.json"
+            if not mpath.exists():
+                continue
+            manifest = json.loads(mpath.read_text(encoding="utf-8"))
+            symbols = manifest.get("symbols")
+            verdict = manifest.get("verdict")
+            records.append(
+                {
+                    "run_id": rdir.name,
+                    "kind": sub,
+                    "command": manifest.get("command"),
+                    "label": manifest.get("symbol")
+                    or (", ".join(symbols) if symbols else None)
+                    or manifest.get("source"),
+                    "symbol": manifest.get("symbol"),
+                    "symbols": symbols,
+                    "passed": manifest.get("passed"),
+                    "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
+                    "mtime": mpath.stat().st_mtime,
+                }
+            )
+    return records
+
+
+def query_runs(
+    *,
+    data_dir: Path,
+    kind: str | None = None,
+    symbol: str | None = None,
+    verdict: str | None = None,
+    passed: bool | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Filtered, newest-first (mtime-desc), paginated run index for the run browser."""
+    records = _index_runs(data_dir=data_dir)
+    if kind is not None:
+        records = [r for r in records if r["kind"] == kind]
+    if symbol is not None:
+        records = [
+            r for r in records if r["symbol"] == symbol or (r["symbols"] and symbol in r["symbols"])
+        ]
+    if verdict is not None:
+        records = [r for r in records if r["verdict"] == verdict]
+    if passed is not None:
+        records = [r for r in records if r["passed"] is passed]
+    records.sort(key=lambda r: r["mtime"], reverse=True)
+    total = len(records)
+    return {"total": total, "items": records[offset : offset + limit]}
+
+
+def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Full manifest + kind/mtime + artifact-presence flags. Fail loud if the run is absent."""
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
+    mpath = rdir / "manifest.json"
+    return {
+        "run_id": run_id,
+        "kind": rdir.parent.name,
+        "mtime": mpath.stat().st_mtime,
+        "manifest": json.loads(mpath.read_text(encoding="utf-8")),
+        "has_equity": (rdir / "equity_curve.parquet").exists(),
+        "has_trades": (rdir / "trades.parquet").exists(),
+        "has_tearsheet": (rdir / "tearsheet.html").exists(),
+        "has_forecast": (rdir / "forecast.parquet").exists(),
+    }
+
+
+def equity_series(run_id: str, *, data_dir: Path) -> dict[str, list[float]]:
+    """Equity curve as ``{ts (epoch seconds), equity, drawdown}``; empty lists when no curve."""
+    empty: dict[str, list[float]] = {"ts": [], "equity": [], "drawdown": []}
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return empty
+    path = rdir / "equity_curve.parquet"
+    if not path.exists():
+        return empty
+    frame = pl.read_parquet(path)
+    equity = [float(v) for v in frame["equity"].to_list()]
+    ts = [t.timestamp() for t in frame["ts"].to_list()]
+    peak = float("-inf")
+    drawdown: list[float] = []
+    for v in equity:
+        peak = max(peak, v)
+        drawdown.append(v / peak - 1.0 if peak > 0 else 0.0)
+    return {"ts": ts, "equity": equity, "drawdown": drawdown}
+
+
+def trades(run_id: str, *, data_dir: Path) -> list[dict[str, Any]]:
+    """The run's trade log rows (datetimes serialized to ISO strings); ``[]`` when none written."""
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return []
+    path = rdir / "trades.parquet"
+    if not path.exists():
+        return []
+    rows: list[dict[str, Any]] = pl.read_parquet(path).to_dicts()
+    for row in rows:
+        for key in ("entry_ts", "exit_ts"):
+            value = row.get(key)
+            if value is not None and hasattr(value, "isoformat"):
+                row[key] = value.isoformat()
+    return rows

@@ -52,6 +52,7 @@ from alpha_validation.propfirm import (
     simulate_propfirm,
 )
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
+from alpha_validation.scenario import ScenarioSummary, scenario_metrics
 from alpha_validation.tearsheet import (
     CISummary,
     CPCVSummary,
@@ -89,6 +90,7 @@ __all__ = [
     "PropFirmResult",
     "PropFirmRules",
     "RunMetadata",
+    "ScenarioSummary",
     "Split",
     "Statistic",
     "StrategyFn",
@@ -115,6 +117,7 @@ __all__ = [
     "render_tearsheet_html",
     "report_to_manifest",
     "risk_of_ruin",
+    "scenario_metrics",
     "sharpe_ratio",
     "simulate_propfirm",
     "spa_test",
