@@ -79,6 +79,42 @@ def find_run_dir(data_dir: Path, run_id: str) -> Path | None:
     return None
 
 
+def write_equity_curve(
+    rdir: Path,
+    *,
+    baseline_ts: datetime,
+    timestamps: Sequence[datetime],
+    returns: Sequence[float],
+) -> None:
+    """Write a returns-level ``equity_curve.parquet`` (validate-run schema, base 1.0).
+
+    Convention (see ``_portfolio``): ``returns[i]`` realizes at ``timestamps[i]``, so the stored
+    curve is a leading ``(baseline_ts, 1.0)`` point followed by ``equity[i] = prod(1 + r[0..i])``
+    at ``timestamps[i]`` — the same length-N+1, leading-1.0 shape as a gauntlet run's OOS curve.
+    ``read_equity`` + ``to_returns`` therefore recovers the FULL return stream (``alpha propfirm
+    --from-run`` / ``alpha risk scenario``). Deterministic: fixed column order, pinned dtypes,
+    strictly-increasing rows by construction. Callers must write this BEFORE the manifest (the
+    run-exists marker).
+    """
+    if len(timestamps) != len(returns):
+        raise DataError(
+            f"equity curve misaligned: {len(timestamps)} timestamps vs {len(returns)} returns"
+        )
+    if timestamps and baseline_ts >= timestamps[0]:
+        raise DataError(
+            f"baseline_ts {baseline_ts} must precede the first realization ts {timestamps[0]}"
+        )
+    equity = [1.0]
+    for r in returns:
+        equity.append(equity[-1] * (1.0 + float(r)))
+    frame = pl.DataFrame(
+        {"ts": [baseline_ts, *timestamps], "equity": equity},
+        schema={"ts": pl.Datetime(time_unit="us", time_zone="UTC"), "equity": pl.Float64()},
+    )
+    rdir.mkdir(parents=True, exist_ok=True)
+    frame.write_parquet(rdir / "equity_curve.parquet")
+
+
 def write_run(
     rdir: Path,
     *,

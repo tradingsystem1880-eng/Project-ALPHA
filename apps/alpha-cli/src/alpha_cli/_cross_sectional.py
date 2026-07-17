@@ -44,6 +44,9 @@ class CrossSectionalResult:
     n_periods: int
     returns: FloatArray
     timestamps: list[datetime]
+    # the book's equity baseline: the first decision session (equity 1.0 there; return i realizes
+    # at timestamps[i], one session after the position that earns it is decided)
+    baseline_ts: datetime
     metrics: dict[str, float]
     psr: float
     dsr: float
@@ -179,6 +182,7 @@ def run_cross_sectional(
         n_periods=returns.size,
         returns=returns,
         timestamps=out_dates,
+        baseline_ts=dates[warmup],  # first decision session; out_dates[0] is one session later
         metrics={
             "sharpe": sharpe_ratio(returns, periods_per_year=periods_per_year),
             "cagr": cagr(equity, periods_per_year=periods_per_year),
