@@ -6,6 +6,7 @@ import type { FunctionComponent } from 'react'
 
 import { RunBrowser } from './RunBrowser'
 import { RunDetail } from './RunDetail'
+import { StrategyLab } from './StrategyLab'
 
 export interface PanelMenuItem {
   component: string
@@ -16,9 +17,11 @@ export interface PanelMenuItem {
 export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RunBrowser,
   RunDetail,
+  StrategyLab,
 }
 
 // Panels openable from the ⌘K palette (Run Detail is opened from a run row, so it's not listed).
 export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'RunBrowser', title: 'Run Browser', hint: 'runs' },
+  { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
 ]
