@@ -10,6 +10,7 @@ import json
 import shutil
 from pathlib import Path
 
+import polars as pl
 import pytest
 from typer.testing import CliRunner
 
@@ -52,6 +53,21 @@ def test_propfirm_fresh_backtest_writes_manifest(
     assert manifest["rules"]["account_size"] == 50_000.0  # the topstep preset
     assert manifest["n_paths"] == 200
 
+    # per-path Monte-Carlo outcomes ride alongside the manifest (paths.parquet)
+    paths = pl.read_parquet(rdir / "paths.parquet")
+    assert paths.columns == ["path_index", "passed", "busted", "days_to_pass", "payout"]
+    assert paths.schema["path_index"] == pl.Int64
+    assert paths.schema["passed"] == pl.Boolean
+    assert paths.schema["busted"] == pl.Boolean
+    assert paths.schema["days_to_pass"] == pl.Float64
+    assert paths.schema["payout"] == pl.Float64
+    assert paths.height == manifest["n_paths"]
+    assert paths["path_index"].to_list() == list(range(manifest["n_paths"]))  # sorted, gap-free
+    # the manifest aggregates are exactly the per-path means
+    assert paths["passed"].mean() == pytest.approx(manifest["metrics"]["pass_probability"])
+    assert paths["busted"].mean() == pytest.approx(manifest["metrics"]["bust_probability"])
+    assert paths["payout"].mean() == pytest.approx(manifest["metrics"]["expected_payout"])
+
 
 def test_propfirm_manifest_is_byte_stable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
@@ -62,11 +78,13 @@ def test_propfirm_manifest_is_byte_stable(tmp_path: Path, monkeypatch: pytest.Mo
     assert first.exit_code == 0, first.output
     (rdir,) = list((tmp_path / "propfirm").iterdir())
     text_a = (rdir / "manifest.json").read_text()
+    paths_a = (rdir / "paths.parquet").read_bytes()
 
     second = runner.invoke(app, args)  # same run_id -> same dir, overwritten identically
     assert second.exit_code == 0, second.output
     text_b = (rdir / "manifest.json").read_text()
     assert text_a == text_b  # byte-identical (spec §11.4)
+    assert paths_a == (rdir / "paths.parquet").read_bytes()  # per-path outcomes too
 
 
 def test_propfirm_horizon_flag_caps_the_window(

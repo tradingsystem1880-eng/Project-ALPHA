@@ -77,7 +77,11 @@ class PropFirmRules:
 
 @dataclass(frozen=True)
 class PropFirmResult:
-    """Monte-Carlo outcome distribution for a strategy against one firm's rules."""
+    """Monte-Carlo outcome distribution for a strategy against one firm's rules.
+
+    The ``path_*`` tuples carry one entry per synthetic path (index-aligned), so the aggregate
+    probabilities are exactly their means and the outcome distribution can be persisted/re-plotted.
+    """
 
     pass_probability: float  # P(clear the evaluation within the horizon)
     bust_probability: float  # P(breach a limit in the eval OR the funded phase)
@@ -86,6 +90,10 @@ class PropFirmResult:
     expected_payout: float  # mean trader take ($), net of eval_fee, across all paths
     n_paths: int
     horizon_days: int
+    path_passed: tuple[bool, ...]  # per path: cleared the evaluation within the horizon
+    path_busted: tuple[bool, ...]  # per path: breached a limit in the eval OR the funded phase
+    path_days_to_pass: tuple[float, ...]  # per path: trading days to pass (NaN if never passed)
+    path_payout: tuple[float, ...]  # per path: profit_split * withdrawn - eval_fee
 
 
 def _drawdown_floor(peak: float, rules: PropFirmRules) -> float:
@@ -212,6 +220,8 @@ def simulate_propfirm(
     days_to_pass = (first_pass[passed_eval] + 1).astype(np.float64)
     median = float(np.median(days_to_pass)) if days_to_pass.size else float("nan")
     payout_cash = rules.profit_split * total_withdrawn - rules.eval_fee
+    # per-path days-to-pass (1-based trading days; NaN marks a path that never passed)
+    path_days = np.where(passed_eval, (first_pass + 1).astype(np.float64), np.nan)
 
     return PropFirmResult(
         pass_probability=float(passed_eval.mean()),
@@ -221,6 +231,10 @@ def simulate_propfirm(
         expected_payout=float(payout_cash.mean()),
         n_paths=n_paths,
         horizon_days=horizon,
+        path_passed=tuple(bool(v) for v in passed_eval),
+        path_busted=tuple(bool(v) for v in busted_any),
+        path_days_to_pass=tuple(float(v) for v in path_days),
+        path_payout=tuple(float(v) for v in payout_cash),
     )
 
 

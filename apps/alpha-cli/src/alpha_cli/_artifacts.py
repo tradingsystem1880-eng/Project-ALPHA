@@ -167,6 +167,46 @@ def write_trials(rdir: Path, *, matrix: FloatArray) -> None:
     frame.write_parquet(rdir / "trials.parquet")
 
 
+def write_propfirm_paths(
+    rdir: Path,
+    *,
+    passed: Sequence[bool],
+    busted: Sequence[bool],
+    days_to_pass: Sequence[float],
+    payout: Sequence[float],
+) -> None:
+    """Write ``paths.parquet`` — a prop-firm run's per-path Monte-Carlo outcomes.
+
+    One row per path, sorted by ``path_index`` Int64 (0..n-1): ``passed``/``busted`` Boolean,
+    ``days_to_pass`` Float64 (NaN when the path never passed — this is Parquet, not the manifest,
+    so NaN is representable) and ``payout`` Float64. Deterministic: fixed column order, pinned
+    dtypes, no wall-clock. Callers must write this BEFORE the manifest (the run-exists marker).
+    """
+    n = len(passed)
+    if not len(busted) == len(days_to_pass) == len(payout) == n:
+        raise DataError(
+            f"propfirm path arrays misaligned: {n}/{len(busted)}/{len(days_to_pass)}/{len(payout)}"
+        )
+    frame = pl.DataFrame(
+        {
+            "path_index": list(range(n)),
+            "passed": list(passed),
+            "busted": list(busted),
+            "days_to_pass": [float(v) for v in days_to_pass],
+            "payout": [float(v) for v in payout],
+        },
+        schema={
+            "path_index": pl.Int64(),
+            "passed": pl.Boolean(),
+            "busted": pl.Boolean(),
+            "days_to_pass": pl.Float64(),
+            "payout": pl.Float64(),
+        },
+    )
+    rdir.mkdir(parents=True, exist_ok=True)
+    frame.write_parquet(rdir / "paths.parquet")
+
+
 def write_run(
     rdir: Path,
     *,
