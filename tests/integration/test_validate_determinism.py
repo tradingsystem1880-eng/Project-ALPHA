@@ -108,10 +108,12 @@ def test_fresh_process_cli_runs_are_byte_identical(tmp_path, monkeypatch) -> Non
         "7",
     ]
 
-    def run_once() -> bytes:
+    def run_once() -> tuple[bytes, bytes]:
         proc = subprocess.run(args, capture_output=True, text=True, env=env, check=False)
         assert proc.returncode == 0, proc.stderr or proc.stdout
         run_id = proc.stdout.split("-> run ")[1].split(":")[0]
-        return bytes((tmp_path / "runs" / run_id / "manifest.json").read_bytes())
+        rdir = tmp_path / "runs" / run_id
+        # the manifest AND the raw null distributions must both be byte-stable
+        return (rdir / "manifest.json").read_bytes(), (rdir / "nulls.parquet").read_bytes()
 
     assert run_once() == run_once()  # byte-for-byte, across interpreter boundaries

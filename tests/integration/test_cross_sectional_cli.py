@@ -6,6 +6,7 @@ import json
 import math
 from pathlib import Path
 
+import polars as pl
 import pytest
 from typer.testing import CliRunner
 
@@ -46,6 +47,18 @@ def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.Mon
     assert math.isfinite(ci["lower"]) and math.isfinite(ci["upper"])
     assert ci["lower"] <= sharpe <= ci["upper"]
     assert (rdir / "tearsheet.html").exists()  # reporting parity with `alpha validate`
+
+    # the OOS stream is persisted as an equity curve (validate-run schema: base 1.0)
+    eq = pl.read_parquet(rdir / "equity_curve.parquet")
+    assert eq.columns == ["ts", "equity"]
+    assert eq.schema["ts"] == pl.Datetime(time_unit="us", time_zone="UTC")
+    assert eq.schema["equity"] == pl.Float64
+    assert eq.height == manifest["n_periods"] + 1  # baseline row + one point per OOS return
+    assert eq["equity"][0] == 1.0
+    assert eq["ts"].is_sorted() and eq["ts"].n_unique() == eq.height  # strictly increasing
+    assert eq["equity"][-1] / eq["equity"][0] - 1.0 == pytest.approx(
+        manifest["metrics"]["total_return"]
+    )
 
     report_out = runner.invoke(app, ["report", manifest["run_id"]])
     assert report_out.exit_code == 0, report_out.output

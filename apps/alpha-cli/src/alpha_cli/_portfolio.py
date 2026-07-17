@@ -67,6 +67,9 @@ class PortfolioResult:
     n_periods: int
     portfolio_returns: FloatArray
     portfolio_timestamps: list[datetime]
+    # the basket's equity baseline: the earliest leg's first OOS equity point. Equity is 1.0 there
+    # and every combined return realizes strictly after it (return i at portfolio_timestamps[i]).
+    baseline_ts: datetime
     metrics: dict[str, float]  # sharpe, cagr, annualized_vol, max_drawdown, total_return
     psr: float  # probabilistic Sharpe of the basket
     dsr: float  # deflated Sharpe (single basket → equals PSR)
@@ -75,14 +78,16 @@ class PortfolioResult:
     legs: tuple[LegSummary, ...]
 
 
-def _leg_series(spec: RunSpec, *, data_dir: Path, symbol: str) -> dict[datetime, float]:
-    """One symbol's OOS return-by-date series (returns[i] keyed by the date it realizes)."""
+def _leg_series(
+    spec: RunSpec, *, data_dir: Path, symbol: str
+) -> tuple[datetime, dict[datetime, float]]:
+    """One symbol's OOS baseline timestamp + return-by-date series (keyed by realization date)."""
     bars, _ = load_bars(symbol, data_dir=data_dir)
     dividends = load_dividends(symbol, data_dir=data_dir)
     result = run_full_backtest(bars, spec, dividends=dividends)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     dates = oos.oos_timestamps[1:]  # return i realizes at equity point i+1
-    return dict(zip(dates, oos.oos_returns.tolist(), strict=True))
+    return oos.oos_timestamps[0], dict(zip(dates, oos.oos_returns.tolist(), strict=True))
 
 
 def _resample_sharpe(periods_per_year: int) -> Callable[[FloatArray], float]:
@@ -155,7 +160,11 @@ def run_portfolio(
     if len(set(symbols)) != len(symbols):
         raise DataError(f"duplicate symbols in portfolio: {symbols}")
 
-    series = {s: _leg_series(spec, data_dir=data_dir, symbol=s) for s in symbols}
+    legs_raw = {s: _leg_series(spec, data_dir=data_dir, symbol=s) for s in symbols}
+    series = {s: legs_raw[s][1] for s in symbols}
+    # the basket's equity baseline: the earliest first-OOS-equity point across legs (equity 1.0
+    # there; strictly before the first combined realization date by construction)
+    baseline_ts = min(base for base, _ in legs_raw.values())
     leg_dates = {s: sorted(series[s]) for s in symbols}
     leg_values = {
         s: np.array([series[s][d] for d in leg_dates[s]], dtype=np.float64) for s in symbols
@@ -223,6 +232,7 @@ def run_portfolio(
         n_periods=returns.size,
         portfolio_returns=returns,
         portfolio_timestamps=port_dates,
+        baseline_ts=baseline_ts,
         metrics={
             "sharpe": sharpe_ratio(returns, periods_per_year=ppy),
             "cagr": cagr(equity, periods_per_year=ppy),

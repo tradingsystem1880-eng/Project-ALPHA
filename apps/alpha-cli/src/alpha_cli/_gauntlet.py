@@ -100,6 +100,11 @@ class GauntletOutput:
     report: GauntletReport
     oos: OOSResult
     result: BacktestResult
+    # raw per-path null statistics behind the two NullSummary tiers (finite by construction —
+    # the generators fail loud on non-finite paths; empty when a degenerate OOS drew no null).
+    # Persisted by the CLI as nulls.parquet next to the manifest.
+    tier1_null: FloatArray
+    tier2_null: FloatArray
 
 
 def run_gauntlet(
@@ -161,6 +166,8 @@ def run_gauntlet(
         # it against a null or bootstrapping it is meaningless. Fail gracefully — degenerate gates,
         # overall FAIL — instead of letting an undefined-Sharpe error abort the run.
         nulls = (_degenerate_null("returns_level"), _degenerate_null("full_engine"))
+        tier1_null = np.array([], dtype=np.float64)  # no null was drawn — nothing to persist
+        tier2_null = np.array([], dtype=np.float64)
         cis = (
             _degenerate_ci("sharpe", params.confidence),
             _degenerate_ci("cagr", params.confidence),
@@ -213,6 +220,8 @@ def run_gauntlet(
             dividends=dividends,
             spec_for_path=tier2_spec_for_path if params.tier2_mode == "model" else None,
         )
+        tier1_null = tier1.null
+        tier2_null = tier2.null
         divergence = _convention_divergence(bars, price_returns, surrogate, oos_idx, safe_sharpe)
         nulls = (
             _tier1_summary(
@@ -263,7 +272,9 @@ def run_gauntlet(
         cpcv=cpcv,
         verdict=verdict,
     )
-    return GauntletOutput(report=report, oos=oos, result=result)
+    return GauntletOutput(
+        report=report, oos=oos, result=result, tier1_null=tier1_null, tier2_null=tier2_null
+    )
 
 
 def _verdict_summary(

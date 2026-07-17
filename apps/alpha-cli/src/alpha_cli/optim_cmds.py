@@ -12,7 +12,7 @@ from typing import Annotated, Any
 
 import typer
 
-from alpha_cli import _optim, _runner
+from alpha_cli import _artifacts, _optim, _runner
 from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
@@ -142,6 +142,8 @@ def grid(
 
     rdir = settings.data_dir / "optim" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
+    # the per-trial OOS matrix BEFORE the manifest (manifest.json is the run-exists marker)
+    _artifacts.write_trials(rdir, matrix=result.oos_matrix)
     manifest = _manifest(result, run_id=run_id, symbol=symbol, snapshot_id=snapshot_id)
     (rdir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"

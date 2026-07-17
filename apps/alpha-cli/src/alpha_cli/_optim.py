@@ -64,6 +64,9 @@ class OptimResult:
     configs: tuple[Config, ...]
     sharpes: FloatArray  # annualized OOS Sharpe per config (aligned with ``configs``)
     passed: bool  # DSR, PBO and SPA all pass — the selection is not just snooping
+    # the (n_oos × n_configs) OOS return matrix behind the verdict (column j = configs[j]'s
+    # concatenated walk-forward OOS stream) — persisted by the CLI as trials.parquet
+    oos_matrix: FloatArray
 
 
 def expand_grid(grid: Mapping[str, Sequence[float]]) -> list[Config]:
@@ -211,6 +214,7 @@ def run_optimization(
         configs=tuple(configs),
         sharpes=ann,
         passed=dsr.passed and pbo.passed and spa.passed,
+        oos_matrix=matrix,
     )
 
 
