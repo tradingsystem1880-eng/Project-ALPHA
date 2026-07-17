@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -80,6 +81,17 @@ def snapshot(snapshot_id: str, symbols: list[str], source: str = "yfinance") -> 
     except DataError as exc:  # e.g. a symbol with no bars in the store
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"snapshot {snapshot_id} created for {symbols}")
+
+
+@data_app.command()
+def symbols(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List every symbol with stored bars (the workstation's symbol picker reads this)."""
+    stored = _store().list_symbols()
+    if json_out:
+        typer.echo(json.dumps({"symbols": stored}))
+        return
+    for sym in stored:
+        typer.echo(sym)
 
 
 @data_app.command()
