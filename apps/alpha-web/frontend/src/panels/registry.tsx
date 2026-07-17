@@ -13,7 +13,7 @@ import { PriceChart } from './PriceChart'
 import { RiskMonitor } from './RiskMonitor'
 import { RunBrowser } from './RunBrowser'
 import { Screener } from './Screener'
-import { RunDetail } from './RunDetail'
+import { RunDetail } from './rundetail'
 import { StrategyLab } from './StrategyLab'
 import { Workspaces } from './Workspaces'
 
