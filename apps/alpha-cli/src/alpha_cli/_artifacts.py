@@ -17,10 +17,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import polars as pl
 
 from alpha_cli import RUN_DIRS
 from alpha_core import DataError
+from alpha_validation import FloatArray
 
 _RUN_ID_RE = re.compile(r"[0-9a-f]{16}")  # ids are 16 hex chars; reject before path-joining
 
@@ -139,6 +141,30 @@ def write_nulls(rdir: Path, *, tiers: Sequence[tuple[str, Sequence[float]]]) -> 
     )
     rdir.mkdir(parents=True, exist_ok=True)
     frame.write_parquet(rdir / "nulls.parquet")
+
+
+def write_trials(rdir: Path, *, matrix: FloatArray) -> None:
+    """Write ``trials.parquet`` — the ``(n_oos × n_configs)`` OOS return matrix behind a sweep.
+
+    One row per (trial, step): ``trial`` Int64 (config index, aligned with the manifest's
+    ``configs``/``sharpes``), ``step`` Int64 (position in the concatenated walk-forward OOS
+    stream), ``oos_return`` Float64, sorted by (trial, step). Deterministic: fixed column order,
+    pinned dtypes, no wall-clock. Callers must write this BEFORE the manifest (the run-exists
+    marker).
+    """
+    if matrix.ndim != 2:
+        raise DataError(f"trials matrix must be 2-D (n_oos × n_configs), got shape {matrix.shape}")
+    n_oos, n_configs = matrix.shape
+    frame = pl.DataFrame(
+        {
+            "trial": np.repeat(np.arange(n_configs, dtype=np.int64), n_oos),
+            "step": np.tile(np.arange(n_oos, dtype=np.int64), n_configs),
+            "oos_return": np.ascontiguousarray(matrix.T).reshape(-1),
+        },
+        schema={"trial": pl.Int64(), "step": pl.Int64(), "oos_return": pl.Float64()},
+    )
+    rdir.mkdir(parents=True, exist_ok=True)
+    frame.write_parquet(rdir / "trials.parquet")
 
 
 def write_run(

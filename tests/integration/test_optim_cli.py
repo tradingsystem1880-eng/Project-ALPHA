@@ -5,10 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
+import polars as pl
 import pytest
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
+from alpha_validation.metrics import sharpe_ratio
 from tests.fixtures.cli_fixtures import seed_store
 
 runner = CliRunner()
@@ -37,6 +40,22 @@ def test_optim_writes_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert len(manifest["sharpes"]) == 2
     assert set(manifest) >= {"best_config", "dsr", "pbo", "spa", "reality_check", "passed"}
     assert isinstance(manifest["passed"], bool)
+
+    # the per-trial OOS return matrix rides alongside the manifest (trials.parquet)
+    trials = pl.read_parquet(rdir / "trials.parquet")
+    assert trials.columns == ["trial", "step", "oos_return"]
+    assert trials.schema["trial"] == pl.Int64
+    assert trials.schema["step"] == pl.Int64
+    assert trials.schema["oos_return"] == pl.Float64
+    assert trials.height == manifest["n_configs"] * manifest["n_oos"]
+    assert trials.sort(["trial", "step"]).equals(trials)  # stored in (trial, step) order
+    # per-trial reconstruction: the best trial's rows reproduce the manifest's best_sharpe
+    best_idx = int(np.argmax(manifest["sharpes"]))
+    best = trials.filter(pl.col("trial") == best_idx).sort("step")["oos_return"].to_numpy()
+    assert best.size == manifest["n_oos"]
+    assert sharpe_ratio(best, periods_per_year=252) == pytest.approx(
+        manifest["best_sharpe"], rel=1e-12
+    )
 
 
 def test_optim_rejects_empty_grid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
