@@ -9,7 +9,7 @@ import type uPlot from 'uplot'
 import { api } from '../api/client'
 import type { EquitySeries, ForecastSeries, RunDetail as RunDetailData, TradeRow } from '../api/types'
 import { CHART } from '../util/chartTheme'
-import { fmtNum } from '../util/format'
+import { fmtNum, fmtPct } from '../util/format'
 import { UplotChart } from '../components/UplotChart'
 
 // ---- safe manifest accessors ------------------------------------------------------------------
@@ -39,6 +39,27 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="rd-head">{title}</div>
       {children}
     </section>
+  )
+}
+
+function Metric({
+  label,
+  value,
+  digits = 2,
+  pct = false,
+}: {
+  label: string
+  value: unknown
+  digits?: number
+  pct?: boolean
+}) {
+  const v = asNum(value)
+  if (v === null) return null
+  return (
+    <div className="metric">
+      <span className="eyebrow">{label}</span>
+      <span className="metric-val num">{pct ? fmtPct(v, 1) : fmtNum(v, digits)}</span>
+    </div>
   )
 }
 
@@ -298,11 +319,20 @@ export function RunDetail(props: IDockviewPanelProps) {
 
   const m = detail.manifest
   const verdict = asObj(m.verdict)
-  const oos = asObj(m.oos_metrics) ?? asObj(m.metrics)
   const outcomes = asArr(m.outcomes)
   const folds = asArr(m.folds)
   const dsr = asObj(m.dsr)
   const cpcv = asObj(m.cpcv)
+  const pbo = asObj(m.pbo)
+  const rc = asObj(m.reality_check)
+  const spa = asObj(m.spa)
+  const bestSharpe = asNum(m.best_sharpe)
+  const legs = asArr(m.legs)
+  const firm = asStr(m.firm)
+  const propfirm = firm ? asObj(m.metrics) : null // propfirm's metrics are pass/bust/payout probs
+  const rules = asObj(m.rules)
+  const oos = asObj(m.oos_metrics) ?? (firm ? null : asObj(m.metrics))
+  const controls = dsr || cpcv || pbo || rc || spa || bestSharpe !== null
   const command = asStr(m.command) ?? (detail.kind === 'runs' ? 'gauntlet' : detail.kind)
   const leak = asStr(m.leakage_warning)
 
@@ -345,34 +375,57 @@ export function RunDetail(props: IDockviewPanelProps) {
         <Outcomes outcomes={outcomes} />
         <FoldsTable folds={folds} />
 
-        {dsr || cpcv ? (
-          <Section title="Deflated Sharpe · CPCV">
+        {controls ? (
+          <Section title="Statistical controls">
             <div className="metric-grid">
-              {dsr ? (
-                <>
-                  <div className="metric">
-                    <span className="eyebrow">PSR</span>
-                    <span className="metric-val num">{fmtNum(dsr.psr, 3)}</span>
-                  </div>
-                  <div className="metric">
-                    <span className="eyebrow">DSR</span>
-                    <span className="metric-val num">{fmtNum(dsr.dsr, 3)}</span>
-                  </div>
-                </>
-              ) : null}
-              {cpcv ? (
-                <>
-                  <div className="metric">
-                    <span className="eyebrow">CPCV mean</span>
-                    <span className="metric-val num">{fmtNum(cpcv.mean_sharpe, 2)}</span>
-                  </div>
-                  <div className="metric">
-                    <span className="eyebrow">Frac +</span>
-                    <span className="metric-val num">{fmtNum(cpcv.frac_positive, 2)}</span>
-                  </div>
-                </>
-              ) : null}
+              <Metric label="Best Sharpe" value={m.best_sharpe} />
+              {dsr ? <Metric label="PSR" value={dsr.psr} digits={3} /> : null}
+              {dsr ? <Metric label="Deflated Sharpe" value={dsr.dsr} digits={3} /> : null}
+              {pbo ? <Metric label="PBO" value={pbo.pbo} digits={3} /> : null}
+              {rc ? <Metric label="Reality-Check p" value={rc.p_value} digits={3} /> : null}
+              {spa ? <Metric label="SPA p" value={spa.p_value} digits={3} /> : null}
+              {cpcv ? <Metric label="CPCV mean" value={cpcv.mean_sharpe} /> : null}
+              {cpcv ? <Metric label="CPCV frac +" value={cpcv.frac_positive} /> : null}
             </div>
+          </Section>
+        ) : null}
+
+        {propfirm ? (
+          <Section title={`Prop-firm Monte Carlo · ${firm}`}>
+            <div className="metric-grid">
+              <Metric label="Pass prob" value={propfirm.pass_probability} pct />
+              <Metric label="Bust prob" value={propfirm.bust_probability} pct />
+              <Metric label="Payout prob" value={propfirm.payout_probability} pct />
+              <Metric label="Expected payout" value={propfirm.expected_payout} digits={0} />
+              <Metric label="Median days" value={propfirm.median_days_to_pass} digits={0} />
+              {rules ? <Metric label="Profit target" value={rules.profit_target} digits={0} /> : null}
+              {rules ? <Metric label="Max drawdown" value={rules.max_drawdown} digits={0} /> : null}
+            </div>
+          </Section>
+        ) : null}
+
+        {legs.length ? (
+          <Section title="Legs">
+            <table className="blotter">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th className="r">OOS Sharpe</th>
+                  <th className="r">Weight</th>
+                  <th className="r">N OOS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {legs.map((l, i) => (
+                  <tr key={i}>
+                    <td className="mono">{asStr(l.symbol) ?? '—'}</td>
+                    <td className="num">{fmtNum(l.oos_sharpe, 2)}</td>
+                    <td className="num">{fmtNum(l.weight, 3)}</td>
+                    <td className="num">{asNum(l.n_oos) ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </Section>
         ) : null}
 

@@ -874,3 +874,45 @@ select.field:focus {
   border-color: rgba(239, 83, 80, 0.4);
 }
 
+/* ==========================================================================
+   AI Console
+   ========================================================================== */
+
+.ai {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-note {
+  padding: 11px 13px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ai-note code {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.ai-note strong {
+  color: var(--ink);
+}
+.ai-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-prompt {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+.ai-input .field {
+  flex: 1;
+}
+

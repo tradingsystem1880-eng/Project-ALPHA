@@ -4,6 +4,7 @@
 import type { IDockviewPanelProps } from 'dockview-react'
 import type { FunctionComponent } from 'react'
 
+import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
 import { PriceChart } from './PriceChart'
 import { RunBrowser } from './RunBrowser'
@@ -24,6 +25,7 @@ export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   PriceChart,
   DataExplorer,
   Workspaces,
+  AiConsole,
 }
 
 // Panels openable from the ⌘K palette (Run Detail is opened from a run row, so it's not listed).
@@ -32,5 +34,6 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
   { component: 'PriceChart', title: 'Price', hint: 'candles' },
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },
+  { component: 'AiConsole', title: 'AI Console', hint: 'command' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
 ]
