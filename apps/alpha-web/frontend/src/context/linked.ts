@@ -9,9 +9,10 @@ export interface LinkedState {
   symbol: string | null
   start: string | null
   end: string | null
+  runId: string | null
 }
 
-let state: LinkedState = { symbol: null, start: null, end: null }
+let state: LinkedState = { symbol: null, start: null, end: null, runId: null }
 const listeners = new Set<() => void>()
 
 export function getLinked(): LinkedState {

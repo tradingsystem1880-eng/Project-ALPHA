@@ -144,8 +144,29 @@ export interface WorkspaceMeta {
 
 export interface WorkspaceDoc {
   name: string
-  linked_context: { symbol: string | null; start: string | null; end: string | null }
+  linked_context: {
+    symbol: string | null
+    start: string | null
+    end: string | null
+    runId: string | null
+  }
   dockview: Record<string, unknown>
+}
+
+export interface RiskScenario {
+  name: string
+  sharpe: number | null
+  annual_vol: number
+  max_drawdown: number
+  value_at_risk: number
+  expected_shortfall: number
+  total_return: number
+}
+
+export interface RiskReport {
+  run_id: string
+  confidence: number
+  scenarios: RiskScenario[]
 }
 
 export interface OptionGreeks {

@@ -10,6 +10,7 @@ import type {
   JobSummary,
   OptionCurve,
   OptionGreeks,
+  RiskReport,
   RunDetail,
   RunList,
   StrategyDef,
@@ -72,4 +73,6 @@ export const api = {
     fetch(`/api/workspaces/${slug}`, { method: 'DELETE' }),
   optionsGreeks: (query: string): Promise<OptionGreeks> => getJSON(`/api/options/greeks?${query}`),
   optionsCurve: (query: string): Promise<OptionCurve> => getJSON(`/api/options/curve?${query}`),
+  riskScenario: (runId: string, confidence = 0.95): Promise<RiskReport> =>
+    getJSON(`/api/risk/scenario?run_id=${encodeURIComponent(runId)}&confidence=${confidence}`),
 }

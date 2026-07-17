@@ -27,7 +27,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
 
   function selectRow(run: RunListItem): void {
     setSelected(run.run_id)
-    if (run.symbol) setLinked({ symbol: run.symbol })
+    setLinked({ runId: run.run_id, ...(run.symbol ? { symbol: run.symbol } : {}) })
   }
 
   function openDetail(run: RunListItem): void {

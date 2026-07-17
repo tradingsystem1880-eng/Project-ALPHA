@@ -13,6 +13,7 @@ from alpha_cli.options_cmds import options_app
 from alpha_cli.paper_cmds import paper_app
 from alpha_cli.propfirm_cmds import propfirm_app
 from alpha_cli.report_cmds import report as _report
+from alpha_cli.risk_cmds import risk_app
 from alpha_cli.validate_cmds import validate as _validate
 
 app = typer.Typer(help="Project ALPHA command-line interface.")
@@ -23,6 +24,7 @@ app.add_typer(forecast_app, name="forecast")
 app.add_typer(paper_app, name="paper")
 app.add_typer(propfirm_app, name="propfirm")
 app.add_typer(options_app, name="options")
+app.add_typer(risk_app, name="risk")
 app.add_typer(info_app, name="info")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)
