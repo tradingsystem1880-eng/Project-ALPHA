@@ -35,15 +35,33 @@
   --gold: #d7a63b;
   --gold-soft: rgba(215, 166, 59, 0.14);
 
+  /* verdict scale — every grade gets its own hue (A confident green → F hard red) */
+  --verdict-a: #2ea04a;
+  --verdict-a-soft: rgba(46, 160, 74, 0.14);
+  --verdict-b: #7cb342;
+  --verdict-b-soft: rgba(124, 179, 66, 0.14);
+  --verdict-c: #d7a63b;
+  --verdict-c-soft: rgba(215, 166, 59, 0.14);
+  --verdict-d: #e07b39;
+  --verdict-d-soft: rgba(224, 123, 57, 0.14);
+  --verdict-f: #ef5350;
+  --verdict-f-soft: rgba(239, 83, 80, 0.14);
+
   --r: 3px;
   --r-lg: 5px;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Cascadia Code', ui-monospace, monospace;
+  /* density knobs — compact mode tightens these via html[data-density='compact'] */
+  --pad: 12px;
+  --pad-sm: 8px;
+  --row-h: 26px;
+  --font-size: 13px;
+
+  --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Cascadia Code', ui-monospace, monospace;
 
   color-scheme: dark;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--font-size);
   line-height: 1.45;
   color: var(--ink);
   background: var(--bg);
@@ -51,6 +69,14 @@
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+/* compact density — tighter rows and padding for a fuller desk */
+html[data-density='compact'] {
+  --pad: 8px;
+  --pad-sm: 5px;
+  --row-h: 21px;
+  --font-size: 12px;
 }
 
 * {
@@ -965,3 +991,76 @@ select.field:focus {
   color: var(--muted);
 }
 
+
+/* ==========================================================================
+   Design system v2: skeletons, tooltips, error boundary
+   ========================================================================== */
+
+/* skeleton shimmer — loading placeholders that keep the panel's shape */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--panel-2);
+  border-radius: var(--r);
+  min-height: 14px;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(232, 236, 243, 0.05), transparent);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* glossary term — dotted underline + rich tooltip on hover/focus */
+.term {
+  border-bottom: 1px dotted var(--muted);
+  cursor: help;
+  position: relative;
+}
+.term-tip {
+  position: fixed;
+  z-index: 90;
+  max-width: 340px;
+  padding: 9px 11px;
+  background: var(--elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  pointer-events: none;
+}
+.term-tip .term-name {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+/* per-panel error boundary — fail loud, stay contained */
+.panel-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: var(--pad);
+  color: var(--down);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow: auto;
+  height: 100%;
+}
+.panel-error .eyebrow {
+  color: var(--down);
+}
