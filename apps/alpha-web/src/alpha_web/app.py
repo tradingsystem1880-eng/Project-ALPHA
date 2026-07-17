@@ -23,9 +23,11 @@ from alpha_web import _charts, _invoke, _runs
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
+from alpha_web.api import manifest as manifest_api
 from alpha_web.api import runs as runs_api
 
 _PKG = Path(__file__).resolve().parent
+_APP_INDEX = _PKG / "static" / "app" / "index.html"  # built SPA entry (Vite → static/app)
 
 
 def _data_dir() -> Path:
@@ -77,6 +79,17 @@ def create_app() -> FastAPI:
     app.include_router(jobs_api.router)
     app.include_router(catalog_api.router)
     app.include_router(candles_api.router)
+    app.include_router(manifest_api.router)
+
+    @app.get("/app")
+    def workstation() -> FileResponse:
+        """Serve the built single-page workstation (assets ride the /static mount)."""
+        if not _APP_INDEX.exists():
+            raise HTTPException(
+                status_code=503,
+                detail="workstation SPA not built; run `npm run build` in apps/alpha-web/frontend",
+            )
+        return FileResponse(_APP_INDEX, media_type="text/html")
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

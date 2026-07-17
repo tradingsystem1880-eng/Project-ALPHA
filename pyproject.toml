@@ -51,8 +51,12 @@ kronos = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# Vendored Kronos code stays byte-faithful to upstream; never lint/format it.
-extend-exclude = ["packages/alpha-forecast/src/alpha_forecast/_vendor"]
+# Vendored Kronos code stays byte-faithful to upstream; never lint/format it. The workstation
+# frontend is a TypeScript/Vite tree (its own toolchain) — the Python gate never touches it.
+extend-exclude = [
+    "packages/alpha-forecast/src/alpha_forecast/_vendor",
+    "apps/alpha-web/frontend",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
