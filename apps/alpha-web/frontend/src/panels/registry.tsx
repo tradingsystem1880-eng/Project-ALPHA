@@ -4,6 +4,7 @@
 import type { IDockviewPanelProps } from 'dockview-react'
 import type { FunctionComponent } from 'react'
 
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
 import { OptionsGreeks } from './OptionsGreeks'
@@ -21,7 +22,22 @@ export interface PanelMenuItem {
   hint?: string
 }
 
-export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
+// Every panel renders inside its own error boundary: Dockview mounts panels in separate React
+// roots, so containment has to happen here — one crashed panel must never blank the desk.
+function guarded(
+  name: string,
+  Panel: FunctionComponent<IDockviewPanelProps>,
+): FunctionComponent<IDockviewPanelProps> {
+  const Guarded: FunctionComponent<IDockviewPanelProps> = (props) => (
+    <ErrorBoundary panel={name}>
+      <Panel {...props} />
+    </ErrorBoundary>
+  )
+  Guarded.displayName = `Guarded(${name})`
+  return Guarded
+}
+
+const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RunBrowser,
   RunDetail,
   StrategyLab,
@@ -33,6 +49,10 @@ export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   Workspaces,
   AiConsole,
 }
+
+export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = Object.fromEntries(
+  Object.entries(RAW_PANELS).map(([name, Panel]) => [name, guarded(name, Panel)]),
+)
 
 // Panels openable from the ⌘K palette (Run Detail is opened from a run row, so it's not listed).
 export const PANEL_MENU: PanelMenuItem[] = [
