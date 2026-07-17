@@ -135,3 +135,15 @@ export interface AppsManifest {
 }
 
 export type TradeRow = Record<string, string | number | null>
+
+export interface WorkspaceMeta {
+  slug: string
+  name: string
+  updated: number | null
+}
+
+export interface WorkspaceDoc {
+  name: string
+  linked_context: { symbol: string | null; start: string | null; end: string | null }
+  dockview: Record<string, unknown>
+}

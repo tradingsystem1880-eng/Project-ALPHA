@@ -22,6 +22,7 @@ from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import manifest as manifest_api
 from alpha_web.api import runs as runs_api
+from alpha_web.api import workspaces as workspaces_api
 
 _PKG = Path(__file__).resolve().parent
 _APP_INDEX = _PKG / "static" / "app" / "index.html"  # built SPA entry (Vite → static/app)
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(catalog_api.router)
     app.include_router(candles_api.router)
     app.include_router(manifest_api.router)
+    app.include_router(workspaces_api.router)
 
     def _spa() -> FileResponse:
         if not _APP_INDEX.exists():

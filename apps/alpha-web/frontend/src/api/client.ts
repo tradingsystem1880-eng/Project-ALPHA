@@ -12,6 +12,8 @@ import type {
   RunList,
   StrategyDef,
   TradeRow,
+  WorkspaceDoc,
+  WorkspaceMeta,
 } from './types'
 
 async function getJSON<T>(url: string): Promise<T> {
@@ -49,4 +51,21 @@ export const api = {
   },
   cancel: (id: string): Promise<Response> => fetch(`/api/jobs/${id}`, { method: 'DELETE' }),
   streamUrl: (id: string): string => `/api/jobs/${id}/stream`,
+  workspaces: (): Promise<WorkspaceMeta[]> => getJSON('/api/workspaces'),
+  getWorkspace: (slug: string): Promise<WorkspaceDoc> => getJSON(`/api/workspaces/${slug}`),
+  async saveWorkspace(body: {
+    name: string
+    linked_context: unknown
+    dockview: unknown
+  }): Promise<{ slug: string; name: string }> {
+    const res = await fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return (await res.json()) as { slug: string; name: string }
+  },
+  deleteWorkspace: (slug: string): Promise<Response> =>
+    fetch(`/api/workspaces/${slug}`, { method: 'DELETE' }),
 }

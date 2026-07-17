@@ -19,7 +19,26 @@ export function App() {
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     dockRef.current = event.api
-    event.api.addPanel({ id: 'run-browser', component: 'RunBrowser', title: 'Run Browser' })
+    const saved = localStorage.getItem('alpha.layout')
+    let restored = false
+    if (saved) {
+      try {
+        event.api.fromJSON(JSON.parse(saved))
+        restored = true
+      } catch {
+        restored = false
+      }
+    }
+    if (!restored) {
+      event.api.addPanel({ id: 'run-browser', component: 'RunBrowser', title: 'Run Browser' })
+    }
+    event.api.onDidLayoutChange(() => {
+      try {
+        localStorage.setItem('alpha.layout', JSON.stringify(event.api.toJSON()))
+      } catch {
+        /* ignore storage quota / serialization errors */
+      }
+    })
   }, [])
 
   const openPanel = useCallback((component: string, title: string) => {

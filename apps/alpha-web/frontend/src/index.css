@@ -832,3 +832,45 @@ select.field:focus {
   background: var(--accent-soft);
 }
 
+/* ==========================================================================
+   Workspaces
+   ========================================================================== */
+
+.ws-save {
+  align-self: flex-end;
+}
+.ws-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ws-item {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.ws-open {
+  all: unset;
+  cursor: pointer;
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--line-strong);
+  background: var(--panel-2);
+  color: var(--ink);
+  font-size: 13px;
+  transition: all 0.12s;
+}
+.ws-open:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.ws-del {
+  padding: 0 11px;
+  color: var(--muted);
+}
+.ws-del:hover {
+  color: var(--down);
+  border-color: rgba(239, 83, 80, 0.4);
+}
+

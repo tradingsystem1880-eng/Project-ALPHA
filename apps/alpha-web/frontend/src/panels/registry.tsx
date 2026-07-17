@@ -9,6 +9,7 @@ import { PriceChart } from './PriceChart'
 import { RunBrowser } from './RunBrowser'
 import { RunDetail } from './RunDetail'
 import { StrategyLab } from './StrategyLab'
+import { Workspaces } from './Workspaces'
 
 export interface PanelMenuItem {
   component: string
@@ -22,6 +23,7 @@ export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   StrategyLab,
   PriceChart,
   DataExplorer,
+  Workspaces,
 }
 
 // Panels openable from the ⌘K palette (Run Detail is opened from a run row, so it's not listed).
@@ -30,4 +32,5 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
   { component: 'PriceChart', title: 'Price', hint: 'candles' },
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },
+  { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
 ]
