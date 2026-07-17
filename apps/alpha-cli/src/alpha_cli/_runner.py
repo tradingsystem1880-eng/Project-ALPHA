@@ -128,16 +128,22 @@ def parse_strategy_params(items: Sequence[str] | None) -> tuple[tuple[str, float
 
 
 def load_bars(
-    symbol: str, *, data_dir: Path, snapshot_id: str | None = None
+    symbol: str,
+    *,
+    data_dir: Path,
+    snapshot_id: str | None = None,
+    as_of: datetime | None = None,
 ) -> tuple[list[Bar], str | None]:
-    """Load the full point-in-time history for ``symbol`` — live store or a frozen snapshot.
+    """Load the point-in-time history for ``symbol`` — live store or a frozen snapshot.
 
-    Reads through ``PointInTimeSource`` — the same look-ahead-safe seam strategies use — with a
-    far-future ``as_of`` so the whole series is returned (corporate actions applied). With a
-    ``snapshot_id`` the read is rooted at ``data_dir/snapshots/<id>`` (integrity-verified first),
-    so the manifest's provenance claim is what the run actually consumed — the live store is
-    wholesale-replaced by pulls and cannot back a reproducibility claim. Fails loud (``DataError``)
-    on a missing/tampered snapshot or fewer than 2 bars.
+    Reads through ``PointInTimeSource`` — the same look-ahead-safe seam strategies use. ``as_of``
+    is the knowledge cutoff: bars after it are excluded and only corporate actions known by it are
+    applied (defaults to a far future so the whole series is returned, actions applied). Backtests
+    use the default; ``alpha data candles`` passes an ``--end`` so a chart can never show a bar past
+    its window nor a split not yet known at the cutoff. With a ``snapshot_id`` the read is rooted at
+    ``data_dir/snapshots/<id>`` (integrity-verified first), so the manifest's provenance claim is
+    what the run actually consumed — the live store is wholesale-replaced by pulls and cannot back a
+    reproducibility claim. Fails loud (``DataError``) on a missing/tampered snapshot or < 2 bars.
     """
     from alpha_data.snapshot import verify_snapshot
     from alpha_data.source import PointInTimeSource
@@ -150,9 +156,10 @@ def load_bars(
     else:
         store = ParquetStore(data_dir / "store")
     source = PointInTimeSource(store, {symbol: store.read_actions(symbol)})
-    bars = source.as_of(symbol, datetime(2999, 1, 1, tzinfo=UTC))
+    when = as_of if as_of is not None else datetime(2999, 1, 1, tzinfo=UTC)
+    bars = source.as_of(symbol, when)
     if len(bars) < 2:
-        raise DataError(f"need >= 2 bars to backtest {symbol!r}, got {len(bars)}")
+        raise DataError(f"need >= 2 bars for {symbol!r} as of {when.date()}, got {len(bars)}")
     return bars, snapshot_id
 
 

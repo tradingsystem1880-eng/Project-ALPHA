@@ -63,6 +63,12 @@ uv run alpha report <run_id>
 
 # 8. Paper-trading preflight: validate the sandbox exec venue + strategy parity (see Caveats)
 uv run alpha paper preflight AAPL --strategy ma_crossover
+
+# 9. Analytics for the Workstation panels (all offline except screener, which needs a finnhub key)
+uv run alpha options greeks 100 100 --vol 0.2              # Black-Scholes price + greeks
+uv run alpha risk scenario --from-run <run_id>            # vol-scaling + tail-shock stress
+uv run alpha research compare AAPL                        # rank every strategy on a symbol
+uv run alpha screener quote AAPL                          # finnhub (set ALPHA_FINNHUB_API_KEY)
 ```
 
 Every command writes a byte-stable JSON manifest (and parquet/HTML where relevant) under
@@ -119,19 +125,34 @@ Desktop, add to `claude_desktop_config.json`:
 Then drive ALPHA in plain language: *"pull AAPL, run the gauntlet on a momentum strategy, then
 check it against a Topstep combine."* No API keys, $0.
 
-## Web IDE
+## ALPHA Workstation (web terminal)
 
-`uv run alpha-web` serves a local web IDE at **http://127.0.0.1:8800** (loopback only, no auth):
+`uv run alpha-web` serves the **ALPHA Workstation** at **http://127.0.0.1:8800** (loopback only, no
+auth): a dark, dockable, single-user research terminal that unifies every capability behind one
+interface — Bloomberg/OpenBB-class, but $0.
 
-- **Run browser** (`/`) — every stored run with pass / A–F Verdict badges.
-- **Run detail** (`/runs/{id}`) — the manifest, an inline equity chart, and the embedded HTML tear
-  sheet.
-- **New run** (`/new`) — pick a command + arguments and watch it run **live** (streamed output).
-- **Console** (`/console`) — run any `alpha` command and stream it.
+- **Run browser** — every stored run (filter/paginate; pass / A–F Verdict badges), newest first.
+- **Run detail** — the manifest verdict + OOS metrics, equity & drawdown charts, trades blotter, the
+  forecast cone (q05–q95 band), and the embedded HTML tear sheet.
+- **Strategy lab** — a form built from the CLI's own catalogs; launch a run and watch it stream live.
+- **Price chart / data explorer** — point-in-time candles + the symbol store, linked to a global
+  symbol/date context. **Options**, **Screener/News**, **Risk scenarios**, and an **AI research
+  desk** panel round out the four net-new modules.
+- **Command palette + savable workspaces** (dockable/floating/popout panels).
 
-Server-rendered FastAPI + Jinja + native `EventSource` (no build step, no CDN). Like the MCP
-server it's purely additive — it subprocesses the `alpha` CLI and reads the artifacts. For true
-conversational control, pair it with the `alpha` MCP server (above) in a Claude client.
+Built as a Vite/React/TypeScript SPA (Dockview + TradingView Lightweight Charts + uPlot + AG Grid +
+cmdk) over a thin FastAPI **JSON + SSE** backend. Like the MCP server it's purely additive — every
+data source is an `alpha … --json` subprocess or a manifest read; nothing bypasses the CLI. The SPA
+source lives in [`apps/alpha-web/frontend`](apps/alpha-web/frontend); its **built assets are
+committed** under `src/alpha_web/static/app`, so the Python install and CI never need Node. To change
+the UI:
+
+```bash
+cd apps/alpha-web/frontend && npm ci && npm run build   # regenerates + commits static/app
+```
+
+A non-gating `frontend-build` CI job rebuilds the SPA and warns if the committed assets are stale.
+For conversational control, pair the Workstation's AI Console with the `alpha` MCP server (above).
 
 ## Not yet built (intentional)
 

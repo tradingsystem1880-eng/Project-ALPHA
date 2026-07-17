@@ -22,5 +22,10 @@ htmlcov/
 # macOS
 .DS_Store
 
+# Node / frontend build (the BUILT assets under src/alpha_web/static/app ARE committed;
+# node_modules + TS build info are not)
+node_modules/
+*.tsbuildinfo
+
 # Data is large + reproducible from snapshots; never commit it
 data/

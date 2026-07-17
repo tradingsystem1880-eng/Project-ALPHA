@@ -10,6 +10,8 @@ dependencies = [
     "alpha-backtest",
     "alpha-validation",
     "alpha-forecast",
+    "alpha-options",
+    "alpha-screener",
     "alpha-cli",
     "alpha-mcp",
     "alpha-web",
@@ -28,6 +30,8 @@ alpha-strategies = { workspace = true }
 alpha-backtest = { workspace = true }
 alpha-validation = { workspace = true }
 alpha-forecast = { workspace = true }
+alpha-options = { workspace = true }
+alpha-screener = { workspace = true }
 alpha-cli = { workspace = true }
 alpha-mcp = { workspace = true }
 alpha-web = { workspace = true }
@@ -53,14 +57,19 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# vendored upstream Kronos model code is pinned verbatim (see alpha_forecast._vendor) — not ours to style
-extend-exclude = ["packages/alpha-forecast/src/alpha_forecast/_vendor"]
+# vendored upstream Kronos model code is pinned verbatim (see alpha_forecast._vendor) — not ours to
+# style; the Workstation SPA source (apps/alpha-web/frontend) is TypeScript, linted by its own npm
+# toolchain, not ruff — its built assets are committed under src/alpha_web/static/app.
+extend-exclude = [
+    "packages/alpha-forecast/src/alpha_forecast/_vendor",
+    "apps/alpha-web/frontend",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli", "alpha_mcp", "alpha_web"]
+known-first-party = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli", "alpha_mcp", "alpha_web"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -96,6 +105,12 @@ module = ["alpha_forecast._vendor.*"]
 follow_imports = "skip"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# finnhub-python ships no mypy-loadable stubs; it's imported lazily at the one screener network
+# edge (alpha_screener.finnhub) and the client's dynamic methods are already `type: ignore`-d there.
+module = ["finnhub.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers --import-mode=importlib"
@@ -113,6 +128,8 @@ root_packages = [
     "alpha_backtest",
     "alpha_validation",
     "alpha_forecast",
+    "alpha_options",
+    "alpha_screener",
     "alpha_cli",
     "alpha_mcp",
     "alpha_web",
@@ -122,46 +139,58 @@ root_packages = [
 name = "alpha_core imports nothing internal"
 type = "forbidden"
 source_modules = ["alpha_core"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_data depends only on core"
 type = "forbidden"
 source_modules = ["alpha_data"]
-forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
+forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_strategies depends only on core"
 type = "forbidden"
 source_modules = ["alpha_strategies"]
-forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_validation depends only on core"
 type = "forbidden"
 source_modules = ["alpha_validation"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_forecast", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_backtest depends only on core + data"
 type = "forbidden"
 source_modules = ["alpha_backtest"]
-forbidden_modules = ["alpha_strategies", "alpha_validation", "alpha_forecast", "alpha_cli"]
+forbidden_modules = ["alpha_strategies", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_forecast depends only on core"
 type = "forbidden"
 source_modules = ["alpha_forecast"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_options", "alpha_screener", "alpha_cli"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_options depends only on core"
+type = "forbidden"
+source_modules = ["alpha_options"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_screener", "alpha_cli"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_screener depends only on core"
+type = "forbidden"
+source_modules = ["alpha_screener"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_mcp sits atop the DAG (nothing imports it)"
 type = "forbidden"
-source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli"]
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli"]
 forbidden_modules = ["alpha_mcp"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_web sits atop the DAG (nothing imports it)"
 type = "forbidden"
-source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_cli", "alpha_mcp"]
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli", "alpha_mcp"]
 forbidden_modules = ["alpha_web"]
