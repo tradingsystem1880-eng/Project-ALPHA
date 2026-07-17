@@ -157,6 +157,39 @@ def test_trades_endpoint_empty_without_log(tmp_path: Path, monkeypatch: pytest.M
     assert _client(tmp_path, monkeypatch).get("/api/runs/cccc000000000003/trades").json() == []
 
 
+def _write_returns_equity(data_dir: Path, kind: str, run_id: str, returns: list[float]) -> None:
+    """Seed a portfolio/cross-sectional run's ``equity_curve.parquet`` (N+1 rows, base 1.0)."""
+    rdir = data_dir / kind / run_id
+    rdir.mkdir(parents=True, exist_ok=True)
+    (rdir / "manifest.json").write_text(
+        json.dumps({"command": f"{kind}_run", "symbols": ["SPY", "TLT"]}), encoding="utf-8"
+    )
+    equity = [1.0]
+    for r in returns:
+        equity.append(equity[-1] * (1.0 + r))
+    ts = [datetime(2020, 1, 1 + i, tzinfo=UTC) for i in range(len(equity))]
+    pl.DataFrame(
+        {"ts": ts, "equity": equity},
+        schema={"ts": pl.Datetime(time_unit="us", time_zone="UTC"), "equity": pl.Float64()},
+    ).write_parquet(rdir / "equity_curve.parquet")
+
+
+@pytest.mark.parametrize("kind", ["portfolio", "cross_sectional"])
+def test_equity_endpoint_serves_returns_level_curves(
+    kind: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase-6 portfolio/cross-sectional curves flow through the same equity projection."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_returns_equity(tmp_path, kind, "dddd000000000004", [0.01, -0.02, 0.03])
+    client = TestClient(create_app())
+    body = client.get("/api/runs/dddd000000000004/equity").json()
+    assert body["equity"][0] == 1.0 and len(body["equity"]) == 4
+    assert body["equity"][1] == pytest.approx(1.01)
+    assert body["equity"][3] == pytest.approx(1.01 * 0.98 * 1.03)
+    assert len(body["ts"]) == 4 and body["ts"] == sorted(body["ts"])
+    assert body["drawdown"][2] == pytest.approx(0.98 - 1.0)
+
+
 def _write_forecast_run(data_dir: Path, run_id: str) -> None:
     """A forecast run's cone artifacts: the CLI's ``quantiles.parquet`` + ``history.parquet``."""
     rdir = data_dir / "forecast" / run_id
