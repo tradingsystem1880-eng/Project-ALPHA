@@ -162,6 +162,7 @@ auth) — a dockable, multi-workspace research terminal (Bloomberg / OpenBB clas
 - **Strategy Lab** — a catalog-driven launch form (command + symbol + strategy + params); runs
   stream **live** and link to their Run Detail.
 - **Price** — point-in-time-adjusted candlesticks for the linked symbol/date context.
+- **Options** — Black-Scholes greeks + a price/delta-vs-spot curve.
 - **Data Explorer** · **Workspaces** (save/load layouts) · **AI Console** (run any `alpha` command,
   or pair with the MCP server for natural-language control).
 - ⌘K command palette, global symbol search, dockable/floating panels, dark theme.

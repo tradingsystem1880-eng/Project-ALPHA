@@ -74,6 +74,17 @@ _MANIFEST: dict[str, Any] = {
             "data": [{"endpoint": "/api/workspaces", "method": "GET"}],
             "params": [],
         },
+        {
+            "id": "options",
+            "title": "Options",
+            "component": "OptionsGreeks",
+            "linked": False,
+            "data": [
+                {"endpoint": "/api/options/greeks", "method": "GET"},
+                {"endpoint": "/api/options/curve", "method": "GET"},
+            ],
+            "params": [],
+        },
     ],
     "commands": "/api/commands",
     "strategies": "/api/strategies",

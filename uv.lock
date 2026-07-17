@@ -21,6 +21,7 @@ members = [
     "alpha-data",
     "alpha-forecast",
     "alpha-mcp",
+    "alpha-options",
     "alpha-strategies",
     "alpha-validation",
     "alpha-web",
@@ -187,6 +188,7 @@ dependencies = [
     { name = "alpha-core" },
     { name = "alpha-data" },
     { name = "alpha-forecast" },
+    { name = "alpha-options" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
     { name = "numpy" },
@@ -200,6 +202,7 @@ requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
+    { name = "alpha-options", editable = "packages/alpha-options" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "numpy", specifier = ">=2.0" },
@@ -292,6 +295,23 @@ requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "mcp", specifier = ">=1.2" },
+]
+
+[[package]]
+name = "alpha-options"
+version = "1.0.0"
+source = { editable = "packages/alpha-options" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "numpy", specifier = ">=2.4.6" },
+    { name = "scipy", specifier = ">=1.17.1" },
 ]
 
 [[package]]
@@ -2418,6 +2438,7 @@ dependencies = [
     { name = "alpha-data" },
     { name = "alpha-forecast" },
     { name = "alpha-mcp" },
+    { name = "alpha-options" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
     { name = "alpha-web" },
@@ -2444,6 +2465,7 @@ requires-dist = [
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-mcp", editable = "apps/alpha-mcp" },
+    { name = "alpha-options", editable = "packages/alpha-options" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "alpha-web", editable = "apps/alpha-web" },

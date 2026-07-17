@@ -147,3 +147,38 @@ export interface WorkspaceDoc {
   linked_context: { symbol: string | null; start: string | null; end: string | null }
   dockview: Record<string, unknown>
 }
+
+export interface OptionGreeks {
+  spot: number
+  strike: number
+  rate: number
+  vol: number
+  days: number
+  kind: string
+  price: number
+  delta: number
+  gamma: number
+  vega: number
+  theta: number
+  rho: number
+  implied_vol?: number
+  market_price?: number
+}
+
+export interface OptionCurvePoint {
+  spot: number
+  price: number
+  delta: number
+  gamma: number
+  vega: number
+  theta: number
+}
+
+export interface OptionCurve {
+  strike: number
+  vol: number
+  days: number
+  rate: number
+  kind: string
+  points: OptionCurvePoint[]
+}

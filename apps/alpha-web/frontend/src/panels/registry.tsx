@@ -6,6 +6,7 @@ import type { FunctionComponent } from 'react'
 
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
+import { OptionsGreeks } from './OptionsGreeks'
 import { PriceChart } from './PriceChart'
 import { RunBrowser } from './RunBrowser'
 import { RunDetail } from './RunDetail'
@@ -24,6 +25,7 @@ export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   StrategyLab,
   PriceChart,
   DataExplorer,
+  OptionsGreeks,
   Workspaces,
   AiConsole,
 }
@@ -34,6 +36,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
   { component: 'PriceChart', title: 'Price', hint: 'candles' },
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },
+  { component: 'OptionsGreeks', title: 'Options', hint: 'greeks' },
   { component: 'AiConsole', title: 'AI Console', hint: 'command' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
 ]

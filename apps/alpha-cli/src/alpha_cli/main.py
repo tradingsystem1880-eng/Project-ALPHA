@@ -9,6 +9,7 @@ from alpha_cli.data_cmds import data_app
 from alpha_cli.forecast_cmds import forecast_app
 from alpha_cli.info_cmds import info_app
 from alpha_cli.optim_cmds import optim_app
+from alpha_cli.options_cmds import options_app
 from alpha_cli.paper_cmds import paper_app
 from alpha_cli.propfirm_cmds import propfirm_app
 from alpha_cli.report_cmds import report as _report
@@ -21,6 +22,7 @@ app.add_typer(optim_app, name="optim")
 app.add_typer(forecast_app, name="forecast")
 app.add_typer(paper_app, name="paper")
 app.add_typer(propfirm_app, name="propfirm")
+app.add_typer(options_app, name="options")
 app.add_typer(info_app, name="info")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)

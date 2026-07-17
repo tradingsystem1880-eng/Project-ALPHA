@@ -21,6 +21,7 @@ from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import manifest as manifest_api
+from alpha_web.api import options as options_api
 from alpha_web.api import runs as runs_api
 from alpha_web.api import workspaces as workspaces_api
 
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(candles_api.router)
     app.include_router(manifest_api.router)
     app.include_router(workspaces_api.router)
+    app.include_router(options_api.router)
 
     def _spa() -> FileResponse:
         if not _APP_INDEX.exists():

@@ -8,6 +8,8 @@ import type {
   ForecastSeries,
   JobDetail,
   JobSummary,
+  OptionCurve,
+  OptionGreeks,
   RunDetail,
   RunList,
   StrategyDef,
@@ -68,4 +70,6 @@ export const api = {
   },
   deleteWorkspace: (slug: string): Promise<Response> =>
     fetch(`/api/workspaces/${slug}`, { method: 'DELETE' }),
+  optionsGreeks: (query: string): Promise<OptionGreeks> => getJSON(`/api/options/greeks?${query}`),
+  optionsCurve: (query: string): Promise<OptionCurve> => getJSON(`/api/options/curve?${query}`),
 }
