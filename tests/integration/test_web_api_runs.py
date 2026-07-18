@@ -190,18 +190,23 @@ def test_equity_endpoint_serves_returns_level_curves(
     assert body["drawdown"][2] == pytest.approx(0.98 - 1.0)
 
 
-def _write_forecast_run(data_dir: Path, run_id: str) -> None:
-    """A forecast run's cone artifacts: the CLI's ``quantiles.parquet`` + ``history.parquet``."""
+def _write_forecast_run(data_dir: Path, run_id: str, *, n_samples: int = 0) -> None:
+    """A forecast run's cone artifacts: the CLI's ``quantiles.parquet`` + ``history.parquet``.
+
+    With ``n_samples > 0`` also writes ``paths.parquet`` (per-sample OHLCV, long) with
+    ``close = 100 + sample + step`` so per-sample assertions are trivial.
+    """
     rdir = data_dir / "forecast" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     (rdir / "manifest.json").write_text(
         json.dumps({"command": "forecast_run", "symbol": "BTC-USD"}), encoding="utf-8"
     )
     t0 = datetime(2026, 6, 1, tzinfo=UTC)
+    step_ts = [datetime(2026, 6, 2 + i, tzinfo=UTC) for i in range(3)]
     pl.DataFrame(
         {
             "step": [1, 2, 3],
-            "ts": [datetime(2026, 6, 2 + i, tzinfo=UTC) for i in range(3)],
+            "ts": step_ts,
             "q05": [95.0, 93.0, 91.0],
             "q25": [99.0, 98.0, 97.0],
             "q50": [101.0, 102.0, 103.0],
@@ -211,6 +216,23 @@ def _write_forecast_run(data_dir: Path, run_id: str) -> None:
         }
     ).write_parquet(rdir / "quantiles.parquet")
     pl.DataFrame({"ts": [t0], "close": [100.0]}).write_parquet(rdir / "history.parquet")
+    if n_samples:
+        pl.DataFrame(
+            [
+                {
+                    "sample": s,
+                    "step": i + 1,
+                    "ts": step_ts[i],
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.0 + s + (i + 1),
+                    "volume": 1.0,
+                }
+                for s in range(n_samples)
+                for i in range(3)
+            ]
+        ).write_parquet(rdir / "paths.parquet")
 
 
 def test_forecast_endpoint_reads_the_cone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -231,3 +253,50 @@ def test_forecast_endpoint_404_for_non_forecast_run(
     assert (
         _client(tmp_path, monkeypatch).get("/api/runs/aaaa000000000001/forecast").status_code == 404
     )
+
+
+def test_forecast_endpoint_includes_full_quantiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cone response carries q25/q75/mean alongside the pre-existing SPA keys."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_run(tmp_path, "ffff000000000009")
+    body = TestClient(create_app()).get("/api/runs/ffff000000000009/forecast").json()
+    assert body["q25"] == [99.0, 98.0, 97.0]
+    assert body["q75"] == [104.0, 106.0, 108.0]
+    assert body["mean"] == [100.9, 102.1, 103.2]
+    # the pre-existing keys are untouched — the SPA fan chart depends on them
+    assert body["history"] == [100.0] and body["forecast"] == [101.0, 102.0, 103.0]
+    assert body["p10"] == [95.0, 93.0, 91.0] and body["p90"] == [109.0, 112.0, 115.0]
+    assert len(body["history_ts"]) == 1 and len(body["forecast_ts"]) == 3
+
+
+def test_forecast_paths_returns_first_n_samples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_run(tmp_path, "ffff000000000009", n_samples=5)
+    client = TestClient(create_app())
+    body = client.get("/api/runs/ffff000000000009/forecast/paths?n=3").json()
+    assert [s["sample"] for s in body["samples"]] == [0, 1, 2]  # first n, deterministic
+    assert body["samples"][0]["closes"] == [101.0, 102.0, 103.0]  # 100 + sample + step
+    assert body["samples"][2]["closes"] == [103.0, 104.0, 105.0]
+    assert len(body["ts"]) == 3 and body["ts"] == sorted(body["ts"])
+
+
+def test_forecast_paths_default_and_clamp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_run(tmp_path, "ffff000000000009", n_samples=50)
+    client = TestClient(create_app())
+    assert len(client.get("/api/runs/ffff000000000009/forecast/paths").json()["samples"]) == 20
+    assert len(client.get("/api/runs/ffff000000000009/forecast/paths?n=45").json()["samples"]) == 40
+    assert len(client.get("/api/runs/ffff000000000009/forecast/paths?n=0").json()["samples"]) == 1
+
+
+def test_forecast_paths_404_when_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_run(tmp_path, "ffff000000000009")  # cone only, no paths.parquet
+    _seed(tmp_path)
+    client = TestClient(create_app())
+    assert client.get("/api/runs/ffff000000000009/forecast/paths").status_code == 404
+    assert client.get("/api/runs/aaaa000000000001/forecast/paths").status_code == 404

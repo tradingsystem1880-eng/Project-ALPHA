@@ -15,6 +15,7 @@ import polars as pl
 
 from alpha_cli import RUN_DIRS
 from alpha_cli._artifacts import find_run_dir
+from alpha_core import DataError
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
@@ -22,11 +23,13 @@ def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
 
 
 def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
-    """History + forecast-cone closes (median + q05/q95 band) for a forecast run's chart.
+    """History + forecast-cone closes (median + quantile bands) for a forecast run's chart.
 
     Reads the CLI's ``quantiles.parquet`` (per-step close quantiles) and ``history.parquet``. The
-    median line is ``q50`` and the shaded band is the q05–q95 central interval. Returns None for
-    runs that wrote no cone artifacts (a ``forecast eval`` run, or any non-forecast run type).
+    median line is ``q50``; the outer band is q05–q95 (served as the SPA's pre-existing
+    ``p10``/``p90`` keys — kept verbatim, the fan chart depends on them) and the inner band plus
+    the sample mean ride along as ``q25``/``q75``/``mean``. Returns None for runs that wrote no
+    cone artifacts (a ``forecast eval`` run, or any non-forecast run type).
     """
     rdir = _run_dir(run_id, data_dir=data_dir)
     if rdir is None:
@@ -41,9 +44,47 @@ def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
         "forecast": [float(v) for v in quant["q50"].to_list()],
         "p10": [float(v) for v in quant["q05"].to_list()],
         "p90": [float(v) for v in quant["q95"].to_list()],
+        "q25": [float(v) for v in quant["q25"].to_list()],
+        "q75": [float(v) for v in quant["q75"].to_list()],
+        "mean": [float(v) for v in quant["mean"].to_list()],
         # timestamps (epoch seconds) for the client-side chart's x-axis.
         "history_ts": [t.timestamp() for t in history["ts"].to_list()],
         "forecast_ts": [t.timestamp() for t in quant["ts"].to_list()],
+    }
+
+
+MAX_FORECAST_PATHS = 40  # spaghetti-line cap: more is unreadable and bloats the payload
+
+
+def forecast_paths(run_id: str, *, data_dir: Path, n: int = 20) -> dict[str, Any] | None:
+    """The first ``n`` sampled close paths of a forecast run (deterministic — no RNG).
+
+    Reads the CLI's ``paths.parquet`` (per-sample OHLCV, long) and returns
+    ``{samples: [{sample, closes}], ts}`` with ``ts`` in epoch seconds. ``n`` is clamped to
+    [1, MAX_FORECAST_PATHS]. Returns None when the run is absent, is not a forecast run (a
+    propfirm run also writes a — differently shaped — ``paths.parquet``), or wrote no paths.
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None or rdir.parent.name != "forecast":
+        return None
+    path = rdir / "paths.parquet"
+    if not path.exists():
+        return None
+    n = max(1, min(n, MAX_FORECAST_PATHS))
+    frame = pl.read_parquet(path).sort("sample", "step")
+    wanted = frame["sample"].unique(maintain_order=True).to_list()[:n]
+    if not wanted:
+        raise DataError(f"forecast run {run_id!r} wrote an empty paths.parquet")
+    samples = [
+        {
+            "sample": int(s),
+            "closes": [float(v) for v in frame.filter(pl.col("sample") == s)["close"].to_list()],
+        }
+        for s in wanted
+    ]
+    return {
+        "samples": samples,
+        "ts": [t.timestamp() for t in frame.filter(pl.col("sample") == wanted[0])["ts"].to_list()],
     }
 
 
