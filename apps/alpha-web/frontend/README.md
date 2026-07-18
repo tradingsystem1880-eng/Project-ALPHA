@@ -1,32 +1,36 @@
-# React + TypeScript + Vite
+# ALPHA Workstation frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The Workstation is a Vite/React/TypeScript SPA served by `alpha_web`. Dockview owns the desktop
+layout; Lightweight Charts and uPlot render market and analytics series; TanStack Table/Virtual
+power dense blotters; cmdk provides the command palette.
 
-Currently, two official plugins are available:
+The FastAPI backend remains a thin JSON+SSE surface over `alpha` subprocesses and run-store reads.
+Do not add business logic or direct engine/data-package imports to the frontend or web server.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Development
 
-## React Compiler
+From this directory:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The development server proxies API traffic according to `vite.config.ts`. For the packaged app,
+`npm run build` writes byte-pinned assets to `../src/alpha_web/static/app`.
+
+## Required gate
+
+```bash
+npm run lint -- --deny-warnings
+npm run test:coverage
+npm run generate:api
+npm run build
+```
+
+CI requires zero lint warnings, the committed V8 coverage floors, fresh generated TypeScript API
+definitions, a successful TypeScript/Vite build, and byte-identical committed assets.
+
+`openapi.json` is generated from the backend by `scripts/generate_web_openapi.py`; the generated
+`src/api/generated.ts` is authoritative. Keep handwritten API types to small aliases in
+`src/api/types.ts`.

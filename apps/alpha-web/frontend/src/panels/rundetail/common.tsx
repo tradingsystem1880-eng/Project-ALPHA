@@ -7,15 +7,8 @@ import type { ReactNode } from 'react'
 import { Term } from '../../components/Term'
 import type { Explained, StatChip, Suggestion } from '../../explain/types'
 import { useSettings } from '../../state/settings'
-import { fmtNum, fmtPct } from '../../util/format'
-
-export type Dict = Record<string, unknown>
-export const asObj = (v: unknown): Dict | null =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Dict) : null
-export const asArr = (v: unknown): Dict[] => (Array.isArray(v) ? (v as Dict[]) : [])
-export const asNum = (v: unknown): number | null =>
-  typeof v === 'number' && Number.isFinite(v) ? v : null
-export const asStr = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+import { asNum, fmtNum, fmtPct } from '../../util/format'
+import type { Dict } from './commonUtils'
 
 export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
   return (

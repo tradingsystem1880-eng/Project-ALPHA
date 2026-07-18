@@ -7,7 +7,9 @@ workstation renders; no look-ahead surface (these are point-in-time calculators,
 
 from __future__ import annotations
 
+from importlib.metadata import version
+
 from alpha_options.black_scholes import Greeks, bs_greeks, bs_price, implied_vol
 
-__version__ = "1.0.0"
+__version__ = version("alpha-options")
 __all__ = ["Greeks", "bs_greeks", "bs_price", "implied_vol"]

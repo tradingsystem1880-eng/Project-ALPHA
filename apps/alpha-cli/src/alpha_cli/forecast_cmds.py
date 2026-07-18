@@ -11,14 +11,13 @@ flag (ADR-0009).
 from __future__ import annotations
 
 import dataclasses
-import json
 from datetime import UTC, date, datetime, time
 from typing import Any
 
 import polars as pl
 import typer
 
-from alpha_cli import _forecast, _forecast_eval, _runner
+from alpha_cli import _artifacts, _forecast, _forecast_eval, _runner
 from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
@@ -330,10 +329,7 @@ def evaluate(
             "n_origins_post": out.n_post,
         }
     )
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
-    pl.DataFrame(
+    origins = pl.DataFrame(
         [
             {
                 "origin_index": o.origin_index,
@@ -343,7 +339,11 @@ def evaluate(
             }
             for o in out.origins
         ]
-    ).write_parquet(rdir / "origins.parquet")
+    )
+    from alpha_cli._atomic import publish
+
+    publish(rdir / "origins.parquet", origins.write_parquet)
+    _artifacts.write_manifest(rdir, manifest)
 
     typer.echo(
         f"forecast-eval {symbol} -> run {run_id}: {len(out.origins)} origins, "

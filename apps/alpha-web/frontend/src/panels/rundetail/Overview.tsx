@@ -8,10 +8,11 @@ import { EquityChart } from '../../components/charts/EquityChart'
 import { Medallion } from '../../components/charts/Medallion'
 import { Term } from '../../components/Term'
 import { suggestions } from '../../explain/suggestions'
-import type { FoldRow, ValidateManifest } from '../../explain/types'
+import type { ValidateManifest } from '../../explain/types'
 import { verdictStories } from '../../explain/verdictStory'
 import { useSettings } from '../../state/settings'
-import { ExplainCard, MetricGrid, Section, SuggestionList, asObj } from './common'
+import { ExplainCard, MetricGrid, Section, SuggestionList } from './common'
+import { asObj } from './commonUtils'
 
 interface Props {
   manifest: ValidateManifest
@@ -26,7 +27,6 @@ export function Overview({ manifest, eq, trades, onLaunch }: Props) {
   const sugg = useMemo(() => suggestions(manifest), [manifest])
   const verdict = manifest.verdict
   const oos = asObj(manifest.oos_metrics)
-  const folds: FoldRow[] = manifest.folds ?? []
   const overall = stories.find((s) => s.dimension === 'overall')
 
   return (
@@ -60,7 +60,7 @@ export function Overview({ manifest, eq, trades, onLaunch }: Props) {
 
       {eq && eq.ts.length ? (
         <Section title="Equity & drawdown" right={<span className="muted">shaded = OOS test windows · ▲ trade entries</span>}>
-          <EquityChart eq={eq} folds={folds} trades={trades} />
+          <EquityChart eq={eq} folds={manifest.folds} trades={trades} />
         </Section>
       ) : null}
 

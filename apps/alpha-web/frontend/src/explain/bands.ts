@@ -5,6 +5,8 @@
 // ("edge=B because OOS Sharpe 1.24 ∈ [1.0, 1.5)"). The vitest fixture suite recomputes grades
 // from real manifests and asserts they equal the persisted ones, guarding against drift.
 
+import { isFiniteNum as finite } from '../util/format'
+
 export type Bands = readonly (readonly [number, string])[]
 
 // (inclusive lower bound, grade), scanned high-to-low; below the last bound is "F".
@@ -43,10 +45,6 @@ export const OVERALL_BANDS: Bands = [
 ]
 
 export const GPA: Record<string, number> = { A: 4, B: 3, C: 2, D: 1, F: 0 }
-
-function finite(v: number | null | undefined): v is number {
-  return typeof v === 'number' && Number.isFinite(v)
-}
 
 /** Highest band whose lower bound `value` clears; `F` if it clears none (or is null/NaN). */
 export function gradeAtLeast(value: number | null | undefined, bands: Bands): string {

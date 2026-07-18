@@ -25,3 +25,9 @@ def test_quote_unconfigured_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_news_unconfigured_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     resp = _client(tmp_path, monkeypatch).get("/api/screener/news", params={"symbol": "AAPL"})
     assert resp.status_code == 503
+
+
+def test_news_bounds_are_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/screener/news?symbol=AAPL&days=0").status_code == 422
+    assert client.get("/api/screener/news?symbol=AAPL&limit=101").status_code == 422

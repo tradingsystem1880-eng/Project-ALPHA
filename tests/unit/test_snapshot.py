@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -114,6 +115,54 @@ def test_snapshot_refuses_overwrite(tmp_path: Path) -> None:
         )
 
 
+def test_failed_snapshot_copy_leaves_no_marker_or_staging_directory(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    snapshots = tmp_path / "snaps"
+
+    with pytest.raises(DataError, match="MISSING"):
+        create_snapshot(
+            store,
+            snapshots,
+            "snap1",
+            ["AAPL", "MISSING"],
+            source="yfinance",
+            adapter_version="1",
+            parser_version="1",
+            created_at=WHEN,
+        )
+
+    assert not (snapshots / "snap1" / "manifest.json").exists()
+    assert list(snapshots.iterdir()) == []
+
+
+def test_concurrent_snapshot_writers_publish_exactly_one_complete_snapshot(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    snapshots = tmp_path / "snaps"
+
+    def create() -> bool:
+        try:
+            create_snapshot(
+                store,
+                snapshots,
+                "snap1",
+                ["AAPL"],
+                source="yfinance",
+                adapter_version="1",
+                parser_version="1",
+                created_at=WHEN,
+            )
+        except DataError:
+            return False
+        return True
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: create(), range(2)))
+
+    assert results.count(True) == 1
+    verify_snapshot(snapshots / "snap1")
+    assert [p for p in snapshots.iterdir() if p.name != "snap1"] == []
+
+
 def test_snapshot_id_cannot_escape_snapshots_root(tmp_path: Path) -> None:
     from datetime import UTC, datetime
 
@@ -130,3 +179,11 @@ def test_snapshot_id_cannot_escape_snapshots_root(tmp_path: Path) -> None:
                 parser_version="1",
                 created_at=datetime(2026, 1, 1, tzinfo=UTC),
             )
+
+
+def test_corrupt_snapshot_manifest_is_typed(tmp_path: Path) -> None:
+    snapshot = tmp_path / "snap"
+    snapshot.mkdir()
+    (snapshot / "manifest.json").write_text("{")
+    with pytest.raises(DataError, match="corrupt snapshot manifest"):
+        verify_snapshot(snapshot)

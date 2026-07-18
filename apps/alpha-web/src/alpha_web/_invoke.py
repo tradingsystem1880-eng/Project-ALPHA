@@ -22,19 +22,13 @@ from typing import Any
 
 import anyio
 
+from alpha_cli.catalog import COMMAND_RUN_TYPES
+
 _ALPHA_BIN = "alpha"  # console script on the venv PATH
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
 
 # command-path -> artifact run-type dir (None = persists no manifest, e.g. data pull / console)
-RUN_TYPE: dict[str, str] = {
-    "validate": "runs",
-    "backtest run": "runs",
-    "backtest portfolio": "portfolio",
-    "backtest cross-sectional": "cross_sectional",
-    "optim grid": "optim",
-    "propfirm run": "propfirm",
-    "forecast run": "forecast",
-}
+RUN_TYPE = COMMAND_RUN_TYPES
 
 
 def _command(args: list[str]) -> list[str]:
@@ -137,17 +131,21 @@ def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
 
 
 def _pump(job: Job, proc: subprocess.Popen[str]) -> None:
-    if proc.stdout is not None:
-        for raw in proc.stdout:
-            line = raw.rstrip("\n")
-            job._append(line)
-            if job.run_type is not None and job.run_id is None:
-                match = _RUN_ID_RE.search(line)
-                if match is not None:
-                    job.run_id = match.group(1)
-    proc.wait()
-    job.returncode = proc.returncode
-    job.finished = True
+    try:
+        if proc.stdout is not None:
+            for raw in proc.stdout:
+                line = raw.rstrip("\n")
+                job._append(line)
+                if job.run_type is not None and job.run_id is None:
+                    match = _RUN_ID_RE.search(line)
+                    if match is not None:
+                        job.run_id = match.group(1)
+    finally:
+        if proc.stdout is not None:
+            proc.stdout.close()
+        proc.wait()
+        job.returncode = proc.returncode
+        job.finished = True
 
 
 async def event_stream(job: Job, start: int = 0) -> AsyncIterator[dict[str, str]]:

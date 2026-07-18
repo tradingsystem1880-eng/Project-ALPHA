@@ -1,5 +1,10 @@
 # Design — `alpha-mcp`: an MCP server over Project ALPHA (QuantPad parity Phase 3)
 
+> **Implemented-state pointer (2026-07-18):** This historical plan predates forecast tools and the
+> public run-store/catalog seams. The shipped MCP surface contains exactly 12 tools; use
+> [`CLAUDE.md`](../../../CLAUDE.md) and [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for the
+> current contract.
+
 ## Context
 
 QuantPad's headline UX is a **conversational agent** that builds and evaluates strategies for

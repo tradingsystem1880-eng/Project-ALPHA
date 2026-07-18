@@ -86,14 +86,14 @@ export function optimStories(m: OptimManifest): OptimStory[] {
   return out
 }
 
+// RunSpec's first-class CLI flags; every other swept name rides through --param.
+const CLI_FLAGS = new Set(['lookback', 'skip', 'vol_window', 'rebalance_every', 'target_vol', 'max_leverage'])
+
 export function optimSuggestions(m: OptimManifest): Suggestion[] {
   const out: Suggestion[] = []
   const symbol = m.symbol ?? ''
-  const best = m.best_config ?? []
-  const params = best
-    .filter(([k]) => !['lookback', 'skip', 'vol_window', 'rebalance_every', 'target_vol', 'max_leverage'].includes(k))
-  const flags = best
-    .map(([k, v]) => (params.some(([pk]) => pk === k) ? `--param ${k}=${v}` : `--${k.replaceAll('_', '-')} ${v}`))
+  const flags = (m.best_config ?? [])
+    .map(([k, v]) => (CLI_FLAGS.has(k) ? `--${k.replaceAll('_', '-')} ${v}` : `--param ${k}=${v}`))
     .join(' ')
 
   if (m.passed) {

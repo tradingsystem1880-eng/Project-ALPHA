@@ -7,7 +7,7 @@ import uPlot from 'uplot'
 
 import type { EquitySeries, TradeRow } from '../../api/types'
 import type { FoldRow } from '../../explain/types'
-import { AXIS, CHART } from '../../util/chartTheme'
+import { AXIS, CHART, withAlpha } from '../../util/chartTheme'
 import { fmtPct } from '../../util/format'
 import { UplotChart } from '../UplotChart'
 import { hoverPlugin } from './hoverPlugin'
@@ -22,7 +22,7 @@ function foldShadePlugin(folds: FoldRow[], ts: number[]): uPlot.Plugin {
         if (!folds.length || !ts.length) return
         const ctx = u.ctx
         ctx.save()
-        ctx.fillStyle = 'rgba(79, 141, 255, 0.05)'
+        ctx.fillStyle = withAlpha(CHART.accent, 0.05)
         for (const f of folds) {
           if (f.index % 2 === 1) continue // alternate shading
           const t0 = ts[Math.min(f.test_start, ts.length - 1)]
@@ -76,7 +76,12 @@ interface Props {
   height?: number
 }
 
-export function EquityChart({ eq, folds = [], trades = [], height = 200 }: Props) {
+// stable empty defaults — a fresh [] per render would defeat the options memo and make the
+// UplotChart effect rebuild the whole chart on every parent re-render
+const NO_FOLDS: FoldRow[] = []
+const NO_TRADES: TradeRow[] = []
+
+export function EquityChart({ eq, folds = NO_FOLDS, trades = NO_TRADES, height = 200 }: Props) {
   const sync = useMemo(() => uPlot.sync(`eq-${Math.random().toString(36).slice(2)}`), [])
 
   const equityData = useMemo<uPlot.AlignedData>(() => [eq.ts, eq.equity], [eq])
@@ -119,7 +124,7 @@ export function EquityChart({ eq, folds = [], trades = [], height = 200 }: Props
           scale: 'y',
           stroke: CHART.down,
           width: 1,
-          fill: 'rgba(239, 83, 80, 0.12)',
+          fill: withAlpha(CHART.down, 0.12),
           points: { show: false },
         },
       ],

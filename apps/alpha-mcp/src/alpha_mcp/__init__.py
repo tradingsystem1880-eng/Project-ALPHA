@@ -7,4 +7,6 @@ contract — so it sits at the very top of the architecture DAG (nothing imports
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+from importlib.metadata import version
+
+__version__ = version("alpha-mcp")

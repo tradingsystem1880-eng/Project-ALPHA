@@ -453,7 +453,9 @@ def _render_with_section(
         if marker in rendered
         else rendered + section_html
     )
-    output_path.write_text(injected, encoding="utf-8")
+    from alpha_validation._atomic import write_text
+
+    write_text(output_path, injected)
 
 
 def render_tearsheet_html(

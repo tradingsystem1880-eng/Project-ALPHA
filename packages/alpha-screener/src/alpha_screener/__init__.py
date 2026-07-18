@@ -7,8 +7,10 @@ provider requires. Imports nothing internal but ``alpha_core``.
 
 from __future__ import annotations
 
+from importlib.metadata import version
+
 from alpha_screener.models import NewsItem, Quote
 from alpha_screener.parse import parse_news, parse_quote
 
-__version__ = "1.0.0"
+__version__ = version("alpha-screener")
 __all__ = ["NewsItem", "Quote", "parse_news", "parse_quote"]

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_web import _workspaces
 from alpha_web.app import create_app
 
 
@@ -48,3 +51,48 @@ def test_unusable_name_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         "/api/workspaces", json={"name": "!!!", "dockview": {}}
     )
     assert resp.status_code == 422
+
+
+def test_invalid_path_slug_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/workspaces/Not_Valid").status_code == 422
+    assert client.delete("/api/workspaces/Not_Valid").status_code == 422
+
+
+def test_failed_workspace_replace_preserves_prior_document(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = {"name": "Desk", "linked_context": {}, "dockview": {"version": 1}}
+    _workspaces.save_workspace("desk", original, data_dir=tmp_path)
+    original_write = Path.write_text
+
+    def fail_write(path: Path, content: str, **kwargs: object) -> int:
+        original_write(path, "partial", encoding="utf-8")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Path, "write_text", fail_write)
+    with pytest.raises(OSError, match="disk full"):
+        _workspaces.save_workspace(
+            "desk",
+            {"name": "Desk", "linked_context": {}, "dockview": {"version": 2}},
+            data_dir=tmp_path,
+        )
+    monkeypatch.undo()
+
+    assert _workspaces.get_workspace("desk", data_dir=tmp_path) == original
+    assert list((tmp_path / "web" / "workspaces").glob(".*.tmp")) == []
+
+
+def test_concurrent_workspace_writers_leave_one_complete_document(tmp_path: Path) -> None:
+    docs = [
+        {"name": "Desk", "linked_context": {}, "dockview": {"version": version}}
+        for version in range(8)
+    ]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(lambda doc: _workspaces.save_workspace("desk", doc, data_dir=tmp_path), docs))
+
+    final = _workspaces.get_workspace("desk", data_dir=tmp_path)
+    assert final in docs
+    path = tmp_path / "web" / "workspaces" / "desk.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == final
+    assert list(path.parent.glob(".*.tmp")) == []

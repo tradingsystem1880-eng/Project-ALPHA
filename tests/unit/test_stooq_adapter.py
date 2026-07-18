@@ -9,12 +9,15 @@ fail-loud classification of a blocked/non-CSV response. The live HTTP path stays
 from __future__ import annotations
 
 import hashlib
+import urllib.error
+import urllib.request
+from email.message import Message
 
 import pytest
 
 from alpha_core import DataError
 from alpha_data.adapters import stooq_adapter
-from alpha_data.adapters.stooq_adapter import _csv_or_raise, _solve_pow
+from alpha_data.adapters.stooq_adapter import _csv_or_raise, _fetch_stooq_text, _solve_pow
 
 _VALID_CSV = (
     "Date,Open,High,Low,Close,Volume\n"
@@ -67,3 +70,17 @@ def test_csv_or_raise_fails_loud_on_empty_and_no_data() -> None:
         _csv_or_raise("   ", "spy.us", "2020-01-01..2020-01-31")
     with pytest.raises(DataError, match="returned no data"):
         _csv_or_raise("No data", "spy.us", "2020-01-01..2020-01-31")
+
+
+def test_fetch_wraps_provider_http_rejection_as_data_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BlockedOpener:
+        def open(self, request: urllib.request.Request, timeout: int) -> object:
+            del timeout
+            raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", Message(), None)
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *args: BlockedOpener())
+
+    with pytest.raises(DataError, match="anti-bot/transport.*HTTP 403"):
+        _fetch_stooq_text("https://stooq.com/q/d/l/?s=spy.us")

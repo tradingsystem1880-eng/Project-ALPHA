@@ -4,8 +4,11 @@ import type { DockviewApi } from 'dockview-react'
 
 import { shortId } from '../util/format'
 
-// Open (or focus, if already open) the Run Detail panel for a run id.
+// Open (or focus, if already open) the Run Detail panel for a run id. The URL hash mirrors the
+// opened run (`#run=<id>`) so the address bar is always a shareable deep link; the shell parses
+// it at boot and on hashchange.
 export function openRunDetail(containerApi: DockviewApi, runId: string): void {
+  window.location.hash = `run=${runId}`
   const id = `run-detail-${runId}`
   const existing = containerApi.getPanel(id)
   if (existing) {
@@ -13,6 +16,12 @@ export function openRunDetail(containerApi: DockviewApi, runId: string): void {
     return
   }
   containerApi.addPanel({ id, component: 'RunDetail', title: shortId(runId), params: { runId } })
+}
+
+/** The run id in the current URL hash (`#run=<16 hex>`), if any. */
+export function runIdFromHash(): string | null {
+  const match = /#run=([0-9a-f]{16})\b/.exec(window.location.hash)
+  return match ? match[1] : null
 }
 
 export interface LabPrefill {

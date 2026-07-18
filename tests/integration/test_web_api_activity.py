@@ -114,6 +114,24 @@ def test_ignores_non_run_dirs_and_partial_writes(tmp_path: Path) -> None:
     anyio.run(scenario)
 
 
+def test_manifest_does_not_announce_missing_required_artifacts(tmp_path: Path) -> None:
+    _write_run(
+        tmp_path,
+        "optim",
+        RUN_A,
+        schema_version=1,
+        command="optim_grid",
+    )
+
+    async def scenario() -> None:
+        gen = _activity.activity_events(tmp_path, poll=0.02)
+        (snap,) = await _collect(gen, 1)
+        assert json.loads(snap["data"])["runs"] == 0
+        await gen.aclose()
+
+    anyio.run(scenario)
+
+
 def test_stream_route_serves_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # max_events=1 bounds the otherwise-infinite stream so it can complete through a TestClient
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))

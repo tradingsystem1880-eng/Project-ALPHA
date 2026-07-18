@@ -47,3 +47,12 @@ def test_run_without_equity_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         "/api/risk/scenario", params={"run_id": "5555666677778888"}
     )
     assert resp.status_code == 422
+
+
+def test_unknown_run_is_404_and_confidence_is_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/risk/scenario?run_id=deadbeefdeadbeef").status_code == 404
+    _seed_run(tmp_path, "1111222233334444")
+    assert client.get("/api/risk/scenario?run_id=1111222233334444&confidence=1").status_code == 422

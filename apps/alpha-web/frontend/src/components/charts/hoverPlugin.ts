@@ -15,6 +15,7 @@ export interface HoverSeries {
 
 export function hoverPlugin(series: HoverSeries[], xIsTime = true): uPlot.Plugin {
   let el: HTMLDivElement | null = null
+  let lastIdx: number | null = null
 
   return {
     hooks: {
@@ -25,11 +26,15 @@ export function hoverPlugin(series: HoverSeries[], xIsTime = true): uPlot.Plugin
         u.over.appendChild(el)
         u.over.addEventListener('mouseleave', () => {
           if (el) el.style.display = 'none'
+          lastIdx = null
         })
       },
       setCursor: (u: uPlot) => {
         if (!el) return
         const { idx } = u.cursor
+        // setCursor fires per mousemove; most pixels map to the same data index — skip repeats
+        if (idx === lastIdx) return
+        lastIdx = idx ?? null
         if (idx == null) {
           el.style.display = 'none'
           return

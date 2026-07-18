@@ -1,14 +1,15 @@
 // Forecast-run layout: the full multi-quantile fan (50%/90% bands + optional sample spaghetti),
 // the cone summary story, and the pretraining-overlap caveat.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { api } from '../../api/client'
-import type { ForecastPaths, ForecastSeries } from '../../api/types'
+import type { ForecastSeries } from '../../api/types'
 import { FanChart } from '../../components/charts/FanChart'
 import { forecastStories, forecastSuggestions } from '../../explain/forecast'
 import type { ForecastManifest } from '../../explain/types'
 import { ExplainCard, Section, SuggestionList } from './common'
+import { useProjection } from './commonUtils'
 
 export function ForecastDetail({
   manifest,
@@ -25,16 +26,7 @@ export function ForecastDetail({
 }) {
   const stories = useMemo(() => forecastStories(manifest), [manifest])
   const sugg = useMemo(() => forecastSuggestions(manifest), [manifest])
-  const [paths, setPaths] = useState<ForecastPaths | null>(null)
-
-  useEffect(() => {
-    if (!hasPaths) return
-    let live = true
-    api.forecastPaths(runId, 30).then((p) => live && setPaths(p)).catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [runId, hasPaths])
+  const paths = useProjection(hasPaths, runId, () => api.forecastPaths(runId, 30))
 
   return (
     <>

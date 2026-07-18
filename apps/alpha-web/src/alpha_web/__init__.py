@@ -8,4 +8,6 @@ single-user, $0, no auth, loopback only.
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+from importlib.metadata import version
+
+__version__ = version("alpha-web")

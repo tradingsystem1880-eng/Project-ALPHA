@@ -8,11 +8,12 @@ from fastapi import APIRouter, HTTPException
 
 from alpha_web import _candles
 from alpha_web.api._common import data_dir
+from alpha_web.api.models import Candles
 
 router = APIRouter(prefix="/api", tags=["candles"])
 
 
-@router.get("/candles/{symbol:path}")
+@router.get("/candles/{symbol:path}", response_model=Candles)
 def candles(
     symbol: str,
     start: str | None = None,

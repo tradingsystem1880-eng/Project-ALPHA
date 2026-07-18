@@ -105,6 +105,11 @@ def test_run_id_is_deterministic_and_sensitive() -> None:
     assert run_id_for({**base, "seed": 8}) != rid  # any input change moves the id
 
 
+def test_run_id_rejects_non_finite_payloads() -> None:
+    with pytest.raises(ValueError, match="JSON compliant"):
+        run_id_for({"value": float("nan")})
+
+
 def test_resolve_allow_short_defaults_follow_account_type() -> None:
     from alpha_cli._runner import resolve_allow_short
 

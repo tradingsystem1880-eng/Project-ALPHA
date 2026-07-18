@@ -57,7 +57,7 @@ def preflight(
         embargo=5,
         anchored=False,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
     )
 
     try:

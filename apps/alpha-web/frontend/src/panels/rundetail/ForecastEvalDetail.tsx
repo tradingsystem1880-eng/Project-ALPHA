@@ -1,13 +1,13 @@
 // Forecast-eval layout: the skill scorecard, honest (post-cutoff) numbers first.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { api } from '../../api/client'
-import type { ForecastOrigins } from '../../api/types'
 import { OriginsChart } from '../../components/charts/OriginsChart'
 import { forecastStories, forecastSuggestions } from '../../explain/forecast'
 import type { ForecastManifest } from '../../explain/types'
 import { ExplainCard, Section, SuggestionList } from './common'
+import { useProjection } from './commonUtils'
 
 export function ForecastEvalDetail({
   manifest,
@@ -22,16 +22,7 @@ export function ForecastEvalDetail({
 }) {
   const stories = useMemo(() => forecastStories(manifest), [manifest])
   const sugg = useMemo(() => forecastSuggestions(manifest), [manifest])
-  const [origins, setOrigins] = useState<ForecastOrigins | null>(null)
-
-  useEffect(() => {
-    if (!hasOrigins) return
-    let live = true
-    api.origins(runId).then((o) => live && setOrigins(o)).catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [runId, hasOrigins])
+  const origins = useProjection(hasOrigins, runId, () => api.origins(runId))
 
   return (
     <>

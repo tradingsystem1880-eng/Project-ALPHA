@@ -10,7 +10,6 @@ policy: warn + flag, never block). Artifacts: ``manifest.json`` (byte-stable) +
 
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -20,6 +19,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from alpha_cli._artifacts import write_manifest
+from alpha_cli._atomic import publish
 from alpha_core import Bar, DataError
 from alpha_forecast import Forecaster, ForecastResult, close_quantiles
 
@@ -159,11 +160,8 @@ def write_forecast_run(
 ) -> None:
     """Write the run's artifacts. ``history`` must already be as-of-filtered (PIT)."""
     rdir.mkdir(parents=True, exist_ok=True)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
     r = out.result
-    pl.DataFrame(
+    paths = pl.DataFrame(
         [
             {
                 "sample": s,
@@ -178,11 +176,12 @@ def write_forecast_run(
             for s, p in enumerate(r.samples)
             for i in range(r.horizon)
         ]
-    ).write_parquet(rdir / "paths.parquet")
+    )
+    publish(rdir / "paths.parquet", paths.write_parquet)
 
     q = out.quantiles
     means = np.array([p.close for p in r.samples], dtype=np.float64).mean(axis=0)
-    pl.DataFrame(
+    quantiles = pl.DataFrame(
         [
             {
                 "step": i + 1,
@@ -196,9 +195,10 @@ def write_forecast_run(
             }
             for i in range(r.horizon)
         ]
-    ).write_parquet(rdir / "quantiles.parquet")
+    )
+    publish(rdir / "quantiles.parquet", quantiles.write_parquet)
 
     tail = list(history)[-_HISTORY_TAIL:]
-    pl.DataFrame({"ts": [b.ts for b in tail], "close": [b.close for b in tail]}).write_parquet(
-        rdir / "history.parquet"
-    )
+    history_frame = pl.DataFrame({"ts": [b.ts for b in tail], "close": [b.close for b in tail]})
+    publish(rdir / "history.parquet", history_frame.write_parquet)
+    write_manifest(rdir, manifest)

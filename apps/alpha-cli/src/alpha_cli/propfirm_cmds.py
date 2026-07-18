@@ -11,7 +11,6 @@ numbers are approximate, not authoritative firm terms.
 
 from __future__ import annotations
 
-import json
 import math
 from typing import Any
 
@@ -107,7 +106,7 @@ def run(
         embargo=5,
         anchored=False,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
         size_on_equity=size_on_equity,
         halt_drawdown=halt_drawdown,
     )
@@ -158,9 +157,7 @@ def run(
         payout=out.result.path_payout,
     )
     manifest = _manifest(out, run_id=run_id, seed=resolved_seed)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    _artifacts.write_manifest(rdir, manifest)
 
     res = out.result
     days = "n/a" if math.isnan(res.median_days_to_pass) else f"{res.median_days_to_pass:.0f}"

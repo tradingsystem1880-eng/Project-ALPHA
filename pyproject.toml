@@ -52,6 +52,8 @@ dev = [
     "ruff>=0.6",
     "import-linter>=2.1",
     "pandas-stubs>=2.0",
+    "pytest-cov>=6",
+    "httpx2>=0.1",
 ]
 
 [tool.ruff]
@@ -119,6 +121,35 @@ markers = [
     "bias_guard: tests that mechanically prevent look-ahead / survivorship bias (gated in CI)",
     "network: tests that hit the live network (skipped in CI / offline runs)",
 ]
+filterwarnings = [
+    "error",
+    "ignore:The set_bad function will be deprecated.*:PendingDeprecationWarning:seaborn.matrix",
+    "ignore:vert.*deprecated.*:matplotlib.MatplotlibDeprecationWarning:seaborn.categorical",
+]
+
+[tool.coverage.run]
+source = [
+    "alpha_core",
+    "alpha_data",
+    "alpha_strategies",
+    "alpha_backtest",
+    "alpha_validation",
+    "alpha_forecast",
+    "alpha_options",
+    "alpha_screener",
+    "alpha_cli",
+    "alpha_mcp",
+    "alpha_web",
+]
+omit = [
+    "*/alpha_forecast/_vendor/*",
+    "*/alpha_web/static/*",
+]
+
+[tool.coverage.report]
+fail_under = 93
+show_missing = true
+skip_covered = true
 
 [tool.importlinter]
 root_packages = [
@@ -194,3 +225,15 @@ name = "alpha_web sits atop the DAG (nothing imports it)"
 type = "forbidden"
 source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli", "alpha_mcp"]
 forbidden_modules = ["alpha_web"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_mcp imports only public platform surfaces"
+type = "forbidden"
+source_modules = ["alpha_mcp"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_web"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_web imports only public platform surfaces"
+type = "forbidden"
+source_modules = ["alpha_web"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_mcp"]

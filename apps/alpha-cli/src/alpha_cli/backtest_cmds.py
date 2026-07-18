@@ -65,7 +65,7 @@ def run(
         embargo=5,
         anchored=False,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
         size_on_equity=size_on_equity,
         halt_drawdown=halt_drawdown,
     )
@@ -155,7 +155,6 @@ def portfolio(
     ``--weighting`` is ``equal`` or ``inverse_vol``. Reports the basket's headline metrics +
     Probabilistic Sharpe and each leg's OOS Sharpe; writes a manifest under ``data_dir/portfolio``.
     """
-    import json
 
     from alpha_cli import _portfolio
 
@@ -182,7 +181,7 @@ def portfolio(
         embargo=embargo,
         anchored=anchored,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
         size_on_equity=size_on_equity,
         halt_drawdown=halt_drawdown,
     )
@@ -235,9 +234,6 @@ def portfolio(
             for leg in result.legs
         ],
     }
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
     from alpha_validation import render_returns_tearsheet
 
     render_returns_tearsheet(
@@ -255,6 +251,7 @@ def portfolio(
         ],
         output_path=rdir / "tearsheet.html",
     )
+    _artifacts.write_manifest(rdir, manifest)
     typer.echo(
         f"portfolio [{', '.join(result.symbols)}] ({weighting}) -> run {run_id}: "
         f"OOS Sharpe {result.metrics['sharpe']:.3f} "
@@ -287,7 +284,6 @@ def cross_sectional(
     ``--no-long-short``) shorts the bottom, vol-targeted. Reports OOS metrics + PSR + BCa intervals
     and writes a manifest under ``data_dir/cross_sectional``.
     """
-    import json
 
     from alpha_cli import _cross_sectional
 
@@ -357,9 +353,6 @@ def cross_sectional(
         "sharpe_ci": {"lower": result.sharpe_ci.lower, "upper": result.sharpe_ci.upper},
         "cagr_ci": {"lower": result.cagr_ci.lower, "upper": result.cagr_ci.upper},
     }
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
     book = "long-short" if long_short else "long-only"
     from alpha_validation import render_returns_tearsheet
 
@@ -378,6 +371,7 @@ def cross_sectional(
         ],
         output_path=rdir / "tearsheet.html",
     )
+    _artifacts.write_manifest(rdir, manifest)
     typer.echo(
         f"cross-sectional [{', '.join(result.symbols)}] ({book}, {result.n_long}/leg) -> "
         f"run {run_id}: OOS Sharpe {result.metrics['sharpe']:.3f} "

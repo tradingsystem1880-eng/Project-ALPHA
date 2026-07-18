@@ -80,7 +80,7 @@ def validate(
         embargo=embargo,
         anchored=anchored,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
     )
     gparams = _gauntlet.GauntletParams(
         seed=resolved_seed,
@@ -152,7 +152,7 @@ def validate(
             ("full_engine", out.tier2_null.tolist()),
         ),
     )
-    _artifacts.write_run(rdir, manifest=manifest, equity=equity, trades=out.result.trades)
+    _artifacts.write_run_sidecars(rdir, equity=equity, trades=out.result.trades)
     render_tearsheet_html(
         out.report,
         oos_returns=out.oos.oos_returns,
@@ -160,6 +160,7 @@ def validate(
         output_path=rdir / "tearsheet.html",
         periods_per_year=spec.periods_per_year,
     )
+    _artifacts.write_manifest(rdir, manifest)
 
     status = "PASS" if out.report.passed else "FAIL"
     sharpe = out.report.oos_metrics["sharpe"]

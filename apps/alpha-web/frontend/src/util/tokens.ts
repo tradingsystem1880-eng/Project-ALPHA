@@ -14,7 +14,6 @@ export interface ChartTokens {
   gold: string
   band: string
   font: string
-  verdict: Record<'A' | 'B' | 'C' | 'D' | 'F', string>
 }
 
 const FALLBACK: ChartTokens = {
@@ -29,7 +28,15 @@ const FALLBACK: ChartTokens = {
   gold: '#d7a63b',
   band: 'rgba(79, 141, 255, 0.14)',
   font: '11px "JetBrains Mono Variable", ui-monospace, monospace',
-  verdict: { A: '#2ea04a', B: '#7cb342', C: '#d7a63b', D: '#e07b39', F: '#ef5350' },
+}
+
+/** `#rrggbb` → `rgba(...)` at the given alpha — canvas/SVG shades derive from the tokens
+ *  instead of re-hardcoding rgba literals (non-hex inputs pass through unchanged). */
+export function withAlpha(color: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(color.trim())
+  if (!m) return color
+  const n = parseInt(m[1], 16)
+  return `rgba(${(n >> 16) & 0xff}, ${(n >> 8) & 0xff}, ${n & 0xff}, ${alpha})`
 }
 
 let cached: ChartTokens | null = null
@@ -56,13 +63,6 @@ export function readTokens(): ChartTokens {
     gold: cssVar(s, '--gold', FALLBACK.gold),
     band: cssVar(s, '--accent-soft', FALLBACK.band),
     font: FALLBACK.font,
-    verdict: {
-      A: cssVar(s, '--verdict-a', FALLBACK.verdict.A),
-      B: cssVar(s, '--verdict-b', FALLBACK.verdict.B),
-      C: cssVar(s, '--verdict-c', FALLBACK.verdict.C),
-      D: cssVar(s, '--verdict-d', FALLBACK.verdict.D),
-      F: cssVar(s, '--verdict-f', FALLBACK.verdict.F),
-    },
   }
   return cached
 }

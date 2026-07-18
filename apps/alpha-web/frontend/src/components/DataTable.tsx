@@ -18,6 +18,10 @@ import { useRef, useState, type ReactNode } from 'react'
 const VIRTUALIZE_ABOVE = 200
 const ROW_ESTIMATE = 27
 
+// per-row lowercased haystack for the global filter, built once per row object (WeakMap keyed
+// on the row datum) instead of stringifying every cell on every keystroke
+const HAYSTACKS = new WeakMap<object, string>()
+
 interface Props<T> {
   data: T[]
   columns: ColumnDef<T, unknown>[]
@@ -55,8 +59,17 @@ export function DataTable<T>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: (row, _columnId, value: string) => {
-      const q = value.toLowerCase()
-      return row.getAllCells().some((c) => String(c.getValue() ?? '').toLowerCase().includes(q))
+      const key = row.original as object
+      let hay = HAYSTACKS.get(key)
+      if (hay === undefined) {
+        hay = row
+          .getAllCells()
+          .map((c) => String(c.getValue() ?? ''))
+          .join('\u0000')
+          .toLowerCase()
+        HAYSTACKS.set(key, hay)
+      }
+      return hay.includes(value.toLowerCase())
     },
   })
 

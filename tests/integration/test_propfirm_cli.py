@@ -53,8 +53,8 @@ def test_propfirm_fresh_backtest_writes_manifest(
     assert manifest["rules"]["account_size"] == 50_000.0  # the topstep preset
     assert manifest["n_paths"] == 200
 
-    # per-path Monte-Carlo outcomes ride alongside the manifest (paths.parquet)
-    paths = pl.read_parquet(rdir / "paths.parquet")
+    # per-path Monte-Carlo outcomes ride alongside the manifest (propfirm_paths.parquet)
+    paths = pl.read_parquet(rdir / "propfirm_paths.parquet")
     assert paths.columns == ["path_index", "passed", "busted", "days_to_pass", "payout"]
     assert paths.schema["path_index"] == pl.Int64
     assert paths.schema["passed"] == pl.Boolean
@@ -78,13 +78,13 @@ def test_propfirm_manifest_is_byte_stable(tmp_path: Path, monkeypatch: pytest.Mo
     assert first.exit_code == 0, first.output
     (rdir,) = list((tmp_path / "propfirm").iterdir())
     text_a = (rdir / "manifest.json").read_text()
-    paths_a = (rdir / "paths.parquet").read_bytes()
+    paths_a = (rdir / "propfirm_paths.parquet").read_bytes()
 
     second = runner.invoke(app, args)  # same run_id -> same dir, overwritten identically
     assert second.exit_code == 0, second.output
     text_b = (rdir / "manifest.json").read_text()
     assert text_a == text_b  # byte-identical (spec §11.4)
-    assert paths_a == (rdir / "paths.parquet").read_bytes()  # per-path outcomes too
+    assert paths_a == (rdir / "propfirm_paths.parquet").read_bytes()  # per-path outcomes too
 
 
 def test_propfirm_horizon_flag_caps_the_window(

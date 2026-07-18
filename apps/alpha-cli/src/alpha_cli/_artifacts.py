@@ -10,8 +10,6 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
-import os
-import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -20,11 +18,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import polars as pl
 
-from alpha_cli import RUN_DIRS
+from alpha_cli._atomic import publish, write_text
+from alpha_cli.run_store import find_run_dir as find_run_dir
 from alpha_core import DataError
 from alpha_validation import FloatArray
-
-_RUN_ID_RE = re.compile(r"[0-9a-f]{16}")  # ids are 16 hex chars; reject before path-joining
 
 
 def sanitize(value: Any) -> Any:
@@ -65,22 +62,6 @@ def run_dir(data_dir: Path, run_id: str) -> Path:
     return data_dir / "runs" / run_id
 
 
-def find_run_dir(data_dir: Path, run_id: str) -> Path | None:
-    """The run's artifact directory across every run-type subdir, or ``None`` if absent.
-
-    Searches ``RUN_DIRS`` for ``<run_id>/manifest.json`` (the marker that a run exists). The run id
-    is validated to 16 hex chars first, so a caller-supplied id can never path-traverse out of the
-    run store. Used by ``alpha risk`` and the workstation to resolve any run by id alone.
-    """
-    if _RUN_ID_RE.fullmatch(run_id) is None:
-        return None
-    for sub in RUN_DIRS:
-        rdir = data_dir / sub / run_id
-        if (rdir / "manifest.json").exists():
-            return rdir
-    return None
-
-
 def write_equity_curve(
     rdir: Path,
     *,
@@ -114,7 +95,7 @@ def write_equity_curve(
         schema={"ts": pl.Datetime(time_unit="us", time_zone="UTC"), "equity": pl.Float64()},
     )
     rdir.mkdir(parents=True, exist_ok=True)
-    frame.write_parquet(rdir / "equity_curve.parquet")
+    publish(rdir / "equity_curve.parquet", frame.write_parquet)
 
 
 def write_nulls(rdir: Path, *, tiers: Sequence[tuple[str, Sequence[float]]]) -> None:
@@ -140,7 +121,7 @@ def write_nulls(rdir: Path, *, tiers: Sequence[tuple[str, Sequence[float]]]) -> 
         schema={"tier": pl.String(), "path_index": pl.Int64(), "statistic": pl.Float64()},
     )
     rdir.mkdir(parents=True, exist_ok=True)
-    frame.write_parquet(rdir / "nulls.parquet")
+    publish(rdir / "nulls.parquet", frame.write_parquet)
 
 
 def write_trials(rdir: Path, *, matrix: FloatArray) -> None:
@@ -164,7 +145,7 @@ def write_trials(rdir: Path, *, matrix: FloatArray) -> None:
         schema={"trial": pl.Int64(), "step": pl.Int64(), "oos_return": pl.Float64()},
     )
     rdir.mkdir(parents=True, exist_ok=True)
-    frame.write_parquet(rdir / "trials.parquet")
+    publish(rdir / "trials.parquet", frame.write_parquet)
 
 
 def write_propfirm_paths(
@@ -175,7 +156,7 @@ def write_propfirm_paths(
     days_to_pass: Sequence[float],
     payout: Sequence[float],
 ) -> None:
-    """Write ``paths.parquet`` — a prop-firm run's per-path Monte-Carlo outcomes.
+    """Write ``propfirm_paths.parquet`` — a prop-firm run's per-path Monte-Carlo outcomes.
 
     One row per path, sorted by ``path_index`` Int64 (0..n-1): ``passed``/``busted`` Boolean,
     ``days_to_pass`` Float64 (NaN when the path never passed — this is Parquet, not the manifest,
@@ -204,7 +185,7 @@ def write_propfirm_paths(
         },
     )
     rdir.mkdir(parents=True, exist_ok=True)
-    frame.write_parquet(rdir / "paths.parquet")
+    publish(rdir / "propfirm_paths.parquet", frame.write_parquet)
 
 
 def write_run(
@@ -220,26 +201,43 @@ def write_run(
     marker that a run exists, so a crash mid-write leaves an invisible partial directory, never a
     listed run with missing series.
     """
+    write_run_sidecars(rdir, equity=equity, trades=trades)
+    write_manifest(rdir, manifest)
+
+
+def write_run_sidecars(
+    rdir: Path,
+    *,
+    equity: Sequence[tuple[datetime, float]],
+    trades: Sequence[Trade],
+) -> None:
+    """Atomically publish the standard Parquet sidecars without a completion marker."""
     rdir.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame({"ts": [ts for ts, _ in equity], "equity": [v for _, v in equity]}).write_parquet(
-        rdir / "equity_curve.parquet"
-    )
+    equity_frame = pl.DataFrame({"ts": [ts for ts, _ in equity], "equity": [v for _, v in equity]})
+    publish(rdir / "equity_curve.parquet", equity_frame.write_parquet)
     rows = [dataclasses.asdict(t) for t in trades]
     frame = pl.DataFrame(rows) if rows else pl.DataFrame(schema=_EMPTY_TRADES_SCHEMA)
-    frame.write_parquet(rdir / "trades.parquet")
-    tmp = rdir / "manifest.json.tmp"
-    try:
-        tmp.write_text(
-            json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-        )
-        os.replace(tmp, rdir / "manifest.json")
-    finally:
-        tmp.unlink(missing_ok=True)
+    publish(rdir / "trades.parquet", frame.write_parquet)
+
+
+def write_manifest(rdir: Path, manifest: dict[str, Any]) -> None:
+    """Atomically publish the manifest completion marker after all required sidecars."""
+    write_text(
+        rdir / "manifest.json",
+        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False),
+    )
 
 
 def read_manifest(rdir: Path) -> dict[str, Any]:
     """Load a run's ``manifest.json`` back into a dict."""
-    result: dict[str, Any] = json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
+    path = rdir / "manifest.json"
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise DataError(f"corrupt run manifest at {path}") from exc
+    if not isinstance(raw, dict):
+        raise DataError(f"invalid run manifest at {path}: expected a JSON object")
+    result: dict[str, Any] = raw
     return result
 
 

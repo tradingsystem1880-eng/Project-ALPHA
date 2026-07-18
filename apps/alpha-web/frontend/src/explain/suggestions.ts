@@ -1,12 +1,10 @@
 // Rule-based "what to learn / what to try next" recommendations, generated from a run's actual
 // numbers. Deterministic and offline. Ordered by importance; the first 3–4 are the headline.
 
-import { fmtNum, fmtPct } from '../util/format'
+import { asStr, fmtNum, fmtPct } from '../util/format'
 import type { Suggestion, ValidateManifest } from './types'
 
-function str(v: unknown): string {
-  return typeof v === 'string' ? v : ''
-}
+const str = (v: unknown): string => asStr(v) ?? ''
 
 export function suggestions(m: ValidateManifest): Suggestion[] {
   const out: Suggestion[] = []

@@ -4,6 +4,11 @@
 **Status:** Proposed (awaiting owner review)
 **Companion docs:** [`research/00-SYNTHESIS.md`](../../../research/00-SYNTHESIS.md) (architecture ADR + full roadmap) and reports `01`–`07`.
 
+> **Historical status / errata (2026-07-18):** This is the original pre-build v1 proposal, not the
+> current implementation contract. The shipped architecture replaced its DuckDB query layer and
+> expanded well beyond this slice. Use [`CLAUDE.md`](../../../CLAUDE.md) and
+> [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for current behavior.
+
 ---
 
 ## 1. Purpose

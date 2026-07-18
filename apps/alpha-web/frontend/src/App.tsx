@@ -16,9 +16,9 @@ import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
 import { setLinked, useLinked } from './context/linked'
 import { buildDeskLayout, LAYOUT_KEY } from './layouts/presets'
-import { openRunDetail } from './panels/actions'
+import { openRunDetail, runIdFromHash } from './panels/actions'
 import { PANELS } from './panels/registry'
-import { initActivity, useActivity } from './state/activity'
+import { initActivity, useActivityField } from './state/activity'
 import { setSettings, useSettings } from './state/settings'
 
 function SymControl() {
@@ -94,7 +94,8 @@ function AsofControl() {
 }
 
 function StatusCluster() {
-  const { connection, runningJobs } = useActivity()
+  const connection = useActivityField('connection')
+  const runningJobs = useActivityField('runningJobs')
   const dotClass = connection === 'live' ? '' : connection === 'connecting' ? 'busy' : 'down'
   return (
     <div className="status" title={`activity stream: ${connection}`}>
@@ -135,9 +136,18 @@ export function App() {
         /* ignore storage quota / serialization errors */
       }
     })
-    // hash deep-link: /#run=<id> opens that run's story
-    const match = /#run=([0-9a-f]{16})/.exec(window.location.hash)
-    if (match) openRunDetail(event.api, match[1])
+    // hash deep-link: /#run=<id> opens that run's story (openRunDetail keeps the hash current)
+    const linked = runIdFromHash()
+    if (linked) openRunDetail(event.api, linked)
+  }, [])
+
+  useEffect(() => {
+    const onHash = () => {
+      const runId = runIdFromHash()
+      if (runId && dockRef.current) openRunDetail(dockRef.current, runId)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
   const openPanel = useCallback((component: string, title: string) => {

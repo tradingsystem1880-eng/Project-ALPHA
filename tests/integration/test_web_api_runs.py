@@ -17,6 +17,7 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_web import _runs
 from alpha_web.app import create_app
 
 
@@ -157,6 +158,21 @@ def test_trades_endpoint_empty_without_log(tmp_path: Path, monkeypatch: pytest.M
     assert _client(tmp_path, monkeypatch).get("/api/runs/cccc000000000003/trades").json() == []
 
 
+def test_optional_series_are_404_for_unknown_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    unknown = "deadbeefdeadbeef"
+    assert client.get(f"/api/runs/{unknown}/equity").status_code == 404
+    assert client.get(f"/api/runs/{unknown}/trades").status_code == 404
+
+
+def test_run_pagination_bounds_are_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    for query in ("limit=0", "limit=501", "offset=-1", "offset=1000001"):
+        assert client.get(f"/api/runs?{query}").status_code == 422
+
+
 def _write_returns_equity(data_dir: Path, kind: str, run_id: str, returns: list[float]) -> None:
     """Seed a portfolio/cross-sectional run's ``equity_curve.parquet`` (N+1 rows, base 1.0)."""
     rdir = data_dir / kind / run_id
@@ -243,7 +259,9 @@ def test_forecast_endpoint_reads_the_cone(tmp_path: Path, monkeypatch: pytest.Mo
     body = client.get("/api/runs/ffff000000000009/forecast").json()
     assert body["history"] == [100.0]
     assert body["forecast"] == [101.0, 102.0, 103.0]  # q50 median line
-    assert body["p10"] == [95.0, 93.0, 91.0] and body["p90"] == [109.0, 112.0, 115.0]  # q05..q95
+    assert body["p10"] == [95.0, 93.0, 91.0]
+    assert body["p90"] == [109.0, 112.0, 115.0]
+    assert "q05" not in body and "q95" not in body  # established wire keys stay stable
     assert len(body["forecast_ts"]) == 3
 
 
@@ -284,13 +302,13 @@ def test_forecast_paths_returns_first_n_samples(
     assert len(body["ts"]) == 3 and body["ts"] == sorted(body["ts"])
 
 
-def test_forecast_paths_default_and_clamp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_forecast_paths_default_and_bounds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     _write_forecast_run(tmp_path, "ffff000000000009", n_samples=50)
     client = TestClient(create_app())
     assert len(client.get("/api/runs/ffff000000000009/forecast/paths").json()["samples"]) == 20
-    assert len(client.get("/api/runs/ffff000000000009/forecast/paths?n=45").json()["samples"]) == 40
-    assert len(client.get("/api/runs/ffff000000000009/forecast/paths?n=0").json()["samples"]) == 1
+    assert client.get("/api/runs/ffff000000000009/forecast/paths?n=45").status_code == 422
+    assert client.get("/api/runs/ffff000000000009/forecast/paths?n=0").status_code == 422
 
 
 def test_forecast_paths_404_when_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -331,12 +349,13 @@ def _write_trials(data_dir: Path, run_id: str) -> None:
     ).write_parquet(rdir / "trials.parquet")
 
 
-def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
-    """Seed a propfirm run + its ``paths.parquet`` (NaN days_to_pass = never passed)."""
+def _write_propfirm_run(data_dir: Path, run_id: str, *, legacy_filename: bool = False) -> None:
+    """Seed a propfirm run + its ``propfirm_paths.parquet`` (NaN days_to_pass = never passed)."""
     rdir = data_dir / "propfirm" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     (rdir / "manifest.json").write_text(
-        json.dumps({"command": "propfirm_run", "symbol": "SPY"}), encoding="utf-8"
+        json.dumps({"schema_version": 2, "command": "propfirm_run", "symbol": "SPY"}),
+        encoding="utf-8",
     )
     pl.DataFrame(
         {
@@ -353,7 +372,7 @@ def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
             "days_to_pass": pl.Float64(),
             "payout": pl.Float64(),
         },
-    ).write_parquet(rdir / "paths.parquet")
+    ).write_parquet(rdir / ("paths.parquet" if legacy_filename else "propfirm_paths.parquet"))
 
 
 def _write_forecast_eval_run(data_dir: Path, run_id: str) -> None:
@@ -423,14 +442,28 @@ def test_propfirm_paths_endpoint_columnar_nan_to_null(
     client = TestClient(create_app())
     detail = client.get("/api/runs/eeee000000000005").json()
     assert detail["has_propfirm_paths"] is True
-    assert detail["has_forecast_paths"] is False  # same filename, different run kind
+    assert detail["has_forecast_paths"] is False  # no forecast paths artifact here
     body = client.get("/api/runs/eeee000000000005/propfirm-paths").json()
     assert body["paths"]["passed"] == [True, False, True]
     assert body["paths"]["busted"] == [False, True, False]
     assert body["paths"]["days_to_pass"] == [12.0, None, 30.0]  # NaN -> null for JSON safety
     assert body["paths"]["payout"] == [4500.0, 0.0, 1200.0]
-    # the forecast-paths projection must never read a propfirm paths.parquet
+    # the forecast-paths projection reads paths.parquet, which a propfirm run does not write
     assert client.get("/api/runs/eeee000000000005/forecast/paths").status_code == 404
+
+
+def test_complete_legacy_propfirm_paths_remain_readable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    run_id = "eeee000000000006"
+    _write_propfirm_run(tmp_path, run_id, legacy_filename=True)
+    client = TestClient(create_app())
+
+    assert _runs.run_artifacts_readable("propfirm", run_id, data_dir=tmp_path)
+    assert client.get(f"/api/runs/{run_id}").json()["has_propfirm_paths"] is True
+    assert client.get(f"/api/runs/{run_id}/propfirm-paths").status_code == 200
+    assert client.get(f"/api/runs/{run_id}/forecast/paths").status_code == 404
 
 
 def test_propfirm_paths_endpoint_404_when_absent(
@@ -441,7 +474,7 @@ def test_propfirm_paths_endpoint_404_when_absent(
     _seed(tmp_path)
     client = TestClient(create_app())
     assert client.get("/api/runs/aaaa000000000001/propfirm-paths").status_code == 404
-    # a forecast run's paths.parquet is NOT a propfirm artifact — kind-guarded 404
+    # a forecast run writes paths.parquet, not propfirm_paths.parquet — still 404
     detail = client.get("/api/runs/ffff000000000009").json()
     assert detail["has_forecast_paths"] is True
     assert detail["has_propfirm_paths"] is False

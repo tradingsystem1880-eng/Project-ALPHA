@@ -12,13 +12,15 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6.0.3
       - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.12"
           enable-cache: true
+      - name: Lockfile check
+        run: uv lock --check
       - name: Install (locked)
         run: uv sync --locked
       - name: Lint
@@ -29,23 +31,39 @@ jobs:
         run: uv run lint-imports
       - name: Types
         run: uv run mypy packages apps tests
-      - name: Tests (incl. bias guards)
-        run: uv run pytest -q -m "not network"
+      - name: Tests + 93% owned-source coverage (incl. bias guards)
+        run: uv run pytest -q -m "not network" --cov --cov-report=term-missing
+      - name: OpenAPI freshness
+        run: uv run python scripts/generate_web_openapi.py --check
+      - name: Build all 11 wheels
+        run: uv build --all-packages
+      - name: Import built wheels
+        run: |
+          uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
+          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_cli, alpha_mcp, alpha_web))'
 
-  # Non-gating: rebuild the Workstation SPA and flag if the committed assets are stale. The Python
-  # job above never runs Node — it serves the committed build in src/alpha_web/static/app.
-  frontend-build:
+  frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6.0.3
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - name: Build SPA
+      - name: Install frontend (locked)
         working-directory: apps/alpha-web/frontend
-        run: npm ci && npm run build
-      - name: Warn if committed assets are stale
-        run: |
-          if ! git diff --quiet -- apps/alpha-web/src/alpha_web/static/app; then
-            echo "::warning::Committed SPA assets differ from a fresh build; run 'npm run build' and commit static/app."
-          fi
+        run: npm ci
+      - name: Lint (zero warnings)
+        working-directory: apps/alpha-web/frontend
+        run: npm run lint -- --deny-warnings
+      - name: Frontend tests + V8 coverage floors
+        working-directory: apps/alpha-web/frontend
+        run: npm run test:coverage
+      - name: Generated TypeScript freshness
+        working-directory: apps/alpha-web/frontend
+        run: npm run generate:api && git diff --exit-code -- src/api/generated.ts
+      - name: Type-check and build SPA
+        working-directory: apps/alpha-web/frontend
+        run: npm run build
+      - name: Committed SPA asset freshness
+        run: git diff --exit-code -- apps/alpha-web/src/alpha_web/static/app

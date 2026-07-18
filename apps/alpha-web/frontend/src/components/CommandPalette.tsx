@@ -23,6 +23,13 @@ interface Props {
 
 type Page = 'root' | 'symbols' | 'runs' | 'workspaces'
 
+const PLACEHOLDER: Record<Page, string> = {
+  root: 'Search panels & actions…',
+  symbols: 'Set active symbol…',
+  runs: 'Open run…',
+  workspaces: 'Load workspace…',
+}
+
 export function CommandPalette({
   open,
   onClose,
@@ -71,18 +78,7 @@ export function CommandPalette({
             }
           }}
         >
-          <Command.Input
-            placeholder={
-              page === 'root'
-                ? 'Search panels & actions…'
-                : page === 'symbols'
-                  ? 'Set active symbol…'
-                  : page === 'runs'
-                    ? 'Open run…'
-                    : 'Load workspace…'
-            }
-            autoFocus
-          />
+          <Command.Input placeholder={PLACEHOLDER[page]} autoFocus />
           <Command.List>
             <Command.Empty>No matches.</Command.Empty>
 

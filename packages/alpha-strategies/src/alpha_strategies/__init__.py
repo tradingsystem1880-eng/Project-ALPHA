@@ -6,4 +6,6 @@ are imported lazily by consumers — importing this package must never drag in n
 
 from __future__ import annotations
 
-__version__ = "0.0.0"
+from importlib.metadata import version
+
+__version__ = version("alpha-strategies")

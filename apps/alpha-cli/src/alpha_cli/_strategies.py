@@ -21,6 +21,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from alpha_cli._schemas import normalize_params as _normalize_params
+from alpha_cli._schemas import specs_for as _param_specs_for
 from alpha_core import DataError
 from alpha_validation import FloatArray
 
@@ -95,7 +97,12 @@ def _ts_momentum_surrogate(spec: RunSpec) -> Surrogate:
 
 
 def _ma_crossover_params(spec: RunSpec) -> tuple[int, int]:
-    return int(spec.param("fast", 21.0)), int(spec.param("slow", 100.0))
+    from alpha_cli._schemas import default_for
+
+    return (
+        int(spec.param("fast", default_for("ma_crossover", "fast"))),
+        int(spec.param("slow", default_for("ma_crossover", "slow"))),
+    )
 
 
 def _ma_crossover_warmup(spec: RunSpec) -> int:
@@ -150,7 +157,12 @@ def _ma_crossover_surrogate(spec: RunSpec) -> Surrogate:
 
 
 def _mean_reversion_params(spec: RunSpec) -> tuple[int, float]:
-    return int(spec.param("window", 20.0)), spec.param("entry_z", 1.5)
+    from alpha_cli._schemas import default_for
+
+    return (
+        int(spec.param("window", default_for("mean_reversion", "window"))),
+        spec.param("entry_z", default_for("mean_reversion", "entry_z")),
+    )
 
 
 def _mean_reversion_warmup(spec: RunSpec) -> int:
@@ -207,7 +219,9 @@ def _mean_reversion_surrogate(spec: RunSpec) -> Surrogate:
 
 
 def _breakout_window(spec: RunSpec) -> int:
-    return int(spec.param("window", 55.0))
+    from alpha_cli._schemas import default_for
+
+    return int(spec.param("window", default_for("breakout", "window")))
 
 
 def _breakout_warmup(spec: RunSpec) -> int:
@@ -349,6 +363,17 @@ STRATEGIES: dict[str, StrategyDef] = {
     ),
 }
 
+# Parameter names come from the same definitions as parsing, bounds, defaults, and UI metadata.
+STRATEGIES = {
+    name: StrategyDef(
+        warmup=sdef.warmup,
+        build=sdef.build,
+        surrogate=sdef.surrogate,
+        params=frozenset(_param_specs_for(name)),
+    )
+    for name, sdef in STRATEGIES.items()
+}
+
 
 def _sizing_capital(spec: RunSpec) -> float:
     """The capital handed to vol-target sizing: friction-derated on CASH accounts.
@@ -374,7 +399,7 @@ def _resolve(name: str) -> StrategyDef:
 
 
 def _check_params(spec: RunSpec, sdef: StrategyDef) -> None:
-    """Fail loud on ``--param`` names the strategy never reads (silently-ignored typos)."""
+    """Apply the canonical schema at runtime, including for programmatic ``RunSpec`` values."""
     unknown = {name for name, _ in spec.strategy_params} - sdef.params
     if unknown:
         known = sorted(sdef.params) if sdef.params else "none (all knobs are first-class flags)"
@@ -382,6 +407,7 @@ def _check_params(spec: RunSpec, sdef: StrategyDef) -> None:
             f"unknown --param name(s) {sorted(unknown)} for strategy "
             f"{spec.strategy_name!r}; known strategy params: {known}"
         )
+    _normalize_params(spec.strategy_name, spec.strategy_params)
 
 
 def known_strategies() -> list[str]:

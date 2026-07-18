@@ -7,7 +7,6 @@ is flagged rather than trusted. Artifacts land under ``data_dir/optim/<run_id>/m
 
 from __future__ import annotations
 
-import json
 from typing import Annotated, Any
 
 import typer
@@ -36,6 +35,8 @@ def _parse_axes(axes: list[str] | None) -> dict[str, list[float]]:
         # Accept CLI-conventional hyphens (e.g. `vol-window`) and map to the canonical snake_case
         # RunSpec field (`vol_window`); else the axis silently becomes an ignored strategy param.
         name = name.strip().replace("-", "_")
+        if name in grid:
+            raise typer.BadParameter(f"duplicate --grid axis {name!r}")
         try:
             values = [float(v) for v in raw.split(",") if v != ""]
         except ValueError as exc:
@@ -103,7 +104,7 @@ def grid(
         embargo=embargo,
         anchored=anchored,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
     dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
@@ -145,9 +146,7 @@ def grid(
     # the per-trial OOS matrix BEFORE the manifest (manifest.json is the run-exists marker)
     _artifacts.write_trials(rdir, matrix=result.oos_matrix)
     manifest = _manifest(result, run_id=run_id, symbol=symbol, snapshot_id=snapshot_id)
-    (rdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    _artifacts.write_manifest(rdir, manifest)
 
     verdict = "PASS" if result.passed else "FAIL"
     best = ", ".join(f"{k}={v:g}" for k, v in result.best_config)

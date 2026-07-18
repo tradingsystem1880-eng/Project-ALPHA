@@ -1,15 +1,15 @@
 // Prop-firm layout: the outcome funnel (pass → funded → payout vs bust) + rules + EV story.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { api } from '../../api/client'
-import type { PropfirmPaths } from '../../api/types'
 import { OutcomeBars } from '../../components/charts/OutcomeBars'
 import { propfirmStories, propfirmSuggestions } from '../../explain/propfirm'
 import type { PropfirmManifest } from '../../explain/types'
 import { CHART } from '../../util/chartTheme'
 import { fmtPct } from '../../util/format'
 import { ExplainCard, Section, SuggestionList } from './common'
+import { useProjection } from './commonUtils'
 
 /** The three headline probabilities as horizontal magnitude bars (one hue, labeled ends). */
 function ProbBars({ m }: { m: PropfirmManifest }) {
@@ -59,15 +59,7 @@ export function PropfirmDetail({
   const stories = useMemo(() => propfirmStories(manifest), [manifest])
   const sugg = useMemo(() => propfirmSuggestions(manifest), [manifest])
   const rules = manifest.rules ?? {}
-  const [paths, setPaths] = useState<PropfirmPaths | null>(null)
-  useEffect(() => {
-    if (!hasPaths) return
-    let live = true
-    api.propfirmPaths(runId).then((p) => live && setPaths(p)).catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [runId, hasPaths])
+  const paths = useProjection(hasPaths, runId, () => api.propfirmPaths(runId))
 
   return (
     <>

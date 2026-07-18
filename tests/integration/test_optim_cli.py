@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
@@ -63,6 +64,23 @@ def test_optim_rejects_empty_grid(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     seed_store(tmp_path, symbol="SPY", n=90)
     result = runner.invoke(app, ["optim", "grid", "SPY", "--train-size", "15"])
     assert result.exit_code != 0  # no --grid axis provided
+
+
+def test_optim_rejects_duplicate_normalized_axes() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "optim",
+            "grid",
+            "SPY",
+            "--grid",
+            "vol-window=2",
+            "--grid",
+            "vol_window=4",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "duplicate --grid axis 'vol_window'" in unstyle(result.output)
 
 
 def test_optim_grid_accepts_hyphenated_axis_name(

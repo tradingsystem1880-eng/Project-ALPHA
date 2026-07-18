@@ -1,5 +1,10 @@
 # Kronos Foundation-Model Integration — Design (approved 2026-07-04)
 
+> **Implemented-state pointer (2026-07-18):** The shipped integration uses local, hash-pinned
+> Kronos-base weights with offline-only loading per ADR-0010. This remains the point-in-time design;
+> current commands and policy live in [`CLAUDE.md`](../../../CLAUDE.md) and
+> [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md).
+
 Integrate [Kronos](https://github.com/shiyu-coder/Kronos) (open-source, MIT, AAAI 2026 — a
 decoder-only foundation model for financial K-lines, pretrained on 12B+ candles across 45
 exchanges) into Project ALPHA as a first-class research capability:

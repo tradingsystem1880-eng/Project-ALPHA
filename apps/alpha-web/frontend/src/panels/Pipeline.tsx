@@ -9,18 +9,9 @@ import { api } from '../api/client'
 import type { RunListItem } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { useLinked } from '../context/linked'
-import { suggestions } from '../explain/suggestions'
-import { optimSuggestions } from '../explain/optim'
-import { portfolioSuggestions } from '../explain/portfolio'
-import { propfirmSuggestions } from '../explain/propfirm'
-import type {
-  OptimManifest,
-  PortfolioManifest,
-  PropfirmManifest,
-  Suggestion,
-  ValidateManifest,
-} from '../explain/types'
-import { useActivity } from '../state/activity'
+import { suggestionsFor } from '../explain/dispatch'
+import type { Suggestion } from '../explain/types'
+import { useActivityField } from '../state/activity'
 import { shortId } from '../util/format'
 import { openRunDetail, openStrategyLab } from './actions'
 import { SuggestionList } from './rundetail/common'
@@ -29,70 +20,79 @@ interface Stage {
   key: string
   title: string
   desc: string
-  kinds: string[]
+  /** Which stored runs belong to this stage (a run-dir kind is too coarse: backtest and
+   *  validate both live under runs/ and split on the manifest command). */
+  match: (r: RunListItem) => boolean
   launch: { command: string; args: string }
 }
+
+const never = () => false
 
 const STAGES: Stage[] = [
   {
     key: 'data',
     title: '1 · Data',
     desc: 'Pull + snapshot point-in-time history',
-    kinds: [],
+    match: never,
     launch: { command: 'data pull', args: 'SPY --source yfinance --start 2015-01-01' },
   },
   {
     key: 'backtest',
     title: '2 · Backtest',
     desc: 'One pass, fixed params — behavior, not proof',
-    kinds: ['runs'],
+    match: (r) => r.kind === 'runs' && r.command === 'backtest_run',
     launch: { command: 'backtest run', args: 'SPY --strategy ts_momentum' },
   },
   {
     key: 'validate',
     title: '3 · Validate',
     desc: 'The gauntlet: 5 gates, A–F verdict',
-    kinds: ['runs'],
+    // gauntlet manifests carry no command key — the verdict is their signature
+    match: (r) => r.kind === 'runs' && r.command !== 'backtest_run',
     launch: { command: 'validate', args: 'SPY --strategy ts_momentum' },
   },
   {
     key: 'optim',
     title: '4 · Optimize',
     desc: 'Sweep params under overfitting controls',
-    kinds: ['optim'],
+    match: (r) => r.kind === 'optim',
     launch: { command: 'optim grid', args: 'SPY --strategy ts_momentum --grid lookback=126,189,252,315' },
   },
   {
     key: 'portfolio',
     title: '5 · Portfolio',
     desc: 'Diversify the edge across a basket',
-    kinds: ['portfolio', 'cross_sectional'],
+    match: (r) => r.kind === 'portfolio' || r.kind === 'cross_sectional',
     launch: { command: 'backtest portfolio', args: 'SPY QQQ TLT GLD --strategy ts_momentum' },
   },
   {
     key: 'propfirm',
     title: '6 · Prop-firm MC',
     desc: 'Would it survive real drawdown rules?',
-    kinds: ['propfirm'],
+    match: (r) => r.kind === 'propfirm',
     launch: { command: 'propfirm run', args: '--firm topstep --from-run <run-id>' },
   },
 ]
 
 export function Pipeline(props: IDockviewPanelProps) {
-  const { runsVersion } = useActivity()
+  const runsVersion = useActivityField('runsVersion')
   const linked = useLinked()
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [sugg, setSugg] = useState<Suggestion[] | null>(null)
 
   useEffect(() => {
     let live = true
-    api.runs('?limit=500').then((r) => live && setItems(r.items)).catch(() => {})
+    // small debounce: bursts of store events collapse into one refetch
+    const t = window.setTimeout(() => {
+      api.runs('?limit=500').then((r) => live && setItems(r.items)).catch(() => {})
+    }, 150)
     return () => {
       live = false
+      window.clearTimeout(t)
     }
   }, [runsVersion])
 
-  // suggestions for the linked (selected) run — the engine picks by kind
+  // suggestions for the linked (selected) run — one shared kind dispatch (explain/dispatch)
   useEffect(() => {
     if (!linked.runId) {
       setSugg(null)
@@ -101,41 +101,25 @@ export function Pipeline(props: IDockviewPanelProps) {
     let live = true
     api
       .run(linked.runId)
-      .then((d) => {
-        if (!live) return
-        const m = d.manifest
-        if (d.kind === 'optim') setSugg(optimSuggestions(m as OptimManifest))
-        else if (d.kind === 'portfolio' || d.kind === 'cross_sectional')
-          setSugg(portfolioSuggestions(m as PortfolioManifest))
-        else if (d.kind === 'propfirm') setSugg(propfirmSuggestions(m as PropfirmManifest))
-        else setSugg(suggestions(m as ValidateManifest))
-      })
+      .then((d) => live && setSugg(suggestionsFor(d.kind, d.manifest)))
       .catch(() => live && setSugg(null))
     return () => {
       live = false
     }
   }, [linked.runId])
 
-  const counts = useMemo(() => {
+  const forSymbol = useMemo(() => {
     const all = items ?? []
-    const bySym = linked.symbol
+    return linked.symbol
       ? all.filter((r) => r.symbol === linked.symbol || (r.symbols ?? []).includes(linked.symbol!))
       : all
-    return { validate: 0, backtest: 0, ...Object.fromEntries(
-      STAGES.map((s) => [s.key, bySym.filter((r) => s.kinds.includes(r.kind)).length]),
-    ) }
   }, [items, linked.symbol])
 
-  const latestFor = (stage: Stage): RunListItem | undefined =>
-    (items ?? []).find(
-      (r) =>
-        stage.kinds.includes(r.kind) &&
-        (!linked.symbol || r.symbol === linked.symbol || (r.symbols ?? []).includes(linked.symbol)),
-    )
+  const latestFor = (stage: Stage): RunListItem | undefined => forSymbol.find(stage.match)
 
   const prefillArgs = (stage: Stage): string => {
     let args = stage.launch.args
-    if (linked.symbol) args = args.replace(/^SPY(?=\s|$)/, linked.symbol).replace(/^SPY /, `${linked.symbol} `)
+    if (linked.symbol) args = args.replace(/^SPY(?=\s|$)/, linked.symbol)
     if (linked.runId) args = args.replace('<run-id>', linked.runId)
     return args
   }
@@ -153,13 +137,12 @@ export function Pipeline(props: IDockviewPanelProps) {
         <div className="pipeline">
           {STAGES.map((s, i) => {
             const latest = latestFor(s)
+            const count = forSymbol.filter(s.match).length
             return (
               <div className="pipe-stage" key={s.key}>
                 <div className="pipe-head">
                   <span className="pipe-title">{s.title}</span>
-                  {s.kinds.length ? (
-                    <span className="count">{counts[s.key as keyof typeof counts] ?? 0}</span>
-                  ) : null}
+                  {s.match !== never ? <span className="count">{count}</span> : null}
                 </div>
                 <p className="pipe-desc">{s.desc}</p>
                 {latest ? (
