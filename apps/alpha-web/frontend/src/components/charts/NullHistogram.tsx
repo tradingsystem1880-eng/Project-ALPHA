@@ -4,8 +4,9 @@
 
 import { useMemo } from 'react'
 
-import { CHART } from '../../util/chartTheme'
+import { CHART, withAlpha } from '../../util/chartTheme'
 import { fmtNum } from '../../util/format'
+import { binValues } from './histogram'
 
 interface Props {
   statistics: number[]
@@ -20,27 +21,16 @@ const N_BINS = 41
 
 export function NullHistogram({ statistics, observed, threshold, width = 460, height = 130, title }: Props) {
   const model = useMemo(() => {
+    const base = binValues(statistics, N_BINS, {
+      include: observed !== null ? [observed] : [],
+      padFrac: 0.04,
+    })
+    if (!base) return null
     const finite = statistics.filter((v) => Number.isFinite(v))
-    if (!finite.length) return null
-    let lo = Math.min(...finite)
-    let hi = Math.max(...finite)
-    if (observed !== null && Number.isFinite(observed)) {
-      lo = Math.min(lo, observed)
-      hi = Math.max(hi, observed)
-    }
-    const span = hi - lo || 1
-    lo -= span * 0.04
-    hi += span * 0.04
-    const binW = (hi - lo) / N_BINS
-    const bins = new Array<number>(N_BINS).fill(0)
-    for (const v of finite) {
-      const b = Math.min(N_BINS - 1, Math.max(0, Math.floor((v - lo) / binW)))
-      bins[b] += 1
-    }
     const sorted = [...finite].sort((a, b) => a - b)
     const passCut =
       threshold != null ? sorted[Math.min(sorted.length - 1, Math.floor(threshold * sorted.length))] : null
-    return { lo, hi, bins, max: Math.max(...bins), passCut, n: finite.length }
+    return { ...base, passCut }
   }, [statistics, observed, threshold])
 
   if (!model) return <span className="muted">no null paths persisted for this run</span>
@@ -58,7 +48,7 @@ export function NullHistogram({ statistics, observed, threshold, width = 460, he
       <svg width={width} height={height} role="img" aria-label="null distribution vs observed">
         {/* pass zone: beyond the threshold percentile of the null */}
         {model.passCut !== null ? (
-          <rect x={x(model.passCut)} y={padT} width={Math.max(0, padL + plotW - x(model.passCut))} height={plotH} fill="rgba(46, 160, 74, 0.10)" />
+          <rect x={x(model.passCut)} y={padT} width={Math.max(0, padL + plotW - x(model.passCut))} height={plotH} fill={withAlpha(CHART.up, 0.1)} />
         ) : null}
         {model.bins.map((count, i) => {
           const h = model.max ? (count / model.max) * plotH : 0

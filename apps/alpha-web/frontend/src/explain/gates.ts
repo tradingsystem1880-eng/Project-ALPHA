@@ -1,7 +1,7 @@
 // Gate stories: turn each validation gate's numbers into an explanation in both voices.
 // Pure functions over the manifest — no fetches, no DOM — so the whole module unit-tests in node.
 
-import { fmtNum, fmtPct } from '../util/format'
+import { fmtNum, fmtPct, isFiniteNum as finite } from '../util/format'
 import type {
   CIRow,
   CPCVBlock,
@@ -12,10 +12,6 @@ import type {
   Tone,
   ValidateManifest,
 } from './types'
-
-function finite(v: number | null | undefined): v is number {
-  return typeof v === 'number' && Number.isFinite(v)
-}
 
 function tone(passed: boolean | null, warn = false): Tone {
   if (passed === null) return 'info'

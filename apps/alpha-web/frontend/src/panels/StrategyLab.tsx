@@ -8,14 +8,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { CommandDef, StrategyDef } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
-import { openRunDetail } from './actions'
+import { openRunDetail, type LabPrefill } from './actions'
 
 const SKIP_OPTS = new Set(['param', 'grid', 'json', 'strategy'])
-
-interface LabPrefill {
-  command: string
-  args: string
-}
 
 export function StrategyLab(props: IDockviewPanelProps) {
   const [commands, setCommands] = useState<CommandDef[]>([])

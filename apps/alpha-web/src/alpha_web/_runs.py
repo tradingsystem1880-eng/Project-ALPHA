@@ -23,28 +23,41 @@ def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
     return find_run_dir(data_dir, run_id)
 
 
-def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
-    """History + forecast-cone closes (median + quantile bands) for a forecast run's chart.
-
-    Reads the CLI's ``quantiles.parquet`` (per-step close quantiles) and ``history.parquet``. The
-    median line is ``q50``; the outer band is q05–q95 (served as the SPA's pre-existing
-    ``p10``/``p90`` keys — kept verbatim, the fan chart depends on them) and the inner band plus
-    the sample mean ride along as ``q25``/``q75``/``mean``. Returns None for runs that wrote no
-    cone artifacts (a ``forecast eval`` run, or any non-forecast run type).
-    """
+def _artifact_frame(
+    run_id: str,
+    filename: str,
+    *,
+    data_dir: Path,
+    sort: tuple[str, ...] = (),
+) -> pl.DataFrame | None:
+    """A run's parquet artifact, sorted; None when the run is absent or the file unwritten."""
     rdir = _run_dir(run_id, data_dir=data_dir)
     if rdir is None:
         return None
-    qpath, hpath = rdir / "quantiles.parquet", rdir / "history.parquet"
-    if not (qpath.exists() and hpath.exists()):
+    path = rdir / filename
+    if not path.exists():
         return None
-    quant = pl.read_parquet(qpath)
-    history = pl.read_parquet(hpath)
+    frame = pl.read_parquet(path)
+    return frame.sort(*sort) if sort else frame
+
+
+def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
+    """History + forecast-cone closes (median + quantile bands) for a forecast run's chart.
+
+    Reads the CLI's ``quantiles.parquet`` (per-step close quantiles) and ``history.parquet``.
+    The median line is ``q50``; the bands are served under their honest quantile names
+    (``q05/q25/q75/q95``) plus the sample ``mean``. Returns None for runs that wrote no cone
+    artifacts (a ``forecast eval`` run, or any non-forecast run type).
+    """
+    quant = _artifact_frame(run_id, "quantiles.parquet", data_dir=data_dir)
+    history = _artifact_frame(run_id, "history.parquet", data_dir=data_dir)
+    if quant is None or history is None:
+        return None
     return {
         "history": [float(v) for v in history["close"].to_list()],
         "forecast": [float(v) for v in quant["q50"].to_list()],
-        "p10": [float(v) for v in quant["q05"].to_list()],
-        "p90": [float(v) for v in quant["q95"].to_list()],
+        "q05": [float(v) for v in quant["q05"].to_list()],
+        "q95": [float(v) for v in quant["q95"].to_list()],
         "q25": [float(v) for v in quant["q25"].to_list()],
         "q75": [float(v) for v in quant["q75"].to_list()],
         "mean": [float(v) for v in quant["mean"].to_list()],
@@ -60,32 +73,26 @@ MAX_FORECAST_PATHS = 40  # spaghetti-line cap: more is unreadable and bloats the
 def forecast_paths(run_id: str, *, data_dir: Path, n: int = 20) -> dict[str, Any] | None:
     """The first ``n`` sampled close paths of a forecast run (deterministic — no RNG).
 
-    Reads the CLI's ``paths.parquet`` (per-sample OHLCV, long) and returns
+    Reads the forecast run's ``paths.parquet`` (per-sample OHLCV, long) and returns
     ``{samples: [{sample, closes}], ts}`` with ``ts`` in epoch seconds. ``n`` is clamped to
-    [1, MAX_FORECAST_PATHS]. Returns None when the run is absent, is not a forecast run (a
-    propfirm run also writes a — differently shaped — ``paths.parquet``), or wrote no paths.
+    [1, MAX_FORECAST_PATHS]. Returns None when the run is absent or wrote no paths.
     """
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None or rdir.parent.name != "forecast":
-        return None
-    path = rdir / "paths.parquet"
-    if not path.exists():
+    frame = _artifact_frame(run_id, "paths.parquet", data_dir=data_dir, sort=("sample", "step"))
+    if frame is None:
         return None
     n = max(1, min(n, MAX_FORECAST_PATHS))
-    frame = pl.read_parquet(path).sort("sample", "step")
-    wanted = frame["sample"].unique(maintain_order=True).to_list()[:n]
-    if not wanted:
+    parts = frame.partition_by("sample", maintain_order=True)[:n]
+    if not parts:
         raise DataError(f"forecast run {run_id!r} wrote an empty paths.parquet")
-    samples = [
-        {
-            "sample": int(s),
-            "closes": [float(v) for v in frame.filter(pl.col("sample") == s)["close"].to_list()],
-        }
-        for s in wanted
-    ]
     return {
-        "samples": samples,
-        "ts": [t.timestamp() for t in frame.filter(pl.col("sample") == wanted[0])["ts"].to_list()],
+        "samples": [
+            {
+                "sample": int(part["sample"][0]),
+                "closes": [float(v) for v in part["close"].to_list()],
+            }
+            for part in parts
+        ],
+        "ts": [t.timestamp() for t in parts[0]["ts"].to_list()],
     }
 
 
@@ -95,13 +102,9 @@ def null_distributions(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     Reads ``nulls.parquet`` (one row per (tier, path), written sorted). Statistics are served in
     (tier, path_index) order. Returns None when the run is absent or wrote no null artifact.
     """
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
+    frame = _artifact_frame(run_id, "nulls.parquet", data_dir=data_dir, sort=("tier", "path_index"))
+    if frame is None:
         return None
-    path = rdir / "nulls.parquet"
-    if not path.exists():
-        return None
-    frame = pl.read_parquet(path).sort("tier", "path_index")
     return {
         "tiers": [
             {
@@ -120,13 +123,9 @@ def optim_trials(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     the manifest's ``configs``/``sharpes`` order. No server-side math beyond grouping. Returns
     None when the run is absent or wrote no trials artifact.
     """
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
+    frame = _artifact_frame(run_id, "trials.parquet", data_dir=data_dir, sort=("trial", "step"))
+    if frame is None:
         return None
-    path = rdir / "trials.parquet"
-    if not path.exists():
-        return None
-    frame = pl.read_parquet(path).sort("trial", "step")
     return {
         "trials": [
             {
@@ -141,18 +140,15 @@ def optim_trials(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
 def propfirm_paths(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     """A prop-firm run's per-path Monte-Carlo outcomes, columnar.
 
-    Reads ``paths.parquet`` (one row per path, sorted by path_index). ``days_to_pass`` is NaN on
-    disk for never-passed paths — converted to None here (JSON has no NaN). Kind-guarded: a
-    forecast run also writes a — differently shaped — ``paths.parquet``. Returns None when the
-    run is absent, is not a propfirm run, or wrote no paths artifact.
+    Reads ``propfirm_paths.parquet`` (one row per path, sorted by path_index). ``days_to_pass``
+    is NaN on disk for never-passed paths — converted to None here (JSON has no NaN). Returns
+    None when the run is absent or wrote no paths artifact.
     """
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None or rdir.parent.name != "propfirm":
+    frame = _artifact_frame(
+        run_id, "propfirm_paths.parquet", data_dir=data_dir, sort=("path_index",)
+    )
+    if frame is None:
         return None
-    path = rdir / "paths.parquet"
-    if not path.exists():
-        return None
-    frame = pl.read_parquet(path).sort("path_index")
     return {
         "paths": {
             "passed": [bool(v) for v in frame["passed"].to_list()],
@@ -172,13 +168,9 @@ def forecast_origins(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     timestamps, cutoff split, CRPS vs both baselines, end returns, and the hit/coverage booleans.
     Returns None when the run is absent or wrote no origins artifact.
     """
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
+    frame = _artifact_frame(run_id, "origins.parquet", data_dir=data_dir, sort=("origin_index",))
+    if frame is None:
         return None
-    path = rdir / "origins.parquet"
-    if not path.exists():
-        return None
-    frame = pl.read_parquet(path).sort("origin_index")
     return {
         "origin_ts": [t.timestamp() for t in frame["origin_ts"].to_list()],
         "pre_cutoff": [bool(v) for v in frame["pre_cutoff"].to_list()],
@@ -205,40 +197,56 @@ def tearsheet_file(run_id: str, *, data_dir: Path) -> Path | None:
 
 # --- workstation JSON API helpers (richer indexing/series for the SPA panels) ------------------
 
+# run_record cache keyed on manifest path — invalidated by mtime, so the index endpoint re-reads
+# only changed manifests (the activity stream turns /api/runs into a per-event hot path).
+_RECORD_CACHE: dict[Path, tuple[float, dict[str, Any]]] = {}
+
+
+def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """One run's browser record — THE shared shape of ``/api/runs`` index items and the activity
+    stream's ``run_added``/``run_updated`` payloads (the SPA consumes both as ``RunListItem``).
+
+    ``mtime`` is the ``manifest.json`` filesystem timestamp — deliberately NOT a manifest field,
+    so time-ordering the browser never touches the byte-stable, wall-clock-free manifests.
+    Raises ``OSError``/``json.JSONDecodeError`` on a vanished or mid-write manifest.
+    """
+    mpath = data_dir / kind / run_id / "manifest.json"
+    mtime = mpath.stat().st_mtime
+    cached = _RECORD_CACHE.get(mpath)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+    manifest = json.loads(mpath.read_text(encoding="utf-8"))
+    symbols = manifest.get("symbols")
+    verdict = manifest.get("verdict")
+    record = {
+        "run_id": run_id,
+        "kind": kind,
+        "command": manifest.get("command"),
+        "label": manifest.get("symbol")
+        or (", ".join(symbols) if symbols else None)
+        or manifest.get("source"),
+        "symbol": manifest.get("symbol"),
+        "symbols": symbols,
+        "passed": manifest.get("passed"),
+        "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
+        "mtime": mtime,
+    }
+    _RECORD_CACHE[mpath] = (mtime, record)
+    return record
+
 
 def _index_runs(*, data_dir: Path) -> list[dict[str, Any]]:
-    """Every stored run as a rich record (run_id, kind, command, label, verdict, mtime), unsorted.
-
-    ``mtime`` is the ``manifest.json`` filesystem timestamp — deliberately NOT a manifest field, so
-    time-ordering the browser never touches the byte-stable, wall-clock-free manifests.
-    """
+    """Every stored run as a rich record (see ``run_record``), unsorted."""
     records: list[dict[str, Any]] = []
     for sub in RUN_DIRS:
         base = data_dir / sub
         if not base.is_dir():
             continue
         for rdir in base.iterdir():
-            mpath = rdir / "manifest.json"
-            if not mpath.exists():
-                continue
-            manifest = json.loads(mpath.read_text(encoding="utf-8"))
-            symbols = manifest.get("symbols")
-            verdict = manifest.get("verdict")
-            records.append(
-                {
-                    "run_id": rdir.name,
-                    "kind": sub,
-                    "command": manifest.get("command"),
-                    "label": manifest.get("symbol")
-                    or (", ".join(symbols) if symbols else None)
-                    or manifest.get("source"),
-                    "symbol": manifest.get("symbol"),
-                    "symbols": symbols,
-                    "passed": manifest.get("passed"),
-                    "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
-                    "mtime": mpath.stat().st_mtime,
-                }
-            )
+            try:
+                records.append(run_record(sub, rdir.name, data_dir=data_dir))
+            except (OSError, json.JSONDecodeError):
+                continue  # no/partial manifest yet — invisible until fully written
     return records
 
 
@@ -275,11 +283,9 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
     if rdir is None:
         raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
     mpath = rdir / "manifest.json"
-    kind = rdir.parent.name
-    has_paths = (rdir / "paths.parquet").exists()  # forecast + propfirm share the filename
     return {
         "run_id": run_id,
-        "kind": kind,
+        "kind": rdir.parent.name,
         "mtime": mpath.stat().st_mtime,
         "manifest": json.loads(mpath.read_text(encoding="utf-8")),
         "has_equity": (rdir / "equity_curve.parquet").exists(),
@@ -288,22 +294,17 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "has_forecast": (rdir / "quantiles.parquet").exists(),
         "has_nulls": (rdir / "nulls.parquet").exists(),
         "has_trials": (rdir / "trials.parquet").exists(),
-        "has_forecast_paths": kind == "forecast" and has_paths,
-        "has_propfirm_paths": kind == "propfirm" and has_paths,
+        "has_forecast_paths": (rdir / "paths.parquet").exists(),
+        "has_propfirm_paths": (rdir / "propfirm_paths.parquet").exists(),
         "has_origins": (rdir / "origins.parquet").exists(),
     }
 
 
 def equity_series(run_id: str, *, data_dir: Path) -> dict[str, list[float]]:
     """Equity curve as ``{ts (epoch seconds), equity, drawdown}``; empty lists when no curve."""
-    empty: dict[str, list[float]] = {"ts": [], "equity": [], "drawdown": []}
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
-        return empty
-    path = rdir / "equity_curve.parquet"
-    if not path.exists():
-        return empty
-    frame = pl.read_parquet(path)
+    frame = _artifact_frame(run_id, "equity_curve.parquet", data_dir=data_dir)
+    if frame is None:
+        return {"ts": [], "equity": [], "drawdown": []}
     equity = [float(v) for v in frame["equity"].to_list()]
     ts = [t.timestamp() for t in frame["ts"].to_list()]
     peak = float("-inf")
@@ -316,13 +317,10 @@ def equity_series(run_id: str, *, data_dir: Path) -> dict[str, list[float]]:
 
 def trades(run_id: str, *, data_dir: Path) -> list[dict[str, Any]]:
     """The run's trade log rows (datetimes serialized to ISO strings); ``[]`` when none written."""
-    rdir = _run_dir(run_id, data_dir=data_dir)
-    if rdir is None:
+    frame = _artifact_frame(run_id, "trades.parquet", data_dir=data_dir)
+    if frame is None:
         return []
-    path = rdir / "trades.parquet"
-    if not path.exists():
-        return []
-    rows: list[dict[str, Any]] = pl.read_parquet(path).to_dicts()
+    rows: list[dict[str, Any]] = frame.to_dicts()
     for row in rows:
         for key in ("entry_ts", "exit_ts"):
             value = row.get(key)

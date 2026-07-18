@@ -2,16 +2,15 @@
 // null histograms (when the run persisted its null paths) + percentile gauges for the tiers,
 // an interval bar for the CI.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { api } from '../../api/client'
-import type { NullTiers } from '../../api/types'
 import { IntervalBar } from '../../components/charts/IntervalBar'
 import { NullHistogram } from '../../components/charts/NullHistogram'
 import { PercentileGauge } from '../../components/charts/PercentileGauge'
 import { gateStories } from '../../explain/gates'
 import type { ValidateManifest } from '../../explain/types'
-import { ExplainCard, Section } from './common'
+import { ExplainCard, Section, useProjection } from './common'
 
 export function Gates({
   manifest,
@@ -26,16 +25,7 @@ export function Gates({
   const ci = manifest.cis?.find((c) => c.metric === 'sharpe')
   const t1 = manifest.nulls?.find((n) => n.tier === 'returns_level')
   const t2 = manifest.nulls?.find((n) => n.tier === 'full_engine')
-  const [nullTiers, setNullTiers] = useState<NullTiers | null>(null)
-
-  useEffect(() => {
-    if (!hasNulls) return
-    let live = true
-    api.nulls(runId).then((n) => live && setNullTiers(n)).catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [runId, hasNulls])
+  const nullTiers = useProjection(hasNulls, runId, () => api.nulls(runId))
 
   const histFor = (tier: string) =>
     nullTiers?.tiers.find((t) => t.tier === tier)?.statistics ?? null

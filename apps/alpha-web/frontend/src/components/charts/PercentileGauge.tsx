@@ -2,7 +2,7 @@
 // pass threshold marked and the observed percentile as a needle. The single number that
 // decides the luck test, made spatial.
 
-import { CHART } from '../../util/chartTheme'
+import { CHART, withAlpha } from '../../util/chartTheme'
 import { fmtPct } from '../../util/format'
 
 interface Props {
@@ -23,7 +23,7 @@ export function PercentileGauge({ percentile, threshold, width = 260 }: Props) {
       {/* track */}
       <rect x={pad} y={10} width={width - 2 * pad} height={6} rx={3} fill={CHART.grid} />
       {/* pass zone */}
-      <rect x={x(thr)} y={10} width={x(1) - x(thr)} height={6} rx={3} fill="rgba(46, 160, 74, 0.25)" />
+      <rect x={x(thr)} y={10} width={x(1) - x(thr)} height={6} rx={3} fill={withAlpha(CHART.up, 0.25)} />
       {/* observed needle */}
       <line x1={x(percentile)} x2={x(percentile)} y1={4} y2={22} stroke={passed ? CHART.up : CHART.down} strokeWidth={2.5} />
       <text x={Math.min(Math.max(x(percentile), 18), width - 18)} y={h - 1} textAnchor="middle" className="svg-num" fill={passed ? CHART.up : CHART.down}>

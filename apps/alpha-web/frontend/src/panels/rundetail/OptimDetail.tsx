@@ -1,16 +1,15 @@
 // Optimization-run layout: the parameter surface (heatmap from the manifest's full trial grid)
 // plus the three overfitting-control stories.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { api } from '../../api/client'
-import type { OptimTrials } from '../../api/types'
 import { ParamHeatmap } from '../../components/charts/ParamHeatmap'
 import { TrialStrip } from '../../components/charts/TrialStrip'
 import { optimStories, optimSuggestions } from '../../explain/optim'
 import type { OptimManifest } from '../../explain/types'
 import { fmtNum } from '../../util/format'
-import { ExplainCard, Section, SuggestionList } from './common'
+import { ExplainCard, Section, SuggestionList, useProjection } from './common'
 
 export function OptimDetail({
   manifest,
@@ -25,15 +24,7 @@ export function OptimDetail({
 }) {
   const stories = useMemo(() => optimStories(manifest), [manifest])
   const sugg = useMemo(() => optimSuggestions(manifest), [manifest])
-  const [trials, setTrials] = useState<OptimTrials | null>(null)
-  useEffect(() => {
-    if (!hasTrials) return
-    let live = true
-    api.trials(runId).then((t) => live && setTrials(t)).catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [runId, hasTrials])
+  const trials = useProjection(hasTrials, runId, () => api.trials(runId))
   const configs = useMemo(() => manifest.configs ?? [], [manifest])
   const sharpes = useMemo(() => manifest.sharpes ?? [], [manifest])
   const bestIndex = useMemo(() => {

@@ -1,4 +1,18 @@
-// Formatting helpers — every number the workstation shows is tabular-aligned and consistent.
+// Formatting helpers — every number the workstation shows is tabular-aligned and consistent —
+// plus the shared narrow/guard helpers (importable from both explain/ and panels/).
+
+export function isFiniteNum(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v)
+}
+
+/** The value as a finite number, else null (manifests carry null for non-finite stats). */
+export function asNum(v: unknown): number | null {
+  return isFiniteNum(v) ? v : null
+}
+
+export function asStr(v: unknown): string | null {
+  return typeof v === 'string' ? v : null
+}
 
 export function fmtTime(epochSeconds: number): string {
   const d = new Date(epochSeconds * 1000)

@@ -217,11 +217,11 @@ def simulate_propfirm(
         funded_busted[i] = busted
 
     busted_any = busted_eval | funded_busted
-    days_to_pass = (first_pass[passed_eval] + 1).astype(np.float64)
-    median = float(np.median(days_to_pass)) if days_to_pass.size else float("nan")
-    payout_cash = rules.profit_split * total_withdrawn - rules.eval_fee
-    # per-path days-to-pass (1-based trading days; NaN marks a path that never passed)
+    # per-path days-to-pass (1-based trading days; NaN marks a path that never passed) — the
+    # single source both the median aggregate and the persisted per-path column derive from
     path_days = np.where(passed_eval, (first_pass + 1).astype(np.float64), np.nan)
+    median = float(np.median(path_days[passed_eval])) if passed_eval.any() else float("nan")
+    payout_cash = rules.profit_split * total_withdrawn - rules.eval_fee
 
     return PropFirmResult(
         pass_probability=float(passed_eval.mean()),

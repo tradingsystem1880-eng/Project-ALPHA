@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import type uPlot from 'uplot'
 
 import type { ForecastPaths, ForecastSeries } from '../../api/types'
-import { AXIS, CHART } from '../../util/chartTheme'
+import { AXIS, CHART, withAlpha } from '../../util/chartTheme'
 import { UplotChart } from '../UplotChart'
 import { hoverPlugin } from './hoverPlugin'
 
@@ -57,10 +57,10 @@ export function FanChart({ fc, paths, height = 280 }: Props) {
       x,
       [...fc.history, ...fc.forecast.map(() => null)], // 1 history
       joined(fc.forecast), // 2 median
-      fc.p90 ? [...padH, ...fc.p90] : x.map(() => null), // 3 q95
+      fc.q95 ? [...padH, ...fc.q95] : x.map(() => null), // 3 q95
       fc.q75 ? [...padH, ...fc.q75] : x.map(() => null), // 4 q75
       fc.q25 ? [...padH, ...fc.q25] : x.map(() => null), // 5 q25
-      fc.p10 ? [...padH, ...fc.p10] : x.map(() => null), // 6 q05
+      fc.q05 ? [...padH, ...fc.q05] : x.map(() => null), // 6 q05
     ] as uPlot.AlignedData
   }, [fc])
 
@@ -79,8 +79,8 @@ export function FanChart({ fc, paths, height = 280 }: Props) {
       ],
       // layered central intervals: 90% (light) behind 50% (denser)
       bands: [
-        { series: [3, 6], fill: 'rgba(79, 141, 255, 0.10)' },
-        { series: [4, 5], fill: 'rgba(79, 141, 255, 0.20)' },
+        { series: [3, 6], fill: withAlpha(CHART.accent, 0.1) },
+        { series: [4, 5], fill: withAlpha(CHART.accent, 0.2) },
       ],
       legend: { show: false },
       cursor: { points: { show: false } },

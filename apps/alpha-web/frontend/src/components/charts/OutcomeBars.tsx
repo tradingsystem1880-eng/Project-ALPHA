@@ -1,11 +1,15 @@
 // Prop-firm per-path outcome distributions: days-to-pass and payout histograms from the
-// persisted Monte-Carlo paths. Same histogram core as NullHistogram, semantic coloring by sign.
+// persisted Monte-Carlo paths. Binning comes from the shared histogram model; coloring is
+// semantic by measure.
 
 import { useMemo } from 'react'
 
 import type { PropfirmPaths } from '../../api/types'
 import { CHART } from '../../util/chartTheme'
 import { fmtNum } from '../../util/format'
+import { binValues } from './histogram'
+
+const N_BINS = 31
 
 function Histogram({
   values,
@@ -22,22 +26,12 @@ function Histogram({
   color: string
   fmt?: (v: number) => string
 }) {
-  const model = useMemo(() => {
-    const finite = values.filter((v) => Number.isFinite(v))
-    if (!finite.length) return null
-    const lo = Math.min(...finite)
-    const hi = Math.max(...finite)
-    const nBins = 31
-    const binW = (hi - lo) / nBins || 1
-    const bins = new Array<number>(nBins).fill(0)
-    for (const v of finite) bins[Math.min(nBins - 1, Math.floor((v - lo) / binW))] += 1
-    return { lo, hi, bins, max: Math.max(...bins), n: finite.length, nBins }
-  }, [values])
+  const model = useMemo(() => binValues(values, N_BINS), [values])
   if (!model) return null
   const padB = 16
   const padT = 6
   const plotH = height - padB - padT
-  const barW = width / model.nBins
+  const barW = width / N_BINS
   return (
     <div className="outcome-hist">
       <span className="eyebrow">{label}</span>
@@ -65,13 +59,15 @@ function Histogram({
 }
 
 export function OutcomeBars({ data }: { data: PropfirmPaths }) {
-  const days = data.paths.days_to_pass.filter((d): d is number => d !== null)
-  const payouts = data.paths.payout
+  const days = useMemo(
+    () => data.paths.days_to_pass.filter((d): d is number => d !== null),
+    [data],
+  )
   return (
     <div className="outcome-bars">
       <Histogram values={days} label={`Days to pass (the ${days.length} passing paths)`} color={CHART.accent} />
       <Histogram
-        values={payouts}
+        values={data.paths.payout}
         label="Net payout per attempt ($, all paths incl. busts & fees)"
         color={CHART.up}
         fmt={(v) => `$${fmtNum(v, 0)}`}

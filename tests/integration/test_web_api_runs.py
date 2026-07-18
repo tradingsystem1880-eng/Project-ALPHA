@@ -243,7 +243,7 @@ def test_forecast_endpoint_reads_the_cone(tmp_path: Path, monkeypatch: pytest.Mo
     body = client.get("/api/runs/ffff000000000009/forecast").json()
     assert body["history"] == [100.0]
     assert body["forecast"] == [101.0, 102.0, 103.0]  # q50 median line
-    assert body["p10"] == [95.0, 93.0, 91.0] and body["p90"] == [109.0, 112.0, 115.0]  # q05..q95
+    assert body["q05"] == [95.0, 93.0, 91.0] and body["q95"] == [109.0, 112.0, 115.0]  # q05..q95
     assert len(body["forecast_ts"]) == 3
 
 
@@ -267,7 +267,7 @@ def test_forecast_endpoint_includes_full_quantiles(
     assert body["mean"] == [100.9, 102.1, 103.2]
     # the pre-existing keys are untouched — the SPA fan chart depends on them
     assert body["history"] == [100.0] and body["forecast"] == [101.0, 102.0, 103.0]
-    assert body["p10"] == [95.0, 93.0, 91.0] and body["p90"] == [109.0, 112.0, 115.0]
+    assert body["q05"] == [95.0, 93.0, 91.0] and body["q95"] == [109.0, 112.0, 115.0]
     assert len(body["history_ts"]) == 1 and len(body["forecast_ts"]) == 3
 
 
@@ -332,7 +332,7 @@ def _write_trials(data_dir: Path, run_id: str) -> None:
 
 
 def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
-    """Seed a propfirm run + its ``paths.parquet`` (NaN days_to_pass = never passed)."""
+    """Seed a propfirm run + its ``propfirm_paths.parquet`` (NaN days_to_pass = never passed)."""
     rdir = data_dir / "propfirm" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     (rdir / "manifest.json").write_text(
@@ -353,7 +353,7 @@ def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
             "days_to_pass": pl.Float64(),
             "payout": pl.Float64(),
         },
-    ).write_parquet(rdir / "paths.parquet")
+    ).write_parquet(rdir / "propfirm_paths.parquet")
 
 
 def _write_forecast_eval_run(data_dir: Path, run_id: str) -> None:
@@ -423,13 +423,13 @@ def test_propfirm_paths_endpoint_columnar_nan_to_null(
     client = TestClient(create_app())
     detail = client.get("/api/runs/eeee000000000005").json()
     assert detail["has_propfirm_paths"] is True
-    assert detail["has_forecast_paths"] is False  # same filename, different run kind
+    assert detail["has_forecast_paths"] is False  # no forecast paths artifact here
     body = client.get("/api/runs/eeee000000000005/propfirm-paths").json()
     assert body["paths"]["passed"] == [True, False, True]
     assert body["paths"]["busted"] == [False, True, False]
     assert body["paths"]["days_to_pass"] == [12.0, None, 30.0]  # NaN -> null for JSON safety
     assert body["paths"]["payout"] == [4500.0, 0.0, 1200.0]
-    # the forecast-paths projection must never read a propfirm paths.parquet
+    # the forecast-paths projection reads paths.parquet, which a propfirm run does not write
     assert client.get("/api/runs/eeee000000000005/forecast/paths").status_code == 404
 
 
@@ -441,7 +441,7 @@ def test_propfirm_paths_endpoint_404_when_absent(
     _seed(tmp_path)
     client = TestClient(create_app())
     assert client.get("/api/runs/aaaa000000000001/propfirm-paths").status_code == 404
-    # a forecast run's paths.parquet is NOT a propfirm artifact — kind-guarded 404
+    # a forecast run writes paths.parquet, not propfirm_paths.parquet — still 404
     detail = client.get("/api/runs/ffff000000000009").json()
     assert detail["has_forecast_paths"] is True
     assert detail["has_propfirm_paths"] is False

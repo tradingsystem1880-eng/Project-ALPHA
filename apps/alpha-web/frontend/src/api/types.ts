@@ -44,8 +44,8 @@ export interface ForecastSeries {
   history: number[]
   forecast_ts: number[]
   forecast: number[]
-  p10: number[] | null
-  p90: number[] | null
+  q05: number[] | null
+  q95: number[] | null
   q25?: number[]
   q75?: number[]
   mean?: number[]

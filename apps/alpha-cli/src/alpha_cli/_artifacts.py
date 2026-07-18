@@ -175,7 +175,7 @@ def write_propfirm_paths(
     days_to_pass: Sequence[float],
     payout: Sequence[float],
 ) -> None:
-    """Write ``paths.parquet`` — a prop-firm run's per-path Monte-Carlo outcomes.
+    """Write ``propfirm_paths.parquet`` — a prop-firm run's per-path Monte-Carlo outcomes.
 
     One row per path, sorted by ``path_index`` Int64 (0..n-1): ``passed``/``busted`` Boolean,
     ``days_to_pass`` Float64 (NaN when the path never passed — this is Parquet, not the manifest,
@@ -204,7 +204,7 @@ def write_propfirm_paths(
         },
     )
     rdir.mkdir(parents=True, exist_ok=True)
-    frame.write_parquet(rdir / "paths.parquet")
+    frame.write_parquet(rdir / "propfirm_paths.parquet")
 
 
 def write_run(

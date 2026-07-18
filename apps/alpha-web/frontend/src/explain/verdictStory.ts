@@ -2,7 +2,7 @@
 // The persisted manifest verdict is authoritative — these narratives cite it; recomputeVerdict()
 // exists only for the drift-guard tests and the band interval text.
 
-import { fmtNum, fmtPct } from '../util/format'
+import { fmtNum, fmtPct, isFiniteNum } from '../util/format'
 import {
   bandInterval,
   DRAWDOWN_BANDS,
@@ -31,7 +31,7 @@ export function verdictStories(m: ValidateManifest): DimensionStory[] {
   const nOos = d.sample_n_oos ?? null
   const gpa = d.overall_gpa ?? null
 
-  const ddDepth = typeof dd === 'number' && Number.isFinite(dd) ? Math.abs(dd) : null
+  const ddDepth = isFiniteNum(dd) ? Math.abs(dd) : null
   const ddGrade = gradeAtMost(ddDepth, DRAWDOWN_BANDS)
   const ruinGrade = gradeAtMost(ruin, RUIN_BANDS)
   const riskDriver =

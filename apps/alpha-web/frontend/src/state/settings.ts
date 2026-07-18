@@ -1,8 +1,9 @@
 // Global UI settings (display density + explanation mode) as a tiny external store.
 //
 // Mirrors context/linked.ts: a module-level store (not React context) so it works across
-// Dockview's separate panel roots. Persisted to localStorage and mirrored onto <html> data
-// attributes so pure CSS can react (html[data-density='compact'] tightens the density knobs).
+// Dockview's separate panel roots. Persisted to localStorage; density is also mirrored onto
+// <html> so pure CSS can react (html[data-density='compact'] tightens the density knobs) —
+// explain mode has no CSS consumers and is read through useSettings() only.
 
 import { useSyncExternalStore } from 'react'
 
@@ -35,9 +36,7 @@ function load(): Settings {
 }
 
 function applyAttrs(): void {
-  const el = document.documentElement
-  el.setAttribute('data-density', state.density)
-  el.setAttribute('data-explain', state.explain)
+  document.documentElement.setAttribute('data-density', state.density)
 }
 
 /** Load persisted settings and stamp the <html> data attributes. Call once at boot. */

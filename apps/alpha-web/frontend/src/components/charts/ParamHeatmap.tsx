@@ -4,7 +4,7 @@
 
 import { useMemo } from 'react'
 
-import { CHART } from '../../util/chartTheme'
+import { CHART, withAlpha } from '../../util/chartTheme'
 import { fmtNum } from '../../util/format'
 
 type Pair = [string, number]
@@ -51,8 +51,7 @@ function buildGrid(configs: Pair[][], sharpes: (number | null)[]): Grid | null {
 
 /** Sequential ramp on the accent hue: light (low) → saturated (high) against the dark surface. */
 function ramp(t: number): string {
-  const a = 0.1 + 0.85 * Math.max(0, Math.min(1, t))
-  return `rgba(79, 141, 255, ${a.toFixed(3)})`
+  return withAlpha(CHART.accent, 0.1 + 0.85 * Math.max(0, Math.min(1, t)))
 }
 
 export function ParamHeatmap({ configs, sharpes, bestIndex }: Props) {

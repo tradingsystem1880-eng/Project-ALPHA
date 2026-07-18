@@ -11,7 +11,7 @@ import type { RunListItem } from '../api/types'
 import { DataTable } from '../components/DataTable'
 import { Placeholder } from '../components/Placeholder'
 import { setLinked } from '../context/linked'
-import { useActivity } from '../state/activity'
+import { useActivityField } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
 
@@ -23,7 +23,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('all')
-  const { runsVersion } = useActivity()
+  const runsVersion = useActivityField('runsVersion')
 
   useEffect(() => {
     let live = true

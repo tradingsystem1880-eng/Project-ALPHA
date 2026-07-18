@@ -8,12 +8,13 @@ import { api } from '../api/client'
 import type { JobSummary } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { Placeholder } from '../components/Placeholder'
-import { useActivity } from '../state/activity'
+import { useActivityField } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
 
 export function JobMonitor(props: IDockviewPanelProps) {
-  const { jobsVersion, runningJobs } = useActivity()
+  const jobsVersion = useActivityField('jobsVersion')
+  const runningJobs = useActivityField('runningJobs')
   const [jobs, setJobs] = useState<JobSummary[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

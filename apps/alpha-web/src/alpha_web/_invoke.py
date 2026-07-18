@@ -34,6 +34,7 @@ RUN_TYPE: dict[str, str] = {
     "optim grid": "optim",
     "propfirm run": "propfirm",
     "forecast run": "forecast",
+    "forecast eval": "forecast",
 }
 
 

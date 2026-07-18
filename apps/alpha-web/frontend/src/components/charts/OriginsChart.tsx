@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import type uPlot from 'uplot'
 
 import type { ForecastOrigins } from '../../api/types'
-import { AXIS, CHART } from '../../util/chartTheme'
+import { AXIS, CHART, withAlpha } from '../../util/chartTheme'
 import { UplotChart } from '../UplotChart'
 import { hoverPlugin } from './hoverPlugin'
 
@@ -19,7 +19,7 @@ function cutoffPlugin(origins: ForecastOrigins): uPlot.Plugin {
         const xCut = u.valToPos(origins.origin_ts[firstPost], 'x', true)
         ctx.save()
         // shade the pre-cutoff (in-sample) region
-        ctx.fillStyle = 'rgba(215, 166, 59, 0.06)'
+        ctx.fillStyle = withAlpha(CHART.gold, 0.06)
         ctx.fillRect(u.bbox.left, u.bbox.top, xCut - u.bbox.left, u.bbox.height)
         ctx.strokeStyle = CHART.gold
         ctx.setLineDash([3, 3])
