@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -45,8 +47,10 @@ def create_snapshot(
     dest = snaps_root / snapshot_id
     if dest.exists():
         raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}")
-    (dest / "bars").mkdir(parents=True)
-    (dest / "actions").mkdir(parents=True)
+    snaps_root.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{snapshot_id}.", suffix=".tmp", dir=snaps_root))
+    (staging / "bars").mkdir()
+    (staging / "actions").mkdir()
 
     sym_manifest: dict[str, dict[str, Any]] = {}
     for sym in symbols:
@@ -54,7 +58,7 @@ def create_snapshot(
         if not bars_src.exists():
             raise DataError(f"cannot snapshot {sym!r}: no bars in store")
         bars_rel = bars_src.relative_to(store.root / "bars")  # preserve slash-symbol subdirs
-        bars_dst = dest / "bars" / bars_rel
+        bars_dst = staging / "bars" / bars_rel
         bars_dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(bars_src, bars_dst)
         entry: dict[str, Any] = {
@@ -64,7 +68,7 @@ def create_snapshot(
         actions_src = store._actions_path(sym)  # noqa: SLF001
         if actions_src.exists():
             actions_rel = actions_src.relative_to(store.root / "actions")
-            actions_dst = dest / "actions" / actions_rel
+            actions_dst = staging / "actions" / actions_rel
             actions_dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(actions_src, actions_dst)
             entry["actions_sha256"] = _sha256(actions_dst)
@@ -79,7 +83,15 @@ def create_snapshot(
         "parser_version": parser_version,
         "symbols": sym_manifest,
     }
-    (dest / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    try:
+        (staging / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
+        )
+        os.rename(staging, dest)
+    except FileExistsError:
+        raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}") from None
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
     return manifest
 
 
@@ -88,7 +100,12 @@ def verify_snapshot(snapshot_dir: Path) -> None:
     manifest_path = snapshot_dir / "manifest.json"
     if not manifest_path.exists():
         raise DataError(f"no manifest in {snapshot_dir}")
-    manifest = json.loads(manifest_path.read_text())
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise DataError(f"corrupt snapshot manifest at {manifest_path}") from exc
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("symbols"), dict):
+        raise DataError(f"invalid snapshot manifest at {manifest_path}")
     for sym, entry in manifest["symbols"].items():
         bars_file = snapshot_dir / entry["bars_file"]
         if not bars_file.exists() or _sha256(bars_file) != entry["bars_sha256"]:

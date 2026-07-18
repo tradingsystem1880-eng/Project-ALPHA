@@ -25,6 +25,7 @@ import polars as pl
 
 from alpha_cli import _forecast
 from alpha_cli._artifacts import sanitize
+from alpha_cli._atomic import publish, write_text
 from alpha_cli._runner import RunSpec
 from alpha_core import Bar, DataError
 from alpha_core.config import AlphaSettings
@@ -126,8 +127,17 @@ def ensure_forecast_cache(
     """
     key = cache_key(bars, spec, seed=seed)
     cdir = data_dir / "forecasts" / key
-    if (cdir / "signals.parquet").exists():
-        meta: dict[str, Any] = json.loads((cdir / "meta.json").read_text(encoding="utf-8"))
+    signals_path = cdir / "signals.parquet"
+    meta_path = cdir / "meta.json"
+    if signals_path.exists() and meta_path.exists():
+        try:
+            meta_raw = json.loads(meta_path.read_text(encoding="utf-8"))
+            pl.read_parquet_schema(signals_path)
+        except (json.JSONDecodeError, OSError, pl.exceptions.PolarsError) as exc:
+            raise DataError(f"corrupt forecast cache {key!r} at {cdir}") from exc
+        if not isinstance(meta_raw, dict) or meta_raw.get("cache_key") != key:
+            raise DataError(f"invalid forecast cache metadata for {key!r} at {meta_path}")
+        meta: dict[str, Any] = meta_raw
         return key, meta
 
     settings = AlphaSettings()
@@ -185,7 +195,7 @@ def ensure_forecast_cache(
         )
 
     cdir.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame(rows).write_parquet(cdir / "signals.parquet")
+    signals = pl.DataFrame(rows)
     meta = sanitize(
         {
             "cache_key": key,
@@ -212,23 +222,30 @@ def ensure_forecast_cache(
             "pretrain": _forecast.pretrain_overlap(bars, settings.forecast_pretrain_cutoff),
         }
     )
-    (cdir / "meta.json").write_text(
-        json.dumps(meta, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
-    )
+    # Metadata is a sidecar; signals.parquet is the atomic completion gate readers check first.
+    write_text(meta_path, json.dumps(meta, indent=2, sort_keys=True, allow_nan=False))
+    publish(signals_path, signals.write_parquet)
     return key, meta
 
 
 def read_signals(data_dir: Path, key: str) -> list[int | None]:
     """The cache's dense per-bar signal list (None off-schedule). Fails loud when absent."""
     cdir = data_dir / "forecasts" / key
-    if not (cdir / "signals.parquet").exists():
+    signals_path = cdir / "signals.parquet"
+    meta_path = cdir / "meta.json"
+    if not signals_path.exists():
         raise DataError(
             f"no forecast signal cache {key!r} under {data_dir / 'forecasts'} — run kronos "
             "through `alpha backtest run` / `alpha validate` / `alpha optim grid` (they "
             "auto-precompute)"
         )
-    meta = json.loads((cdir / "meta.json").read_text(encoding="utf-8"))
-    frame = pl.read_parquet(cdir / "signals.parquet")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        frame = pl.read_parquet(signals_path)
+    except (json.JSONDecodeError, OSError, pl.exceptions.PolarsError) as exc:
+        raise DataError(f"corrupt forecast signal cache {key!r} at {cdir}") from exc
+    if not isinstance(meta, dict) or not isinstance(meta.get("n_bars"), int):
+        raise DataError(f"invalid forecast signal cache metadata for {key!r} at {meta_path}")
     dense: list[int | None] = [None] * int(meta["n_bars"])
     for index, signal in zip(frame["bar_index"].to_list(), frame["signal"].to_list(), strict=True):
         dense[int(index)] = int(signal)

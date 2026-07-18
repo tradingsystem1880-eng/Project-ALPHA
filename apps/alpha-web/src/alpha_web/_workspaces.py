@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from alpha_core import DataError
+from alpha_web._atomic import write_text
 
 _SLUG_RE = re.compile(r"[^a-z0-9-]+")
 
@@ -65,7 +66,7 @@ def save_workspace(slug: str, doc: dict[str, Any], *, data_dir: Path) -> dict[st
     """Write a workspace document; returns its ``{slug, name}``."""
     path = _path(data_dir, slug)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, sort_keys=True), encoding="utf-8")
+    write_text(path, json.dumps(doc, sort_keys=True))
     return {"slug": slug, "name": doc.get("name", slug)}
 
 

@@ -149,3 +149,31 @@ def test_prepare_spec_sets_cache_key(tmp_path: Path, monkeypatch: pytest.MonkeyP
     a = _runner.run_id_for(vars(prepared))
     b = _runner.run_id_for(vars(replace(prepared, forecast_cache="0" * 16)))
     assert a != b
+
+
+@pytest.mark.parametrize("missing", ["meta.json", "signals.parquet"])
+def test_incomplete_cache_is_recomputed(
+    missing: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_FORECAST_MODEL", "fake")
+    bars = daily_bars(20)
+    spec = _kronos_spec()
+    key, _ = _forecast_cache.ensure_forecast_cache(bars, spec, data_dir=tmp_path, seed=7)
+    (tmp_path / "forecasts" / key / missing).unlink()
+
+    repaired_key, _ = _forecast_cache.ensure_forecast_cache(bars, spec, data_dir=tmp_path, seed=7)
+
+    assert repaired_key == key
+    assert (tmp_path / "forecasts" / key / "meta.json").is_file()
+    assert (tmp_path / "forecasts" / key / "signals.parquet").is_file()
+
+
+def test_complete_corrupt_cache_fails_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_FORECAST_MODEL", "fake")
+    bars = daily_bars(20)
+    spec = _kronos_spec()
+    key, _ = _forecast_cache.ensure_forecast_cache(bars, spec, data_dir=tmp_path, seed=7)
+    (tmp_path / "forecasts" / key / "signals.parquet").write_bytes(b"not parquet")
+
+    with pytest.raises(DataError, match="corrupt forecast cache"):
+        _forecast_cache.ensure_forecast_cache(bars, spec, data_dir=tmp_path, seed=7)

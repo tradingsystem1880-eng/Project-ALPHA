@@ -130,3 +130,11 @@ def test_snapshot_id_cannot_escape_snapshots_root(tmp_path: Path) -> None:
                 parser_version="1",
                 created_at=datetime(2026, 1, 1, tzinfo=UTC),
             )
+
+
+def test_corrupt_snapshot_manifest_is_typed(tmp_path: Path) -> None:
+    snapshot = tmp_path / "snap"
+    snapshot.mkdir()
+    (snapshot / "manifest.json").write_text("{")
+    with pytest.raises(DataError, match="corrupt snapshot manifest"):
+        verify_snapshot(snapshot)
