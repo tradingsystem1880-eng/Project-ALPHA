@@ -17,7 +17,7 @@ from typing import Any
 
 import typer
 
-from alpha_cli import _propfirm, _runner
+from alpha_cli import _artifacts, _propfirm, _runner
 from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
@@ -149,6 +149,14 @@ def run(
 
     rdir = settings.data_dir / "propfirm" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
+    # per-path outcomes BEFORE the manifest (manifest.json is the run-exists marker)
+    _artifacts.write_propfirm_paths(
+        rdir,
+        passed=out.result.path_passed,
+        busted=out.result.path_busted,
+        days_to_pass=out.result.path_days_to_pass,
+        payout=out.result.path_payout,
+    )
     manifest = _manifest(out, run_id=run_id, seed=resolved_seed)
     (rdir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"

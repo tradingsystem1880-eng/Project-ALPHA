@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import polars as pl
 import pytest
 from typer.testing import CliRunner
 
@@ -37,6 +38,18 @@ def test_validate_writes_manifest_and_tearsheet(
     assert (rdir / "tearsheet.html").exists()
     assert (rdir / "equity_curve.parquet").exists()
     assert (rdir / "trades.parquet").exists()
+
+    # the raw two-tier null distributions ride alongside the manifest (nulls.parquet)
+    nulls = pl.read_parquet(rdir / "nulls.parquet")
+    assert nulls.columns == ["tier", "path_index", "statistic"]
+    assert nulls.schema["tier"] == pl.String
+    assert nulls.schema["path_index"] == pl.Int64
+    assert nulls.schema["statistic"] == pl.Float64
+    assert nulls.height == 50 + 8  # --tier1-paths + --tier2-paths
+    counts = dict(nulls.group_by("tier").len().iter_rows())
+    assert counts == {"returns_level": 50, "full_engine": 8}
+    assert nulls.sort(["tier", "path_index"]).equals(nulls)  # stored in (tier, path) order
+    assert nulls["statistic"].is_finite().all()  # finite by construction (fail-loud generators)
 
     manifest = json.loads((rdir / "manifest.json").read_text())
     assert set(manifest) >= {"cis", "folds", "nulls", "oos_metrics", "outcomes", "passed", "run_id"}

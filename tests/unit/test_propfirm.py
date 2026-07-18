@@ -12,6 +12,7 @@ from __future__ import annotations
 import dataclasses
 import math
 
+import numpy as np
 import pytest
 
 from alpha_core import DataError
@@ -103,6 +104,53 @@ def test_eval_fee_is_netted_from_expected_payout() -> None:
     free = simulate_propfirm(rets, _rules(profit_split=0.5, eval_fee=0.0), n_paths=10, seed=7)
     paid = simulate_propfirm(rets, _rules(profit_split=0.5, eval_fee=150.0), n_paths=10, seed=7)
     assert paid.expected_payout == pytest.approx(free.expected_payout - 150.0)
+
+
+def _mixed_outcome_run() -> PropFirmResult:
+    """A seeded run over a stream with genuine outcome mix (some paths pass, some bust)."""
+    # +0.8%/day drift with a -2.5% shock every 5th day: a clean stretch clears the 6% target, but
+    # clustered shocks breach the 4% trailing drawdown — the bootstrap decides per path (~50/50).
+    rets = [0.008] * 80
+    for i in range(4, 80, 5):
+        rets[i] = -0.025
+    return simulate_propfirm(rets, _rules(profit_split=0.5, eval_fee=150.0), n_paths=300, seed=11)
+
+
+def test_per_path_outcomes_have_one_entry_per_path() -> None:
+    out = _mixed_outcome_run()
+    assert 0.05 < out.pass_probability < 0.95  # a genuine mix — the derivations below are earned
+    n = out.n_paths
+    assert len(out.path_passed) == len(out.path_busted) == n
+    assert len(out.path_days_to_pass) == len(out.path_payout) == n
+
+
+def test_aggregates_equal_their_per_path_derivations() -> None:
+    out = _mixed_outcome_run()
+    n = out.n_paths
+    assert out.pass_probability == sum(out.path_passed) / n
+    assert out.bust_probability == sum(out.path_busted) / n
+    # expected_payout is the mean per-path payout (each path already nets the eval fee)
+    assert out.expected_payout == pytest.approx(sum(out.path_payout) / n, rel=1e-12)
+    # median_days_to_pass is the median over the PASSING paths (NaN entries excluded)
+    passing = [d for d in out.path_days_to_pass if not math.isnan(d)]
+    assert out.median_days_to_pass == float(np.median(passing))
+    # a payout happened iff cash was withdrawn: payout > -eval_fee (min_payout > 0 here)
+    assert out.payout_probability == sum(p > -150.0 for p in out.path_payout) / n
+
+
+def test_days_to_pass_is_nan_exactly_on_non_passing_paths() -> None:
+    out = _mixed_outcome_run()
+    for passed, days in zip(out.path_passed, out.path_days_to_pass, strict=True):
+        assert passed == (not math.isnan(days))
+        if passed:
+            assert days >= 1.0 and days == int(days)  # whole trading days, 1-based
+
+
+def test_non_passing_paths_pay_exactly_the_eval_fee() -> None:
+    out = _mixed_outcome_run()
+    for passed, payout in zip(out.path_passed, out.path_payout, strict=True):
+        if not passed:
+            assert payout == -150.0  # no withdrawal ever happened: the fee is the whole outcome
 
 
 def test_deterministic_under_a_seed() -> None:

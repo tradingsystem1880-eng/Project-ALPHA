@@ -23,6 +23,10 @@ from dataclasses import dataclass
 
 _Bands = tuple[tuple[float, str], ...]
 
+# NOTE: the Workstation UI mirrors these bands in
+# apps/alpha-web/frontend/src/explain/bands.ts to EXPLAIN grades (the persisted verdict stays
+# authoritative). Change a band here -> update bands.ts; its vitest drift-guard re-grades real
+# manifests and fails on mismatch.
 # (inclusive lower bound, grade), scanned high-to-low; anything below the last bound is "F".
 _EDGE_BANDS: _Bands = ((1.5, "A"), (1.0, "B"), (0.5, "C"), (0.0, "D"))
 _SAMPLE_BANDS: _Bands = ((1000, "A"), (500, "B"), (250, "C"), (100, "D"))

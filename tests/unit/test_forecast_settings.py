@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import date
 from pathlib import Path
 
@@ -10,9 +11,14 @@ import pytest
 from alpha_core.config import AlphaSettings
 
 
-def test_forecast_settings_defaults() -> None:
-    # _env_file=None: code defaults must hold even when a machine .env pins a local model.
-    s = AlphaSettings(_env_file=None)
+def test_forecast_settings_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # Hermetic: a machine-local repo-root `.env` (git-ignored) may override ALPHA_FORECAST_*,
+    # so library defaults are asserted from a clean cwd with no ALPHA_* in the environment.
+    monkeypatch.chdir(tmp_path)
+    for var in list(os.environ):
+        if var.startswith("ALPHA_"):
+            monkeypatch.delenv(var, raising=False)
+    s = AlphaSettings()
     assert s.forecast_model == "NeoQuasar/Kronos-small"
     assert s.forecast_model_revision == "main"
     assert s.forecast_tokenizer == "NeoQuasar/Kronos-Tokenizer-base"

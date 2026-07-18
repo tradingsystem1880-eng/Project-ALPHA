@@ -95,8 +95,16 @@ def trim_warmup(returns: FloatArray) -> FloatArray:
 
 
 def _returns_from_run(data_dir: Path, run_id: str) -> FloatArray:
-    """Daily returns from a prior run's stored equity curve (``data_dir/runs/<run_id>``)."""
-    equity = _artifacts.read_equity(_artifacts.run_dir(data_dir, run_id))
+    """Daily returns from a prior run's stored equity curve (any ``RUN_DIRS`` run type).
+
+    Resolves the run across every run-type subdir (backtest/validate runs, portfolio,
+    cross-sectional, …) via ``find_run_dir``; ``read_equity`` still fails loud on a run type
+    without a stored equity curve (e.g. optim).
+    """
+    rdir = _artifacts.find_run_dir(data_dir, run_id)
+    if rdir is None:
+        raise DataError(f"no run {run_id!r} found under {data_dir}")
+    equity = _artifacts.read_equity(rdir)
     return to_returns([value for _, value in equity])
 
 

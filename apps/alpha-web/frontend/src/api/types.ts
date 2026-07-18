@@ -26,6 +26,11 @@ export interface RunDetail {
   has_trades: boolean
   has_tearsheet: boolean
   has_forecast: boolean
+  has_nulls?: boolean
+  has_trials?: boolean
+  has_forecast_paths?: boolean
+  has_propfirm_paths?: boolean
+  has_origins?: boolean
 }
 
 export interface EquitySeries {
@@ -41,6 +46,45 @@ export interface ForecastSeries {
   forecast: number[]
   p10: number[] | null
   p90: number[] | null
+  q25?: number[]
+  q75?: number[]
+  mean?: number[]
+}
+
+export interface ForecastPaths {
+  samples: { sample: number; closes: number[] }[]
+  ts: number[]
+}
+
+export interface NullTiers {
+  tiers: { tier: string; statistics: number[] }[]
+}
+
+export interface OptimTrials {
+  trials: { trial: number; returns: number[] }[]
+}
+
+export interface PropfirmPaths {
+  paths: {
+    passed: boolean[]
+    busted: boolean[]
+    days_to_pass: (number | null)[]
+    payout: number[]
+  }
+}
+
+export interface ForecastOrigins {
+  origin_ts: number[]
+  pre_cutoff: boolean[]
+  crps: number[]
+  crps_rw: number[]
+  crps_bootstrap: number[]
+  realized_end_return: number[]
+  median_end_return: number[]
+  hit: boolean[]
+  cover50: boolean[]
+  cover80: boolean[]
+  cover90: boolean[]
 }
 
 export interface Candle {

@@ -144,6 +144,14 @@ def validate(
     manifest = report_to_manifest(out.report)
     if forecast_meta is not None:
         manifest["forecast"] = {**forecast_meta, "tier2_policy": tier2_mode}
+    # raw two-tier null distributions BEFORE the manifest (manifest.json is the run-exists marker)
+    _artifacts.write_nulls(
+        rdir,
+        tiers=(
+            ("returns_level", out.tier1_null.tolist()),
+            ("full_engine", out.tier2_null.tolist()),
+        ),
+    )
     _artifacts.write_run(rdir, manifest=manifest, equity=equity, trades=out.result.trades)
     render_tearsheet_html(
         out.report,

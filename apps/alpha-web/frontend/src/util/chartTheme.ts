@@ -1,17 +1,23 @@
-// Chart colors, kept in lockstep with the CSS tokens in index.css (canvas can't read CSS vars).
+// Chart colors for canvas-land, sourced from the CSS tokens at runtime via util/tokens.ts
+// (single source of truth in index.css; the fallbacks there match these values byte-for-byte,
+// so a pre-CSS read in dev degrades to identical colors).
+
+import { readTokens } from './tokens'
+
+const T = readTokens()
 
 export const CHART = {
-  ink: '#e8ecf3',
-  dim: '#aab3c4',
-  muted: '#737d90',
-  grid: '#1a212d',
-  line: '#1d2431',
-  accent: '#4f8dff',
-  up: '#2ea04a',
-  down: '#ef5350',
-  gold: '#d7a63b',
-  band: 'rgba(79, 141, 255, 0.14)',
-  font: '11px "JetBrains Mono", ui-monospace, monospace',
+  ink: T.ink,
+  dim: T.dim,
+  muted: T.muted,
+  grid: T.grid,
+  line: T.line,
+  accent: T.accent,
+  up: T.up,
+  down: T.down,
+  gold: T.gold,
+  band: T.band,
+  font: T.font,
 } as const
 
 // Shared uPlot axis style (spread into per-axis configs, e.g. `{ ...AXIS, scale: 'y' }`).

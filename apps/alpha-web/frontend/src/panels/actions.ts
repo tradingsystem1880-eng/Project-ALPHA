@@ -14,3 +14,25 @@ export function openRunDetail(containerApi: DockviewApi, runId: string): void {
   }
   containerApi.addPanel({ id, component: 'RunDetail', title: shortId(runId), params: { runId } })
 }
+
+export interface LabPrefill {
+  command: string
+  args: string
+}
+
+// Open the Strategy Lab, optionally prefilled with a suggested command (from the explanation
+// engine's next-step actions). The lab reads `params.prefill` on mount / param change.
+export function openStrategyLab(containerApi: DockviewApi, prefill?: LabPrefill): void {
+  const existing = containerApi.panels.find((p) => p.id.startsWith('StrategyLab-'))
+  if (existing) {
+    existing.api.setActive()
+    if (prefill) existing.api.updateParameters({ prefill })
+    return
+  }
+  containerApi.addPanel({
+    id: `StrategyLab-lab`,
+    component: 'StrategyLab',
+    title: 'Strategy Lab',
+    params: prefill ? { prefill } : {},
+  })
+}

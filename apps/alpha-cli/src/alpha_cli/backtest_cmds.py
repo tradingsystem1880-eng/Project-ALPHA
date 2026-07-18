@@ -204,6 +204,14 @@ def portfolio(
     )
     rdir = settings.data_dir / "portfolio" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
+    # the combined OOS stream as an equity curve (validate-run schema, base 1.0), written BEFORE
+    # the manifest — manifest.json is the run-exists marker (see _artifacts.write_run)
+    _artifacts.write_equity_curve(
+        rdir,
+        baseline_ts=result.baseline_ts,
+        timestamps=result.portfolio_timestamps,
+        returns=result.portfolio_returns.tolist(),
+    )
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
@@ -326,6 +334,14 @@ def cross_sectional(
     )
     rdir = settings.data_dir / "cross_sectional" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
+    # the OOS stream as an equity curve (validate-run schema, base 1.0), written BEFORE the
+    # manifest — manifest.json is the run-exists marker (see _artifacts.write_run)
+    _artifacts.write_equity_curve(
+        rdir,
+        baseline_ts=result.baseline_ts,
+        timestamps=result.timestamps,
+        returns=result.returns.tolist(),
+    )
     manifest = {
         "schema_version": 1,
         "run_id": run_id,

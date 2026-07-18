@@ -12,6 +12,11 @@ import { openRunDetail } from './actions'
 
 const SKIP_OPTS = new Set(['param', 'grid', 'json', 'strategy'])
 
+interface LabPrefill {
+  command: string
+  args: string
+}
+
 export function StrategyLab(props: IDockviewPanelProps) {
   const [commands, setCommands] = useState<CommandDef[]>([])
   const [strategies, setStrategies] = useState<StrategyDef[]>([])
@@ -29,6 +34,30 @@ export function StrategyLab(props: IDockviewPanelProps) {
     api.commands().then((c) => setCommands(c.filter((x) => x.run_type)))
     api.strategies().then(setStrategies)
   }, [])
+
+  // Prefill from a suggestion (Run Detail / Pipeline "next step" actions): seed the form with
+  // the proposed command — symbols land in the symbol field, --strategy is honored, everything
+  // else goes to the reviewable free-flags field. Nothing launches without a click.
+  const prefill = (props.params as { prefill?: LabPrefill }).prefill
+  const prefillKey = prefill ? `${prefill.command}|${prefill.args}` : ''
+  useEffect(() => {
+    if (!prefill) return
+    setCmdId(prefill.command)
+    const tokens = prefill.args.split(/\s+/).filter(Boolean)
+    const syms: string[] = []
+    const rest: string[] = []
+    let i = 0
+    while (i < tokens.length && !tokens[i].startsWith('-')) syms.push(tokens[i++])
+    while (i < tokens.length) {
+      if (tokens[i] === '--strategy' && i + 1 < tokens.length) {
+        setStrategy(tokens[i + 1])
+        i += 2
+      } else rest.push(tokens[i++])
+    }
+    if (syms.length) setSymbols(syms.join(' '))
+    setExtra(rest.join(' '))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillKey])
 
   const cmd = useMemo(() => commands.find((c) => c.id === cmdId), [commands, cmdId])
   const stratDef = useMemo(
@@ -56,7 +85,16 @@ export function StrategyLab(props: IDockviewPanelProps) {
   }, [stratDef])
 
   function launch(): void {
-    if (!cmd) return
+    if (!cmd) {
+      // non-run-producing prefill (e.g. `data pull`, `forecast eval`): free-form launch
+      const parts = [symbols.trim(), extra.trim()].filter(Boolean)
+      setError(null)
+      api
+        .launch(cmdId, parts.join(' '))
+        .then((r) => setJobId(r.job_id))
+        .catch((e: unknown) => setError(String(e)))
+      return
+    }
     const parts: string[] = []
     if (symbols.trim()) parts.push(symbols.trim())
     if (hasStrategy) parts.push('--strategy', strategy)
@@ -104,6 +142,9 @@ export function StrategyLab(props: IDockviewPanelProps) {
                   {c.id}
                 </option>
               ))}
+              {commands.length && !commands.some((c) => c.id === cmdId) ? (
+                <option value={cmdId}>{cmdId}</option>
+              ) : null}
             </select>
           </label>
           <label className="field-row">

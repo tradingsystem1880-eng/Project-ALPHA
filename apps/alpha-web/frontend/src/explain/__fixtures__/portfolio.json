@@ -1,0 +1,49 @@
+{
+  "cagr_ci": {
+    "lower": 0.04685378070499869,
+    "upper": 0.1739801444304471
+  },
+  "command": "backtest_portfolio",
+  "dsr": 0.999980561163513,
+  "legs": [
+    {
+      "n_oos": 1953,
+      "oos_sharpe": 0.6521161761123611,
+      "symbol": "AAPL",
+      "weight": 0.14691988863917918
+    },
+    {
+      "n_oos": 1953,
+      "oos_sharpe": 0.7908492951756867,
+      "symbol": "SPY",
+      "weight": 0.4683183404792502
+    },
+    {
+      "n_oos": 2016,
+      "oos_sharpe": 0.9005838215828763,
+      "symbol": "BTC/USD",
+      "weight": 0.3847617708815706
+    }
+  ],
+  "metrics": {
+    "annualized_vol": 0.0930635609576586,
+    "cagr": 0.11115139559280718,
+    "max_drawdown": -0.17119695811457702,
+    "sharpe": 1.178679134244492,
+    "total_return": 1.9815577433016007
+  },
+  "n_periods": 2612,
+  "psr": 0.999980561163513,
+  "run_id": "cf0c2e07dbca0fe0",
+  "schema_version": 1,
+  "sharpe_ci": {
+    "lower": 0.5171772353243267,
+    "upper": 1.7120593069975911
+  },
+  "symbols": [
+    "AAPL",
+    "SPY",
+    "BTC/USD"
+  ],
+  "weighting": "inverse_vol"
+}

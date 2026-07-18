@@ -1,0 +1,514 @@
+{
+  "cis": [
+    {
+      "confidence": 0.95,
+      "lower": 0.6132207395075714,
+      "metric": "sharpe",
+      "point": 1.269526264778617,
+      "upper": 1.9756727959273113
+    },
+    {
+      "confidence": 0.95,
+      "lower": 0.033288607615346105,
+      "metric": "cagr",
+      "point": 0.07726610531585432,
+      "upper": 0.1294457712592581
+    }
+  ],
+  "cpcv": {
+    "frac_positive": 1.0,
+    "mean_sharpe": 1.242601174055517,
+    "n_folds": 15,
+    "passed": true,
+    "std_sharpe": 0.5292869734989026
+  },
+  "dsr": {
+    "dsr": 0.9998292657814674,
+    "expected_max_sharpe": 0.0,
+    "n_trials": 1,
+    "passed": true,
+    "psr": 0.9998292657814674,
+    "sharpe": 0.07997263760640377,
+    "threshold": 0.95
+  },
+  "folds": [
+    {
+      "index": 0,
+      "n_test": 63,
+      "oos_cagr": 0.8946790292114672,
+      "oos_return": 0.1732320328973167,
+      "oos_sharpe": 5.135263561759516,
+      "test_end": 572,
+      "test_start": 509,
+      "train_end": 504,
+      "train_start": 0
+    },
+    {
+      "index": 1,
+      "n_test": 63,
+      "oos_cagr": 0.09684457837620397,
+      "oos_return": 0.02337846352026829,
+      "oos_sharpe": 1.80710789139472,
+      "test_end": 635,
+      "test_start": 572,
+      "train_end": 567,
+      "train_start": 63
+    },
+    {
+      "index": 2,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 698,
+      "test_start": 635,
+      "train_end": 630,
+      "train_start": 126
+    },
+    {
+      "index": 3,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 761,
+      "test_start": 698,
+      "train_end": 693,
+      "train_start": 189
+    },
+    {
+      "index": 4,
+      "n_test": 63,
+      "oos_cagr": 0.3161695794172088,
+      "oos_return": 0.07109492652920624,
+      "oos_sharpe": 2.0174469222146505,
+      "test_end": 824,
+      "test_start": 761,
+      "train_end": 756,
+      "train_start": 252
+    },
+    {
+      "index": 5,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 887,
+      "test_start": 824,
+      "train_end": 819,
+      "train_start": 315
+    },
+    {
+      "index": 6,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 950,
+      "test_start": 887,
+      "train_end": 882,
+      "train_start": 378
+    },
+    {
+      "index": 7,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1013,
+      "test_start": 950,
+      "train_end": 945,
+      "train_start": 441
+    },
+    {
+      "index": 8,
+      "n_test": 63,
+      "oos_cagr": 0.23975041661621566,
+      "oos_return": 0.055197043532053236,
+      "oos_sharpe": 4.541220218437619,
+      "test_end": 1076,
+      "test_start": 1013,
+      "train_end": 1008,
+      "train_start": 504
+    },
+    {
+      "index": 9,
+      "n_test": 63,
+      "oos_cagr": -0.011787771454953688,
+      "oos_return": -0.002960059878750143,
+      "oos_sharpe": -0.030788846614659936,
+      "test_end": 1139,
+      "test_start": 1076,
+      "train_end": 1071,
+      "train_start": 567
+    },
+    {
+      "index": 10,
+      "n_test": 63,
+      "oos_cagr": 0.383079235161099,
+      "oos_return": 0.08445557386247304,
+      "oos_sharpe": 3.7506584634520004,
+      "test_end": 1202,
+      "test_start": 1139,
+      "train_end": 1134,
+      "train_start": 630
+    },
+    {
+      "index": 11,
+      "n_test": 63,
+      "oos_cagr": 0.28105685923162804,
+      "oos_return": 0.06387866964825784,
+      "oos_sharpe": 3.582503277387087,
+      "test_end": 1265,
+      "test_start": 1202,
+      "train_end": 1197,
+      "train_start": 693
+    },
+    {
+      "index": 12,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1328,
+      "test_start": 1265,
+      "train_end": 1260,
+      "train_start": 756
+    },
+    {
+      "index": 13,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1391,
+      "test_start": 1328,
+      "train_end": 1323,
+      "train_start": 819
+    },
+    {
+      "index": 14,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1454,
+      "test_start": 1391,
+      "train_end": 1386,
+      "train_start": 882
+    },
+    {
+      "index": 15,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1517,
+      "test_start": 1454,
+      "train_end": 1449,
+      "train_start": 945
+    },
+    {
+      "index": 16,
+      "n_test": 63,
+      "oos_cagr": 0.18277311842798527,
+      "oos_return": 0.042858442590933965,
+      "oos_sharpe": 3.0938848927388514,
+      "test_end": 1580,
+      "test_start": 1517,
+      "train_end": 1512,
+      "train_start": 1008
+    },
+    {
+      "index": 17,
+      "n_test": 63,
+      "oos_cagr": -0.04188579612710275,
+      "oos_return": -0.010640064110450154,
+      "oos_sharpe": -1.015365399153378,
+      "test_end": 1643,
+      "test_start": 1580,
+      "train_end": 1575,
+      "train_start": 1071
+    },
+    {
+      "index": 18,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1706,
+      "test_start": 1643,
+      "train_end": 1638,
+      "train_start": 1134
+    },
+    {
+      "index": 19,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1769,
+      "test_start": 1706,
+      "train_end": 1701,
+      "train_start": 1197
+    },
+    {
+      "index": 20,
+      "n_test": 63,
+      "oos_cagr": 0.11806887956929546,
+      "oos_return": 0.028293616707642855,
+      "oos_sharpe": 1.8227932915847345,
+      "test_end": 1832,
+      "test_start": 1769,
+      "train_end": 1764,
+      "train_start": 1260
+    },
+    {
+      "index": 21,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 1895,
+      "test_start": 1832,
+      "train_end": 1827,
+      "train_start": 1323
+    },
+    {
+      "index": 22,
+      "n_test": 63,
+      "oos_cagr": -0.07410924892075432,
+      "oos_return": -0.019065664231642243,
+      "oos_sharpe": -1.1317053791866214,
+      "test_end": 1958,
+      "test_start": 1895,
+      "train_end": 1890,
+      "train_start": 1386
+    },
+    {
+      "index": 23,
+      "n_test": 63,
+      "oos_cagr": 0.1035664626164341,
+      "oos_return": 0.024942786984043286,
+      "oos_sharpe": 1.6224492602528047,
+      "test_end": 2021,
+      "test_start": 1958,
+      "train_end": 1953,
+      "train_start": 1449
+    },
+    {
+      "index": 24,
+      "n_test": 63,
+      "oos_cagr": 0.23020846585670474,
+      "oos_return": 0.05316078085234199,
+      "oos_sharpe": 3.2848957248662396,
+      "test_end": 2084,
+      "test_start": 2021,
+      "train_end": 2016,
+      "train_start": 1512
+    },
+    {
+      "index": 25,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 2147,
+      "test_start": 2084,
+      "train_end": 2079,
+      "train_start": 1575
+    },
+    {
+      "index": 26,
+      "n_test": 63,
+      "oos_cagr": -0.0009376569368721999,
+      "oos_return": -0.00023449670438069337,
+      "oos_sharpe": 0.04831961620541639,
+      "test_end": 2210,
+      "test_start": 2147,
+      "train_end": 2142,
+      "train_start": 1638
+    },
+    {
+      "index": 27,
+      "n_test": 63,
+      "oos_cagr": 0.024602143502222562,
+      "oos_return": 0.006094593055901987,
+      "oos_sharpe": 0.35672788912630593,
+      "test_end": 2273,
+      "test_start": 2210,
+      "train_end": 2205,
+      "train_start": 1701
+    },
+    {
+      "index": 28,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 2336,
+      "test_start": 2273,
+      "train_end": 2268,
+      "train_start": 1764
+    },
+    {
+      "index": 29,
+      "n_test": 63,
+      "oos_cagr": 0.0,
+      "oos_return": 0.0,
+      "oos_sharpe": null,
+      "test_end": 2399,
+      "test_start": 2336,
+      "train_end": 2331,
+      "train_start": 1827
+    },
+    {
+      "index": 30,
+      "n_test": 63,
+      "oos_cagr": 0.03788260938339372,
+      "oos_return": 0.009339010253851754,
+      "oos_sharpe": 0.874829297672419,
+      "test_end": 2462,
+      "test_start": 2399,
+      "train_end": 2394,
+      "train_start": 1890
+    }
+  ],
+  "metadata": {
+    "allow_short": true,
+    "anchored": false,
+    "embargo": 5,
+    "fee_bps": 1.0,
+    "first_ts": "2015-01-02T00:00:00+00:00",
+    "last_ts": "2024-12-30T00:00:00+00:00",
+    "lookback": 252,
+    "max_leverage": 1.0,
+    "n_bars": 2515,
+    "periods_per_year": 252,
+    "quantstats_version": "1.1.5",
+    "rebalance_every": 21,
+    "run_id": "446f066d9f3cdc4a",
+    "seed": 7,
+    "skip": 21,
+    "slippage_bps": 2.0,
+    "snapshot_id": null,
+    "starting_cash": 1000000.0,
+    "strategy_name": "mean_reversion",
+    "strategy_params": [
+      [
+        "entry_z",
+        1.0
+      ],
+      [
+        "window",
+        10.0
+      ]
+    ],
+    "symbol": "AAPL",
+    "target_vol": 0.15,
+    "test_size": 63,
+    "train_size": 504,
+    "vol_window": 63
+  },
+  "nulls": [
+    {
+      "n_paths": 1000,
+      "observed": -0.3910340711879467,
+      "p_value": 0.7622377622377622,
+      "passed": false,
+      "percentile": 0.238,
+      "threshold": 0.95,
+      "tier": "returns_level"
+    },
+    {
+      "n_paths": 64,
+      "observed": 1.269526264778617,
+      "p_value": 0.015384615384615385,
+      "passed": true,
+      "percentile": 1.0,
+      "threshold": 0.95,
+      "tier": "full_engine"
+    }
+  ],
+  "oos_metrics": {
+    "annualized_vol": 0.0600501085063225,
+    "cagr": 0.07726610531585432,
+    "expected_shortfall": 0.008751545620712566,
+    "max_drawdown": -0.09078346980086038,
+    "risk_of_ruin": 0.0,
+    "sharpe": 1.269526264778617,
+    "total_return": 0.7803410916122095,
+    "value_at_risk": 0.004119450499288944
+  },
+  "outcomes": [
+    {
+      "detail": {
+        "annualized_vol": 0.0600501085063225,
+        "cagr": 0.07726610531585432,
+        "expected_shortfall": 0.008751545620712566,
+        "max_drawdown": -0.09078346980086038,
+        "risk_of_ruin": 0.0,
+        "sharpe": 1.269526264778617,
+        "total_return": 0.7803410916122095,
+        "value_at_risk": 0.004119450499288944
+      },
+      "name": "walk_forward_oos",
+      "passed": true
+    },
+    {
+      "detail": {
+        "full_engine_p_value": 0.015384615384615385,
+        "full_engine_percentile": 1.0,
+        "returns_level_p_value": 0.7622377622377622,
+        "returns_level_percentile": 0.238
+      },
+      "name": "randomized_price_null",
+      "passed": false
+    },
+    {
+      "detail": {
+        "sharpe_lower": 0.6132207395075714,
+        "sharpe_point": 1.269526264778617,
+        "sharpe_upper": 1.9756727959273113
+      },
+      "name": "bootstrap_ci",
+      "passed": true
+    },
+    {
+      "detail": {
+        "dsr": 0.9998292657814674,
+        "n_trials": 1.0,
+        "psr": 0.9998292657814674
+      },
+      "name": "deflated_sharpe",
+      "passed": true
+    },
+    {
+      "detail": {
+        "frac_positive": 1.0,
+        "mean_sharpe": 1.242601174055517,
+        "std_sharpe": 0.5292869734989026
+      },
+      "name": "cpcv_oos",
+      "passed": true
+    }
+  ],
+  "passed": false,
+  "run_id": "446f066d9f3cdc4a",
+  "schema_version": 1,
+  "verdict": {
+    "detail": {
+      "edge_sharpe": 1.269526264778617,
+      "overall_gpa": 3.5,
+      "risk_max_drawdown": -0.09078346980086038,
+      "risk_of_ruin": 0.0,
+      "robustness_checks_passed": 3.0,
+      "sample_n_oos": 1953.0
+    },
+    "edge": "B",
+    "overall": "A",
+    "risk": "A",
+    "robustness": "B",
+    "sample": "A"
+  }
+}
