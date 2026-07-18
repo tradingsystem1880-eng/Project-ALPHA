@@ -1,5 +1,6 @@
-// Run Browser — the stored-run blotter. Newest-first, click a row to broadcast its symbol to the
-// linked context (and, once Run Detail lands, to open it).
+// Run Browser — the stored-run blotter, live: refetches whenever the activity stream reports a
+// store change (whoever caused it — UI, CLI, Claude via MCP). Click selects + broadcasts; Enter
+// or double-click opens the run story.
 
 import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
@@ -7,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { RunListItem } from '../api/types'
 import { setLinked } from '../context/linked'
+import { useActivity } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { Placeholder } from '../components/Placeholder'
 import { openRunDetail } from './actions'
@@ -15,17 +17,26 @@ export function RunBrowser(props: IDockviewPanelProps) {
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { runsVersion } = useActivity()
 
   useEffect(() => {
     let live = true
-    api
-      .runs()
-      .then((r) => live && setItems(r.items))
-      .catch((e: unknown) => live && setError(String(e)))
+    // small debounce: bursts of store events collapse into one refetch
+    const t = window.setTimeout(() => {
+      api
+        .runs()
+        .then((r) => {
+          if (!live) return
+          setItems(r.items)
+          setError(null)
+        })
+        .catch((e: unknown) => live && setError(String(e)))
+    }, 150)
     return () => {
       live = false
+      window.clearTimeout(t)
     }
-  }, [])
+  }, [runsVersion])
 
   function selectRow(run: RunListItem): void {
     setSelected(run.run_id)
@@ -69,8 +80,10 @@ export function RunBrowser(props: IDockviewPanelProps) {
                 <tr
                   key={r.run_id}
                   className={selected === r.run_id ? 'sel' : ''}
+                  tabIndex={0}
                   onClick={() => selectRow(r)}
                   onDoubleClick={() => openDetail(r)}
+                  onKeyDown={(e) => e.key === 'Enter' && openDetail(r)}
                 >
                   <td className="id">{shortId(r.run_id)}</td>
                   <td>

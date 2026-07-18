@@ -1,3 +1,7 @@
+// The shell: topbar (brand, working SYM/ASOF linked-context controls, density/explain toggles,
+// palette, live status), the Dockview desk, completion toasts, and the ⌘K palette.
+// First run (or an incompatible saved layout) opens the curated multi-pane desk preset.
+
 import {
   DockviewReact,
   themeAbyss,
@@ -7,44 +11,138 @@ import {
 import 'dockview-react/dist/styles/dockview.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { api } from './api/client'
 import { CommandPalette } from './components/CommandPalette'
-import { useLinked } from './context/linked'
+import { Toasts } from './components/Toasts'
+import { setLinked, useLinked } from './context/linked'
+import { buildDeskLayout, LAYOUT_KEY } from './layouts/presets'
+import { openRunDetail } from './panels/actions'
 import { PANELS } from './panels/registry'
+import { initActivity, useActivity } from './state/activity'
+import { setSettings, useSettings } from './state/settings'
+
+function SymControl() {
+  const linked = useLinked()
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  if (!editing)
+    return (
+      <button onClick={() => { setValue(linked.symbol ?? ''); setEditing(true) }} title="Set the active symbol (linked across panels)">
+        <span className="tag">SYM</span>
+        <span className="sym">{linked.symbol ?? '—'}</span>
+      </button>
+    )
+  return (
+    <input
+      className="sym-input mono"
+      value={value}
+      autoFocus
+      spellCheck={false}
+      onChange={(e) => setValue(e.target.value.toUpperCase())}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          const s = value.trim()
+          if (s) setLinked({ symbol: s })
+          setEditing(false)
+        } else if (e.key === 'Escape') setEditing(false)
+      }}
+      onBlur={() => setEditing(false)}
+      placeholder="SPY"
+    />
+  )
+}
+
+function AsofControl() {
+  const linked = useLinked()
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="asof-wrap">
+      <button className="range" title="As-of window (linked across panels)" onClick={() => setOpen((o) => !o)}>
+        <span className="tag">ASOF</span>
+        {`${linked.start ?? '—'} → ${linked.end ?? 'latest'}`}
+      </button>
+      {open ? (
+        <span className="asof-pop" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
+          <label>
+            <span className="eyebrow">start</span>
+            <input
+              className="field"
+              type="date"
+              value={linked.start ?? ''}
+              onChange={(e) => setLinked({ start: e.target.value || null })}
+            />
+          </label>
+          <label>
+            <span className="eyebrow">end (as-of)</span>
+            <input
+              className="field"
+              type="date"
+              value={linked.end ?? ''}
+              onChange={(e) => setLinked({ end: e.target.value || null })}
+            />
+          </label>
+          <button className="btn" onClick={() => setLinked({ start: null, end: null })}>
+            clear
+          </button>
+          <button className="btn primary" onClick={() => setOpen(false)}>
+            done
+          </button>
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+function StatusCluster() {
+  const { connection, runningJobs } = useActivity()
+  const dotClass = connection === 'live' ? '' : connection === 'connecting' ? 'busy' : 'down'
+  return (
+    <div className="status" title={`activity stream: ${connection}`}>
+      <span className={`dot ${dotClass}`} />
+      {connection === 'live' ? 'live' : connection}
+      {runningJobs > 0 ? <span className="chip kind">{runningJobs} running</span> : null}
+    </div>
+  )
+}
 
 export function App() {
   const dockRef = useRef<DockviewApi | null>(null)
   const seq = useRef(0)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const linked = useLinked()
+  const { density, explain } = useSettings()
+
+  useEffect(() => {
+    initActivity()
+  }, [])
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     dockRef.current = event.api
-    const saved = localStorage.getItem('alpha.layout')
+    const saved = localStorage.getItem(LAYOUT_KEY)
     let restored = false
     if (saved) {
       try {
         event.api.fromJSON(JSON.parse(saved))
-        restored = true
+        restored = event.api.panels.length > 0
       } catch {
         restored = false
       }
     }
-    if (!restored) {
-      event.api.addPanel({ id: 'RunBrowser-0', component: 'RunBrowser', title: 'Run Browser' })
-    }
+    if (!restored) buildDeskLayout(event.api)
     event.api.onDidLayoutChange(() => {
       try {
-        localStorage.setItem('alpha.layout', JSON.stringify(event.api.toJSON()))
+        localStorage.setItem(LAYOUT_KEY, JSON.stringify(event.api.toJSON()))
       } catch {
         /* ignore storage quota / serialization errors */
       }
     })
+    // hash deep-link: /#run=<id> opens that run's story
+    const match = /#run=([0-9a-f]{16})/.exec(window.location.hash)
+    if (match) openRunDetail(event.api, match[1])
   }, [])
 
   const openPanel = useCallback((component: string, title: string) => {
     const dv = dockRef.current
     if (!dv) return
-    // singleton panels share the `${Component}-${n}` id scheme (incl. the default RunBrowser-0)
     const existing = dv.panels.find((p) => p.id.startsWith(`${component}-`))
     if (existing) {
       existing.api.setActive()
@@ -54,18 +152,40 @@ export function App() {
     dv.addPanel({ id: `${component}-${seq.current}`, component, title })
   }, [])
 
+  const openRun = useCallback((runId: string) => {
+    if (dockRef.current) openRunDetail(dockRef.current, runId)
+  }, [])
+
+  const loadWorkspace = useCallback((slug: string) => {
+    const dv = dockRef.current
+    if (!dv) return
+    void api.getWorkspace(slug).then((doc) => {
+      try {
+        dv.fromJSON(doc.dockview as never)
+      } catch (e) {
+        console.error('workspace restore failed', e)
+        if (dv.panels.length === 0) buildDeskLayout(dv)
+        return
+      }
+      if (doc.linked_context) setLinked(doc.linked_context)
+    })
+  }, [])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen((o) => !o)
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault()
+        openPanel('JobMonitor', 'Jobs')
       } else if (e.key === 'Escape') {
         setPaletteOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [openPanel])
 
   return (
     <div className="shell">
@@ -75,30 +195,40 @@ export function App() {
           <span className="sub">WORKSTATION</span>
         </div>
         <div className="linked">
-          <button onClick={() => setPaletteOpen(true)} title="Active symbol">
-            <span className="tag">SYM</span>
-            <span className="sym">{linked.symbol ?? '—'}</span>
-          </button>
-          <button className="range" title="As-of window">
-            <span className="tag">ASOF</span>
-            {`${linked.start ?? '—'} → ${linked.end ?? 'latest'}`}
-          </button>
+          <SymControl />
+          <AsofControl />
         </div>
         <div className="spacer" />
+        <button
+          className="kbd"
+          title="Display density"
+          onClick={() => setSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })}
+        >
+          {density === 'compact' ? '▤ compact' : '▢ comfortable'}
+        </button>
+        <button
+          className="kbd"
+          title="Explanation voice — full narratives or terse annotations"
+          onClick={() => setSettings({ explain: explain === 'terse' ? 'narrative' : 'terse' })}
+        >
+          {explain === 'terse' ? '# terse' : '¶ narrative'}
+        </button>
         <button className="kbd" onClick={() => setPaletteOpen(true)}>
           Search <kbd>⌘K</kbd>
         </button>
-        <div className="status">
-          <span className="dot" /> local · loopback
-        </div>
+        <StatusCluster />
       </header>
       <div className="dock">
         <DockviewReact components={PANELS} onReady={onReady} theme={themeAbyss} />
       </div>
+      <Toasts onOpenRun={openRun} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         onOpenPanel={openPanel}
+        onOpenRun={openRun}
+        onLoadWorkspace={loadWorkspace}
+        onSaveWorkspace={() => openPanel('Workspaces', 'Workspaces')}
       />
     </div>
   )

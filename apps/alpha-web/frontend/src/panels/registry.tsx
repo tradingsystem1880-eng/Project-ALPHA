@@ -5,8 +5,10 @@ import type { IDockviewPanelProps } from 'dockview-react'
 import type { FunctionComponent } from 'react'
 
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { ActivityFeed } from './ActivityFeed'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
+import { JobMonitor } from './JobMonitor'
 import { Glossary } from './Glossary'
 import { OptionsGreeks } from './OptionsGreeks'
 import { PriceChart } from './PriceChart'
@@ -41,6 +43,8 @@ function guarded(
 const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RunBrowser,
   RunDetail,
+  ActivityFeed,
+  JobMonitor,
   StrategyLab,
   PriceChart,
   DataExplorer,
@@ -59,6 +63,8 @@ export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = Ob
 // Panels openable from the ⌘K palette (Run Detail is opened from a run row, so it's not listed).
 export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'RunBrowser', title: 'Run Browser', hint: 'runs' },
+  { component: 'ActivityFeed', title: 'Activity', hint: 'live desk tape' },
+  { component: 'JobMonitor', title: 'Jobs', hint: 'consoles·cancel' },
   { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
   { component: 'PriceChart', title: 'Price', hint: 'candles' },
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },
