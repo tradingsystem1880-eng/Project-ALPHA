@@ -10,7 +10,6 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
-import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -19,12 +18,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import polars as pl
 
-from alpha_cli import RUN_DIRS
 from alpha_cli._atomic import publish, write_text
+from alpha_cli.run_store import find_run_dir as find_run_dir
 from alpha_core import DataError
 from alpha_validation import FloatArray
-
-_RUN_ID_RE = re.compile(r"[0-9a-f]{16}")  # ids are 16 hex chars; reject before path-joining
 
 
 def sanitize(value: Any) -> Any:
@@ -63,22 +60,6 @@ _EMPTY_TRADES_SCHEMA: dict[str, pl.DataType] = {
 def run_dir(data_dir: Path, run_id: str) -> Path:
     """The artifact directory for a run: ``data_dir/runs/<run_id>``."""
     return data_dir / "runs" / run_id
-
-
-def find_run_dir(data_dir: Path, run_id: str) -> Path | None:
-    """The run's artifact directory across every run-type subdir, or ``None`` if absent.
-
-    Searches ``RUN_DIRS`` for ``<run_id>/manifest.json`` (the marker that a run exists). The run id
-    is validated to 16 hex chars first, so a caller-supplied id can never path-traverse out of the
-    run store. Used by ``alpha risk`` and the workstation to resolve any run by id alone.
-    """
-    if _RUN_ID_RE.fullmatch(run_id) is None:
-        return None
-    for sub in RUN_DIRS:
-        rdir = data_dir / sub / run_id
-        if (rdir / "manifest.json").exists():
-            return rdir
-    return None
 
 
 def write_equity_curve(

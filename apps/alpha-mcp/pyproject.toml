@@ -5,6 +5,7 @@ description = "MCP server exposing Project ALPHA's CLI as conversational tools."
 requires-python = ">=3.12"
 dependencies = [
     "alpha-cli",
+    "alpha-core",
     "mcp>=1.2",
 ]
 
@@ -13,6 +14,7 @@ alpha-mcp = "alpha_mcp.server:main"
 
 [tool.uv.sources]
 alpha-cli = { workspace = true }
+alpha-core = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

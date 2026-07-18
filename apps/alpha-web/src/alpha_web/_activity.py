@@ -21,7 +21,7 @@ from pathlib import Path
 
 import anyio
 
-from alpha_cli import RUN_DIRS
+from alpha_cli.run_store import RUN_DIRS
 from alpha_web import _invoke
 from alpha_web._runs import run_record
 

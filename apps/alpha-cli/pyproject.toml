@@ -15,6 +15,7 @@ dependencies = [
     "typer>=0.12",
     "numpy>=1.26",
     "polars>=1.0",
+    "nautilus-trader>=1.228",
 ]
 
 [project.scripts]

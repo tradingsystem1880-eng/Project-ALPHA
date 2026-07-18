@@ -17,7 +17,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from alpha_cli._strategies import known_strategies
+from alpha_cli.catalog import known_strategies
 from alpha_core.config import AlphaSettings
 from alpha_mcp import _invoke, _runs
 

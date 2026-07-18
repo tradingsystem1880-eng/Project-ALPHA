@@ -14,8 +14,7 @@ from typing import Any
 
 import polars as pl
 
-from alpha_cli import RUN_DIRS
-from alpha_cli._artifacts import find_run_dir
+from alpha_cli.run_store import RUN_DIRS, find_run_dir
 from alpha_core import DataError
 
 

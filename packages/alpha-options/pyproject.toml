@@ -5,7 +5,6 @@ description = "Options & derivatives analytics: Black-Scholes pricing, greeks, i
 requires-python = ">=3.12"
 dependencies = [
     "alpha-core",
-    "numpy>=2.4.6",
     "scipy>=1.17.1",
 ]
 

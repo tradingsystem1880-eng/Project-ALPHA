@@ -9,6 +9,8 @@ the second sanctioned pandas exception alongside the tear-sheet renderer.
 
 from __future__ import annotations
 
+from importlib.metadata import version
+
 from alpha_forecast.fake import FakeForecaster
 from alpha_forecast.kronos import KronosForecaster
 from alpha_forecast.quantiles import DEFAULT_QS, close_quantiles
@@ -16,7 +18,7 @@ from alpha_forecast.signals import kronos_signal
 from alpha_forecast.timestamps import future_session_ts
 from alpha_forecast.types import Forecaster, ForecastResult, SampledPath
 
-__version__ = "1.0.0"
+__version__ = version("alpha-forecast")
 
 __all__ = [
     "DEFAULT_QS",

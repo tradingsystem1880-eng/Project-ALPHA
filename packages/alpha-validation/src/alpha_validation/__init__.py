@@ -7,6 +7,8 @@ return/equity arrays and an injected strategy callable, so this package depends 
 
 from __future__ import annotations
 
+from importlib.metadata import version
+
 from alpha_validation.bootstrap import (
     ConfidenceInterval,
     Statistic,
@@ -80,7 +82,7 @@ from alpha_validation.tearsheet import (
 from alpha_validation.verdict import VerdictSummary, grade_verdict
 from alpha_validation.walkforward import Split, walk_forward_splits
 
-__version__ = "0.0.0"
+__version__ = version("alpha-validation")
 
 __all__ = [
     "CISummary",

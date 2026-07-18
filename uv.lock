@@ -194,6 +194,7 @@ dependencies = [
     { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
+    { name = "nautilus-trader" },
     { name = "numpy" },
     { name = "polars" },
     { name = "typer" },
@@ -209,6 +210,7 @@ requires-dist = [
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
+    { name = "nautilus-trader", specifier = ">=1.228" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "polars", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
@@ -238,6 +240,7 @@ dependencies = [
     { name = "ccxt" },
     { name = "pandas" },
     { name = "polars" },
+    { name = "pydantic" },
     { name = "yfinance" },
 ]
 
@@ -247,6 +250,7 @@ requires-dist = [
     { name = "ccxt", specifier = ">=4.0" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "polars", specifier = ">=1.0" },
+    { name = "pydantic", specifier = ">=2.7" },
     { name = "yfinance", specifier = ">=1.0" },
 ]
 
@@ -285,12 +289,14 @@ version = "1.0.0"
 source = { editable = "apps/alpha-mcp" }
 dependencies = [
     { name = "alpha-cli" },
+    { name = "alpha-core" },
     { name = "mcp" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alpha-cli", editable = "apps/alpha-cli" },
+    { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "mcp", specifier = ">=1.2" },
 ]
 
@@ -300,14 +306,12 @@ version = "1.0.0"
 source = { editable = "packages/alpha-options" }
 dependencies = [
     { name = "alpha-core" },
-    { name = "numpy" },
     { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
-    { name = "numpy", specifier = ">=2.4.6" },
     { name = "scipy", specifier = ">=1.17.1" },
 ]
 
@@ -347,6 +351,7 @@ version = "1.0.0"
 source = { editable = "packages/alpha-validation" }
 dependencies = [
     { name = "alpha-core" },
+    { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "quantstats-lumi" },
@@ -356,6 +361,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "matplotlib", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "quantstats-lumi", specifier = ">=1.1.5" },
@@ -372,6 +378,7 @@ dependencies = [
     { name = "anyio" },
     { name = "fastapi" },
     { name = "polars" },
+    { name = "pydantic" },
     { name = "sse-starlette" },
     { name = "uvicorn" },
 ]
@@ -383,6 +390,7 @@ requires-dist = [
     { name = "anyio", specifier = ">=4.0" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "polars", specifier = ">=1.0" },
+    { name = "pydantic", specifier = ">=2.7" },
     { name = "sse-starlette", specifier = ">=2.1" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
