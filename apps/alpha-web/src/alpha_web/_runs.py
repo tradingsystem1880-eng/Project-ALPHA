@@ -8,6 +8,7 @@ back for the run browser and run detail — no engine, no subprocess.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -85,6 +86,111 @@ def forecast_paths(run_id: str, *, data_dir: Path, n: int = 20) -> dict[str, Any
     return {
         "samples": samples,
         "ts": [t.timestamp() for t in frame.filter(pl.col("sample") == wanted[0])["ts"].to_list()],
+    }
+
+
+def null_distributions(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
+    """A gauntlet run's raw per-tier null distributions, ``{tiers: [{tier, statistics}]}``.
+
+    Reads ``nulls.parquet`` (one row per (tier, path), written sorted). Statistics are served in
+    (tier, path_index) order. Returns None when the run is absent or wrote no null artifact.
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return None
+    path = rdir / "nulls.parquet"
+    if not path.exists():
+        return None
+    frame = pl.read_parquet(path).sort("tier", "path_index")
+    return {
+        "tiers": [
+            {
+                "tier": str(part["tier"][0]),
+                "statistics": [float(v) for v in part["statistic"].to_list()],
+            }
+            for part in frame.partition_by("tier", maintain_order=True)
+        ]
+    }
+
+
+def optim_trials(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
+    """A sweep's per-config OOS return streams, ``{trials: [{trial, returns}]}``.
+
+    Reads ``trials.parquet`` (one row per (trial, step), written sorted); ``trial`` aligns with
+    the manifest's ``configs``/``sharpes`` order. No server-side math beyond grouping. Returns
+    None when the run is absent or wrote no trials artifact.
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return None
+    path = rdir / "trials.parquet"
+    if not path.exists():
+        return None
+    frame = pl.read_parquet(path).sort("trial", "step")
+    return {
+        "trials": [
+            {
+                "trial": int(part["trial"][0]),
+                "returns": [float(v) for v in part["oos_return"].to_list()],
+            }
+            for part in frame.partition_by("trial", maintain_order=True)
+        ]
+    }
+
+
+def propfirm_paths(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
+    """A prop-firm run's per-path Monte-Carlo outcomes, columnar.
+
+    Reads ``paths.parquet`` (one row per path, sorted by path_index). ``days_to_pass`` is NaN on
+    disk for never-passed paths — converted to None here (JSON has no NaN). Kind-guarded: a
+    forecast run also writes a — differently shaped — ``paths.parquet``. Returns None when the
+    run is absent, is not a propfirm run, or wrote no paths artifact.
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None or rdir.parent.name != "propfirm":
+        return None
+    path = rdir / "paths.parquet"
+    if not path.exists():
+        return None
+    frame = pl.read_parquet(path).sort("path_index")
+    return {
+        "paths": {
+            "passed": [bool(v) for v in frame["passed"].to_list()],
+            "busted": [bool(v) for v in frame["busted"].to_list()],
+            "days_to_pass": [
+                None if math.isnan(v) else float(v) for v in frame["days_to_pass"].to_list()
+            ],
+            "payout": [float(v) for v in frame["payout"].to_list()],
+        }
+    }
+
+
+def forecast_origins(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
+    """A forecast-eval run's per-origin skill scores, columnar (``origin_ts`` in epoch seconds).
+
+    Reads ``origins.parquet`` (one row per rolling origin) and serves the chart/table columns:
+    timestamps, cutoff split, CRPS vs both baselines, end returns, and the hit/coverage booleans.
+    Returns None when the run is absent or wrote no origins artifact.
+    """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        return None
+    path = rdir / "origins.parquet"
+    if not path.exists():
+        return None
+    frame = pl.read_parquet(path).sort("origin_index")
+    return {
+        "origin_ts": [t.timestamp() for t in frame["origin_ts"].to_list()],
+        "pre_cutoff": [bool(v) for v in frame["pre_cutoff"].to_list()],
+        "crps": [float(v) for v in frame["crps"].to_list()],
+        "crps_rw": [float(v) for v in frame["crps_rw"].to_list()],
+        "crps_bootstrap": [float(v) for v in frame["crps_bootstrap"].to_list()],
+        "realized_end_return": [float(v) for v in frame["realized_end_return"].to_list()],
+        "median_end_return": [float(v) for v in frame["median_end_return"].to_list()],
+        "hit": [bool(v) for v in frame["hit"].to_list()],
+        "cover50": [bool(v) for v in frame["cover50"].to_list()],
+        "cover80": [bool(v) for v in frame["cover80"].to_list()],
+        "cover90": [bool(v) for v in frame["cover90"].to_list()],
     }
 
 
@@ -169,15 +275,22 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
     if rdir is None:
         raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
     mpath = rdir / "manifest.json"
+    kind = rdir.parent.name
+    has_paths = (rdir / "paths.parquet").exists()  # forecast + propfirm share the filename
     return {
         "run_id": run_id,
-        "kind": rdir.parent.name,
+        "kind": kind,
         "mtime": mpath.stat().st_mtime,
         "manifest": json.loads(mpath.read_text(encoding="utf-8")),
         "has_equity": (rdir / "equity_curve.parquet").exists(),
         "has_trades": (rdir / "trades.parquet").exists(),
         "has_tearsheet": (rdir / "tearsheet.html").exists(),
         "has_forecast": (rdir / "quantiles.parquet").exists(),
+        "has_nulls": (rdir / "nulls.parquet").exists(),
+        "has_trials": (rdir / "trials.parquet").exists(),
+        "has_forecast_paths": kind == "forecast" and has_paths,
+        "has_propfirm_paths": kind == "propfirm" and has_paths,
+        "has_origins": (rdir / "origins.parquet").exists(),
     }
 
 

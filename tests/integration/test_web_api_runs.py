@@ -300,3 +300,178 @@ def test_forecast_paths_404_when_absent(tmp_path: Path, monkeypatch: pytest.Monk
     client = TestClient(create_app())
     assert client.get("/api/runs/ffff000000000009/forecast/paths").status_code == 404
     assert client.get("/api/runs/aaaa000000000001/forecast/paths").status_code == 404
+
+
+# --- phase-7 projections: null distributions, optim trials, propfirm paths, eval origins -------
+
+
+def _write_nulls(data_dir: Path, run_id: str) -> None:
+    """Seed a gauntlet run's ``nulls.parquet`` (two tiers, sorted (tier, path_index))."""
+    rdir = data_dir / "runs" / run_id
+    pl.DataFrame(
+        {
+            "tier": ["full_engine"] * 3 + ["returns_level"] * 4,
+            "path_index": [0, 1, 2, 0, 1, 2, 3],
+            "statistic": [0.1, -0.2, 0.3, 0.5, 0.6, -0.7, 0.8],
+        },
+        schema={"tier": pl.String(), "path_index": pl.Int64(), "statistic": pl.Float64()},
+    ).write_parquet(rdir / "nulls.parquet")
+
+
+def _write_trials(data_dir: Path, run_id: str) -> None:
+    """Seed an optim run's ``trials.parquet`` (2 trials x 3 steps, sorted (trial, step))."""
+    rdir = data_dir / "optim" / run_id
+    pl.DataFrame(
+        {
+            "trial": [0, 0, 0, 1, 1, 1],
+            "step": [0, 1, 2, 0, 1, 2],
+            "oos_return": [0.01, -0.02, 0.03, 0.04, 0.05, -0.06],
+        },
+        schema={"trial": pl.Int64(), "step": pl.Int64(), "oos_return": pl.Float64()},
+    ).write_parquet(rdir / "trials.parquet")
+
+
+def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
+    """Seed a propfirm run + its ``paths.parquet`` (NaN days_to_pass = never passed)."""
+    rdir = data_dir / "propfirm" / run_id
+    rdir.mkdir(parents=True, exist_ok=True)
+    (rdir / "manifest.json").write_text(
+        json.dumps({"command": "propfirm_run", "symbol": "SPY"}), encoding="utf-8"
+    )
+    pl.DataFrame(
+        {
+            "path_index": [0, 1, 2],
+            "passed": [True, False, True],
+            "busted": [False, True, False],
+            "days_to_pass": [12.0, float("nan"), 30.0],
+            "payout": [4500.0, 0.0, 1200.0],
+        },
+        schema={
+            "path_index": pl.Int64(),
+            "passed": pl.Boolean(),
+            "busted": pl.Boolean(),
+            "days_to_pass": pl.Float64(),
+            "payout": pl.Float64(),
+        },
+    ).write_parquet(rdir / "paths.parquet")
+
+
+def _write_forecast_eval_run(data_dir: Path, run_id: str) -> None:
+    """Seed a forecast-eval run: manifest + ``origins.parquet`` (no cone artifacts)."""
+    rdir = data_dir / "forecast" / run_id
+    rdir.mkdir(parents=True, exist_ok=True)
+    (rdir / "manifest.json").write_text(
+        json.dumps({"command": "forecast_eval", "symbol": "BTC-USD"}), encoding="utf-8"
+    )
+    pl.DataFrame(
+        {
+            "origin_index": [10, 31],
+            "origin_ts": [datetime(2025, 1, 2, tzinfo=UTC), datetime(2025, 2, 3, tzinfo=UTC)],
+            "pre_cutoff": [True, False],
+            "realized_end_return": [0.05, -0.03],
+            "median_end_return": [0.01, 0.02],
+            "crps": [0.011, 0.022],
+            "crps_rw": [0.013, 0.021],
+            "crps_bootstrap": [0.012, 0.023],
+            "pinball_q25": [0.004, 0.005],
+            "pinball_q75": [0.006, 0.007],
+            "cover50": [True, False],
+            "cover80": [True, True],
+            "cover90": [True, True],
+            "hit": [True, False],
+        }
+    ).write_parquet(rdir / "origins.parquet")
+
+
+def test_nulls_endpoint_groups_by_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_nulls(tmp_path, "aaaa000000000001")
+    assert client.get("/api/runs/aaaa000000000001").json()["has_nulls"] is True
+    body = client.get("/api/runs/aaaa000000000001/nulls").json()
+    assert [t["tier"] for t in body["tiers"]] == ["full_engine", "returns_level"]
+    assert body["tiers"][0]["statistics"] == [0.1, -0.2, 0.3]
+    assert body["tiers"][1]["statistics"] == [0.5, 0.6, -0.7, 0.8]
+
+
+def test_nulls_endpoint_404_when_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/runs/bbbb000000000002").json()["has_nulls"] is False
+    assert client.get("/api/runs/bbbb000000000002/nulls").status_code == 404
+
+
+def test_trials_endpoint_groups_by_trial(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_trials(tmp_path, "cccc000000000003")
+    assert client.get("/api/runs/cccc000000000003").json()["has_trials"] is True
+    body = client.get("/api/runs/cccc000000000003/trials").json()
+    assert [t["trial"] for t in body["trials"]] == [0, 1]
+    assert body["trials"][0]["returns"] == [0.01, -0.02, 0.03]
+    assert body["trials"][1]["returns"] == [0.04, 0.05, -0.06]
+
+
+def test_trials_endpoint_404_when_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/runs/cccc000000000003").json()["has_trials"] is False
+    assert client.get("/api/runs/cccc000000000003/trials").status_code == 404
+
+
+def test_propfirm_paths_endpoint_columnar_nan_to_null(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_propfirm_run(tmp_path, "eeee000000000005")
+    client = TestClient(create_app())
+    detail = client.get("/api/runs/eeee000000000005").json()
+    assert detail["has_propfirm_paths"] is True
+    assert detail["has_forecast_paths"] is False  # same filename, different run kind
+    body = client.get("/api/runs/eeee000000000005/propfirm-paths").json()
+    assert body["paths"]["passed"] == [True, False, True]
+    assert body["paths"]["busted"] == [False, True, False]
+    assert body["paths"]["days_to_pass"] == [12.0, None, 30.0]  # NaN -> null for JSON safety
+    assert body["paths"]["payout"] == [4500.0, 0.0, 1200.0]
+    # the forecast-paths projection must never read a propfirm paths.parquet
+    assert client.get("/api/runs/eeee000000000005/forecast/paths").status_code == 404
+
+
+def test_propfirm_paths_endpoint_404_when_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_run(tmp_path, "ffff000000000009", n_samples=2)
+    _seed(tmp_path)
+    client = TestClient(create_app())
+    assert client.get("/api/runs/aaaa000000000001/propfirm-paths").status_code == 404
+    # a forecast run's paths.parquet is NOT a propfirm artifact — kind-guarded 404
+    detail = client.get("/api/runs/ffff000000000009").json()
+    assert detail["has_forecast_paths"] is True
+    assert detail["has_propfirm_paths"] is False
+    assert client.get("/api/runs/ffff000000000009/propfirm-paths").status_code == 404
+
+
+def test_origins_endpoint_columnar(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_eval_run(tmp_path, "abcd000000000006")
+    client = TestClient(create_app())
+    detail = client.get("/api/runs/abcd000000000006").json()
+    assert detail["has_origins"] is True
+    assert detail["has_forecast"] is False  # eval runs write no cone
+    body = client.get("/api/runs/abcd000000000006/origins").json()
+    assert body["origin_ts"] == [
+        datetime(2025, 1, 2, tzinfo=UTC).timestamp(),
+        datetime(2025, 2, 3, tzinfo=UTC).timestamp(),
+    ]
+    assert body["pre_cutoff"] == [True, False]
+    assert body["crps"] == [0.011, 0.022]
+    assert body["crps_rw"] == [0.013, 0.021]
+    assert body["crps_bootstrap"] == [0.012, 0.023]
+    assert body["realized_end_return"] == [0.05, -0.03]
+    assert body["median_end_return"] == [0.01, 0.02]
+    assert body["hit"] == [True, False]
+    assert body["cover50"] == [True, False]
+    assert body["cover80"] == [True, True] and body["cover90"] == [True, True]
+
+
+def test_origins_endpoint_404_when_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/runs/aaaa000000000001").json()["has_origins"] is False
+    assert client.get("/api/runs/aaaa000000000001/origins").status_code == 404
