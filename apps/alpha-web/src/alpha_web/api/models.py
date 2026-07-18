@@ -55,10 +55,10 @@ class ForecastSeries(StrictModel):
     history: list[float]
     forecast_ts: list[float]
     forecast: list[float]
-    q05: list[float]
+    p10: list[float]
     q25: list[float]
     q75: list[float]
-    q95: list[float]
+    p90: list[float]
     mean: list[float]
 
 

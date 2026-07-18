@@ -35,6 +35,8 @@ def _parse_axes(axes: list[str] | None) -> dict[str, list[float]]:
         # Accept CLI-conventional hyphens (e.g. `vol-window`) and map to the canonical snake_case
         # RunSpec field (`vol_window`); else the axis silently becomes an ignored strategy param.
         name = name.strip().replace("-", "_")
+        if name in grid:
+            raise typer.BadParameter(f"duplicate --grid axis {name!r}")
         try:
             values = [float(v) for v in raw.split(",") if v != ""]
         except ValueError as exc:

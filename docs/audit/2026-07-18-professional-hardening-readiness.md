@@ -44,11 +44,11 @@ There are no known unresolved critical or high-severity hardening findings.
 | Gate | Result |
 |---|---|
 | Lockfile / locked sync | passed |
-| Ruff / format | passed; 264 Python files checked |
+| Ruff / format | passed; 265 Python files checked |
 | Import architecture | passed; 12/12 contracts |
-| Strict mypy | passed; 261 source files |
-| Offline Python suite | passed; 665 tests, 4 network tests deselected |
-| Owned-source Python coverage | 93.88% lines (required: 93%) |
+| Strict mypy | passed; 262 source files |
+| Offline Python suite | passed; 680 tests, 4 network tests deselected |
+| Owned-source Python coverage | 94.02% lines (required: 93%) |
 | Bias guards | 32 tests included in the offline suite |
 | Frontend lint | passed with zero warnings |
 | Frontend tests | 24 passed |

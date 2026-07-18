@@ -31,27 +31,12 @@ def _check_snapshot_id(snapshot_id: str) -> None:
         raise DataError(f"invalid snapshot id for storage: {snapshot_id!r}")
 
 
-def create_snapshot(
-    store: ParquetStore,
-    snaps_root: Path,
-    snapshot_id: str,
-    symbols: list[str],
-    *,
-    source: str,
-    adapter_version: str,
-    parser_version: str,
-    created_at: datetime,
-) -> dict[str, Any]:
-    """Freeze bars + actions for `symbols` into snaps_root/snapshot_id/ with a manifest."""
-    _check_snapshot_id(snapshot_id)
-    dest = snaps_root / snapshot_id
-    if dest.exists():
-        raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}")
-    snaps_root.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=f".{snapshot_id}.", suffix=".tmp", dir=snaps_root))
+def _copy_snapshot_files(
+    store: ParquetStore, staging: Path, symbols: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Populate a private staging directory and return its per-symbol hashes."""
     (staging / "bars").mkdir()
     (staging / "actions").mkdir()
-
     sym_manifest: dict[str, dict[str, Any]] = {}
     for sym in symbols:
         bars_src = store._bars_path(sym)  # noqa: SLF001 — snapshot is a peer of the store
@@ -74,22 +59,44 @@ def create_snapshot(
             entry["actions_sha256"] = _sha256(actions_dst)
             entry["actions_file"] = f"actions/{actions_rel.as_posix()}"
         sym_manifest[sym] = entry
+    return sym_manifest
 
-    manifest: dict[str, Any] = {
-        "snapshot_id": snapshot_id,
-        "created_at": created_at.isoformat(),
-        "source": source,
-        "adapter_version": adapter_version,
-        "parser_version": parser_version,
-        "symbols": sym_manifest,
-    }
+
+def create_snapshot(
+    store: ParquetStore,
+    snaps_root: Path,
+    snapshot_id: str,
+    symbols: list[str],
+    *,
+    source: str,
+    adapter_version: str,
+    parser_version: str,
+    created_at: datetime,
+) -> dict[str, Any]:
+    """Freeze bars + actions for `symbols` into snaps_root/snapshot_id/ with a manifest."""
+    _check_snapshot_id(snapshot_id)
+    dest = snaps_root / snapshot_id
+    if dest.exists():
+        raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}")
+    snaps_root.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{snapshot_id}.", suffix=".tmp", dir=snaps_root))
     try:
+        manifest: dict[str, Any] = {
+            "snapshot_id": snapshot_id,
+            "created_at": created_at.isoformat(),
+            "source": source,
+            "adapter_version": adapter_version,
+            "parser_version": parser_version,
+            "symbols": _copy_snapshot_files(store, staging, symbols),
+        }
         (staging / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
         )
         os.rename(staging, dest)
-    except FileExistsError:
-        raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}") from None
+    except OSError:
+        if dest.exists():
+            raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}") from None
+        raise
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     return manifest

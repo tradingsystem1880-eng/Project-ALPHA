@@ -44,9 +44,9 @@ def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     """History + forecast-cone closes (median + quantile bands) for a forecast run's chart.
 
     Reads the CLI's ``quantiles.parquet`` (per-step close quantiles) and ``history.parquet``.
-    The median line is ``q50``; the bands are served under their honest quantile names
-    (``q05/q25/q75/q95``) plus the sample ``mean``. Returns None for runs that wrote no cone
-    artifacts (a ``forecast eval`` run, or any non-forecast run type).
+    The median line is ``q50``; the outer q05/q95 band retains the established ``p10``/``p90``
+    wire keys for compatibility. The inner band and sample mean use ``q25``/``q75``/``mean``.
+    Returns None for runs that wrote no cone artifacts.
     """
     quant = _artifact_frame(run_id, "quantiles.parquet", data_dir=data_dir)
     history = _artifact_frame(run_id, "history.parquet", data_dir=data_dir)
@@ -55,8 +55,8 @@ def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     return {
         "history": [float(v) for v in history["close"].to_list()],
         "forecast": [float(v) for v in quant["q50"].to_list()],
-        "q05": [float(v) for v in quant["q05"].to_list()],
-        "q95": [float(v) for v in quant["q95"].to_list()],
+        "p10": [float(v) for v in quant["q05"].to_list()],
+        "p90": [float(v) for v in quant["q95"].to_list()],
         "q25": [float(v) for v in quant["q25"].to_list()],
         "q75": [float(v) for v in quant["q75"].to_list()],
         "mean": [float(v) for v in quant["mean"].to_list()],
@@ -76,6 +76,9 @@ def forecast_paths(run_id: str, *, data_dir: Path, n: int = 20) -> dict[str, Any
     ``{samples: [{sample, closes}], ts}`` with ``ts`` in epoch seconds. ``n`` is clamped to
     [1, MAX_FORECAST_PATHS]. Returns None when the run is absent or wrote no paths.
     """
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None or rdir.parent.name != "forecast":
+        return None
     frame = _artifact_frame(run_id, "paths.parquet", data_dir=data_dir, sort=("sample", "step"))
     if frame is None:
         return None
@@ -143,11 +146,16 @@ def propfirm_paths(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     is NaN on disk for never-passed paths — converted to None here (JSON has no NaN). Returns
     None when the run is absent or wrote no paths artifact.
     """
-    frame = _artifact_frame(
-        run_id, "propfirm_paths.parquet", data_dir=data_dir, sort=("path_index",)
-    )
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None or rdir.parent.name != "propfirm":
+        return None
+    frame = _artifact_frame(run_id, "propfirm_paths.parquet", data_dir=data_dir)
+    if frame is None:
+        # Complete pre-hardening runs used the ambiguous filename shared with forecast runs.
+        frame = _artifact_frame(run_id, "paths.parquet", data_dir=data_dir)
     if frame is None:
         return None
+    frame = frame.sort("path_index")
     return {
         "paths": {
             "passed": [bool(v) for v in frame["passed"].to_list()],
@@ -232,6 +240,12 @@ def run_artifacts_readable(kind: str, run_id: str, *, data_dir: Path) -> bool:
         if "schema_version" in manifest:
             for filename in required:
                 path = rdir / filename
+                if (
+                    filename == "propfirm_paths.parquet"
+                    and not path.exists()
+                    and str(manifest.get("command")) == "propfirm_run"
+                ):
+                    path = rdir / "paths.parquet"  # complete pre-hardening prop-firm run
                 if filename.endswith(".parquet"):
                     pl.read_parquet_schema(path)
                 else:
@@ -324,9 +338,10 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
     if rdir is None:
         raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
     mpath = rdir / "manifest.json"
+    kind = rdir.parent.name
     return {
         "run_id": run_id,
-        "kind": rdir.parent.name,
+        "kind": kind,
         "mtime": mpath.stat().st_mtime,
         "manifest": json.loads(mpath.read_text(encoding="utf-8")),
         "has_equity": (rdir / "equity_curve.parquet").exists(),
@@ -335,8 +350,9 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "has_forecast": (rdir / "quantiles.parquet").exists(),
         "has_nulls": (rdir / "nulls.parquet").exists(),
         "has_trials": (rdir / "trials.parquet").exists(),
-        "has_forecast_paths": (rdir / "paths.parquet").exists(),
-        "has_propfirm_paths": (rdir / "propfirm_paths.parquet").exists(),
+        "has_forecast_paths": kind == "forecast" and (rdir / "paths.parquet").exists(),
+        "has_propfirm_paths": kind == "propfirm"
+        and ((rdir / "propfirm_paths.parquet").exists() or (rdir / "paths.parquet").exists()),
         "has_origins": (rdir / "origins.parquet").exists(),
     }
 

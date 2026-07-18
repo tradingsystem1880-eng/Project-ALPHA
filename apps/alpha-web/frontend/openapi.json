@@ -462,11 +462,18 @@
             "title": "Mean",
             "type": "array"
           },
-          "q05": {
+          "p10": {
             "items": {
               "type": "number"
             },
-            "title": "Q05",
+            "title": "P10",
+            "type": "array"
+          },
+          "p90": {
+            "items": {
+              "type": "number"
+            },
+            "title": "P90",
             "type": "array"
           },
           "q25": {
@@ -482,13 +489,6 @@
             },
             "title": "Q75",
             "type": "array"
-          },
-          "q95": {
-            "items": {
-              "type": "number"
-            },
-            "title": "Q95",
-            "type": "array"
           }
         },
         "required": [
@@ -496,10 +496,10 @@
           "history",
           "forecast_ts",
           "forecast",
-          "q05",
+          "p10",
           "q25",
           "q75",
-          "q95",
+          "p90",
           "mean"
         ],
         "title": "ForecastSeries",
@@ -2659,6 +2659,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "maximum": 1000000,
               "minimum": 0,
               "title": "Offset",
               "type": "integer"

@@ -773,14 +773,14 @@ export interface components {
             history_ts: number[];
             /** Mean */
             mean: number[];
-            /** Q05 */
-            q05: number[];
+            /** P10 */
+            p10: number[];
+            /** P90 */
+            p90: number[];
             /** Q25 */
             q25: number[];
             /** Q75 */
             q75: number[];
-            /** Q95 */
-            q95: number[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {

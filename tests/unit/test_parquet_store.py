@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -98,6 +99,17 @@ def test_failed_actions_write_leaves_prior_data_intact(
         store.write_actions("AAPL", [])
     monkeypatch.undo()
     assert store.read_actions("AAPL") == [action]  # old data survives
+
+
+def test_concurrent_bar_writers_leave_one_complete_frame(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path)
+    frames = [_frame(), _frame().with_columns(pl.col("close") + 1000.0)]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(lambda i: store.write_bars("AAPL", frames[i % 2]), range(8)))
+
+    final = store.read_bars("AAPL")
+    assert final.equals(frames[0]) or final.equals(frames[1])
+    assert [p for p in (tmp_path / "bars").iterdir() if p.suffix != ".parquet"] == []
 
 
 def test_duplicate_and_naive_timestamps_fail_loud(tmp_path: Path) -> None:

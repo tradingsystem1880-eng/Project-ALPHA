@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -177,3 +178,23 @@ def test_complete_corrupt_cache_fails_loud(tmp_path: Path, monkeypatch: pytest.M
 
     with pytest.raises(DataError, match="corrupt forecast cache"):
         _forecast_cache.ensure_forecast_cache(bars, spec, data_dir=tmp_path, seed=7)
+
+
+def test_concurrent_cache_writers_publish_one_readable_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_FORECAST_MODEL", "fake")
+    bars = daily_bars(20)
+    spec = _kronos_spec()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(
+                lambda _: _forecast_cache.ensure_forecast_cache(
+                    bars, spec, data_dir=tmp_path, seed=7
+                ),
+                range(2),
+            )
+        )
+
+    assert results[0][0] == results[1][0]
+    assert _forecast_cache.read_signals(tmp_path, results[0][0])

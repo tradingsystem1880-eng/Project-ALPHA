@@ -65,6 +65,23 @@ def test_optim_rejects_empty_grid(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert result.exit_code != 0  # no --grid axis provided
 
 
+def test_optim_rejects_duplicate_normalized_axes() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "optim",
+            "grid",
+            "SPY",
+            "--grid",
+            "vol-window=2",
+            "--grid",
+            "vol_window=4",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "duplicate --grid axis 'vol_window'" in result.output
+
+
 def test_optim_grid_accepts_hyphenated_axis_name(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

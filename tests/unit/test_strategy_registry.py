@@ -143,6 +143,23 @@ def test_unknown_strategy_param_fails_loud() -> None:
         warmup_for(ts)
 
 
+@pytest.mark.parametrize(
+    "params",
+    [
+        (("entry_z", 0.0),),
+        (("window", 2.5),),
+        (("window", float("nan")),),
+        (("window", 20.0), ("window", 21.0)),
+    ],
+)
+def test_programmatic_run_specs_receive_the_same_parameter_validation(
+    params: tuple[tuple[str, float], ...],
+) -> None:
+    spec = _spec(strategy_name="mean_reversion", strategy_params=params)
+    with pytest.raises(DataError):
+        _strategies.warmup_for(spec)
+
+
 def test_cash_sizing_capital_reserves_friction_headroom() -> None:
     # CASH boundary fills consume notional*(1+slip)*(1+fee); sizing must reserve that headroom
     # (nautilus otherwise stops the run on the negative balance - see the engine guard test).

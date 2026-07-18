@@ -8,17 +8,13 @@ the backtest engine.
 
 from __future__ import annotations
 
-import json
-import re
 from pathlib import Path
 from typing import Any
 
 import typer
 
+from alpha_cli.run_store import RUN_DIRS, find_run_dir, read_manifest
 from alpha_core.config import AlphaSettings
-
-_RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
-_RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")  # ids are 16 hex chars; reject before path-joining
 
 
 def _fmt(x: Any) -> str:
@@ -27,15 +23,12 @@ def _fmt(x: Any) -> str:
 
 
 def _find_manifest(data_dir: Path, run_id: str) -> dict[str, Any] | None:
-    if _RUN_ID_RE.fullmatch(run_id) is None:
-        return None  # not a run id -> the standard not-found error, no filesystem probe
-    for sub in _RUN_DIRS:
-        path = data_dir / sub / run_id / "manifest.json"
-        if path.exists():
-            result: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-            result["__dir"] = str(path.parent)
-            return result
-    return None
+    rdir = find_run_dir(data_dir, run_id)
+    if rdir is None:
+        return None
+    result = read_manifest(rdir)
+    result["__dir"] = str(rdir)
+    return result
 
 
 def report(run_id: str) -> None:
@@ -44,7 +37,7 @@ def report(run_id: str) -> None:
     manifest = _find_manifest(settings.data_dir, run_id)
     if manifest is None:
         raise typer.BadParameter(
-            f"no run {run_id!r} under {settings.data_dir} ({'/'.join(_RUN_DIRS)})"
+            f"no run {run_id!r} under {settings.data_dir} ({'/'.join(RUN_DIRS)})"
         )
 
     metadata = manifest.get("metadata", {})

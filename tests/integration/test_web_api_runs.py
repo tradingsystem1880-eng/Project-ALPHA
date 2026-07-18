@@ -17,6 +17,7 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_web import _runs
 from alpha_web.app import create_app
 
 
@@ -168,7 +169,7 @@ def test_optional_series_are_404_for_unknown_run(
 
 def test_run_pagination_bounds_are_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _client(tmp_path, monkeypatch)
-    for query in ("limit=0", "limit=501", "offset=-1"):
+    for query in ("limit=0", "limit=501", "offset=-1", "offset=1000001"):
         assert client.get(f"/api/runs?{query}").status_code == 422
 
 
@@ -258,7 +259,9 @@ def test_forecast_endpoint_reads_the_cone(tmp_path: Path, monkeypatch: pytest.Mo
     body = client.get("/api/runs/ffff000000000009/forecast").json()
     assert body["history"] == [100.0]
     assert body["forecast"] == [101.0, 102.0, 103.0]  # q50 median line
-    assert body["q05"] == [95.0, 93.0, 91.0] and body["q95"] == [109.0, 112.0, 115.0]  # q05..q95
+    assert body["p10"] == [95.0, 93.0, 91.0]
+    assert body["p90"] == [109.0, 112.0, 115.0]
+    assert "q05" not in body and "q95" not in body  # established wire keys stay stable
     assert len(body["forecast_ts"]) == 3
 
 
@@ -282,7 +285,7 @@ def test_forecast_endpoint_includes_full_quantiles(
     assert body["mean"] == [100.9, 102.1, 103.2]
     # the pre-existing keys are untouched — the SPA fan chart depends on them
     assert body["history"] == [100.0] and body["forecast"] == [101.0, 102.0, 103.0]
-    assert body["q05"] == [95.0, 93.0, 91.0] and body["q95"] == [109.0, 112.0, 115.0]
+    assert body["p10"] == [95.0, 93.0, 91.0] and body["p90"] == [109.0, 112.0, 115.0]
     assert len(body["history_ts"]) == 1 and len(body["forecast_ts"]) == 3
 
 
@@ -346,12 +349,13 @@ def _write_trials(data_dir: Path, run_id: str) -> None:
     ).write_parquet(rdir / "trials.parquet")
 
 
-def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
+def _write_propfirm_run(data_dir: Path, run_id: str, *, legacy_filename: bool = False) -> None:
     """Seed a propfirm run + its ``propfirm_paths.parquet`` (NaN days_to_pass = never passed)."""
     rdir = data_dir / "propfirm" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     (rdir / "manifest.json").write_text(
-        json.dumps({"command": "propfirm_run", "symbol": "SPY"}), encoding="utf-8"
+        json.dumps({"schema_version": 2, "command": "propfirm_run", "symbol": "SPY"}),
+        encoding="utf-8",
     )
     pl.DataFrame(
         {
@@ -368,7 +372,7 @@ def _write_propfirm_run(data_dir: Path, run_id: str) -> None:
             "days_to_pass": pl.Float64(),
             "payout": pl.Float64(),
         },
-    ).write_parquet(rdir / "propfirm_paths.parquet")
+    ).write_parquet(rdir / ("paths.parquet" if legacy_filename else "propfirm_paths.parquet"))
 
 
 def _write_forecast_eval_run(data_dir: Path, run_id: str) -> None:
@@ -446,6 +450,20 @@ def test_propfirm_paths_endpoint_columnar_nan_to_null(
     assert body["paths"]["payout"] == [4500.0, 0.0, 1200.0]
     # the forecast-paths projection reads paths.parquet, which a propfirm run does not write
     assert client.get("/api/runs/eeee000000000005/forecast/paths").status_code == 404
+
+
+def test_complete_legacy_propfirm_paths_remain_readable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    run_id = "eeee000000000006"
+    _write_propfirm_run(tmp_path, run_id, legacy_filename=True)
+    client = TestClient(create_app())
+
+    assert _runs.run_artifacts_readable("propfirm", run_id, data_dir=tmp_path)
+    assert client.get(f"/api/runs/{run_id}").json()["has_propfirm_paths"] is True
+    assert client.get(f"/api/runs/{run_id}/propfirm-paths").status_code == 200
+    assert client.get(f"/api/runs/{run_id}/forecast/paths").status_code == 404
 
 
 def test_propfirm_paths_endpoint_404_when_absent(

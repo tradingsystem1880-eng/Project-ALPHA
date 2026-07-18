@@ -35,7 +35,7 @@ def list_runs(
     verdict: str | None = None,
     passed: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=1_000_000)] = 0,
 ) -> dict[str, Any]:
     """Filtered, newest-first, paginated run index for the run browser."""
     return _runs.query_runs(

@@ -57,10 +57,10 @@ export function FanChart({ fc, paths, height = 280 }: Props) {
       x,
       [...fc.history, ...fc.forecast.map(() => null)], // 1 history
       joined(fc.forecast), // 2 median
-      fc.q95 ? [...padH, ...fc.q95] : x.map(() => null), // 3 q95
+      fc.p90 ? [...padH, ...fc.p90] : x.map(() => null), // 3 q95 (legacy wire key p90)
       fc.q75 ? [...padH, ...fc.q75] : x.map(() => null), // 4 q75
       fc.q25 ? [...padH, ...fc.q25] : x.map(() => null), // 5 q25
-      fc.q05 ? [...padH, ...fc.q05] : x.map(() => null), // 6 q05
+      fc.p10 ? [...padH, ...fc.p10] : x.map(() => null), // 6 q05 (legacy wire key p10)
     ] as uPlot.AlignedData
   }, [fc])
 
