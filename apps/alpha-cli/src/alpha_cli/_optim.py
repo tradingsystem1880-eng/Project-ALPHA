@@ -77,10 +77,18 @@ def expand_grid(grid: Mapping[str, Sequence[float]]) -> list[Config]:
     for name in names:
         if len(grid[name]) == 0:
             raise DataError(f"grid axis {name!r} has no values")
-    return [
+        normalized = [float(value) for value in grid[name]]
+        if any(not np.isfinite(value) for value in normalized):
+            raise DataError(f"grid axis {name!r} values must be finite")
+        if len(set(normalized)) != len(normalized):
+            raise DataError(f"grid axis {name!r} contains duplicate values")
+    configs = [
         tuple(zip(names, (float(v) for v in combo), strict=True))
         for combo in product(*(grid[name] for name in names))
     ]
+    if len(set(configs)) != len(configs):
+        raise DataError("optimization grid contains duplicate normalized trials")
+    return configs
 
 
 def _spec_for(base: RunSpec, config: Config) -> RunSpec:
@@ -99,7 +107,10 @@ def _spec_for(base: RunSpec, config: Config) -> RunSpec:
             overrides[name] = float(value)
         else:
             extra[name] = float(value)
-    return replace(base, strategy_params=tuple(sorted(extra.items())), **overrides)
+    from alpha_cli._schemas import normalize_params
+
+    normalized = normalize_params(base.strategy_name, tuple(sorted(extra.items())))
+    return replace(base, strategy_params=normalized, **overrides)
 
 
 @dataclass(frozen=True)

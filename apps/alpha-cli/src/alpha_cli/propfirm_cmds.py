@@ -107,7 +107,7 @@ def run(
         embargo=5,
         anchored=False,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
         size_on_equity=size_on_equity,
         halt_drawdown=halt_drawdown,
     )

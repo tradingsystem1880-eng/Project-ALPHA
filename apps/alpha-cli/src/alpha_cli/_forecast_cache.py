@@ -46,15 +46,17 @@ class KronosParams:
 
 
 def kronos_params(spec: RunSpec) -> KronosParams:
+    from alpha_cli._schemas import default_for
+
     return KronosParams(
-        context=int(spec.param("context", 400.0)),
-        horizon=int(spec.param("horizon", 21.0)),
-        samples=int(spec.param("samples", 30.0)),
-        temperature=spec.param("temperature", 1.0),
-        top_p=spec.param("top_p", 0.9),
-        top_k=int(spec.param("top_k", 0.0)),
-        min_edge=spec.param("min_edge", 0.0),
-        band=bool(spec.param("band", 0.0)),
+        context=int(spec.param("context", default_for("kronos", "context"))),
+        horizon=int(spec.param("horizon", default_for("kronos", "horizon"))),
+        samples=int(spec.param("samples", default_for("kronos", "samples"))),
+        temperature=spec.param("temperature", default_for("kronos", "temperature")),
+        top_p=spec.param("top_p", default_for("kronos", "top_p")),
+        top_k=int(spec.param("top_k", default_for("kronos", "top_k"))),
+        min_edge=spec.param("min_edge", default_for("kronos", "min_edge")),
+        band=bool(spec.param("band", default_for("kronos", "band"))),
     )
 
 

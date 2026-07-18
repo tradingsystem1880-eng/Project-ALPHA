@@ -72,20 +72,53 @@ def test_param_reads_strategy_params_with_default() -> None:
 
 
 def test_parse_strategy_params_sorts_and_is_order_independent() -> None:
-    a = parse_strategy_params(["slow=50", "fast=10"])
-    b = parse_strategy_params(["fast=10", "slow=50"])
+    a = parse_strategy_params("ma_crossover", ["slow=50", "fast=10"])
+    b = parse_strategy_params("ma_crossover", ["fast=10", "slow=50"])
     assert a == b == (("fast", 10.0), ("slow", 50.0))
-    assert parse_strategy_params(None) == ()
-    assert parse_strategy_params([]) == ()
+    assert parse_strategy_params("ts_momentum", None) == ()
+    assert parse_strategy_params("ts_momentum", []) == ()
 
 
 def test_parse_strategy_params_fails_loud_on_malformed() -> None:
     with pytest.raises(DataError):
-        parse_strategy_params(["nope"])
+        parse_strategy_params("ma_crossover", ["nope"])
     with pytest.raises(DataError):
-        parse_strategy_params(["=5"])
+        parse_strategy_params("ma_crossover", ["=5"])
     with pytest.raises(DataError):
-        parse_strategy_params(["fast=abc"])
+        parse_strategy_params("ma_crossover", ["fast=abc"])
+
+
+@pytest.mark.parametrize(
+    ("strategy", "item", "message"),
+    [
+        ("ma_crossover", "fast=2.5", "integer"),
+        ("ma_crossover", "fast=nan", "finite"),
+        ("ma_crossover", "fast=inf", "finite"),
+        ("ma_crossover", "fast=0", "minimum"),
+        ("mean_reversion", "entry_z=0", "greater than"),
+        ("kronos", "top_p=1.01", "maximum"),
+        ("kronos", "band=2", "maximum"),
+    ],
+)
+def test_parse_strategy_params_enforces_schema(strategy: str, item: str, message: str) -> None:
+    with pytest.raises(DataError, match=message):
+        parse_strategy_params(strategy, [item])
+
+
+def test_parse_strategy_params_rejects_duplicate_and_unknown_names() -> None:
+    with pytest.raises(DataError, match="duplicate"):
+        parse_strategy_params("ma_crossover", ["fast=10", "fast=11"])
+    with pytest.raises(DataError, match="unknown"):
+        parse_strategy_params("ma_crossover", ["fasst=10"])
+    with pytest.raises(DataError, match="unknown strategy"):
+        parse_strategy_params("nope", [])
+
+
+def test_valid_param_serialization_is_unchanged() -> None:
+    assert parse_strategy_params("mean_reversion", ["entry_z=1.5", "window=20"]) == (
+        ("entry_z", 1.5),
+        ("window", 20.0),
+    )
 
 
 def test_unknown_strategy_param_fails_loud() -> None:

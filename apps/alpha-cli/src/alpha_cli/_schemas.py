@@ -1,15 +1,11 @@
-"""Declarative catalog of each strategy's tunable ``--param`` axes (the one place that names them).
-
-The strategy registry (:mod:`alpha_cli._strategies`) reads these knobs via ``spec.param(name,
-default)``; this table mirrors those names / defaults / ranges as *data* so ``alpha info strategies
---json`` can advertise them to the workstation's dynamic new-run form. ``ts_momentum`` has no extra
-params — it tunes only first-class ``RunSpec`` flags (lookback/skip/vol_window/…) — so its tuple is
-empty. Keep a param here in lockstep with the ``spec.param(...)`` default in ``_strategies.py``.
-"""
+"""Canonical strategy-parameter definitions, validation, defaults, and UI metadata."""
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+
+from alpha_core import DataError
 
 
 @dataclass(frozen=True)
@@ -21,7 +17,31 @@ class ParamSpec:
     default: float
     min: float | None = None
     max: float | None = None
+    min_exclusive: bool = False
+    max_exclusive: bool = False
     help: str = ""
+
+    def normalize(self, value: float) -> float:
+        """Validate and return the stable float representation stored in ``RunSpec``."""
+        if not math.isfinite(value):
+            raise DataError(f"strategy param {self.name!r} must be finite, got {value!r}")
+        if self.type == "int" and not value.is_integer():
+            raise DataError(f"strategy param {self.name!r} must be an integer, got {value!r}")
+        if self.min is not None and (
+            value < self.min or (self.min_exclusive and value == self.min)
+        ):
+            relation = "greater than" if self.min_exclusive else "at least the minimum"
+            raise DataError(
+                f"strategy param {self.name!r} must be {relation} {self.min:g}, got {value!r}"
+            )
+        if self.max is not None and (
+            value > self.max or (self.max_exclusive and value == self.max)
+        ):
+            relation = "less than" if self.max_exclusive else "at most the maximum"
+            raise DataError(
+                f"strategy param {self.name!r} must be {relation} {self.max:g}, got {value!r}"
+            )
+        return value
 
 
 STRATEGY_PARAM_SCHEMA: dict[str, tuple[ParamSpec, ...]] = {
@@ -32,7 +52,14 @@ STRATEGY_PARAM_SCHEMA: dict[str, tuple[ParamSpec, ...]] = {
     ),
     "mean_reversion": (
         ParamSpec("window", "int", 20, min=2, help="z-score lookback window"),
-        ParamSpec("entry_z", "float", 1.5, min=0.0, help="entry z-score threshold"),
+        ParamSpec(
+            "entry_z",
+            "float",
+            1.5,
+            min=0.0,
+            min_exclusive=True,
+            help="entry z-score threshold",
+        ),
     ),
     "breakout": (ParamSpec("window", "int", 55, min=2, help="Donchian channel window"),),
     "kronos": (
@@ -46,3 +73,40 @@ STRATEGY_PARAM_SCHEMA: dict[str, tuple[ParamSpec, ...]] = {
         ParamSpec("band", "int", 0, min=0, max=1, help="require q25/q75 band agreement (0/1)"),
     ),
 }
+
+
+def specs_for(strategy_name: str) -> dict[str, ParamSpec]:
+    """Return the canonical name-to-definition map, failing loud on an unknown strategy."""
+    try:
+        return {spec.name: spec for spec in STRATEGY_PARAM_SCHEMA[strategy_name]}
+    except KeyError:
+        raise DataError(
+            f"unknown strategy {strategy_name!r}; known: {sorted(STRATEGY_PARAM_SCHEMA)}"
+        ) from None
+
+
+def default_for(strategy_name: str, name: str) -> float:
+    """Return a strategy parameter's canonical runtime default."""
+    try:
+        return specs_for(strategy_name)[name].default
+    except KeyError:
+        raise DataError(f"unknown strategy param {name!r} for {strategy_name!r}") from None
+
+
+def normalize_params(
+    strategy_name: str, params: tuple[tuple[str, float], ...]
+) -> tuple[tuple[str, float], ...]:
+    """Validate names/values and return the existing sorted float-pair serialization."""
+    schema = specs_for(strategy_name)
+    normalized: dict[str, float] = {}
+    for name, value in params:
+        if name in normalized:
+            raise DataError(f"duplicate strategy param {name!r}")
+        try:
+            spec = schema[name]
+        except KeyError:
+            raise DataError(
+                f"unknown strategy param {name!r} for {strategy_name!r}; known: {sorted(schema)}"
+            ) from None
+        normalized[name] = spec.normalize(float(value))
+    return tuple(sorted(normalized.items()))

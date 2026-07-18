@@ -104,16 +104,18 @@ def resolve_allow_short(allow_short: bool | None, account_type: str) -> bool:
     return allow_short
 
 
-def parse_strategy_params(items: Sequence[str] | None) -> tuple[tuple[str, float], ...]:
+def parse_strategy_params(
+    strategy_name: str, items: Sequence[str] | None
+) -> tuple[tuple[str, float], ...]:
     """Parse repeatable ``name=value`` CLI options into the spec's sorted ``strategy_params`` shape.
 
     Sorted by name so the same params in any CLI order produce the same ``RunSpec`` (and run id).
     Fails loud (``DataError``) on a malformed item or a non-numeric value.
     """
-    if not items:
-        return ()
-    parsed: dict[str, float] = {}
-    for item in items:
+    from alpha_cli._schemas import normalize_params
+
+    parsed: list[tuple[str, float]] = []
+    for item in items or ():
         if "=" not in item:
             raise DataError(f"strategy param must be name=value, got {item!r}")
         name, _, raw = item.partition("=")
@@ -121,10 +123,10 @@ def parse_strategy_params(items: Sequence[str] | None) -> tuple[tuple[str, float
         if not name:
             raise DataError(f"strategy param has empty name: {item!r}")
         try:
-            parsed[name] = float(raw)
+            parsed.append((name, float(raw)))
         except ValueError:
             raise DataError(f"strategy param {name!r} must be numeric, got {raw!r}") from None
-    return tuple(sorted(parsed.items()))
+    return normalize_params(strategy_name, tuple(parsed))
 
 
 def load_bars(
@@ -275,7 +277,9 @@ def run_id_for(payload: Mapping[str, object]) -> str:
     Same symbol + params + costs + seed → same id → same artifact directory → reproducible
     (spec §11.4). No wall-clock goes in, so re-running is byte-identical.
     """
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    canonical = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 

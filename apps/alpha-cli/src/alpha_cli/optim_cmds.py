@@ -103,7 +103,7 @@ def grid(
         embargo=embargo,
         anchored=anchored,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
     dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)

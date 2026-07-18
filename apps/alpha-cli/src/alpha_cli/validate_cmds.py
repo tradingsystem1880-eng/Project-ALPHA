@@ -80,7 +80,7 @@ def validate(
         embargo=embargo,
         anchored=anchored,
         strategy_name=strategy,
-        strategy_params=_runner.parse_strategy_params(param),
+        strategy_params=_runner.parse_strategy_params(strategy, param),
     )
     gparams = _gauntlet.GauntletParams(
         seed=resolved_seed,

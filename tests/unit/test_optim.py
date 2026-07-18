@@ -118,3 +118,23 @@ def test_non_integer_grid_value_for_integer_axis_fails_loud() -> None:
     with pytest.raises(DataError, match="truncated"):
         _spec_for(base, (("lookback", 5.5),))
     assert _spec_for(base, (("lookback", 6.0),)).lookback == 6  # exact integers still work
+
+
+def test_strategy_grid_axes_use_the_same_schema_validation() -> None:
+    from alpha_cli._optim import _spec_for
+
+    base = _base()
+    base = RunSpec(**{**vars(base), "strategy_name": "mean_reversion"})
+    with pytest.raises(DataError, match="integer"):
+        _spec_for(base, (("window", 2.5),))
+    with pytest.raises(DataError, match="greater than"):
+        _spec_for(base, (("entry_z", 0.0),))
+    with pytest.raises(DataError, match="unknown"):
+        _spec_for(base, (("windoww", 20.0),))
+
+
+def test_expand_grid_rejects_non_finite_and_duplicate_trials() -> None:
+    with pytest.raises(DataError, match="finite"):
+        expand_grid({"lookback": [5.0, float("nan")]})
+    with pytest.raises(DataError, match="duplicate"):
+        expand_grid({"lookback": [5.0, 5.0]})
