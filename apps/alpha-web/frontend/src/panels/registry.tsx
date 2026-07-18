@@ -9,6 +9,7 @@ import { ActivityFeed } from './ActivityFeed'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
 import { JobMonitor } from './JobMonitor'
+import { Pipeline } from './Pipeline'
 import { Glossary } from './Glossary'
 import { OptionsGreeks } from './OptionsGreeks'
 import { PriceChart } from './PriceChart'
@@ -45,6 +46,7 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RunDetail,
   ActivityFeed,
   JobMonitor,
+  Pipeline,
   StrategyLab,
   PriceChart,
   DataExplorer,
@@ -65,6 +67,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'RunBrowser', title: 'Run Browser', hint: 'runs' },
   { component: 'ActivityFeed', title: 'Activity', hint: 'live desk tape' },
   { component: 'JobMonitor', title: 'Jobs', hint: 'consoles·cancel' },
+  { component: 'Pipeline', title: 'Pipeline', hint: 'the loop·next steps' },
   { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
   { component: 'PriceChart', title: 'Price', hint: 'candles' },
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },

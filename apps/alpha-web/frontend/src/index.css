@@ -1603,3 +1603,65 @@ select.field:focus {
 .blotter th.sortable:hover {
   color: var(--ink);
 }
+
+/* pipeline */
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: var(--pad);
+}
+.pipe-stage {
+  position: relative;
+  flex: 1 1 150px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+.pipe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pipe-title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.pipe-desc {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+  flex: 1;
+}
+.pipe-latest {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--accent-strong);
+}
+.pipe-latest:hover {
+  text-decoration: underline;
+}
+.pipe-arrow {
+  position: absolute;
+  right: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  color: var(--faint);
+  font-size: 13px;
+}
+.pipe-suggestions {
+  margin-top: var(--pad-sm);
+}
