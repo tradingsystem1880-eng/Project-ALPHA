@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from alpha_web.api import activity as activity_api
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import jobs as jobs_api
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
 
     app.include_router(runs_api.router)
     app.include_router(jobs_api.router)
+    app.include_router(activity_api.router)
     app.include_router(catalog_api.router)
     app.include_router(candles_api.router)
     app.include_router(workspaces_api.router)
