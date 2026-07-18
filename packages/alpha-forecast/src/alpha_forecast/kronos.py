@@ -81,8 +81,9 @@ class KronosForecaster:
 
     def _load_predictor(self) -> Any:
         if self._predictor_cache is None:
-            from alpha_forecast._vendor.kronos import Kronos, KronosPredictor, KronosTokenizer
             from huggingface_hub.errors import LocalEntryNotFoundError
+
+            from alpha_forecast._vendor.kronos import Kronos, KronosPredictor, KronosTokenizer
 
             try:
                 tokenizer = KronosTokenizer.from_pretrained(

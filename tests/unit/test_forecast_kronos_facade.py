@@ -150,9 +150,7 @@ def test_from_pretrained_receives_cache_dir_and_local_files_only(
     tokenizer_loader, model_loader = _RecordingLoader(), _RecordingLoader()
     monkeypatch.setattr("alpha_forecast._vendor.kronos.KronosTokenizer", tokenizer_loader)
     monkeypatch.setattr("alpha_forecast._vendor.kronos.Kronos", model_loader)
-    monkeypatch.setattr(
-        "alpha_forecast._vendor.kronos.KronosPredictor", lambda *a, **k: (a, k)
-    )
+    monkeypatch.setattr("alpha_forecast._vendor.kronos.KronosPredictor", lambda *a, **k: (a, k))
 
     offline = KronosForecaster(
         model_id="NeoQuasar/Kronos-base",
