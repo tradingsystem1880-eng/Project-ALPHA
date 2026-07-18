@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
@@ -79,7 +80,7 @@ def test_optim_rejects_duplicate_normalized_axes() -> None:
         ],
     )
     assert result.exit_code != 0
-    assert "duplicate --grid axis 'vol_window'" in result.output
+    assert "duplicate --grid axis 'vol_window'" in unstyle(result.output)
 
 
 def test_optim_grid_accepts_hyphenated_axis_name(
