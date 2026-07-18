@@ -1,9 +1,10 @@
-// TradingView Lightweight Charts candlestick canvas, themed to the workstation palette.
+// TradingView Lightweight Charts candlestick + volume canvas, themed to the workstation palette.
 
 import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
   createChart,
   type UTCTimestamp,
 } from 'lightweight-charts'
@@ -24,7 +25,7 @@ export function PriceChartCanvas({ bars }: { bars: Candle[] }) {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: CHART.muted,
-        fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+        fontFamily: 'JetBrains Mono Variable, JetBrains Mono, ui-monospace, monospace',
         fontSize: 11,
       },
       grid: { vertLines: { color: CHART.grid }, horzLines: { color: CHART.grid } },
@@ -41,6 +42,21 @@ export function PriceChartCanvas({ bars }: { bars: Candle[] }) {
     })
     series.setData(
       bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })),
+    )
+    // volume underlay on its own scale, bottom 18% of the pane
+    const volume = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'vol',
+      lastValueVisible: false,
+      priceLineVisible: false,
+    })
+    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } })
+    volume.setData(
+      bars.map((b) => ({
+        time: b.t as UTCTimestamp,
+        value: b.v,
+        color: b.c >= b.o ? 'rgba(46, 160, 74, 0.35)' : 'rgba(239, 83, 80, 0.35)',
+      })),
     )
     chart.timeScale().fitContent()
     const ro = new ResizeObserver(() =>

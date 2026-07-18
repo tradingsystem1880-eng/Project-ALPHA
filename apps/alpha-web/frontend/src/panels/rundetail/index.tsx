@@ -104,23 +104,48 @@ export function RunDetail(props: IDockviewPanelProps) {
   const body = (() => {
     switch (detail.kind) {
       case 'optim':
-        return <OptimDetail manifest={m as OptimManifest} onLaunch={onLaunch} />
+        return (
+          <OptimDetail
+            manifest={m as OptimManifest}
+            runId={runId}
+            hasTrials={detail.has_trials ?? false}
+            onLaunch={onLaunch}
+          />
+        )
       case 'portfolio':
       case 'cross_sectional':
         return <PortfolioDetail manifest={m as PortfolioManifest} eq={eq} onLaunch={onLaunch} />
       case 'propfirm':
-        return <PropfirmDetail manifest={m as PropfirmManifest} onLaunch={onLaunch} />
+        return (
+          <PropfirmDetail
+            manifest={m as PropfirmManifest}
+            runId={runId}
+            hasPaths={detail.has_propfirm_paths ?? false}
+            onLaunch={onLaunch}
+          />
+        )
       case 'forecast':
         return command === 'forecast_eval' ? (
-          <ForecastEvalDetail manifest={m as ForecastManifest} onLaunch={onLaunch} />
+          <ForecastEvalDetail
+            manifest={m as ForecastManifest}
+            runId={runId}
+            hasOrigins={detail.has_origins ?? false}
+            onLaunch={onLaunch}
+          />
         ) : (
-          <ForecastDetail manifest={m as ForecastManifest} fc={fc} onLaunch={onLaunch} />
+          <ForecastDetail
+            manifest={m as ForecastManifest}
+            fc={fc}
+            runId={runId}
+            hasPaths={detail.has_forecast_paths ?? false}
+            onLaunch={onLaunch}
+          />
         )
       default: {
         const vm = m as ValidateManifest
         switch (tab) {
           case 'gates':
-            return <Gates manifest={vm} />
+            return <Gates manifest={vm} runId={runId} hasNulls={detail.has_nulls ?? false} />
           case 'walkforward':
             return <WalkForward manifest={vm} />
           case 'risk':

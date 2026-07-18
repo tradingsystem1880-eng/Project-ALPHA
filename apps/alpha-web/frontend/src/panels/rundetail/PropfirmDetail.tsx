@@ -1,7 +1,10 @@
 // Prop-firm layout: the outcome funnel (pass → funded → payout vs bust) + rules + EV story.
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
+import { api } from '../../api/client'
+import type { PropfirmPaths } from '../../api/types'
+import { OutcomeBars } from '../../components/charts/OutcomeBars'
 import { propfirmStories, propfirmSuggestions } from '../../explain/propfirm'
 import type { PropfirmManifest } from '../../explain/types'
 import { CHART } from '../../util/chartTheme'
@@ -44,19 +47,33 @@ function ProbBars({ m }: { m: PropfirmManifest }) {
 
 export function PropfirmDetail({
   manifest,
+  runId,
+  hasPaths = false,
   onLaunch,
 }: {
   manifest: PropfirmManifest
+  runId: string
+  hasPaths?: boolean
   onLaunch?: (command: string, args: string) => void
 }) {
   const stories = useMemo(() => propfirmStories(manifest), [manifest])
   const sugg = useMemo(() => propfirmSuggestions(manifest), [manifest])
   const rules = manifest.rules ?? {}
+  const [paths, setPaths] = useState<PropfirmPaths | null>(null)
+  useEffect(() => {
+    if (!hasPaths) return
+    let live = true
+    api.propfirmPaths(runId).then((p) => live && setPaths(p)).catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [runId, hasPaths])
 
   return (
     <>
       <Section title={`Monte-Carlo outcomes · ${(manifest.n_paths ?? 0).toLocaleString()} paths`}>
         <ProbBars m={manifest} />
+        {paths ? <OutcomeBars data={paths} /> : null}
       </Section>
       <Section title="The story">
         <div className="gate-cards">

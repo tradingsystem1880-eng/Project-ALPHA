@@ -1564,3 +1564,24 @@ select.field:focus {
   white-space: nowrap;
   flex: 1;
 }
+
+/* fan chart + outcome histograms */
+.fan-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.outcome-bars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 12px;
+}
+.outcome-hist,
+.null-hist {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
