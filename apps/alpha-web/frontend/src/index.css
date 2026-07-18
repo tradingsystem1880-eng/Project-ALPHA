@@ -1585,3 +1585,21 @@ select.field:focus {
   flex-direction: column;
   gap: 3px;
 }
+
+/* data table v2 */
+.toolbar-search {
+  width: 140px;
+  height: 22px;
+  font-size: 11.5px;
+}
+.table-scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+.blotter th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.blotter th.sortable:hover {
+  color: var(--ink);
+}

@@ -1,25 +1,53 @@
-// Trades tab: the realized trade log. (Virtualized, uncapped rendering arrives with the
-// DataTable upgrade; until then the render caps at 800 rows with an explicit notice.)
+// Trades tab: the realized trade log, uncapped — sortable and virtualized past ~200 rows.
+
+import type { ColumnDef } from '@tanstack/react-table'
+import { useMemo, useState } from 'react'
 
 import type { TradeRow } from '../../api/types'
+import { DataTable } from '../../components/DataTable'
 import { fmtNum } from '../../util/format'
 import { Section } from './common'
 
-const COLS = [
-  'instrument_id',
-  'side',
-  'quantity',
-  'entry_price',
-  'exit_price',
-  'entry_ts',
-  'exit_ts',
-  'realized_pnl',
-  'realized_return',
-] as const
-
-const CAP = 800
+const NUM_COLS = ['quantity', 'entry_price', 'exit_price', 'realized_pnl', 'realized_return']
 
 export function TradesTab({ trades }: { trades: TradeRow[] }) {
+  const [query, setQuery] = useState('')
+
+  const columns = useMemo<ColumnDef<TradeRow, unknown>[]>(() => {
+    const cols: ColumnDef<TradeRow, unknown>[] = [
+      { header: 'instrument', accessorKey: 'instrument_id', meta: { className: 'mono' } },
+      { header: 'side', accessorKey: 'side', meta: { className: 'mono' } },
+    ]
+    for (const key of NUM_COLS) {
+      cols.push({
+        header: key.replace(/_/g, ' '),
+        accessorKey: key,
+        cell: (c) => {
+          const v = c.row.original[key]
+          if (typeof v !== 'number') return '—'
+          const neg = v < 0 && (key === 'realized_pnl' || key === 'realized_return')
+          return <span className={neg ? 'neg' : ''}>{fmtNum(v, key === 'realized_return' ? 4 : 2)}</span>
+        },
+        meta: { className: 'num' },
+      })
+    }
+    cols.push(
+      {
+        header: 'entry',
+        accessorKey: 'entry_ts',
+        cell: (c) => String(c.row.original.entry_ts ?? '—').slice(0, 10),
+        meta: { className: 'mono' },
+      },
+      {
+        header: 'exit',
+        accessorKey: 'exit_ts',
+        cell: (c) => String(c.row.original.exit_ts ?? '—').slice(0, 10),
+        meta: { className: 'mono' },
+      },
+    )
+    return cols
+  }, [])
+
   if (!trades.length)
     return (
       <Section title="Trades">
@@ -29,41 +57,20 @@ export function TradesTab({ trades }: { trades: TradeRow[] }) {
         </div>
       </Section>
     )
-  const rows = trades.slice(0, CAP)
+
   return (
     <Section
       title={`Trades · ${trades.length}`}
-      right={trades.length > CAP ? <span className="muted">showing first {CAP}</span> : undefined}
+      right={
+        <input
+          className="field toolbar-search"
+          placeholder="filter…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      }
     >
-      <table className="blotter">
-        <thead>
-          <tr>
-            {COLS.map((c) => (
-              <th key={c} className={c === 'instrument_id' || c === 'side' || c.endsWith('_ts') ? '' : 'r'}>
-                {c.replace(/_/g, ' ')}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              {COLS.map((c) => {
-                const v = r[c]
-                const numeric = typeof v === 'number'
-                const neg = numeric && v < 0 && (c === 'realized_pnl' || c === 'realized_return')
-                return (
-                  <td key={c} className={numeric ? `num${neg ? ' neg' : ''}` : 'mono'}>
-                    {numeric
-                      ? fmtNum(v, c === 'realized_return' ? 4 : 2)
-                      : String(v ?? '—').slice(0, 16)}
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable data={trades} columns={columns} globalFilter={query} />
     </Section>
   )
 }
