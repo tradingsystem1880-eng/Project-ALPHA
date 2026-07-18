@@ -27,8 +27,12 @@ uv run alpha info        # smoke test: prints resolved settings + core version
 ## The full quality gate (run before every commit; mirrors CI)
 
 ```bash
-uv run ruff check . && uv run ruff format --check . && uv run lint-imports \
-  && uv run mypy packages apps tests && uv run pytest -q -m "not network"
+uv lock --check && uv sync --locked \
+  && uv run ruff check . && uv run ruff format --check . && uv run lint-imports \
+  && uv run mypy packages apps tests \
+  && uv run pytest -q -m "not network" --cov --cov-report=term-missing \
+  && uv run python scripts/generate_web_openapi.py --check \
+  && uv build --all-packages
 ```
 
 ## Workflow
@@ -108,9 +112,8 @@ nautilus Binance/Bybit testnet config). Supply it as `data_clients` to
 ## Conversational agent (MCP server)
 
 `alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the whole
-research loop as 10 tools — `data_pull`, `backtest_run`, `validate`, `optim_grid`,
-`propfirm_run`, `backtest_portfolio` / `cross_sectional`, plus `get_run` / `list_runs` /
-`list_strategies`. It is purely additive: each action tool **subprocesses the `alpha` CLI** and
+research loop as 12 tools — data pull; backtest run/portfolio/cross-sectional; validate; optimize;
+forecast run/eval; prop-firm simulation; and get/list runs/strategies. It is purely additive: each action tool **subprocesses the `alpha` CLI** and
 returns the byte-stable manifest the run wrote, so the agent and the CLI share one store and the
 CLI stays the single source of truth.
 
@@ -140,18 +143,25 @@ interface — Bloomberg/OpenBB-class, but $0.
   desk** panel round out the four net-new modules.
 - **Command palette + savable workspaces** (dockable/floating/popout panels).
 
-Built as a Vite/React/TypeScript SPA (Dockview + TradingView Lightweight Charts + uPlot + AG Grid +
-cmdk) over a thin FastAPI **JSON + SSE** backend. Like the MCP server it's purely additive — every
+Built as a Vite/React/TypeScript SPA (Dockview + Lightweight Charts + uPlot + TanStack Table/Virtual +
+cmdk) over a thin FastAPI **JSON + SSE** backend. Stable JSON responses are strict Pydantic models;
+committed OpenAPI generates the frontend API definitions. Like the MCP server it's purely additive — every
 data source is an `alpha … --json` subprocess or a manifest read; nothing bypasses the CLI. The SPA
 source lives in [`apps/alpha-web/frontend`](apps/alpha-web/frontend); its **built assets are
-committed** under `src/alpha_web/static/app`, so the Python install and CI never need Node. To change
+committed** under `src/alpha_web/static/app`, so an installed Python wheel never needs Node. To change
 the UI:
 
 ```bash
-cd apps/alpha-web/frontend && npm ci && npm run build   # regenerates + commits static/app
+cd apps/alpha-web/frontend
+npm ci
+npm run lint -- --deny-warnings
+npm run test:coverage
+npm run generate:api
+npm run build   # regenerates committed static/app
 ```
 
-A non-gating `frontend-build` CI job rebuilds the SPA and warns if the committed assets are stale.
+CI fails on frontend lint warnings, coverage regressions, stale generated API types, TypeScript/build
+errors, or stale committed assets.
 For conversational control, pair the Workstation's AI Console with the `alpha` MCP server (above).
 
 ## Not yet built (intentional)
@@ -159,3 +169,11 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 - Live paper-trading data feed (the user-supplied adapter described above).
 - Full-engine cross-sectional with per-instrument t+1 fills (a returns-level panel version ships now).
 - FRED macro / regime filters (needs a non-OHLCV store).
+- Model fine-tuning (Kronos remains zero-shot, with overlap provenance and offline weight policy).
+
+## Quality gate
+
+The shipped scope is professionally hardened: 12 enforced import contracts, strict mypy, warnings
+as errors, 93% minimum owned-source Python line coverage, frontend V8 coverage floors, deterministic
+generated web contracts, atomic manifest-last artifact publication, and isolated builds/imports for
+all 11 wheels. See [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md).

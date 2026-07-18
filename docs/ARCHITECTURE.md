@@ -1,6 +1,6 @@
 # Project ALPHA — Architecture
 
-**Date:** 2026-06-26
+**Last reviewed:** 2026-07-18
 **Status:** Living (reflects `main`; updated as the platform evolves)
 **Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
 
@@ -26,6 +26,8 @@ graph TD
     strat[alpha_strategies]
     val[alpha_validation]
     fc[alpha_forecast]
+    opt[alpha_options]
+    screen[alpha_screener]
     core[alpha_core]
 
     mcp -. subprocess .-> cli
@@ -35,6 +37,8 @@ graph TD
     cli --> strat
     cli --> val
     cli --> fc
+    cli --> opt
+    cli --> screen
     cli --> core
     bt --> data
     bt --> core
@@ -42,29 +46,34 @@ graph TD
     strat --> core
     val --> core
     fc --> core
+    opt --> core
+    screen --> core
 ```
 
 <details><summary>ASCII fallback</summary>
 
 ```
-  alpha_mcp     alpha_web         surfaces — subprocess the `alpha` CLI (compose nothing)
-      └──────┬──────┘
-             ▼  (subprocess + thin static import for the CLI entry/settings only)
-         alpha_cli                sole composer — may import every package below
-             │
-   ┌─────────┼───────────────┬────────────────┬──────────────────┐
-   ▼         ▼               ▼                ▼                  ▼
-alpha_strategies   alpha_validation   alpha_forecast     alpha_backtest ──▶ alpha_data
-   │         │               │                │                  │              │
+alpha_mcp   alpha_web          surfaces: subprocess `alpha`; public metadata/read seams
+     \       /
+      alpha_cli               sole composer; may import every package below
+      /   |   \
+     /    |    +------------ alpha_backtest ---- alpha_data ----+
+alpha_strategies  alpha_validation  alpha_forecast  alpha_options  alpha_screener
+    \             |                 |               |              /
+     +------------+-----------------+---------------+-------------+
+```
+<!-- legacy connector hidden after diagram expansion
    └─────────┴───────┬───────┴────────────────┴──────────────────┴──────────────┘
-                     ▼
-                alpha_core               imports nothing internal
+                                  alpha_core       imports nothing internal
+-->
+```
+                                  alpha_core       imports nothing internal
 ```
 </details>
 
-**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, and `alpha_forecast` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_cli`, and **nothing imports them**.
+**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and lightweight public `alpha_cli` seams, and **nothing imports them**.
 
-**Enforcement:** eight `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode exactly these boundaries. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), between the format check and the type check. The contracts have been verified against the actual per-package `pyproject.toml` dependencies — declared deps, real imports, and contracts agree. See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
+**Enforcement:** twelve `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of heavy numeric, validation, engine, and model imports. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
 
 ## 3. Layer Responsibilities
 
@@ -77,12 +86,14 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | `alpha_strategies` | 1 — strategy | Pure decision signals (`{-1,0,1}`, trailing-window only) + vol-target sizing + the shared nautilus `Strategy` lifecycle. | `core` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_forecast` | 1 — model | Kronos foundation-model facade: vendored pinned weights code, typed `Forecaster` protocol, per-sample OHLCV paths, deterministic seeding, offline `FakeForecaster`. torch/pandas confined inside; importing the package never imports torch. See [ADR-0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md). | `core` |
+| `alpha_options` | 1 — analytics | Pure Black–Scholes pricing, Greeks, and implied volatility. | `core` |
+| `alpha_screener` | 1 — market edge | Typed Finnhub quote/news parsing plus the opt-in API-key-gated network adapter. | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
 | `alpha_cli` | 3 — compose | The **only** layer allowed to compose the engine with the gauntlet. Typer app; owns the deterministic run id, OOS stitch, gauntlet assembly, optimization, portfolio/cross-sectional, prop-firm, artifacts. Engine imports are lazy. | everything |
-| `alpha_mcp` | 4 — surface | stdio MCP server exposing the loop as ~10 tools. **Subprocesses the `alpha` CLI**, composes nothing. | `cli` |
-| `alpha_web` | 4 — surface | Local FastAPI + Jinja + SSE web IDE. **Subprocesses the `alpha` CLI**, composes nothing. | `cli` |
+| `alpha_mcp` | 4 — surface | stdio MCP server exposing exactly 12 tools: six data/backtest/validation/optimization actions, two forecast actions, prop-firm simulation, and three discovery/read tools. **Subprocesses the `alpha` CLI**, composes nothing. | `core`, public `cli` seams |
+| `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed Vite/React/Dockview SPA. Stable endpoints use strict Pydantic models and generated OpenAPI/TypeScript contracts. **Subprocesses the `alpha` CLI**, composes nothing. | `core`, public `cli` seams |
 
-The two surface layers depend on `alpha_cli` for the console-script entry and settings only; the actual engine/gauntlet work happens **out-of-process** via subprocess, so the heavyweight nautilus/Cython + multiprocessing cost never enters the server process. See **[ADR-0002](adr/0002-cli-sole-composer-subprocess-surfaces.md)**.
+The two surface layers use `alpha_core` settings and the public `alpha_cli.catalog` / `alpha_cli.run_store` seams for metadata and artifact discovery. Actual engine/gauntlet work happens **out-of-process** via subprocess, so heavyweight numeric, Nautilus, validation, and model stacks never enter the server processes. See **[ADR-0002](adr/0002-cli-sole-composer-subprocess-surfaces.md)**.
 
 ## 4. Data Flow
 
@@ -154,6 +165,7 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **TDD + strong typing.** Failing test → minimal code → green → atomic conventional commit. `mypy --strict` is a CI gate (with documented third-party overrides: `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*`, and the vendored `alpha_forecast._vendor.*`).
 - **Polars by default.** Polars is the dataframe; pandas appears *only* at two sanctioned edges — the tear-sheet renderer (`alpha_validation.tearsheet`) and the Kronos facade (`alpha_forecast.kronos`); numpy/scipy in the validation numeric layer (numpy/torch also inside `alpha_forecast`, never at its public seam).
 - **Model leakage is labeled, never silent.** Pretrained-forecaster runs record `pretrain` overlap vs the assumed training cutoff, warn loudly, and split eval metrics pre/post cutoff. → [ADR-0009](adr/0009-forecast-leakage-and-tier2-cost-policy.md)
+- **Model weights are local and machine-scoped.** The Kronos cache path and offline-only switch never enter run ids or manifests; missing offline weights fail loudly before network access. → [ADR-0010](adr/0010-local-kronos-weights-offline-policy.md)
 
 ## 6. Key Decisions (ADR index)
 
@@ -168,6 +180,7 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 | [0007](adr/0007-deterministic-run-id-and-seeds.md) | Content-addressed `run_id` + independent `SeedSequence` child seeds | Accepted |
 | [0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted |
 | [0009](adr/0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration for model strategies | Accepted |
+| [0010](adr/0010-local-kronos-weights-offline-policy.md) | Local Kronos weights and code-wired offline loading policy | Accepted |
 
 ## 7. References
 

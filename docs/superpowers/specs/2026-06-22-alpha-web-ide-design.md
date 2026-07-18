@@ -1,5 +1,10 @@
 # Design — `alpha-web`: a local web IDE over Project ALPHA (QuantPad parity Phase 4)
 
+> **Superseded (2026-07-18):** The server-rendered Jinja/HTMX surface described here was replaced
+> by the Vite/React/Dockview Workstation in
+> [`2026-07-16-alpha-workstation-design.md`](2026-07-16-alpha-workstation-design.md). See
+> [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for the hardened current state.
+
 ## Context
 
 The final QuantPad-parity surface: a **local web IDE**. Phases 1–3 gave ALPHA a Verdict, a

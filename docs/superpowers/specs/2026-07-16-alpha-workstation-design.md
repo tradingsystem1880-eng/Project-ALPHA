@@ -1,5 +1,10 @@
 # Design — ALPHA Quant Workstation: an institutional research & trading terminal
 
+> **Implemented-state pointer (2026-07-18):** This approved design remains a historical plan.
+> The shipped blotters use TanStack Table/Virtual rather than AG Grid, and frontend quality/assets
+> are mandatory CI gates. See [`CLAUDE.md`](../../../CLAUDE.md) and
+> [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for current behavior.
+
 ## Context
 
 Project ALPHA has a mature $0 Python quant backend and three surfaces over it: the `alpha` CLI
