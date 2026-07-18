@@ -91,6 +91,8 @@ def run(
         tokenizer=resolved_tokenizer,
         tokenizer_revision=resolved_tokenizer_rev,
         device=resolved_device,
+        hub_cache=settings.forecast_hub_cache,
+        local_files_only=settings.forecast_local_only,
     )
 
     try:
@@ -244,6 +246,8 @@ def evaluate(
         tokenizer=resolved_tokenizer,
         tokenizer_revision=resolved_tokenizer_rev,
         device=resolved_device,
+        hub_cache=settings.forecast_hub_cache,
+        local_files_only=settings.forecast_local_only,
     )
 
     try:

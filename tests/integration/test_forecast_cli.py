@@ -119,6 +119,35 @@ def test_forecast_run_fails_loud_below_context(
     assert "100" in result.output and "10" in result.output
 
 
+def test_forecast_run_threads_offline_settings_into_factory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from typing import Any
+
+    from alpha_cli import forecast_cmds
+    from alpha_forecast import FakeForecaster
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_FORECAST_HUB_CACHE", "data/models")
+    monkeypatch.setenv("ALPHA_FORECAST_LOCAL_ONLY", "1")
+    seed_store(tmp_path, symbol="SPY", n=30)
+
+    calls: list[dict[str, Any]] = []
+
+    def recording_factory(**kwargs: Any) -> FakeForecaster:
+        calls.append(kwargs)
+        return FakeForecaster()
+
+    # forecast_cmds binds the factory at import time — patch its module-level name
+    monkeypatch.setattr(forecast_cmds, "_forecaster_factory", recording_factory)
+
+    result = runner.invoke(app, _ARGS)
+    assert result.exit_code == 0, result.output
+    (call,) = calls
+    assert call["hub_cache"] == Path("data/models")
+    assert call["local_files_only"] is True
+
+
 def test_report_displays_forecast_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     seed_store(tmp_path, symbol="SPY", n=30)

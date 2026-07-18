@@ -142,6 +142,8 @@ def ensure_forecast_cache(
         tokenizer=settings.forecast_tokenizer,
         tokenizer_revision=settings.forecast_tokenizer_revision,
         device=settings.forecast_device,
+        hub_cache=settings.forecast_hub_cache,
+        local_files_only=settings.forecast_local_only,
     )
     master = seed & 0xFFFFFFFF
     rows: list[dict[str, Any]] = []
