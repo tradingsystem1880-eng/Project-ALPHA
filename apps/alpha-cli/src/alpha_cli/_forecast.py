@@ -34,6 +34,8 @@ def _forecaster_factory(
     tokenizer: str,
     tokenizer_revision: str,
     device: str,
+    hub_cache: Path | None = None,
+    local_files_only: bool = False,
 ) -> Forecaster:
     """``fake`` -> the offline double; anything else -> a HF id / local checkpoint path."""
     if model == "fake":
@@ -48,6 +50,8 @@ def _forecaster_factory(
         tokenizer_id=tokenizer,
         tokenizer_revision=tokenizer_revision,
         device=device,
+        cache_dir=hub_cache,
+        local_files_only=local_files_only,
     )
 
 

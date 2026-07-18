@@ -15,6 +15,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0007](0007-deterministic-run-id-and-seeds.md) | Content-addressed run id + independent child seeds | Accepted | 2026-06-26 |
 | [0008](0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted | 2026-07-04 |
 | [0009](0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration | Accepted | 2026-07-04 |
+| [0010](0010-local-kronos-weights-offline-policy.md) | Local Kronos weights + code-wired offline loading policy | Accepted | 2026-07-18 |
 
 ## Conventions
 

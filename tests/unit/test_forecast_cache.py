@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from alpha_cli import _forecast, _forecast_cache, _runner
 from alpha_core import DataError
-from alpha_forecast import Forecaster
+from alpha_forecast import FakeForecaster, Forecaster
 from tests.fixtures.forecast_fixtures import daily_bars
 
 
@@ -82,7 +83,7 @@ def test_ensure_cache_idempotent_and_dense_readback(
     calls = {"n": 0}
     real_factory = _forecast._forecaster_factory
 
-    def counting_factory(**kwargs: str) -> Forecaster:
+    def counting_factory(**kwargs: Any) -> Forecaster:
         calls["n"] += 1
         return real_factory(**kwargs)
 
@@ -108,6 +109,25 @@ def test_ensure_cache_idempotent_and_dense_readback(
             assert s in (-1, 0, 1)
         else:
             assert s is None
+
+
+def test_ensure_cache_threads_offline_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_FORECAST_MODEL", "fake")
+    monkeypatch.setenv("ALPHA_FORECAST_HUB_CACHE", "data/models")
+    monkeypatch.setenv("ALPHA_FORECAST_LOCAL_ONLY", "1")
+    calls: list[dict[str, Any]] = []
+
+    def recording_factory(**kwargs: Any) -> Forecaster:
+        calls.append(kwargs)
+        return FakeForecaster()
+
+    monkeypatch.setattr(_forecast, "_forecaster_factory", recording_factory)
+    _forecast_cache.ensure_forecast_cache(daily_bars(20), _kronos_spec(), data_dir=tmp_path, seed=7)
+    (call,) = calls
+    assert call["hub_cache"] == Path("data/models")
+    assert call["local_files_only"] is True
 
 
 def test_prepare_spec_noop_for_non_kronos(tmp_path: Path) -> None:
