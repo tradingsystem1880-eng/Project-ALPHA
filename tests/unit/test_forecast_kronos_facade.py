@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -130,6 +131,88 @@ def test_stubbed_round_trip_uses_batched_single_sample_calls(
     assert r.samples[0].close != r.samples[1].close  # stub drifts per-copy -> distinct paths
     assert r.origin_ts == bars[-1].ts
     assert all(t.weekday() < 5 for t in r.step_ts)
+
+
+class _RecordingLoader:
+    """Stands in for a vendored class: records ``from_pretrained`` kwargs, returns itself."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def from_pretrained(self, name_or_path: str, **kwargs: Any) -> _RecordingLoader:
+        self.calls.append({"name_or_path": name_or_path, **kwargs})
+        return self
+
+
+def test_from_pretrained_receives_cache_dir_and_local_files_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    tokenizer_loader, model_loader = _RecordingLoader(), _RecordingLoader()
+    monkeypatch.setattr("alpha_forecast._vendor.kronos.KronosTokenizer", tokenizer_loader)
+    monkeypatch.setattr("alpha_forecast._vendor.kronos.Kronos", model_loader)
+    monkeypatch.setattr("alpha_forecast._vendor.kronos.KronosPredictor", lambda *a, **k: (a, k))
+
+    offline = KronosForecaster(
+        model_id="NeoQuasar/Kronos-base",
+        model_revision="pinned-model-rev",
+        tokenizer_id="NeoQuasar/Kronos-Tokenizer-base",
+        tokenizer_revision="pinned-tok-rev",
+        device="cpu",
+        cache_dir=tmp_path,
+        local_files_only=True,
+    )
+    offline._load_predictor()
+    (tok_call,) = tokenizer_loader.calls
+    (model_call,) = model_loader.calls
+    assert tok_call == {
+        "name_or_path": "NeoQuasar/Kronos-Tokenizer-base",
+        "revision": "pinned-tok-rev",
+        "cache_dir": tmp_path,
+        "local_files_only": True,
+    }
+    assert model_call == {
+        "name_or_path": "NeoQuasar/Kronos-base",
+        "revision": "pinned-model-rev",
+        "cache_dir": tmp_path,
+        "local_files_only": True,
+    }
+
+    tokenizer_loader.calls.clear()
+    model_loader.calls.clear()
+    _forecaster()._load_predictor()  # defaults: hub cache untouched, network permitted
+    assert tokenizer_loader.calls[0]["cache_dir"] is None
+    assert tokenizer_loader.calls[0]["local_files_only"] is False
+    assert model_loader.calls[0]["cache_dir"] is None
+    assert model_loader.calls[0]["local_files_only"] is False
+
+
+def test_missing_local_weights_fail_loud_offline(tmp_path: Path) -> None:
+    f = KronosForecaster(
+        model_id="NeoQuasar/Kronos-base",
+        model_revision="main",
+        tokenizer_id="NeoQuasar/Kronos-Tokenizer-base",
+        tokenizer_revision="main",
+        device="cpu",
+        cache_dir=tmp_path,  # empty: no weights here
+        local_files_only=True,  # offline by construction — hub raises before any HTTP
+    )
+    with pytest.raises(DataError, match="NeoQuasar/Kronos-Tokenizer-base"):
+        f._load_predictor()
+
+
+def test_provenance_unchanged_by_cache_location(tmp_path: Path) -> None:
+    cached = KronosForecaster(
+        model_id="NeoQuasar/Kronos-small",
+        model_revision="main",
+        tokenizer_id="NeoQuasar/Kronos-Tokenizer-base",
+        tokenizer_revision="main",
+        device="cpu",
+        cache_dir=tmp_path,
+        local_files_only=True,
+    )
+    p = cached.provenance()
+    assert p == _forecaster().provenance()
+    assert "cache_dir" not in p and "local_files_only" not in p
 
 
 def test_provenance_reports_pin_and_determinism() -> None:

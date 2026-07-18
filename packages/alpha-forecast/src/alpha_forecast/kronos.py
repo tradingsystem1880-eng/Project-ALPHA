@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from importlib.metadata import version as _dist_version
+from pathlib import Path
 from typing import Any
 
 from alpha_core import Bar, DataError
@@ -32,8 +33,11 @@ class KronosForecaster:
     """Forecaster-protocol implementation backed by pretrained Kronos weights.
 
     ``model_id``/``tokenizer_id`` accept HuggingFace ids or local checkpoint paths (a
-    fine-tuned model drops in with no code change). The predictor is loaded lazily on the
-    first ``forecast()`` and cached for the lifetime of the instance.
+    fine-tuned model drops in with no code change). ``cache_dir`` points hub resolution at
+    a local weight cache and ``local_files_only`` forbids any network fetch (missing local
+    weights raise ``DataError``); both are machine-local execution details and deliberately
+    absent from ``provenance()`` — weight identity is (id, revision). The predictor is
+    loaded lazily on the first ``forecast()`` and cached for the lifetime of the instance.
     """
 
     def __init__(
@@ -46,6 +50,8 @@ class KronosForecaster:
         device: str,
         max_context: int = 512,
         clip: int = 5,
+        cache_dir: Path | None = None,
+        local_files_only: bool = False,
     ) -> None:
         self.model_id = model_id
         self.model_revision = model_revision
@@ -54,6 +60,8 @@ class KronosForecaster:
         self.device = device
         self.max_context = max_context
         self.clip = clip
+        self.cache_dir = cache_dir
+        self.local_files_only = local_files_only
         self._predictor_cache: Any = None
 
     def provenance(self) -> dict[str, Any]:
@@ -73,12 +81,31 @@ class KronosForecaster:
 
     def _load_predictor(self) -> Any:
         if self._predictor_cache is None:
+            from huggingface_hub.errors import LocalEntryNotFoundError
+
             from alpha_forecast._vendor.kronos import Kronos, KronosPredictor, KronosTokenizer
 
-            tokenizer = KronosTokenizer.from_pretrained(
-                self.tokenizer_id, revision=self.tokenizer_revision
-            )
-            model = Kronos.from_pretrained(self.model_id, revision=self.model_revision)
+            try:
+                tokenizer = KronosTokenizer.from_pretrained(
+                    self.tokenizer_id,
+                    revision=self.tokenizer_revision,
+                    cache_dir=self.cache_dir,
+                    local_files_only=self.local_files_only,
+                )
+                model = Kronos.from_pretrained(
+                    self.model_id,
+                    revision=self.model_revision,
+                    cache_dir=self.cache_dir,
+                    local_files_only=self.local_files_only,
+                )
+            except LocalEntryNotFoundError as err:
+                raise DataError(
+                    f"weights not in local cache {self.cache_dir}: "
+                    f"{self.tokenizer_id}@{self.tokenizer_revision} / "
+                    f"{self.model_id}@{self.model_revision} — download them with "
+                    f"'HF_HUB_CACHE={self.cache_dir} hf download <id>' or unset "
+                    "ALPHA_FORECAST_LOCAL_ONLY to allow hub fetches"
+                ) from err
             self._predictor_cache = KronosPredictor(
                 model, tokenizer, device=self.device, max_context=self.max_context, clip=self.clip
             )

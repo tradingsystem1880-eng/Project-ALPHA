@@ -3,15 +3,43 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
-from alpha_cli._forecast import forecast_seed, pretrain_overlap, run_forecast
+from alpha_cli._forecast import _forecaster_factory, forecast_seed, pretrain_overlap, run_forecast
 from alpha_core import DataError
 from alpha_forecast import FakeForecaster
+from alpha_forecast.kronos import KronosForecaster
 from tests.fixtures.forecast_fixtures import daily_bars
 
 _CUTOFF = date(2025, 8, 2)
+
+
+def test_factory_threads_hub_cache_and_local_only() -> None:
+    f = _forecaster_factory(
+        model="NeoQuasar/Kronos-base",
+        model_revision="rev",
+        tokenizer="NeoQuasar/Kronos-Tokenizer-base",
+        tokenizer_revision="rev",
+        device="cpu",
+        hub_cache=Path("/x/models"),
+        local_files_only=True,
+    )
+    assert isinstance(f, KronosForecaster)
+    assert f.cache_dir == Path("/x/models")
+    assert f.local_files_only is True
+
+    fake = _forecaster_factory(
+        model="fake",
+        model_revision="rev",
+        tokenizer="t",
+        tokenizer_revision="rev",
+        device="cpu",
+        hub_cache=Path("/x/models"),
+        local_files_only=True,
+    )
+    assert isinstance(fake, FakeForecaster)  # the offline double ignores hub knobs
 
 
 def test_forecast_seed_is_stable_and_derived() -> None:

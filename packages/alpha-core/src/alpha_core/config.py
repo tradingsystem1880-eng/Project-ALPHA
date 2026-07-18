@@ -28,3 +28,10 @@ class AlphaSettings(BaseSettings):
     forecast_device: str = "cpu"
     forecast_context: int = 400
     forecast_pretrain_cutoff: date = date(2025, 8, 2)
+    # Machine-local weight loading. hub_cache points HF resolution at a local cache dir
+    # (unset the var to disable — an empty string parses to Path(".")); local_only forbids
+    # any hub network call and fails loud when weights are missing. Both are execution
+    # details: they never enter run ids, manifests, or signal-cache keys — weight identity
+    # is pinned by (model id, revision hash) alone. See docs/adr/0010.
+    forecast_hub_cache: Path | None = None
+    forecast_local_only: bool = False
