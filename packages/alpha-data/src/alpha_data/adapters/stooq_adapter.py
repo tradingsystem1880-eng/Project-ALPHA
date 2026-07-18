@@ -113,6 +113,7 @@ def _fetch_stooq_text(url: str) -> str:
     """
     import http.cookiejar  # noqa: PLC0415
     import re  # noqa: PLC0415
+    import urllib.error  # noqa: PLC0415
     import urllib.parse  # noqa: PLC0415
     import urllib.request  # noqa: PLC0415
 
@@ -126,8 +127,16 @@ def _fetch_stooq_text(url: str) -> str:
             headers["Origin"] = "https://stooq.com"
             headers["Referer"] = url
         req = urllib.request.Request(target, data=data, headers=headers)
-        with opener.open(req, timeout=30) as resp:  # noqa: S310 — fixed https host
-            body: str = resp.read().decode("utf-8", "replace")
+        try:
+            with opener.open(req, timeout=30) as resp:  # noqa: S310 — fixed https host
+                body: str = resp.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as exc:
+            raise DataError(
+                f"Stooq anti-bot/transport rejected the request with HTTP {exc.code}; "
+                "use --source yfinance for equities/ETFs"
+            ) from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise DataError(f"Stooq transport failed: {exc}") from exc
         return body
 
     text = _get(url)
