@@ -17,6 +17,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from alpha_web import _invoke
 from alpha_web.api._common import data_dir
+from alpha_web.api.models import JobDetail, JobStatus, JobSummary
 
 router = APIRouter(prefix="/api", tags=["jobs"])
 
@@ -29,7 +30,7 @@ class LaunchRequest(BaseModel):
     args: str = ""
 
 
-@router.post("/jobs")
+@router.post("/jobs", response_model=JobStatus)
 def launch_job(req: LaunchRequest) -> dict[str, Any]:
     """Launch ``alpha <command> <args>`` as a background job. Returns its id + initial status."""
     argv = req.command.split() + shlex.split(req.args)
@@ -40,13 +41,13 @@ def launch_job(req: LaunchRequest) -> dict[str, Any]:
     return {"job_id": job.job_id, "status": job.status}
 
 
-@router.get("/jobs")
+@router.get("/jobs", response_model=list[JobSummary])
 def list_jobs() -> list[dict[str, Any]]:
     """All known jobs (live + this-session-finished), newest first."""
     return _invoke.list_jobs()
 
 
-@router.get("/jobs/{job_id}")
+@router.get("/jobs/{job_id}", response_model=JobDetail)
 def get_job(job_id: str) -> dict[str, Any]:
     """A single job's status + its buffered output lines (for a late-opening panel)."""
     job = _invoke.JOBS.get(job_id)
@@ -66,7 +67,7 @@ async def stream_job(job_id: str, request: Request) -> EventSourceResponse:
     return EventSourceResponse(_invoke.event_stream(job, start))
 
 
-@router.delete("/jobs/{job_id}")
+@router.delete("/jobs/{job_id}", response_model=JobStatus)
 def cancel_job(job_id: str) -> dict[str, Any]:
     """Cancel a running job (idempotent no-op if already finished)."""
     job = _invoke.cancel_job(job_id)

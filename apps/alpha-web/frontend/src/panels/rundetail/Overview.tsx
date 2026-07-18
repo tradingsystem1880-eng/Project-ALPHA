@@ -11,7 +11,8 @@ import { suggestions } from '../../explain/suggestions'
 import type { ValidateManifest } from '../../explain/types'
 import { verdictStories } from '../../explain/verdictStory'
 import { useSettings } from '../../state/settings'
-import { ExplainCard, MetricGrid, Section, SuggestionList, asObj } from './common'
+import { ExplainCard, MetricGrid, Section, SuggestionList } from './common'
+import { asObj } from './commonUtils'
 
 interface Props {
   manifest: ValidateManifest

@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _options
 from alpha_web.api._common import data_dir
+from alpha_web.api.models import OptionCurve, OptionGreeks
 
 router = APIRouter(prefix="/api", tags=["options"])
 
 
-@router.get("/options/greeks")
+@router.get("/options/greeks", response_model=OptionGreeks)
 def options_greeks(
     spot: float,
     strike: float,
@@ -30,7 +31,7 @@ def options_greeks(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@router.get("/options/iv")
+@router.get("/options/iv", response_model=OptionGreeks)
 def options_iv(
     spot: float,
     strike: float,
@@ -54,7 +55,7 @@ def options_iv(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@router.get("/options/curve")
+@router.get("/options/curve", response_model=OptionCurve)
 def options_curve(
     strike: float,
     vol: float,
@@ -62,7 +63,7 @@ def options_curve(
     rate: float = 0.05,
     kind: str = "call",
     width: float = 0.5,
-    points: int = 41,
+    points: Annotated[int, Query(ge=2, le=501)] = 41,
 ) -> dict[str, Any]:
     """Price + greeks across a spot range for the greeks-vs-spot chart."""
     try:

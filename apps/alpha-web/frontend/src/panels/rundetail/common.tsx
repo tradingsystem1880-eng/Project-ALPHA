@@ -2,38 +2,13 @@
 // the one component that renders any Explained story in the active explanation mode
 // (narrative teaches, terse annotates; the toggle lives in state/settings).
 
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import { Term } from '../../components/Term'
 import type { Explained, StatChip, Suggestion } from '../../explain/types'
 import { useSettings } from '../../state/settings'
 import { asNum, fmtNum, fmtPct } from '../../util/format'
-
-export { asNum, asStr } from '../../util/format'
-
-export type Dict = Record<string, unknown>
-export const asObj = (v: unknown): Dict | null =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Dict) : null
-
-/** Fetch a run artifact projection when its presence flag is set; null until loaded/absent.
- *  The one guarded-fetch effect every tab shares (missing artifacts stay silently null —
- *  the flags already say whether one exists). */
-export function useProjection<T>(enabled: boolean, runId: string, fetcher: () => Promise<T>): T | null {
-  const [value, setValue] = useState<T | null>(null)
-  useEffect(() => {
-    if (!enabled) return
-    let live = true
-    fetcher()
-      .then((v) => live && setValue(v))
-      .catch(() => {})
-    return () => {
-      live = false
-    }
-    // fetcher identity is per-render; the fetch is keyed by run + flag only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, runId])
-  return value
-}
+import type { Dict } from './commonUtils'
 
 export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
   return (

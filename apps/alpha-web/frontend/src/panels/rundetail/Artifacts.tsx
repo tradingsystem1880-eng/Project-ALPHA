@@ -3,7 +3,8 @@
 
 import { api } from '../../api/client'
 import type { ValidateManifest } from '../../explain/types'
-import { Section, asStr } from './common'
+import { Section } from './common'
+import { asStr } from './commonUtils'
 
 function reproCommand(m: ValidateManifest, kind: string, runId: string): string {
   const md = m.metadata ?? {}

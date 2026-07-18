@@ -23,7 +23,7 @@ import type {
 import { setSettings, useSettings } from '../../state/settings'
 import { Placeholder } from '../../components/Placeholder'
 import { openStrategyLab } from '../actions'
-import { asStr } from './common'
+import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
 import { ForecastDetail } from './ForecastDetail'
 import { ForecastEvalDetail } from './ForecastEvalDetail'

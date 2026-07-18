@@ -199,6 +199,48 @@ def tearsheet_file(run_id: str, *, data_dir: Path) -> Path | None:
 # run_record cache keyed on manifest path — invalidated by mtime, so the index endpoint re-reads
 # only changed manifests (the activity stream turns /api/runs into a per-event hot path).
 _RECORD_CACHE: dict[Path, tuple[float, dict[str, Any]]] = {}
+_READABLE_CACHE: dict[Path, tuple[float, bool]] = {}
+
+_REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
+    "backtest_run": ("equity_curve.parquet", "trades.parquet"),
+    "validate": ("equity_curve.parquet", "trades.parquet", "nulls.parquet", "tearsheet.html"),
+    "backtest_portfolio": ("equity_curve.parquet", "tearsheet.html"),
+    "backtest_cross_sectional": ("equity_curve.parquet", "tearsheet.html"),
+    "optim_grid": ("trials.parquet",),
+    "propfirm_run": ("propfirm_paths.parquet",),
+    "forecast_run": ("paths.parquet", "quantiles.parquet", "history.parquet"),
+    "forecast_eval": ("origins.parquet",),
+}
+
+
+def run_artifacts_readable(kind: str, run_id: str, *, data_dir: Path) -> bool:
+    """Whether a published manifest's required artifact set exists and can be opened."""
+    rdir = data_dir / kind / run_id
+    manifest_path = rdir / "manifest.json"
+    try:
+        mtime = manifest_path.stat().st_mtime
+    except OSError:
+        return False
+    cached = _READABLE_CACHE.get(manifest_path)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        # Pre-hardening/third-party manifests remain discoverable; current writers identify their
+        # schema and are held to the full command-specific artifact contract.
+        required = _REQUIRED_ARTIFACTS.get(str(manifest.get("command")), ())
+        if "schema_version" in manifest:
+            for filename in required:
+                path = rdir / filename
+                if filename.endswith(".parquet"):
+                    pl.read_parquet_schema(path)
+                else:
+                    path.read_text(encoding="utf-8")
+        readable = True
+    except (json.JSONDecodeError, OSError, pl.exceptions.PolarsError, UnicodeDecodeError):
+        readable = False
+    _READABLE_CACHE[manifest_path] = (mtime, readable)
+    return readable
 
 
 def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:

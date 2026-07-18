@@ -8,7 +8,8 @@ import { propfirmStories, propfirmSuggestions } from '../../explain/propfirm'
 import type { PropfirmManifest } from '../../explain/types'
 import { CHART } from '../../util/chartTheme'
 import { fmtPct } from '../../util/format'
-import { ExplainCard, Section, SuggestionList, useProjection } from './common'
+import { ExplainCard, Section, SuggestionList } from './common'
+import { useProjection } from './commonUtils'
 
 /** The three headline probabilities as horizontal magnitude bars (one hue, labeled ends). */
 function ProbBars({ m }: { m: PropfirmManifest }) {

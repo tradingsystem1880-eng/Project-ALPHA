@@ -9,7 +9,8 @@ import { TrialStrip } from '../../components/charts/TrialStrip'
 import { optimStories, optimSuggestions } from '../../explain/optim'
 import type { OptimManifest } from '../../explain/types'
 import { fmtNum } from '../../util/format'
-import { ExplainCard, Section, SuggestionList, useProjection } from './common'
+import { ExplainCard, Section, SuggestionList } from './common'
+import { useProjection } from './commonUtils'
 
 export function OptimDetail({
   manifest,

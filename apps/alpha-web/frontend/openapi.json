@@ -1,0 +1,3489 @@
+{
+  "components": {
+    "schemas": {
+      "Candle": {
+        "additionalProperties": false,
+        "properties": {
+          "c": {
+            "title": "C",
+            "type": "number"
+          },
+          "h": {
+            "title": "H",
+            "type": "number"
+          },
+          "l": {
+            "title": "L",
+            "type": "number"
+          },
+          "o": {
+            "title": "O",
+            "type": "number"
+          },
+          "t": {
+            "title": "T",
+            "type": "number"
+          },
+          "v": {
+            "title": "V",
+            "type": "number"
+          }
+        },
+        "required": [
+          "t",
+          "o",
+          "h",
+          "l",
+          "c",
+          "v"
+        ],
+        "title": "Candle",
+        "type": "object"
+      },
+      "Candles": {
+        "additionalProperties": false,
+        "properties": {
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/Candle"
+            },
+            "title": "Bars",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "snapshot_id",
+          "bars"
+        ],
+        "title": "Candles",
+        "type": "object"
+      },
+      "CommandArgument": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nargs": {
+            "title": "Nargs",
+            "type": "integer"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "required",
+          "nargs"
+        ],
+        "title": "CommandArgument",
+        "type": "object"
+      },
+      "CommandDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "$ref": "#/components/schemas/CommandArgument"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/CommandOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "run_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Type"
+          }
+        },
+        "required": [
+          "id",
+          "run_type",
+          "args",
+          "options"
+        ],
+        "title": "CommandDefinition",
+        "type": "object"
+      },
+      "CommandOption": {
+        "additionalProperties": false,
+        "properties": {
+          "choices": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choices"
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          },
+          "help": {
+            "title": "Help",
+            "type": "string"
+          },
+          "multiple": {
+            "title": "Multiple",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "flag",
+          "type",
+          "default",
+          "required",
+          "multiple",
+          "help",
+          "choices"
+        ],
+        "title": "CommandOption",
+        "type": "object"
+      },
+      "Deleted": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "Deleted",
+        "type": "object"
+      },
+      "EquitySeries": {
+        "additionalProperties": false,
+        "properties": {
+          "drawdown": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Drawdown",
+            "type": "array"
+          },
+          "equity": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Equity",
+            "type": "array"
+          },
+          "ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ts",
+          "equity",
+          "drawdown"
+        ],
+        "title": "EquitySeries",
+        "type": "object"
+      },
+      "ForecastOrigins": {
+        "additionalProperties": false,
+        "properties": {
+          "cover50": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Cover50",
+            "type": "array"
+          },
+          "cover80": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Cover80",
+            "type": "array"
+          },
+          "cover90": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Cover90",
+            "type": "array"
+          },
+          "crps": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Crps",
+            "type": "array"
+          },
+          "crps_bootstrap": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Crps Bootstrap",
+            "type": "array"
+          },
+          "crps_rw": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Crps Rw",
+            "type": "array"
+          },
+          "hit": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Hit",
+            "type": "array"
+          },
+          "median_end_return": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Median End Return",
+            "type": "array"
+          },
+          "origin_ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Origin Ts",
+            "type": "array"
+          },
+          "pre_cutoff": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Pre Cutoff",
+            "type": "array"
+          },
+          "realized_end_return": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Realized End Return",
+            "type": "array"
+          }
+        },
+        "required": [
+          "origin_ts",
+          "pre_cutoff",
+          "crps",
+          "crps_rw",
+          "crps_bootstrap",
+          "realized_end_return",
+          "median_end_return",
+          "hit",
+          "cover50",
+          "cover80",
+          "cover90"
+        ],
+        "title": "ForecastOrigins",
+        "type": "object"
+      },
+      "ForecastPath": {
+        "additionalProperties": false,
+        "properties": {
+          "closes": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Closes",
+            "type": "array"
+          },
+          "sample": {
+            "title": "Sample",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sample",
+          "closes"
+        ],
+        "title": "ForecastPath",
+        "type": "object"
+      },
+      "ForecastPaths": {
+        "additionalProperties": false,
+        "properties": {
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastPath"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "samples",
+          "ts"
+        ],
+        "title": "ForecastPaths",
+        "type": "object"
+      },
+      "ForecastSeries": {
+        "additionalProperties": false,
+        "properties": {
+          "forecast": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Forecast",
+            "type": "array"
+          },
+          "forecast_ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Forecast Ts",
+            "type": "array"
+          },
+          "history": {
+            "items": {
+              "type": "number"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "history_ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "History Ts",
+            "type": "array"
+          },
+          "mean": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Mean",
+            "type": "array"
+          },
+          "q05": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Q05",
+            "type": "array"
+          },
+          "q25": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Q25",
+            "type": "array"
+          },
+          "q75": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Q75",
+            "type": "array"
+          },
+          "q95": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Q95",
+            "type": "array"
+          }
+        },
+        "required": [
+          "history_ts",
+          "history",
+          "forecast_ts",
+          "forecast",
+          "q05",
+          "q25",
+          "q75",
+          "q95",
+          "mean"
+        ],
+        "title": "ForecastSeries",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JobDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "n_lines": {
+            "title": "N Lines",
+            "type": "integer"
+          },
+          "returncode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returncode"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "command",
+          "kind",
+          "status",
+          "created_at",
+          "run_id",
+          "returncode",
+          "n_lines",
+          "lines"
+        ],
+        "title": "JobDetail",
+        "type": "object"
+      },
+      "JobStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "JobStatus",
+        "type": "object"
+      },
+      "JobSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "n_lines": {
+            "title": "N Lines",
+            "type": "integer"
+          },
+          "returncode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returncode"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "command",
+          "kind",
+          "status",
+          "created_at",
+          "run_id",
+          "returncode",
+          "n_lines"
+        ],
+        "title": "JobSummary",
+        "type": "object"
+      },
+      "LaunchRequest": {
+        "description": "Launch body: a command path (e.g. ``\"backtest run\"``) + its remaining args, or a bare\n``args`` string (empty ``command``) for the free-form console.",
+        "properties": {
+          "args": {
+            "default": "",
+            "title": "Args",
+            "type": "string"
+          },
+          "command": {
+            "default": "",
+            "title": "Command",
+            "type": "string"
+          }
+        },
+        "title": "LaunchRequest",
+        "type": "object"
+      },
+      "NullTier": {
+        "additionalProperties": false,
+        "properties": {
+          "statistics": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Statistics",
+            "type": "array"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "statistics"
+        ],
+        "title": "NullTier",
+        "type": "object"
+      },
+      "NullTiers": {
+        "additionalProperties": false,
+        "properties": {
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/NullTier"
+            },
+            "title": "Tiers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tiers"
+        ],
+        "title": "NullTiers",
+        "type": "object"
+      },
+      "OptimTrial": {
+        "additionalProperties": false,
+        "properties": {
+          "returns": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Returns",
+            "type": "array"
+          },
+          "trial": {
+            "title": "Trial",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trial",
+          "returns"
+        ],
+        "title": "OptimTrial",
+        "type": "object"
+      },
+      "OptimTrials": {
+        "additionalProperties": false,
+        "properties": {
+          "trials": {
+            "items": {
+              "$ref": "#/components/schemas/OptimTrial"
+            },
+            "title": "Trials",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trials"
+        ],
+        "title": "OptimTrials",
+        "type": "object"
+      },
+      "OptionCurve": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "number"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/OptionCurvePoint"
+            },
+            "minItems": 2,
+            "title": "Points",
+            "type": "array"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": "number"
+          },
+          "strike": {
+            "title": "Strike",
+            "type": "number"
+          },
+          "vol": {
+            "title": "Vol",
+            "type": "number"
+          }
+        },
+        "required": [
+          "strike",
+          "vol",
+          "days",
+          "rate",
+          "kind",
+          "points"
+        ],
+        "title": "OptionCurve",
+        "type": "object"
+      },
+      "OptionCurvePoint": {
+        "additionalProperties": false,
+        "properties": {
+          "delta": {
+            "title": "Delta",
+            "type": "number"
+          },
+          "gamma": {
+            "title": "Gamma",
+            "type": "number"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "spot": {
+            "title": "Spot",
+            "type": "number"
+          },
+          "theta": {
+            "title": "Theta",
+            "type": "number"
+          },
+          "vega": {
+            "title": "Vega",
+            "type": "number"
+          }
+        },
+        "required": [
+          "spot",
+          "price",
+          "delta",
+          "gamma",
+          "vega",
+          "theta"
+        ],
+        "title": "OptionCurvePoint",
+        "type": "object"
+      },
+      "OptionGreeks": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "number"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "number"
+          },
+          "gamma": {
+            "title": "Gamma",
+            "type": "number"
+          },
+          "implied_vol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Implied Vol"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "market_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Price"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": "number"
+          },
+          "rho": {
+            "title": "Rho",
+            "type": "number"
+          },
+          "spot": {
+            "title": "Spot",
+            "type": "number"
+          },
+          "strike": {
+            "title": "Strike",
+            "type": "number"
+          },
+          "theta": {
+            "title": "Theta",
+            "type": "number"
+          },
+          "vega": {
+            "title": "Vega",
+            "type": "number"
+          },
+          "vol": {
+            "title": "Vol",
+            "type": "number"
+          }
+        },
+        "required": [
+          "spot",
+          "strike",
+          "rate",
+          "vol",
+          "days",
+          "kind",
+          "price",
+          "delta",
+          "gamma",
+          "vega",
+          "theta",
+          "rho"
+        ],
+        "title": "OptionGreeks",
+        "type": "object"
+      },
+      "ParamDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "number"
+          },
+          "help": {
+            "title": "Help",
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "max_exclusive": {
+            "title": "Max Exclusive",
+            "type": "boolean"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "min_exclusive": {
+            "title": "Min Exclusive",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "default",
+          "min",
+          "max",
+          "min_exclusive",
+          "max_exclusive",
+          "help"
+        ],
+        "title": "ParamDefinition",
+        "type": "object"
+      },
+      "PropfirmPathColumns": {
+        "additionalProperties": false,
+        "properties": {
+          "busted": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Busted",
+            "type": "array"
+          },
+          "days_to_pass": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Days To Pass",
+            "type": "array"
+          },
+          "passed": {
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Passed",
+            "type": "array"
+          },
+          "payout": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Payout",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passed",
+          "busted",
+          "days_to_pass",
+          "payout"
+        ],
+        "title": "PropfirmPathColumns",
+        "type": "object"
+      },
+      "PropfirmPaths": {
+        "additionalProperties": false,
+        "properties": {
+          "paths": {
+            "$ref": "#/components/schemas/PropfirmPathColumns"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "PropfirmPaths",
+        "type": "object"
+      },
+      "ResearchReport": {
+        "additionalProperties": false,
+        "properties": {
+          "n_bars": {
+            "title": "N Bars",
+            "type": "integer"
+          },
+          "ranked": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchRow"
+            },
+            "title": "Ranked",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "n_bars",
+          "ranked"
+        ],
+        "title": "ResearchReport",
+        "type": "object"
+      },
+      "ResearchRow": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "final_equity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Equity"
+          },
+          "n_trades": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Trades"
+          },
+          "strategy": {
+            "title": "Strategy",
+            "type": "string"
+          },
+          "total_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Return"
+          }
+        },
+        "required": [
+          "strategy",
+          "total_return",
+          "error"
+        ],
+        "title": "ResearchRow",
+        "type": "object"
+      },
+      "RiskReport": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/RiskScenario"
+            },
+            "title": "Scenarios",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "confidence",
+          "scenarios"
+        ],
+        "title": "RiskReport",
+        "type": "object"
+      },
+      "RiskScenario": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_vol": {
+            "title": "Annual Vol",
+            "type": "number"
+          },
+          "expected_shortfall": {
+            "title": "Expected Shortfall",
+            "type": "number"
+          },
+          "max_drawdown": {
+            "title": "Max Drawdown",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "total_return": {
+            "title": "Total Return",
+            "type": "number"
+          },
+          "value_at_risk": {
+            "title": "Value At Risk",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "sharpe",
+          "annual_vol",
+          "max_drawdown",
+          "value_at_risk",
+          "expected_shortfall",
+          "total_return"
+        ],
+        "title": "RiskScenario",
+        "type": "object"
+      },
+      "RunDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "has_equity": {
+            "title": "Has Equity",
+            "type": "boolean"
+          },
+          "has_forecast": {
+            "title": "Has Forecast",
+            "type": "boolean"
+          },
+          "has_forecast_paths": {
+            "title": "Has Forecast Paths",
+            "type": "boolean"
+          },
+          "has_nulls": {
+            "title": "Has Nulls",
+            "type": "boolean"
+          },
+          "has_origins": {
+            "title": "Has Origins",
+            "type": "boolean"
+          },
+          "has_propfirm_paths": {
+            "title": "Has Propfirm Paths",
+            "type": "boolean"
+          },
+          "has_tearsheet": {
+            "title": "Has Tearsheet",
+            "type": "boolean"
+          },
+          "has_trades": {
+            "title": "Has Trades",
+            "type": "boolean"
+          },
+          "has_trials": {
+            "title": "Has Trials",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "manifest": {
+            "additionalProperties": true,
+            "title": "Manifest",
+            "type": "object"
+          },
+          "mtime": {
+            "title": "Mtime",
+            "type": "number"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind",
+          "mtime",
+          "manifest",
+          "has_equity",
+          "has_trades",
+          "has_tearsheet",
+          "has_forecast",
+          "has_nulls",
+          "has_trials",
+          "has_forecast_paths",
+          "has_propfirm_paths",
+          "has_origins"
+        ],
+        "title": "RunDetail",
+        "type": "object"
+      },
+      "RunList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "items"
+        ],
+        "title": "RunList",
+        "type": "object"
+      },
+      "RunListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "mtime": {
+            "title": "Mtime",
+            "type": "number"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbols"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind",
+          "command",
+          "label",
+          "symbol",
+          "symbols",
+          "passed",
+          "verdict",
+          "mtime"
+        ],
+        "title": "RunListItem",
+        "type": "object"
+      },
+      "ScreenerNews": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenerNewsItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "items"
+        ],
+        "title": "ScreenerNews",
+        "type": "object"
+      },
+      "ScreenerNewsItem": {
+        "additionalProperties": false,
+        "properties": {
+          "datetime": {
+            "title": "Datetime",
+            "type": "integer"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "headline",
+          "source",
+          "url",
+          "datetime",
+          "summary"
+        ],
+        "title": "ScreenerNewsItem",
+        "type": "object"
+      },
+      "ScreenerQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "change": {
+            "title": "Change",
+            "type": "number"
+          },
+          "current": {
+            "title": "Current",
+            "type": "number"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "open": {
+            "title": "Open",
+            "type": "number"
+          },
+          "percent_change": {
+            "title": "Percent Change",
+            "type": "number"
+          },
+          "prev_close": {
+            "title": "Prev Close",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "current",
+          "change",
+          "percent_change",
+          "high",
+          "low",
+          "open",
+          "prev_close"
+        ],
+        "title": "ScreenerQuote",
+        "type": "object"
+      },
+      "StrategyDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "has_tier1_surrogate": {
+            "title": "Has Tier1 Surrogate",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/ParamDefinition"
+            },
+            "title": "Params",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "params",
+          "has_tier1_surrogate"
+        ],
+        "title": "StrategyDefinition",
+        "type": "object"
+      },
+      "Symbols": {
+        "additionalProperties": false,
+        "properties": {
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols"
+        ],
+        "title": "Symbols",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WorkspaceBody": {
+        "description": "A workspace to save: a display name, the linked context, and the Dockview layout.",
+        "properties": {
+          "dockview": {
+            "additionalProperties": true,
+            "title": "Dockview",
+            "type": "object"
+          },
+          "linked_context": {
+            "$ref": "#/components/schemas/WorkspaceLinkedContext",
+            "default": {}
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "dockview"
+        ],
+        "title": "WorkspaceBody",
+        "type": "object"
+      },
+      "WorkspaceDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "dockview": {
+            "additionalProperties": true,
+            "title": "Dockview",
+            "type": "object"
+          },
+          "linked_context": {
+            "$ref": "#/components/schemas/WorkspaceLinkedContext"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated"
+          }
+        },
+        "required": [
+          "name",
+          "linked_context",
+          "dockview"
+        ],
+        "title": "WorkspaceDocument",
+        "type": "object"
+      },
+      "WorkspaceLinkedContext": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          }
+        },
+        "title": "WorkspaceLinkedContext",
+        "type": "object"
+      },
+      "WorkspaceMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "updated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "updated"
+        ],
+        "title": "WorkspaceMeta",
+        "type": "object"
+      },
+      "WorkspaceSaved": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "WorkspaceSaved",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Project ALPHA \u2014 Workstation",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "description": "Serve the built single-page workstation.",
+        "operationId": "index__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Index"
+      }
+    },
+    "/api/activity/stream": {
+      "get": {
+        "description": "SSE: ``snapshot``, then ``run_added/run_updated`` + ``job_*`` diffs each poll tick.\n\n``max_events`` bounds the stream for tests/diagnostics; browsers omit it and stream forever.",
+        "operationId": "stream_activity_api_activity_stream_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "poll",
+            "required": false,
+            "schema": {
+              "default": 1.5,
+              "title": "Poll",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_events",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Events"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Activity",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
+    "/api/candles/{symbol}": {
+      "get": {
+        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).",
+        "operationId": "candles_api_candles__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "snapshot",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Snapshot"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Candles"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Candles",
+        "tags": [
+          "candles"
+        ]
+      }
+    },
+    "/api/commands": {
+      "get": {
+        "description": "The CLI command tree, each annotated with the run-type dir it writes (``None`` = no run).",
+        "operationId": "commands_api_commands_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CommandDefinition"
+                  },
+                  "title": "Response Commands Api Commands Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Commands",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "description": "All known jobs (live + this-session-finished), newest first.",
+        "operationId": "list_jobs_api_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobSummary"
+                  },
+                  "title": "Response List Jobs Api Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Jobs",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "post": {
+        "description": "Launch ``alpha <command> <args>`` as a background job. Returns its id + initial status.",
+        "operationId": "launch_job_api_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Launch Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "delete": {
+        "description": "Cancel a running job (idempotent no-op if already finished).",
+        "operationId": "cancel_job_api_jobs__job_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Job",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "get": {
+        "description": "A single job's status + its buffered output lines (for a late-opening panel).",
+        "operationId": "get_job_api_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/jobs/{job_id}/stream": {
+      "get": {
+        "description": "SSE of a job's output; a reconnect with ``Last-Event-ID`` replays only the missed lines.",
+        "operationId": "stream_job_api_jobs__job_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/options/curve": {
+      "get": {
+        "description": "Price + greeks across a spot range for the greeks-vs-spot chart.",
+        "operationId": "options_curve_api_options_curve_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strike",
+            "required": true,
+            "schema": {
+              "title": "Strike",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vol",
+            "required": true,
+            "schema": {
+              "title": "Vol",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30.0,
+              "title": "Days",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rate",
+            "required": false,
+            "schema": {
+              "default": 0.05,
+              "title": "Rate",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "call",
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "width",
+            "required": false,
+            "schema": {
+              "default": 0.5,
+              "title": "Width",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "points",
+            "required": false,
+            "schema": {
+              "default": 41,
+              "maximum": 501,
+              "minimum": 2,
+              "title": "Points",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionCurve"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Options Curve",
+        "tags": [
+          "options"
+        ]
+      }
+    },
+    "/api/options/greeks": {
+      "get": {
+        "description": "Price + delta/gamma/vega/theta/rho for one European option.",
+        "operationId": "options_greeks_api_options_greeks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "spot",
+            "required": true,
+            "schema": {
+              "title": "Spot",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "strike",
+            "required": true,
+            "schema": {
+              "title": "Strike",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vol",
+            "required": true,
+            "schema": {
+              "title": "Vol",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30.0,
+              "title": "Days",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rate",
+            "required": false,
+            "schema": {
+              "default": 0.05,
+              "title": "Rate",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "call",
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionGreeks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Options Greeks",
+        "tags": [
+          "options"
+        ]
+      }
+    },
+    "/api/options/iv": {
+      "get": {
+        "description": "The implied volatility that reprices the option to ``price`` (+ greeks at that vol).",
+        "operationId": "options_iv_api_options_iv_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "spot",
+            "required": true,
+            "schema": {
+              "title": "Spot",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "strike",
+            "required": true,
+            "schema": {
+              "title": "Strike",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "price",
+            "required": true,
+            "schema": {
+              "title": "Price",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30.0,
+              "title": "Days",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rate",
+            "required": false,
+            "schema": {
+              "default": 0.05,
+              "title": "Rate",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "call",
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionGreeks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Options Iv",
+        "tags": [
+          "options"
+        ]
+      }
+    },
+    "/api/research/compare": {
+      "get": {
+        "description": "Backtest each strategy on ``symbol`` and rank by total return (slow \u2014 runs the engine).",
+        "operationId": "research_compare_api_research_compare_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "strategies",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Strategies",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Compare",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/risk/scenario": {
+      "get": {
+        "description": "Vol-scaling + tail-shock scenarios for a run (422 if it has no equity curve).",
+        "operationId": "risk_scenario_api_risk_scenario_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confidence",
+            "required": false,
+            "schema": {
+              "default": 0.95,
+              "exclusiveMaximum": 1.0,
+              "exclusiveMinimum": 0.5,
+              "title": "Confidence",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Risk Scenario",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/api/runs": {
+      "get": {
+        "description": "Filtered, newest-first, paginated run index for the run browser.",
+        "operationId": "list_runs_api_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verdict"
+            }
+          },
+          {
+            "in": "query",
+            "name": "passed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Passed"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}": {
+      "get": {
+        "description": "Full manifest + kind/mtime + artifact-presence flags.",
+        "operationId": "run_detail_api_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Detail",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/equity": {
+      "get": {
+        "description": "The run's equity curve as ``{ts, equity, drawdown}`` (empty lists when it wrote none).",
+        "operationId": "run_equity_api_runs__run_id__equity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquitySeries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Equity",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/forecast": {
+      "get": {
+        "description": "A forecast run's history + forecast series (+ quantile bands). 404 otherwise.",
+        "operationId": "run_forecast_api_runs__run_id__forecast_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastSeries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Forecast",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/forecast/paths": {
+      "get": {
+        "description": "The first ``n`` (clamped to 40) sampled close paths of a forecast run. 404 otherwise.",
+        "operationId": "run_forecast_paths_api_runs__run_id__forecast_paths_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "n",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 40,
+              "minimum": 1,
+              "title": "N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastPaths"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Forecast Paths",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/nulls": {
+      "get": {
+        "description": "A gauntlet run's raw per-tier null distributions. 404 when it wrote none.",
+        "operationId": "run_nulls_api_runs__run_id__nulls_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NullTiers"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Nulls",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/origins": {
+      "get": {
+        "description": "A forecast-eval run's per-origin skill scores, columnar. 404 when it wrote none.",
+        "operationId": "run_origins_api_runs__run_id__origins_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastOrigins"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Origins",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/propfirm-paths": {
+      "get": {
+        "description": "A prop-firm run's per-path Monte-Carlo outcomes, columnar. 404 when it wrote none.",
+        "operationId": "run_propfirm_paths_api_runs__run_id__propfirm_paths_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropfirmPaths"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Propfirm Paths",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/tearsheet": {
+      "get": {
+        "description": "The run's rendered quantstats tear sheet (embedded in Run Detail via an iframe).",
+        "operationId": "run_tearsheet_api_runs__run_id__tearsheet_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Tearsheet",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/trades": {
+      "get": {
+        "description": "The run's trade-log rows (``[]`` when it wrote none).",
+        "operationId": "run_trades_api_runs__run_id__trades_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Run Trades Api Runs  Run Id  Trades Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Trades",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/trials": {
+      "get": {
+        "description": "A sweep's per-config OOS return streams. 404 when it wrote none.",
+        "operationId": "run_trials_api_runs__run_id__trials_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimTrials"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Trials",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/screener/news": {
+      "get": {
+        "description": "Recent company news for ``symbol`` (503 when unconfigured).",
+        "operationId": "screener_news_api_screener_news_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenerNews"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Screener News",
+        "tags": [
+          "screener"
+        ]
+      }
+    },
+    "/api/screener/quote": {
+      "get": {
+        "description": "A live quote for ``symbol`` (503 when the finnhub key/network is missing).",
+        "operationId": "screener_quote_api_screener_quote_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenerQuote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Screener Quote",
+        "tags": [
+          "screener"
+        ]
+      }
+    },
+    "/api/strategies": {
+      "get": {
+        "description": "Registered strategies + their tunable ``--param`` axes.",
+        "operationId": "strategies_api_strategies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategyDefinition"
+                  },
+                  "title": "Response Strategies Api Strategies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Strategies",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/symbols": {
+      "get": {
+        "description": "Every symbol with stored bars.",
+        "operationId": "symbols_api_symbols_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Symbols"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Symbols",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/workspaces": {
+      "get": {
+        "description": "Every saved workspace (``{slug, name, updated}``).",
+        "operationId": "list_workspaces_api_workspaces_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceMeta"
+                  },
+                  "title": "Response List Workspaces Api Workspaces Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Workspaces",
+        "tags": [
+          "workspaces"
+        ]
+      },
+      "post": {
+        "description": "Save (upsert) a workspace under a slug derived from its name.",
+        "operationId": "save_workspace_api_workspaces_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Workspace",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/workspaces/{slug}": {
+      "delete": {
+        "description": "Delete a workspace (idempotent).",
+        "operationId": "delete_workspace_api_workspaces__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Workspace",
+        "tags": [
+          "workspaces"
+        ]
+      },
+      "get": {
+        "description": "The full workspace document to restore.",
+        "operationId": "get_workspace_api_workspaces__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workspace",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/app": {
+      "get": {
+        "description": "Alias for the workstation (same SPA as ``/``).",
+        "operationId": "workstation_app_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workstation"
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Healthz Healthz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz"
+      }
+    }
+  }
+}

@@ -8,7 +8,8 @@ import { IntervalBar } from '../../components/charts/IntervalBar'
 import { portfolioStories, portfolioSuggestions } from '../../explain/portfolio'
 import type { PortfolioManifest } from '../../explain/types'
 import { fmtNum } from '../../util/format'
-import { ExplainCard, MetricGrid, Section, SuggestionList, asObj } from './common'
+import { ExplainCard, MetricGrid, Section, SuggestionList } from './common'
+import { asObj } from './commonUtils'
 
 export function PortfolioDetail({
   manifest,

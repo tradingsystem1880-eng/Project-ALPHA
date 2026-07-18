@@ -16,6 +16,7 @@ from alpha_core import DataError
 from alpha_web._atomic import write_text
 
 _SLUG_RE = re.compile(r"[^a-z0-9-]+")
+_VALID_SLUG_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
 def _dir(data_dir: Path) -> Path:
@@ -31,7 +32,7 @@ def slugify(name: str) -> str:
 
 
 def _path(data_dir: Path, slug: str) -> Path:
-    if not slug or "/" in slug or "\\" in slug or ".." in slug:
+    if _VALID_SLUG_RE.fullmatch(slug) is None:
         raise DataError(f"invalid workspace slug {slug!r}")
     return _dir(data_dir) / f"{slug}.json"
 

@@ -48,3 +48,9 @@ def test_unusable_name_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         "/api/workspaces", json={"name": "!!!", "dockview": {}}
     )
     assert resp.status_code == 422
+
+
+def test_invalid_path_slug_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/workspaces/Not_Valid").status_code == 422
+    assert client.delete("/api/workspaces/Not_Valid").status_code == 422

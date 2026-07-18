@@ -10,7 +10,8 @@ import { NullHistogram } from '../../components/charts/NullHistogram'
 import { PercentileGauge } from '../../components/charts/PercentileGauge'
 import { gateStories } from '../../explain/gates'
 import type { ValidateManifest } from '../../explain/types'
-import { ExplainCard, Section, useProjection } from './common'
+import { ExplainCard, Section } from './common'
+import { useProjection } from './commonUtils'
 
 export function Gates({
   manifest,

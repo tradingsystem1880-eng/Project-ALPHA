@@ -157,6 +157,21 @@ def test_trades_endpoint_empty_without_log(tmp_path: Path, monkeypatch: pytest.M
     assert _client(tmp_path, monkeypatch).get("/api/runs/cccc000000000003/trades").json() == []
 
 
+def test_optional_series_are_404_for_unknown_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    unknown = "deadbeefdeadbeef"
+    assert client.get(f"/api/runs/{unknown}/equity").status_code == 404
+    assert client.get(f"/api/runs/{unknown}/trades").status_code == 404
+
+
+def test_run_pagination_bounds_are_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    for query in ("limit=0", "limit=501", "offset=-1"):
+        assert client.get(f"/api/runs?{query}").status_code == 422
+
+
 def _write_returns_equity(data_dir: Path, kind: str, run_id: str, returns: list[float]) -> None:
     """Seed a portfolio/cross-sectional run's ``equity_curve.parquet`` (N+1 rows, base 1.0)."""
     rdir = data_dir / kind / run_id
@@ -284,13 +299,13 @@ def test_forecast_paths_returns_first_n_samples(
     assert len(body["ts"]) == 3 and body["ts"] == sorted(body["ts"])
 
 
-def test_forecast_paths_default_and_clamp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_forecast_paths_default_and_bounds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     _write_forecast_run(tmp_path, "ffff000000000009", n_samples=50)
     client = TestClient(create_app())
     assert len(client.get("/api/runs/ffff000000000009/forecast/paths").json()["samples"]) == 20
-    assert len(client.get("/api/runs/ffff000000000009/forecast/paths?n=45").json()["samples"]) == 40
-    assert len(client.get("/api/runs/ffff000000000009/forecast/paths?n=0").json()["samples"]) == 1
+    assert client.get("/api/runs/ffff000000000009/forecast/paths?n=45").status_code == 422
+    assert client.get("/api/runs/ffff000000000009/forecast/paths?n=0").status_code == 422
 
 
 def test_forecast_paths_404_when_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

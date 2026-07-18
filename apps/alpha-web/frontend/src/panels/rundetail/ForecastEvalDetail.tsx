@@ -6,7 +6,8 @@ import { api } from '../../api/client'
 import { OriginsChart } from '../../components/charts/OriginsChart'
 import { forecastStories, forecastSuggestions } from '../../explain/forecast'
 import type { ForecastManifest } from '../../explain/types'
-import { ExplainCard, Section, SuggestionList, useProjection } from './common'
+import { ExplainCard, Section, SuggestionList } from './common'
+import { useProjection } from './commonUtils'
 
 export function ForecastEvalDetail({
   manifest,

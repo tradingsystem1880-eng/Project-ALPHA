@@ -23,7 +23,7 @@ import anyio
 
 from alpha_cli.run_store import RUN_DIRS
 from alpha_web import _invoke
-from alpha_web._runs import run_record
+from alpha_web._runs import run_artifacts_readable, run_record
 
 _POLL_MIN = 0.05
 _POLL_MAX = 10.0
@@ -44,6 +44,8 @@ def snapshot_runs(data_dir: Path) -> dict[tuple[str, str], float]:
         for rdir in base.iterdir():
             mpath = rdir / "manifest.json"
             try:
+                if not run_artifacts_readable(sub, rdir.name, data_dir=data_dir):
+                    continue
                 snap[(sub, rdir.name)] = mpath.stat().st_mtime
             except OSError:
                 continue  # no manifest yet (partial write) or dir vanished — invisible this tick

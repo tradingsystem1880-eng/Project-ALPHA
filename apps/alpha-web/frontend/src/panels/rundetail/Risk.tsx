@@ -8,7 +8,8 @@ import type { RiskReport } from '../../api/types'
 import { Term } from '../../components/Term'
 import type { ValidateManifest } from '../../explain/types'
 import { fmtNum, fmtPct } from '../../util/format'
-import { Metric, Section, asObj } from './common'
+import { Metric, Section } from './common'
+import { asObj } from './commonUtils'
 
 export function Risk({ manifest, runId }: { manifest: ValidateManifest; runId: string }) {
   const oos = asObj(manifest.oos_metrics)

@@ -36,3 +36,10 @@ def test_bad_input_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
         "/api/options/greeks", params={"spot": 100, "strike": 100, "vol": -0.2}
     )
     assert resp.status_code == 422
+
+
+def test_curve_point_bounds_are_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    base = "/api/options/curve?strike=100&vol=.2"
+    assert client.get(f"{base}&points=1").status_code == 422
+    assert client.get(f"{base}&points=502").status_code == 422

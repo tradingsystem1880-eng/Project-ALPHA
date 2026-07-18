@@ -4,7 +4,6 @@
 import type { IDockviewPanelProps } from 'dockview-react'
 import type { FunctionComponent } from 'react'
 
-import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ActivityFeed } from './ActivityFeed'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
@@ -19,26 +18,12 @@ import { Screener } from './Screener'
 import { RunDetail } from './rundetail'
 import { StrategyLab } from './StrategyLab'
 import { Workspaces } from './Workspaces'
+import { guarded } from './guarded'
 
 export interface PanelMenuItem {
   component: string
   title: string
   hint?: string
-}
-
-// Every panel renders inside its own error boundary: Dockview mounts panels in separate React
-// roots, so containment has to happen here — one crashed panel must never blank the desk.
-function guarded(
-  name: string,
-  Panel: FunctionComponent<IDockviewPanelProps>,
-): FunctionComponent<IDockviewPanelProps> {
-  const Guarded: FunctionComponent<IDockviewPanelProps> = (props) => (
-    <ErrorBoundary panel={name}>
-      <Panel {...props} />
-    </ErrorBoundary>
-  )
-  Guarded.displayName = `Guarded(${name})`
-  return Guarded
 }
 
 const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
