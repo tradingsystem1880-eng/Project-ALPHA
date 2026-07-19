@@ -1,8 +1,8 @@
-# Dependency and License Matrix — Post-v2 Provider/Paper Track
+# Dependency and License Matrix — Post-v2 and Workstation v3 Tracks
 
 - **Reviewed:** 2026-07-19
-- **Scope:** direct Python runtime dependencies with architectural/legal significance, vendored
-  code, and upstream projects considered by the attached workstation recommendation
+- **Scope:** direct Python runtime dependencies, isolated workers, vendored code, and upstream
+  projects considered by the post-v2 and Workstation v3 decisions
 - **Status:** engineering inventory; not legal advice
 
 ## Root Project License and Distribution Gate
@@ -67,7 +67,7 @@ release needs an automated exact-version/transitive notice report.
 |---|---|---|---|
 | NautilusTrader | [LGPL-3.0](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | Already supplies engine, Binance data, sandbox execution | **Adopted already**; exact compatibility pin, no replacement |
 | OpenBB | [AGPL-3.0](https://github.com/OpenBB-finance/OpenBB/blob/develop/LICENSE) | Provider federation pattern; ALPHA already has data/CLI/UI authorities | Architecture reference only; no code/runtime dependency |
-| Qlib | [MIT](https://github.com/microsoft/qlib/blob/main/LICENSE); [official dependency manifest](https://github.com/microsoft/qlib/blob/main/pyproject.toml) | ML workflow/recorder capabilities beyond this track, but broad stack and environment conflict | Deferred separate environment; immutable snapshot in, timestamped OOS signals/provenance out |
+| Qlib | [MIT](https://github.com/microsoft/qlib/blob/main/LICENSE); [official dependency manifest](https://github.com/microsoft/qlib/blob/main/pyproject.toml) | Cross-sectional ML workflow/recorder gap; broad stack conflicts with the root NumPy/pandas boundary | **Approved only as the ADR-0016 isolated worker**; immutable snapshot/folds in, timestamped OOS JSON/Parquet out; never a root dependency or analytical authority |
 | FinancePy | [GPL-3.0](https://github.com/domokane/FinancePy/blob/master/LICENSE) | Broader derivatives products not presently required | Deferred product-specific external worker + fresh legal review |
 | TradingAgents | [Apache-2.0](https://github.com/TauricResearch/TradingAgents/blob/main/LICENSE) | AI research overlay; ALPHA already has MCP/research desk | Research-only candidate; no execution authority or runtime dependency |
 | TensorTrade | [Apache-2.0](https://github.com/tensortrade-org/tensortrade/blob/master/LICENSE) | RL experiments; not an execution/validation authority | Isolated research candidate only; separate spec/environment |
@@ -78,6 +78,21 @@ release needs an automated exact-version/transitive notice report.
 Process isolation is a risk-control and replaceability technique, not a declaration that a license
 has no effect. Any future AGPL/GPL/LGPL integration still requires review of the exact use,
 modifications, linking/deployment model, notices, and distribution behavior.
+
+## Workstation v3 dependency decision
+
+Workstation v3 adds no root runtime or frontend visualization dependency for the shell, control
+plane, causal charts, native tear sheet, or evidence ledger. It retains Dockview, Lightweight
+Charts, uPlot, TanStack, Polars, Nautilus, QuantStats-Lumi, and the vendored Kronos facade.
+
+Qlib is the one approved external capability addition. Its separately generated
+`workers/qlib/uv.lock` is the exact resolution input for that optional process and must be reviewed
+independently before distribution. The root `pyproject.toml` and `uv.lock` must remain free of Qlib,
+LightGBM, MLflow, and worker-only transitive dependencies. ALPHA exchanges only validated
+JSON/Parquet and never imports/deserializes the worker runtime or its model objects.
+
+Optuna, DuckDB, ECharts, skfolio, LEAN, TradingAgents, FinRL, and RD-Agent are not adopted by v3.
+They require a new concrete capability gap and a separate ADR-0011 acceptance record.
 
 ## Required Review on Change
 

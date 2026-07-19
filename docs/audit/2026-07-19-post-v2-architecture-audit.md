@@ -1,5 +1,10 @@
 # Project ALPHA Post-v2 Architecture Audit
 
+> **Historical baseline:** this audit governs the bounded provider/paper track. The later
+> owner-approved Workstation v3 specs and ADR-0013 through ADR-0016 add versioned artifacts,
+> development/evidence control state, and an isolated Qlib worker without changing this track's
+> sandbox-execution limits.
+
 - **Audit date:** 2026-07-19
 - **Baseline:** shipped Workstation v2 on `main`, before the Recommended-track delta
 - **Scope:** capability reuse, architecture fit, provider control, crypto paper execution,

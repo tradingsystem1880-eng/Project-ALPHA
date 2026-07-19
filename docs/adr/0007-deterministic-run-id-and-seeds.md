@@ -1,6 +1,6 @@
 # ADR-0007: Content-addressed run id + independent child seeds
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0013 for new v3 runs
 **Date:** 2026-06-26
 **Deciders:** AI build agents (per `CLAUDE.md`)
 
@@ -12,7 +12,13 @@ Reproducibility is a success criterion: the same inputs must yield byte-identica
 
 **Content-addressed run id.** `run_id` is the SHA-256 (first 16 hex chars) of the **canonical, sorted-key, separator-normalized JSON** of the run's parameters — symbol, fixed strategy params, costs, walk-forward geometry, seed. **No wall-clock** enters the payload, so the same inputs always produce the same id, the same artifact directory, and byte-identical output. Strategy params are parsed into a *sorted* tuple, so CLI argument order can't change the id.
 
-**Independent child seeds.** All randomness derives from `AlphaSettings.random_seed` (default `7`). The gauntlet spawns one **independent child seed per stochastic gate** via `np.random.SeedSequence(master).spawn(n)`. `spawn` is deterministic and order-independent: each gate gets its own statistically-independent stream, so gate order can be changed without affecting any gate's results. Manifests are written byte-stable (sorted keys, `allow_nan=False` — non-finite values must already be `null`).
+**Historical child-seed policy.** All randomness derives from `AlphaSettings.random_seed` (default
+`7`). Schema-v1/v2 gauntlets assigned independent child streams by position using
+`np.random.SeedSequence(master).spawn(n)`. This is deterministic for a fixed ordered gate list, but
+the assignment is **not** insertion- or reorder-stable: adding a family before an existing family
+changes that family's child stream. ADR-0013 replaces positional assignment for new v3 work with
+stable semantic namespaces. Manifests remain byte-stable (sorted keys, `allow_nan=False` —
+non-finite values must already be `null`).
 
 **Code anchors:**
 - `apps/alpha-cli/src/alpha_cli/_runner.py:run_id_for` — `json.dumps(payload, sort_keys=True, separators=(",",":"), default=str)` → `sha256(...).hexdigest()[:16]`; docstring: "No wall-clock goes in, so re-running is byte-identical."
@@ -21,14 +27,14 @@ Reproducibility is a success criterion: the same inputs must yield byte-identica
 
 ## Options Considered
 
-### Option A: content-addressed id + `SeedSequence.spawn` children (chosen)
+### Option A: content-addressed id + positional `SeedSequence.spawn` children (historical choice)
 
 | Dimension | Assessment |
 |---|---|
 | Complexity | Low — a hash helper + a seed-spawn helper |
 | Cost | Negligible |
-| Correctness-risk | Very low — identity and randomness are both functions of inputs only |
-| Fit | Excellent — satisfies the byte-identical-reproducibility criterion directly |
+| Correctness-risk | Medium — deterministic for a fixed list, but family insertion changes assignments |
+| Fit | Good for schema v1/v2; superseded by semantic namespaces for v3 |
 
 ### Option B: UUID / timestamp run id + single global seed
 
@@ -50,10 +56,16 @@ Reproducibility is a success criterion: the same inputs must yield byte-identica
 
 ## Trade-off Analysis
 
-Content addressing makes the run id a *function of the inputs*, which is what turns "reproducible" into something checkable: identical inputs collide on the same directory and must produce identical bytes, and a changed input visibly changes the id. The one subtlety — every field in the payload must serialize canonically and deterministically (hence sorted keys and sorted params) — is a small, contained discipline. Per-gate `SeedSequence` children solve the orthogonal ordering hazard that a single shared RNG (C) leaves open: without independent streams, a harmless-looking refactor that reorders gates would silently alter every result. The combined cost is two tiny helpers; the payoff is that both *what* a run is and *how* its randomness flows are pinned to inputs alone.
+Content addressing makes the run id a *function of the inputs*, which is what turns "reproducible"
+into something checkable. Per-gate child streams prevent gates from consuming one shared RNG, but
+positional assignment did not fully solve family insertion/reordering. ADR-0013 closes that
+remaining hazard by deriving each child from its semantic namespace while preserving the historical
+v1/v2 interpretation.
 
 ## Consequences
 
-- **Easier:** verifying a run reproduces (re-run → same id → diff the manifest); caching/deduplicating identical runs; reordering or adding gauntlet gates without perturbing existing results.
+- **Easier:** verifying a fixed schema-v1/v2 run reproduces (re-run → same id → diff the manifest);
+  caching/deduplicating identical runs.
 - **Harder:** every value entering the id payload must be canonically serializable and wall-clock-free; non-finite stats must be normalized to `null` before a manifest is written (`allow_nan=False`).
-- **Revisit when:** a new stochastic gate is added (give it its own spawned child seed, never reuse another gate's), or a new artifact field risks non-determinism (keep it out of the id payload or canonicalize it).
+- **Revisit when:** interpreting a historical v1/v2 run; all new v3 seed and identity changes follow
+  ADR-0013.

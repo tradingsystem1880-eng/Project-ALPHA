@@ -1,7 +1,7 @@
-# Risk Register — Provider Control Plane + Crypto Paper Trading
+# Risk Register — Provider/Paper + Workstation v3
 
 - **Opened:** 2026-07-19
-- **Track:** Post-v2 Recommended
+- **Track:** Post-v2 Recommended and owner-approved Workstation v3
 - **Risk owner:** Project ALPHA owner; implementation agents supply controls/evidence but cannot
   accept financial, legal, or distribution risk on the owner's behalf
 
@@ -46,6 +46,15 @@ blocker; R-24 and the real Binance connectivity portion of R-14 remain pending o
 | R-22 | ALPHA is distributed without a root license decision or required notices | Medium | High | No implicit license; matrix and README warning; distribution/release blocked pending owner selection and legal review | Root license decision, exact SBOM/notices, reviewed release checklist | Owner — **Owner decision / blocker** |
 | R-23 | "SANDBOX" is mistaken for profitable, validated, testnet, or real execution evidence | Medium | High | Permanent SANDBOX banner; session plane separate from validation; no passed/verdict field; docs distinguish local fills from exchange execution | API schema lacks validation status; frontend copy tests; ADR-0012 | Product/owner — **Gate** |
 | R-24 | Crypto 24/7 cadence or UTC rollover exposes a timestamp/session bug | Medium | High | Calendar-day cadence; UTC timestamps; separately opted-in soak crossing UTC midnight; inspect heartbeat/position/events | Reviewed soak record with no stale heartbeat, duplicate decision, precision, reconciliation, or shutdown defect | Owner + paper owner — Phase-4 completion gate |
+| R-25 | Parameter-only IDs alias runs from different strategy source revisions | Medium | High | Manifest/run identity v3 includes execution fingerprint; completed directories immutable; conflicting bytes fail | Identity sensitivity, legacy-read, and immutable-rerun tests | CLI/artifact owner — **Gate** |
+| R-26 | Chart indicators, patterns, or decisions are reconstructed with hindsight | Medium | High | Persist causal prefix-emitted traces with separate decision/order/fill times; unknown fields remain absent | Future-poison prefix stability and exact trace/result reconciliation tests | Strategy/engine/artifact owners — **Gate** |
+| R-27 | Optimization or an agent sees the sealed final holdout | Medium | High | Control-plane sealed/revealed/contaminated state; stage admission filters; post-reveal changes force a new version and contaminate lineage | Holdout access-denial, one-shot reveal, contamination, and stale-propagation tests | Development-control owner — **Gate** |
+| R-28 | SQLite control state is partial, concurrent, or mistaken for analytical evidence | Low | High | Transactional migrations/events outside `RUN_DIRS`; immutable content hashes; canonical metrics remain run artifacts | Migration, conflict, concurrency, crash/restart, and run-separation tests | CLI/control owner — **Gate** |
+| R-29 | Research memory leaks later evidence into an earlier decision context | Medium | High | Separate data cutoff/knowledge time; append-only revisions; as-of filtering; exact source citations | Evidence future-poison, revision-chain, source-integrity, and negative-result tests | Evidence owner — **Gate** |
+| R-30 | An agent bypasses gates, reveals holdout, launches paper, or executes arbitrary code | Low | High | Typed bounded actions; no raw flags/SQL/paths/dynamic Python; owner-only transitions absent from unattended MCP tools | MCP/API allowlist, payload, authority, and rejection tests | MCP/web/control owners — **Gate** |
+| R-31 | Qlib or worker-only dependencies enter the root/web/MCP runtime | Medium | High | Separate project/lock/process; import and lock deny tests; JSON/Parquet-only exchange | Root lock/import graph checks and independent worker gate | ML/build owners — **Gate** |
+| R-32 | ML normalization, labels, folds, or predictions leak future data | Medium | High | Fold-local fit; purge/embargo; origin/available/target timestamps; strict importer; no pickle | Feature/label future-poison, duplicate/non-finite/wrong-hash/fold-overlap rejection tests | ML/data/CLI owners — **Gate** |
+| R-33 | The Workstation presents fabricated analytics or frontend-computed verdicts | Medium | High | Python-authored typed artifacts only; legacy/missing states explicit; no fake frontier or undefined confidence | API/renderer parity, old-run `trace_unavailable`, copy, and visual tests | Web/frontend owners — **Gate** |
 
 ## Residual-Risk Decisions
 
