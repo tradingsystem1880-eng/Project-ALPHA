@@ -20,13 +20,14 @@ from nautilus_trader.core.data import Data
 from nautilus_trader.model.currencies import USD
 from nautilus_trader.model.data import QuoteTick
 from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
+from nautilus_trader.model.events import OrderFilled
 from nautilus_trader.model.identifiers import InstrumentId, Venue
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
 from alpha_backtest.frictions import BpsFeeModel
-from alpha_backtest.results import BacktestResult, Trade
+from alpha_backtest.results import BacktestResult, FillTrace, OrderTrace, Trade
 from alpha_core import ActionType, CorporateAction, DataError
 
 _NS_PER_SECOND = 1_000_000_000
@@ -135,6 +136,74 @@ def _closed_trades(engine: BacktestEngine) -> list[Trade]:
     return trades
 
 
+def _execution_trace(
+    engine: BacktestEngine,
+) -> tuple[tuple[OrderTrace, ...], tuple[FillTrace, ...]]:
+    """Canonicalize engine orders/fills without persisting vendor UUIDs or opaque event ids."""
+
+    def order_key(order: Any) -> tuple[Any, ...]:
+        raw: dict[str, Any] = order.to_dict()
+        fill_signature = tuple(
+            (
+                int(event.ts_event),
+                str(event.instrument_id),
+                "BUY" if event.order_side == OrderSide.BUY else "SELL",
+                float(event.last_qty),
+                float(event.last_px),
+            )
+            for event in order.events
+            if isinstance(event, OrderFilled)
+        )
+        return (
+            int(order.ts_init),
+            str(raw["instrument_id"]),
+            str(raw["side"]),
+            float(raw["quantity"]),
+            float(raw["filled_qty"]),
+            str(raw["status"]),
+            fill_signature,
+        )
+
+    # Persisted semantics (including fill history) fully determine ordering. If two keys tie, their
+    # projected rows are identical, so cache enumeration cannot change the resulting bytes. Vendor
+    # and client UUIDs never participate in ordering or persistence.
+    orders = sorted(engine.cache.orders(), key=order_key)
+    order_trace: list[OrderTrace] = []
+    pending_fills: list[tuple[int, int, int, OrderFilled]] = []
+    for sequence_id, order in enumerate(orders, start=1):
+        raw: dict[str, Any] = order.to_dict()
+        order_trace.append(
+            OrderTrace(
+                sequence_id=sequence_id,
+                ts=_ns_to_dt(int(order.ts_init)),
+                instrument_id=str(raw["instrument_id"]),
+                side=str(raw["side"]),
+                quantity=float(raw["quantity"]),
+                filled_quantity=float(raw["filled_qty"]),
+                status=str(raw["status"]),
+            )
+        )
+        for event_index, event in enumerate(order.events):
+            if isinstance(event, OrderFilled):
+                pending_fills.append((int(event.ts_event), sequence_id, event_index, event))
+
+    fill_trace: list[FillTrace] = []
+    sorted_fills = sorted(pending_fills, key=lambda item: (item[0], item[1], item[2]))
+    for sequence_id, (_, order_id, _, event) in enumerate(sorted_fills, start=1):
+        fill_trace.append(
+            FillTrace(
+                sequence_id=sequence_id,
+                order_sequence_id=order_id,
+                ts=_ns_to_dt(int(event.ts_event)),
+                instrument_id=str(event.instrument_id),
+                side="BUY" if event.order_side == OrderSide.BUY else "SELL",
+                quantity=float(event.last_qty),
+                price=float(event.last_px),
+            )
+        )
+    return tuple(order_trace), tuple(fill_trace)
+
+
 def run_backtest(
     instrument: Instrument,
     data: Sequence[Data],
@@ -206,12 +275,18 @@ def run_backtest(
                 + recorder.credited_cash
             )
             recorder.curve[-1] = (recorder.curve[-1][0], terminal)
+        order_trace, fill_trace = _execution_trace(engine)
         result = BacktestResult(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
             trades=_closed_trades(engine),
             equity_curve=recorder.curve,
             rejected=int(getattr(strategy, "rejections", 0)),
+            decision_trace=tuple(getattr(strategy, "decision_trace", ())),
+            indicator_trace=tuple(getattr(strategy, "indicator_trace", ())),
+            chart_annotations=tuple(getattr(strategy, "chart_annotations", ())),
+            order_trace=order_trace,
+            fill_trace=fill_trace,
         )
     finally:
         engine.dispose()

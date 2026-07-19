@@ -118,15 +118,17 @@ def validate(
         # max_workers is an execution-only knob (results are order-preserving and identical
         # serial or pooled), so it must NOT change the run id (same params -> same id).
         gauntlet_knobs = {k: v for k, v in vars(gparams).items() if k != "max_workers"}
-        run_id = _runner.run_id_for(
+        identity = _runner.run_identity_for(
             {
                 "command": "validate",
                 "symbol": symbol,
                 "snapshot_id": snapshot_id,
                 **vars(spec),
                 **gauntlet_knobs,
-            }
+            },
+            source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
         )
+        run_id = identity.run_id
         out = _gauntlet.run_gauntlet(
             bars,
             spec,
@@ -142,6 +144,8 @@ def validate(
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     equity = list(zip(out.oos.oos_timestamps, out.oos.oos_equity.tolist(), strict=True))
     manifest = report_to_manifest(out.report)
+    manifest["command"] = "validate"
+    manifest.update(identity.manifest_fields())
     if forecast_meta is not None:
         manifest["forecast"] = {**forecast_meta, "tier2_policy": tier2_mode}
     # raw two-tier null distributions BEFORE the manifest (manifest.json is the run-exists marker)
@@ -152,7 +156,13 @@ def validate(
             ("full_engine", out.tier2_null.tolist()),
         ),
     )
-    _artifacts.write_run_sidecars(rdir, equity=equity, trades=out.result.trades)
+    _artifacts.write_run_sidecars(
+        rdir,
+        equity=equity,
+        trades=out.result.trades,
+        trace_result=out.result,
+        periods_per_year=spec.periods_per_year,
+    )
     render_tearsheet_html(
         out.report,
         oos_returns=out.oos.oos_returns,

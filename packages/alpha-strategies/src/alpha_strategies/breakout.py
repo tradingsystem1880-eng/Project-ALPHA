@@ -6,9 +6,13 @@ position state, inherited from ``VolTargetStrategy`` (decide on close of t, fill
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from datetime import datetime
+
 from nautilus_trader.model.data import BarType
 from nautilus_trader.model.identifiers import InstrumentId
 
+from alpha_core import ChartAnchor, ChartAnnotationTrace
 from alpha_strategies.base import VolTargetStrategy
 from alpha_strategies.signals import breakout_signal
 
@@ -50,3 +54,34 @@ class DonchianBreakout(VolTargetStrategy):
 
     def _signal(self) -> int:
         return breakout_signal(self._highs, self._lows, self._closes, self._window)
+
+    def _channel(self) -> tuple[float, float]:
+        return (
+            max(self._highs[-self._window - 1 : -1]),
+            min(self._lows[-self._window - 1 : -1]),
+        )
+
+    def _indicator_snapshot(self) -> Mapping[str, tuple[float, str]]:
+        values = dict(super()._indicator_snapshot())
+        upper, lower = self._channel()
+        values.update({"channel_high": (upper, "price"), "channel_low": (lower, "price")})
+        return values
+
+    def _annotation_snapshot(self, decision_ts: datetime) -> Sequence[ChartAnnotationTrace]:
+        upper, lower = self._channel()
+        start_ts = self._history_ts[-self._window - 1]
+        return tuple(
+            ChartAnnotationTrace(
+                decision_ts=decision_ts,
+                instrument_id=str(self._iid),
+                kind="line",
+                label=label,
+                unit="price",
+                reason="prior_window_donchian_channel",
+                anchors=(
+                    ChartAnchor(ts=start_ts, value=value),
+                    ChartAnchor(ts=decision_ts, value=value),
+                ),
+            )
+            for label, value in (("channel_high", upper), ("channel_low", lower))
+        )

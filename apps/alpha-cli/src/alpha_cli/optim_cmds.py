@@ -108,7 +108,7 @@ def grid(
     )
     bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
     dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-    run_id = _runner.run_id_for(
+    identity = _runner.run_identity_for(
         {
             "command": "optim_grid",
             "symbol": symbol,
@@ -121,8 +121,10 @@ def grid(
             "alpha": alpha,
             "seed": resolved_seed,
             **vars(base),
-        }
+        },
+        source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
     )
+    run_id = identity.run_id
     try:
         result = _optim.run_optimization(
             bars,
@@ -146,6 +148,7 @@ def grid(
     # the per-trial OOS matrix BEFORE the manifest (manifest.json is the run-exists marker)
     _artifacts.write_trials(rdir, matrix=result.oos_matrix)
     manifest = _manifest(result, run_id=run_id, symbol=symbol, snapshot_id=snapshot_id)
+    manifest.update(identity.manifest_fields())
     _artifacts.write_manifest(rdir, manifest)
 
     verdict = "PASS" if result.passed else "FAIL"

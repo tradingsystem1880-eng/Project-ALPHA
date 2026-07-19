@@ -37,6 +37,12 @@ def test_result_schema_round_trip() -> None:
     assert result.final_equity == pytest.approx(1_002_000.0)  # realized +2000
     assert len(result.equity_curve) == 5  # one snapshot per session
 
+    assert [order.sequence_id for order in result.order_trace] == [1, 2]
+    assert [order.side for order in result.order_trace] == ["BUY", "SELL"]
+    assert [fill.sequence_id for fill in result.fill_trace] == [1, 2]
+    assert [fill.order_sequence_id for fill in result.fill_trace] == [1, 2]
+    assert [fill.price for fill in result.fill_trace] == [100.0, 120.0]
+
 
 def test_short_round_trip_realized_pnl_and_sign() -> None:
     # Short on a MARGIN account: sell @100 (quote 1), cover @120 (quote 3). A short loses as the

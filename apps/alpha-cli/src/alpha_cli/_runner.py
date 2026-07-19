@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from alpha_cli._identity import RunIdentity, execution_fingerprint, strategy_fingerprint
 from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import (
     FloatArray,
@@ -271,16 +272,111 @@ class OOSResult:
     folds: tuple[FoldSummary, ...]
 
 
-def run_id_for(payload: Mapping[str, object]) -> str:
+def source_fingerprint(bars: Sequence[Bar], *, dividends: Sequence[CorporateAction] = ()) -> str:
+    """Hash the exact observed market-data content consumed by a run.
+
+    The canonical JSON representation is independent of filesystem paths, Parquet encodings, and
+    caller insertion order. This prevents mutable live-store revisions from targeting an existing
+    immutable run directory while keeping equivalent snapshots/content on the same identity.
+    """
+    bar_rows = sorted(
+        (
+            bar.symbol,
+            bar.ts.isoformat(),
+            bar.open,
+            bar.high,
+            bar.low,
+            bar.close,
+            bar.volume,
+        )
+        for bar in bars
+    )
+    action_rows = sorted(
+        (
+            action.symbol,
+            action.action_type.value,
+            action.ex_date.isoformat(),
+            action.announce_date.isoformat() if action.announce_date is not None else None,
+            action.record_date.isoformat() if action.record_date is not None else None,
+            action.pay_date.isoformat() if action.pay_date is not None else None,
+            action.ratio,
+            action.amount,
+        )
+        for action in dividends
+    )
+    canonical = json.dumps(
+        {"bars": bar_rows, "dividends": action_rows},
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    return hashlib.sha256(
+        b"project-alpha-observed-market-data-v1\0" + canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def combine_source_fingerprints(sources: Mapping[str, str]) -> str:
+    """Combine named source digests into one order-independent multi-source digest."""
+    for name, fingerprint in sources.items():
+        if not name or len(fingerprint) != 64:
+            raise DataError(f"invalid source fingerprint for {name!r}")
+        try:
+            int(fingerprint, 16)
+        except ValueError:
+            raise DataError(f"invalid source fingerprint for {name!r}") from None
+    canonical = json.dumps(dict(sorted(sources.items())), separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(
+        b"project-alpha-combined-observed-sources-v1\0" + canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def numeric_source_fingerprint(values: Sequence[float], *, domain: str) -> str:
+    """Hash an observed numeric source stream when its upstream artifact is the source contract."""
+    canonical = json.dumps(list(values), separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(
+        b"project-alpha-observed-numeric-source-v1\0"
+        + domain.encode("utf-8")
+        + b"\0"
+        + canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def run_identity_for(
+    payload: Mapping[str, object], *, source_fingerprint: str | None = None
+) -> RunIdentity:
+    """Build versioned identity including code, strategy, and observed source content."""
+    from alpha_cli._identity import RUN_IDENTITY_VERSION, strategy_name_from_payload
+
+    execution = execution_fingerprint()
+    strategy = strategy_fingerprint(strategy_name_from_payload(payload))
+    source = (
+        source_fingerprint or hashlib.sha256(b"project-alpha-no-observed-source-v1").hexdigest()
+    )
+    identity_payload = {
+        "run_identity_version": RUN_IDENTITY_VERSION,
+        "execution_fingerprint": execution,
+        "strategy_fingerprint": strategy,
+        "source_fingerprint": source,
+        "payload": payload,
+    }
+    canonical = json.dumps(
+        identity_payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
+    )
+    return RunIdentity(
+        run_id=hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],
+        execution_fingerprint=execution,
+        strategy_fingerprint=strategy,
+        source_fingerprint=source,
+    )
+
+
+def run_id_for(payload: Mapping[str, object], *, source_fingerprint: str | None = None) -> str:
     """A deterministic 16-hex-char id for a run, from its canonical (sorted-key) JSON payload.
 
     Same symbol + params + costs + seed → same id → same artifact directory → reproducible
     (spec §11.4). No wall-clock goes in, so re-running is byte-identical.
     """
-    canonical = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+    return run_identity_for(payload, source_fingerprint=source_fingerprint).run_id
 
 
 def _fold_metrics(slice_: FloatArray, periods_per_year: int) -> tuple[float, float, float]:

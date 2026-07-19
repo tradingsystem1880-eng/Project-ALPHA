@@ -28,9 +28,11 @@ import numpy as np
 
 from alpha_cli._runner import (
     RunSpec,
+    combine_source_fingerprints,
     load_bars,
     load_dividends,
     run_full_backtest,
+    source_fingerprint,
     walk_forward_oos_for_spec,
 )
 from alpha_core import DataError
@@ -76,18 +78,23 @@ class PortfolioResult:
     sharpe_ci: ConfidenceInterval  # block-bootstrap BCa interval for the basket Sharpe
     cagr_ci: ConfidenceInterval  # block-bootstrap BCa interval for the basket CAGR
     legs: tuple[LegSummary, ...]
+    source_fingerprint: str
 
 
 def _leg_series(
     spec: RunSpec, *, data_dir: Path, symbol: str
-) -> tuple[datetime, dict[datetime, float]]:
-    """One symbol's OOS baseline timestamp + return-by-date series (keyed by realization date)."""
+) -> tuple[datetime, dict[datetime, float], str]:
+    """One symbol's OOS series and the observed market-data content digest that produced it."""
     bars, _ = load_bars(symbol, data_dir=data_dir)
     dividends = load_dividends(symbol, data_dir=data_dir)
     result = run_full_backtest(bars, spec, dividends=dividends)
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     dates = oos.oos_timestamps[1:]  # return i realizes at equity point i+1
-    return oos.oos_timestamps[0], dict(zip(dates, oos.oos_returns.tolist(), strict=True))
+    return (
+        oos.oos_timestamps[0],
+        dict(zip(dates, oos.oos_returns.tolist(), strict=True)),
+        source_fingerprint(bars, dividends=dividends),
+    )
 
 
 def _resample_sharpe(periods_per_year: int) -> Callable[[FloatArray], float]:
@@ -164,7 +171,7 @@ def run_portfolio(
     series = {s: legs_raw[s][1] for s in symbols}
     # the basket's equity baseline: the earliest first-OOS-equity point across legs (equity 1.0
     # there; strictly before the first combined realization date by construction)
-    baseline_ts = min(base for base, _ in legs_raw.values())
+    baseline_ts = min(base for base, _, _ in legs_raw.values())
     leg_dates = {s: sorted(series[s]) for s in symbols}
     leg_values = {
         s: np.array([series[s][d] for d in leg_dates[s]], dtype=np.float64) for s in symbols
@@ -245,6 +252,9 @@ def run_portfolio(
         sharpe_ci=sharpe_ci,
         cagr_ci=cagr_ci,
         legs=legs,
+        source_fingerprint=combine_source_fingerprints(
+            {symbol: legs_raw[symbol][2] for symbol in symbols}
+        ),
     )
 
 

@@ -132,7 +132,11 @@ def run(
         "as_of": as_of,
         "last_bar_ts": out.context_last_ts.isoformat(),
     }
-    run_id = _runner.run_id_for(payload)
+    observed_history = [b for b in bars if as_of_dt is None or b.ts <= as_of_dt]
+    identity = _runner.run_identity_for(
+        payload, source_fingerprint=_runner.source_fingerprint(observed_history)
+    )
+    run_id = identity.run_id
     rdir = settings.data_dir / "forecast" / run_id
 
     prov = _provenance(forecaster, model=resolved_model)
@@ -168,10 +172,10 @@ def run(
                 "p95_end_return": out.p95_end_return,
                 "prob_up": out.prob_up,
             },
+            **identity.manifest_fields(),
         }
     )
-    history = [b for b in bars if as_of_dt is None or b.ts <= as_of_dt]
-    _forecast.write_forecast_run(rdir, manifest=manifest, out=out, history=history)
+    _forecast.write_forecast_run(rdir, manifest=manifest, out=out, history=observed_history)
 
     typer.echo(
         f"forecast {symbol} -> run {run_id}: median {out.median_end_return:+.2%} "
@@ -288,7 +292,10 @@ def evaluate(
         "first_origin_ts": out.origins[0].origin_ts.isoformat(),
         "last_origin_ts": out.origins[-1].origin_ts.isoformat(),
     }
-    run_id = _runner.run_id_for(payload)
+    identity = _runner.run_identity_for(
+        payload, source_fingerprint=_runner.source_fingerprint(bars)
+    )
+    run_id = identity.run_id
     rdir = settings.data_dir / "forecast" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
 
@@ -327,6 +334,7 @@ def evaluate(
             ),
             "n_origins_pre": out.n_pre,
             "n_origins_post": out.n_post,
+            **identity.manifest_fields(),
         }
     )
     origins = pl.DataFrame(
@@ -340,9 +348,7 @@ def evaluate(
             for o in out.origins
         ]
     )
-    from alpha_cli._atomic import publish
-
-    publish(rdir / "origins.parquet", origins.write_parquet)
+    _artifacts.publish_artifact(rdir / "origins.parquet", origins.write_parquet)
     _artifacts.write_manifest(rdir, manifest)
 
     typer.echo(

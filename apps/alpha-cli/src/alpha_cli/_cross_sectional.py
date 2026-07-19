@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from alpha_cli._runner import load_bars
+from alpha_cli._runner import combine_source_fingerprints, load_bars, source_fingerprint
 from alpha_core import DataError
 from alpha_validation import (
     ConfidenceInterval,
@@ -52,19 +52,24 @@ class CrossSectionalResult:
     dsr: float
     sharpe_ci: ConfidenceInterval
     cagr_ci: ConfidenceInterval
+    source_fingerprint: str
 
 
-def _close_panel(symbols: Sequence[str], *, data_dir: Path) -> tuple[list[datetime], FloatArray]:
-    """Align every symbol's closes on their common dates → ``(dates, T×N close matrix)``."""
+def _close_panel(
+    symbols: Sequence[str], *, data_dir: Path
+) -> tuple[list[datetime], FloatArray, str]:
+    """Align closes on common dates and fingerprint every observed per-symbol bar stream."""
     by_symbol: dict[str, dict[datetime, float]] = {}
+    source_by_symbol: dict[str, str] = {}
     for sym in symbols:
         bars, _ = load_bars(sym, data_dir=data_dir)
         by_symbol[sym] = {b.ts: b.close for b in bars}
+        source_by_symbol[sym] = source_fingerprint(bars)
     common = sorted(set.intersection(*(set(d) for d in by_symbol.values())))
     if len(common) < 3:
         raise DataError(f"cross-sectional needs >= 3 common dates, got {len(common)}")
     panel = np.array([[by_symbol[s][d] for s in symbols] for d in common], dtype=np.float64)
-    return common, panel
+    return common, panel, combine_source_fingerprints(source_by_symbol)
 
 
 def _resample_sharpe(periods_per_year: int) -> Callable[[FloatArray], float]:
@@ -123,7 +128,7 @@ def run_cross_sectional(
     if k < 1:
         raise DataError(f"too few symbols ({n_symbols}) to form a leg at quantile {top_quantile}")
 
-    dates, panel = _close_panel(symbols, data_dir=data_dir)
+    dates, panel, observed_source = _close_panel(symbols, data_dir=data_dir)
     warmup = skip + lookback  # first decision index with a full score window
     n_dates = len(dates)
     if warmup + 1 >= n_dates:
@@ -194,6 +199,7 @@ def run_cross_sectional(
         dsr=dsr_res.dsr,
         sharpe_ci=sharpe_ci,
         cagr_ci=cagr_ci,
+        source_fingerprint=observed_source,
     )
 
 

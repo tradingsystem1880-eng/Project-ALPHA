@@ -19,8 +19,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from alpha_cli._artifacts import write_manifest
-from alpha_cli._atomic import publish
+from alpha_cli._artifacts import publish_artifact, write_manifest
 from alpha_core import Bar, DataError
 from alpha_forecast import Forecaster, ForecastResult, close_quantiles
 
@@ -177,7 +176,7 @@ def write_forecast_run(
             for i in range(r.horizon)
         ]
     )
-    publish(rdir / "paths.parquet", paths.write_parquet)
+    publish_artifact(rdir / "paths.parquet", paths.write_parquet)
 
     q = out.quantiles
     means = np.array([p.close for p in r.samples], dtype=np.float64).mean(axis=0)
@@ -196,9 +195,9 @@ def write_forecast_run(
             for i in range(r.horizon)
         ]
     )
-    publish(rdir / "quantiles.parquet", quantiles.write_parquet)
+    publish_artifact(rdir / "quantiles.parquet", quantiles.write_parquet)
 
     tail = list(history)[-_HISTORY_TAIL:]
     history_frame = pl.DataFrame({"ts": [b.ts for b in tail], "close": [b.close for b in tail]})
-    publish(rdir / "history.parquet", history_frame.write_parquet)
+    publish_artifact(rdir / "history.parquet", history_frame.write_parquet)
     write_manifest(rdir, manifest)

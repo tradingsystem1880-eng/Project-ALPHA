@@ -22,6 +22,7 @@ from alpha_cli._runner import (
     run_full_backtest,
     walk_forward_oos_for_spec,
 )
+from alpha_cli._seeds import semantic_seeds
 from alpha_cli._strategies import surrogate_for
 from alpha_cli._surrogate import Surrogate
 from alpha_cli._synth import full_engine_null
@@ -144,7 +145,21 @@ def run_gauntlet(
     oos = walk_forward_oos_for_spec(result.equity_curve, spec)
     oos_metrics = _oos_metrics(oos, ppy)
 
-    t1_seed, t2_seed, sharpe_seed, cagr_seed, ruin_seed = _child_seeds(params.seed, 5)
+    child_seeds = semantic_seeds(
+        params.seed,
+        (
+            "validation.tier1_null",
+            "validation.tier2_null",
+            "validation.sharpe_ci",
+            "validation.cagr_ci",
+            "validation.risk_of_ruin",
+        ),
+    )
+    t1_seed = child_seeds["validation.tier1_null"]
+    t2_seed = child_seeds["validation.tier2_null"]
+    sharpe_seed = child_seeds["validation.sharpe_ci"]
+    cagr_seed = child_seeds["validation.cagr_ci"]
+    ruin_seed = child_seeds["validation.risk_of_ruin"]
 
     # Risk-of-ruin is undefined on a flat OOS (no path to draw down); leave it NaN there so the
     # Verdict's risk dimension fails rather than reading a spurious 0.0 "no ruin".
@@ -374,11 +389,6 @@ def _tier1_summary(
         convention_divergence=divergence,
         flagged_low_fidelity=flagged,
     )
-
-
-def _child_seeds(master: int | None, n: int) -> list[int]:
-    """``n`` independent integer seeds spawned from one master — gate order can't change results."""
-    return [int(s.generate_state(1)[0]) for s in np.random.SeedSequence(master).spawn(n)]
 
 
 def _has_variance(returns: FloatArray) -> bool:

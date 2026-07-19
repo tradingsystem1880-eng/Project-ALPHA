@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from alpha_core import ChartAnnotationTrace, DecisionTrace, IndicatorTrace
+
 
 @dataclass(frozen=True)
 class Trade:
@@ -22,6 +24,32 @@ class Trade:
     exit_ts: datetime
     realized_pnl: float
     realized_return: float
+
+
+@dataclass(frozen=True)
+class OrderTrace:
+    """One engine-observed order with a run-local canonical sequence id."""
+
+    sequence_id: int
+    ts: datetime
+    instrument_id: str
+    side: str
+    quantity: float
+    filled_quantity: float
+    status: str
+
+
+@dataclass(frozen=True)
+class FillTrace:
+    """One engine-observed fill linked to its canonical order sequence."""
+
+    sequence_id: int
+    order_sequence_id: int
+    ts: datetime
+    instrument_id: str
+    side: str
+    quantity: float
+    price: float
 
 
 @dataclass(frozen=True)
@@ -41,6 +69,11 @@ class BacktestResult:
     trades: list[Trade]
     equity_curve: list[tuple[datetime, float]]
     rejected: int = 0  # orders denied (risk/buying-power) or rejected by the venue (none filled)
+    decision_trace: tuple[DecisionTrace, ...] = ()
+    indicator_trace: tuple[IndicatorTrace, ...] = ()
+    chart_annotations: tuple[ChartAnnotationTrace, ...] = ()
+    order_trace: tuple[OrderTrace, ...] = ()
+    fill_trace: tuple[FillTrace, ...] = ()
 
     @property
     def starting_equity(self) -> float:

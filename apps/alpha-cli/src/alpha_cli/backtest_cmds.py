@@ -89,9 +89,11 @@ def run(
             f"notional exceeds buying power. Use --account-type MARGIN, lower --target-vol, or set "
             f"--max-leverage below 1."
         )
-    run_id = _runner.run_id_for(
-        {"command": "backtest_run", "symbol": symbol, "snapshot_id": snapshot_id, **vars(spec)}
+    identity = _runner.run_identity_for(
+        {"command": "backtest_run", "symbol": symbol, "snapshot_id": snapshot_id, **vars(spec)},
+        source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
     )
+    run_id = identity.run_id
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     manifest = {
         "schema_version": 1,
@@ -106,10 +108,18 @@ def run(
         "n_trades": len(result.trades),
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,
+        **identity.manifest_fields(),
     }
     if forecast_meta is not None:
         manifest["forecast"] = forecast_meta
-    _artifacts.write_run(rdir, manifest=manifest, equity=result.equity_curve, trades=result.trades)
+    _artifacts.write_run(
+        rdir,
+        manifest=manifest,
+        equity=result.equity_curve,
+        trades=result.trades,
+        trace_result=result,
+        periods_per_year=spec.periods_per_year,
+    )
     warn = f" ({result.rejected} orders rejected)" if result.rejected else ""
     typer.echo(
         f"backtest {symbol} -> run {run_id}: {result.orders} orders, {result.fills} fills, "
@@ -192,15 +202,17 @@ def portfolio(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    run_id = _runner.run_id_for(
+    identity = _runner.run_identity_for(
         {
             "command": "backtest_portfolio",
             "symbols": symbols,
             "weighting": weighting,
             "seed": resolved_seed,
             **vars(spec),
-        }
+        },
+        source_fingerprint=result.source_fingerprint,
     )
+    run_id = identity.run_id
     rdir = settings.data_dir / "portfolio" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     # the combined OOS stream as an equity curve (validate-run schema, base 1.0), written BEFORE
@@ -210,6 +222,7 @@ def portfolio(
         baseline_ts=result.baseline_ts,
         timestamps=result.portfolio_timestamps,
         returns=result.portfolio_returns.tolist(),
+        periods_per_year=spec.periods_per_year,
     )
     manifest = {
         "schema_version": 1,
@@ -233,6 +246,7 @@ def portfolio(
             }
             for leg in result.legs
         ],
+        **identity.manifest_fields(),
     }
     from alpha_validation import render_returns_tearsheet
 
@@ -310,7 +324,7 @@ def cross_sectional(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    run_id = _runner.run_id_for(
+    identity = _runner.run_identity_for(
         {
             "command": "cross_sectional",
             "symbols": symbols,
@@ -326,8 +340,10 @@ def cross_sectional(
             "slippage_bps": slippage_bps,
             "periods_per_year": periods_per_year,
             "seed": resolved_seed,
-        }
+        },
+        source_fingerprint=result.source_fingerprint,
     )
+    run_id = identity.run_id
     rdir = settings.data_dir / "cross_sectional" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     # the OOS stream as an equity curve (validate-run schema, base 1.0), written BEFORE the
@@ -337,6 +353,7 @@ def cross_sectional(
         baseline_ts=result.baseline_ts,
         timestamps=result.timestamps,
         returns=result.returns.tolist(),
+        periods_per_year=periods_per_year,
     )
     manifest = {
         "schema_version": 1,
@@ -352,6 +369,7 @@ def cross_sectional(
         "dsr": result.dsr if result.dsr == result.dsr else None,
         "sharpe_ci": {"lower": result.sharpe_ci.lower, "upper": result.sharpe_ci.upper},
         "cagr_ci": {"lower": result.cagr_ci.lower, "upper": result.cagr_ci.upper},
+        **identity.manifest_fields(),
     }
     book = "long-short" if long_short else "long-only"
     from alpha_validation import render_returns_tearsheet

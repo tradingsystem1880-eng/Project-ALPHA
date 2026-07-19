@@ -14,7 +14,13 @@ from datetime import UTC, datetime, timedelta
 import numpy as np
 import pytest
 
-from alpha_cli._runner import RunSpec, run_id_for, walk_forward_oos
+from alpha_cli._runner import (
+    RunSpec,
+    run_id_for,
+    run_identity_for,
+    source_fingerprint,
+    walk_forward_oos,
+)
 from alpha_cli.validate_cmds import validate
 from alpha_core import DataError
 from alpha_validation import walk_forward_splits
@@ -103,6 +109,46 @@ def test_run_id_is_deterministic_and_sensitive() -> None:
     assert len(rid) == 16 and all(c in "0123456789abcdef" for c in rid)
     assert run_id_for(dict(base)) == rid  # order-independent, value-determined
     assert run_id_for({**base, "seed": 8}) != rid  # any input change moves the id
+
+
+def test_run_identity_pins_execution_and_selected_strategy_source() -> None:
+    source = "c" * 64
+    identity = run_identity_for(
+        {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
+        source_fingerprint=source,
+    )
+    fields = identity.manifest_fields()
+    assert identity.run_id == run_id_for(
+        {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
+        source_fingerprint=source,
+    )
+    assert fields["run_identity_version"] == 3
+    assert len(fields["execution_fingerprint"]) == 64
+    assert fields["strategy_fingerprint"] is not None
+    assert len(fields["strategy_fingerprint"]) == 64
+    assert fields["source_fingerprint"] == source
+    assert (
+        run_identity_for(
+            {"command": "backtest_run", "symbol": "SPY", "strategy_name": "breakout"},
+            source_fingerprint=source,
+        ).strategy_fingerprint
+        != identity.strategy_fingerprint
+    )
+
+
+def test_run_identity_changes_with_observed_source_content() -> None:
+    from alpha_core import Bar
+
+    ts = datetime(2024, 1, 2, tzinfo=UTC)
+    first = Bar(symbol="SPY", ts=ts, open=100, high=102, low=99, close=101, volume=10)
+    revised = first.model_copy(update={"close": 100.5})
+    source = source_fingerprint([first])
+    revised_source = source_fingerprint([revised])
+    assert source != revised_source
+    payload = {"command": "backtest_run", "symbol": "SPY"}
+    assert run_id_for(payload, source_fingerprint=source) != run_id_for(
+        payload, source_fingerprint=revised_source
+    )
 
 
 def test_run_id_rejects_non_finite_payloads() -> None:
