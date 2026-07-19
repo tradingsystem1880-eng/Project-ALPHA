@@ -9,6 +9,7 @@ import { api } from '../api/client'
 import type { CommandDef, StrategyDef } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { openRunDetail, type LabPrefill } from './actions'
+import { livePaperStrategies } from './controlPlane'
 
 const SKIP_OPTS = new Set(['param', 'grid', 'json', 'strategy'])
 
@@ -26,7 +27,7 @@ export function StrategyLab(props: IDockviewPanelProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.commands().then((c) => setCommands(c.filter((x) => x.run_type)))
+    api.commands().then((c) => setCommands(c.filter((x) => x.run_type || x.id === 'paper run')))
     api.strategies().then(setStrategies)
   }, [])
 
@@ -55,6 +56,11 @@ export function StrategyLab(props: IDockviewPanelProps) {
   }, [prefillKey])
 
   const cmd = useMemo(() => commands.find((c) => c.id === cmdId), [commands, cmdId])
+  const isPaper = cmdId === 'paper run'
+  const visibleStrategies = useMemo(
+    () => (isPaper ? livePaperStrategies(strategies) : strategies),
+    [isPaper, strategies],
+  )
   const stratDef = useMemo(
     () => strategies.find((s) => s.name === strategy),
     [strategies, strategy],
@@ -78,6 +84,14 @@ export function StrategyLab(props: IDockviewPanelProps) {
     for (const p of stratDef.params) d[p.name] = String(p.default)
     setParams(d)
   }, [stratDef])
+
+  useEffect(() => {
+    if (!isPaper) return
+    if (!visibleStrategies.some((item) => item.name === strategy)) {
+      setStrategy(visibleStrategies[0]?.name ?? '')
+    }
+    if (symbols === 'SPY') setSymbols('BTC/USDT')
+  }, [isPaper, strategy, symbols, visibleStrategies])
 
   function launch(): void {
     if (!cmd) {
@@ -128,6 +142,11 @@ export function StrategyLab(props: IDockviewPanelProps) {
         <span className="title">Strategy Lab</span>
       </div>
       <div className="panel-body panel-pad lab">
+        {isPaper ? (
+          <div className="sandbox-banner">
+            SANDBOX · PUBLIC BINANCE DATA · REAL EXECUTION IS NOT AVAILABLE
+          </div>
+        ) : null}
         <div className="lab-row">
           <label className="field-row">
             <span className="field-label">Command</span>
@@ -162,7 +181,7 @@ export function StrategyLab(props: IDockviewPanelProps) {
                 value={strategy}
                 onChange={(e) => setStrategy(e.target.value)}
               >
-                {strategies.map((s) => (
+                {visibleStrategies.map((s) => (
                   <option key={s.name} value={s.name}>
                     {s.name}
                   </option>

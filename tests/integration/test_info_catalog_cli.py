@@ -33,7 +33,11 @@ def test_info_strategies_json() -> None:
     assert fast["default"] == 21 and fast["type"] == "int"
     assert by_name["ts_momentum"]["params"] == []  # only first-class RunSpec flags
     assert by_name["ts_momentum"]["has_tier1_surrogate"] is True
+    assert by_name["ts_momentum"]["supports_live_paper"] is True
+    assert by_name["ma_crossover"]["supports_live_paper"] is True
+    assert by_name["breakout"]["supports_live_paper"] is True
     assert by_name["kronos"]["has_tier1_surrogate"] is True  # replay surrogate off the signal cache
+    assert by_name["kronos"]["supports_live_paper"] is False
 
 
 def test_info_commands_json_defaults_from_signature() -> None:

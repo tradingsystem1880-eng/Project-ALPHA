@@ -214,6 +214,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/paper/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Paper Sessions
+         * @description Every complete paper session, newest first, with computed heartbeat staleness.
+         */
+        get: operations["list_paper_sessions_api_paper_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/paper/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper Session
+         * @description One validated paper session. Reading a stale session never signals its recorded PID.
+         */
+        get: operations["get_paper_session_api_paper_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/paper/sessions/{session_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper Events
+         * @description Validated operational events whose sequence is strictly greater than ``after``.
+         */
+        get: operations["get_paper_events_api_paper_sessions__session_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Providers
+         * @description Configured provider capabilities with credential names/presence, never secret values.
+         */
+        get: operations["get_providers_api_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/compare": {
         parameters: {
             query?: never;
@@ -554,6 +634,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get System
+         * @description Local readiness only; this endpoint performs no provider network probes.
+         */
+        get: operations["get_system_api_system_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workspaces": {
         parameters: {
             query?: never;
@@ -708,6 +808,13 @@ export interface components {
             /** Type */
             type: string;
         };
+        /** CredentialStatus */
+        CredentialStatus: {
+            /** Name */
+            name: string;
+            /** Present */
+            present: boolean;
+        };
         /** Deleted */
         Deleted: {
             /** Deleted */
@@ -805,6 +912,8 @@ export interface components {
             returncode: number | null;
             /** Run Id */
             run_id: string | null;
+            /** Session Id */
+            session_id: string | null;
             /** Status */
             status: string;
         };
@@ -812,6 +921,8 @@ export interface components {
         JobStatus: {
             /** Job Id */
             job_id: string;
+            /** Session Id */
+            session_id: string | null;
             /** Status */
             status: string;
         };
@@ -831,8 +942,22 @@ export interface components {
             returncode: number | null;
             /** Run Id */
             run_id: string | null;
+            /** Session Id */
+            session_id: string | null;
             /** Status */
             status: string;
+        };
+        JsonScalar: string | number | boolean | null;
+        /** KronosCacheStatus */
+        KronosCacheStatus: {
+            /** Configured */
+            configured: boolean;
+            /** Exists */
+            exists: boolean;
+            /** Local Only */
+            local_only: boolean;
+            /** Path */
+            path: string | null;
         };
         /**
          * LaunchRequest
@@ -850,6 +975,15 @@ export interface components {
              * @default
              */
             command: string;
+        };
+        /** NautilusStatus */
+        NautilusStatus: {
+            /** Installed Version */
+            installed_version: string | null;
+            /** Matches Pin */
+            matches_pin: boolean;
+            /** Pinned Version */
+            pinned_version: string;
         };
         /** NullTier */
         NullTier: {
@@ -936,6 +1070,73 @@ export interface components {
             /** Vol */
             vol: number;
         };
+        /** PaperEvent */
+        PaperEvent: {
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "lifecycle" | "order" | "fill" | "rejection" | "position" | "reconciliation_warning";
+            /** Payload */
+            payload: {
+                [key: string]: components["schemas"]["JsonScalar"];
+            };
+            /** Recorded At */
+            recorded_at: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Sequence */
+            sequence: number;
+            /** Session Id */
+            session_id: string;
+            /** Ts Event Ns */
+            ts_event_ns: number | null;
+        };
+        /** PaperSession */
+        PaperSession: {
+            /** Ended At */
+            ended_at: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string;
+            /** Instrument Id */
+            instrument_id: string;
+            /** Last Sequence */
+            last_sequence: number;
+            /** Pid */
+            pid: number | null;
+            /** Provider */
+            provider: string;
+            /**
+             * Sandbox
+             * @constant
+             */
+            sandbox: true;
+            /** Schema Version */
+            schema_version: number;
+            /** Session Id */
+            session_id: string;
+            /** Snapshot Id */
+            snapshot_id: string;
+            /** Stale */
+            stale: boolean;
+            /** Started At */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "starting" | "running" | "stopping" | "completed" | "cancelled" | "failed";
+            /** Strategy */
+            strategy: string;
+            /** Strategy Params */
+            strategy_params: {
+                [key: string]: components["schemas"]["JsonScalar"];
+            };
+            /** Symbol */
+            symbol: string;
+            /** Terminal Error */
+            terminal_error: string | null;
+        };
         /** ParamDefinition */
         ParamDefinition: {
             /** Default */
@@ -969,6 +1170,38 @@ export interface components {
         /** PropfirmPaths */
         PropfirmPaths: {
             paths: components["schemas"]["PropfirmPathColumns"];
+        };
+        /** ProviderDefinition */
+        ProviderDefinition: {
+            /** Capabilities */
+            capabilities: string[];
+            /** Configured */
+            configured: boolean;
+            /** Credential Env */
+            credential_env: components["schemas"]["CredentialStatus"][];
+            /** Id */
+            id: string;
+            /** Installed */
+            installed: boolean;
+            /** Label */
+            label: string;
+            /** Limitations */
+            limitations: string[];
+            /** Network Required */
+            network_required: boolean;
+            /** Options */
+            options: {
+                [key: string]: components["schemas"]["ProviderOption"];
+            };
+        };
+        /** ProviderOption */
+        ProviderOption: {
+            /** Choices */
+            choices: string[];
+            /** Default */
+            default: string;
+            /** Label */
+            label: string;
         };
         /** ResearchReport */
         ResearchReport: {
@@ -1124,11 +1357,42 @@ export interface components {
             name: string;
             /** Params */
             params: components["schemas"]["ParamDefinition"][];
+            /** Supports Live Paper */
+            supports_live_paper: boolean;
         };
         /** Symbols */
         Symbols: {
             /** Symbols */
             symbols: string[];
+        };
+        /** SystemCounts */
+        SystemCounts: {
+            /** Snapshots */
+            snapshots: number;
+            /** Symbols */
+            symbols: number;
+        };
+        /** SystemDataDirectory */
+        SystemDataDirectory: {
+            /** Exists */
+            exists: boolean;
+            /** Free Bytes */
+            free_bytes: number;
+            /** Path */
+            path: string;
+            /** Readable */
+            readable: boolean;
+            /** Writable */
+            writable: boolean;
+        };
+        /** SystemStatus */
+        SystemStatus: {
+            counts: components["schemas"]["SystemCounts"];
+            data_dir: components["schemas"]["SystemDataDirectory"];
+            kronos_cache: components["schemas"]["KronosCacheStatus"];
+            nautilus: components["schemas"]["NautilusStatus"];
+            /** Paper Enabled */
+            paper_enabled: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -1563,6 +1827,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_paper_sessions_api_paper_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperSession"][];
+                };
+            };
+        };
+    };
+    get_paper_session_api_paper_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_paper_events_api_paper_sessions__session_id__events_get: {
+        parameters: {
+            query?: {
+                after?: number;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperEvent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_providers_api_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDefinition"][];
                 };
             };
         };
@@ -2081,6 +2449,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Symbols"];
+                };
+            };
+        };
+    };
+    get_system_api_system_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
                 };
             };
         };

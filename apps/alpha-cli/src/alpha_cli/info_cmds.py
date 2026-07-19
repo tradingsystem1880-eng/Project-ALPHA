@@ -42,6 +42,7 @@ def _strategy_catalog() -> list[dict[str, Any]]:
             "name": name,
             "params": [asdict(p) for p in STRATEGY_PARAM_SCHEMA.get(name, ())],
             "has_tier1_surrogate": STRATEGIES[name].surrogate is not None,
+            "supports_live_paper": STRATEGIES[name].supports_live_paper,
         }
         for name in known_strategies()
     ]
@@ -133,3 +134,40 @@ def commands(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -
         return
     for entry in catalog:
         typer.echo(f"{entry['id']}: {len(entry['options'])} options, {len(entry['args'])} args")
+
+
+@info_app.command("providers")
+def providers(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List provider capabilities, limitations, and redacted local configuration state."""
+    from alpha_cli.providers import provider_catalog
+
+    catalog = provider_catalog()
+    if json_out:
+        typer.echo(json.dumps(catalog))
+        return
+    for provider in catalog:
+        state = "configured" if provider["configured"] else "not configured"
+        typer.echo(f"{provider['id']}: {state} ({', '.join(provider['capabilities'])})")
+
+
+@info_app.command("system")
+def system(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """Report local readiness only; no provider endpoint is contacted."""
+    from alpha_cli.system_status import system_status
+
+    status = system_status()
+    if json_out:
+        typer.echo(json.dumps(status))
+        return
+    data_dir = status["data_dir"]
+    counts = status["counts"]
+    typer.echo(
+        f"data_dir={data_dir['path']} readable={data_dir['readable']} "
+        f"writable={data_dir['writable']} free_bytes={data_dir['free_bytes']}"
+    )
+    typer.echo(f"symbols={counts['symbols']} snapshots={counts['snapshots']}")
+    typer.echo(
+        f"nautilus={status['nautilus']['installed_version']} "
+        f"(pinned {status['nautilus']['pinned_version']})"
+    )
+    typer.echo(f"paper_enabled={status['paper_enabled']}")

@@ -14,6 +14,9 @@ class AlphaSettings(BaseSettings):
 
     data_dir: Path = Field(default=Path("data"))
     random_seed: int = 7
+    # Operational paper sessions are network-bound and nondeterministic. They require an explicit
+    # owner opt-in and never enter deterministic research run ids or manifests.
+    paper_enabled: bool = False
 
     # Kronos forecasting (alpha_forecast). "main" revisions are recorded verbatim in every
     # manifest; pin to HF commit hashes via env for byte-stable provenance. Device defaults

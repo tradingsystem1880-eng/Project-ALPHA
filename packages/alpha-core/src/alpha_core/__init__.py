@@ -6,6 +6,7 @@ from importlib.metadata import version
 
 from alpha_core.corporate import ActionType, CorporateAction
 from alpha_core.errors import AlphaError, DataError, LookAheadError
+from alpha_core.protocols import ExecutionEventSink
 from alpha_core.types import Bar, ValidationOutcome
 
 __version__ = version("alpha-core")
@@ -16,6 +17,7 @@ __all__ = [
     "Bar",
     "CorporateAction",
     "DataError",
+    "ExecutionEventSink",
     "LookAheadError",
     "ValidationOutcome",
     "__version__",

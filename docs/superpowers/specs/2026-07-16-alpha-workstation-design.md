@@ -2,7 +2,8 @@
 
 > **Implemented-state pointer (2026-07-18):** This approved design remains a historical plan.
 > The shipped blotters use TanStack Table/Virtual rather than AG Grid, and frontend quality/assets
-> are mandatory CI gates. See [`CLAUDE.md`](../../../CLAUDE.md) and
+> are mandatory CI gates. The panel manifest ultimately remained a frontend-owned registry; the
+> backend exposes capability catalogs but no separate panel-manifest route. See [`CLAUDE.md`](../../../CLAUDE.md) and
 > [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for current behavior.
 
 ## Context
@@ -62,8 +63,9 @@ apps/alpha-cli/src/alpha_cli/_schemas.py   # NEW — declarative strategy-param 
 
 - **Thin backend:** subprocess `alpha`, parse `-> run <id>`, read `manifest.json`/parquet. The
   engine never runs in the web process.
-- **Declarative panel manifest** (`GET /api/apps`, OpenBB-inspired): panels + data endpoints + param
-  schemas as JSON so the shell renders generically and later modules add panels with no shell change.
+- **Declarative panel manifest** (OpenBB-inspired, implemented as the frontend-owned panel
+  registry): panels + data endpoints + param schemas keep the shell generic so later modules add
+  panels with no shell change.
 - **Global linked context:** a client `LinkedContext` (in-memory pub/sub) holding `{symbol, start,
   end}`; producers broadcast, `linked` panels refetch. Snapshotted into a workspace on save.
 - **Savable named workspaces:** Dockview `toJSON()` persisted server-side under
@@ -91,8 +93,8 @@ surface stays `alpha_core.config` + `alpha_cli.RUN_DIRS`):
 - `GET /api/commands` → `[{id, run_type, args, options:[{name,type,default,required,help,multiple,
   choices?}]}]` (`alpha info commands --json`: Typer→Click tree introspection; defaults come from the
   real signatures, zero duplication).
-- `GET /api/apps` → the panel manifest: `{panels:[{id,title,component,linked,data:[{endpoint,
-  method}],params:[...]}], commands:"/api/commands", strategies:"/api/strategies"}`.
+- The panel manifest is frontend-owned; `/api/commands` and `/api/strategies` remain the dynamic
+  backend capability catalogs.
 
 Jobs (extended `_invoke` + `api/jobs.py`):
 - `POST /api/jobs` `{command, args?}` → `{job_id, status}` (launch; replaces `/runs` +
@@ -114,7 +116,7 @@ Workspaces (`_workspaces.py` + `api/workspaces.py`):
 
 ## Panels (W1)
 
-Each panel is an `/api/apps` entry → a `panels/registry.ts` component: **Run Browser** (AG Grid over
+Each panel is a frontend registry entry → a `panels/registry.ts` component: **Run Browser** (AG Grid over
 `/api/runs`) · **Run Detail** (A–F verdict, oos_metrics, gauntlet folds/nulls/cis/dsr/cpcv tables;
 uPlot equity+drawdown; trades AG Grid; tearsheet iframe; forecast band) · **Strategy Lab / New Run**
 (dynamic form from `/api/strategies`+`/api/commands`; `POST /api/jobs`; live SSE console) ·
@@ -178,8 +180,8 @@ views + AI console · 11. Docs (CLAUDE.md, README).
 ## Roadmap (post-milestone) — no shell redesign
 
 Each net-new module = a new `packages/` module (below the DAG) + new `alpha` CLI command(s) writing
-manifests into a new `RUN_DIRS` entry and/or `--json` projections + panel(s) appended to `/api/apps`
-+ a `registry.ts` component. Order: Options & Derivatives (`alpha_options`; vollib/FinancePy/
+manifests into a new `RUN_DIRS` entry and/or `--json` projections + a frontend registry component.
+Order: Options & Derivatives (`alpha_options`; vollib/FinancePy/
 QuantLib) → Screener & News + providers (`alpha_screener` + `alpha_data` adapters; finviz/finnhub,
 optional keyed Alpaca/TwelveData) → Risk monitor & scenario/what-if (`alpha_risk`; VaR/CVaR +
 gs-quant-style re-pricing) → Multi-agent AI research desk (TradingAgents-style, in `alpha_mcp` /

@@ -35,6 +35,16 @@ export type ResearchReport = Schema['ResearchReport']
 export type OptionGreeks = Schema['OptionGreeks']
 export type OptionCurvePoint = Schema['OptionCurvePoint']
 export type OptionCurve = Schema['OptionCurve']
+export type ProviderCredential = Schema['CredentialStatus']
+export type ProviderOption = Schema['ProviderOption']
+export type ProviderDefinition = Schema['ProviderDefinition']
+export type SystemStatus = Schema['SystemStatus']
+export type JsonScalar = Schema['JsonScalar']
+export type PaperSession = Schema['PaperSession']
+export type PaperStatus = PaperSession['status']
+export type PaperEvent = Schema['PaperEvent']
+export type PaperEventType = PaperEvent['event_type']
+export type PaperJobSummary = JobSummary
 
 // Intentionally opaque: trade schemas vary by engine and remain manifest-adjacent rows.
 export type TradeRow = Record<string, string | number | null>

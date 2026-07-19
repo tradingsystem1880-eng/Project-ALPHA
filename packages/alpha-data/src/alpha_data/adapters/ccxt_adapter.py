@@ -11,10 +11,11 @@ from pydantic import ValidationError
 from alpha_core import Bar, DataError
 from alpha_data.adapters.base import FetchResult
 
-_VERSION = "1"
+_VERSION = "2"
 PARSER_VERSION = "1"
 _DAY_MS = 86_400_000
 _PAGE_LIMIT = 300  # coinbase caps fetch_ohlcv at 300 candles/call; page forward past it
+SUPPORTED_CCXT_EXCHANGES = ("coinbase", "binance")
 
 
 def _paginate_ohlcv(
@@ -113,7 +114,6 @@ def parse_ccxt_ohlcv(ohlcv: list[list[float]], symbol: str) -> FetchResult:
 class CCXTAdapter:
     """Live crypto adapter via ccxt. Defaults to a US-accessible, key-free exchange."""
 
-    name = "ccxt"
     version = _VERSION
     parser_version = PARSER_VERSION
 
@@ -121,7 +121,13 @@ class CCXTAdapter:
         # coinbase: US-accessible, key-free public OHLCV, accepts the unified ``BTC/USD``,
         # and honours ``since`` for historical ranges (kraken's OHLC endpoint ignores
         # ``since`` and returns only a recent ~720-bar window, breaking dated fetches).
+        if exchange not in SUPPORTED_CCXT_EXCHANGES:
+            raise DataError(
+                f"unsupported CCXT exchange {exchange!r}; known: {list(SUPPORTED_CCXT_EXCHANGES)}"
+            )
         self._exchange = exchange
+        # Venue-qualified source id is copied into immutable snapshot provenance.
+        self.name = f"ccxt:{self._exchange}"
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs  # noqa: PLC0415

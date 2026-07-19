@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
 from pydantic import AwareDatetime
@@ -27,3 +28,21 @@ class Validator(Protocol):
     name: str
 
     def validate(self, result: object) -> ValidationOutcome: ...
+
+
+@runtime_checkable
+class ExecutionEventSink(Protocol):
+    """A low-volume operational event journal used only by paper execution.
+
+    The sink is deliberately absent from deterministic run specifications and hashes.  Payloads
+    are flat JSON scalars so a strategy cannot leak engine objects, credentials, ticks, or bars
+    across the boundary.
+    """
+
+    def emit(
+        self,
+        event_type: str,
+        payload: Mapping[str, str | int | float | bool | None],
+        *,
+        ts_event_ns: int | None = None,
+    ) -> None: ...

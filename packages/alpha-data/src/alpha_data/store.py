@@ -94,3 +94,50 @@ class ParquetStore:
             raise DataError(f"corrupt actions JSON for {symbol!r} at {path}") from exc
         except ValidationError as exc:
             raise DataError(f"invalid action data for {symbol!r} at {path}: {exc}") from exc
+
+    def _provenance_path(self, symbol: str) -> Path:
+        if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):
+            raise DataError(f"invalid symbol for storage: {symbol!r}")
+        return self.root / "provenance" / f"{symbol}.json"
+
+    def write_provenance(
+        self,
+        symbol: str,
+        *,
+        source: str,
+        adapter_version: str,
+        parser_version: str,
+    ) -> Path:
+        """Atomically bind the current symbol bytes to the adapter that pulled them."""
+        values = {
+            "source": source,
+            "adapter_version": adapter_version,
+            "parser_version": parser_version,
+        }
+        if any(not value.strip() for value in values.values()):
+            raise DataError("data provenance values must be non-empty strings")
+        path = self._provenance_path(symbol)
+        write_text(path, json.dumps(values, indent=2, sort_keys=True, allow_nan=False) + "\n")
+        return path
+
+    def clear_provenance(self, symbol: str) -> None:
+        """Invalidate provenance before replacing bytes so stale evidence cannot survive a crash."""
+        self._provenance_path(symbol).unlink(missing_ok=True)
+
+    def read_provenance(self, symbol: str) -> dict[str, str] | None:
+        """Read strict pull provenance, or ``None`` for a legacy/manually seeded symbol."""
+        path = self._provenance_path(symbol)
+        if not path.exists():
+            return None
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            raise DataError(f"corrupt data provenance for {symbol!r} at {path}") from exc
+        fields = {"source", "adapter_version", "parser_version"}
+        if (
+            not isinstance(raw, dict)
+            or set(raw) != fields
+            or any(not isinstance(raw[name], str) or not raw[name].strip() for name in fields)
+        ):
+            raise DataError(f"invalid data provenance for {symbol!r} at {path}")
+        return {name: raw[name] for name in sorted(fields)}

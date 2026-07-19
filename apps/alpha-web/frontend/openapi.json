@@ -233,6 +233,25 @@
         "title": "CommandOption",
         "type": "object"
       },
+      "CredentialStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "present": {
+            "title": "Present",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "present"
+        ],
+        "title": "CredentialStatus",
+        "type": "object"
+      },
       "Deleted": {
         "additionalProperties": false,
         "properties": {
@@ -577,6 +596,17 @@
             ],
             "title": "Run Id"
           },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -589,6 +619,7 @@
           "status",
           "created_at",
           "run_id",
+          "session_id",
           "returncode",
           "n_lines",
           "lines"
@@ -603,6 +634,17 @@
             "title": "Job Id",
             "type": "string"
           },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -610,7 +652,8 @@
         },
         "required": [
           "job_id",
-          "status"
+          "status",
+          "session_id"
         ],
         "title": "JobStatus",
         "type": "object"
@@ -667,6 +710,17 @@
             ],
             "title": "Run Id"
           },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -679,10 +733,66 @@
           "status",
           "created_at",
           "run_id",
+          "session_id",
           "returncode",
           "n_lines"
         ],
         "title": "JobSummary",
+        "type": "object"
+      },
+      "JsonScalar": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "KronosCacheStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "local_only": {
+            "title": "Local Only",
+            "type": "boolean"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "required": [
+          "configured",
+          "path",
+          "exists",
+          "local_only"
+        ],
+        "title": "KronosCacheStatus",
         "type": "object"
       },
       "LaunchRequest": {
@@ -700,6 +810,37 @@
           }
         },
         "title": "LaunchRequest",
+        "type": "object"
+      },
+      "NautilusStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "installed_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installed Version"
+          },
+          "matches_pin": {
+            "title": "Matches Pin",
+            "type": "boolean"
+          },
+          "pinned_version": {
+            "title": "Pinned Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pinned_version",
+          "installed_version",
+          "matches_pin"
+        ],
+        "title": "NautilusStatus",
         "type": "object"
       },
       "NullTier": {
@@ -953,6 +1094,195 @@
         "title": "OptionGreeks",
         "type": "object"
       },
+      "PaperEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "enum": [
+              "lifecycle",
+              "order",
+              "fill",
+              "rejection",
+              "position",
+              "reconciliation_warning"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonScalar"
+            },
+            "title": "Payload",
+            "type": "object"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "ts_event_ns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ts Event Ns"
+          }
+        },
+        "required": [
+          "schema_version",
+          "session_id",
+          "sequence",
+          "event_type",
+          "recorded_at",
+          "ts_event_ns",
+          "payload"
+        ],
+        "title": "PaperEvent",
+        "type": "object"
+      },
+      "PaperSession": {
+        "additionalProperties": false,
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "heartbeat_at": {
+            "title": "Heartbeat At",
+            "type": "string"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "string"
+          },
+          "last_sequence": {
+            "title": "Last Sequence",
+            "type": "integer"
+          },
+          "pid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pid"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sandbox": {
+            "const": true,
+            "title": "Sandbox",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "starting",
+              "running",
+              "stopping",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "strategy": {
+            "title": "Strategy",
+            "type": "string"
+          },
+          "strategy_params": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonScalar"
+            },
+            "title": "Strategy Params",
+            "type": "object"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "terminal_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terminal Error"
+          }
+        },
+        "required": [
+          "schema_version",
+          "session_id",
+          "status",
+          "provider",
+          "sandbox",
+          "symbol",
+          "instrument_id",
+          "strategy",
+          "strategy_params",
+          "snapshot_id",
+          "pid",
+          "heartbeat_at",
+          "started_at",
+          "ended_at",
+          "last_sequence",
+          "terminal_error",
+          "stale"
+        ],
+        "title": "PaperSession",
+        "type": "object"
+      },
       "ParamDefinition": {
         "additionalProperties": false,
         "properties": {
@@ -1075,6 +1405,99 @@
           "paths"
         ],
         "title": "PropfirmPaths",
+        "type": "object"
+      },
+      "ProviderDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "credential_env": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialStatus"
+            },
+            "title": "Credential Env",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "network_required": {
+            "title": "Network Required",
+            "type": "boolean"
+          },
+          "options": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProviderOption"
+            },
+            "title": "Options",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "capabilities",
+          "network_required",
+          "credential_env",
+          "options",
+          "limitations",
+          "installed",
+          "configured"
+        ],
+        "title": "ProviderDefinition",
+        "type": "object"
+      },
+      "ProviderOption": {
+        "additionalProperties": false,
+        "properties": {
+          "choices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Choices",
+            "type": "array"
+          },
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "choices",
+          "default"
+        ],
+        "title": "ProviderOption",
         "type": "object"
       },
       "ResearchReport": {
@@ -1560,12 +1983,17 @@
             },
             "title": "Params",
             "type": "array"
+          },
+          "supports_live_paper": {
+            "title": "Supports Live Paper",
+            "type": "boolean"
           }
         },
         "required": [
           "name",
           "params",
-          "has_tier1_surrogate"
+          "has_tier1_surrogate",
+          "supports_live_paper"
         ],
         "title": "StrategyDefinition",
         "type": "object"
@@ -1585,6 +2013,89 @@
           "symbols"
         ],
         "title": "Symbols",
+        "type": "object"
+      },
+      "SystemCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "snapshots": {
+            "title": "Snapshots",
+            "type": "integer"
+          },
+          "symbols": {
+            "title": "Symbols",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbols",
+          "snapshots"
+        ],
+        "title": "SystemCounts",
+        "type": "object"
+      },
+      "SystemDataDirectory": {
+        "additionalProperties": false,
+        "properties": {
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "free_bytes": {
+            "title": "Free Bytes",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "readable": {
+            "title": "Readable",
+            "type": "boolean"
+          },
+          "writable": {
+            "title": "Writable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "exists",
+          "readable",
+          "writable",
+          "free_bytes"
+        ],
+        "title": "SystemDataDirectory",
+        "type": "object"
+      },
+      "SystemStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/SystemCounts"
+          },
+          "data_dir": {
+            "$ref": "#/components/schemas/SystemDataDirectory"
+          },
+          "kronos_cache": {
+            "$ref": "#/components/schemas/KronosCacheStatus"
+          },
+          "nautilus": {
+            "$ref": "#/components/schemas/NautilusStatus"
+          },
+          "paper_enabled": {
+            "title": "Paper Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data_dir",
+          "counts",
+          "nautilus",
+          "kronos_cache",
+          "paper_enabled"
+        ],
+        "title": "SystemStatus",
         "type": "object"
       },
       "ValidationError": {
@@ -2464,6 +2975,159 @@
         ]
       }
     },
+    "/api/paper/sessions": {
+      "get": {
+        "description": "Every complete paper session, newest first, with computed heartbeat staleness.",
+        "operationId": "list_paper_sessions_api_paper_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PaperSession"
+                  },
+                  "title": "Response List Paper Sessions Api Paper Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Paper Sessions",
+        "tags": [
+          "paper"
+        ]
+      }
+    },
+    "/api/paper/sessions/{session_id}": {
+      "get": {
+        "description": "One validated paper session. Reading a stale session never signals its recorded PID.",
+        "operationId": "get_paper_session_api_paper_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Paper Session",
+        "tags": [
+          "paper"
+        ]
+      }
+    },
+    "/api/paper/sessions/{session_id}/events": {
+      "get": {
+        "description": "Validated operational events whose sequence is strictly greater than ``after``.",
+        "operationId": "get_paper_events_api_paper_sessions__session_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PaperEvent"
+                  },
+                  "title": "Response Get Paper Events Api Paper Sessions  Session Id  Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Paper Events",
+        "tags": [
+          "paper"
+        ]
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "description": "Configured provider capabilities with credential names/presence, never secret values.",
+        "operationId": "get_providers_api_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderDefinition"
+                  },
+                  "title": "Response Get Providers Api Providers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Providers",
+        "tags": [
+          "control-plane"
+        ]
+      }
+    },
     "/api/research/compare": {
       "get": {
         "description": "Backtest each strategy on ``symbol`` and rank by total return (slow \u2014 runs the engine).",
@@ -3294,6 +3958,28 @@
         "summary": "Symbols",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/system": {
+      "get": {
+        "description": "Local readiness only; this endpoint performs no provider network probes.",
+        "operationId": "get_system_api_system_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get System",
+        "tags": [
+          "control-plane"
         ]
       }
     },

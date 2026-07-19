@@ -15,6 +15,12 @@ records behind the load-bearing choices — see [`docs/ARCHITECTURE.md`](docs/AR
 [`CLAUDE.md`](CLAUDE.md); the original design rationale lives in
 [`docs/superpowers/specs/`](docs/superpowers/specs/) and [`research/`](research/).
 
+The approved post-v2 extension is bounded by the
+[architecture audit](docs/audit/2026-07-19-post-v2-architecture-audit.md),
+[provider/paper implementation spec](docs/superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md),
+[dependency/license matrix](docs/governance/2026-07-19-dependency-license-matrix.md), and
+[risk register](docs/governance/2026-07-19-post-v2-risk-register.md).
+
 ## Install
 
 Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/).
@@ -41,13 +47,14 @@ uv lock --check && uv sync --locked \
 # 1. Pull raw, unadjusted data into the point-in-time store (needs network — see Caveats)
 uv run alpha data pull AAPL    --source yfinance --start 2010-01-01 --end 2024-12-31   # equities
 uv run alpha data pull SPY     --source yfinance --start 2010-01-01 --end 2024-12-31   # ETF — yfinance is the reliable equity/ETF source
-uv run alpha data pull BTC/USD --source ccxt     --start 2018-01-01 --end 2024-12-31   # crypto (Coinbase, paginated)
+uv run alpha data pull BTC/USD --source ccxt --exchange coinbase --start 2018-01-01 --end 2024-12-31
 # Stooq adds $0 FX / commodities / indices (e.g. `--source stooq` for `spy.us`, `^spx`) but is
 # best-effort: it now sits behind an anti-bot gate and then fails loud — see Caveats.
 
 # 2. (optional) Freeze an immutable, content-hashed snapshot for reproducibility
-uv run alpha data snapshot snap-2024 AAPL SPY BTC/USD
-uv run alpha data verify   snap-2024
+uv run alpha data snapshot equities-2024 AAPL SPY --source yfinance
+uv run alpha data snapshot btc-coinbase-2024 BTC/USD --source ccxt --exchange coinbase
+uv run alpha data verify equities-2024
 
 # 3. Backtest one fixed-parameter strategy (ts_momentum | ma_crossover | mean_reversion | breakout)
 uv run alpha backtest run AAPL --strategy ma_crossover --param fast=20 --param slow=100
@@ -65,24 +72,42 @@ uv run alpha backtest cross-sectional SPY QQQ IWM GLD USO --top-quantile 0.3
 # 7. Re-display any stored run (no engine re-run)
 uv run alpha report <run_id>
 
-# 8. Paper-trading preflight: validate the sandbox exec venue + strategy parity (see Caveats)
-uv run alpha paper preflight AAPL --strategy ma_crossover
+# 8. Inspect the provider/system control plane and paper wiring offline
+uv run alpha info providers --json
+uv run alpha info system --json
+uv run alpha paper preflight BTC/USDT --strategy ma_crossover
 
-# 9. Analytics for the Workstation panels (all offline except screener, which needs a finnhub key)
+# 9. Opt-in crypto paper: public Binance data, LOCAL SANDBOX orders only (see Caveats)
+PAPER_END=2026-07-19  # replace with the current UTC date; warmup must be fresh
+uv run alpha data pull BTC/USDT --source ccxt --exchange binance --start 2024-01-01 --end "$PAPER_END"
+uv run alpha data snapshot binance-warmup BTC/USDT --source ccxt --exchange binance
+ALPHA_PAPER_ENABLED=true uv run alpha paper run BTC/USDT \
+  --provider binance --snapshot binance-warmup --strategy ma_crossover
+uv run alpha paper sessions --json
+
+# 10. Analytics for the Workstation panels (all offline except screener, which needs a finnhub key)
 uv run alpha options greeks 100 100 --vol 0.2              # Black-Scholes price + greeks
 uv run alpha risk scenario --from-run <run_id>            # vol-scaling + tail-shock stress
 uv run alpha research compare AAPL                        # rank every strategy on a symbol
 uv run alpha screener quote AAPL                          # finnhub (set ALPHA_FINNHUB_API_KEY)
 ```
 
-Every command writes a byte-stable JSON manifest (and parquet/HTML where relevant) under
-`data_dir/{runs,optim,portfolio,cross_sectional,propfirm}/<run_id>/`. Re-running with the same inputs is
-reproducible to the byte (`--seed` defaults to 7). Run any command with `--help` for all options.
+Research run commands write a byte-stable JSON manifest (and parquet/HTML where relevant) under
+`data_dir/{runs,optim,portfolio,cross_sectional,propfirm,forecast}/<run_id>/`. Re-running with the
+same inputs is reproducible to the byte (`--seed` defaults to 7). Paper sessions are intentionally
+nondeterministic operational records under `data_dir/paper/<uuid>/`, never research runs or
+validation evidence. Run any command with `--help` for all options.
 
 ## Caveats (read before trusting a result)
 
-- **Live data needs outbound network.** `alpha data pull` hits Yahoo (yfinance) and Coinbase (ccxt)
-  — both verified working end-to-end. **Stooq is best-effort:** it now gates its free CSV behind an
+- **This repository has no declared root project license.** No dependency or vendored-code license
+  licenses ALPHA's original code. Distribution, publication, or hosted use is gated on an explicit
+  owner license decision and release-time dependency/notice review; see the
+  [license matrix](docs/governance/2026-07-19-dependency-license-matrix.md).
+- **Live data needs outbound network.** `alpha data pull` hits Yahoo or a selected CCXT exchange;
+  yfinance and Coinbase are verified working end-to-end. The Binance paper adapter is fully
+  assembled and offline-tested, but its real connection/quote smoke and UTC-rollover soak remain
+  explicit opt-in acceptance steps. **Stooq is best-effort:** it gates its free CSV behind an
   anti-bot challenge + a per-IP download quota, so `--source stooq` often **fails loud** with a
   `DataError` (it does *not* silently 404) — prefer `--source yfinance` for equities/ETFs. In a
   sandbox with a restricted egress allowlist any host may be blocked; run where the network policy
@@ -100,14 +125,31 @@ reproducible to the byte (`--seed` defaults to 7). Run any command with `--help`
   zero-straddling bootstrap CI fail it); a diversified `inverse_vol` basket clears it (OOS Sharpe
   ~1.18, PSR ~1.0). The parsers and gauntlet primitives are also covered offline.
 
-## Paper trading (Phase 4 — scaffolded)
+## Paper trading (Phase 4 — sandbox-only)
 
-The execution side is wired: `alpha paper preflight` builds a nautilus `SandboxExecutionClient`
-venue (fills with the *same* close-decide / next-open convention as the backtest) and constructs the
-**same strategy class** a backtest runs — verifying backtest↔paper parity offline. Going live needs
-the one piece the spec defers post-v1: a **live market-data adapter + credentials + network** (e.g. a
-nautilus Binance/Bybit testnet config). Supply it as `data_clients` to
-`alpha_cli._paper.run_paper(...)` on a networked host.
+The deterministic offline implementation is complete. `alpha paper run BASE/USDT` primes one of
+the four rule strategies from a fresh, hash-verified, same-symbol `ccxt:binance` snapshot whose
+hashed pull sidecar proves the stored bars were not relabelled from another exchange, then uses
+public Binance `LIVE` market data through NautilusTrader and routes every order exclusively to a
+**local Nautilus sandbox execution client** at venue `BINANCE`. `ALPHA_PAPER_ENABLED` defaults to
+false. There is no Binance execution client, testnet/live-order mode, or real-order credential
+surface. Kronos is rejected until a separately designed causal live cache exists.
+
+History priming warms the same strategy class without emitting orders. Paper-only quantities honor
+the live instrument's size increment while existing SIM results remain unchanged. SIGINT/SIGTERM
+request a clean node stop, and node disposal is unconditional.
+
+Operational state lives outside deterministic `RUN_DIRS` at
+`data_dir/paper/<uuid>/{session.json,events/<sequence>.json}`. It persists bounded lifecycle,
+order, fill, rejection, position, and reconciliation-warning events—never bars/ticks. Use
+`alpha paper sessions` / `alpha paper show`, or the Workstation Paper Monitor, to inspect status,
+heartbeat/staleness, position events, and the order blotter. Stale state never authorizes a raw PID
+kill; cancellation is limited to a Workstation-known child job.
+
+This proves assembly, safety gates, journaling, and deterministic compatibility offline. It does
+**not** prove Binance availability, simulated fill realism, latency, queue position, fees, or
+profitability. Before calling Phase 4 operationally accepted, run the separately marked network
+smoke and one owner-initiated sandbox soak across UTC midnight.
 
 ## Conversational agent (MCP server)
 
@@ -141,12 +183,19 @@ interface — Bloomberg/OpenBB-class, but $0.
 - **Price chart / data explorer** — point-in-time candles + the symbol store, linked to a global
   symbol/date context. **Options**, **Screener/News**, **Risk scenarios**, and an **AI research
   desk** panel round out the four net-new modules.
+- **Providers · System** — registry-driven provider readiness, limitations, redacted credential
+  presence, data-directory capacity, dependency/cache status, and paper opt-in state; no network
+  probe.
+- **Paper Monitor** — permanent SANDBOX identity, durable sessions/heartbeats, latest position event,
+  order/fill/rejection blotter, incremental event log, and known-job cancellation.
 - **Command palette + savable workspaces** (dockable/floating/popout panels).
 
 Built as a Vite/React/TypeScript SPA (Dockview + Lightweight Charts + uPlot + TanStack Table/Virtual +
 cmdk) over a thin FastAPI **JSON + SSE** backend. Stable JSON responses are strict Pydantic models;
-committed OpenAPI generates the frontend API definitions. Like the MCP server it's purely additive — every
-data source is an `alpha … --json` subprocess or a manifest read; nothing bypasses the CLI. The SPA
+committed OpenAPI generates the frontend API definitions. Like the MCP server it's purely additive —
+provider/system data subprocesses the matching `alpha info … --json` projections, research data is a
+manifest/artifact read, and paper monitoring uses the public operational journal seam; nothing
+imports an engine. The SPA
 source lives in [`apps/alpha-web/frontend`](apps/alpha-web/frontend); its **built assets are
 committed** under `src/alpha_web/static/app`, so an installed Python wheel never needs Node. To change
 the UI:
@@ -166,14 +215,18 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Not yet built (intentional)
 
-- Live paper-trading data feed (the user-supplied adapter described above).
+- Real or exchange-testnet order execution, additional paper venues/providers, and automated orphan
+  recovery (the shipped path is Binance public data + local sandbox execution only).
+- Kronos live-paper cache semantics (the four rule strategies are supported).
 - Full-engine cross-sectional with per-instrument t+1 fills (a returns-level panel version ships now).
 - FRED macro / regime filters (needs a non-OHLCV store).
 - Model fine-tuning (Kronos remains zero-shot, with overlap provenance and offline weight policy).
 
 ## Quality gate
 
-The shipped scope is professionally hardened: 12 enforced import contracts, strict mypy, warnings
+The shipped offline scope is professionally hardened: 12 enforced import contracts, strict mypy, warnings
 as errors, 93% minimum owned-source Python line coverage, frontend V8 coverage floors, deterministic
 generated web contracts, atomic manifest-last artifact publication, and isolated builds/imports for
-all 11 wheels. See [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md).
+all 11 wheels. See [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md)
+and the [post-v2 audit](docs/audit/2026-07-19-post-v2-architecture-audit.md). The network smoke and
+UTC-rollover sandbox soak remain explicit operational acceptance gates.

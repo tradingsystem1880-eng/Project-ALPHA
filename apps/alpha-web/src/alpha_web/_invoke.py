@@ -26,6 +26,10 @@ from alpha_cli.catalog import COMMAND_RUN_TYPES
 
 _ALPHA_BIN = "alpha"  # console script on the venv PATH
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
+_SESSION_ID_RE = re.compile(
+    r"->\s+(?:paper\s+)?session\s+"
+    r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b"
+)
 
 # command-path -> artifact run-type dir (None = persists no manifest, e.g. data pull / console)
 RUN_TYPE = COMMAND_RUN_TYPES
@@ -50,6 +54,7 @@ class Job:
         self.cancelled = False
         self.returncode: int | None = None
         self.run_id: str | None = None
+        self.session_id: str | None = None
         self._proc: subprocess.Popen[str] | None = None
         self._lock = threading.Lock()
 
@@ -90,6 +95,7 @@ class Job:
             "status": self.status,
             "created_at": self.created_at,
             "run_id": self.run_id,
+            "session_id": self.session_id,
             "returncode": self.returncode,
             "n_lines": len(self.lines),
         }
@@ -140,6 +146,10 @@ def _pump(job: Job, proc: subprocess.Popen[str]) -> None:
                     match = _RUN_ID_RE.search(line)
                     if match is not None:
                         job.run_id = match.group(1)
+                if job.session_id is None:
+                    session_match = _SESSION_ID_RE.search(line)
+                    if session_match is not None:
+                        job.session_id = session_match.group(1)
     finally:
         if proc.stdout is not None:
             proc.stdout.close()

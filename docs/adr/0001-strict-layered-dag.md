@@ -12,21 +12,28 @@ We need the dependency graph to be a property the toolchain *checks*, not a guid
 
 ## Decision
 
-Model the platform as a `uv` workspace of small `src/`-layout packages and enforce a **strict acyclic dependency DAG as a CI gate** using [`import-linter`](https://import-linter.readthedocs.io/). The graph: `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies` and `alpha_validation` depend on `alpha_core` only; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG and nothing imports them.
+Model the platform as a `uv` workspace of small `src/`-layout packages and enforce a **strict acyclic dependency DAG as a CI gate** using [`import-linter`](https://import-linter.readthedocs.io/). The graph: `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG and nothing imports them. The surface packages may import only `alpha_core` plus the deliberately lightweight public `alpha_cli` seams.
 
-Seven `[tool.importlinter]` **forbidden** contracts in the root `pyproject.toml` encode this:
+Twelve `[tool.importlinter]` **forbidden** contracts in the root `pyproject.toml` encode this:
 
 1. `alpha_core` imports nothing internal.
 2. `alpha_data` depends only on core.
 3. `alpha_strategies` depends only on core.
 4. `alpha_validation` depends only on core.
 5. `alpha_backtest` depends only on core + data.
-6. `alpha_mcp` sits atop the DAG (nothing imports it).
-7. `alpha_web` sits atop the DAG (nothing — including `alpha_mcp` — imports it).
+6. `alpha_forecast` depends only on core.
+7. `alpha_options` depends only on core.
+8. `alpha_screener` depends only on core.
+9. `alpha_mcp` sits atop the DAG (nothing imports it).
+10. `alpha_web` sits atop the DAG (nothing — including `alpha_mcp` — imports it).
+11. `alpha_mcp` imports only the public platform surfaces, never data, strategy, engine,
+    validation, model, analytics, screener, or web packages.
+12. `alpha_web` imports only the public platform surfaces, never data, strategy, engine,
+    validation, model, analytics, screener, or MCP packages.
 
 These run as the **`Architecture`** step (`uv run lint-imports`) in `.github/workflows/ci.yml`, positioned between `ruff format --check` and `mypy`.
 
-**Code anchors:** root `pyproject.toml` `[tool.importlinter]` (7 contracts) and `[dependency-groups].dev` (`import-linter>=2.1`); `.github/workflows/ci.yml` (`Architecture` step); per-package `pyproject.toml` `dependencies`.
+**Code anchors:** root `pyproject.toml` `[tool.importlinter]` (12 contracts) and `[dependency-groups].dev` (`import-linter>=2.1`); `.github/workflows/ci.yml` (`Architecture` step); per-package `pyproject.toml` `dependencies`.
 
 ## Options Considered
 
@@ -65,4 +72,4 @@ The contracts cost a few minutes of setup and a small ongoing tax: a genuinely n
 
 - **Easier:** reasoning about any package in isolation (its imports are bounded and known); onboarding a new agent session (the DAG is a hard contract, not lore); preventing cycles.
 - **Harder:** adding a cross-layer dependency on a whim — it must go through `alpha_cli` or be an explicit contract edit. (Intended.)
-- **Revisit when:** a new top-of-DAG surface is added (extend with an eighth/ninth "nothing imports it" contract), or a package legitimately needs to split. Keep declared `dependencies`, real imports, and contracts in agreement — all three are currently consistent.
+- **Revisit when:** a new top-of-DAG surface is added (add both an inbound "nothing imports it" boundary and an outbound allowlist boundary), or a package legitimately needs to split. Keep declared `dependencies`, real imports, and contracts in agreement — all three are currently consistent.

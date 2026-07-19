@@ -10,6 +10,8 @@ remains the standalone reference implementation; this base is the template for t
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
 from nautilus_trader.model.data import Bar as NautilusBar
@@ -20,13 +22,37 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.objects import Quantity
 from nautilus_trader.trading.strategy import Strategy
 
-from alpha_core import DataError
+from alpha_core import Bar, DataError, ExecutionEventSink
 from alpha_strategies.sizing import realized_volatility, vol_target_size
 
 
 def _sum_money(pnls: Any) -> float:
     """Sum a nautilus per-currency PnL dict to a float (single base currency in v1)."""
     return float(sum(money.as_double() for money in pnls.values()))
+
+
+def normalize_order_quantity(
+    delta: float, *, size_precision: int, size_increment: float
+) -> Quantity | None:
+    """Return a valid venue quantity without changing the legacy integer-lot SIM path.
+
+    Existing simulations round to the nearest integer, so that exact behavior is retained when
+    the instrument advertises precision ``0`` and increment ``1``.  Fractional live quantities
+    are rounded down to the nearest positive venue increment to avoid exceeding the target.
+    """
+    magnitude = abs(delta)
+    if size_precision == 0 and size_increment == 1.0:
+        lots = round(magnitude)
+        return Quantity.from_int(lots) if lots > 0 else None
+    if size_increment <= 0.0:
+        raise DataError(f"instrument size_increment must be > 0, got {size_increment}")
+    raw = Decimal(str(magnitude))
+    increment = Decimal(str(size_increment))
+    steps = (raw / increment).to_integral_value(rounding=ROUND_DOWN)
+    normalized = steps * increment
+    if normalized <= 0:
+        return None
+    return Quantity(float(normalized), size_precision)
 
 
 class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is untyped (Cython)
@@ -82,6 +108,63 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self.net_units = 0.0
         self.fills = 0
         self.rejections = 0  # orders denied (risk/buying-power) or rejected by the venue
+        self._event_sink: ExecutionEventSink | None = None
+
+    @property
+    def history_size(self) -> int:
+        """Number of bars currently held by the strategy (including paper warmup)."""
+        return len(self._closes)
+
+    @property
+    def eligible_bars(self) -> int:
+        """Number of post-warmup bars counted by the rebalance cadence."""
+        return self._eligible_bars
+
+    @property
+    def pending_target(self) -> float | None:
+        """The next-open target, exposed read-only for paper safety checks."""
+        return self._target_units
+
+    def set_execution_event_sink(self, sink: ExecutionEventSink | None) -> None:
+        """Attach the operational paper journal; deterministic backtests leave this unset."""
+        self._event_sink = sink
+
+    def _emit(
+        self,
+        event_type: str,
+        payload: Mapping[str, str | int | float | bool | None],
+        *,
+        ts_event_ns: int | None = None,
+    ) -> None:
+        if self._event_sink is not None:
+            self._event_sink.emit(event_type, payload, ts_event_ns=ts_event_ns)
+
+    def _append_history(self, close: float, high: float, low: float) -> bool:
+        """Append one bar and advance cadence; return whether this bar may rebalance."""
+        self._closes.append(close)
+        self._highs.append(high)
+        self._lows.append(low)
+        if len(self._closes) < self._min_history:
+            return False
+        rebalance_due = self._eligible_bars % self._rebalance_every == 0
+        self._eligible_bars += 1
+        return rebalance_due
+
+    def prime_history(self, bars: Sequence[Bar]) -> None:
+        """Warm indicators and cadence from PIT bars without creating targets or orders.
+
+        The caller must first enforce the snapshot's provenance and knowledge cutoff.  This method
+        additionally requires strictly increasing timestamps and intentionally performs only the
+        history/cadence portion of :meth:`on_bar`; historical decisions cannot leak into the live
+        session as a pending order.
+        """
+        previous = None
+        for bar in bars:
+            if previous is not None and bar.ts <= previous:
+                raise ValueError("paper warmup bars must have strictly increasing timestamps")
+            self._append_history(bar.close, bar.high, bar.low)
+            previous = bar.ts
+        self._target_units = None
 
     def _net_liq(self) -> float:
         """Current net-liquidation equity (same formula as the engine's recorder)."""
@@ -102,14 +185,7 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
 
     def on_bar(self, bar: NautilusBar) -> None:
         # Decide on the close of t; the order is placed at the next open (see on_quote_tick).
-        self._closes.append(float(bar.close))
-        self._highs.append(float(bar.high))
-        self._lows.append(float(bar.low))
-        if len(self._closes) < self._min_history:
-            return  # warming up — not enough history for the signal or the vol estimate
-        rebalance_due = self._eligible_bars % self._rebalance_every == 0
-        self._eligible_bars += 1
-        if not rebalance_due:
+        if not self._append_history(float(bar.close), float(bar.high), float(bar.low)):
             return
         capital = self._capital
         if self._size_on_equity or self._halt_drawdown is not None:
@@ -151,24 +227,82 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             return
         target = self._target_units
         self._target_units = None
-        lots = round(abs(target - self.net_units))
-        if lots <= 0:
+        delta = target - self.net_units
+        instrument = self.cache.instrument(self._iid)
+        if instrument is None:
+            self.rejections += 1
+            self._emit(
+                "reconciliation_warning",
+                {
+                    "instrument_id": str(self._iid),
+                    "detail": "instrument missing from strategy cache; order suppressed",
+                },
+                ts_event_ns=int(quote.ts_event),
+            )
+            return
+        quantity = normalize_order_quantity(
+            delta,
+            size_precision=int(instrument.size_precision),
+            size_increment=float(instrument.size_increment),
+        )
+        if quantity is None:
             return
         side = OrderSide.BUY if target > self.net_units else OrderSide.SELL
-        self.submit_order(
-            self.order_factory.market(
-                instrument_id=self._iid, order_side=side, quantity=Quantity.from_int(lots)
-            )
+        order = self.order_factory.market(
+            instrument_id=self._iid, order_side=side, quantity=quantity
+        )
+        self.submit_order(order)
+        self._emit(
+            "order",
+            {
+                "instrument_id": str(self._iid),
+                "client_order_id": str(order.client_order_id),
+                "side": str(side),
+                "quantity": float(quantity),
+            },
+            ts_event_ns=int(quote.ts_event),
         )
 
     def on_order_filled(self, event: OrderFilled) -> None:
         self.fills += 1
         qty = float(event.last_qty)
         self.net_units += qty if event.order_side == OrderSide.BUY else -qty
+        ts_event_ns = int(event.ts_event)
+        self._emit(
+            "fill",
+            {
+                "instrument_id": str(self._iid),
+                "client_order_id": str(event.client_order_id),
+                "side": str(event.order_side),
+                "quantity": qty,
+                "price": float(event.last_px),
+            },
+            ts_event_ns=ts_event_ns,
+        )
+        self._emit(
+            "position",
+            {"instrument_id": str(self._iid), "net_units": self.net_units},
+            ts_event_ns=ts_event_ns,
+        )
 
     def on_order_denied(self, event: object) -> None:
         # pre-trade risk denial (e.g. notional exceeds CASH buying power) — count, never swallow
         self.rejections += 1
+        self._emit_rejection(event, "denied")
 
     def on_order_rejected(self, event: object) -> None:
         self.rejections += 1
+        self._emit_rejection(event, "rejected")
+
+    def _emit_rejection(self, event: object, outcome: str) -> None:
+        reason = getattr(event, "reason", None)
+        ts_event = getattr(event, "ts_event", None)
+        self._emit(
+            "rejection",
+            {
+                "instrument_id": str(self._iid),
+                "outcome": outcome,
+                "reason": str(reason) if reason is not None else None,
+            },
+            ts_event_ns=int(ts_event) if ts_event is not None else None,
+        )

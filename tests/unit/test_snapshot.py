@@ -1,3 +1,4 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ WHEN = datetime(2026, 6, 15, tzinfo=UTC)
 def _store(tmp_path: Path) -> ParquetStore:
     store = ParquetStore(tmp_path / "work")
     store_fetch_result(store, parse_yfinance_history(aapl_like(), "AAPL"))
+    store.write_provenance("AAPL", source="yfinance", adapter_version="1", parser_version="1")
     return store
 
 
@@ -35,6 +37,7 @@ def test_snapshot_writes_manifest_with_provenance(tmp_path: Path) -> None:
     assert manifest["source"] == "yfinance"
     assert manifest["adapter_version"] == "1"
     assert manifest["symbols"]["AAPL"]["bars_sha256"]
+    assert manifest["symbols"]["AAPL"]["provenance_sha256"]
     assert (tmp_path / "snaps" / "snap1" / "manifest.json").exists()
 
 
@@ -68,6 +71,24 @@ def test_verify_detects_tampering(tmp_path: Path) -> None:
     bars_file = next((tmp_path / "snaps" / "snap1").glob("bars/*.parquet"))
     bars_file.write_bytes(bars_file.read_bytes() + b"corruption")
     with pytest.raises(DataError):
+        verify_snapshot(tmp_path / "snaps" / "snap1")
+
+
+def test_verify_detects_pull_provenance_tampering(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
+    provenance = tmp_path / "snaps" / "snap1" / "provenance" / "AAPL.json"
+    provenance.write_text('{"source":"ccxt:binance"}', encoding="utf-8")
+    with pytest.raises(DataError, match="provenance"):
         verify_snapshot(tmp_path / "snaps" / "snap1")
 
 
@@ -186,4 +207,34 @@ def test_corrupt_snapshot_manifest_is_typed(tmp_path: Path) -> None:
     snapshot.mkdir()
     (snapshot / "manifest.json").write_text("{")
     with pytest.raises(DataError, match="corrupt snapshot manifest"):
+        verify_snapshot(snapshot)
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        None,
+        {},
+        {"bars_file": "../../outside.parquet", "bars_sha256": "0" * 64},
+    ],
+)
+def test_malformed_symbol_manifest_entries_are_typed(tmp_path: Path, entry: object) -> None:
+    store = _store(tmp_path)
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
+    snapshot = tmp_path / "snaps" / "snap1"
+    manifest_path = snapshot / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["symbols"]["AAPL"] = entry
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(DataError, match="invalid snapshot"):
         verify_snapshot(snapshot)
