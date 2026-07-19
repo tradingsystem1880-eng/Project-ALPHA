@@ -16,6 +16,8 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0008](0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted | 2026-07-04 |
 | [0009](0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration | Accepted | 2026-07-04 |
 | [0010](0010-local-kronos-weights-offline-policy.md) | Local Kronos weights + code-wired offline loading policy | Accepted | 2026-07-18 |
+| [0011](0011-evidence-gated-external-integrations.md) | Evidence-gated adoption of external integrations | Accepted | 2026-07-19 |
+| [0012](0012-operational-paper-sessions.md) | Operational paper sessions remain separate from deterministic research runs | Accepted | 2026-07-19 |
 
 ## Conventions
 
@@ -28,5 +30,5 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 
 Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`CLAUDE.md`](../../CLAUDE.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
 
-- **Polars as the default dataframe** (pandas/`quantstats_lumi` confined to the tear-sheet rendering edge and the Kronos facade — see ADR-0008).
+- **Polars as the default dataframe** (pandas confined to the yfinance adapter/parser, tear-sheet rendering edge, and Kronos facade — see ADR-0008).
 - **Fat-tailed null generators** (`student_t` / `garch`) as selectable alternatives to the block-bootstrap null.

@@ -5,8 +5,8 @@ A thin JSON+SSE backend over the run store that serves the built single-page wor
 the engine never runs in this process. Reads/writes go through ``AlphaSettings().data_dir`` so the
 web app, its subprocesses, and the CLI share one store. Binds loopback only (local single-user).
 
-Routers: ``/api/runs`` · ``/api/jobs`` · ``/api/{strategies,commands,symbols}`` · ``/api/candles``
-· ``/api/apps``. The SPA is served at ``/`` (and ``/app``); its assets ride the ``/static`` mount.
+Routers include runs/jobs/catalog, candles, provider/system readiness, and durable paper monitoring.
+The SPA is served at ``/`` (and ``/app``); its assets ride the ``/static`` mount.
 """
 
 from __future__ import annotations
@@ -20,8 +20,10 @@ from fastapi.staticfiles import StaticFiles
 from alpha_web.api import activity as activity_api
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
+from alpha_web.api import control as control_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import options as options_api
+from alpha_web.api import paper as paper_api
 from alpha_web.api import research as research_api
 from alpha_web.api import risk as risk_api
 from alpha_web.api import runs as runs_api
@@ -41,9 +43,11 @@ def create_app() -> FastAPI:
     app.include_router(jobs_api.router)
     app.include_router(activity_api.router)
     app.include_router(catalog_api.router)
+    app.include_router(control_api.router)
     app.include_router(candles_api.router)
     app.include_router(workspaces_api.router)
     app.include_router(options_api.router)
+    app.include_router(paper_api.router)
     app.include_router(risk_api.router)
     app.include_router(screener_api.router)
     app.include_router(research_api.router)

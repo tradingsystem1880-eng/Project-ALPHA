@@ -12,12 +12,28 @@ Composing the backtest engine with the validation gauntlet is the platform's mos
 
 Make **`alpha_cli` the single composition layer** — the only package the DAG permits to touch both the engine (`alpha_backtest`) and the gauntlet (`alpha_validation`). Every run produces a **byte-stable JSON manifest** in the run store.
 
-The surfaces **compose nothing**. `alpha_mcp` and `alpha_web` invoke the `alpha` console script as a **subprocess**, parse the `-> run <id>` token from stdout, and read the manifest the CLI wrote back from the store. The CLI is the single source of truth; the surfaces are thin, additive presentation/transport layers over the same artifacts.
+The surfaces **compose nothing**. `alpha_mcp` and `alpha_web` invoke the `alpha` console script as a
+**subprocess**, parse the `-> run <id>` token from stdout, and read the manifest the CLI wrote back
+from the store. Provider/system HTTP routes likewise subprocess `alpha info providers --json` and
+`alpha info system --json`; the CLI-owned registry and local-readiness projection remain the single
+source of truth. The Workstation may read the public
+`alpha_cli.paper_store` journal for
+operational monitoring (ADR-0012), but it never constructs a paper node or imports engine/data/
+strategy packages. The CLI is the single source of truth; the surfaces are thin, additive
+presentation/transport layers over the same authoritative seams.
 
 **Code anchors:**
 - `apps/alpha-mcp/src/alpha_mcp/_invoke.py:run_alpha` — `subprocess.run(["alpha", *args], …, check=False)`, passes `ALPHA_DATA_DIR` via env, parses the run id (`_RUN_ID_RE`), reads the manifest, fails loud on non-zero exit / missing manifest.
 - `apps/alpha-web/src/alpha_web/_invoke.py:launch` / `event_stream` — `subprocess.Popen`, tails stdout on a daemon thread, streams lines as SSE, parses the run id on the fly.
-- Import-linter contracts 6 & 7 (root `pyproject.toml`) — nothing imports `alpha_mcp` or `alpha_web`.
+- `apps/alpha-web/src/alpha_web/_catalog.py:providers` / `system` — subprocess the matching
+  `alpha info … --json` projection and fail loud on non-zero or malformed output.
+- `apps/alpha-web/src/alpha_web/api/paper.py` — read-only monitoring through public
+  `alpha_cli.paper_store`; node launch/cancellation still goes through the known CLI child job.
+- The named `alpha_mcp sits atop the DAG` and `alpha_web sits atop the DAG` import-linter
+  boundaries (root `pyproject.toml`) — nothing imports either surface.
+- The named `alpha_mcp imports only public platform surfaces` and `alpha_web imports only public
+  platform surfaces` boundaries — both surfaces remain outside the engine, validation, data, and
+  model dependency graph.
 - The lazy engine imports inside `apps/alpha-cli/src/alpha_cli/_runner.py:run_full_backtest` keep nautilus out of import paths that don't need it.
 
 ## Options Considered

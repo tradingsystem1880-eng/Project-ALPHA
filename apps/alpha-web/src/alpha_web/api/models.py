@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -145,6 +145,64 @@ class StrategyDefinition(StrictModel):
     name: str
     params: list[ParamDefinition]
     has_tier1_surrogate: bool
+    supports_live_paper: bool
+
+
+class CredentialStatus(StrictModel):
+    name: str
+    present: bool
+
+
+class ProviderOption(StrictModel):
+    label: str
+    choices: list[str]
+    default: str
+
+
+class ProviderDefinition(StrictModel):
+    id: str
+    label: str
+    capabilities: list[str]
+    network_required: bool
+    credential_env: list[CredentialStatus]
+    options: dict[str, ProviderOption]
+    limitations: list[str]
+    installed: bool
+    configured: bool
+
+
+class SystemDataDirectory(StrictModel):
+    path: str
+    exists: bool
+    readable: bool
+    writable: bool
+    free_bytes: int
+
+
+class SystemCounts(StrictModel):
+    symbols: int
+    snapshots: int
+
+
+class NautilusStatus(StrictModel):
+    pinned_version: str
+    installed_version: str | None
+    matches_pin: bool
+
+
+class KronosCacheStatus(StrictModel):
+    configured: bool
+    path: str | None
+    exists: bool
+    local_only: bool
+
+
+class SystemStatus(StrictModel):
+    data_dir: SystemDataDirectory
+    counts: SystemCounts
+    nautilus: NautilusStatus
+    kronos_cache: KronosCacheStatus
+    paper_enabled: bool
 
 
 class CommandOption(StrictModel):
@@ -179,6 +237,7 @@ class Symbols(StrictModel):
 class JobStatus(StrictModel):
     job_id: str
     status: str
+    session_id: str | None
 
 
 class JobSummary(StrictModel):
@@ -188,12 +247,48 @@ class JobSummary(StrictModel):
     status: str
     created_at: float
     run_id: str | None
+    session_id: str | None
     returncode: int | None
     n_lines: int
 
 
 class JobDetail(JobSummary):
     lines: list[str]
+
+
+type JsonScalar = str | int | float | bool | None
+
+
+class PaperSession(StrictModel):
+    schema_version: int
+    session_id: str
+    status: Literal["starting", "running", "stopping", "completed", "cancelled", "failed"]
+    provider: str
+    sandbox: Literal[True]
+    symbol: str
+    instrument_id: str
+    strategy: str
+    strategy_params: dict[str, JsonScalar]
+    snapshot_id: str
+    pid: int | None
+    heartbeat_at: str
+    started_at: str
+    ended_at: str | None
+    last_sequence: int
+    terminal_error: str | None
+    stale: bool
+
+
+class PaperEvent(StrictModel):
+    schema_version: int
+    session_id: str
+    sequence: int
+    event_type: Literal[
+        "lifecycle", "order", "fill", "rejection", "position", "reconciliation_warning"
+    ]
+    recorded_at: str
+    ts_event_ns: int | None
+    payload: dict[str, JsonScalar]
 
 
 class WorkspaceMeta(StrictModel):

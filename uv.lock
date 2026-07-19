@@ -178,7 +178,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
-    { name = "nautilus-trader", specifier = ">=1.228" },
+    { name = "nautilus-trader", specifier = "==1.228.0" },
 ]
 
 [[package]]
@@ -210,7 +210,7 @@ requires-dist = [
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
-    { name = "nautilus-trader", specifier = ">=1.228" },
+    { name = "nautilus-trader", specifier = "==1.228.0" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "polars", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
@@ -342,7 +342,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
-    { name = "nautilus-trader", specifier = ">=1.228" },
+    { name = "nautilus-trader", specifier = "==1.228.0" },
 ]
 
 [[package]]

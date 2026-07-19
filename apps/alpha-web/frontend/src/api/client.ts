@@ -8,12 +8,15 @@ import type {
   ForecastPaths,
   ForecastSeries,
   JobDetail,
-  JobSummary,
   NullTiers,
   OptimTrials,
+  PaperEvent,
+  PaperJobSummary,
+  PaperSession,
   PropfirmPaths,
   OptionCurve,
   OptionGreeks,
+  ProviderDefinition,
   ResearchReport,
   RiskReport,
   RunDetail,
@@ -21,6 +24,7 @@ import type {
   ScreenerNews,
   ScreenerQuote,
   StrategyDef,
+  SystemStatus,
   TradeRow,
   WorkspaceDoc,
   WorkspaceMeta,
@@ -53,16 +57,21 @@ export const api = {
   strategies: (): Promise<StrategyDef[]> => getJSON('/api/strategies'),
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
-  jobs: (): Promise<JobSummary[]> => getJSON('/api/jobs'),
+  providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
+  system: (): Promise<SystemStatus> => getJSON('/api/system'),
+  jobs: (): Promise<PaperJobSummary[]> => getJSON('/api/jobs'),
   job: (id: string): Promise<JobDetail> => getJSON(`/api/jobs/${id}`),
-  async launch(command: string, args: string): Promise<{ job_id: string; status: string }> {
+  async launch(
+    command: string,
+    args: string,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> {
     const res = await fetch('/api/jobs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ command, args }),
     })
     if (!res.ok) throw new Error(await res.text())
-    return (await res.json()) as { job_id: string; status: string }
+    return (await res.json()) as { job_id: string; status: string; session_id?: string | null }
   },
   cancel: (id: string): Promise<Response> => fetch(`/api/jobs/${id}`, { method: 'DELETE' }),
   streamUrl: (id: string): string => `/api/jobs/${id}/stream`,
@@ -93,4 +102,9 @@ export const api = {
     getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
   researchCompare: (symbol: string): Promise<ResearchReport> =>
     getJSON(`/api/research/compare?symbol=${encodeURIComponent(symbol)}`),
+  paperSessions: (): Promise<PaperSession[]> => getJSON('/api/paper/sessions'),
+  paperSession: (id: string): Promise<PaperSession> =>
+    getJSON(`/api/paper/sessions/${encodeURIComponent(id)}`),
+  paperEvents: (id: string, after = 0): Promise<PaperEvent[]> =>
+    getJSON(`/api/paper/sessions/${encodeURIComponent(id)}/events?after=${after}`),
 }

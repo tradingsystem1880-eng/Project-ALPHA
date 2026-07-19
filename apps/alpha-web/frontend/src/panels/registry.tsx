@@ -7,11 +7,13 @@ import type { FunctionComponent } from 'react'
 import { ActivityFeed } from './ActivityFeed'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
-import { JobMonitor } from './JobMonitor'
-import { Pipeline } from './Pipeline'
 import { Glossary } from './Glossary'
+import { JobMonitor } from './JobMonitor'
 import { OptionsGreeks } from './OptionsGreeks'
+import { PaperMonitor } from './PaperMonitor'
+import { Pipeline } from './Pipeline'
 import { PriceChart } from './PriceChart'
+import { ProviderSystem } from './ProviderSystem'
 import { RiskMonitor } from './RiskMonitor'
 import { RunBrowser } from './RunBrowser'
 import { Screener } from './Screener'
@@ -32,12 +34,14 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   ActivityFeed,
   JobMonitor,
   Pipeline,
+  PaperMonitor,
   StrategyLab,
   PriceChart,
   DataExplorer,
   OptionsGreeks,
   RiskMonitor,
   Screener,
+  ProviderSystem,
   Workspaces,
   AiConsole,
   Glossary,
@@ -53,12 +57,14 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'ActivityFeed', title: 'Activity', hint: 'live desk tape' },
   { component: 'JobMonitor', title: 'Jobs', hint: 'consoles·cancel' },
   { component: 'Pipeline', title: 'Pipeline', hint: 'the loop·next steps' },
+  { component: 'PaperMonitor', title: 'Paper Monitor', hint: 'sandbox·orders·positions' },
   { component: 'StrategyLab', title: 'Strategy Lab', hint: 'launch' },
   { component: 'PriceChart', title: 'Price', hint: 'candles' },
   { component: 'DataExplorer', title: 'Data Explorer', hint: 'symbols' },
   { component: 'OptionsGreeks', title: 'Options', hint: 'greeks' },
   { component: 'RiskMonitor', title: 'Risk', hint: 'scenarios' },
   { component: 'Screener', title: 'Screener', hint: 'quote·news' },
+  { component: 'ProviderSystem', title: 'Providers & System', hint: 'readiness·configuration' },
   { component: 'AiConsole', title: 'AI Research', hint: 'compare·console' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
   { component: 'Glossary', title: 'Glossary', hint: 'metric definitions' },

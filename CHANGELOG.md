@@ -7,6 +7,19 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ### Added
 
+- A dated post-v2 architecture audit, provider/control-plane and crypto-paper implementation spec,
+  dependency/license matrix, and risk register.
+- ADR-0011 for evidence-gated external integrations and ADR-0012 separating operational paper
+  sessions from deterministic research runs.
+- A CLI-owned, credential-redacted provider registry and local-only system readiness projection,
+  exposed by `alpha info providers/system`, `/api/providers`, `/api/system`, a Providers · System
+  panel, and provider-driven Data Explorer choices.
+- Opt-in `alpha paper run` for public Binance `LIVE` data with local Nautilus sandbox execution
+  only, including verified same-venue warmup, graceful lifecycle/disposal, and four supported rule
+  strategies.
+- A public `ExecutionEventSink` protocol and durable atomic `data_dir/paper/<uuid>` operational
+  journal with session/event CLI and API reads, stale-heartbeat reporting, job `session_id`, and a
+  SANDBOX Paper Monitor.
 - Supported lightweight `alpha_cli.catalog` and `alpha_cli.run_store` interfaces for strategy
   metadata, run-type metadata, run-id validation, and manifest discovery.
 - Strict Pydantic response contracts for stable Workstation JSON endpoints, deterministic OpenAPI,
@@ -16,6 +29,17 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ### Changed
 
+- Architecture governance now reflects all 12 named import contracts/current packages, the
+  sanctioned yfinance pandas edge, the frontend-owned panel registry, and the explicit root-license
+  distribution gate.
+- CCXT now accepts only `coinbase|binance` and records venue-qualified snapshot provenance such as
+  `ccxt:binance`; per-symbol pull provenance is copied into hashed snapshot sidecars and mismatched
+  exchange relabelling is rejected. Historical source construction derives from the registry.
+- `VolTargetStrategy` can prime PIT history without orders and normalizes paper quantities to live
+  instrument increments while preserving existing SIM behavior. Strategy metadata now declares
+  `supports_live_paper`; Kronos remains explicitly unsupported.
+- NautilusTrader is pinned to `1.228.0` for the reviewed Binance-data/sandbox-factory API; upgrades
+  require a deliberate compatibility review.
 - Strategy parameters and optimization axes now share the `ParamSpec` catalog for defaults, types,
   bounds, and UI metadata. Invalid, duplicate, unknown, fractional-integer, and non-finite inputs
   fail before run-id generation.
@@ -41,8 +65,12 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
   exceptions.
 - Removed a literal NUL from `DataTable.tsx` and split the justified Fast Refresh helpers without
   changing rendered behavior.
+- Repaired stale seven-contract/numbered-boundary documentation, the yfinance pandas exception,
+  malformed architecture fallback, and the nonexistent panel-manifest endpoint claim.
 
 ### Deferred
 
-- Live paper-market data, FRED/non-OHLCV macro storage, full-engine cross-sectional execution, and
-  model fine-tuning remain intentionally out of scope.
+- Real or exchange-testnet execution, additional paper venues, Kronos live-cache semantics,
+  FRED/non-OHLCV macro storage, full-engine cross-sectional execution, and model fine-tuning remain
+  intentionally out of scope. The Binance network smoke and UTC-rollover sandbox soak remain
+  opt-in operational acceptance gates.

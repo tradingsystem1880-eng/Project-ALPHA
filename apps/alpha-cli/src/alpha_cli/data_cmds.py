@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, date, datetime, time
+from inspect import Parameter, signature
 from pathlib import Path
 
 import typer
 
+from alpha_cli.providers import (
+    HistoricalAdapterFactory,
+    historical_adapter_factories,
+    provider_option_choices,
+)
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
-from alpha_data.adapters.ccxt_adapter import CCXTAdapter
-from alpha_data.adapters.stooq_adapter import StooqAdapter
-from alpha_data.adapters.yfinance_adapter import YFinanceAdapter
+from alpha_data.adapters.base import DataAdapter
 from alpha_data.ingest import store_fetch_result
 from alpha_data.snapshot import create_snapshot, verify_snapshot
 from alpha_data.store import ParquetStore
@@ -20,11 +24,9 @@ from alpha_data.store import ParquetStore
 data_app = typer.Typer(help="Data ingestion, snapshots, and integrity.")
 
 # adapter registry — tests monkeypatch this to inject offline fakes
-_ADAPTERS: dict[str, type] = {
-    "yfinance": YFinanceAdapter,
-    "ccxt": CCXTAdapter,
-    "stooq": StooqAdapter,
-}
+_ADAPTERS: dict[str, HistoricalAdapterFactory] = historical_adapter_factories()
+_CCXT_EXCHANGES = provider_option_choices("ccxt", "exchange")
+_DEFAULT_CCXT_EXCHANGE = "coinbase"
 
 
 def _store() -> ParquetStore:
@@ -35,24 +37,54 @@ def _snaps_root() -> Path:
     return AlphaSettings().data_dir / "snapshots"
 
 
+def _adapter(source: str, exchange: str) -> DataAdapter:
+    factory = _ADAPTERS.get(source)
+    if factory is None:
+        raise typer.BadParameter(f"unknown source {source!r}; known: {sorted(_ADAPTERS)}")
+    if exchange not in _CCXT_EXCHANGES:
+        raise typer.BadParameter(
+            f"unknown CCXT exchange {exchange!r}; known: {list(_CCXT_EXCHANGES)}",
+            param_hint="--exchange",
+        )
+    if source != "ccxt" and exchange != _DEFAULT_CCXT_EXCHANGE:
+        raise typer.BadParameter("--exchange applies only when --source ccxt")
+
+    kwargs: dict[str, str] = {}
+    if source == "ccxt":
+        try:
+            params = tuple(signature(factory).parameters.values())
+        except (TypeError, ValueError):
+            params = ()
+        if any(param.name == "exchange" or param.kind is Parameter.VAR_KEYWORD for param in params):
+            kwargs["exchange"] = exchange
+    return factory(**kwargs)
+
+
 @data_app.command()
 def pull(
     symbol: str,
     source: str = "yfinance",
+    exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
     start: str = typer.Option(...),
     end: str = typer.Option(...),
 ) -> None:
     """Pull raw bars + corporate actions for SYMBOL and store them."""
-    adapter_cls = _ADAPTERS.get(source)
-    if adapter_cls is None:
-        raise typer.BadParameter(f"unknown source {source!r}; known: {sorted(_ADAPTERS)}")
+    adapter = _adapter(source, exchange)
     try:
         start_date, end_date = date.fromisoformat(start), date.fromisoformat(end)
     except ValueError as exc:
         raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
     try:
-        result = adapter_cls().fetch(symbol, start_date, end_date)
-        store_fetch_result(_store(), result)
+        result = adapter.fetch(symbol, start_date, end_date)
+        store = _store()
+        store.clear_provenance(result.symbol)
+        store_fetch_result(store, result)
+        store.write_provenance(
+            result.symbol,
+            source=adapter.name,
+            adapter_version=adapter.version,
+            parser_version=adapter.parser_version,
+        )
     except DataError as exc:  # expected domain failure (no data, anti-bot gate, bad vendor row)
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(
@@ -61,12 +93,16 @@ def pull(
 
 
 @data_app.command()
-def snapshot(snapshot_id: str, symbols: list[str], source: str = "yfinance") -> None:
+def snapshot(
+    snapshot_id: str,
+    symbols: list[str],
+    source: str = "yfinance",
+    exchange: str = typer.Option(
+        _DEFAULT_CCXT_EXCHANGE, help="CCXT exchange provenance: coinbase or binance"
+    ),
+) -> None:
     """Freeze the current store for SYMBOLS into an immutable, hashed snapshot."""
-    adapter_cls = _ADAPTERS.get(source)
-    if adapter_cls is None:
-        raise typer.BadParameter(f"unknown source {source!r}; known: {sorted(_ADAPTERS)}")
-    adapter = adapter_cls()
+    adapter = _adapter(source, exchange)
     try:
         create_snapshot(
             _store(),

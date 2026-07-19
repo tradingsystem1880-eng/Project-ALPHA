@@ -38,7 +38,7 @@ def launch_job(req: LaunchRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail="empty command")
     run_type = _invoke.RUN_TYPE.get(req.command)
     job = _invoke.launch(argv, data_dir=data_dir(), run_type=run_type)
-    return {"job_id": job.job_id, "status": job.status}
+    return {"job_id": job.job_id, "status": job.status, "session_id": job.session_id}
 
 
 @router.get("/jobs", response_model=list[JobSummary])
@@ -73,4 +73,4 @@ def cancel_job(job_id: str) -> dict[str, Any]:
     job = _invoke.cancel_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="unknown job")
-    return {"job_id": job_id, "status": job.status}
+    return {"job_id": job_id, "status": job.status, "session_id": job.session_id}

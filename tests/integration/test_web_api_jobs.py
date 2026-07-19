@@ -49,6 +49,18 @@ def test_launch_lists_and_gets(monkeypatch: pytest.MonkeyPatch) -> None:
     assert any(j["job_id"] == job_id for j in client.get("/api/jobs").json())
     detail = client.get(f"/api/jobs/{job_id}").json()
     assert any("hi from job" in ln for ln in detail["lines"])
+    assert detail["session_id"] is None
+
+
+def test_job_projects_paper_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    session_id = "7e19841c-8bb3-4ab8-aeed-388f56ecfcf8"
+    _fake(monkeypatch, f"print('paper BTC/USDT -> session {session_id}: SANDBOX')")
+    client = TestClient(create_app())
+    job_id = client.post("/api/jobs", json={"command": "paper run", "args": "BTC/USDT"}).json()[
+        "job_id"
+    ]
+    assert _wait_status(client, job_id, "done") == "done"
+    assert client.get(f"/api/jobs/{job_id}").json()["session_id"] == session_id
 
 
 def test_launch_maps_run_type_and_parses_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
