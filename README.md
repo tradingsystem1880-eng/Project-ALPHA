@@ -269,7 +269,7 @@ npm run lint -- --deny-warnings
 npm run test:coverage
 npm run generate:api
 npx playwright install chromium
-npm run test:e2e       # builds, then checks six desks at 1280/1440/1920 and runs axe
+npm run test:e2e       # builds, then checks six desks at 1280×720 / 1440×900 / 1920×1080 and runs axe
 ```
 
 CI fails on frontend lint warnings, coverage regressions, stale generated API types,
