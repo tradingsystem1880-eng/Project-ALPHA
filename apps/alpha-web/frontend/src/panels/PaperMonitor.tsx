@@ -249,7 +249,12 @@ export function PaperMonitor() {
       <div className="sandbox-banner" role="status">
         SANDBOX · PUBLIC BINANCE DATA · NO REAL ORDER ROUTING · SANDBOX
       </div>
-      <div className="panel-body paper-monitor" data-state={overviewState}>
+      <div
+        className="panel-body paper-monitor"
+        data-state={overviewState}
+        tabIndex={0}
+        aria-label="Sandbox paper sessions"
+      >
         {overviewError ? <div className="leak paper-overview-error">⚠ {overviewError}</div> : null}
         {system && !system.paper_enabled ? (
           <div className="paper-disabled">

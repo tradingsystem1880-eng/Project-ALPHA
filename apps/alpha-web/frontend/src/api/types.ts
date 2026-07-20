@@ -9,7 +9,6 @@ export type RunList = Schema['RunList']
 export type RunDetail = Schema['RunDetail']
 export type EquitySeries = Schema['EquitySeries']
 export type ForecastSeries = Schema['ForecastSeries']
-export type ForecastPaths = Schema['ForecastPaths']
 export type NullTiers = Schema['NullTiers']
 export type OptimTrials = Schema['OptimTrials']
 export type PropfirmPaths = Schema['PropfirmPaths']
@@ -48,3 +47,55 @@ export type PaperJobSummary = JobSummary
 
 // Intentionally opaque: trade schemas vary by engine and remain manifest-adjacent rows.
 export type TradeRow = Record<string, string | number | null>
+
+// Workstation-v3 contracts come directly from the committed OpenAPI snapshot. The native
+// provenance payload is the one intentionally open JSON object; narrow it to the CLI fields the
+// panel reads while keeping all numeric series generated.
+export type ForecastPath = Schema['ForecastPath']
+export type ForecastPaths = Schema['ForecastPaths']
+export type ChartTrade = Schema['ChartTrade']
+export type ChartTraceEvent = Schema['ChartTraceEvent']
+export type ChartIndicator = Schema['ChartIndicator']
+export type ChartAnnotation = Schema['ChartAnnotation']
+export type ChartBundle = Schema['ChartBundle']
+export type NativeCalendarReturn = Schema['NativeCalendarReturn']
+export type NativeYearlyReturn = Schema['NativeYearlyReturn']
+export type NativeHistogramBin = Schema['NativeHistogramBin']
+export type NativeQqPoint = Schema['NativeQQPoint']
+export type NativeRollingPoint = Schema['NativeRollingMetric']
+export type NativeTearSheetProjection = Omit<Schema['NativeTearSheetResponse'], 'provenance'> & {
+  provenance: {
+    run_id: string
+    metric_namespace: string
+    artifact_contract_version: number | null
+    artifact_sha256: Record<string, string>
+  }
+}
+export type PortfolioAllocationRow = Schema['PortfolioAllocationRow']
+export type PortfolioCorrelationRow = Schema['PortfolioCorrelationRow']
+export type PortfolioAnalyticsProjection = Schema['PortfolioAnalyticsResponse']
+export type StageState = Schema['StageStateValue']
+export type DevelopmentStage = Schema['StageLinkCreateRequest']['stage']
+export type ProjectSummary = Schema['ProjectSummary']
+export type ProjectPage = Schema['ProjectPage']
+export type StrategyVersion = Schema['StrategyVersion']
+export type ExperimentSpec = Schema['ExperimentSpec']
+export type StageRunLink = Schema['StageRunLink']
+export type AttemptRecord = Schema['AttemptRecord']
+export type HoldoutState = Schema['HoldoutState']
+export type DecisionPacket = Schema['DecisionPacket']
+export type ProjectDetail = Schema['ProjectDetail']
+export type ControlJob = Schema['ControlJob']
+export type ControlJobDetail = Schema['ControlJobDetail']
+export type SuiteAction = Schema['SuiteActionValue']
+export type SuitePlan = Schema['SuitePlan']
+export type SuiteLaunch = Schema['SuiteLaunch']
+export type SuiteCancelResponse = Schema['SuiteCancelResponse']
+export type AgentBrief = Schema['AgentBrief']
+export type EvidenceRecord = Schema['EvidenceRecord']
+export type EvidencePage = Schema['EvidencePage']
+export type MlServiceStatus = Schema['MlServiceStatus']
+export type MlExperimentSummary = Schema['MlExperimentSummary']
+export type MlExperimentPage = Schema['MlExperimentPage']
+export type MlExperimentJobAccepted = Schema['MlExperimentJobAccepted']
+export type MlTearSheetProjection = Schema['MlTearSheet']

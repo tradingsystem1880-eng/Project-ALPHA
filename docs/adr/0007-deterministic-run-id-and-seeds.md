@@ -1,6 +1,6 @@
 # ADR-0007: Content-addressed run id + independent child seeds
 
-**Status:** Superseded by ADR-0013 for new v3 runs
+**Status:** Superseded for v3 by ADR-0013 (retained for v1/v2 interpretation)
 **Date:** 2026-06-26
 **Deciders:** AI build agents (per `CLAUDE.md`)
 
@@ -20,10 +20,15 @@ changes that family's child stream. ADR-0013 replaces positional assignment for 
 stable semantic namespaces. Manifests remain byte-stable (sorted keys, `allow_nan=False` —
 non-finite values must already be `null`).
 
-**Code anchors:**
-- `apps/alpha-cli/src/alpha_cli/_runner.py:run_id_for` — `json.dumps(payload, sort_keys=True, separators=(",",":"), default=str)` → `sha256(...).hexdigest()[:16]`; docstring: "No wall-clock goes in, so re-running is byte-identical."
-- `apps/alpha-cli/src/alpha_cli/_runner.py:parse_strategy_params` — sorts `name=value` params so order doesn't affect the id; `RunSpec` is frozen/picklable.
-- `apps/alpha-cli/src/alpha_cli/_gauntlet.py:_child_seeds` — `[s.generate_state(1)[0] for s in np.random.SeedSequence(master).spawn(n)]`; `GauntletParams.seed` defaults to 7.
+**Historical implementation note:**
+
+- v1/v2 run IDs and seed results are already embedded in their immutable manifests; schema-agnostic
+  `apps/alpha-cli/src/alpha_cli/run_store.py:read_manifest` preserves access without rewriting them;
+- `apps/alpha-cli/src/alpha_cli/_runner.py:parse_strategy_params` still sorts `name=value` input, but
+  the current `run_identity_for` writer implements ADR-0013 and must not be cited as an ADR-0007
+  writer; and
+- all current v3 identity and semantic seed derivation is anchored by ADR-0013. Positional child
+  assignment is retained here only to interpret historical v1/v2 evidence.
 
 ## Options Considered
 

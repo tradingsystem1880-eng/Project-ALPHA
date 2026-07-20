@@ -5,7 +5,8 @@ A thin JSON+SSE backend over the run store that serves the built single-page wor
 the engine never runs in this process. Reads/writes go through ``AlphaSettings().data_dir`` so the
 web app, its subprocesses, and the CLI share one store. Binds loopback only (local single-user).
 
-Routers include runs/jobs/catalog, candles, provider/system readiness, and durable paper monitoring.
+Routers include runs/jobs/catalog, candles, provider/system readiness, durable paper monitoring,
+and CLI-backed v3 project/evidence/AgentBrief projections.
 The SPA is served at ``/`` (and ``/app``); its assets ride the ``/static`` mount.
 """
 
@@ -21,13 +22,16 @@ from alpha_web.api import activity as activity_api
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import control as control_api
+from alpha_web.api import development as development_api
 from alpha_web.api import jobs as jobs_api
+from alpha_web.api import ml as ml_api
 from alpha_web.api import options as options_api
 from alpha_web.api import paper as paper_api
 from alpha_web.api import research as research_api
 from alpha_web.api import risk as risk_api
 from alpha_web.api import runs as runs_api
 from alpha_web.api import screener as screener_api
+from alpha_web.api import v3 as v3_api
 from alpha_web.api import workspaces as workspaces_api
 
 _PKG = Path(__file__).resolve().parent
@@ -44,6 +48,8 @@ def create_app() -> FastAPI:
     app.include_router(activity_api.router)
     app.include_router(catalog_api.router)
     app.include_router(control_api.router)
+    app.include_router(development_api.router)
+    app.include_router(ml_api.router)
     app.include_router(candles_api.router)
     app.include_router(workspaces_api.router)
     app.include_router(options_api.router)
@@ -51,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(risk_api.router)
     app.include_router(screener_api.router)
     app.include_router(research_api.router)
+    app.include_router(v3_api.router)
 
     def _spa() -> FileResponse:
         if not _APP_INDEX.exists():

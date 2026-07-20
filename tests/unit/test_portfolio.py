@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from alpha_cli._portfolio import run_portfolio
@@ -52,6 +53,37 @@ def test_equal_weight_basket_combines_legs(tmp_path: Path) -> None:
     assert 0.0 <= res.psr <= 1.0
     assert res.sharpe_ci.lower <= res.sharpe_ci.point <= res.sharpe_ci.upper
     assert res.cagr_ci.lower <= res.cagr_ci.upper
+    assert len(res.allocations) == res.n_periods * len(symbols)
+    assert res.portfolio_gross_exposure.shape == res.portfolio_returns.shape
+    assert res.portfolio_net_exposure.shape == res.portfolio_returns.shape
+
+    by_ts = {
+        ts: [row for row in res.allocations if row.ts == ts] for ts in res.portfolio_timestamps
+    }
+    for index, ts in enumerate(res.portfolio_timestamps):
+        rows = by_ts[ts]
+        assert sum(row.weight for row in rows) == pytest.approx(1.0)
+        assert sum(row.contribution for row in rows) == pytest.approx(res.portfolio_returns[index])
+        assert sum(row.weighted_gross_exposure for row in rows) == pytest.approx(
+            res.portfolio_gross_exposure[index]
+        )
+        assert sum(row.weighted_net_exposure for row in rows) == pytest.approx(
+            res.portfolio_net_exposure[index]
+        )
+
+    assert len(res.correlations) == len(symbols) ** 2
+    cells = {(row.asset_a, row.asset_b): row for row in res.correlations}
+    for symbol in symbols:
+        diagonal = cells[(symbol, symbol)]
+        assert diagonal.correlation == pytest.approx(1.0)
+        assert diagonal.metric_name == "pearson_correlation"
+        assert diagonal.metric_unit == "coefficient"
+        assert diagonal.aligned_oos is True
+        assert diagonal.association_not_causation is True
+    spy = [row.leg_return for row in res.allocations if row.symbol == "SPY"]
+    qqq = [row.leg_return for row in res.allocations if row.symbol == "QQQ"]
+    assert cells[("SPY", "QQQ")].correlation == pytest.approx(float(np.corrcoef(spy, qqq)[0, 1]))
+    assert cells[("SPY", "QQQ")].correlation == cells[("QQQ", "SPY")].correlation
 
 
 def test_inverse_vol_weights_differ_and_sum_to_one(tmp_path: Path) -> None:

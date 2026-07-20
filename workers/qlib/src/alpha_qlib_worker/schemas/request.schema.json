@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-alpha.local/contracts/qlib/request-v1.schema.json",
+  "title": "Project ALPHA isolated ML worker request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_hash",
+    "universe",
+    "universe_membership",
+    "survivorship_warning",
+    "feature_recipe",
+    "label_recipe",
+    "model",
+    "portfolio",
+    "costs",
+    "folds",
+    "purge_sessions",
+    "embargo_sessions",
+    "seed",
+    "worker_lock_hash",
+    "panel",
+    "config_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "snapshot_hash": {"$ref": "#/$defs/hash"},
+    "universe": {
+      "type": "array",
+      "minItems": 20,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9._-]{0,31}$"}
+    },
+    "universe_membership": {"enum": ["point_in_time", "current_membership"]},
+    "survivorship_warning": {"type": ["string", "null"]},
+    "feature_recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "parameters"],
+      "properties": {
+        "name": {"const": "alpha158"},
+        "version": {"const": 1},
+        "parameters": {"type": "object", "maxProperties": 0}
+      }
+    },
+    "label_recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "decision", "fill", "horizon_sessions"],
+      "properties": {
+        "name": {"const": "next_session_open_to_open"},
+        "decision": {"const": "close_t"},
+        "fill": {"const": "open_t_plus_1"},
+        "horizon_sessions": {"const": 1}
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "parameters"],
+      "properties": {
+        "name": {"const": "lightgbm"},
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bagging_fraction": {"type": "number", "minimum": 0.01, "maximum": 1.0},
+            "early_stopping_rounds": {"type": "integer", "minimum": 1, "maximum": 1000},
+            "feature_fraction": {"type": "number", "minimum": 0.01, "maximum": 1.0},
+            "lambda_l1": {"type": "number", "minimum": 0, "maximum": 1000000},
+            "lambda_l2": {"type": "number", "minimum": 0, "maximum": 1000000},
+            "learning_rate": {"type": "number", "minimum": 0.0001, "maximum": 1.0},
+            "max_depth": {"type": "integer", "minimum": -1, "maximum": 64},
+            "min_data_in_leaf": {"type": "integer", "minimum": 1, "maximum": 1000000},
+            "num_boost_round": {"type": "integer", "minimum": 1, "maximum": 5000},
+            "num_leaves": {"type": "integer", "minimum": 2, "maximum": 4096},
+            "num_threads": {"type": "integer", "minimum": 1, "maximum": 8}
+          }
+        }
+      }
+    },
+    "portfolio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection", "weighting", "long_only"],
+      "properties": {
+        "selection": {"const": "top_quintile"},
+        "weighting": {"const": "equal"},
+        "long_only": {"const": true}
+      }
+    },
+    "costs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fee_bps", "slippage_bps"],
+      "properties": {
+        "fee_bps": {"type": "number", "minimum": 0},
+        "slippage_bps": {"type": "number", "minimum": 0}
+      }
+    },
+    "folds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/fold"}
+    },
+    "purge_sessions": {"type": "integer", "minimum": 0},
+    "embargo_sessions": {"type": "integer", "minimum": 0},
+    "seed": {"type": "integer", "minimum": 0},
+    "worker_lock_hash": {"$ref": "#/$defs/hash"},
+    "panel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "rows"],
+      "properties": {
+        "path": {"const": "panel.parquet"},
+        "sha256": {"$ref": "#/$defs/hash"},
+        "rows": {"type": "integer", "minimum": 15120}
+      }
+    },
+    "config_hash": {"$ref": "#/$defs/hash"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"universe_membership": {"const": "current_membership"}}},
+      "then": {"properties": {"survivorship_warning": {"type": "string", "minLength": 1}}}
+    }
+  ],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "fold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fold",
+        "train_start",
+        "train_end",
+        "validation_start",
+        "validation_end",
+        "test_start",
+        "test_end"
+      ],
+      "properties": {
+        "fold": {"type": "integer", "minimum": 0},
+        "train_start": {"$ref": "#/$defs/timestamp"},
+        "train_end": {"$ref": "#/$defs/timestamp"},
+        "validation_start": {"$ref": "#/$defs/timestamp"},
+        "validation_end": {"$ref": "#/$defs/timestamp"},
+        "test_start": {"$ref": "#/$defs/timestamp"},
+        "test_end": {"$ref": "#/$defs/timestamp"}
+      }
+    }
+  }
+}

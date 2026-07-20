@@ -11,15 +11,20 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from alpha_cli import run_projection
+from alpha_core import DataError
 from alpha_web import _runs
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
+    ChartBundle,
     EquitySeries,
     ForecastOrigins,
     ForecastPaths,
     ForecastSeries,
+    NativeTearSheetResponse,
     NullTiers,
     OptimTrials,
+    PortfolioAnalyticsResponse,
     PropfirmPaths,
     RunDetail,
     RunList,
@@ -72,11 +77,75 @@ def run_equity(run_id: str) -> dict[str, list[float]]:
     return _runs.equity_series(run_id, data_dir=data_dir())
 
 
+@router.get("/runs/{run_id}/native-tearsheet", response_model=NativeTearSheetResponse)
+def run_native_tearsheet(
+    run_id: str,
+    point_limit: Annotated[int, Query(ge=2, le=_runs.MAX_NATIVE_TEARSHEET_POINTS)] = 2_000,
+) -> dict[str, Any]:
+    """Native dark-report series authored by Python; legacy runs return available=false."""
+    _ensure_run(run_id)
+    return _runs.native_tearsheet(run_id, data_dir=data_dir(), point_limit=point_limit)
+
+
+@router.get("/runs/{run_id}/portfolio-analytics", response_model=PortfolioAnalyticsResponse)
+def run_portfolio_analytics(
+    run_id: str,
+    timestamp_limit: Annotated[
+        int, Query(ge=2, le=run_projection.MAX_PORTFOLIO_ANALYTICS_TIMESTAMPS)
+    ] = 2_000,
+    symbol_limit: Annotated[
+        int, Query(ge=1, le=run_projection.MAX_PORTFOLIO_ANALYTICS_SYMBOLS)
+    ] = 50,
+) -> dict[str, Any]:
+    """Causal sleeve allocations, exposure, and exact aligned-OOS Pearson matrix."""
+    _ensure_run(run_id)
+    try:
+        body = run_projection.portfolio_analytics(
+            run_id,
+            data_dir=data_dir(),
+            timestamp_limit=timestamp_limit,
+            symbol_limit=symbol_limit,
+        )
+    except DataError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if body is None:
+        raise HTTPException(
+            status_code=404,
+            detail="portfolio analytics unavailable; rerun this legacy portfolio for artifacts",
+        )
+    return body
+
+
 @router.get("/runs/{run_id}/trades", response_model=list[dict[str, Any]])
 def run_trades(run_id: str) -> list[dict[str, Any]]:
     """The run's trade-log rows (``[]`` when it wrote none)."""
     _ensure_run(run_id)
     return _runs.trades(run_id, data_dir=data_dir())
+
+
+@router.get("/runs/{run_id}/chart-bundle", response_model=ChartBundle)
+def run_chart_bundle(
+    run_id: str,
+    limit: Annotated[int, Query(ge=1, le=run_projection.MAX_CHART_POINTS)] = 2_000,
+    bar_limit: Annotated[
+        int, Query(ge=1, le=run_projection.MAX_CHART_BARS)
+    ] = run_projection.MAX_CHART_BARS,
+    start: str | None = None,
+    end: str | None = None,
+) -> dict[str, Any]:
+    """Bounded chart data plus the truthful causal trace; old runs report trace_unavailable."""
+    _ensure_run(run_id)
+    try:
+        return run_projection.chart_bundle(
+            run_id,
+            data_dir=data_dir(),
+            limit=limit,
+            bar_limit=bar_limit,
+            start=start,
+            end=end,
+        )
+    except DataError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/runs/{run_id}/forecast", response_model=ForecastSeries)
@@ -93,7 +162,7 @@ def run_forecast(run_id: str) -> dict[str, Any]:
 def run_forecast_paths(
     run_id: str, n: Annotated[int, Query(ge=1, le=_runs.MAX_FORECAST_PATHS)] = 20
 ) -> dict[str, Any]:
-    """The first ``n`` (clamped to 40) sampled close paths of a forecast run. 404 otherwise."""
+    """The first ``n`` (clamped to 40) sampled OHLCV paths of a forecast run. 404 otherwise."""
     _ensure_run(run_id)
     body = _runs.forecast_paths(run_id, data_dir=data_dir(), n=n)
     if body is None:

@@ -113,26 +113,39 @@ def test_run_id_is_deterministic_and_sensitive() -> None:
 
 def test_run_identity_pins_execution_and_selected_strategy_source() -> None:
     source = "c" * 64
+    snapshot = "d" * 64
     identity = run_identity_for(
         {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
         source_fingerprint=source,
+        snapshot_hash=snapshot,
     )
     fields = identity.manifest_fields()
     assert identity.run_id == run_id_for(
         {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
         source_fingerprint=source,
+        snapshot_hash=snapshot,
     )
     assert fields["run_identity_version"] == 3
     assert len(fields["execution_fingerprint"]) == 64
     assert fields["strategy_fingerprint"] is not None
     assert len(fields["strategy_fingerprint"]) == 64
     assert fields["source_fingerprint"] == source
+    assert fields["snapshot_hash"] == snapshot
     assert (
         run_identity_for(
             {"command": "backtest_run", "symbol": "SPY", "strategy_name": "breakout"},
             source_fingerprint=source,
+            snapshot_hash=snapshot,
         ).strategy_fingerprint
         != identity.strategy_fingerprint
+    )
+    assert (
+        run_identity_for(
+            {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
+            source_fingerprint=source,
+            snapshot_hash="e" * 64,
+        ).run_id
+        != identity.run_id
     )
 
 
@@ -247,3 +260,5 @@ def test_load_bars_with_snapshot_reads_the_frozen_data(tmp_path) -> None:  # typ
     assert sid == "snap1"
     with pytest.raises(DataError):
         load_bars("AAPL", data_dir=data_dir, snapshot_id="no-such-snapshot")
+    with pytest.raises(DataError, match="invalid snapshot id"):
+        load_bars("AAPL", data_dir=data_dir, snapshot_id="../../outside")

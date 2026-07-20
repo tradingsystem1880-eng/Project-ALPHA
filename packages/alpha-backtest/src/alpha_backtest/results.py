@@ -53,6 +53,20 @@ class FillTrace:
 
 
 @dataclass(frozen=True)
+class PortfolioStateTrace:
+    """Post-fill session state used by native exposure and turnover analytics.
+
+    Exposure is marked at the un-skewed opening quote midpoint. Turnover is the absolute same-open
+    filled notional divided by that session's canonical net-liquidation equity.
+    """
+
+    ts: datetime
+    gross_exposure: float
+    net_exposure: float
+    turnover: float
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     """Outcome of a run: order/fill counts, the closed-trade log, and the equity curve.
 
@@ -74,6 +88,9 @@ class BacktestResult:
     chart_annotations: tuple[ChartAnnotationTrace, ...] = ()
     order_trace: tuple[OrderTrace, ...] = ()
     fill_trace: tuple[FillTrace, ...] = ()
+    portfolio_state_trace: tuple[PortfolioStateTrace, ...] = ()
+    benchmark_curve: tuple[tuple[datetime, float], ...] = ()
+    benchmark_kind: str | None = None
 
     @property
     def starting_equity(self) -> float:

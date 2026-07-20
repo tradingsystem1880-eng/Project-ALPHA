@@ -5,7 +5,7 @@ consumes only the trailing ``context`` bars at/<= the as-of instant; the ``pretr
 records whether that window overlaps Kronos's assumed pretraining period (ADR-0009 leakage
 policy: warn + flag, never block). Artifacts: ``manifest.json`` (byte-stable) +
 ``paths.parquet`` (per-sample OHLCV, long) + ``quantiles.parquet`` (per-step close bands)
-+ ``history.parquet`` (as-of-filtered close tail for the web fan chart).
++ ``history.parquet`` (as-of-filtered OHLCV tail for evidence-closed chart replay).
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from alpha_core import Bar, DataError
 from alpha_forecast import Forecaster, ForecastResult, close_quantiles
 
 FORECAST_SEED_NS = 0x464F5243  # "FORC": forecast children of the master seed (spec §11.4)
-_HISTORY_TAIL = 120  # closes stored for the fan chart's history segment
+_HISTORY_TAIL = 180  # complete candles stored for the workstation's historical segment
 
 
 def _forecaster_factory(
@@ -198,6 +198,17 @@ def write_forecast_run(
     publish_artifact(rdir / "quantiles.parquet", quantiles.write_parquet)
 
     tail = list(history)[-_HISTORY_TAIL:]
-    history_frame = pl.DataFrame({"ts": [b.ts for b in tail], "close": [b.close for b in tail]})
+    # Store complete observed candles.  Re-fetching these bars from the mutable market-data store
+    # would let a provider correction change the visual story of an already immutable forecast.
+    history_frame = pl.DataFrame(
+        {
+            "ts": [b.ts for b in tail],
+            "open": [b.open for b in tail],
+            "high": [b.high for b in tail],
+            "low": [b.low for b in tail],
+            "close": [b.close for b in tail],
+            "volume": [b.volume for b in tail],
+        }
+    )
     publish_artifact(rdir / "history.parquet", history_frame.write_parquet)
     write_manifest(rdir, manifest)

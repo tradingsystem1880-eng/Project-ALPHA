@@ -2,12 +2,14 @@
 
 import type { DockviewApi } from 'dockview-react'
 
+import { setLinked } from '../context/linked'
 import { shortId } from '../util/format'
 
 // Open (or focus, if already open) the Run Detail panel for a run id. The URL hash mirrors the
 // opened run (`#run=<id>`) so the address bar is always a shareable deep link; the shell parses
 // it at boot and on hashchange.
 export function openRunDetail(containerApi: DockviewApi, runId: string): void {
+  setLinked({ runId })
   window.location.hash = `run=${runId}`
   const id = `run-detail-${runId}`
   const existing = containerApi.getPanel(id)
@@ -43,5 +45,21 @@ export function openStrategyLab(containerApi: DockviewApi, prefill?: LabPrefill)
     component: 'StrategyLab',
     title: 'Strategy Lab',
     params: prefill ? { prefill } : {},
+  })
+}
+
+/** Open the governed lifecycle surface used to resolve and launch a legacy trace rerun. */
+export function openDevelopmentCenter(containerApi: DockviewApi): void {
+  const existing = containerApi.panels.find((panel) =>
+    panel.id.startsWith('DevelopmentCenter-') || panel.id.includes('-center'),
+  )
+  if (existing) {
+    existing.api.setActive()
+    return
+  }
+  containerApi.addPanel({
+    id: 'DevelopmentCenter-trace-rerun',
+    component: 'DevelopmentCenter',
+    title: 'Development Center',
   })
 }

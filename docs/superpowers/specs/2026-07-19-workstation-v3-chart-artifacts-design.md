@@ -1,7 +1,8 @@
 # Design — Workstation v3 shell and causal chart artifacts
 
-**Status:** Approved for implementation  
-**Date:** 2026-07-19  
+**Status:** Implemented; offline release gate passed
+**Date:** 2026-07-19
+**Implementation reviewed:** 2026-07-19
 **Authority:** `CLAUDE.md`, ADR-0002, ADR-0003, ADR-0005, ADR-0013
 
 ## Goal
@@ -93,3 +94,28 @@ policy remain visible. `Use as signal` is disabled until a rolling evaluation ex
 - Visual regressions cover 1440x900 and 1920x1080; 1280x720 remains usable.
 - Charts remain responsive at 25,000 bars and 200 annotations, and accessible alternatives exist.
 
+## Current implementation note — 2026-07-19
+
+The contract is implemented. `alpha_backtest.results.BacktestResult` carries decisions, indicators,
+annotations, orders, fills, portfolio state, benchmark, trades, and equity from the engine;
+`alpha_cli._artifacts.write_run_sidecars` publishes them through the v3 artifact contract; and
+`alpha_cli.run_projection.chart_bundle` verifies, windows, and bounds the bundle. OOS and holdout
+charts use `alpha_cli._runner.fresh_oos_execution` / `fresh_scored_execution`, so their metrics and
+causal records come from the same primed-but-positionless fresh portfolio. No discovery-period
+event is copied into scored evidence.
+
+The frontend implementation anchors are
+`frontend/src/components/PriceChartCanvas.tsx`, `frontend/src/panels/PriceChart.tsx`,
+`frontend/src/panels/KronosStudio.tsx`, `frontend/src/panels/NativeTearSheet.tsx`, and
+`frontend/src/layouts/presets.ts`. Date windows filter bars and every event/indicator/annotation
+series together. Native tear-sheet projections use deterministic endpoint-preserving bounds and
+return original/returned/truncated metadata. The v2 layout migrator preserves its legacy source,
+validates every panel alias, and writes v3 only after Dockview accepts the complete document.
+
+Primary checks live in `tests/integration/test_backtest_oos_cli.py`,
+`tests/integration/test_backtest_holdout_cli.py`, `tests/integration/test_web_api_runs.py`,
+`frontend/src/layouts/presets.test.ts`, `frontend/src/panels/v3Models.test.ts`, and
+`frontend/e2e/workstation.spec.ts`. The offline release gate and generated-asset checks passed;
+six-desk pixel baselines cover 1440x900 and 1920x1080, 1280x720 remains the minimum supported desk,
+and the target M4/16 GB 25,000-bar/200-annotation probe passed. Exact counts live in the audit
+closeout rather than being duplicated here.

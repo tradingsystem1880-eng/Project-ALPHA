@@ -61,6 +61,18 @@ This table intentionally does not claim to be a software-bill-of-materials. `uv.
 `apps/alpha-web/frontend/package-lock.json` are the complete resolution inputs; a distributable
 release needs an automated exact-version/transitive notice report.
 
+## Frontend Test-only Dependencies
+
+These packages are development/release gates and are not analytical or production runtime
+authorities. Their exact transitive resolution remains pinned by the frontend lockfile.
+
+| Dependency | Exact pin | License signal reviewed | Boundary role |
+|---|---:|---|---|
+| @playwright/test | 1.61.1 | Apache-2.0 | Chromium desk, responsive, keyboard, and visual-structure release tests |
+| @axe-core/playwright | 4.12.1 | MPL-2.0 | WCAG A/AA serious/critical accessibility assertions inside Playwright |
+| axe-core | 4.12.1 | MPL-2.0 | transitive accessibility rule engine used only by the browser test gate |
+| Playwright-managed Chromium | resolved by `@playwright/test` 1.61.1 | Chromium BSD-style license plus bundled third-party notices; exact downloaded bundle requires release-time notice collection | Test-only local/CI browser; never shipped in the ALPHA wheel or used as an analytical runtime |
+
 ## Considered Upstream Projects
 
 | Project | License reviewed | Capability overlap/gap | Disposition for this track |
@@ -90,6 +102,27 @@ Qlib is the one approved external capability addition. Its separately generated
 independently before distribution. The root `pyproject.toml` and `uv.lock` must remain free of Qlib,
 LightGBM, MLflow, and worker-only transitive dependencies. ALPHA exchanges only validated
 JSON/Parquet and never imports/deserializes the worker runtime or its model objects.
+
+The implemented worker's direct runtime pins are:
+
+| Worker dependency | Exact pin | License signal reviewed | Boundary role |
+|---|---:|---|---|
+| pyqlib | release/package `0.9.7` | MIT; notice copied to `workers/qlib/THIRD_PARTY_NOTICES.md` | fold orchestration, feature/model workflow, diagnostic recorder concepts |
+| lightgbm | release/package `4.6.0` | MIT; notice copied to `workers/qlib/THIRD_PARTY_NOTICES.md` | CPU cross-sectional starter model |
+| numpy | 2.2.6 | BSD-3-Clause plus bundled notices | worker-local numeric arrays; deliberately distinct from the root resolution |
+| pandas | 2.3.3 | BSD-3-Clause | Qlib-compatible worker dataframe boundary |
+| polars | 1.41.2 | MIT | deterministic JSON/Parquet exchange validation and publication |
+
+The worker gate runs its own locked sync, Ruff, strict mypy, and pytest job. Distribution still
+requires a generated complete transitive notice bundle; the two copied direct notices are not a
+complete SBOM.
+
+Implementation checkpoint: `workers/qlib/uv.lock` resolves both exact release pins and currently
+hashes to `6616ac9c86600794d15416ca010a9f9e073ea7a100e9322b31b7a8dcb5659713`. Any worker-lock change
+must update this reviewed hash and rerun the isolated gate. The removal path is bounded and recorded
+in `workers/qlib/README.md`: delete the isolated project, remove root `alpha ml` projections, and
+delete worker exchange/control links; no root package dependency or historical run rewrite is
+required.
 
 Optuna, DuckDB, ECharts, skfolio, LEAN, TradingAgents, FinRL, and RD-Agent are not adopted by v3.
 They require a new concrete capability gap and a separate ADR-0011 acceptance record.

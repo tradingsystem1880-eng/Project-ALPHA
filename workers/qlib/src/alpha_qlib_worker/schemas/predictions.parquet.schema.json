@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "format": "parquet",
+  "columns": [
+    {"name": "symbol", "physical_type": "BYTE_ARRAY", "logical_type": "UTF8", "nullable": false},
+    {"name": "origin_ts", "physical_type": "INT64", "logical_type": "TIMESTAMP_MICROS_UTC", "nullable": false},
+    {"name": "available_at", "physical_type": "INT64", "logical_type": "TIMESTAMP_MICROS_UTC", "nullable": false},
+    {"name": "target_ts", "physical_type": "INT64", "logical_type": "TIMESTAMP_MICROS_UTC", "nullable": false},
+    {"name": "score", "physical_type": "DOUBLE", "logical_type": null, "nullable": false},
+    {"name": "fold", "physical_type": "INT64", "logical_type": null, "nullable": false},
+    {"name": "split", "physical_type": "BYTE_ARRAY", "logical_type": "UTF8", "nullable": false},
+    {"name": "model_hash", "physical_type": "BYTE_ARRAY", "logical_type": "UTF8", "nullable": false},
+    {"name": "config_hash", "physical_type": "BYTE_ARRAY", "logical_type": "UTF8", "nullable": false},
+    {"name": "worker_lock_hash", "physical_type": "BYTE_ARRAY", "logical_type": "UTF8", "nullable": false},
+    {"name": "seed", "physical_type": "INT64", "logical_type": null, "nullable": false}
+  ],
+  "sort_by": ["fold", "split", "target_ts", "symbol", "origin_ts"],
+  "unique_by": ["symbol", "origin_ts", "target_ts", "fold", "split"]
+}

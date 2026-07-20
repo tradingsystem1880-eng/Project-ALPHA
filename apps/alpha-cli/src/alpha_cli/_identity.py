@@ -36,6 +36,7 @@ class RunIdentityFields(TypedDict):
     execution_fingerprint: str
     strategy_fingerprint: str | None
     source_fingerprint: str
+    snapshot_hash: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +45,7 @@ class RunIdentity:
     execution_fingerprint: str
     strategy_fingerprint: str | None
     source_fingerprint: str
+    snapshot_hash: str | None
     run_identity_version: int = RUN_IDENTITY_VERSION
 
     def manifest_fields(self) -> RunIdentityFields:
@@ -52,6 +54,7 @@ class RunIdentity:
             "execution_fingerprint": self.execution_fingerprint,
             "strategy_fingerprint": self.strategy_fingerprint,
             "source_fingerprint": self.source_fingerprint,
+            "snapshot_hash": self.snapshot_hash,
         }
 
 

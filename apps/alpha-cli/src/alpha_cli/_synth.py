@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from alpha_cli._runner import RunSpec, run_full_backtest, walk_forward_oos_for_spec
+from alpha_cli._runner import RunSpec, fresh_oos_execution
 from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import NullResult, sharpe_ratio, stationary_bootstrap_indices
 
@@ -101,8 +101,7 @@ def _oos_sharpe_for_path(task: _SynthTask) -> float:
     has no risk-adjusted edge, so it scores 0.0 rather than raising. Top-level and picklable so a
     process pool can dispatch it.
     """
-    result = run_full_backtest(task.bars, task.spec, dividends=task.dividends)
-    oos = walk_forward_oos_for_spec(result.equity_curve, task.spec)
+    oos, _ = fresh_oos_execution(task.bars, task.spec, dividends=task.dividends)
     returns = oos.oos_returns
     if returns.size >= 2 and float(np.std(returns, ddof=1)) > 0.0:
         return sharpe_ratio(returns, periods_per_year=task.spec.periods_per_year)

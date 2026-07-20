@@ -8,7 +8,7 @@ import pytest
 from alpha_core import DataError
 from alpha_data.adapters.yfinance_adapter import parse_yfinance_history
 from alpha_data.ingest import store_fetch_result
-from alpha_data.snapshot import create_snapshot, verify_snapshot
+from alpha_data.snapshot import create_snapshot, snapshot_manifest_hash, verify_snapshot
 from alpha_data.store import ParquetStore
 from tests.fixtures.yf_fixtures import aapl_like
 
@@ -54,6 +54,30 @@ def test_verify_passes_for_intact_snapshot(tmp_path: Path) -> None:
         created_at=WHEN,
     )
     verify_snapshot(tmp_path / "snaps" / "snap1")  # no raise
+
+
+def test_snapshot_manifest_hash_is_verified_and_content_bound(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    create_snapshot(
+        store,
+        tmp_path / "snaps",
+        "snap1",
+        ["AAPL"],
+        source="yfinance",
+        adapter_version="1",
+        parser_version="1",
+        created_at=WHEN,
+    )
+    snapshot = tmp_path / "snaps" / "snap1"
+    first = snapshot_manifest_hash(snapshot)
+    assert len(first) == 64
+    assert snapshot_manifest_hash(snapshot) == first
+
+    manifest_path = snapshot / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["created_at"] = datetime(2026, 6, 16, tzinfo=UTC).isoformat()
+    manifest_path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+    assert snapshot_manifest_hash(snapshot) != first
 
 
 def test_verify_detects_tampering(tmp_path: Path) -> None:

@@ -25,6 +25,25 @@ backfilled. Causal traces record stable sequence IDs and distinct decision/order
 unknown indicators, reasons, or patterns remain absent.
 
 Random seeds are derived from stable semantic namespaces rather than positional `spawn(n)` slots.
+OOS and final-holdout runs prime trailing strategy history without attaching an engine, then start a
+fresh portfolio at the scored boundary. Their metrics and chart sidecars are scoped from that same
+execution; discovery positions, orders, fills, and trades never cross the boundary.
+
+## Implementation anchors
+
+- `apps/alpha-cli/src/alpha_cli/_runner.py:run_identity_for` plus
+  `apps/alpha-cli/src/alpha_cli/_identity.py:execution_fingerprint` / `strategy_fingerprint`
+  implement versioned content identity; `apps/alpha-cli/src/alpha_cli/_seeds.py:semantic_seed`
+  implements semantic namespaces.
+- `apps/alpha-cli/src/alpha_cli/artifact_contract.py` and
+  `apps/alpha-cli/src/alpha_cli/_artifacts.py:write_manifest` verify/publish the immutable artifact
+  map and reject identity-matched byte conflicts.
+- `apps/alpha-cli/src/alpha_cli/_runner.py:fresh_oos_execution` and
+  `fresh_scored_execution` enforce the fresh portfolio boundary and matching causal scope.
+- `packages/alpha-backtest/src/alpha_backtest/results.py` is the canonical trace/result schema.
+- Regression evidence: `tests/unit/test_manifest_v3.py`,
+  `tests/integration/test_backtest_oos_cli.py`,
+  `tests/integration/test_backtest_holdout_cli.py`, and the v3 bias-guard suite.
 
 ## Options considered
 

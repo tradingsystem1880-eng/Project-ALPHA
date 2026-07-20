@@ -110,7 +110,11 @@ export function ProviderSystem() {
           refresh
         </button>
       </div>
-      <div className="panel-body panel-pad control-plane">
+      <div
+        className="panel-body panel-pad control-plane"
+        tabIndex={0}
+        aria-label="Provider and system readiness"
+      >
         {error ? (
           <Placeholder big="control plane unavailable">{error}</Placeholder>
         ) : providers === null || system === null ? (

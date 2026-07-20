@@ -1,7 +1,8 @@
 # Design — Workstation v3 development control plane
 
-**Status:** Approved for implementation  
-**Date:** 2026-07-19  
+**Status:** Implemented; offline release gate passed
+**Date:** 2026-07-19
+**Implementation reviewed:** 2026-07-19
 **Authority:** `CLAUDE.md`, ADR-0002, ADR-0006, ADR-0014
 
 ## Goal and boundary
@@ -30,6 +31,12 @@ All immutable records reject conflicting rewrites. Mutations use SQLite transact
 migrations are explicit and tested; research run directories are never used as mutable state.
 
 ## Lifecycle
+
+The eleven owner-facing workflow steps below map to **12 core stage IDs** because parameter
+optimization and broader robustness are separately governed. The exact core IDs are `hypothesis`,
+`data`, `strategy`, `baseline`, `oos`, `robustness`, `optimization`, `portfolio`, `candidate`,
+`holdout`, `paper`, and `decision`. Independent `kronos` and `ml` research tracks bring the exposed
+control-plane total to **14 stage IDs**; they do not silently advance the core lifecycle.
 
 1. Hypothesis and falsification criterion.
 2. Frozen universe/snapshot/costs and sealed final holdout.
@@ -82,6 +89,49 @@ existing result.
 - Atomic/concurrent project mutations and schema migrations are tested.
 - Duplicate immutable IDs verify identical content and reject conflicts.
 - Holdout access, contamination, stale propagation, and negative-attempt accounting are tested.
-- Durable jobs reconcile after restart and only known live child process groups may be cancelled.
+- Direct and suite jobs heartbeat independently of output, honor audited cancellation, terminate and
+  reap their owned child process groups, and cannot overwrite lease failure/cancellation with success.
+- Stale journals reconcile only after confirmed interruption and grant no stored PID authority.
 - Existing CLI commands and all v1/v2 run readers remain compatible.
 
+## Current implementation note — 2026-07-19
+
+The control plane is implemented in `alpha_cli.control_store.ControlStore`, with CLI projections in
+`project_cmds.py`, allowlisted suite planning/execution in `_suite.py` / `suite_cmds.py`, and thin
+REST/MCP subprocess surfaces. Generic callers cannot write a terminal analytical stage. A suite can
+complete a governed stage only after the control store verifies the expected immutable run type,
+manifest v3 artifact hashes, exact evidence set, and prerequisite lineage. Holdout reveal rebuilds
+and revalidates canonical prerequisite evidence and requires a dated sealed boundary; a subsequent
+version/configuration change contaminates the revealed lineage. Reserved suite job kinds cannot be
+created through the generic job API. Direct Workstation, MCP, Qlib, Kronos, and suite launches all
+reserve the same capacity-one heavyweight class inside the job-creation write transaction, so
+cross-surface and concurrent calls cannot bypass it.
+
+Durable jobs persist heartbeats, log/result links, and idempotent cancellation requests. Direct
+Workstation/MCP Qlib and Kronos children run in isolated process groups with a
+`DurableJobLease`: renewal and cancellation polling happen every five seconds independently of
+stdout, the supported interval is capped at ten seconds, and poll/renewal failure is terminal.
+Cancellation or lease failure sends TERM, waits a bounded grace period, escalates to KILL, and
+reaps the direct child. Group-based liveness keeps renewing when the direct leader exits before a
+descendant, including when that descendant retains stdout/stderr. Constructor, selector, heartbeat-
+thread, and output-pump failure paths verify cleanup before terminal publication; if cleanup cannot
+be verified, the journal stays nonterminal and retains the heavyweight slot. The owner stops and
+joins the lease before it can publish a later terminal state. Suite workers provide the equivalent
+five-second heartbeat/cancellation polling and process-group cleanup around every step. The
+Development Center rehydrates queued/running journals after reload and makes loading, empty,
+failure, retry, and cancellation states visible.
+
+Reconciliation is bounded by stale-heartbeat policy and grants no raw PID authority. It records a
+logical failed transition only after interruption is confirmed; it cannot prove that a child
+survived or died when its owning surface crashed. An operator must confirm/reap any orphan before
+reconciling and relaunching. Automated orphan recovery and cross-crash physical capacity guarantees
+remain out of scope for this single-user control plane.
+
+Primary checks live in `tests/unit/test_control_store.py`, `tests/unit/test_decision_packet.py`,
+`tests/unit/test_suite_planner.py`, `tests/unit/test_suite_executor.py`,
+`tests/unit/test_durable_job_lease.py`, `tests/unit/test_web_invoke.py`,
+`tests/unit/test_web_ml.py`, `tests/unit/test_mcp_invoke.py`,
+`tests/integration/test_control_cli.py`, `tests/integration/test_suite_cli.py`,
+`tests/integration/test_web_api_suite.py`, and
+`tests/integration/test_web_api_job_cancellation.py`. The offline release evidence is recorded in
+the audit closeout; this note does not convert the local SQLite design into multi-host authority.

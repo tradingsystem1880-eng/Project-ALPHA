@@ -6,62 +6,93 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { WorkspaceMeta } from '../api/types'
-import { getLinked, setLinked } from '../context/linked'
+import { Placeholder } from '../components/Placeholder'
+import { getLinkedWorkspace, restoreLinked } from '../context/linked'
+import { buildDeskLayout } from '../layouts/presets'
+import {
+  requireSuccessfulWorkspaceResponse,
+  workspaceMutation,
+  workspaceViewState,
+} from './workspaceModel'
 
 export function Workspaces(props: IDockviewPanelProps) {
-  const [list, setList] = useState<WorkspaceMeta[]>([])
+  const [list, setList] = useState<WorkspaceMeta[] | null>(null)
   const [name, setName] = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [mutationError, setMutationError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<'save' | 'open' | 'delete' | null>(null)
 
-  const load = useCallback(() => {
-    api.workspaces().then(setList)
+  const load = useCallback(async () => {
+    setList(null)
+    setLoadError(null)
+    try {
+      setList(await api.workspaces())
+    } catch (reason) {
+      setLoadError(String(reason))
+    }
   }, [])
 
   useEffect(() => {
-    load()
+    void load()
   }, [load])
+
+  async function perform(
+    action: 'save' | 'open' | 'delete',
+    operation: 'SAVE' | 'OPEN' | 'DELETE',
+    task: () => Promise<void>,
+  ): Promise<void> {
+    setBusy(action)
+    setMutationError(null)
+    setMutationError(await workspaceMutation(operation, task))
+    setBusy(null)
+  }
 
   function save(): void {
     const n = name.trim()
-    if (!n) return
-    api
-      .saveWorkspace({ name: n, linked_context: getLinked(), dockview: props.containerApi.toJSON() })
-      .then(() => {
-        setName('')
-        load()
+    if (!n || busy !== null) return
+    void perform('save', 'SAVE', async () => {
+      await api.saveWorkspace({
+        name: n,
+        linked_context: getLinkedWorkspace(),
+        dockview: props.containerApi.toJSON(),
       })
+      setName('')
+      await load()
+    })
   }
 
   function open(slug: string): void {
-    api.getWorkspace(slug).then((doc) => {
+    void perform('open', 'OPEN', async () => {
+      const doc = await api.getWorkspace(slug)
       try {
         // `dockview` is a Dockview SerializedDockview; typed loosely across the wire.
         props.containerApi.fromJSON(doc.dockview as never)
-      } catch (e) {
-        // fromJSON clears the dock BEFORE validating, so a malformed/incompatible layout would
-        // otherwise leave it blank (and get that blank autosaved) — recover with a default panel.
-        console.error('workspace restore failed', e)
-        if (props.containerApi.panels.length === 0) {
-          props.containerApi.addPanel({
-            id: 'RunBrowser-0',
-            component: 'RunBrowser',
-            title: 'Run Browser',
-          })
-        }
-        return
+      } catch (reason) {
+        // fromJSON clears the dock BEFORE validating, so recover the curated default and surface
+        // the invalid saved layout instead of silently swallowing it.
+        console.error('workspace restore failed', reason)
+        if (props.containerApi.panels.length === 0) buildDeskLayout(props.containerApi)
+        throw new Error(`layout restore failed: ${String(reason)}`)
       }
-      if (doc.linked_context) setLinked(doc.linked_context)
+      if (doc.linked_context) restoreLinked(doc.linked_context)
     })
   }
 
   function remove(slug: string): void {
-    void api.deleteWorkspace(slug).then(load)
+    void perform('delete', 'DELETE', async () => {
+      const response = await api.deleteWorkspace(slug)
+      requireSuccessfulWorkspaceResponse(response)
+      setList((current) => current?.filter((workspace) => workspace.slug !== slug) ?? [])
+    })
   }
+
+  const viewState = workspaceViewState(list, loadError)
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Workspaces</span>
-        <span className="count">{list.length}</span>
+        <span className="count">{list?.length ?? '—'}</span>
       </div>
       <div className="panel-body panel-pad de">
         <div className="lab-row">
@@ -75,20 +106,41 @@ export function Workspaces(props: IDockviewPanelProps) {
               placeholder="Research Desk"
             />
           </label>
-          <button className="btn primary ws-save" onClick={save}>
-            Save
+          <button
+            className="btn primary ws-save"
+            disabled={busy !== null || !name.trim()}
+            onClick={save}
+          >
+            {busy === 'save' ? 'Saving…' : 'Save'}
           </button>
         </div>
-        {list.length === 0 ? (
+        {mutationError ? <div className="leak" role="alert">{mutationError}</div> : null}
+        {viewState === 'loading' ? (
+          <Placeholder>loading saved workspaces…</Placeholder>
+        ) : viewState === 'error' ? (
+          <Placeholder big="workspace load failed">
+            <span>{loadError}</span>
+            <button className="btn" onClick={() => void load()}>retry</button>
+          </Placeholder>
+        ) : viewState === 'empty' ? (
           <div className="muted">No saved workspaces — arrange panels and save one.</div>
         ) : (
           <div className="ws-list">
-            {list.map((w) => (
-              <div className="ws-item" key={w.slug}>
-                <button className="ws-open" onClick={() => open(w.slug)}>
-                  {w.name}
+            {(list ?? []).map((workspace) => (
+              <div className="ws-item" key={workspace.slug}>
+                <button
+                  className="ws-open"
+                  disabled={busy !== null}
+                  onClick={() => open(workspace.slug)}
+                >
+                  {workspace.name}
                 </button>
-                <button className="btn ws-del" title="delete" onClick={() => remove(w.slug)}>
+                <button
+                  className="btn ws-del"
+                  aria-label={`Delete ${workspace.name}`}
+                  disabled={busy !== null}
+                  onClick={() => remove(workspace.slug)}
+                >
                   ✕
                 </button>
               </div>

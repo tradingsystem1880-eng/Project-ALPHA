@@ -66,6 +66,9 @@ def test_run_optimization_produces_aligned_verdict() -> None:
     assert isinstance(res, OptimResult)
     assert res.n_configs == 4
     assert res.sharpes.size == 4
+    assert res.best_config is not None
+    assert res.pbo is not None
+    assert res.spa is not None
     assert dict(res.best_config).keys() == {"lookback", "vol_window"}
     assert 0.0 <= res.pbo.pbo <= 1.0
     assert 0.0 < res.spa.p_value <= 1.0
@@ -76,21 +79,32 @@ def test_run_optimization_is_deterministic() -> None:
     args = (_bars(), _base(), {"lookback": [3, 5], "vol_window": [3, 4]})
     a = run_optimization(*args, pbo_blocks=6, n_resamples=120, seed=7)
     b = run_optimization(*args, pbo_blocks=6, n_resamples=120, seed=7)
+    assert a.pbo is not None and b.pbo is not None
+    assert a.spa is not None and b.spa is not None
     assert a.best_config == b.best_config
     assert a.pbo.pbo == b.pbo.pbo
     assert a.spa.p_value == b.spa.p_value
     assert np.array_equal(a.sharpes, b.sharpes)
 
 
-def test_single_config_fails_loud() -> None:
-    with pytest.raises(DataError):
-        run_optimization(_bars(), _base(), {"lookback": [5]}, pbo_blocks=6, n_resamples=50)
+def test_single_config_returns_a_machine_readable_failed_analysis() -> None:
+    result = run_optimization(_bars(), _base(), {"lookback": [5]}, pbo_blocks=6, n_resamples=50)
+    assert result.passed is False
+    assert result.n_successful_configs == 1
+    assert result.analysis_error == (
+        "optimization analysis requires >= 2 successful aligned configs, got 1 of 1"
+    )
+    assert [outcome.status for outcome in result.outcomes] == ["passed"]
 
 
-def test_warmup_floor_misalignment_fails_loud() -> None:
+def test_warmup_floor_misalignment_rejects_only_the_invalid_trial() -> None:
     # a vol_window of 40 needs train_size >= 41, but base train_size is 15 → the OOS would misalign
-    with pytest.raises(DataError):
-        run_optimization(_bars(), _base(), {"vol_window": [3, 40]}, pbo_blocks=6, n_resamples=50)
+    result = run_optimization(
+        _bars(), _base(), {"vol_window": [3, 40]}, pbo_blocks=6, n_resamples=50
+    )
+    assert result.passed is False
+    assert [outcome.status for outcome in result.outcomes] == ["passed", "rejected"]
+    assert "warmup floor 41" in (result.outcomes[1].error or "")
 
 
 def test_non_integer_grid_value_for_integer_axis_fails_loud() -> None:

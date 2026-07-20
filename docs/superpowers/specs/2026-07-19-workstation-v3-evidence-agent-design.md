@@ -1,7 +1,8 @@
 # Design — Workstation v3 evidence ledger and agent interface
 
-**Status:** Approved for implementation  
-**Date:** 2026-07-19  
+**Status:** Implemented; offline release gate passed
+**Date:** 2026-07-19
+**Implementation reviewed:** 2026-07-19
 **Authority:** `CLAUDE.md`, ADR-0002, ADR-0015
 
 ## Goal
@@ -29,6 +30,12 @@ overwritten. Negative findings and search-space history are first-class evidence
 As-of queries exclude records or source data unavailable at the requested time. Cross-asset
 correlation requires aligned OOS periods, compatible frequency and availability policy, an explicit
 frozen universe, and sample count. It is always labeled association, not causation.
+
+Project scope is temporal too. Every selected version/experiment change appends a
+`project_scope_events` record. A point-in-time `AgentBrief` resolves the latest scope selection at
+or before its cutoff, then filters stage state, run links, holdout audit, and evidence to that same
+cutoff. Missing legacy scope history fails closed before the current pointers' last recorded
+mutation rather than exposing a later version, experiment, or holdout result.
 
 ## Agent surface
 
@@ -61,3 +68,35 @@ research evidence and never uses later evidence in an earlier as-of context.
 - MCP/REST parity, pagination, payload limits, path rejection, and authority limits are tested.
 - Every agent answer/action can deep-link to typed project/run/artifact evidence.
 
+## Current implementation note — 2026-07-19
+
+The append-only ledger is implemented in `alpha_cli.control_store.ControlStore`, projected by
+`evidence_cmds.py`, `alpha_web.api.development`, and the typed MCP control helpers. Source run
+citations are accepted only after the v3 manifest and cited artifact hash are verified. If an
+evidence record supplies both a strategy version and experiment, the immutable experiment must have
+been created from that exact version; revisions revalidate the same lineage. Agent-facing draft
+calls force `author_kind=agent`, derive the agent author from the bounded request, and force
+`status=draft`; they cannot impersonate a human reviewer or create corroborated truth. As-of reads
+apply both source/data cutoff and knowledge-time rules, and immutable revision/counterevidence links
+remain external to run manifests.
+
+The same control store appends `project_scope_events` on version and experiment selection.
+`get_agent_brief_context` resolves scope, stage/run lineage, and holdout audit from one SQLite read
+snapshot at the requested cutoff; the evidence query applies the same cutoff to its own temporal
+filters. Later re-selection, stage completion, reveal, or contamination therefore cannot enter an
+earlier brief, and pre-migration missing scope history is reported rather than guessed.
+
+The same surface exposes a bounded `AgentBrief`, versioned REST contract metadata, filtered chart
+bundles, run comparison, and asset evidence search without raw SQL, runtime Python, filesystem
+paths, holdout reveal, or order authority. The 42-tool MCP surface retains the original 12 tools
+during deprecation and adds 30 typed v3 tools. Retained action `options` accept only closed,
+bounded per-tool compatibility vocabularies; managed model/tokenizer values reject filesystem-like
+paths. Run-producing action responses use capped manifest reads and verify every declared v3
+artifact before returning data. Compatibility reads and all new resources remain explicitly
+bounded.
+
+Primary checks live in `tests/unit/test_control_store.py`,
+`tests/bias_guards/test_agent_brief_future_poison.py`,
+`tests/integration/test_control_cli.py`, `tests/integration/test_mcp_server.py`, and
+`tests/integration/test_web_api_development.py`. The parity, bounded-payload, and OpenAPI gates
+passed; exact release counts live in the audit closeout.

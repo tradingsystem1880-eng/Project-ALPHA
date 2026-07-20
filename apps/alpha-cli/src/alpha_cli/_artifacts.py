@@ -2,18 +2,17 @@
 
 The ``manifest.json`` is the byte-stable reproducibility artifact (sorted keys, ``allow_nan=False``
 so non-finite values must already be ``null``); the equity curve and trade log ride alongside as
-Parquet. The HTML tear sheet is written separately by the renderer and is not byte-pinned.
+Parquet. Export views such as HTML are also published immutably and pinned in the artifact contract.
 """
 
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import json
 import math
 import os
 import tempfile
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -22,9 +21,24 @@ import numpy as np
 import polars as pl
 
 from alpha_cli._native_tearsheet import native_tearsheet_frames
+from alpha_cli.artifact_contract import (
+    ARTIFACT_CONTRACT_VERSION,
+    MANIFEST_SCHEMA_VERSION,
+    verify_manifest_artifacts,
+)
+from alpha_cli.artifact_contract import (
+    artifact_contract as _artifact_contract,
+)
+from alpha_cli.artifact_contract import (
+    sha256_file as _sha256,
+)
+from alpha_cli.artifact_contract import (
+    validate_identity_fields as _validate_identity_fields,
+)
 from alpha_cli.run_store import find_run_dir as find_run_dir
 from alpha_core import DataError
 from alpha_validation import FloatArray
+from alpha_validation.native_tearsheet import TradeObservation
 
 
 def sanitize(value: Any) -> Any:
@@ -45,16 +59,40 @@ def sanitize(value: Any) -> Any:
 
 if TYPE_CHECKING:
     from alpha_backtest.results import BacktestResult, Trade
+    from alpha_cli._portfolio import PortfolioAllocation, PortfolioCorrelation
 
-MANIFEST_SCHEMA_VERSION = 3
-ARTIFACT_CONTRACT_VERSION = 3
 _NATIVE_TEARSHEET_PARQUET = (
     "calendar_returns.parquet",
+    "benchmark_comparison.parquet",
+    "exposure_turnover.parquet",
     "return_distribution.parquet",
     "rolling_metrics.parquet",
+    "trade_statistics.parquet",
 )
-_REQUIRED_PARQUET: dict[str, tuple[str, ...]] = {
+_REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
     "backtest_run": (
+        "equity_curve.parquet",
+        "trades.parquet",
+        "decision_trace.parquet",
+        "orders.parquet",
+        "fills.parquet",
+        "execution_trace.parquet",
+        "indicator_series.parquet",
+        "chart_annotations.parquet",
+        *_NATIVE_TEARSHEET_PARQUET,
+    ),
+    "backtest_oos": (
+        "equity_curve.parquet",
+        "trades.parquet",
+        "decision_trace.parquet",
+        "orders.parquet",
+        "fills.parquet",
+        "execution_trace.parquet",
+        "indicator_series.parquet",
+        "chart_annotations.parquet",
+        *_NATIVE_TEARSHEET_PARQUET,
+    ),
+    "backtest_holdout": (
         "equity_curve.parquet",
         "trades.parquet",
         "decision_trace.parquet",
@@ -75,16 +113,46 @@ _REQUIRED_PARQUET: dict[str, tuple[str, ...]] = {
         "indicator_series.parquet",
         "chart_annotations.parquet",
         "nulls.parquet",
+        "tearsheet.html",
         *_NATIVE_TEARSHEET_PARQUET,
     ),
-    "backtest_portfolio": ("equity_curve.parquet", *_NATIVE_TEARSHEET_PARQUET),
-    "cross_sectional": ("equity_curve.parquet", *_NATIVE_TEARSHEET_PARQUET),
-    "backtest_cross_sectional": ("equity_curve.parquet", *_NATIVE_TEARSHEET_PARQUET),
-    "optim_grid": ("trials.parquet",),
+    "backtest_portfolio": (
+        "equity_curve.parquet",
+        "tearsheet.html",
+        "portfolio_allocations.parquet",
+        "correlations.parquet",
+        *_NATIVE_TEARSHEET_PARQUET,
+    ),
+    "cross_sectional": (
+        "equity_curve.parquet",
+        "tearsheet.html",
+        *_NATIVE_TEARSHEET_PARQUET,
+    ),
+    "backtest_cross_sectional": (
+        "equity_curve.parquet",
+        "tearsheet.html",
+        *_NATIVE_TEARSHEET_PARQUET,
+    ),
+    "optim_grid": ("trials.parquet", "trial_ledger.parquet"),
     "propfirm": ("propfirm_paths.parquet",),
     "propfirm_run": ("propfirm_paths.parquet",),
     "forecast_run": ("paths.parquet", "quantiles.parquet", "history.parquet"),
     "forecast_eval": ("origins.parquet",),
+    "ml_replay": (
+        "equity_curve.parquet",
+        "trades.parquet",
+        "decision_trace.parquet",
+        "orders.parquet",
+        "fills.parquet",
+        "execution_trace.parquet",
+        "indicator_series.parquet",
+        "chart_annotations.parquet",
+        "ml_predictions.parquet",
+        "ml_signals.parquet",
+        "ml_periods.parquet",
+        "folds.parquet",
+        *_NATIVE_TEARSHEET_PARQUET,
+    ),
 }
 
 # schema for an EMPTY trade log (no rows to infer dtypes from); non-empty infers from the rows
@@ -174,14 +242,6 @@ _ANNOTATION_TRACE_SCHEMA: dict[str, pl.DataType] = {
 }
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
 def _same_bytes(left: Path, right: Path) -> bool:
     return left.stat().st_size == right.stat().st_size and _sha256(left) == _sha256(right)
 
@@ -216,77 +276,6 @@ def publish_artifact(path: Path, writer: Callable[[Path], object]) -> None:
         tmp.unlink(missing_ok=True)
 
 
-def _artifact_metadata(path: Path) -> dict[str, Any]:
-    try:
-        schema = pl.read_parquet_schema(path)
-        rows = int(pl.scan_parquet(path).select(pl.len()).collect().item())
-    except (OSError, pl.exceptions.PolarsError) as exc:
-        raise DataError(f"unreadable parquet artifact {path}") from exc
-    return {
-        "schema": [{"name": name, "dtype": str(dtype)} for name, dtype in schema.items()],
-        "sha256": _sha256(path),
-        "size_bytes": path.stat().st_size,
-        "rows": rows,
-    }
-
-
-def _artifact_contract(rdir: Path) -> dict[str, dict[str, Any]]:
-    return {
-        path.name: _artifact_metadata(path)
-        for path in sorted(rdir.glob("*.parquet"), key=lambda item: item.name)
-    }
-
-
-def _validate_identity_fields(manifest: Mapping[str, Any]) -> None:
-    if manifest.get("run_identity_version") != 3:
-        raise DataError("new manifests require run_identity_version=3")
-    for field in ("execution_fingerprint", "strategy_fingerprint", "source_fingerprint"):
-        value = manifest.get(field)
-        if field == "strategy_fingerprint" and value is None:
-            continue
-        if not isinstance(value, str) or len(value) != 64:
-            raise DataError(f"new manifests require a 64-hex {field}")
-        try:
-            int(value, 16)
-        except ValueError:
-            raise DataError(f"new manifests require a 64-hex {field}") from None
-
-
-def verify_manifest_artifacts(rdir: Path, manifest: Mapping[str, Any]) -> None:
-    """Verify a v3 manifest's identity and complete machine-readable artifact contract."""
-    if manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
-        return
-    _validate_identity_fields(manifest)
-    if manifest.get("artifact_contract_version") != ARTIFACT_CONTRACT_VERSION:
-        raise DataError(f"unsupported artifact contract at {rdir}")
-    if manifest.get("run_id") != rdir.name:
-        raise DataError(f"run manifest identity does not match directory {rdir}")
-    declared = manifest.get("artifacts")
-    if not isinstance(declared, dict):
-        raise DataError(f"invalid artifact contract at {rdir}: expected an object")
-    actual_names = {path.name for path in rdir.glob("*.parquet")}
-    if set(declared) != actual_names:
-        raise DataError(
-            f"artifact set mismatch at {rdir}: declared {sorted(declared)}, "
-            f"actual {sorted(actual_names)}"
-        )
-    for filename in sorted(actual_names):
-        expected = declared.get(filename)
-        if not isinstance(expected, dict):
-            raise DataError(f"artifact {filename} metadata mismatch at {rdir}")
-        path = rdir / filename
-        if expected.get("size_bytes") != path.stat().st_size:
-            raise DataError(f"artifact {filename} size mismatch at {rdir}")
-        if expected.get("sha256") != _sha256(path):
-            raise DataError(f"artifact {filename} hash mismatch at {rdir}")
-        metadata = _artifact_metadata(path)
-        if expected != metadata:
-            for field in ("rows", "schema"):
-                if expected.get(field) != metadata[field]:
-                    raise DataError(f"artifact {filename} {field} mismatch at {rdir}")
-            raise DataError(f"artifact {filename} metadata mismatch at {rdir}")
-
-
 def run_dir(data_dir: Path, run_id: str) -> Path:
     """The artifact directory for a run: ``data_dir/runs/<run_id>``."""
     return data_dir / "runs" / run_id
@@ -299,6 +288,9 @@ def write_equity_curve(
     timestamps: Sequence[datetime],
     returns: Sequence[float],
     periods_per_year: int = 252,
+    gross_exposure: Sequence[float] | None = None,
+    net_exposure: Sequence[float] | None = None,
+    turnover: Sequence[float] | None = None,
 ) -> None:
     """Write a returns-level ``equity_curve.parquet`` (validate-run schema, base 1.0).
 
@@ -331,6 +323,9 @@ def write_equity_curve(
         rdir,
         equity=list(zip([baseline_ts, *timestamps], equity, strict=True)),
         periods_per_year=periods_per_year,
+        gross_exposure=gross_exposure,
+        net_exposure=net_exposure,
+        turnover=turnover,
     )
 
 
@@ -339,12 +334,167 @@ def write_native_tearsheet(
     *,
     equity: Sequence[tuple[datetime, float]],
     periods_per_year: int,
+    trace_result: BacktestResult | None = None,
+    trades: Sequence[Trade] | None = None,
+    gross_exposure: Sequence[float] | None = None,
+    net_exposure: Sequence[float] | None = None,
+    turnover: Sequence[float] | None = None,
 ) -> None:
     """Publish Python-authoritative analytics consumed by the native workstation report."""
+    if trace_result is not None and any(
+        value is not None for value in (gross_exposure, net_exposure, turnover)
+    ):
+        raise DataError("direct portfolio analytics cannot be combined with trace_result")
+    benchmark_equity: list[float] | None = None
+    benchmark_kind: str | None = None
+    if trace_result is not None and trace_result.portfolio_state_trace:
+        by_ts = {row.ts: row for row in trace_result.portfolio_state_trace}
+        if len(by_ts) != len(trace_result.portfolio_state_trace):
+            raise DataError("portfolio state trace has duplicate timestamps")
+        starts = [ts for ts, _ in equity[:-1]]
+        missing = [ts for ts in starts if ts not in by_ts]
+        if missing:
+            raise DataError(
+                "portfolio state trace does not cover native tear-sheet interval starts: "
+                + ", ".join(ts.isoformat() for ts in missing[:3])
+            )
+        gross_exposure = [by_ts[ts].gross_exposure for ts in starts]
+        net_exposure = [by_ts[ts].net_exposure for ts in starts]
+        turnover = [by_ts[ts].turnover for ts in starts]
+    if trace_result is not None and trace_result.benchmark_curve:
+        benchmark_by_ts = dict(trace_result.benchmark_curve)
+        if len(benchmark_by_ts) != len(trace_result.benchmark_curve):
+            raise DataError("benchmark curve has duplicate timestamps")
+        timestamps = [ts for ts, _ in equity]
+        missing = [ts for ts in timestamps if ts not in benchmark_by_ts]
+        if missing:
+            raise DataError(
+                "benchmark curve does not cover native tear-sheet equity points: "
+                + ", ".join(ts.isoformat() for ts in missing[:3])
+            )
+        benchmark_equity = [benchmark_by_ts[ts] for ts in timestamps]
+        benchmark_kind = trace_result.benchmark_kind
+        if benchmark_kind is None:
+            raise DataError("benchmark curve requires a benchmark_kind")
+    trade_observations = (
+        [
+            TradeObservation(
+                side=trade.side,
+                realized_pnl=trade.realized_pnl,
+                realized_return=trade.realized_return,
+                entry_ts=trade.entry_ts,
+                exit_ts=trade.exit_ts,
+            )
+            for trade in trades
+        ]
+        if trades is not None
+        else None
+    )
     for filename, frame in native_tearsheet_frames(
-        equity, periods_per_year=periods_per_year
+        equity,
+        periods_per_year=periods_per_year,
+        gross_exposure=gross_exposure,
+        net_exposure=net_exposure,
+        turnover=turnover,
+        benchmark_equity=benchmark_equity,
+        benchmark_kind=benchmark_kind,
+        trades=trade_observations,
     ).items():
         publish_artifact(rdir / filename, frame.write_parquet)
+
+
+def write_portfolio_analytics(
+    rdir: Path,
+    *,
+    source_run_id: str,
+    snapshot_id: str | None,
+    snapshot_hash: str | None,
+    research_cutoff: str | None,
+    allocations: Sequence[PortfolioAllocation],
+    correlations: Sequence[PortfolioCorrelation],
+) -> None:
+    """Publish exact causal sleeve allocations and aligned-OOS correlation evidence."""
+    allocation_frame = pl.DataFrame(
+        [
+            {
+                "source_run_id": source_run_id,
+                "snapshot_id": snapshot_id,
+                "snapshot_hash": snapshot_hash,
+                "research_cutoff": research_cutoff,
+                "frequency": "1d",
+                "start_ts": row.start_ts,
+                "ts": row.ts,
+                "symbol": row.symbol,
+                "weight": row.weight,
+                "leg_return": row.leg_return,
+                "contribution": row.contribution,
+                "leg_gross_exposure": row.leg_gross_exposure,
+                "leg_net_exposure": row.leg_net_exposure,
+                "weighted_gross_exposure": row.weighted_gross_exposure,
+                "weighted_net_exposure": row.weighted_net_exposure,
+            }
+            for row in allocations
+        ],
+        schema={
+            "source_run_id": pl.String(),
+            "snapshot_id": pl.String(),
+            "snapshot_hash": pl.String(),
+            "research_cutoff": pl.String(),
+            "frequency": pl.String(),
+            "start_ts": pl.Datetime(time_unit="us", time_zone="UTC"),
+            "ts": pl.Datetime(time_unit="us", time_zone="UTC"),
+            "symbol": pl.String(),
+            "weight": pl.Float64(),
+            "leg_return": pl.Float64(),
+            "contribution": pl.Float64(),
+            "leg_gross_exposure": pl.Float64(),
+            "leg_net_exposure": pl.Float64(),
+            "weighted_gross_exposure": pl.Float64(),
+            "weighted_net_exposure": pl.Float64(),
+        },
+    ).sort("ts", "symbol")
+    correlation_frame = pl.DataFrame(
+        [
+            {
+                "source_run_id": source_run_id,
+                "snapshot_id": snapshot_id,
+                "snapshot_hash": snapshot_hash,
+                "research_cutoff": research_cutoff,
+                "asset_a": row.asset_a,
+                "asset_b": row.asset_b,
+                "metric_name": row.metric_name,
+                "metric_unit": row.metric_unit,
+                "correlation": row.correlation,
+                "sample_count": row.sample_count,
+                "aligned_oos": row.aligned_oos,
+                "frequency": row.frequency,
+                "oos_start": row.oos_start,
+                "oos_end": row.oos_end,
+                "association_not_causation": row.association_not_causation,
+            }
+            for row in correlations
+        ],
+        schema={
+            "source_run_id": pl.String(),
+            "snapshot_id": pl.String(),
+            "snapshot_hash": pl.String(),
+            "research_cutoff": pl.String(),
+            "asset_a": pl.String(),
+            "asset_b": pl.String(),
+            "metric_name": pl.String(),
+            "metric_unit": pl.String(),
+            "correlation": pl.Float64(),
+            "sample_count": pl.Int64(),
+            "aligned_oos": pl.Boolean(),
+            "frequency": pl.String(),
+            "oos_start": pl.String(),
+            "oos_end": pl.String(),
+            "association_not_causation": pl.Boolean(),
+        },
+    ).sort("asset_a", "asset_b")
+    rdir.mkdir(parents=True, exist_ok=True)
+    publish_artifact(rdir / "portfolio_allocations.parquet", allocation_frame.write_parquet)
+    publish_artifact(rdir / "correlations.parquet", correlation_frame.write_parquet)
 
 
 def write_nulls(rdir: Path, *, tiers: Sequence[tuple[str, Sequence[float]]]) -> None:
@@ -373,7 +523,12 @@ def write_nulls(rdir: Path, *, tiers: Sequence[tuple[str, Sequence[float]]]) -> 
     publish_artifact(rdir / "nulls.parquet", frame.write_parquet)
 
 
-def write_trials(rdir: Path, *, matrix: FloatArray) -> None:
+def write_trials(
+    rdir: Path,
+    *,
+    matrix: FloatArray,
+    trial_indices: Sequence[int] | None = None,
+) -> None:
     """Write ``trials.parquet`` — the ``(n_oos × n_configs)`` OOS return matrix behind a sweep.
 
     One row per (trial, step): ``trial`` Int64 (config index, aligned with the manifest's
@@ -385,9 +540,16 @@ def write_trials(rdir: Path, *, matrix: FloatArray) -> None:
     if matrix.ndim != 2:
         raise DataError(f"trials matrix must be 2-D (n_oos × n_configs), got shape {matrix.shape}")
     n_oos, n_configs = matrix.shape
+    indices = list(range(n_configs)) if trial_indices is None else list(trial_indices)
+    if len(indices) != n_configs:
+        raise DataError(
+            f"trial index count {len(indices)} does not match matrix columns {n_configs}"
+        )
+    if len(set(indices)) != len(indices) or any(index < 0 for index in indices):
+        raise DataError("trial indices must be unique non-negative integers")
     frame = pl.DataFrame(
         {
-            "trial": np.repeat(np.arange(n_configs, dtype=np.int64), n_oos),
+            "trial": np.repeat(np.asarray(indices, dtype=np.int64), n_oos),
             "step": np.tile(np.arange(n_oos, dtype=np.int64), n_configs),
             "oos_return": np.ascontiguousarray(matrix.T).reshape(-1),
         },
@@ -483,7 +645,13 @@ def write_run_sidecars(
     )
     publish_artifact(rdir / "trades.parquet", frame.write_parquet)
     if len(equity) >= 2:
-        write_native_tearsheet(rdir, equity=equity, periods_per_year=periods_per_year)
+        write_native_tearsheet(
+            rdir,
+            equity=equity,
+            periods_per_year=periods_per_year,
+            trace_result=trace_result,
+            trades=trades,
+        )
     if trace_result is not None:
         write_execution_trace(rdir, trace_result)
 
@@ -647,6 +815,20 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
     rank = {"decision": 0, "order": 1, "fill": 2, "trade": 3}
     events.sort(key=lambda event: (event["ts"], rank[event["event_type"]], event["_key"]))
     sequence_by_key = {event["_key"]: index for index, event in enumerate(events, start=1)}
+    # A decision's artifact identifier is its position in the one canonical causal sequence, not
+    # its earlier position in the decision-only list.  The two positions diverge as soon as an
+    # order/fill is interleaved before a later decision.  Remap every decision reference only after
+    # the consolidated sequence is final so all sidecars and projections share one immutable id.
+    decision_global_ids = {
+        local_id: sequence_by_key[f"decision:{local_id}"]
+        for local_id in range(1, len(decision_rows) + 1)
+    }
+    for row in decision_rows:
+        row["sequence_id"] = decision_global_ids[int(row["sequence_id"])]
+    for row in order_rows:
+        local_id = row["decision_sequence_id"]
+        if local_id is not None:
+            row["decision_sequence_id"] = decision_global_ids[int(local_id)]
     rows = [
         {
             "sequence_id": sequence_by_key[event["_key"]],
@@ -677,10 +859,22 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
         else pl.DataFrame(schema=_FILL_TRACE_SCHEMA)
     )
     decision_ids = {(row["ts"], row["instrument_id"]): row["sequence_id"] for row in decision_rows}
+    if len(decision_ids) != len(decision_rows):
+        raise DataError(
+            "causal decision evidence is ambiguous: duplicate decision timestamp/instrument"
+        )
+    evidence_keys = {
+        (indicator.ts, indicator.instrument_id) for indicator in result.indicator_trace
+    } | {
+        (annotation.decision_ts, annotation.instrument_id)
+        for annotation in result.chart_annotations
+    }
+    if missing := evidence_keys.difference(decision_ids):
+        raise DataError(f"causal evidence has no matching decision: {sorted(missing)!r}")
     indicator_rows = [
         {
             "sequence_id": index,
-            "decision_sequence_id": decision_ids.get((indicator.ts, indicator.instrument_id)),
+            "decision_sequence_id": decision_ids[(indicator.ts, indicator.instrument_id)],
             "ts": indicator.ts,
             "instrument_id": indicator.instrument_id,
             "name": indicator.name,
@@ -705,9 +899,9 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
             annotation_rows.append(
                 {
                     "annotation_id": annotation_id,
-                    "decision_sequence_id": decision_ids.get(
+                    "decision_sequence_id": decision_ids[
                         (annotation.decision_ts, annotation.instrument_id)
-                    ),
+                    ],
                     "kind": annotation.kind,
                     "label": annotation.label,
                     "unit": annotation.unit,
@@ -739,11 +933,18 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
 def write_manifest(rdir: Path, manifest: dict[str, Any]) -> None:
     """Publish an immutable v3 completion marker after hashing every deterministic sidecar."""
     _validate_identity_fields(manifest)
-    complete = dict(manifest)
+    # Compare the same JSON-domain value that is persisted.  In-memory specs legitimately carry
+    # tuples (for example normalized strategy parameters); after the first read those values are
+    # JSON lists, so comparing the raw Python containers would reject an otherwise byte-identical
+    # rerun under the same identity.
+    normalized = sanitize(manifest)
+    if not isinstance(normalized, dict):  # defensive: the public input is typed as a mapping
+        raise DataError("run manifest must normalize to an object")
+    complete = normalized
     complete["schema_version"] = MANIFEST_SCHEMA_VERSION
     complete["artifact_contract_version"] = ARTIFACT_CONTRACT_VERSION
     complete["artifacts"] = _artifact_contract(rdir)
-    required = _REQUIRED_PARQUET.get(str(complete.get("command")), ())
+    required = _REQUIRED_ARTIFACTS.get(str(complete.get("command")), ())
     missing = sorted(set(required) - set(complete["artifacts"]))
     if missing:
         raise DataError(f"cannot publish incomplete run {rdir}: missing artifacts {missing}")

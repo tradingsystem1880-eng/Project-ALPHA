@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_cli.control_store import ControlStore
 from alpha_web import _invoke
 from alpha_web.app import create_app
 
@@ -92,3 +94,32 @@ def test_cancel_running_job(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cancel_unknown_is_404() -> None:
     assert TestClient(create_app()).delete("/api/jobs/nope").status_code == 404
+
+
+def test_direct_kronos_launches_share_durable_atomic_capacity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _fake(monkeypatch, "import time; print('started', flush=True); time.sleep(10)")
+    client = TestClient(create_app())
+
+    first = client.post("/api/jobs", json={"command": "forecast run", "args": "SPY --model fake"})
+    assert first.status_code == 200, first.text
+    job_id = first.json()["job_id"]
+    durable = ControlStore(tmp_path).get_job(job_id)
+    assert durable["kind"] == "kronos_forecast"
+    assert durable["status"] == "running"
+
+    blocked = client.post("/api/jobs", json={"args": "forecast eval SPY --model fake"})
+    assert blocked.status_code == 409, blocked.text
+    assert "heavyweight job capacity is occupied" in blocked.json()["detail"]
+
+    assert client.delete(f"/api/jobs/{job_id}").status_code == 200
+    assert _wait_status(client, job_id, "cancelled") == "cancelled"
+    assert ControlStore(tmp_path).get_job(job_id)["status"] == "cancelled"
+
+    released = client.post("/api/jobs", json={"args": "forecast eval SPY --model fake"})
+    assert released.status_code == 200, released.text
+    released_job_id = released.json()["job_id"]
+    assert client.delete(f"/api/jobs/{released_job_id}").status_code == 200
+    assert _wait_status(client, released_job_id, "cancelled") == "cancelled"

@@ -19,8 +19,7 @@ import numpy as np
 from alpha_cli._runner import (
     OOSResult,
     RunSpec,
-    run_full_backtest,
-    walk_forward_oos_for_spec,
+    fresh_oos_execution,
 )
 from alpha_cli._seeds import semantic_seeds
 from alpha_cli._strategies import surrogate_for
@@ -141,8 +140,7 @@ def run_gauntlet(
     if params.tier2_mode == "model" and tier2_spec_for_path is None:
         raise DataError("tier2_mode='model' needs a per-path spec builder (kronos only)")
     ppy = spec.periods_per_year
-    result = run_full_backtest(bars, spec, dividends=dividends)
-    oos = walk_forward_oos_for_spec(result.equity_curve, spec)
+    oos, result = fresh_oos_execution(bars, spec, dividends=dividends)
     oos_metrics = _oos_metrics(oos, ppy)
 
     child_seeds = semantic_seeds(

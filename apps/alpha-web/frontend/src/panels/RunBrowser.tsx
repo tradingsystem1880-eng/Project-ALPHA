@@ -18,11 +18,15 @@ import { openRunDetail } from './actions'
 const KINDS = ['all', 'runs', 'optim', 'portfolio', 'cross_sectional', 'propfirm', 'forecast']
 
 export function RunBrowser(props: IDockviewPanelProps) {
+  const requestedKind = String(
+    (props.params as { defaultKind?: string } | undefined)?.defaultKind ?? 'all',
+  )
+  const defaultKind = KINDS.includes(requestedKind) ? requestedKind : 'all'
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [kind, setKind] = useState('all')
+  const [kind, setKind] = useState(defaultKind)
   const runsVersion = useActivityField('runsVersion')
 
   useEffect(() => {
@@ -124,7 +128,11 @@ export function RunBrowser(props: IDockviewPanelProps) {
 
   function selectRow(run: RunListItem): void {
     setSelected(run.run_id)
-    setLinked({ runId: run.run_id, ...(run.symbol ? { symbol: run.symbol } : {}) })
+    setLinked({
+      runId: run.run_id,
+      ...(run.symbol ? { symbol: run.symbol } : {}),
+      snapshotId: run.snapshot_id,
+    })
   }
 
   return (
@@ -134,11 +142,17 @@ export function RunBrowser(props: IDockviewPanelProps) {
         {items ? <span className="count">{filtered.length}</span> : null}
         <input
           className="field toolbar-search"
+          aria-label="Search runs"
           placeholder="search…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="field" value={kind} onChange={(e) => setKind(e.target.value)}>
+        <select
+          className="field"
+          aria-label="Filter runs by kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+        >
           {KINDS.map((k) => (
             <option key={k} value={k}>
               {k}

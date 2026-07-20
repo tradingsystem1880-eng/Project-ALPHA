@@ -144,7 +144,11 @@ def run(
     except DataError as exc:  # missing run, unknown firm, degenerate returns, bad rule override
         raise typer.BadParameter(str(exc)) from exc
 
-    identity = _runner.run_identity_for(payload, source_fingerprint=out.source_fingerprint)
+    identity = _runner.run_identity_for(
+        payload,
+        source_fingerprint=out.source_fingerprint,
+        snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot),
+    )
     run_id = identity.run_id
     rdir = settings.data_dir / "propfirm" / run_id
     rdir.mkdir(parents=True, exist_ok=True)

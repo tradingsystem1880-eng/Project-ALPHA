@@ -4,6 +4,9 @@
 **Date:** 2026-07-19
 **Deciders:** AI build agents (per `CLAUDE.md`)
 
+> **Later decision:** ADR-0016 applies this gate to the owner-approved Workstation v3 Qlib worker.
+> Qlib remains prohibited from the root runtime and is accepted only behind that isolated contract.
+
 ## Context
 
 ALPHA is already a shipped workstation, not a greenfield quant stack. It has a Nautilus-backed
@@ -42,7 +45,8 @@ For the 2026-07-19 post-v2 track:
   adapter API deliberately;
 - implement the provider/control-plane abstraction locally, using OpenBB only as an architecture
   reference;
-- defer Qlib to a separately specified environment and immutable snapshot/signal boundary;
+- defer Qlib in the post-v2 provider/paper track to a separately specified environment and
+  immutable snapshot/signal boundary (the later specification is ADR-0016);
 - keep the existing `alpha_options` implementation; treat Vollib only as a possible future parity
   oracle and FinancePy as a separately reviewed external-worker candidate;
 - keep TradingAgents and TensorTrade research-only, with no execution authority;

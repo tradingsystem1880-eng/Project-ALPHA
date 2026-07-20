@@ -8,6 +8,7 @@ per-session mark-to-market equity curve).
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -27,7 +28,13 @@ from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
 from alpha_backtest.frictions import BpsFeeModel
-from alpha_backtest.results import BacktestResult, FillTrace, OrderTrace, Trade
+from alpha_backtest.results import (
+    BacktestResult,
+    FillTrace,
+    OrderTrace,
+    PortfolioStateTrace,
+    Trade,
+)
 from alpha_core import ActionType, CorporateAction, DataError
 
 _NS_PER_SECOND = 1_000_000_000
@@ -204,6 +211,70 @@ def _execution_trace(
     return tuple(order_trace), tuple(fill_trace)
 
 
+def _portfolio_and_benchmark_trace(
+    data: Sequence[Data],
+    equity_curve: Sequence[tuple[datetime, float]],
+    fill_trace: Sequence[FillTrace],
+) -> tuple[tuple[PortfolioStateTrace, ...], tuple[tuple[datetime, float], ...]]:
+    """Derive post-fill exposure/turnover and a passive price benchmark from engine evidence."""
+
+    quotes: list[tuple[datetime, float]] = []
+    seen_timestamps: set[datetime] = set()
+    for item in data:
+        if not isinstance(item, QuoteTick):
+            continue
+        ts = _ns_to_dt(item.ts_event)
+        if ts in seen_timestamps:
+            raise DataError(f"duplicate opening quote timestamp in engine feed: {ts.isoformat()}")
+        seen_timestamps.add(ts)
+        midpoint = (float(item.bid_price) + float(item.ask_price)) / 2.0
+        if midpoint <= 0.0:
+            raise DataError(f"opening quote midpoint must be positive, got {midpoint}")
+        quotes.append((ts, midpoint))
+    if not quotes:
+        return (), ()
+    quotes.sort(key=lambda item: item[0])
+    equity_by_ts = dict(equity_curve)
+    if len(equity_by_ts) != len(equity_curve):
+        raise DataError("equity curve has duplicate session timestamps")
+    fills_by_ts: dict[datetime, list[FillTrace]] = {}
+    for fill in fill_trace:
+        fills_by_ts.setdefault(fill.ts, []).append(fill)
+    quote_timestamps = {ts for ts, _ in quotes}
+    unmatched = sorted(set(fills_by_ts) - quote_timestamps)
+    if unmatched:
+        raise DataError(
+            "fill timestamps do not reconcile to opening quotes: "
+            + ", ".join(ts.isoformat() for ts in unmatched)
+        )
+    position = 0.0
+    states: list[PortfolioStateTrace] = []
+    first_midpoint = quotes[0][1]
+    benchmark: list[tuple[datetime, float]] = []
+    for ts, midpoint in quotes:
+        if ts not in equity_by_ts:
+            raise DataError(f"opening quote {ts.isoformat()} has no canonical equity sample")
+        equity = equity_by_ts[ts]
+        if equity <= 0.0 or not math.isfinite(equity):
+            raise DataError(f"portfolio analytics require positive finite equity, got {equity}")
+        notional = 0.0
+        for fill in sorted(fills_by_ts.get(ts, ()), key=lambda item: item.sequence_id):
+            direction = 1.0 if fill.side == "BUY" else -1.0
+            position += direction * fill.quantity
+            notional += abs(fill.quantity * fill.price)
+        signed_exposure = position * midpoint / equity
+        states.append(
+            PortfolioStateTrace(
+                ts=ts,
+                gross_exposure=abs(signed_exposure),
+                net_exposure=signed_exposure,
+                turnover=notional / equity,
+            )
+        )
+        benchmark.append((ts, midpoint / first_midpoint))
+    return tuple(states), tuple(benchmark)
+
+
 def run_backtest(
     instrument: Instrument,
     data: Sequence[Data],
@@ -276,6 +347,9 @@ def run_backtest(
             )
             recorder.curve[-1] = (recorder.curve[-1][0], terminal)
         order_trace, fill_trace = _execution_trace(engine)
+        portfolio_state_trace, benchmark_curve = _portfolio_and_benchmark_trace(
+            data, recorder.curve, fill_trace
+        )
         result = BacktestResult(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
@@ -287,6 +361,9 @@ def run_backtest(
             chart_annotations=tuple(getattr(strategy, "chart_annotations", ())),
             order_trace=order_trace,
             fill_trace=fill_trace,
+            portfolio_state_trace=portfolio_state_trace,
+            benchmark_curve=benchmark_curve,
+            benchmark_kind="passive_open_to_open_price_only",
         )
     finally:
         engine.dispose()

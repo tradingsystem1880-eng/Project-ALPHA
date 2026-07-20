@@ -20,9 +20,18 @@ def _command(args: list[str]) -> list[str]:
     return [_ALPHA_BIN, *args]
 
 
-def _run_json(args: list[str], *, data_dir: Path) -> Any:
+def _run_json(args: list[str], *, data_dir: Path, timeout_seconds: float | None = None) -> Any:
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
-    proc = subprocess.run(_command(args), capture_output=True, text=True, env=env)
+    try:
+        proc = subprocess.run(
+            _command(args),
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"alpha {args} projection timed out") from exc
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"alpha {args} failed")
     return json.loads(proc.stdout)

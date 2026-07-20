@@ -11,7 +11,6 @@ flag (ADR-0009).
 from __future__ import annotations
 
 import dataclasses
-from datetime import UTC, date, datetime, time
 from typing import Any
 
 import polars as pl
@@ -76,14 +75,16 @@ def run(
     master_seed = seed if seed is not None else settings.random_seed
     sampling_seed = _forecast.forecast_seed(master_seed)
 
-    as_of_dt: datetime | None = None
-    if as_of is not None:
-        try:
-            as_of_dt = datetime.combine(date.fromisoformat(as_of), time(23, 59, 59), tzinfo=UTC)
-        except ValueError:
-            raise typer.BadParameter(f"--as-of must be an ISO date, got {as_of!r}") from None
-
-    bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+    try:
+        as_of_dt = _runner.parse_as_of(as_of)
+        bars, snapshot_id = _load_bars(
+            symbol,
+            data_dir=settings.data_dir,
+            snapshot_id=snapshot,
+            as_of=as_of_dt,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     forecaster = _forecaster_factory(
         model=resolved_model,
         model_revision=resolved_model_rev,
@@ -132,9 +133,11 @@ def run(
         "as_of": as_of,
         "last_bar_ts": out.context_last_ts.isoformat(),
     }
-    observed_history = [b for b in bars if as_of_dt is None or b.ts <= as_of_dt]
+    observed_history = bars
     identity = _runner.run_identity_for(
-        payload, source_fingerprint=_runner.source_fingerprint(observed_history)
+        payload,
+        source_fingerprint=_runner.source_fingerprint(observed_history),
+        snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot_id),
     )
     run_id = identity.run_id
     rdir = settings.data_dir / "forecast" / run_id
@@ -147,6 +150,7 @@ def run(
             "command": "forecast_run",
             "symbol": symbol,
             "snapshot_id": snapshot_id,
+            "research_cutoff": as_of,
             "model": prov,
             "params": {
                 "context": resolved_context,
@@ -225,6 +229,7 @@ def evaluate(
     device: str | None = None,
     seed: int | None = None,
     snapshot: str | None = None,
+    as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
 ) -> None:
     """Score SYMBOL's forecaster at rolling origins vs realized outcomes + baselines."""
     settings = AlphaSettings()
@@ -242,7 +247,16 @@ def evaluate(
     resolved_context = context if context is not None else settings.forecast_context
     master_seed = seed if seed is not None else settings.random_seed
 
-    bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+    try:
+        as_of_dt = _runner.parse_as_of(as_of)
+        bars, snapshot_id = _load_bars(
+            symbol,
+            data_dir=settings.data_dir,
+            snapshot_id=snapshot,
+            as_of=as_of_dt,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     forecaster = _forecaster_factory(
         model=resolved_model,
         model_revision=resolved_model_rev,
@@ -289,11 +303,14 @@ def evaluate(
         "top_k": top_k,
         "mean_block": mean_block,
         "seed": master_seed,
+        "research_cutoff": as_of,
         "first_origin_ts": out.origins[0].origin_ts.isoformat(),
         "last_origin_ts": out.origins[-1].origin_ts.isoformat(),
     }
     identity = _runner.run_identity_for(
-        payload, source_fingerprint=_runner.source_fingerprint(bars)
+        payload,
+        source_fingerprint=_runner.source_fingerprint(bars),
+        snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot_id),
     )
     run_id = identity.run_id
     rdir = settings.data_dir / "forecast" / run_id
@@ -307,6 +324,7 @@ def evaluate(
             "command": "forecast_eval",
             "symbol": symbol,
             "snapshot_id": snapshot_id,
+            "research_cutoff": as_of,
             "model": prov,
             "params": {
                 "context": resolved_context,

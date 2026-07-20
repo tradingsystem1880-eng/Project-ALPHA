@@ -40,15 +40,40 @@ def test_backtest_run_writes_trade_log_and_equity_curve(
     calendar = pl.read_parquet(rdir / "calendar_returns.parquet")
     distribution = pl.read_parquet(rdir / "return_distribution.parquet")
     rolling = pl.read_parquet(rdir / "rolling_metrics.parquet")
+    benchmark = pl.read_parquet(rdir / "benchmark_comparison.parquet")
+    exposure = pl.read_parquet(rdir / "exposure_turnover.parquet")
+    trade_statistics = pl.read_parquet(rdir / "trade_statistics.parquet")
     assert calendar.columns == ["period_type", "year", "month", "return_value"]
     assert {"histogram", "qq"} <= set(distribution["kind"].to_list())
-    assert rolling.columns == ["ts", "window", "return_value", "volatility", "sharpe"]
+    assert rolling.columns == [
+        "ts",
+        "window",
+        "return_value",
+        "volatility",
+        "sharpe",
+        "gross_exposure",
+        "net_exposure",
+        "turnover",
+        "exposure_available",
+        "turnover_available",
+    ]
+    assert benchmark.get_column("available").to_list() == [True] * equity.height
+    assert benchmark.get_column("benchmark_kind").unique().to_list() == [
+        "passive_open_to_open_price_only"
+    ]
+    assert exposure.get_column("exposure_available").to_list() == [True] * (equity.height - 1)
+    assert exposure.get_column("turnover_available").to_list() == [True] * (equity.height - 1)
+    assert exposure.get_column("gross_exposure").null_count() == 0
+    assert exposure.get_column("turnover").null_count() == 0
+    assert (
+        trade_statistics.filter(pl.col("metric") == "trade_count").get_column("available").item()
+        is True
+    )
     decisions = pl.read_parquet(rdir / "decision_trace.parquet")
     orders = pl.read_parquet(rdir / "orders.parquet")
     fills = pl.read_parquet(rdir / "fills.parquet")
     indicators = pl.read_parquet(rdir / "indicator_series.parquet")
     annotations = pl.read_parquet(rdir / "chart_annotations.parquet")
-    assert decisions["sequence_id"].to_list() == list(range(1, decisions.height + 1))
     assert orders["sequence_id"].to_list() == list(range(1, orders.height + 1))
     assert fills["sequence_id"].to_list() == list(range(1, fills.height + 1))
     assert orders["decision_sequence_id"].drop_nulls().len() == orders.height
@@ -72,6 +97,10 @@ def test_backtest_run_writes_trade_log_and_equity_curve(
     trace = pl.read_parquet(rdir / "execution_trace.parquet")
     assert trace["sequence_id"].to_list() == list(range(1, trace.height + 1))
     assert {"decision", "order", "fill"} <= set(trace["event_type"].to_list())
+    trace_decision_ids = trace.filter(pl.col("event_type") == "decision")["sequence_id"].to_list()
+    assert decisions["sequence_id"].to_list() == trace_decision_ids
+    assert set(indicators["decision_sequence_id"].to_list()) <= set(trace_decision_ids)
+    assert set(annotations["decision_sequence_id"].to_list()) <= set(trace_decision_ids)
     assert "indicator" not in trace.columns and "pattern" not in trace.columns
     for row in trace.filter(pl.col("event_type") == "order").iter_rows(named=True):
         assert row["parent_sequence_id"] is not None
@@ -90,8 +119,11 @@ def test_backtest_run_writes_trade_log_and_equity_curve(
         "indicator_series.parquet",
         "chart_annotations.parquet",
         "calendar_returns.parquet",
+        "benchmark_comparison.parquet",
+        "exposure_turnover.parquet",
         "return_distribution.parquet",
         "rolling_metrics.parquet",
+        "trade_statistics.parquet",
     } <= set(manifest["artifacts"])
 
 
