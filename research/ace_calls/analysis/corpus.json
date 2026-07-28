@@ -1,22 +1,7 @@
 {
-  "images": 16,
+  "images": 75,
   "quarantined": [],
   "statements": [
-    {
-      "timestamp": "2025-10-11 03:55",
-      "author": "You",
-      "text": "[TradingView chart attachment] Bitcoin/TetherUS PERPETUAL CONTRACT 12h Binance ... H122,470 L101585 C1128113-86819 (-25) - oneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30",
-      "files": [
-        "IMG_7799"
-      ],
-      "assets": [
-        "BTC",
-        "LINK",
-        "XRP"
-      ],
-      "indicators": [],
-      "kind": "chat"
-    },
     {
       "timestamp": "2026-02-15 01:44",
       "author": "Ace",
@@ -27,7 +12,12 @@
       "assets": [
         "BTC"
       ],
-      "indicators": [],
+      "indicators": [
+        "horizontal support/resistance lines (black)",
+        "purple supply/demand band",
+        "hand-drawn projection arrow",
+        "volume histogram"
+      ],
       "kind": "chat"
     },
     {
@@ -40,26 +30,18 @@
       "assets": [
         "BTC"
       ],
-      "indicators": [],
-      "kind": "chat"
-    },
-    {
-      "timestamp": "2026-02-15 01:50",
-      "author": "Ace",
-      "text": "@everyone personally speaking I hate listening to noise",
-      "files": [
-        "IMG_7800"
+      "indicators": [
+        "horizontal support/resistance lines (black)",
+        "purple supply/demand band",
+        "hand-drawn projection arrow",
+        "volume histogram"
       ],
-      "assets": [
-        "BTC"
-      ],
-      "indicators": [],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-01 09:59",
       "author": "Ace",
-      "text": "MEMORANDUM\n\nSubject: Strategy Update: BTC/USDT Key Levels\n\nExecution Summary\n\nIn line with our risk management framework, we recently distributed 50% of our position at the $69,011 resistance level (green baseline). We have since redeployed that capital, actively accumulating within our primary support zone near the $62,694 boundary (lower blue baseline).\n\nTechnical Outlook & Targets\n\n\u00b7 Accumulation Zone: We continue to view the $62,600-$64,000 bracket as a high- conviction buy zone. {Blue Line}\n\nUpside Trigger: For our bullish continuation thesis to validate, price action must break the $69,011 pivot and confirm it as localized support. {For it to contiune bullish confirmation it must need validate Green line which always been there}\n\n\u2022 Price Target: Upon successful confirmation of the $69k support, our models target an expansion toward the $73,700-$74,500 upper boundary.",
+      "text": "MEMORANDUM\nSubject: Strategy Update: BTC/USDT Key Levels\n\nExecution Summary\nIn line with our risk management framework, we recently distributed 50% of our position at the $69,011 resistance level (green baseline). We have since redeployed that capital, actively accumulating within our primary support zone near the $62,694 boundary (lower blue baseline).\n\nTechnical Outlook & Targets\n\u2022 Accumulation Zone: We continue to view the $62,600\u2013$64,000 bracket as a high-conviction buy zone. {Blue Line}\n\u2022 Upside Trigger: For our bullish continuation thesis to validate, price action must break the $69,011 pivot and confirm it as localized support. {For it to contiune bullish confirmation it must need validate Green line which always been there}\n\u2022 Price Target: Upon successful confirmation of the $69k support, our models target an expansion toward the $73,700\u2013$74,500 upper boundary.\n\nStrategic Posture [message cut off at bottom of screenshot]",
       "files": [
         "IMG_7791"
       ],
@@ -67,45 +49,67 @@
         "BTC"
       ],
       "indicators": [
-        "horizontal support/resistance baselines (green and blue lines)",
-        "accumulation/distribution zones",
-        "pivot level"
+        "green baseline",
+        "lower blue baseline",
+        "Blue Line",
+        "Green line",
+        "$69,011 pivot",
+        "accumulation zone",
+        "resistance level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-01 09:59",
+      "author": "Ace",
+      "text": "IN SHORT - LOOK CLOSELY TO BLUE LINE & GREEN LINE ONCE VALIDATE BULLISH COFIRMATION WE GET 73-74K (edited)",
+      "files": [
+        "IMG_7793"
+      ],
+      "assets": [
+        "BTC",
+        "ALTCOINS"
+      ],
+      "indicators": [
+        "blue line",
+        "green line",
+        "altcoin dominance (monthly) breakout"
       ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-01 10:10",
       "author": "Ace",
-      "text": "@everyone do give me a feedback how can i make it more informative or any change in writing style, i appreciate each & every single one of you !!! Ty & love to each of you, each & every single member of this community is my family, i appreciate all the love & support",
+      "text": "@everyone do give me a feedback how can i make it more informative or any change in writing style, i appreciate each & every single one of you !!! Ty & love to each of you, each & every single member of this community is my family, i appreciate all the love & support [folded hands emoji] [heart with bandage emoji]",
       "files": [
         "IMG_7793"
       ],
       "assets": [
         "BTC",
-        "ALTCOIN.D"
+        "ALTCOINS"
       ],
       "indicators": [
-        "blue line / green line (drawn horizontal baselines)",
-        "altcoin dominance breakout",
-        "monthly regime shift"
+        "blue line",
+        "green line",
+        "altcoin dominance (monthly) breakout"
       ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-02 03:39",
       "author": "Ace",
-      "text": "Huge Week Coming for financial market, Crisis = Opportunity",
+      "text": "Huge Week Coming for financial market, Crisis = Opportunity [pepe-with-crown emoji]",
       "files": [
         "IMG_7793"
       ],
       "assets": [
         "BTC",
-        "ALTCOIN.D"
+        "ALTCOINS"
       ],
       "indicators": [
-        "blue line / green line (drawn horizontal baselines)",
-        "altcoin dominance breakout",
-        "monthly regime shift"
+        "blue line",
+        "green line",
+        "altcoin dominance (monthly) breakout"
       ],
       "kind": "chat"
     },
@@ -114,23 +118,26 @@
       "author": "Ace",
       "text": "#Altcoin dominance (monthly) has broken out, indicating a clear regime shift.\nOur signal framework is now flashing conditions last observed in June 2020.",
       "files": [
-        "IMG_7793"
+        "IMG_7793",
+        "IMG_7794"
       ],
       "assets": [
         "BTC",
-        "ALTCOIN.D"
+        "ALTCOINS",
+        "LINK",
+        "XRP"
       ],
       "indicators": [
-        "blue line / green line (drawn horizontal baselines)",
-        "altcoin dominance breakout",
-        "monthly regime shift"
+        "blue line",
+        "green line",
+        "altcoin dominance (monthly) breakout"
       ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-02 07:07",
       "author": "Ace",
-      "text": "Okay yes I'm {long) with Hefty amount already at avg rn sitting at 64.3k per btc, look closely blue and green line daily open 4H time frame. I'm not a day trader.\n\nBut incase you are a day trader blue line & green line where everything and all u need to look at..\n\n\u2022 64.3k per btc I'm long 5x LV\n\nI have a million dollar 6x lv position opened on link\n\n\u2022 I have bought insane amount of XRP at",
+      "text": "Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look closely blue and green line daily open 4H time frame. I'm not a day trader.\n\nBut incase you are a day trader blue line & green line where everything and all u need to look at..\n\n\u2022 64.3k per btc I'm long 5x LV\n\u2022 I have a million dollar 6x lv position opened on link\n\u2022 I have bought insane amount of XRP at [message cut off at bottom of screenshot]",
       "files": [
         "IMG_7794"
       ],
@@ -138,19 +145,21 @@
         "BTC",
         "LINK",
         "XRP",
-        "OTHERS.D/BTC.D"
+        "ALTCOINS"
       ],
       "indicators": [
-        "altcoin dominance (OTHERS.D/BTC.D) breakout",
-        "blue line / green line drawn baselines",
-        "daily open"
+        "altcoin dominance OTHERS.D/BTC.D 3W",
+        "horizontal dashed levels",
+        "measure/projection tool",
+        "blue line",
+        "green line"
       ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-02 07:21",
       "author": "Ace",
-      "text": "When the market will be intresting everybody will in denial, btc is down 57% {126k - 60k} i longed 63-70k than again 64k -70k now I'll be just holding this sideways movement blue & green line is all i'm looking at its boring but i just don't wanna catch falling knives day trading 3-4k moves and bragging about it tbh... when there will be opportunity for short I'll be the first person to short it so chill & relax & spend profits",
+      "text": "When the market will be intresting everybody will in denial, btc is down 57% {126k - 60k} i longed 63-70k than again 64k -70k now I'll be just holding this sideways movement blue & green line is all i'm looking at its boring but i just don't wanna catch falling knives day trading 3-4k moves and bragging about it tbh... when there will be opportunity for short I'll be the first person to short it so chill & relax & spend profits [pepe-with-crown emoji]",
       "files": [
         "IMG_7796"
       ],
@@ -159,9 +168,10 @@
         "BTC"
       ],
       "indicators": [
-        "blue line / green line drawn baselines"
+        "blue line",
+        "green line"
       ],
-      "kind": "position"
+      "kind": "chat"
     },
     {
       "timestamp": "2026-03-03 02:03",
@@ -175,9 +185,10 @@
         "BTC"
       ],
       "indicators": [
-        "blue line / green line drawn baselines"
+        "blue line",
+        "green line"
       ],
-      "kind": "position"
+      "kind": "chat"
     },
     {
       "timestamp": "2026-03-03 02:03",
@@ -187,50 +198,57 @@
         "IMG_7797"
       ],
       "assets": [
-        "LINK"
+        "LINK",
+        "BTC"
       ],
       "indicators": [],
-      "kind": "position"
+      "kind": "chat"
     },
     {
       "timestamp": "2026-03-04 19:26",
       "author": "Ace",
-      "text": "[attachment: LINK/USD position panel] POSITION LINK/USD 6.91x Long \u2014 ENTRY PRICE $8.7933, MARK PRICE $9.2140, LIQUIDATION PRICE $7.5495, COLLATERAL $144,891.46, position value $1,000,814.99",
+      "text": "[attached exchange position panel: LINK/USD 6.91x Long, SIZE $1,000,814.99, NET VALUE $187,690.08 +$40,282.14 (+27.21%), COLLATERAL $144,891.46 (144,899.82 USDC), ENTRY $8.7933, MARK $9.2140, LIQUIDATION $7.5695]",
       "files": [
         "IMG_7797"
       ],
       "assets": [
-        "LINK"
+        "LINK",
+        "BTC"
       ],
       "indicators": [],
-      "kind": "position"
+      "kind": "chat"
     },
     {
       "timestamp": "2026-03-04 19:31",
       "author": "Ace",
-      "text": "@everyone I hope everybody is having a great week!!! I appreciate all of you, Love you all - ACE",
+      "text": "@everyone I hope everybody is having a great week !!! I appreciate all of you, Love you all [pepe-with-crown emoji]\n- ACE",
       "files": [
         "IMG_7797"
       ],
       "assets": [
-        "LINK"
+        "LINK",
+        "BTC"
       ],
       "indicators": [],
-      "kind": "position"
+      "kind": "chat"
     },
     {
       "timestamp": "2026-03-05 00:54",
       "author": "Ace",
-      "text": "Every wanna be is in denial",
+      "text": "Every wanna be is in denial \ud83d\ude0f",
       "files": [
         "IMG_7798"
       ],
       "assets": [
-        "BTC"
+        "BTC",
+        "ALTCOIN DOMINANCE"
       ],
       "indicators": [
-        "horizontal support/resistance lines (blue and green baselines)",
-        "altcoin dominance regime shift (quoted reply)"
+        "long position tool (green profit box / pink loss box)",
+        "horizontal support and resistance levels (cyan dashed, green solid, red, grey, teal)",
+        "rising dashed diagonal trendline",
+        "hand-drawn projection arrow / zig-zag path",
+        "altcoin dominance monthly breakout"
       ],
       "kind": "chat"
     },
@@ -242,27 +260,35 @@
         "IMG_7798"
       ],
       "assets": [
-        "BTC"
+        "BTC",
+        "ALTCOIN DOMINANCE"
       ],
       "indicators": [
-        "horizontal support/resistance lines (blue and green baselines)",
-        "altcoin dominance regime shift (quoted reply)"
+        "long position tool (green profit box / pink loss box)",
+        "horizontal support and resistance levels (cyan dashed, green solid, red, grey, teal)",
+        "rising dashed diagonal trendline",
+        "hand-drawn projection arrow / zig-zag path",
+        "altcoin dominance monthly breakout"
       ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-09 21:36",
       "author": "Ace",
-      "text": "Also...\n\n79k is what am i looking at.. atm",
+      "text": "Also...\n79k is what am i looking at.. atm",
       "files": [
         "IMG_7798"
       ],
       "assets": [
-        "BTC"
+        "BTC",
+        "ALTCOIN DOMINANCE"
       ],
       "indicators": [
-        "horizontal support/resistance lines (blue and green baselines)",
-        "altcoin dominance regime shift (quoted reply)"
+        "long position tool (green profit box / pink loss box)",
+        "horizontal support and resistance levels (cyan dashed, green solid, red, grey, teal)",
+        "rising dashed diagonal trendline",
+        "hand-drawn projection arrow / zig-zag path",
+        "altcoin dominance monthly breakout"
       ],
       "kind": "chat"
     },
@@ -278,13 +304,17 @@
         "LINK",
         "XRP"
       ],
-      "indicators": [],
+      "indicators": [
+        "horizontal support/resistance lines (black)",
+        "purple supply/demand band",
+        "hand-drawn projection arrow"
+      ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-09 22:33",
       "author": "Ace",
-      "text": "I shorted btc at this level at 40x lv, I remember doing it all by myself alone... I understand this market better than anybody else in this whole world",
+      "text": "I shorted btc at this level at 40x lv, I remember doing it all by myself alone\u2026 I understand this market better than anybody else in this whole world\n\n\u2022 and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link\n\nI'm the greatest trader alive no doubt",
       "files": [
         "IMG_7799"
       ],
@@ -293,83 +323,72 @@
         "LINK",
         "XRP"
       ],
-      "indicators": [],
-      "kind": "chat"
-    },
-    {
-      "timestamp": "2026-03-09 22:33",
-      "author": "Ace",
-      "text": "and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link",
-      "files": [
-        "IMG_7799"
+      "indicators": [
+        "horizontal support/resistance lines (black)",
+        "purple supply/demand band",
+        "hand-drawn projection arrow"
       ],
-      "assets": [
-        "BTC",
-        "LINK",
-        "XRP"
-      ],
-      "indicators": [],
-      "kind": "chat"
-    },
-    {
-      "timestamp": "2026-03-09 22:33",
-      "author": "Ace",
-      "text": "I'm the greatest trader alive no doubt",
-      "files": [
-        "IMG_7799"
-      ],
-      "assets": [
-        "BTC",
-        "LINK",
-        "XRP"
-      ],
-      "indicators": [],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-13 23:27",
       "author": "Ace",
-      "text": "Just got out of the match... I'm quite most of the time even looking at what's goin on { when i posted we not going lower than 66k - most people thought they missed out when it went to 67.5-68k) what's the point? Now you missed out on 6k move. Think wisely it's never been about money it's been always about your mental... It's all your decisions & emotions.",
+      "text": "Just got out of the match... I'm quite most of the time even looking at what's goin on { when i posted we not going lower than 66k - most people thought they missed out when it went to 67.5-68k } what's the point ? Now you missed out on 6k move. Think wisely it's never been about money it's been always about your mental... It's all your decisions & emotions.",
       "files": [
         "IMG_7801"
       ],
       "assets": [
-        "BTC"
+        "BTC",
+        "LINK"
       ],
-      "indicators": [],
+      "indicators": [
+        "horizontal support/resistance levels (cyan dashed, green solid, red, grey, teal)",
+        "long position box / zone",
+        "hand-drawn projection arrow"
+      ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-13 23:38",
       "author": "Ace",
-      "text": "[position-panel attachment] Positions 3 POSITION / Orders 6 Trades / NET VALUE / COLLATERAL / ENTRY PRICE / MARK PRICE / LIQUIDATION PRICE - values OCR'd as 81.000814.99, 89.3236, 87.3219, $228.28928, $173.009.79, 38.7933",
+      "text": "[image only: LINK/USD long position panel]",
       "files": [
         "IMG_7801"
       ],
       "assets": [
-        "BTC"
+        "BTC",
+        "LINK"
       ],
-      "indicators": [],
+      "indicators": [
+        "horizontal support/resistance levels (cyan dashed, green solid, red, grey, teal)",
+        "long position box / zone",
+        "hand-drawn projection arrow"
+      ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-13 23:56",
       "author": "Ace",
-      "text": "After [chart attachment] Bitcoin/USD Tether Perpetual C... 72,107.4 +1,625.0 (+2.31%) - BTCUSD 2H",
+      "text": "After",
       "files": [
         "IMG_7801",
         "IMG_7802"
       ],
       "assets": [
-        "BTC"
+        "BTC",
+        "LINK"
       ],
-      "indicators": [],
+      "indicators": [
+        "horizontal support/resistance levels (cyan dashed, green solid, red, grey, teal)",
+        "long position box / zone",
+        "hand-drawn projection arrow"
+      ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-03-14 00:00",
       "author": "Ace",
-      "text": "I proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool..",
+      "text": "I proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool..\n\nI try my best to make it less complicated \u2764\ufe0f\ud83d\udc8e I appreciate & love all of you - ACE @everyone",
       "files": [
         "IMG_7803"
       ],
@@ -377,23 +396,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
-        "green line"
-      ],
-      "kind": "chat"
-    },
-    {
-      "timestamp": "2026-03-14 00:00",
-      "author": "Ace",
-      "text": "I try my best to make it less complicated I appreciate & love all of you - ACE",
-      "files": [
-        "IMG_7803"
-      ],
-      "assets": [
-        "BTC"
-      ],
-      "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -401,7 +404,7 @@
     {
       "timestamp": "2026-03-14 08:47",
       "author": "Ace",
-      "text": "A lot of people would not believe it but let me just spoil it out for you guys btc rn even though i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED { PPM } ...",
+      "text": "A lot of people would not believe it but let me just spoil it out for you guys btc rn even though i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED {  PPM } ...",
       "files": [
         "IMG_7803"
       ],
@@ -409,7 +412,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -417,7 +420,7 @@
     {
       "timestamp": "2026-03-14 08:55",
       "author": "Ace",
-      "text": "That grey region is made for shorts... I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm",
+      "text": "That grey region is made for shorts ... I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm [pepe-with-crown-and-sunglasses emoji]",
       "files": [
         "IMG_7803",
         "IMG_7804"
@@ -427,7 +430,7 @@
         "LINK"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -435,7 +438,7 @@
     {
       "timestamp": "2026-03-14 10:07",
       "author": "Ace",
-      "text": "Everything depends on the green line nov\u2193",
+      "text": "Everything depends on the green line now",
       "files": [
         "IMG_7803"
       ],
@@ -443,7 +446,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -460,7 +463,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -468,7 +471,7 @@
     {
       "timestamp": "2026-03-14 17:46",
       "author": "Ace",
-      "text": "Sunday dumps can't be trusted - Today is staturday (1:45 pm)",
+      "text": "Sunday dumps can't be trusted - Today is staturday ( 1:45 pm )",
       "files": [
         "IMG_7804"
       ],
@@ -477,7 +480,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -485,7 +488,7 @@
     {
       "timestamp": "2026-03-16 06:54",
       "author": "Ace",
-      "text": "King of market....",
+      "text": "King of market...[pepe-with-crown-and-sunglasses emoji]",
       "files": [
         "IMG_7804"
       ],
@@ -494,7 +497,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -502,7 +505,7 @@
     {
       "timestamp": "2026-03-16 07:09",
       "author": "Ace",
-      "text": "The whole market went parabolic while we all were on call (that's a sign), I appreciate & love all of you - ACE @everyone",
+      "text": "The whole market went parabolic while we all were on call (that's a sign) , I appreciate & love all of you - ACE [pepe-with-crown-and-sunglasses emoji] @everyone",
       "files": [
         "IMG_7804",
         "IMG_7805"
@@ -512,7 +515,7 @@
         "BTC"
       ],
       "indicators": [
-        "grey region",
+        "grey region / grey band (described as 'made for shorts')",
         "green line"
       ],
       "kind": "chat"
@@ -520,7 +523,7 @@
     {
       "timestamp": "2026-03-17 09:23",
       "author": "Ace",
-      "text": "Count on me on the days when you feel lost, I will guide you - ACE",
+      "text": "Count on me on the days when you feel lost, I will guide you \ud83e\udd34 - ACE",
       "files": [
         "IMG_7805"
       ],
@@ -561,7 +564,7 @@
     {
       "timestamp": "2026-03-17 15:59",
       "author": "Ace",
-      "text": "BTC went from 64 to 76k { ofc majority of people will sell into this levels } what I'm thinking right is as usual chill take some profits & spend it on your fav stuff why we need to strees? no point... if i have to take shorts i'll be looking at 79-81k's levels",
+      "text": "BTC went from 64 to 76k { ofc majority of people will sell into this levels } what I'm thinking right is as usual chill take some profits & spend it on your fav stuff why we need to strees ? no point... if i have to take shorts i'll be looking at 79-81k's levels",
       "files": [
         "IMG_7806"
       ],
@@ -574,7 +577,7 @@
     {
       "timestamp": "2026-03-17 15:59",
       "author": "Ace",
-      "text": "Time to just chill relax spend profits and wait for the right move, we already up heavy - ACE",
+      "text": "Time to just chill relax spend profits and wait for the right move, we already up heavy - ACE \ud83e\udd34",
       "files": [
         "IMG_7806"
       ],
@@ -587,9 +590,10 @@
     {
       "timestamp": "2026-03-17 18:24",
       "author": "Ace",
-      "text": "Current thoughts about BTC [chart attachment] Bitcoin/USD Tether Perpetual C... 74,279.6 -554.8 (-0.74%)",
+      "text": "Current thoughts about BTC \ud83e\udd34",
       "files": [
-        "IMG_7806"
+        "IMG_7806",
+        "IMG_7807"
       ],
       "assets": [
         "BTC"
@@ -598,45 +602,3053 @@
       "kind": "chat"
     },
     {
+      "timestamp": "2026-03-17 19:25",
+      "author": "Ace",
+      "text": "Note - keep mind everyone it has to reject hard of that grey zone just like it did last 2 times or I'm out",
+      "files": [
+        "IMG_7807",
+        "IMG_7808"
+      ],
+      "assets": [
+        "BTC",
+        "LINK",
+        "XRP",
+        "ETH"
+      ],
+      "indicators": [
+        "grey zone (supply/rejection band ~73,774-74,577)",
+        "green line (69,011.1 pivot)",
+        "cyan dashed range boundaries (82,490.4 / 62,694.3)",
+        "short position tool (entry/stop/target)",
+        "hand-drawn arrows (up-leg and projected pullback)",
+        "hand-drawn trendline"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-03-17 19:25",
+      "author": "Ace",
+      "text": "watching carefully rn not out yet",
+      "files": [
+        "IMG_7808"
+      ],
+      "assets": [
+        "LINK",
+        "BTC",
+        "XRP",
+        "ETH"
+      ],
+      "indicators": [
+        "the zone / grey zone (73900 named as its edge)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-17 19:37",
+      "author": "Ace",
+      "text": "okay i'm out since it enter the zone 73900 { profit is profit }... going to buy a watch",
+      "files": [
+        "IMG_7808"
+      ],
+      "assets": [
+        "LINK",
+        "BTC",
+        "XRP",
+        "ETH"
+      ],
+      "indicators": [
+        "the zone / grey zone (73900 named as its edge)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-17 19:37",
+      "author": "Ace",
+      "text": "Just a small scalp",
+      "files": [
+        "IMG_7808"
+      ],
+      "assets": [
+        "LINK",
+        "BTC",
+        "XRP",
+        "ETH"
+      ],
+      "indicators": [
+        "the zone / grey zone (73900 named as its edge)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-17 19:44",
+      "author": "Ace",
+      "text": "Just want everybody to know... i was watching alts as i said everyone to take some profits as per safety { personally i took profits on btc/eth had rest of the bag riding } but on alts i'm still long xrp/link",
+      "files": [
+        "IMG_7808"
+      ],
+      "assets": [
+        "LINK",
+        "BTC",
+        "XRP",
+        "ETH"
+      ],
+      "indicators": [
+        "the zone / grey zone (73900 named as its edge)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-17 19:51",
+      "author": "Ace",
+      "text": "xrp at 1.38 was a steal",
+      "files": [
+        "IMG_7808",
+        "IMG_7809"
+      ],
+      "assets": [
+        "LINK",
+        "BTC",
+        "XRP",
+        "ETH"
+      ],
+      "indicators": [
+        "the zone / grey zone (73900 named as its edge)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-17 19:51",
+      "author": "Ace",
+      "text": "Not forcing any trade... until 79-81k big week for crypto as usual",
+      "files": [
+        "IMG_7809"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "cyan dashed line 82,490.4",
+        "hand-drawn up arrow",
+        "79-81k zone (named in text)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-18 19:46",
+      "author": "Ace",
+      "text": "FOMC - We Gonna Drop a bit, Finest trade fr ... but had to buy a watch so i exit \ud83e\udd34",
+      "files": [
+        "IMG_7809"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "cyan dashed line 82,490.4",
+        "hand-drawn up arrow",
+        "79-81k zone (named in text)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-18 19:57",
+      "author": "Ace",
+      "text": "This month is so crucial - Starting of Q2 ( I can't even tell you guys how excited I'm )",
+      "files": [
+        "IMG_7809",
+        "IMG_7810"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "cyan dashed line 82,490.4",
+        "hand-drawn up arrow",
+        "79-81k zone (named in text)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-18 22:59",
+      "author": "Ace",
+      "text": "Well the thought was right \u2764\ufe0f\ud83d\ude0f undefeated",
+      "files": [
+        "IMG_7809",
+        "IMG_7810"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "cyan dashed line 82,490.4",
+        "hand-drawn up arrow",
+        "79-81k zone (named in text)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-19 09:40",
+      "author": "Ace",
+      "text": "@everyone I'll try my best to do live calls every week or every 2 weeks ... please take time out of your day & Join (15-20 mins) that's where the actual magic happens - Ace \ud83e\udd34",
+      "files": [
+        "IMG_7811"
+      ],
+      "assets": [
+        "XRP",
+        "GOLD"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-19 21:55",
+      "author": "Ace",
+      "text": "& the reason I sold all the gold at 5150 where are the gold maxi ?  ... undefeated as usual \ud83e\udd34",
+      "files": [
+        "IMG_7811"
+      ],
+      "assets": [
+        "XRP",
+        "GOLD"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-21 02:34",
+      "author": "Ace",
+      "text": "BTC is facing a heavy sell off - It's not good tbh... I'm Looking for weekly open & daily of today { It's actually lights out for btc the way the structure is looking atm } waiting for confirmation \ud83d\udc38",
+      "files": [
+        "IMG_7812"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "weekly open",
+        "daily open",
+        "market structure",
+        "supply/resistance band (grey rectangle 73.7k-74.6k)",
+        "dashed cyan horizontal levels",
+        "long/short position tools (entry/target/stop)",
+        "hand-drawn projection arrows",
+        "dashed trendline"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-21 02:42",
+      "author": "Ace",
+      "text": "I actually just landed going home. stay away",
+      "files": [
+        "IMG_7812"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "weekly open",
+        "daily open",
+        "market structure",
+        "supply/resistance band (grey rectangle 73.7k-74.6k)",
+        "dashed cyan horizontal levels",
+        "long/short position tools (entry/target/stop)",
+        "hand-drawn projection arrows",
+        "dashed trendline"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-21 02:42",
+      "author": "Ace",
+      "text": "I actually just landed going home, stay away from longs @everyone",
+      "files": [
+        "IMG_7813"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-21 10:55",
+      "author": "Ace",
+      "text": "Longs continues...",
+      "files": [
+        "IMG_7813"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-22 01:47",
+      "author": "Ace",
+      "text": "Not trading currently We don't need to catch every move in the market \ud83e\udd34 - Chilling relaxing spending profits - ACE",
+      "files": [
+        "IMG_7813"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-22 16:46",
+      "author": "Ace",
+      "text": "Dump incoming, be careful @everyone",
+      "files": [
+        "IMG_7813"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-23 19:11",
+      "author": "Ace",
+      "text": "It's consolidating at peak rn I'm out at entry\nOh my god\nAdding shorts...",
+      "files": [
+        "IMG_7813"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-23 19:20",
+      "author": "Ace",
+      "text": "No matter what we going to see 62k just a[obscured] pump to eliminate shorts & stop it out",
+      "files": [
+        "IMG_7813"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-23 19:20",
+      "author": "Ace",
+      "text": "No matter what we going to see 62k just a pump to eliminate shorts & stop it out",
+      "files": [
+        "IMG_7814"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "dashed cyan horizontal levels",
+        "green-line close (daily close above/below the green line as the short trigger)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-23 19:20",
+      "author": "Ace",
+      "text": "I'm in ...",
+      "files": [
+        "IMG_7814"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "dashed cyan horizontal levels",
+        "green-line close (daily close above/below the green line as the short trigger)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-23 19:25",
+      "author": "Ace",
+      "text": "Was not able to be out at entry I'm in \ud83e\udd34\nAdded shorts along the line",
+      "files": [
+        "IMG_7814"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "dashed cyan horizontal levels",
+        "green-line close (daily close above/below the green line as the short trigger)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-25 07:45",
+      "author": "Ace",
+      "text": "As mentioned on live call 69k is the level if it traces back it might get to 72k ish ... Till than I'm chilling (edited)",
+      "files": [
+        "IMG_7814"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "dashed cyan horizontal levels",
+        "green-line close (daily close above/below the green line as the short trigger)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-25 20:44",
+      "author": "Ace",
+      "text": "Shorts activated - after closing at green line last night ( shorting until 66k - green line is no joke tbh )",
+      "files": [
+        "IMG_7814"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "dashed cyan horizontal levels",
+        "green-line close (daily close above/below the green line as the short trigger)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 00:49",
+      "author": "Ace",
+      "text": "out at 71200 with a little profit btc & eth making a bull flag it has to close 4H at 71648 for me to be short again (edited)",
+      "files": [
+        "IMG_7815"
+      ],
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "green line",
+        "bull flag",
+        "4H close confirmation",
+        "grey supply band 73.8k-74.6k",
+        "dashed cyan horizontal levels",
+        "long/short position tools",
+        "hand-drawn projection arrows"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 01:22",
+      "author": "Ace",
+      "text": "I just want btc to make a double top at daily and i will hold this short",
+      "files": [
+        "IMG_7816"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top (daily)",
+        "green line",
+        "dashed cyan horizontal levels",
+        "4H close confirmation (referenced in the quoted reply)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 07:41",
+      "author": "Ace",
+      "text": "71500 holding short GN ... (edited)",
+      "files": [
+        "IMG_7816"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top (daily)",
+        "green line",
+        "dashed cyan horizontal levels",
+        "4H close confirmation (referenced in the quoted reply)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 14:39",
+      "author": "Ace",
+      "text": "@everyone waking up to red \u2764\ufe0f\u267e",
+      "files": [
+        "IMG_7816"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top (daily)",
+        "green line",
+        "dashed cyan horizontal levels",
+        "4H close confirmation (referenced in the quoted reply)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 15:21",
+      "author": "Ace",
+      "text": "Give me 52-49k (ALL IN)",
+      "files": [
+        "IMG_7816"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top (daily)",
+        "green line",
+        "dashed cyan horizontal levels",
+        "4H close confirmation (referenced in the quoted reply)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 17:57",
+      "author": "Ace",
+      "text": "Incase you guys genuinely want to know what am I looking at, is this level 49k - personally speaking I Just don't even want to buy anything until I have that - ACE \ud83e\udd34",
+      "files": [
+        "IMG_7816"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top (daily)",
+        "green line",
+        "dashed cyan horizontal levels",
+        "4H close confirmation (referenced in the quoted reply)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 21:22",
+      "author": "Ace",
+      "text": "My bad i was driving.. so what I'm thinking atm on the reverse side btc is creating a double down we might will see 70400 if that rejected 72220 nice 10 % move since tbh since last night { Personally speaking I'm looking for 49k } but i need strong momentum",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 21:22",
+      "author": "Ace",
+      "text": "I'm just reacting towards the market - ACE \ud83e\udd34",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-26 21:22",
+      "author": "Ace",
+      "text": "Markets are super shit - right now",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 02:01",
+      "author": "Ace",
+      "text": "Rejected bearish orderblock at 69k green line now we will flow",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 02:01",
+      "author": "Ace",
+      "text": "I'm happy you guys took TP1 at green line",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 02:01",
+      "author": "Ace",
+      "text": "No need to trade just chill and have 20-30% short still flow",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 02:01",
+      "author": "Ace",
+      "text": "take the rest around 68's ish level",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 04:40",
+      "author": "Ace",
+      "text": "Let me teach you all something which most of the time traders don't see it while trading, CME gaps liquidity and sweep is all bs",
+      "files": [
+        "IMG_7817"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line",
+        "bearish orderblock (69k)",
+        "double top / 'double down'",
+        "momentum",
+        "CME gaps (dismissed)",
+        "liquidity sweep (dismissed)",
+        "TP1 / partial profit taking (20-30% runner)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 04:44",
+      "author": "Ace",
+      "text": "When bearish order blocks get rejected it",
+      "files": [
+        "IMG_7818"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "green line (solid horizontal at 69,011.1)",
+        "zone area / scoop zone (69k-68.1k)",
+        "bearish order block",
+        "CME gap fill",
+        "grey supply band 73.8k-74.4k",
+        "dashed cyan horizontal levels",
+        "momentum",
+        "hand-drawn range rails"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 04:44",
+      "author": "Ace",
+      "text": "When bearish order blocks get rejected it flows to zone area wait for confirmation to get filled a long the time",
+      "files": [
+        "IMG_7819"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order blocks",
+        "zone area",
+        "green line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 04:44",
+      "author": "Ace",
+      "text": "Since it's filled so is my order way above the entry where I took profits until I see BTC at 49k",
+      "files": [
+        "IMG_7819"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order blocks",
+        "zone area",
+        "green line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 04:44",
+      "author": "Ace",
+      "text": "Happy trading guys - ACE \ud83d\udc51",
+      "files": [
+        "IMG_7819"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order blocks",
+        "zone area",
+        "green line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 20:05",
+      "author": "Ace",
+      "text": "Market confirmed @everyone",
+      "files": [
+        "IMG_7819"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order blocks",
+        "zone area",
+        "green line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 20:18",
+      "author": "Ace",
+      "text": "We will start fresh - I'll focus only on swing from now \u221e\ud83d\udc51",
+      "files": [
+        "IMG_7819"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order blocks",
+        "zone area",
+        "green line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 20:28",
+      "author": "Ace",
+      "text": "Let me give you guys some beautiful intak",
+      "files": [
+        "IMG_7819"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order blocks",
+        "zone area",
+        "green line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-27 20:28",
+      "author": "Ace",
+      "text": "Let me give you guys some beautiful intake on the market right now BTC Needed to get to 79k-81k level to confirm the top how ever it went to 76k & rejected { what does that means that bullish reversal will be coming after this dump }",
+      "files": [
+        "IMG_7820"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-28 03:48",
+      "author": "Ace",
+      "text": "APRIL 1ST - Starting of Q2 we will be doing a challenge (15k-100k)",
+      "files": [
+        "IMG_7820"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:20",
+      "author": "Ace",
+      "text": "it might will goto 68k and dump pls be patient",
+      "files": [
+        "IMG_7820"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:30",
+      "author": "Ace",
+      "text": "I'm not surprised by this its back at my entry if 67.130 is broken we will see 68k be prepared",
+      "files": [
+        "IMG_7820",
+        "IMG_7821"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:30",
+      "author": "Ace",
+      "text": "I'm shorting",
+      "files": [
+        "IMG_7820"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:30",
+      "author": "Ace",
+      "text": "I'm shorting.",
+      "files": [
+        "IMG_7821"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance zones",
+        "session timing (NYC open / asian session)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:30",
+      "author": "Ace",
+      "text": "Look here closely",
+      "files": [
+        "IMG_7821"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance zones",
+        "session timing (NYC open / asian session)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:42",
+      "author": "Ace",
+      "text": "Chances of that happening is very Low ... Pls do not freak out",
+      "files": [
+        "IMG_7821"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance zones",
+        "session timing (NYC open / asian session)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-30 08:51",
+      "author": "Ace",
+      "text": "Just Pay - tience",
+      "files": [
+        "IMG_7821"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance zones",
+        "session timing (NYC open / asian session)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-31 00:28",
+      "author": "Ace",
+      "text": "Nobody was there to teach me i remember waking up, thinking one day i will change my life... you guys have me we will do it together i love each & every single on of you",
+      "files": [
+        "IMG_7822"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-31 03:31",
+      "author": "Ace",
+      "text": "Exactly as planned !!! \u221e",
+      "files": [
+        "IMG_7822"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-31 05:35",
+      "author": "Ace",
+      "text": "Out at 2% profit - it will rise up a little",
+      "files": [
+        "IMG_7822"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-31 05:50",
+      "author": "Ace",
+      "text": "so basically look if you in not high lv position be in short @everyone",
+      "files": [
+        "IMG_7822",
+        "IMG_7823"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-03-31 10:49",
+      "author": "Ace",
+      "text": "Okay so, what's my thought process right now as I see everyone is longing this fake pump, makes me realise the same way I was screaming to buy last time & everyone was placing shorts btc is at 68k ish { 500-800$ from my area of interest well } I'm short \ud83d\udc51 GN",
+      "files": [
+        "IMG_7823"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "crowd positioning / contrarian sentiment ('everyone is longing this fake pump')",
+        "horizontal area of interest"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-03 20:34",
+      "author": "Ace",
+      "text": "62k is the main region i'm looking for if incase 60k's are broken we will much down side potentially 20% move lower before real reversal begins",
+      "files": [
+        "IMG_7824"
+      ],
+      "assets": [
+        "BTC",
+        "HYPE"
+      ],
+      "indicators": [
+        "horizontal region/level (62k, 60k's, 49k, 70.2k)",
+        "bearish retest",
+        "day-of-week seasonality (Sunday night moves)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-06 07:55",
+      "author": "Ace",
+      "text": "So, Many things wrong with this pump !!! Masses wouldn't be able to see it",
+      "files": [
+        "IMG_7824"
+      ],
+      "assets": [
+        "BTC",
+        "HYPE"
+      ],
+      "indicators": [
+        "horizontal region/level (62k, 60k's, 49k, 70.2k)",
+        "bearish retest",
+        "day-of-week seasonality (Sunday night moves)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-07 00:44",
+      "author": "Ace",
+      "text": "NEVER TRUST SUNDAY NIGHT MOVES \ud83d\udc51",
+      "files": [
+        "IMG_7824"
+      ],
+      "assets": [
+        "BTC",
+        "HYPE"
+      ],
+      "indicators": [
+        "horizontal region/level (62k, 60k's, 49k, 70.2k)",
+        "bearish retest",
+        "day-of-week seasonality (Sunday night moves)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-07 00:53",
+      "author": "Ace",
+      "text": "70.2k = bearish retest \ud83d\udc36",
+      "files": [
+        "IMG_7824"
+      ],
+      "assets": [
+        "BTC",
+        "HYPE"
+      ],
+      "indicators": [
+        "horizontal region/level (62k, 60k's, 49k, 70.2k)",
+        "bearish retest",
+        "day-of-week seasonality (Sunday night moves)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-14 07:28",
+      "author": "Ace",
+      "text": "GMX 3X - LV HERE",
+      "files": [
+        "IMG_7825"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance level ladder",
+        "shaded supply/demand zones (order blocks)",
+        "position/target-stop boxes",
+        "hand-drawn price projection with arrow",
+        "bullish region"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-04-14 09:06",
+      "author": "Ace",
+      "text": "Everything is invalidated with this pump bullish region forming ....",
+      "files": [
+        "IMG_7825"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance level ladder",
+        "shaded supply/demand zones (order blocks)",
+        "position/target-stop boxes",
+        "hand-drawn price projection with arrow",
+        "bullish region"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-04-14 14:37",
+      "author": "Ace",
+      "text": "Incase we don't get rejection under 76-82k area extention could be upwards 99k",
+      "files": [
+        "IMG_7825"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance level ladder",
+        "shaded supply/demand zones (order blocks)",
+        "position/target-stop boxes",
+        "hand-drawn price projection with arrow",
+        "bullish region"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-04-14 14:48",
+      "author": "Ace",
+      "text": "IM LOOKING CLOSELY AT THIS",
+      "files": [
+        "IMG_7825",
+        "IMG_7826"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance level ladder",
+        "shaded supply/demand zones (order blocks)",
+        "position/target-stop boxes",
+        "hand-drawn price projection with arrow",
+        "bullish region"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-04-15 05:37",
+      "author": "Ace",
+      "text": "not trading atm closed all my position",
+      "files": [
+        "IMG_7826"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "horizontal support/resistance levels",
+        "dashed horizontal lines",
+        "supply/demand shaded zones",
+        "freehand projection path",
+        "arrows"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-15 22:16",
+      "author": "Ace (via his own X post @aceakarains)",
+      "text": "why so bearish son ? btc to 83k-77k ?",
+      "files": [
+        "IMG_7832"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-16 04:27",
+      "author": "Ace",
+      "text": "Looking at daily closely",
+      "files": [
+        "IMG_7827"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "orderblock",
+        "bearish orderblock",
+        "12 hr time frame",
+        "daily time frame",
+        "fake out"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-16 12:13",
+      "author": "Ace",
+      "text": "@everyone im out at 74800",
+      "files": [
+        "IMG_7827"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "orderblock",
+        "bearish orderblock",
+        "12 hr time frame",
+        "daily time frame",
+        "fake out"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-16 12:20",
+      "author": "Ace",
+      "text": "12 hr time frame btc doesn't show any bearish orderblock maybe at daily we see a bearish orderblock forming but... its look a like a fake out",
+      "files": [
+        "IMG_7827"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "orderblock",
+        "bearish orderblock",
+        "12 hr time frame",
+        "daily time frame",
+        "fake out"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 02:03",
+      "author": "Ace (via embedded X post @aceakarains, posted 2026-04-17 02:03)",
+      "text": "Let's Give this internet thingy a try & let's all win together",
+      "files": [
+        "IMG_7829"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "rising trendline",
+        "horizontal support line",
+        "projection arrow",
+        "EMA (200, close) (on the partially visible XRP chart below)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 02:03",
+      "author": "Ace (via embedded X post @aceakarains, posted 2026-04-17 02:03)",
+      "text": "BTC PLAN - Ace aka Mr. Make it rain \ud83c\udfaf",
+      "files": [
+        "IMG_7829"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "rising trendline",
+        "horizontal support line",
+        "projection arrow",
+        "EMA (200, close) (on the partially visible XRP chart below)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 02:05",
+      "author": "Ace",
+      "text": "https://x.com/aceakarains/status/2044839024993665227?s=46",
+      "files": [
+        "IMG_7827",
+        "IMG_7829"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "orderblock",
+        "bearish orderblock",
+        "12 hr time frame",
+        "daily time frame",
+        "fake out"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 02:34",
+      "author": "Ace",
+      "text": "do not neglect this",
+      "files": [
+        "IMG_7830"
+      ],
+      "assets": [
+        "GMX",
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "resistance level",
+        "breakout",
+        "orderblock (in the quoted reply reference)",
+        "market-cap rank"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 02:47",
+      "author": "Ace",
+      "text": "Right now at #398",
+      "files": [
+        "IMG_7830"
+      ],
+      "assets": [
+        "GMX",
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "resistance level",
+        "breakout",
+        "orderblock (in the quoted reply reference)",
+        "market-cap rank"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 02:53",
+      "author": "Ace",
+      "text": "The break out has begun, are you all ready ?\n\ud83e\udd34",
+      "files": [
+        "IMG_7830",
+        "IMG_7831"
+      ],
+      "assets": [
+        "GMX",
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "resistance level",
+        "breakout",
+        "orderblock (in the quoted reply reference)",
+        "market-cap rank"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 03:49",
+      "author": "Ace",
+      "text": "Eth is at resistance level if eth breaks 2371 and some how manage to get to 2400 bears will get rekt \ud83d\udc38",
+      "files": [
+        "IMG_7830",
+        "IMG_7831"
+      ],
+      "assets": [
+        "GMX",
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "resistance level",
+        "breakout",
+        "orderblock (in the quoted reply reference)",
+        "market-cap rank"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 06:54",
+      "author": "Ace",
+      "text": "The trend line doesn't work in 2026 - Remember this @everyone",
+      "files": [
+        "IMG_7831"
+      ],
+      "assets": [
+        "GMX",
+        "ETH",
+        "BTC"
+      ],
+      "indicators": [
+        "resistance level",
+        "breakout",
+        "trend line (explicitly dismissed: 'The trend line doesn't work in 2026')"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 15:53",
+      "author": "Ace",
+      "text": "Just the matter of time @everyone \ud83e\udd34 - Ace",
+      "files": [
+        "IMG_7831"
+      ],
+      "assets": [
+        "GMX",
+        "ETH",
+        "BTC"
+      ],
+      "indicators": [
+        "resistance level",
+        "breakout",
+        "trend line (explicitly dismissed: 'The trend line doesn't work in 2026')"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 16:40",
+      "author": "Ace",
+      "text": "Feels good to be back love each & every single one of you",
+      "files": [
+        "IMG_7832"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 16:55",
+      "author": "Ace",
+      "text": "BTC AS PLANNED - \ud83c\udfaf",
+      "files": [
+        "IMG_7832"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 17:26",
+      "author": "Ace",
+      "text": "[screenshot of his own X post: 'why so bearish son ? btc to 83k-77k ?' quote-tweeting @whois100x 'I'm currently short $BTC to 67K.']",
+      "files": [
+        "IMG_7832"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 22:12",
+      "author": "Ace",
+      "text": "@ liquidated \ud83c\udfaf",
+      "files": [
+        "IMG_7832",
+        "IMG_7833"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 22:12",
+      "author": "Ace",
+      "text": "As plannned",
+      "files": [
+        "IMG_7833"
+      ],
+      "assets": [],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 23:55",
+      "author": "Ace",
+      "text": "Tuesday by midnight I'll be looking for short - stop exaggerating I hate hear noises",
+      "files": [
+        "IMG_7833"
+      ],
+      "assets": [],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-17 23:55",
+      "author": "Ace",
+      "text": "I'll ban anybody who would do that",
+      "files": [
+        "IMG_7833"
+      ],
+      "assets": [],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-18 00:22",
+      "author": "Ace",
+      "text": "83-85k I will look for rejection before I do anything I don't care what I post on twitter I care about you all let's see where we will be by Tuesday New York opens - Dubai midnight",
+      "files": [
+        "IMG_7833"
+      ],
+      "assets": [],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-18 07:23",
+      "author": "Ace",
+      "text": "IM LONG MAKE SURE TO LONG UNTIL JUNE @everyone I know exactly what's going on",
+      "files": [
+        "IMG_7834"
+      ],
+      "assets": [],
+      "indicators": [
+        "consolidation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-18 07:23",
+      "author": "Ace",
+      "text": "I will update everyone and do not text me nothing I'm trying to cool my brain and thing of this situation",
+      "files": [
+        "IMG_7834"
+      ],
+      "assets": [],
+      "indicators": [
+        "consolidation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-18 07:23",
+      "author": "Ace",
+      "text": "Do not trade consolidation",
+      "files": [
+        "IMG_7834"
+      ],
+      "assets": [],
+      "indicators": [
+        "consolidation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-18 09:46",
+      "author": "Ace",
+      "text": "Note - Do not Look for shorts",
+      "files": [
+        "IMG_7834"
+      ],
+      "assets": [],
+      "indicators": [
+        "consolidation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-18 09:46",
+      "author": "Ace",
+      "text": "Until i say it",
+      "files": [
+        "IMG_7834"
+      ],
+      "assets": [],
+      "indicators": [
+        "consolidation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-19 02:52",
+      "author": "Ace",
+      "text": "89k",
+      "files": [
+        "IMG_7834"
+      ],
+      "assets": [],
+      "indicators": [
+        "consolidation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-23 03:43",
+      "author": "Ace",
+      "text": "Gmx has a lot of potential - insider traders",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-23 03:43",
+      "author": "Ace",
+      "text": "betting hard",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-25 16:05",
+      "author": "Ace",
+      "text": "Every one calling the short and following the pattern - until they realise [emoji]",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 02:24",
+      "author": "Ace",
+      "text": "weekend we dumb yes - monday we fly",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 04:24",
+      "author": "Ace",
+      "text": "i would not short",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 04:24",
+      "author": "Ace",
+      "text": "@everyone",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 04:24",
+      "author": "Ace",
+      "text": "it just showed a rejection at 77100 GL",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 04:32",
+      "author": "Ace",
+      "text": "89...",
+      "files": [
+        "IMG_7835"
+      ],
+      "assets": [
+        "GMX"
+      ],
+      "indicators": [
+        "rejection",
+        "pattern",
+        "consolidation/market confirmation"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 13:36",
+      "author": "Ace",
+      "text": "If everyone remember I said I was waiting for 27 April to 7th may I didn't even cared about this week [emoji]",
+      "files": [
+        "IMG_7836"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-26 20:26",
+      "author": "Ace",
+      "text": "Matter of time [emoji]",
+      "files": [
+        "IMG_7836"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-27 09:02",
+      "author": "Ace",
+      "text": "Look at charts [emoji]",
+      "files": [
+        "IMG_7836"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-04-30 05:23",
+      "author": "Ace",
+      "text": "Nobody has any idea what is about to co[obscured] don't care enough to explain anyways [emoji]",
+      "files": [
+        "IMG_7836"
+      ],
+      "assets": [
+        "GMX",
+        "BTC"
+      ],
+      "indicators": [
+        "rejection"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-04 23:07",
+      "author": "Ace",
+      "text": "@everyone I have people now texting me what's going to happened ace should I buy should I sell should I short ? Everything was posted almost a month ago... imagine buying at top shorting at bottom\n\nWe are not surprised by the pump because we been prepared [emoji] \u2764\ufe0f - ace",
+      "files": [
+        "IMG_7838"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-05 11:08",
+      "author": "Ace",
+      "text": "11TH MAY THIS IS BIG WEEK",
+      "files": [
+        "IMG_7838"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-06 15:35",
+      "author": "Ace",
+      "text": "If you don't join voice calls when I'll do it you will stay poor and you can complain all you want",
+      "files": [
+        "IMG_7838"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-06 15:35",
+      "author": "Ace",
+      "text": "Make sure your heavy on link",
+      "files": [
+        "IMG_7838",
+        "IMG_7839"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-06 15:35",
+      "author": "Ace",
+      "text": "Alt coin is about to be as same exact place as 2018",
+      "files": [
+        "IMG_7838",
+        "IMG_7839"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-06 17:20",
+      "author": "Ace",
+      "text": "Almost 2 months ago I posted this",
+      "files": [
+        "IMG_7839"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [
+        "altcoin dominance (monthly)",
+        "breakout",
+        "regime shift"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-07 12:29",
+      "author": "Ace",
+      "text": "Call on Monday busy this week",
+      "files": [
+        "IMG_7839"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [
+        "altcoin dominance (monthly)",
+        "breakout",
+        "regime shift"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-07 14:34",
+      "author": "Ace",
+      "text": "Today will be a call on position and sizing... the tops will be discussed on monday",
+      "files": [
+        "IMG_7839",
+        "IMG_7840"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [
+        "altcoin dominance (monthly)",
+        "breakout",
+        "regime shift"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-09 02:19",
+      "author": "Ace",
+      "text": "Just the way your ready for long make sure you be ready for shorts - suspense still exist [pepe frog emoji]",
+      "files": [
+        "IMG_7839",
+        "IMG_7840"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [
+        "altcoin dominance (monthly)",
+        "breakout",
+        "regime shift"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-11 00:36",
+      "author": "Ace",
+      "text": "The pump will be disgusting",
+      "files": [
+        "IMG_7840"
+      ],
+      "assets": [],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-11 00:36",
+      "author": "Ace",
+      "text": "In few months from now you will know what you missed on if u don't take action",
+      "files": [
+        "IMG_7840"
+      ],
+      "assets": [],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-13 (time not shown)",
+      "author": "Ace",
+      "text": "10.130 rn",
+      "files": [
+        "IMG_7841"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-13 13:12",
+      "author": "Ace",
+      "text": "[TradingView screenshot of LINKUSDT.P at 10.703 USDT, +0.419 +4.07% today]",
+      "files": [
+        "IMG_7841"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-13 17:15",
+      "author": "Ace",
+      "text": "Feel free to ask questions about positions/size management \ud83d\udc38",
+      "files": [
+        "IMG_7840",
+        "IMG_7841"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-13 17:15",
+      "author": "Ace",
+      "text": "Also just so you all know I don't want to see anything posted privately being surfaced publicly, you will be immediately ban \ud83d\udc51\ud83d\udc38 - ace",
+      "files": [
+        "IMG_7841"
+      ],
+      "assets": [
+        "LINK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-29 08:01",
+      "author": "Ace",
+      "text": "Since Feb I was just waiting for this month JUNE",
+      "files": [
+        "IMG_7842"
+      ],
+      "assets": [
+        "ETH",
+        "BNB",
+        "SOL",
+        "LINK",
+        "ASTER",
+        "LAB",
+        "ONDO",
+        "XAUT",
+        "PAXG",
+        "VVV"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-30 09:33",
+      "author": "Ace",
+      "text": "I'm just in till this month then im out depending upon the condition that's it that's all u guys need to know \ud83d\udc51\ud83d\udc38 - ace",
+      "files": [
+        "IMG_7843"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-30 09:33",
+      "author": "Ace",
+      "text": "i waited half a year for June",
+      "files": [
+        "IMG_7843"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-05-30 09:33",
+      "author": "Ace",
+      "text": "@everyone",
+      "files": [
+        "IMG_7843"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-03 07:49",
+      "author": "Ace",
+      "text": "I holded this position since feb to be in loss today June 3rd I believe in being calmn and taking profits as the number I think it would go to 108k btc",
+      "files": [
+        "IMG_7843"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-03 07:49",
+      "author": "Ace",
+      "text": "Nothing changes high lv preps liquidated greed will be over summer will be started",
+      "files": [
+        "IMG_7843"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-05 08:48",
+      "author": "Ace",
+      "text": "46.2k",
+      "files": [
+        "IMG_7843"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-07 06:15",
+      "author": "Ace",
+      "text": "this might not be the bottom",
+      "files": [
+        "IMG_7843",
+        "IMG_7844",
+        "IMG_7845"
+      ],
+      "assets": [
+        "BTC",
+        "SNDK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-07 06:15",
+      "author": "Ace",
+      "text": "idk why 28k-20k lmao which is insane ik if happend",
+      "files": [
+        "IMG_7844",
+        "IMG_7845"
+      ],
+      "assets": [
+        "SNDK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-10 20:30",
+      "author": "Ace",
+      "text": "SNDK MARKET OPENS RN",
+      "files": [
+        "IMG_7844",
+        "IMG_7845",
+        "IMG_7846"
+      ],
+      "assets": [
+        "SNDK"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-10 21:55",
+      "author": "Ace",
+      "text": "@everyone a cute 45% today just in few hours",
+      "files": [
+        "IMG_7846"
+      ],
+      "assets": [
+        "SNDK"
+      ],
+      "indicators": [
+        "long position tool (entry/target/stop)",
+        "horizontal support-resistance line",
+        "shaded supply/resistance zone with dashed midline",
+        "hand-drawn path arrow"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-06-10 23:56",
+      "author": "Ace",
+      "text": "out at 1657 just rn",
+      "files": [
+        "IMG_7847"
+      ],
+      "assets": [
+        "SNDK"
+      ],
+      "indicators": [
+        "position tool (risk/reward boxes)",
+        "red moving average line",
+        "grey rectangle zone / consolidation box",
+        "dotted current-price line"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-11 00:02",
+      "author": "Ace",
+      "text": "you can still keep the shorts up until tmrw maket open todays market close will be around 1700's i feel so taking profits in",
+      "files": [
+        "IMG_7848"
+      ],
+      "assets": [
+        "BTC",
+        "SNDK"
+      ],
+      "indicators": [
+        "bearish order block",
+        "rejection level",
+        "zones / max extension",
+        "moving average (red line)",
+        "black dashed horizontal levels",
+        "purple dashed level / band"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-16 18:39",
+      "author": "Ace",
+      "text": "We don't trade every day in here also 68.8k btc has a bearish order block\nI wanna see that rejection level before I place my bets in till than no further updates",
+      "files": [
+        "IMG_7848"
+      ],
+      "assets": [
+        "BTC",
+        "SNDK"
+      ],
+      "indicators": [
+        "bearish order block",
+        "rejection level",
+        "zones / max extension",
+        "moving average (red line)",
+        "black dashed horizontal levels",
+        "purple dashed level / band"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-17 22:09",
+      "author": "Ace",
+      "text": "We moving towards the bearish order block 68.8k ... the other 2 zones are the max extension [crown pepe emoji]",
+      "files": [
+        "IMG_7848"
+      ],
+      "assets": [
+        "BTC",
+        "SNDK"
+      ],
+      "indicators": [
+        "bearish order block",
+        "rejection level",
+        "zones / max extension",
+        "moving average (red line)",
+        "black dashed horizontal levels",
+        "purple dashed level / band"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-18 16:24",
+      "author": "Ace",
+      "text": "Btc rn at 64k ish on verge of rejecting 65.5k rejections we might move to 68k or 74k",
+      "files": [
+        "IMG_7849"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "rejection / rejection level",
+        "bearish order block",
+        "black dashed horizontal level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-18 18:32",
+      "author": "Ace",
+      "text": "Rejections 68k or we dump bad\nNot taking any trades save your money\nMarkets are really bad I can't force things at the moment already made a bit 83k-77k downside [crown pepe emoji] not trading is also making money",
+      "files": [
+        "IMG_7849"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "rejection / rejection level",
+        "bearish order block",
+        "black dashed horizontal level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-18 20:58",
+      "author": "Ace",
+      "text": "LOOKIN AT THIS anything below 63.500 is a rejection [crown pepe emoji]",
+      "files": [
+        "IMG_7849"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "rejection / rejection level",
+        "bearish order block",
+        "black dashed horizontal level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-18 21:41",
+      "author": "Ace",
+      "text": "rejected dont trade",
+      "files": [
+        "IMG_7849"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "rejection / rejection level",
+        "bearish order block",
+        "black dashed horizontal level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-20 05:00",
+      "author": "Ace",
+      "text": "Btc current thoughts after that rejection as mentioned at 65k to 62k ( I'm looking for a pull back to 68.8k bearish order block as previously mentioned )",
+      "files": [
+        "IMG_7849",
+        "IMG_7850"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "rejection / rejection level",
+        "bearish order block",
+        "black dashed horizontal level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-20 05:14",
+      "author": "Ace",
+      "text": "@everyone",
+      "files": [
+        "IMG_7850",
+        "IMG_7851"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order block",
+        "long position tool (entry/stop/target boxes)",
+        "black dashed horizontal levels",
+        "purple dashed level / grey supply band",
+        "grey rectangle zones",
+        "moving average (red line)",
+        "hand-drawn projection arrow"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-20 16:50",
+      "author": "Ace",
+      "text": "Btc showing a double top this market is so conjusting",
+      "files": [
+        "IMG_7851"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top",
+        "long position tool (entry/stop/target boxes)",
+        "trendlines",
+        "circled/ellipse annotation",
+        "black dashed horizontal level",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-20 17:10",
+      "author": "Ace",
+      "text": "Need 63.6k ish break out on 4 hr time frame to",
+      "files": [
+        "IMG_7851"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "double top",
+        "long position tool (entry/stop/target boxes)",
+        "trendlines",
+        "circled/ellipse annotation",
+        "black dashed horizontal level",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-20 17:10",
+      "author": "Ace",
+      "text": "Need 63.6k ish break out on 4 hr time frame to confirm bullish divergence I took 50% of the profit and rest to ride",
+      "files": [
+        "IMG_7852"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bullish divergence",
+        "4 hr time frame breakout level",
+        "bearish order block (~68.8k ray)",
+        "long position tool (entry/stop/target boxes)",
+        "black dashed horizontal levels",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-21 17:54",
+      "author": "Ace",
+      "text": "Sell a bit here (edited)",
+      "files": [
+        "IMG_7852"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bullish divergence",
+        "4 hr time frame breakout level",
+        "bearish order block (~68.8k ray)",
+        "long position tool (entry/stop/target boxes)",
+        "black dashed horizontal levels",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-21 18:08",
+      "author": "Ace",
+      "text": "Sell here like 20% keep taking profits\nAnd I'm completely out [crown pepe emoji]",
+      "files": [
+        "IMG_7853"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order block (~68.55-68.77k band)",
+        "short position tool (entry/stop/target boxes)",
+        "monthly candle / half-yearly candle close",
+        "black dashed horizontal levels",
+        "purple dashed level / grey supply band",
+        "grey demand zone (~44.3k-47.9k)",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-23 05:38",
+      "author": "Ace",
+      "text": "No trading until monthly candles [candle emoji] [pepe emoji]\nThis monthly candle is special because it's half yearly",
+      "files": [
+        "IMG_7853"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order block (~68.55-68.77k band)",
+        "short position tool (entry/stop/target boxes)",
+        "monthly candle / half-yearly candle close",
+        "black dashed horizontal levels",
+        "purple dashed level / grey supply band",
+        "grey demand zone (~44.3k-47.9k)",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-24 23:20",
+      "author": "Ace",
+      "text": "It's time [crown pepe emoji]",
+      "files": [
+        "IMG_7853"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "bearish order block (~68.55-68.77k band)",
+        "short position tool (entry/stop/target boxes)",
+        "monthly candle / half-yearly candle close",
+        "black dashed horizontal levels",
+        "purple dashed level / grey supply band",
+        "grey demand zone (~44.3k-47.9k)",
+        "moving average (red line)"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-06-27 05:39",
+      "author": "Ace",
+      "text": "I'm out @everyone",
+      "files": [
+        "IMG_7854"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "short position tool (risk/reward box)",
+        "horizontal support/resistance levels",
+        "descending red trend/moving-average line",
+        "grey supply/demand zone rectangles",
+        "purple dashed level",
+        "black dashed level"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-06-27 05:47",
+      "author": "Ace",
+      "text": "Adding some link here [emoji] and some doge coin at same time",
+      "files": [
+        "IMG_7856"
+      ],
+      "assets": [
+        "LINK",
+        "DOGE",
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "horizontal support/resistance levels (black dashed)",
+        "descending red trend/moving-average line",
+        "grey consolidation/order-block box",
+        "order block",
+        "triple tap / triple bottom (\"3 taps on 60k's\")"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-06-27 09:33",
+      "author": "Ace",
+      "text": "Bottom is forming, 3 taps on 60k's, As well as bullish order block forming  { time to join in } [emoji]",
+      "files": [
+        "IMG_7856"
+      ],
+      "assets": [
+        "LINK",
+        "DOGE",
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "horizontal support/resistance levels (black dashed)",
+        "descending red trend/moving-average line",
+        "grey consolidation/order-block box",
+        "order block",
+        "triple tap / triple bottom (\"3 taps on 60k's\")"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-06-29 00:56",
+      "author": "Ace",
+      "text": "the weekly needed to close at 1.20 or above to confirm bullish symmetery (edited)",
+      "files": [
+        "IMG_7857"
+      ],
+      "assets": [
+        "XRP",
+        "BTC"
+      ],
+      "indicators": [
+        "weekly close confirmation level (1.20)",
+        "\"bullish symmetery\" (symmetry)",
+        "grey range box",
+        "descending red trend/moving-average line",
+        "horizontal dashed/dotted levels",
+        "freehand projection arrow"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-06-30 03:01",
+      "author": "Ace",
+      "text": "Buying doge here",
+      "files": [
+        "IMG_7858"
+      ],
+      "assets": [
+        "DOGE",
+        "LINK",
+        "XRP"
+      ],
+      "indicators": [
+        "horizontal support band (green dashed levels)",
+        "red moving-average line",
+        "black dashed overhead level"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-07-02 17:08",
+      "author": "Ace",
+      "text": "Start putting and locking money in alt coins [emoji]",
+      "files": [
+        "IMG_7858"
+      ],
+      "assets": [
+        "DOGE",
+        "LINK",
+        "XRP"
+      ],
+      "indicators": [
+        "horizontal support band (green dashed levels)",
+        "red moving-average line",
+        "black dashed overhead level"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-07-02 17:57",
+      "author": "Ace",
+      "text": "No more 48k btc, we are bottom",
+      "files": [
+        "IMG_7859"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-02 22:03",
+      "author": "Ace",
+      "text": "Long",
+      "files": [
+        "IMG_7859"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-02 22:03",
+      "author": "Ace",
+      "text": "Xrp",
+      "files": [
+        "IMG_7859"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-04 04:40",
+      "author": "Ace",
+      "text": "As planned [emoji]",
+      "files": [
+        "IMG_7859",
+        "IMG_7860"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-04 04:42",
+      "author": "Ace",
+      "text": "[emoji]",
+      "files": [
+        "IMG_7860"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "moving-average line (red)",
+        "horizontal support/resistance levels",
+        "position tools (green profit / pink risk boxes)",
+        "grey demand-zone rectangle",
+        "freehand projection arrow"
+      ],
+      "kind": "chart"
+    },
+    {
+      "timestamp": "2026-07-04 04:42",
+      "author": "Ace",
+      "text": "HOLD\nMarket confirmed \u2705",
+      "files": [
+        "IMG_7861"
+      ],
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "bearish order block",
+        "1D timeframe",
+        "ETH 1814 level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-06 23:18",
+      "author": "Ace",
+      "text": "Keep a eye on this btc and eth along with alts are facing a bearish order block\nI'm slowing taking profits out at this level\nThe rejection and move to upward side only begins once eth crosses 1814",
+      "files": [
+        "IMG_7861"
+      ],
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "bearish order block",
+        "1D timeframe",
+        "ETH 1814 level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-06 23:42",
+      "author": "Ace",
+      "text": "until 1D\nincase i dont have internet that's why i posted here (& i'm travelling)",
+      "files": [
+        "IMG_7861"
+      ],
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "bearish order block",
+        "1D timeframe",
+        "ETH 1814 level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-07 02:38",
+      "author": "Ace",
+      "text": "Yes let's go summer gonna be green hold tight",
+      "files": [
+        "IMG_7861",
+        "IMG_7862"
+      ],
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "indicators": [
+        "bearish order block",
+        "1D timeframe",
+        "ETH 1814 level"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-08 08:51",
+      "author": "Ace",
+      "text": "Looking for 69-72k resistance level\nHold strong",
+      "files": [
+        "IMG_7862"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "order block / supply-demand zones",
+        "horizontal support-resistance levels",
+        "long position tool",
+        "hand-drawn zigzag projection with up-arrow",
+        "4h timeframe"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-14 04:19",
+      "author": "Ace",
+      "text": "[chart image: Bitcoin/USD Tether Perpetual Contract \u00b7 4h \u00b7 BingX, no accompanying text]",
+      "files": [
+        "IMG_7862",
+        "IMG_7863"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "order block / supply-demand zones",
+        "horizontal support-resistance levels",
+        "long position tool",
+        "hand-drawn zigzag projection with up-arrow",
+        "4h timeframe"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-15 02:24",
+      "author": "Ace",
+      "text": "Everything as planned",
+      "files": [
+        "IMG_7863",
+        "IMG_7864"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "inverse head and shoulder pattern",
+        "order block / supply-demand zones",
+        "horizontal support-resistance levels",
+        "long position tool",
+        "neckline breakout arrow",
+        "4h timeframe"
+      ],
+      "kind": "chat"
+    },
+    {
       "timestamp": "2026-07-20 03:59",
       "author": "Ace",
-      "text": "-The whole crypto market is on the verge of a breakout",
+      "text": "[custom emoji: pepe holding pencil] - The whole crypto market is on the verge of a breakout",
       "files": [
         "IMG_7790"
       ],
       "assets": [
+        "XRP",
+        "CRYPTO_MARKET"
+      ],
+      "indicators": [
+        "inverse head and shoulder",
+        "breakout"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-20 03:59",
+      "author": "Ace",
+      "text": "- The whole crypto market is on the verge of a breakout",
+      "files": [
+        "IMG_7864"
+      ],
+      "assets": [
+        "BTC",
         "XRP"
       ],
       "indicators": [
-        "inverse head and shoulders"
+        "inverse head and shoulder",
+        "resistance level",
+        "breakout",
+        "trend reversal"
       ],
       "kind": "chat"
     },
     {
       "timestamp": "2026-07-21 14:00",
       "author": "Ace",
-      "text": "XRP's price action is signaling a potential trend reversal (inverse head and shoulder), with multiple technical factors reinforcing the upside bias\n\nThis is an actual - FOMO",
+      "text": "XRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias\nThis is an actual - FOMO [custom emoji: pepe wearing crown and sunglasses]",
       "files": [
-        "IMG_7790"
+        "IMG_7790",
+        "IMG_7864"
       ],
       "assets": [
+        "XRP",
+        "CRYPTO_MARKET",
+        "BTC"
+      ],
+      "indicators": [
+        "inverse head and shoulder",
+        "breakout"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-21 14:00",
+      "author": "Ace",
+      "text": "This is an actual - FOMO",
+      "files": [
+        "IMG_7864"
+      ],
+      "assets": [
+        "BTC",
         "XRP"
       ],
       "indicators": [
-        "inverse head and shoulders"
+        "inverse head and shoulder",
+        "resistance level",
+        "breakout",
+        "trend reversal"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-22 05:56",
+      "author": "Ace",
+      "text": "Finally touched 67k first resistance level",
+      "files": [
+        "IMG_7864",
+        "IMG_7865"
+      ],
+      "assets": [
+        "BTC",
+        "XRP"
+      ],
+      "indicators": [
+        "inverse head and shoulder",
+        "resistance level",
+        "breakout",
+        "trend reversal"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-22 14:47",
+      "author": "Ace",
+      "text": "I hope you guys taking profit at resistance level it's a 9k move",
+      "files": [
+        "IMG_7865"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "resistance level",
+        "bear trap / luring bears into shorting",
+        "next leg up",
+        "upside bias"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-25 07:33",
+      "author": "Ace",
+      "text": "Nothing has changed",
+      "files": [
+        "IMG_7865"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "resistance level",
+        "bear trap / luring bears into shorting",
+        "next leg up",
+        "upside bias"
+      ],
+      "kind": "chat"
+    },
+    {
+      "timestamp": "2026-07-25 07:34",
+      "author": "Ace",
+      "text": "They trying to lure bears into shorting before the next leg up which will lead to 70k+",
+      "files": [
+        "IMG_7865"
+      ],
+      "assets": [
+        "BTC"
+      ],
+      "indicators": [
+        "resistance level",
+        "bear trap / luring bears into shorting",
+        "next leg up",
+        "upside bias"
       ],
       "kind": "chat"
     }
   ],
   "problems": {
-    "IMG_7793": [
-      "levels.target='73,000-74,000' does not appear in the OCR text \u2014 stripped"
+    "IMG_7828": [
+      "statement '2026-04-17 02:30' only 50% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
     ],
-    "IMG_7794": [
-      "levels.entry='64,300' does not appear in the OCR text \u2014 stripped"
+    "IMG_7829": [
+      "statement '2026-04-17 02:30' only 60% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
     ],
-    "IMG_7796": [
-      "pnl.size='LINK position value $1,000,814.99; NET VALUE $130,027.98; COLLATERAL $145,520.94 (14527.25 USDC)' does not appear in the OCR text \u2014 stripped"
+    "IMG_7835": [
+      "statement '2026-04-26 13:36' only 71% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
+    ],
+    "IMG_7847": [
+      "statement '2026-06-10 22:17' only 73% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
+    ],
+    "IMG_7850": [
+      "statement '2026-06-20 16:50' only 35% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
+    ],
+    "IMG_7853": [
+      "chart.drawn_levels price=68771.6 appears nowhere in the transcribed axis tags \u2014 dropped (top edge of the grey ~68.6-68.8k horizontal band (the 'beari)"
+    ],
+    "IMG_7855": [
+      "statement '2026-06-27 05:47' only 55% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
+    ],
+    "IMG_7856": [
+      "statement '2026-06-27 17:40' only 64% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
+    ],
+    "IMG_7857": [
+      "statement '2026-06-27 17:40' only 60% of its words appear in the OCR text \u2014 dropped as a probable paraphrase"
     ]
   }
 }

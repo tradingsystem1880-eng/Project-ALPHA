@@ -29,13 +29,19 @@ from __future__ import annotations
 import csv
 import json
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+#: The first pass: Drive's OCR over the 16 images it managed to return text for.
 RAW = REPO_ROOT / "research" / "ace_calls" / "raw"
+#: The complete pass: every one of the 75 images read directly, which is what the corpus is built
+#: from. Defaulting to RAW silently rebuilt the corpus from a 16-image subset — the counts still
+#: looked plausible, which is exactly what makes that class of default dangerous.
+VISUAL = REPO_ROOT / "research" / "ace_calls" / "visual"
 OUT = REPO_ROOT / "research" / "ace_calls"
 ANALYSIS = OUT / "analysis"
 
@@ -134,7 +140,14 @@ class Record:
 
     @property
     def provenance(self) -> str:
-        """How this image's text was obtained: the OCR tool, or a direct visual read."""
+        """How this image's text was obtained: the OCR tool, or a direct visual read.
+
+        The ``transcript`` field only exists in the visual schema, so its presence is a fact about
+        the record rather than a guess. The note markers stay as a fallback for the OCR pass, where
+        a fell-back-to-reading-the-PNG file is otherwise indistinguishable from a tool return.
+        """
+        if self.data.get("transcript"):
+            return "visual"
         note = str(self.data.get("notes") or "").lower()
         return "visual" if any(m in note for m in _VISUAL_MARKERS) else "ocr"
 
@@ -207,6 +220,42 @@ def verify(record: Record) -> Record:
         if not _number_is_supported(value, raw_lower, raw_digits):
             problems.append(f"pnl.{key}={value!r} does not appear in the OCR text — stripped")
             pnl[key] = None
+
+    # The visual pass uses a different schema from the OCR pass — `position` and
+    # `chart.drawn_levels` rather than `levels`/`pnl` — so a guard that names only the old fields
+    # iterates two empty dicts and pronounces every file clean. It did exactly that across all 75
+    # visual extractions, and an adversarial re-read of the images found a price that appears
+    # nowhere on the chart's axis wrapped in a role string asserting a tag pair that does not
+    # exist. A fabricated number carrying a fabricated provenance claim is worse than a blank
+    # field, and the only reason it survived is that the checker was looking at the wrong keys.
+    position = record.data.get("position") or {}
+    for key, value in list(position.items()):
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        if not _number_is_supported(value, raw_lower, raw_digits):
+            problems.append(f"position.{key}={value!r} does not appear in the OCR text — stripped")
+            position[key] = None
+
+    chart = record.data.get("chart") or {}
+    last = chart.get("last_price")
+    last_numeric = isinstance(last, (int, float)) and not isinstance(last, bool)
+    if last_numeric and not _number_is_supported(last, raw_lower, raw_digits):
+        problems.append(f"chart.last_price={last!r} does not appear in the OCR text — stripped")
+        chart["last_price"] = None
+
+    levels_kept: list[dict[str, Any]] = []
+    for level in chart.get("drawn_levels") or []:
+        price = level.get("price")
+        numeric = isinstance(price, (int, float)) and not isinstance(price, bool)
+        if numeric and not _number_is_supported(price, raw_lower, raw_digits):
+            problems.append(
+                f"chart.drawn_levels price={price!r} appears nowhere in the transcribed "
+                f"axis tags — dropped ({str(level.get('role') or '')[:60]})"
+            )
+            continue
+        levels_kept.append(level)
+    if chart.get("drawn_levels") is not None:
+        chart["drawn_levels"] = levels_kept
 
     kept: list[dict[str, Any]] = []
     for stmt in record.data.get("statements") or []:
@@ -370,7 +419,10 @@ def write_call_template(statements: list[Statement]) -> None:
 
 
 def main() -> int:
-    records = [verify(r) for r in load_raw()]
+    source = {"raw": RAW, "visual": VISUAL}.get(
+        sys.argv[1] if len(sys.argv) > 1 else "visual", VISUAL
+    )
+    records = [verify(r) for r in load_raw(source)]
     statements = statements_from(records)
     print(summarise(records, statements))
     write_corpus(records, statements)

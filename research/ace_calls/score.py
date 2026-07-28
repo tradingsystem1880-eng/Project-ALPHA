@@ -32,7 +32,12 @@ import numpy as np
 
 from alpha_core import DataError
 from alpha_patterns import trend_state_vwap
-from alpha_validation import ProportionInterval, newcombe_diff_interval, wilson_interval
+from alpha_validation import (
+    ProportionInterval,
+    effective_sample_size,
+    newcombe_diff_interval,
+    wilson_interval,
+)
 from research.ace_calls.prices import Series, Tier, as_ohlcv, canonical, load_series, tier_for
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -55,6 +60,18 @@ HORIZON_SWEEP: tuple[int, ...] = (7, 14, 30, 90)
 CONTROLS_PER_CALL = 300
 TREND_WINDOW_DAYS = 90
 SEED = 7
+#: Half-width, in days, of the contemporaneous control window around a call.
+#:
+#: The trend-state match alone is not enough. Every call in this record sits inside five months of
+#: 2026, while the same-trend-state bars available to draw controls from span six years — including
+#: the 2020-21 run, where a random long reached +10% in a month almost by default. Comparing a 2026
+#: call against that pool measures the difference between two market regimes and attributes it to
+#: the caller. So the primary control is drawn from bars within this many days of the call itself,
+#: and the six-year version is reported alongside it as the looser comparison it is.
+CONTROL_WINDOW_DAYS = 180
+#: Leverages to report survival at. Every one of these is a figure Ace states in the corpus: 5x and
+#: 6x on the March BTC/LINK longs, 6.88-7.42x on the LINK panels, 3x on GMX, 40x on the BTC shorts.
+LEVERAGES: tuple[int, ...] = (3, 5, 10, 20, 40)
 
 #: Rules for turning a statement into a scoreable call, fixed in advance:
 #:  * direction — explicit long/short, or unambiguous directional language, becomes long/short.
@@ -80,6 +97,10 @@ class Call:
     entry: float | None = None
     stop: float | None = None
     target: float | None = None
+    #: How the call was adjudicated: ``position`` (he says he holds it), ``forecast`` (he predicts
+    #: a move), ``bare_level`` (a naked price read as directional against spot). Declared before
+    #: scoring so the robustness cuts below are pre-registered rather than chosen after the fact.
+    basis: str = ""
 
     @property
     def sign(self) -> int:
@@ -109,8 +130,10 @@ class Score:
     end: float = float("nan")  # where it stood at the horizon
     hit: bool = False  # reached DEFAULT_HIT in the called direction
     target_first: bool | None = None  # levels only: target before stop
-    control_rate: float = float("nan")
+    control_rate: float = float("nan")  # contemporaneous: same trend state, within the window
     control_n: int = 0
+    control_rate_all: float = float("nan")  # same trend state, whole series — the loose comparison
+    control_n_all: int = 0
     trend_state: str = ""  # uptrend | downtrend | range, as of the call bar
     days_elapsed: int = 0
 
@@ -224,28 +247,44 @@ def score_call(call: Call, rng: np.random.Generator) -> Score:
     trend = np.asarray(trend_state_vwap(bars, window=TREND_WINDOW_DAYS))
 
     # Matched controls: same trend state, at least one horizon away from the call itself so a
-    # control cannot be the call wearing a different date.
+    # control cannot be the call wearing a different date. Two pools — the near one is primary.
     idx = np.arange(len(series))
-    eligible = np.flatnonzero(
+    base_mask = (
         (trend == trend[i]) & (idx < len(series) - horizon - 1) & (np.abs(idx - i) > horizon)
     )
-    if eligible.size < 20:
-        return Score(
-            call,
-            "unresolved",
-            series.tier,
-            reason=f"only {eligible.size} matched control bars in the same trend state",
-            index=i,
+    near_mask = base_mask & (np.abs(idx - i) <= CONTROL_WINDOW_DAYS)
+
+    def _rate(mask: np.ndarray) -> tuple[float, int]:
+        pool = np.flatnonzero(mask)
+        if pool.size == 0:
+            return float("nan"), 0
+        picks = rng.choice(pool, size=min(CONTROLS_PER_CALL, pool.size), replace=False)
+        hits = sum(
+            1 for j in picks if _excursions(series, int(j), horizon, call.sign)[0] >= DEFAULT_HIT
         )
-    picks = rng.choice(eligible, size=min(CONTROLS_PER_CALL, eligible.size), replace=False)
-    control_hits = sum(
-        1 for j in picks if _excursions(series, int(j), horizon, call.sign)[0] >= DEFAULT_HIT
-    )
+        return hits / picks.size, int(picks.size)
+
+    # A missing control does not make the outcome unknown. What happened after the call is a fact
+    # about the price series; the control is a fact about what else was available to compare it
+    # with. Conflating the two would drop resolvable calls for a reason that has nothing to do with
+    # the caller — and would do so selectively, since regime-change periods are exactly where
+    # same-state neighbours run short.
+    reason = ""
+    if int(np.count_nonzero(near_mask)) < 20:
+        near_rate, near_n = float("nan"), 0
+        reason = (
+            f"scored, but only {int(np.count_nonzero(near_mask))} same-trend-state bars lie "
+            f"within {CONTROL_WINDOW_DAYS}d — no contemporaneous control for this row"
+        )
+    else:
+        near_rate, near_n = _rate(near_mask)
+    all_rate, all_n = _rate(base_mask)
 
     return Score(
         call=call,
         status="resolved",
         tier=series.tier,
+        reason=reason,
         index=i,
         entry_price=float(series.close[i]),
         best=best,
@@ -253,8 +292,10 @@ def score_call(call: Call, rng: np.random.Generator) -> Score:
         end=end,
         hit=best >= DEFAULT_HIT,
         target_first=_target_first(series, call, i, horizon),
-        control_rate=control_hits / picks.size,
-        control_n=int(picks.size),
+        control_rate=near_rate,
+        control_n=near_n,
+        control_rate_all=all_rate,
+        control_n_all=all_n,
         trend_state=str(trend[i]),
         days_elapsed=horizon,
     )
@@ -277,6 +318,27 @@ class Aggregate:
     mean_end: float
     n_with_levels: int
     n_target_first: int
+    #: Share of calls whose adverse excursion would have liquidated a position at each leverage.
+    #: Hit rate answers "was the direction right"; this answers "would the account have survived
+    #: long enough to find out", which is the question a 5x-to-40x caller's followers actually
+    #: face. A cross-margined position liquidates near 1/L adverse before fees and funding, so
+    #: this is if anything generous.
+    liquidated: dict[int, float] = field(default_factory=dict)
+    control_rate_all: float = float("nan")
+    control_n_all: int = 0
+    difference_all: ProportionInterval | None = None
+    #: How many resolved calls had a contemporaneous control at all, and their hit rate — the
+    #: arm the primary difference is actually computed over.
+    n_with_control: int = 0
+    hit_rate_with_control: float = float("nan")
+    #: Independent-observation count once overlapping forward windows are accounted for, and the
+    #: interval recomputed at that count. Twenty-seven calls packed into five months with 30-day
+    #: windows are not twenty-seven observations, and the nominal interval is the single easiest
+    #: way to turn a cluster of correlated bets into a false certainty.
+    span_days: int = 0
+    n_effective: float = float("nan")
+    hit_interval_deflated: ProportionInterval | None = None
+    difference_deflated: ProportionInterval | None = None
     by_status: dict[str, int] = field(default_factory=dict)
     by_asset: dict[str, int] = field(default_factory=dict)
     by_tier: dict[str, int] = field(default_factory=dict)
@@ -298,15 +360,54 @@ class Aggregate:
             f"  hit rate (>= {DEFAULT_HIT:.0%} in the called direction within the horizon)",
             f"    {self.n_hits}/{self.n_resolved} = {self.hit_rate:.1%}   "
             f"95% CI [{w.lower:.1%}, {w.upper:.1%}]",
-            f"  matched controls        {self.control_rate:.1%} over {self.control_n:,} draws",
-            f"  difference              {self.hit_rate - self.control_rate:+.1%}   "
-            f"95% CI [{d.lower:+.1%}, {d.upper:+.1%}]",
+            f"  contemporaneous control {self.control_rate:.1%} over {self.control_n:,} draws "
+            f"(same trend state, within {CONTROL_WINDOW_DAYS}d)",
+            f"  difference              {self.hit_rate_with_control - self.control_rate:+.1%}   "
+            f"95% CI [{d.lower:+.1%}, {d.upper:+.1%}]"
+            + (
+                f"   (over the {self.n_with_control}/{self.n_resolved} calls with a near control, "
+                f"whose own hit rate is {self.hit_rate_with_control:.1%})"
+                if self.n_with_control != self.n_resolved
+                else ""
+            ),
+        ]
+        if self.difference_all is not None:
+            da = self.difference_all
+            lines += [
+                f"  whole-series control    {self.control_rate_all:.1%} over "
+                f"{self.control_n_all:,} draws  -> difference "
+                f"{self.hit_rate - self.control_rate_all:+.1%} "
+                f"[{da.lower:+.1%}, {da.upper:+.1%}]",
+                "    (the looser comparison: it draws from six years of a different volatility "
+                "regime, so read the contemporaneous line above as the real one)",
+            ]
+        if self.hit_interval_deflated is not None and self.difference_deflated is not None:
+            wd, dd = self.hit_interval_deflated, self.difference_deflated
+            lines += [
+                "",
+                "  OVERLAP-DEFLATED — the number that decides whether any of this is significant",
+                f"    {self.n_resolved} calls span {self.span_days} days, each looking forward "
+                f"{DEFAULT_HORIZON_DAYS}d, so the windows swallow one another;",
+                f"    independent observations n_eff = {self.n_effective:.1f}, not "
+                f"{self.n_resolved}.",
+                f"    hit rate at n_eff       95% CI [{wd.lower:.1%}, {wd.upper:.1%}]",
+                f"    difference at n_eff     95% CI [{dd.lower:+.1%}, {dd.upper:+.1%}]"
+                f"{'   <- still excludes 0' if dd.upper < 0 or dd.lower > 0 else '   <- spans 0'}",
+            ]
+        lines += [
             "",
             f"  mean best excursion     {self.mean_best:+.1%}",
             f"  mean worst excursion    {self.mean_worst:+.1%}   "
             "(the drawdown a follower sat through)",
             f"  mean at horizon         {self.mean_end:+.1%}",
         ]
+        if self.liquidated:
+            lev = "  ".join(f"{k}x {v:.0%}" for k, v in sorted(self.liquidated.items()))
+            lines += [
+                "",
+                f"  share of calls liquidated before the horizon, by leverage:  {lev}",
+                "    (adverse excursion past 1/L; every leverage listed is one Ace states himself)",
+            ]
         if self.n_with_levels:
             lines.append(
                 f"  calls with target+stop  {self.n_with_levels}, of which "
@@ -358,9 +459,35 @@ def aggregate(scores: list[Score]) -> Aggregate:
 
     hits = sum(1 for s in resolved if s.hit)
     n = len(resolved)
-    ctrl_rate = float(np.mean([s.control_rate for s in resolved]))
-    ctrl_n = int(sum(s.control_n for s in resolved))
+    # Only rows that actually have a contemporaneous control enter the control mean, and the
+    # comparison arm is the subset of calls those controls correspond to — averaging a control
+    # rate over one set of calls and a hit rate over a larger one compares two different records.
+    with_ctrl = [s for s in resolved if np.isfinite(s.control_rate)]
+    ctrl_rate = float(np.mean([s.control_rate for s in with_ctrl])) if with_ctrl else float("nan")
+    ctrl_n = int(sum(s.control_n for s in with_ctrl))
+    hits_ctrl = sum(1 for s in with_ctrl if s.hit)
+    n_ctrl = len(with_ctrl)
+    all_rates = [s.control_rate_all for s in resolved if np.isfinite(s.control_rate_all)]
+    ctrl_rate_all = float(np.mean(all_rates)) if all_rates else float("nan")
+    ctrl_n_all = int(sum(s.control_n_all for s in resolved))
     with_levels = [s for s in resolved if s.target_first is not None]
+
+    # Overlap deflation. The calls are not independent draws: they cluster in time and each looks
+    # forward over a window that swallows its neighbours. n_eff is the honest denominator, and the
+    # interval is recomputed at it by scaling the successes to keep the observed rate fixed.
+    days = [int(np.datetime64(s.call.date, "D").astype(int)) for s in resolved]
+    span = max(days) - min(days) + 1
+    horizon = max(s.call.horizon_days for s in resolved)
+    n_eff = effective_sample_size(n, span_bars=span, horizon_bars=horizon)
+    n_eff_int = max(1, int(round(n_eff)))
+    k_eff = min(int(round(n_eff * hits / n)), n_eff_int)
+    deflated = wilson_interval(k_eff, n_eff_int)
+    # The control arm is a genuinely large independent sample, so only the call arm is deflated.
+    diff_deflated = (
+        newcombe_diff_interval(k_eff, n_eff_int, int(round(ctrl_rate * ctrl_n)), ctrl_n)
+        if ctrl_n
+        else None
+    )
 
     return Aggregate(
         n_calls=len(scores),
@@ -370,12 +497,32 @@ def aggregate(scores: list[Score]) -> Aggregate:
         hit_interval=wilson_interval(hits, n),
         control_rate=ctrl_rate,
         control_n=ctrl_n,
-        difference=newcombe_diff_interval(hits, n, int(round(ctrl_rate * ctrl_n)), ctrl_n),
+        n_with_control=n_ctrl,
+        hit_rate_with_control=hits_ctrl / n_ctrl if n_ctrl else float("nan"),
+        difference=newcombe_diff_interval(
+            hits_ctrl, max(n_ctrl, 1), int(round(ctrl_rate * ctrl_n)), ctrl_n
+        )
+        if ctrl_n
+        else wilson_interval(0, 1),
         mean_best=float(np.mean([s.best for s in resolved])),
         mean_worst=float(np.mean([s.worst for s in resolved])),
         mean_end=float(np.mean([s.end for s in resolved])),
         n_with_levels=len(with_levels),
         n_target_first=sum(1 for s in with_levels if s.target_first),
+        liquidated={
+            lev: sum(1 for s in resolved if s.worst <= -1.0 / lev) / n for lev in LEVERAGES
+        },
+        control_rate_all=ctrl_rate_all,
+        control_n_all=ctrl_n_all,
+        difference_all=newcombe_diff_interval(
+            hits, n, int(round(ctrl_rate_all * ctrl_n_all)), ctrl_n_all
+        )
+        if ctrl_n_all
+        else None,
+        span_days=span,
+        n_effective=n_eff,
+        hit_interval_deflated=deflated,
+        difference_deflated=diff_deflated,
         by_status=by_status,
         by_asset=by_asset,
         by_tier=by_tier,
@@ -404,11 +551,43 @@ def horizon_sweep(calls: list[Call], *, seed: int = SEED) -> list[tuple[int, Agg
                 entry=c.entry,
                 stop=c.stop,
                 target=c.target,
+                basis=c.basis,
             )
             for c in calls
         ]
         out.append((horizon, aggregate([score_call(c, rng) for c in forced])))
     return out
+
+
+#: The pre-registered robustness cuts, fixed before the record was scored. Each asks whether the
+#: headline survives removing a class of call I had to exercise judgement on. A record that only
+#: works on the full set — or only on one favourable subset — has not shown anything.
+SUBGROUPS: tuple[tuple[str, str], ...] = (
+    ("all calls", "the primary specification"),
+    ("long only", "he was long 2:1; the market fell over the window"),
+    ("short only", "the smaller arm, and the one the market was moving toward"),
+    ("position only", "calls where he claims to hold it — the strongest evidence class"),
+    ("forecast only", "predictions with no claimed position"),
+    ("no bare levels", "drops the two naked prices I read as directional"),
+    ("BTC only", "the asset carrying three-quarters of the record"),
+)
+
+
+def subgroup(scores: list[Score], name: str) -> list[Score]:
+    """Filter a scored record down to one pre-registered cut."""
+    if name == "long only":
+        return [s for s in scores if s.call.direction == "long"]
+    if name == "short only":
+        return [s for s in scores if s.call.direction == "short"]
+    if name == "position only":
+        return [s for s in scores if s.call.basis == "position"]
+    if name == "forecast only":
+        return [s for s in scores if s.call.basis == "forecast"]
+    if name == "no bare levels":
+        return [s for s in scores if s.call.basis != "bare_level"]
+    if name == "BTC only":
+        return [s for s in scores if canonical(s.call.asset) == "BTC"]
+    return scores
 
 
 def load_calls(path: Path) -> list[Call]:
@@ -442,6 +621,7 @@ def load_calls(path: Path) -> list[Call]:
                     entry=num(row, "entry"),
                     stop=num(row, "stop"),
                     target=num(row, "target"),
+                    basis=(row.get("basis") or "").strip().lower(),
                 )
             )
     return sorted(out, key=lambda c: (c.date, c.asset))
@@ -499,6 +679,35 @@ def main() -> int:
                 f"{a.control_rate:>8.1%} {a.hit_rate - a.control_rate:>+7.1%}"
             )
 
+    print("\n" + "=" * 108)
+    print("ROBUSTNESS — the same record under every pre-registered cut")
+    print("=" * 108)
+    print("\n  Each row drops a class of call that needed a judgement. If the headline only")
+    print("  survives on one of them, the headline is the judgement, not the record.")
+    print("  The deflated interval is the one to read: these calls overlap heavily in time.\n")
+    # `rate|c` is the hit rate over just the calls that have a contemporaneous control, which is
+    # the arm `diff` is computed against. Showing the all-resolved rate next to a difference taken
+    # over a subset makes the subtraction look wrong when it is the columns that disagree.
+    print(
+        f"  {'cut':<16} {'n':>4} {'n_eff':>6} {'rate':>7} {'rate|c':>7} {'ctrl':>7} {'diff':>8}  "
+        f"{'nominal CI':<20} {'CI at n_eff':<20}"
+    )
+    for name, why in SUBGROUPS:
+        a = aggregate(subgroup(scores, name))
+        if a.n_resolved == 0:
+            print(f"  {name:<16} {0:>4}  {why}")
+            continue
+        d, dd = a.difference, a.difference_deflated
+        deflated = f"[{dd.lower:+.1%}, {dd.upper:+.1%}]" if dd else "-"
+        mark = "" if dd and (dd.upper < 0 or dd.lower > 0) else "  spans 0"
+        print(
+            f"  {name:<16} {a.n_resolved:>4} {a.n_effective:>6.1f} {a.hit_rate:>6.1%} "
+            f"{a.hit_rate_with_control:>6.1%} "
+            f"{a.control_rate:>6.1%} {a.hit_rate_with_control - a.control_rate:>+7.1%}  "
+            f"{f'[{d.lower:+.1%}, {d.upper:+.1%}]':<20} {deflated:<20}{mark}"
+        )
+        print(f"  {'':<16} {why}")
+
     OUT.mkdir(parents=True, exist_ok=True)
     payload = {
         "n_calls": agg.n_calls,
@@ -506,7 +715,34 @@ def main() -> int:
         "hit_rate": agg.hit_rate,
         "hit_ci": [agg.hit_interval.lower, agg.hit_interval.upper],
         "control_rate": agg.control_rate,
+        "control_rate_all": agg.control_rate_all,
+        "n_with_control": agg.n_with_control,
         "difference_ci": [agg.difference.lower, agg.difference.upper],
+        "span_days": agg.span_days,
+        "n_effective": agg.n_effective,
+        "difference_ci_deflated": (
+            [agg.difference_deflated.lower, agg.difference_deflated.upper]
+            if agg.difference_deflated
+            else None
+        ),
+        "liquidated_by_leverage": {str(k): v for k, v in sorted(agg.liquidated.items())},
+        "subgroups": {
+            name: {
+                "n_resolved": a.n_resolved,
+                "n_effective": a.n_effective,
+                "hit_rate": a.hit_rate,
+                "control_rate": a.control_rate,
+                "difference_ci": [a.difference.lower, a.difference.upper],
+                "difference_ci_deflated": (
+                    [a.difference_deflated.lower, a.difference_deflated.upper]
+                    if a.difference_deflated
+                    else None
+                ),
+            }
+            for name, _ in SUBGROUPS
+            for a in [aggregate(subgroup(scores, name))]
+            if a.n_resolved
+        },
         "by_status": agg.by_status,
         "by_asset": agg.by_asset,
         "by_tier": agg.by_tier,
@@ -526,7 +762,10 @@ def main() -> int:
                 "end": s.end,
                 "hit": s.hit,
                 "target_first": s.target_first,
+                "basis": s.call.basis,
                 "control_rate": s.control_rate,
+                "control_rate_all": s.control_rate_all,
+                "trend_state": s.trend_state,
                 "claim": s.call.claim,
             }
             for s in scores
