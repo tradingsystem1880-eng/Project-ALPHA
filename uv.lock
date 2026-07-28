@@ -25,6 +25,7 @@ members = [
     "alpha-forecast",
     "alpha-mcp",
     "alpha-options",
+    "alpha-patterns",
     "alpha-screener",
     "alpha-strategies",
     "alpha-validation",
@@ -313,6 +314,23 @@ dependencies = [
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "scipy", specifier = ">=1.17.1" },
+]
+
+[[package]]
+name = "alpha-patterns"
+version = "1.0.0"
+source = { editable = "packages/alpha-patterns" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "numpy" },
+    { name = "polars" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "numpy", specifier = ">=2.4.6" },
+    { name = "polars", specifier = ">=1.0" },
 ]
 
 [[package]]
@@ -2340,6 +2358,7 @@ dependencies = [
     { name = "alpha-forecast" },
     { name = "alpha-mcp" },
     { name = "alpha-options" },
+    { name = "alpha-patterns" },
     { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
@@ -2367,6 +2386,7 @@ requires-dist = [
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-mcp", editable = "apps/alpha-mcp" },
     { name = "alpha-options", editable = "packages/alpha-options" },
+    { name = "alpha-patterns", editable = "packages/alpha-patterns" },
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },

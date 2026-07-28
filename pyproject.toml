@@ -11,6 +11,7 @@ dependencies = [
     "alpha-validation",
     "alpha-forecast",
     "alpha-options",
+    "alpha-patterns",
     "alpha-screener",
     "alpha-cli",
     "alpha-mcp",
@@ -31,6 +32,7 @@ alpha-backtest = { workspace = true }
 alpha-validation = { workspace = true }
 alpha-forecast = { workspace = true }
 alpha-options = { workspace = true }
+alpha-patterns = { workspace = true }
 alpha-screener = { workspace = true }
 alpha-cli = { workspace = true }
 alpha-mcp = { workspace = true }
@@ -136,6 +138,7 @@ source = [
     "alpha_validation",
     "alpha_forecast",
     "alpha_options",
+    "alpha_patterns",
     "alpha_screener",
     "alpha_cli",
     "alpha_mcp",
@@ -161,6 +164,7 @@ root_packages = [
     "alpha_validation",
     "alpha_forecast",
     "alpha_options",
+    "alpha_patterns",
     "alpha_screener",
     "alpha_cli",
     "alpha_mcp",
