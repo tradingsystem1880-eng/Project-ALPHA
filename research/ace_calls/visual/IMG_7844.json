@@ -1,0 +1,37 @@
+{
+  "file": "IMG_7844",
+  "kind": "chat",
+  "transcript": "22:26\n⚙️\n29\n← 99  #🔒  📓 -ace-journals  ›  🔍\n\nAce  07/06/2026, 06:15\nthis might not be the bottom (edited)\nidk why 28k-20k lmao which is insane ik if happend\n\n10 June 2026\n\nAce  10/06/2026, 20:30\n[image attachment — blank/unloaded grey placeholder, content not rendered]\nSNDK MARKET OPENS RN\n\nAce  10/06/2026, 21:55\n[message text cut off by banner]\n\nDone reading? Check out #ticket-0514.  →",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-06-07 06:15", "text": "this might not be the bottom"},
+    {"author": "Ace", "timestamp": "2026-06-07 06:15", "text": "idk why 28k-20k lmao which is insane ik if happend"},
+    {"author": "Ace", "timestamp": "2026-06-10 20:30", "text": "SNDK MARKET OPENS RN"}
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["SNDK"],
+  "claims": [
+    "this might not be the bottom",
+    "idk why 28k-20k lmao which is insane ik if happend",
+    "SNDK MARKET OPENS RN"
+  ],
+  "boasts": [],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "This is the continuation of IMG_7843: it supplies the second line of the 07/06/2026 06:15 message that was hidden behind the banner there — 'idk why 28k-20k lmao which is insane ik if happend'. Verified by zoom: the range reads 28k-20k (twenty-eight to twenty thousand), a downside projection; the asset is not named in this message but the preceding thread context (reply to '46.2k', 'this might not be the bottom') is about a bottom, not a top. That 06:15 message is marked '(edited)'. The 10/06/2026 20:30 message's image attachment did NOT load — it is a blank grey rounded placeholder with zero readable content; nothing about that chart/screenshot can be recovered from this image. Its caption 'SNDK MARKET OPENS RN' sits inside the same message group (SNDK = SanDisk, a US equity — note the shift from crypto to a stock). A further message 'Ace 10/06/2026, 21:55' begins at the bottom edge with all text hidden behind the 'Done reading?' banner → not recorded. Dates DD/MM/YYYY, confirmed by the '10 June 2026' divider.",
+  "_unreadable": ["the entire image attachment of the 10/06/2026 20:30 message (unloaded placeholder)", "text of the Ace 10/06/2026 21:55 message (hidden behind banner)"]
+}
