@@ -15,7 +15,14 @@ import numpy as np
 import pytest
 
 from research.ace_calls.prices import Series, canonical
-from research.ace_calls.score import Call, _excursions, _target_first, aggregate, score_call
+from research.ace_calls.score import (
+    Call,
+    Score,
+    _excursions,
+    _target_first,
+    aggregate,
+    score_call,
+)
 
 _DAY = 86_400_000.0
 
@@ -176,6 +183,39 @@ class TestTargetFirst:
         assert _target_first(s, call, 0, 1) is None
 
 
+class TestTrendMask:
+    """Regression guard for a bug that made every call silently unscoreable.
+
+    ``trend_state_vwap`` returns a Python ``list[str]``, not an array. Comparing that list against
+    one of its own elements yields the scalar ``False``, numpy broadcasts it to an all-False mask,
+    and the matched-control step then finds zero eligible bars — so every call came back
+    "unresolved: only 0 matched control bars" with no error anywhere. mypy caught it; nothing at
+    runtime would have. The fix is one ``np.asarray``, which is exactly the kind of thing that gets
+    refactored away later, so it is pinned here.
+    """
+
+    def test_list_comparison_is_the_trap(self) -> None:
+        states = ["uptrend", "uptrend", "downtrend"]
+        # Spelled through `object` so mypy does not reject the very comparison being demonstrated —
+        # which is itself the point: the type checker rejects this shape on sight, and did.
+        as_object: object = states
+        assert (as_object == states[0]) is False  # the bug: a scalar, not an elementwise mask
+        mask = np.asarray(states) == np.asarray(states)[0]
+        assert mask.tolist() == [True, True, False]  # the fix
+
+    def test_score_call_finds_matched_controls_on_a_real_series(self) -> None:
+        """End-to-end: a scoreable call must actually come back scored, with controls drawn."""
+        from research.ace_calls.prices import tier_for
+
+        if tier_for("BTC") != "ohlcv":
+            pytest.skip("BTC price mirror not present in this environment")
+        call = Call(file="t", date="2026-03-01", asset="BTC", direction="long", horizon_days=30)
+        got = score_call(call, np.random.default_rng(7))
+        assert got.status == "resolved", got.reason
+        assert got.control_n >= 20
+        assert 0.0 <= got.control_rate <= 1.0
+
+
 class TestScoreCallRefusals:
     def test_unknown_asset_is_no_data_not_a_crash(self) -> None:
         call = Call(file="t", date="2026-01-01", asset="NOTATICKER", direction="long")
@@ -192,9 +232,7 @@ class TestScoreCallRefusals:
 
 
 class TestAggregate:
-    def _score(self, hit: bool, best: float = 0.2) -> object:
-        from research.ace_calls.score import Score
-
+    def _score(self, hit: bool, best: float = 0.2) -> Score:
         call = Call(file="t", date="2026-01-01", asset="XRP", direction="long")
         return Score(
             call=call,
@@ -214,8 +252,6 @@ class TestAggregate:
         assert "Nothing is scoreable" in agg.report()
 
     def test_all_unresolved_still_reports_the_breakdown(self) -> None:
-        from research.ace_calls.score import Score
-
         call = Call(file="t", date="2026-07-25", asset="XRP", direction="long")
         agg = aggregate([Score(call, "unresolved", "ohlcv", reason="horizon incomplete")])
         assert agg.n_calls == 1
@@ -224,16 +260,16 @@ class TestAggregate:
 
     def test_hit_rate_and_control_difference(self) -> None:
         scores = [self._score(True) for _ in range(6)] + [self._score(False) for _ in range(4)]
-        agg = aggregate(scores)  # type: ignore[arg-type]
+        agg = aggregate(scores)
         assert agg.n_resolved == 10
         assert agg.hit_rate == pytest.approx(0.6)
         assert agg.control_rate == pytest.approx(0.25)
         assert agg.difference.point == pytest.approx(0.35, abs=0.01)
 
     def test_small_sample_warning_fires_below_twenty(self) -> None:
-        agg = aggregate([self._score(True) for _ in range(5)])  # type: ignore[arg-type]
+        agg = aggregate([self._score(True) for _ in range(5)])
         assert "cannot establish anything" in agg.report()
 
     def test_no_warning_once_the_record_is_large_enough(self) -> None:
-        agg = aggregate([self._score(i % 2 == 0) for i in range(30)])  # type: ignore[arg-type]
+        agg = aggregate([self._score(i % 2 == 0) for i in range(30)])
         assert "cannot establish anything" not in agg.report()

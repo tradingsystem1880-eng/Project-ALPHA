@@ -111,7 +111,7 @@ class Score:
     target_first: bool | None = None  # levels only: target before stop
     control_rate: float = float("nan")
     control_n: int = 0
-    trend_state: float = float("nan")
+    trend_state: str = ""  # uptrend | downtrend | range, as of the call bar
     days_elapsed: int = 0
 
     @property
@@ -216,7 +216,11 @@ def score_call(call: Call, rng: np.random.Generator) -> Score:
 
     best, worst, end = _excursions(series, i, horizon, call.sign)
     bars = as_ohlcv(series)
-    trend = trend_state_vwap(bars, window=TREND_WINDOW_DAYS)
+    # np.asarray is load-bearing: trend_state_vwap returns a Python list[str]. Comparing a list
+    # against one of its elements yields the scalar False, which numpy then broadcasts to an
+    # all-False mask — so every call would silently find zero matched controls and come back
+    # unscoreable. mypy caught this; the runtime never would have complained.
+    trend = np.asarray(trend_state_vwap(bars, window=TREND_WINDOW_DAYS))
 
     # Matched controls: same trend state, at least one horizon away from the call itself so a
     # control cannot be the call wearing a different date.
@@ -250,7 +254,7 @@ def score_call(call: Call, rng: np.random.Generator) -> Score:
         target_first=_target_first(series, call, i, horizon),
         control_rate=control_hits / picks.size,
         control_n=int(picks.size),
-        trend_state=float(trend[i]),
+        trend_state=str(trend[i]),
         days_elapsed=horizon,
     )
 

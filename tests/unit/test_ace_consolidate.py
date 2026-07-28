@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -32,8 +33,8 @@ from research.ace_calls.consolidate import (
 )
 
 
-def _record(**overrides: object) -> Record:
-    data: dict = {
+def _record(**overrides: Any) -> Record:
+    data: dict[str, Any] = {
         "file": "IMG_0001",
         "kind": "chat",
         "raw_text": "Ace 01/03/2026, 09:59\nlonged btc at 64.3k with 5x leverage, target 79k",
@@ -50,7 +51,7 @@ def _record(**overrides: object) -> Record:
         "indicators": [],
         "notes": "",
     }
-    data.update(overrides)  # type: ignore[arg-type]
+    data.update(overrides)
     return Record(
         file=str(data["file"]),
         kind=str(data["kind"]),
@@ -165,7 +166,9 @@ class TestProvenance:
 
 
 class TestDeduplication:
-    def _rec(self, file: str, stmts: list[dict], assets: list[str] | None = None) -> Record:
+    def _rec(
+        self, file: str, stmts: list[dict[str, Any]], assets: list[str] | None = None
+    ) -> Record:
         raw = "\n".join(s["text"] for s in stmts)
         return verify(_record(file=file, raw_text=raw, statements=stmts, assets=assets or ["BTC"]))
 

@@ -32,6 +32,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW = REPO_ROOT / "research" / "ace_calls" / "raw"
@@ -127,7 +128,7 @@ class Record:
     file: str
     kind: str
     raw_text: str
-    data: dict
+    data: dict[str, Any]
     quarantined: bool = False
     problems: list[str] = field(default_factory=list)
 
@@ -201,7 +202,7 @@ def verify(record: Record) -> Record:
             problems.append(f"pnl.{key}={value!r} does not appear in the OCR text — stripped")
             pnl[key] = None
 
-    kept: list[dict] = []
+    kept: list[dict[str, Any]] = []
     for stmt in record.data.get("statements") or []:
         tokens = _tokens(str(stmt.get("text") or ""))
         if not tokens:

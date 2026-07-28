@@ -135,7 +135,9 @@ def score_call(call: Call, timeframe: str, rng: np.random.Generator) -> CallScor
             "the horizon has not elapsed yet, so the call is unresolved"
         )
 
-    trend = trend_state_vwap(bars, window=C.bars(90, timeframe))
+    # np.asarray matters: trend_state_vwap returns a Python list[str], and comparing a list to one
+    # of its own elements gives the scalar False, which broadcasts to an all-False control mask.
+    trend = np.asarray(trend_state_vwap(bars, window=C.bars(90, timeframe)))
     entry = float(bars.close[idx])
     sign = call.sign
 
