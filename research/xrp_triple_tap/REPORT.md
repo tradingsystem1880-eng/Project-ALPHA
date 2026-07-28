@@ -188,3 +188,61 @@ Charts: `research/xrp_triple_tap/out/{01_setup,02_evidence,03_gallery}.png`.
 Detector correctness is established before any statistic: patterns are injected at known bar indices
 and must be recovered exactly (15 cases), and a future-poison bias guard corrupts every bar after
 *t* and requires detections on `[0, t)` to be unchanged.
+
+---
+
+## ADDENDUM — the position as actually held (exchange screenshot, 2026-07-28 19:47)
+
+The levels analysed above came from prose. The exchange screenshot supersedes them and differs in
+six fields, three of which change the analysis:
+
+| | as described | as held |
+|---|---|---|
+| entry | 1.0508 | **1.0566** |
+| stop | 0.9900 | **0.9990** |
+| target | 2.7992 (+166%) | **1.3000 (+23.0%)** |
+| quantity | 10,000 | **60,123.9** |
+| notional | ~$10,500 | **~$63,148** |
+| leverage | not stated | **16x isolated** |
+| liquidation | not stated | **0.9957** |
+
+**The real payoff is 4.23:1 at a 19.14% breakeven**, not 28.8:1 at 3.36%. That is a materially more
+testable structure, and unlike the 90-day/166% cell this study has genuine power there.
+
+### Result at the actual levels (5.45% stop, 4.23R)
+
+| horizon | XRP target-first | pooled | breakeven | pooled 95% CI | XRP EV |
+|---|---|---|---|---|---|
+| 20 d | 13.30% | 14.65% | 19.14% | **[12.7, 16.9] — entirely below** | −0.21R |
+| 30 d | 14.22% | 17.72% | 19.14% | [15.6, 20.1] | −0.21R |
+| 60 d | 14.68% | 20.80% | 19.14% | [18.5, 23.3] | −0.21R |
+| 90 d | 14.68% | 21.08% | 19.14% | [18.7, 23.6] | −0.21R |
+
+XRP sits **below breakeven at every horizon** with a stable −0.21R expectancy. Pooled, the 20-day
+interval lies entirely below breakeven; at longer horizons it converges to breakeven and contains
+it. No horizon produces an edge.
+
+### The dominant risk is not the pattern — it is the stop's position
+
+The stop (0.9990) sits **0.33% above the liquidation price** (0.9957). Measured across XRP history,
+conditional on the stop being touched, liquidation is touched too:
+
+| horizon | P(stop) | P(liq) | **P(liq \| stop)** |
+|---|---|---|---|
+| 1 d | 19.0% | 17.7% | **93.1%** |
+| 7 d | 59.6% | 57.1% | **95.8%** |
+| 30 d | 83.3% | 81.8% | **98.1%** |
+| 90 d | 92.1% | 91.5% | **99.3%** |
+
+**The stop and the liquidation are not distinct events.** The buffer is 198 USDT of protection on a
+4,003 USDT margin — the difference between a 3,463 loss and a total one rests entirely on fill
+quality during exactly the kind of fast move that produces the worst slippage.
+
+(The 1-day 19.0% stop-touch rate independently reproduces the 19.0% 24-hour figure from the prior
+analysis, on different data and a different pipeline.)
+
+### Risk against the framework cap
+
+Loss at the stop is **3,463 USDT = 79x** the 44 USDT cap; a liquidation is **4,003 USDT = 91x**.
+The earlier "13.8x" was computed from the described position and understates it by more than 5x.
+A compliant size at this stop is **764 XRP (~$802 notional)**.

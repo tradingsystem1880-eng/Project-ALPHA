@@ -17,14 +17,26 @@ from dataclasses import dataclass
 
 # --------------------------------------------------------------------------- position
 
-ENTRY = 1.0508
-STOP = 0.9900
-TARGET = 2.7992
-QUANTITY = 10_000.0
-RISK_CAP_USDT = 44.0  # the user's framework cap; the live position is ~13.8x this
+# Taken from the exchange screenshot (2026-07-28 19:47), which supersedes the levels given in
+# prose. Six fields differ and three of them change the analysis: the size is 6x larger, the
+# target is +23% rather than +166%, and the position is 16x isolated with a liquidation price
+# only 0.33% below the stop.
+ENTRY = 1.0566
+STOP = 0.9990  # exchange SL on the entire position
+TARGET = 1.3000  # exchange TP
+LIQUIDATION = 0.9957
+QUANTITY = 60_123.9
+LEVERAGE = 16
+MARGIN_USDT = 4_003.4005
+MAINT_MARGIN_USDT = 356.3876
+RISK_CAP_USDT = 44.0  # framework cap; the stop risks ~79x this, a liquidation ~91x
 
 REWARD_RISK = (TARGET - ENTRY) / (ENTRY - STOP)
 BREAKEVEN = 1.0 / (1.0 + REWARD_RISK)
+STOP_FRACTION = (ENTRY - STOP) / ENTRY
+LIQ_FRACTION = (ENTRY - LIQUIDATION) / ENTRY
+# The number that dominates the trade: stop-to-liquidation buffer as a fraction of price.
+STOP_TO_LIQ_BUFFER = (STOP - LIQUIDATION) / STOP
 
 # --------------------------------------------------------------------------- externally supplied
 # Figures from the user's prior analysis. NOT reproduced in this repo and NOT verified here — the
@@ -193,7 +205,7 @@ BARRIER_GRID: tuple[tuple[float, float, int], ...] = (
     (0.10, 5.0, 30),
 )
 
-LIVE_TRADE_CELL = (0.0579, REWARD_RISK, 90)
+LIVE_TRADE_CELL = (STOP_FRACTION, REWARD_RISK, 90)
 
 # --------------------------------------------------------------------------- splits & controls
 
