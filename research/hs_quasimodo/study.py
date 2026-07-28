@@ -209,6 +209,23 @@ def report(df: pl.DataFrame) -> None:
                     f"diff {pt * 100:>+6.2f}% [{lo * 100:>+6.2f},{hi * 100:>+6.2f}]%  {verdict}"
                 )
 
+    print(f"\n{'=' * 100}\nHYPOTHESIS 1b — does the BOS filter lift Quasimodo ABOVE breakeven?")
+    print(f"{'=' * 100}")
+    print("  (a filter can beat the unfiltered population and still lose money — this is the test")
+    print("   that decides whether Quasimodo is tradeable, not merely better than plain H&S)")
+    print(f"{_HDR}")
+    for base in C.BASE_VARIANTS:
+        sub = df.filter(pl.col("base_variant") == base)
+        tf_bars = int(np.median([C.BARS_PER_DAY[t] for t in sub["timeframe"].unique()]))
+        for col, rr, days in grid[:4]:
+            for tag, pop in (
+                ("QM", sub.filter(pl.col("has_bos"))),
+                ("plain", sub.filter(~pl.col("has_bos"))),
+            ):
+                c = evaluate(pop, col, rr, days * tf_bars, f"{base[:12]} {tag:<5} {col}")
+                if c:
+                    print(_fmt(c))
+
     print(f"\n{'=' * 100}\nHYPOTHESIS 2 — do volume-confirmed neckline breaks do better?")
     print(f"{'=' * 100}\n  (the widely-quoted 73% vs 54% claim, tested directly)")
     for base in C.BASE_VARIANTS:
@@ -250,6 +267,24 @@ def report(df: pl.DataFrame) -> None:
                 f"  {entry_name + ' x ' + stop_name:<34} {n:>6,} {rr:>11.2f} "
                 f"{t / n * 100:>8.2f}% {be * 100:>6.2f}% {ev:>+7.2f}"
             )
+
+    print(f"\n{'=' * 100}\nWALK-FORWARD — the only confirmatory test")
+    print(f"{'=' * 100}")
+    print(f"  (pre-{C.WALK_FORWARD_SPLIT} is descriptive; 2023-26 is the out-of-sample run of the")
+    print("   pre-registered specification. An edge that does not survive here is an artefact.)")
+    print(f"{_HDR}")
+    cut = C.WALK_FORWARD_SPLIT
+    for base in C.BASE_VARIANTS:
+        sub = df.filter(pl.col("base_variant") == base)
+        tf_bars = int(np.median([C.BARS_PER_DAY[t] for t in sub["timeframe"].unique()]))
+        for col, rr, days in grid[1:3]:
+            for tag, pop in (
+                ("IS  QM", sub.filter(pl.col("has_bos") & (pl.col("confirmed_ts") < cut))),
+                ("OOS QM", sub.filter(pl.col("has_bos") & (pl.col("confirmed_ts") >= cut))),
+            ):
+                c = evaluate(pop, col, rr, days * tf_bars, f"{base[:12]} {tag} {col}")
+                if c:
+                    print(_fmt(c))
 
     print(f"\n{'=' * 100}\nSYMMETRY — bullish vs bearish mirror")
     print(f"{'=' * 100}")
