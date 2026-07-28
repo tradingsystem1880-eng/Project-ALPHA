@@ -1,0 +1,42 @@
+{
+  "file": "IMG_7839",
+  "kind": "chat",
+  "transcript": "22:26\n\n# -ace-journals >\n\nMake sure your heavy on link\nAlt coin is about to be as same exact place as 2018\n❤️ 1\n\nAce  #Altcoin dominance (monthly) has broken out, indicating a clear regime shift. Our signal ... 🖼\nAce  06/05/2026, 17:20\nAlmost 2 months ago I posted this\n\n7 May 2026\n\nAce  07/05/2026, 12:29\nCall on Monday busy this week\n👍 4\n\nAce  07/05/2026, 14:34\nToday will be a call on position and sizing... the tops will be discussed on monday\n🔥 6\n\n9 May 2026\n\nAce  09/05/2026, 02:19\nJust the way your ready for long make sure you be ready for shorts - suspense still exist [pepe frog emoji]\n\n11 May 2026\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-05-06 15:35", "text": "Make sure your heavy on link"},
+    {"author": "Ace", "timestamp": "2026-05-06 15:35", "text": "Alt coin is about to be as same exact place as 2018"},
+    {"author": "Ace", "timestamp": "2026-05-06 17:20", "text": "Almost 2 months ago I posted this"},
+    {"author": "Ace", "timestamp": "2026-05-07 12:29", "text": "Call on Monday busy this week"},
+    {"author": "Ace", "timestamp": "2026-05-07 14:34", "text": "Today will be a call on position and sizing... the tops will be discussed on monday"},
+    {"author": "Ace", "timestamp": "2026-05-09 02:19", "text": "Just the way your ready for long make sure you be ready for shorts - suspense still exist [pepe frog emoji]"}
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["LINK"],
+  "claims": [
+    "Make sure your heavy on link",
+    "Alt coin is about to be as same exact place as 2018",
+    "#Altcoin dominance (monthly) has broken out, indicating a clear regime shift. Our signal ... [reply-preview, truncated by Discord]",
+    "Just the way your ready for long make sure you be ready for shorts - suspense still exist"
+  ],
+  "boasts": [
+    "Almost 2 months ago I posted this"
+  ],
+  "indicators": ["altcoin dominance (monthly)", "breakout", "regime shift"],
+  "confidence": "high",
+  "notes": "Discord mobile screenshot, phone clock 22:26; this scroll overlaps IMG_7838 — the two lines at the top ('Make sure your heavy on link' / 'Alt coin is about to be as same exact place as 2018') are the same 06/05/2026 15:35 group seen there, and their reaction row is now legible as ❤️ 1 (IMG_7838 also showed 💯 4 on the preceding message in that group). The 17:20 message replies to an earlier Ace post whose preview text is truncated by Discord ('...') and whose attachment is not expanded, so the full wording and the image behind '#Altcoin dominance (monthly) has broken out, indicating a clear regime shift. Our signal ...' cannot be read; that preview is his own quoted text, not a new message, and carries no timestamp here. No prices, levels or numbers appear in this image. '7 May 2026', '9 May 2026' and '11 May 2026' are day dividers, not statements; a message under the 11 May divider is hidden behind the 'Done reading?' banner and is unreadable. Final emoji on the 09/05 message is a pepe-style frog glyph; exact name/codepoint not determinable."
+}

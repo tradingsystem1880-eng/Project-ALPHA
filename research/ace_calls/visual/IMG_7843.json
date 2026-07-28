@@ -1,0 +1,46 @@
+{
+  "file": "IMG_7843",
+  "kind": "chat",
+  "transcript": "22:26\n⚙️\n29\n← 99  #🔒  📓 -ace-journals  ›  🔍\n\n30 May 2026\n\nAce  30/05/2026, 09:33\nI'm just in till this month then im out depending upon the condition that's it that's all u guys need to know 👑🐸 - ace\ni waited half a year for June\n@everyone\n\n3 June 2026\n\nAce  03/06/2026, 07:49\nI holded this position since feb to be in loss today June 3rd I believe in being calmn and taking profits as the number I think it would go to 108k btc\nNothing changes high lv preps liquidated greed will be over summer will be started\n👍 2   ☺\n\n5 June 2026\n\nAce  05/06/2026, 08:48\n46.2k\n\n7 June 2026\n\n[reply reference] Ace  46.2k\nAce  07/06/2026, 06:15\nthis might not be the bottom (edited)\n[next line cut off by banner — unreadable]\n\nDone reading? Check out #ticket-0514.  →",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-05-30 09:33", "text": "I'm just in till this month then im out depending upon the condition that's it that's all u guys need to know 👑🐸 - ace"},
+    {"author": "Ace", "timestamp": "2026-05-30 09:33", "text": "i waited half a year for June"},
+    {"author": "Ace", "timestamp": "2026-05-30 09:33", "text": "@everyone"},
+    {"author": "Ace", "timestamp": "2026-06-03 07:49", "text": "I holded this position since feb to be in loss today June 3rd I believe in being calmn and taking profits as the number I think it would go to 108k btc"},
+    {"author": "Ace", "timestamp": "2026-06-03 07:49", "text": "Nothing changes high lv preps liquidated greed will be over summer will be started"},
+    {"author": "Ace", "timestamp": "2026-06-05 08:48", "text": "46.2k"},
+    {"author": "Ace", "timestamp": "2026-06-07 06:15", "text": "this might not be the bottom"}
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "I'm just in till this month then im out depending upon the condition",
+    "I holded this position since feb to be in loss today June 3rd I believe in being calmn and taking profits as the number I think it would go to 108k btc",
+    "Nothing changes high lv preps liquidated greed will be over summer will be started",
+    "46.2k",
+    "this might not be the bottom"
+  ],
+  "boasts": [
+    "that's it that's all u guys need to know 👑🐸 - ace",
+    "i waited half a year for June"
+  ],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "Dates are DD/MM/YYYY: 30/05/2026 = 30 May 2026, 03/06/2026 = 3 June 2026, 05/06/2026 = 5 June 2026, 07/06/2026 = 7 June 2026 — all confirmed by the matching day-divider labels ('30 May 2026', '3 June 2026', '5 June 2026', '7 June 2026'). Two numeric targets are readable and unambiguous: '108k btc' (upside target in the 03/06 message) and the bare '46.2k' posted 05/06/2026 08:48 — the asset for '46.2k' is NOT stated in this image; it is followed on 07/06 by a reply to that same message saying 'this might not be the bottom', which implies 46.2k is a downside level, but the ticker is inferred not shown, so it is left unattributed here. The 07/06/2026 06:15 message is marked '(edited)' — its current text may differ from what was posted at 06:15. A further line of that same message is starting at the bottom edge and is completely covered by the 'Done reading?' banner (only ink tops visible, some digits present) → NOT transcribed; likely continues in IMG_7844. The 30/05 block includes an @everyone ping (highlighted row).",
+  "_unreadable": ["the second line of the Ace 07/06/2026 06:15 message (hidden behind the 'Done reading? Check out #ticket-0514.' banner)"]
+}

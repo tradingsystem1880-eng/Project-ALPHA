@@ -1,0 +1,42 @@
+{
+  "file": "IMG_7838",
+  "kind": "chat",
+  "transcript": "22:26\n\n# -ace-journals >\n\nAce  04/05/2026, 23:07\n@everyone I have people now texting me what's going to happened ace should I buy should I sell should I short ? Everything was posted almost a month ago... imagine buying at top shorting at bottom\n\nWe are not surprised by the pump because we been prepared [emoji: crowned face with sunglasses] ❤️ - ace\n(edited)\n💯 5   🔥 5   ❤️ 4\n\n5 May 2026\n\nAce  05/05/2026, 11:08\n11TH MAY THIS IS BIG WEEK\n❤️ 4\n\n6 May 2026\n\nAce  06/05/2026, 15:35\nIf you don't join voice calls when I'll do it you will stay poor and you can complain all you want\n💯 4\n\nMake sure your heavy on link\nAlt coin is about to be as same exact place as 2018\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-05-04 23:07", "text": "@everyone I have people now texting me what's going to happened ace should I buy should I sell should I short ? Everything was posted almost a month ago... imagine buying at top shorting at bottom\n\nWe are not surprised by the pump because we been prepared [emoji] ❤️ - ace"},
+    {"author": "Ace", "timestamp": "2026-05-05 11:08", "text": "11TH MAY THIS IS BIG WEEK"},
+    {"author": "Ace", "timestamp": "2026-05-06 15:35", "text": "If you don't join voice calls when I'll do it you will stay poor and you can complain all you want"},
+    {"author": "Ace", "timestamp": "2026-05-06 15:35", "text": "Make sure your heavy on link"},
+    {"author": "Ace", "timestamp": "2026-05-06 15:35", "text": "Alt coin is about to be as same exact place as 2018"}
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["LINK"],
+  "claims": [
+    "11TH MAY THIS IS BIG WEEK",
+    "Make sure your heavy on link",
+    "Alt coin is about to be as same exact place as 2018"
+  ],
+  "boasts": [
+    "Everything was posted almost a month ago... imagine buying at top shorting at bottom",
+    "We are not surprised by the pump because we been prepared",
+    "If you don't join voice calls when I'll do it you will stay poor and you can complain all you want"
+  ],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "Discord mobile screenshot, phone clock 22:26. The 04/05 23:07 message is highlighted (@everyone mention) and marked '(edited)' — pre-edit wording unknown; it is a single message containing a blank-line-separated second paragraph, recorded as one statement. The three 06/05 lines are grouped under the single 15:35 header, so that timestamp is reused for all three; the last two carry reaction rows that are cut off at the bottom of the screenshot (a partially visible reaction pill under 'Alt coin...' cannot be read). 'link' is lowercase in the original and is taken to mean Chainlink (LINK) — he does not write a ticker. No prices, levels or numbers of any kind appear in this image. '5 May 2026' and '6 May 2026' are day dividers, not statements. Bottom banner is Discord UI chrome."
+}

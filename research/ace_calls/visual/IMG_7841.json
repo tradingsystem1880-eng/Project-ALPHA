@@ -1,0 +1,36 @@
+{
+  "file": "IMG_7841",
+  "kind": "chat",
+  "transcript": "22:26\n⚙️\n29\n← 99  #🔒  📓 -ace-journals  ›  🔍\n\n13 May 2026\n\nAce  13/05/2026, 17:15\nFeel free to ask questions about positions/size management 🐸\n\n[ATTACHED SCREENSHOT — Discord, device clock 1:14, channel \"#🔒 ticket-0659-z ›\", back badge 99]\n👍 1  ☺\nI know you mentioned taking profits along the way so will prob end up doing that though\n❤️ 1  ☺\nEither way I'm looking forward to this pump coming up asap!\n👍 1  ☺\n\nMay 13, 2026\n\n[reply reference] Ace  🔥07  10.130 rn\nAce  🔥07  1:12 PM\n[NESTED TRADINGVIEW SCREENSHOT — device clock 1:12, \"TradingView\"]\nChainLink / TetherUS PERPETUAL... ⌄\nLINKUSDT.P • BINANCE ●\n10.703 USDT\n+0.419 +4.07% today\n[line chart, price axis labels: 10.7 (dashed last-price line), 10.6, 10.5, 10.4, 10.3]\n[time axis: 05:00  06:00  07:00  08:00  09:00  10:00  11:00  12:00]\n1D  1W  1M  3M  YTD  1Y  5Y  All\nTrade\nOverview   News   Minds   Ideas\n⚡ 22:45 · May 12 · DTCC to use Chainlink to power 24/7 collateral management network  ›\n[end nested screenshot]\n[Message #ticket-0659-; ☺ 🎤]\n[end attached screenshot]\n\n❤️ 2   ☺\n\nAlso just so you all know I don't want to see anything posted privately being surfaced publicly, you will be immediately ban 👑🐸 - ace\n👍 2   ☺\n\nDone reading? Check out #ticket-0514.  →",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-05-13 17:15", "text": "Feel free to ask questions about positions/size management 🐸"},
+    {"author": "Ace", "timestamp": "2026-05-13 17:15", "text": "Also just so you all know I don't want to see anything posted privately being surfaced publicly, you will be immediately ban 👑🐸 - ace"},
+    {"author": "unknown (client, inside attached #ticket-0659-z screenshot)", "timestamp": null, "text": "I know you mentioned taking profits along the way so will prob end up doing that though"},
+    {"author": "unknown (client, inside attached #ticket-0659-z screenshot)", "timestamp": null, "text": "Either way I'm looking forward to this pump coming up asap!"},
+    {"author": "Ace", "timestamp": "2026-05-13 (time not shown)", "text": "10.130 rn"},
+    {"author": "Ace", "timestamp": "2026-05-13 13:12", "text": "[TradingView screenshot of LINKUSDT.P at 10.703 USDT, +0.419 +4.07% today]"}
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "LINKUSDT.P",
+    "timeframe": "1D (intraday line chart, 05:00-12:00 visible)",
+    "venue": "BINANCE (via TradingView)",
+    "last_price": 10.703,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": "single intraday session, 05:00 to ~12:00 on 2026-05-13",
+    "what_the_drawing_says": "No user-drawn annotations at all — this is a stock TradingView quote page for ChainLink perps showing a steady intraday grind up from ~10.30 to 10.703 (+4.07% on the day), posted as evidence that the move he flagged at 10.130 is playing out."
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["LINK"],
+  "claims": [],
+  "boasts": [],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "Outer Discord message 13/05/2026 17:15 (DD/MM/YYYY → 13 May 2026). The attachment is a screenshot of a private ticket channel #ticket-0659-z, whose own device clock reads 1:14 and whose message row reads 1:12 PM under a 'May 13, 2026' divider → the nested Ace message is 2026-05-13 13:12 in that device's timezone (which need not match the outer client's; 17:15 vs 13:12 suggests a timezone offset, so the nested wall-clock is NOT reconcilable with the outer one — treat 13:12 as local-to-that-device). The two client lines ('I know you mentioned taking profits...' / 'Either way I'm looking forward to this pump coming up asap!') have no visible author or timestamp — the author row is cropped above them; they are clearly NOT Ace (they address him in second person). 'Ace 🔥07 10.130 rn' is a reply-reference preview, so its own timestamp is not shown. Prices read directly: 10.130 (Ace's quoted price), 10.703 USDT last, +0.419 +4.07% today. Axis labels 10.3/10.4/10.5/10.6/10.7 read clean. The '🔥07' next to Ace's name is a Discord role/clan badge, not a number of trades. Bottom news strip is truncated mid-sentence: '22:45 · May 12 · DTCC to use Chainlink to power 24/7 collateral management network'.",
+  "_unreadable": ["author name of the two client messages inside the attached ticket screenshot (cropped above)", "full text of the truncated Chainlink/DTCC news headline second line"]
+}

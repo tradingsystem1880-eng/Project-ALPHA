@@ -1,0 +1,39 @@
+{
+  "file": "IMG_7840",
+  "kind": "chat",
+  "transcript": "22:26\n⚙️\n29\n← 99  #🔒  📓 -ace-journals  ›  🔍\n\nAce  07/05/2026, 14:34\nToday will be a call on position and sizing... the tops will be discussed on monday\n🔥 6   ☺\n\n9 May 2026\n\nAce  09/05/2026, 02:19\nJust the way your ready for long make sure you be ready for shorts - suspense still exist 🐸\n\n11 May 2026\n\nAce  11/05/2026, 00:36\nThe pump will be disgusting\n❤️ 5   ☺\n\nIn few months from now you will know what you missed on if u don't take action\n👍 5   ☺\n\n13 May 2026\n\nAce  13/05/2026, 17:15\nFeel free to ask questions about positions/size management 🐸\n\n[embedded screenshot preview, partially cut off: \"1:14 🔕\" ... \"← #🔒 ticket-0659-z ›\"]\n\nDone reading? Check out #ticket-0514.  →",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-05-07 14:34", "text": "Today will be a call on position and sizing... the tops will be discussed on monday"},
+    {"author": "Ace", "timestamp": "2026-05-09 02:19", "text": "Just the way your ready for long make sure you be ready for shorts - suspense still exist 🐸"},
+    {"author": "Ace", "timestamp": "2026-05-11 00:36", "text": "The pump will be disgusting"},
+    {"author": "Ace", "timestamp": "2026-05-11 00:36", "text": "In few months from now you will know what you missed on if u don't take action"},
+    {"author": "Ace", "timestamp": "2026-05-13 17:15", "text": "Feel free to ask questions about positions/size management 🐸"}
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": [],
+  "claims": [
+    "The pump will be disgusting",
+    "In few months from now you will know what you missed on if u don't take action",
+    "Just the way your ready for long make sure you be ready for shorts - suspense still exist"
+  ],
+  "boasts": [],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "Discord mobile screenshot of #-ace-journals, dates 07/05/2026 through 13/05/2026 (DD/MM/YYYY → May 2026). The message 'In few months from now you will know what you missed on if u don't take action' carries no visible timestamp of its own — it is grouped under the 11/05/2026 00:36 block, so that timestamp is inherited (may actually be slightly later). Message at top is cut off above (a partial reaction row is visible at the very top edge, content unreadable). Bottom of image shows the start of an embedded screenshot attachment under the 13/05 message: only '1:14' and a channel header reading '#ticket-0659-z' are legible before the crop. No prices, symbols, charts or positions in this image.",
+  "_unreadable": ["partial reaction chips at very top edge of the screenshot (above the 07/05/2026 message)"]
+}

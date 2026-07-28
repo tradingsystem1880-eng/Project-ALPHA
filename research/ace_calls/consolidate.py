@@ -139,10 +139,16 @@ class Record:
         return "visual" if any(m in note for m in _VISUAL_MARKERS) else "ocr"
 
 
-def load_raw() -> list[Record]:
+#: The visual pass names the verbatim field "transcript"; the OCR pass named it "raw_text". Both
+#: mean the same thing — everything legible in the image — and both are the audit trail a
+#: structured field is checked against.
+_TEXT_FIELDS = ("raw_text", "transcript")
+
+
+def load_raw(source: Path | None = None) -> list[Record]:
     """Read every per-image JSON, keeping malformed files visible rather than dropping them."""
     records: list[Record] = []
-    for path in sorted(RAW.glob("*.json")):
+    for path in sorted((source or RAW).glob("*.json")):
         try:
             data = json.loads(path.read_text())
         except json.JSONDecodeError as exc:
@@ -154,7 +160,9 @@ def load_raw() -> list[Record]:
             Record(
                 file=str(data.get("file") or path.stem),
                 kind=str(data.get("kind") or "unknown"),
-                raw_text=str(data.get("raw_text") or ""),
+                raw_text=next(
+                    (str(data[f]) for f in _TEXT_FIELDS if data.get(f)), ""
+                ),
                 data=data,
             )
         )
