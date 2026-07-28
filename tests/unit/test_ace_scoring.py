@@ -20,8 +20,13 @@ from research.ace_calls.score import Call, _excursions, _target_first, aggregate
 _DAY = 86_400_000.0
 
 
-def _series(closes: list[float], *, highs: list[float] | None = None,
-            lows: list[float] | None = None, tier: str = "ohlcv") -> Series:
+def _series(
+    closes: list[float],
+    *,
+    highs: list[float] | None = None,
+    lows: list[float] | None = None,
+    tier: str = "ohlcv",
+) -> Series:
     c = np.array(closes, dtype=np.float64)
     return Series(
         asset="TEST",
@@ -85,41 +90,83 @@ class TestExcursions:
 class TestTargetFirst:
     def test_target_reached_before_stop_is_a_win(self) -> None:
         s = _series([100, 105, 112], highs=[100, 106, 112], lows=[100, 104, 108])
-        call = Call(file="t", date="1970-01-01", asset="TEST", direction="long",
-                    horizon_days=2, target=110.0, stop=95.0)
+        call = Call(
+            file="t",
+            date="1970-01-01",
+            asset="TEST",
+            direction="long",
+            horizon_days=2,
+            target=110.0,
+            stop=95.0,
+        )
         assert _target_first(s, call, 0, 2) is True
 
     def test_stop_reached_before_target_is_a_loss(self) -> None:
         s = _series([100, 94, 115], highs=[100, 99, 115], lows=[100, 93, 100])
-        call = Call(file="t", date="1970-01-01", asset="TEST", direction="long",
-                    horizon_days=2, target=110.0, stop=95.0)
+        call = Call(
+            file="t",
+            date="1970-01-01",
+            asset="TEST",
+            direction="long",
+            horizon_days=2,
+            target=110.0,
+            stop=95.0,
+        )
         assert _target_first(s, call, 0, 2) is False
 
     def test_same_bar_collision_resolves_to_the_stop(self) -> None:
         """The pessimistic convention. A bar touching both cannot be known to have hit target
         first, and the adverse assumption is the one that cannot flatter the record."""
         s = _series([100, 100], highs=[100, 115], lows=[100, 90])
-        call = Call(file="t", date="1970-01-01", asset="TEST", direction="long",
-                    horizon_days=1, target=110.0, stop=95.0)
+        call = Call(
+            file="t",
+            date="1970-01-01",
+            asset="TEST",
+            direction="long",
+            horizon_days=1,
+            target=110.0,
+            stop=95.0,
+        )
         assert _target_first(s, call, 0, 1) is False
 
     def test_short_direction_uses_the_mirrored_levels(self) -> None:
         # Short from 100: target 90 below, stop 105 above. Price falls to 89 without touching 105.
         s = _series([100, 92, 89], highs=[100, 96, 93], lows=[100, 91, 89])
-        call = Call(file="t", date="1970-01-01", asset="TEST", direction="short",
-                    horizon_days=2, target=90.0, stop=105.0)
+        call = Call(
+            file="t",
+            date="1970-01-01",
+            asset="TEST",
+            direction="short",
+            horizon_days=2,
+            target=90.0,
+            stop=105.0,
+        )
         assert _target_first(s, call, 0, 2) is True
 
     def test_short_stop_triggers_on_a_rise(self) -> None:
         s = _series([100, 106, 85], highs=[100, 107, 100], lows=[100, 99, 85])
-        call = Call(file="t", date="1970-01-01", asset="TEST", direction="short",
-                    horizon_days=2, target=90.0, stop=105.0)
+        call = Call(
+            file="t",
+            date="1970-01-01",
+            asset="TEST",
+            direction="short",
+            horizon_days=2,
+            target=90.0,
+            stop=105.0,
+        )
         assert _target_first(s, call, 0, 2) is False
 
     def test_neither_touched_inside_the_horizon_is_not_a_win(self) -> None:
         s = _series([100, 101, 102], highs=[100, 102, 103], lows=[100, 99, 100])
-        call = Call(file="t", date="1970-01-01", asset="TEST", direction="long",
-                    horizon_days=2, target=110.0, stop=95.0)
+        call = Call(
+            file="t",
+            date="1970-01-01",
+            asset="TEST",
+            direction="long",
+            horizon_days=2,
+            target=110.0,
+            stop=95.0,
+        )
         assert _target_first(s, call, 0, 2) is False
 
     def test_no_levels_returns_none_not_false(self) -> None:
@@ -150,8 +197,15 @@ class TestAggregate:
 
         call = Call(file="t", date="2026-01-01", asset="XRP", direction="long")
         return Score(
-            call=call, status="resolved", tier="ohlcv", best=best, worst=-0.05, end=0.1,
-            hit=hit, control_rate=0.25, control_n=300,
+            call=call,
+            status="resolved",
+            tier="ohlcv",
+            best=best,
+            worst=-0.05,
+            end=0.1,
+            hit=hit,
+            control_rate=0.25,
+            control_n=300,
         )
 
     def test_empty_record_yields_no_verdict_rather_than_a_crash(self) -> None:
