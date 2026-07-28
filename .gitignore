@@ -30,3 +30,6 @@ coverage/
 
 # Data is large + reproducible from snapshots; never commit it
 data/
+
+# Cached third-party market-data mirrors (large, reproducible from research/xrp_triple_tap/config.py)
+data/cache/

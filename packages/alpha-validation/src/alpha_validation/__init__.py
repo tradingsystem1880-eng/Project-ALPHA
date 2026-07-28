@@ -9,6 +9,14 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_validation.barrier import (
+    BarrierCounts,
+    BarrierResult,
+    Outcome,
+    aggregate_outcomes,
+    barrier_outcome,
+    excursion_quantiles,
+)
 from alpha_validation.bootstrap import (
     ConfidenceInterval,
     Statistic,
@@ -64,6 +72,16 @@ from alpha_validation.propfirm import (
     PropFirmRules,
     simulate_propfirm,
 )
+from alpha_validation.proportion import (
+    MultipleTestResult,
+    ProportionInterval,
+    autocorrelation_effective_size,
+    benjamini_hochberg,
+    effective_sample_size,
+    newcombe_diff_interval,
+    overlap_factor,
+    wilson_interval,
+)
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
 from alpha_validation.scenario import ScenarioSummary, scenario_metrics
 from alpha_validation.tearsheet import (
@@ -85,6 +103,8 @@ from alpha_validation.walkforward import Split, walk_forward_splits
 __version__ = version("alpha-validation")
 
 __all__ = [
+    "BarrierCounts",
+    "BarrierResult",
     "CISummary",
     "CPCVSplit",
     "CPCVSummary",
@@ -98,12 +118,15 @@ __all__ = [
     "FoldSummary",
     "ForecastEvalSummary",
     "GauntletReport",
+    "MultipleTestResult",
     "NullResult",
     "NullSummary",
     "OriginScore",
+    "Outcome",
     "PBOResult",
     "PropFirmResult",
     "PropFirmRules",
+    "ProportionInterval",
     "RunMetadata",
     "ScenarioSummary",
     "Split",
@@ -111,7 +134,11 @@ __all__ = [
     "StrategyFn",
     "VerdictSummary",
     "__version__",
+    "aggregate_outcomes",
     "annualized_volatility",
+    "autocorrelation_effective_size",
+    "barrier_outcome",
+    "benjamini_hochberg",
     "block_bootstrap_ci",
     "bootstrap_end_returns",
     "build_outcomes",
@@ -120,12 +147,16 @@ __all__ = [
     "combinatorial_purged_splits",
     "crps_sample",
     "deflated_sharpe",
+    "effective_sample_size",
+    "excursion_quantiles",
     "expected_max_sharpe",
     "expected_shortfall",
     "garch_paths",
     "grade_verdict",
     "max_drawdown",
     "n_cpcv_splits",
+    "newcombe_diff_interval",
+    "overlap_factor",
     "parametric_price_null",
     "pinball_loss",
     "probabilistic_sharpe_ratio",
@@ -148,4 +179,5 @@ __all__ = [
     "to_returns",
     "value_at_risk",
     "walk_forward_splits",
+    "wilson_interval",
 ]
