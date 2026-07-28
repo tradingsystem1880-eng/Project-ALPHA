@@ -1,0 +1,94 @@
+{
+  "file": "IMG_7812",
+  "kind": "chat",
+  "transcript": "22:24\n#⚡ 📓-ace-journals >\n99\nAce  21/03/2026, 02:34\nBTC is facing a heavy sell off - It's not good tbh... I'm Looking for weekly open & daily of today { It's actually lights out for btc the way the structure is looking atm } waiting for confirmation 🐸\n[CHART IMAGE]\nMar 20, 2026 23:55 UTC+5:30\nBitcoin/USD Tether Perpetual Contract · 2h · BingX...\n89,027.3\n88,000.0\n85,148.0\n85,126.6\n84,000.0\n82,490.4\n82,000.0\n80,905.2\n80,000.0\n74,939.5\n74,617.4\n74,617.0\n74,577.3\n74,428.4\n73,773.7\n72,000.0\n71,172.9\n69,783.3\n01:34:15\n69,361.4\n69,011.1\n68,051.6\n65,174.3\n64,000.0\n62,694.3\n62,656.5\n62,620.5\n59,549.6\n59,515.7\n58,000.0\n56,000.0\n54,000.0\n52,000.0\nMar  5  9  13  17  21\nTradingView\n👍 6\nAce  21/03/2026, 02:42\nI actually just landed going home. stay away\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-21 02:34",
+      "text": "BTC is facing a heavy sell off - It's not good tbh... I'm Looking for weekly open & daily of today { It's actually lights out for btc the way the structure is looking atm } waiting for confirmation 🐸"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-21 02:42",
+      "text": "I actually just landed going home. stay away"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BTCUSDT.P)",
+    "timeframe": "2h",
+    "venue": "BingX",
+    "last_price": 69783.3,
+    "drawn_levels": [
+      {"price": 89027.3, "colour": "green", "role": "position-tool target / upper objective (solid green line at top of chart)"},
+      {"price": 85148.0, "colour": "grey", "role": "position-tool entry line"},
+      {"price": 85126.6, "colour": "blue/cyan", "role": "dashed cyan horizontal level"},
+      {"price": 82490.4, "colour": "blue/cyan", "role": "dashed cyan horizontal level"},
+      {"price": 80905.2, "colour": "red", "role": "position-tool stop"},
+      {"price": 74939.5, "colour": "red", "role": "stop line of the upper (short) position tool"},
+      {"price": 74617.4, "colour": "teal/dark green", "role": "level"},
+      {"price": 74617.0, "colour": "teal/dark green", "role": "level"},
+      {"price": 74577.3, "colour": "blue/cyan", "role": "dashed cyan horizontal level marking the top of the grey supply band"},
+      {"price": 74428.4, "colour": "grey", "role": "entry line of the upper (short) position tool / top of grey zone"},
+      {"price": 73773.7, "colour": "teal/dark green", "role": "lower edge of the grey supply band"},
+      {"price": 71172.9, "colour": "teal/dark green", "role": "target of the upper (short) position tool"},
+      {"price": 69783.3, "colour": "red", "role": "last price label (dotted red last-price line) with bar countdown 01:34:15"},
+      {"price": 69361.4, "colour": "red", "role": "level between the last-price line and the green line; no line of its own visible"},
+      {"price": 69011.1, "colour": "light green", "role": "the solid GREEN horizontal line running the full chart width - Ace's 'green line' (verified by pixel interpolation against the 85,126.6 / 74,577.3 / 62,694.3 cyan lines: measures 69,028)"},
+      {"price": 68051.6, "colour": "grey", "role": "level"},
+      {"price": 65174.3, "colour": "teal/dark green", "role": "level"},
+      {"price": 62694.3, "colour": "blue/cyan", "role": "dashed cyan horizontal level (bottom of the teal box)"},
+      {"price": 62656.5, "colour": "grey", "role": "entry line of the lower (long) position tool"},
+      {"price": 62620.5, "colour": "grey", "role": "entry line of a second overlapping long position tool"},
+      {"price": 59549.6, "colour": "red", "role": "stop of the lower (long) position tool"},
+      {"price": 59515.7, "colour": "red", "role": "stop of a second overlapping long position tool"}
+    ],
+    "drawn_objects": [
+      "grey horizontal supply band spanning the full chart width, roughly 73,773.7 to 74,428.4/74,577.3",
+      "long position tool on the left of the chart (approx Mar 1 - Mar 7): teal profit boxes above a grey entry near 62,656.5/62,620.5 up to the 69,011.1 green target (and a lighter teal block continuing up toward 74,428), pink stop box below down to 59,549.6/59,515.7",
+      "short position tool around Mar 17-19: small pink stop box on top (approx 74,428.4 to 74,617/74,939.5) and teal target box below down to about 71,172.9",
+      "hand-drawn black zigzag path: up from bottom-left to the Mar 5 high (~73.7k), down to the Mar 9 low (~65k), then a long straight up-arrow projecting toward roughly 78k around Mar 12",
+      "hand-drawn black down-arrow from about 74.5k on Mar 17-18 to about 71k",
+      "grey dashed rising trendline under the early-March advance",
+      "dotted red last-price line at 69,783.3 (pixel-verified)",
+      "solid green horizontal line at 69,011.1 (the 'green line'), plus a second solid green line at 89,027.3 at the top of the chart",
+      "two dashed cyan horizontal lines above price (85,126.6 and 82,490.4) and one below (62,694.3)"
+    ],
+    "visible_date_range": "approx Mar 1 - Mar 21 2026 (x-axis ticks: Mar, 5, 9, 13, 17, 21); chart timestamp Mar 20, 2026 23:55 UTC+5:30",
+    "what_the_drawing_says": "Price has been rejected from the 73.7k-74.6k grey supply band twice and is now breaking down toward 69k, with the drawn short tool (entry ~74,428, stop ~74,617/74,939, target ~71,172) already played out and cyan reference levels marking 85.1k/82.5k above and 62.7k below. The left-hand long position tool (entry ~62.6k, target 69,011, stop ~59.5k) and the projected up-arrow are older bullish markings that the current structure is now contradicting."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "BTC is facing a heavy sell off - It's not good tbh...",
+    "I'm Looking for weekly open & daily of today",
+    "It's actually lights out for btc the way the structure is looking atm",
+    "waiting for confirmation",
+    "stay away"
+  ],
+  "boasts": [],
+  "indicators": [
+    "weekly open",
+    "daily open",
+    "market structure",
+    "supply/resistance band (grey rectangle 73.7k-74.6k)",
+    "dashed cyan horizontal levels",
+    "long/short position tools (entry/target/stop)",
+    "hand-drawn projection arrows",
+    "dashed trendline"
+  ],
+  "confidence": "high",
+  "notes": "Message text and both timestamps are crisp. Last price is ambiguous: the red price-scale label reads '69,783.3' with the bar countdown '01:34:15' directly below it, and a second red tag '69,361.4' sits immediately under the countdown. TradingView normally prints price-then-countdown in one label, so 69,783.3 is recorded as last price; this was then CONFIRMED by pixel interpolation (the dotted red last-price line measures 69,776 against the cyan 85,126.6 / 74,577.3 / 62,694.3 calibration, i.e. 69,783.3 to within one pixel), and IMG_7815/IMG_7818 show the same price-then-countdown label layout. 69,361.4 is a separate level with no line of its own visible. The solid green line was likewise pixel-verified at 69,011.1 (measures 69,028), NOT 69,361.4. The second message at 02:42 is cut off by an overlay banner - only 'I actually just landed going home. stay away' is legible and there may be more text beyond the crop. Reaction count on the first message: 6 thumbs-up. Axis labels 88,000.0 / 84,000.0 / 82,000.0 / 80,000.0 / 72,000.0 / 64,000.0 / 58,000.0 / 56,000.0 / 54,000.0 / 52,000.0 are plain grey gridline labels, not drawn levels. Chart title truncated as 'BingX...'."
+}

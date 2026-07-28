@@ -1,0 +1,74 @@
+{
+  "file": "IMG_7800",
+  "kind": "chat",
+  "transcript": "22:22\n99\n#🔒 📓-ace-journals >\n\n[attached chart image]\noneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30\nBitcoin / TetherUS PERPETUAL CONTRACT · 12h · Binance  O121,493.2  H122,497.0  L101,516.5  C112,811.3  −8,681.9 (−7.15%)\n150,000.0\n140,000.0\n130,000.0\n120,000.0\n113,871.3\n112,811.3\n01:35:30\n100,000.0\n88,998.5\n80,000.0\n70,000.0\n60,000.0\n50,000.0\n317.1K\n40,000.0\nSep  Nov  2025  Mar  May  Jul  Sep  Nov  2026  Mar  May\nTradingView\n\n❤️ 1\n\n[attached screenshot of Discord messages]\nFebruary 15, 2026\nAce 2/15/26, 1:44 AM\nwaiting for btc to hit 79k...\n❤️ 1\n\nAce  waiting for btc to hit 79k...\nAce 2/15/26, 1:50 AM\nwith patience !!!\n👍 1\n\n@everyone personally speaking I hate listening to noise [pepe-with-crown-and-sunglasses emoji] [pepe-with-pencil emoji]\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-02-15 01:44",
+      "text": "waiting for btc to hit 79k..."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-02-15 01:50",
+      "text": "with patience !!!"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "@everyone personally speaking I hate listening to noise [pepe-with-crown-and-sunglasses emoji] [pepe-with-pencil emoji]"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin / TetherUS PERPETUAL CONTRACT (BTCUSDT.P)",
+    "timeframe": "12h",
+    "venue": "Binance",
+    "last_price": 112811.3,
+    "drawn_levels": [
+      {"price": 113871.3, "colour": "black", "role": "upper horizontal line (resistance / short reference level)"},
+      {"price": null, "colour": "purple/violet", "role": "shaded horizontal band just below 100,000 that the projection arrow points into; no price tag rendered"},
+      {"price": 88998.5, "colour": "black", "role": "lower horizontal line (downside target / support)"}
+    ],
+    "drawn_objects": [
+      "hand-drawn black zig-zag projection to the right of live price: down from near the 113,871.3 line, a bounce, then a longer leg down ending in an arrowhead just above the 88,998.5 line, inside the purple band",
+      "black horizontal line at 113,871.3 spanning the full chart",
+      "purple/violet shaded horizontal band (untagged) between 100,000 and 88,998.5",
+      "black horizontal line at 88,998.5 spanning the full chart",
+      "red live-price tag 112,811.3 with bar countdown 01:35:30",
+      "volume histogram pane at the bottom with a red 317.1K tag"
+    ],
+    "visible_date_range": "Sep (2024) to May 2026 on the x-axis (labels: Sep, Nov, 2025, Mar, May, Jul, Sep, Nov, 2026, Mar, May); price bars stop around Oct 2025 and the rest is empty projection space",
+    "what_the_drawing_says": "Ace's drawn path calls for BTC to roll over from the 113.8k line and slide into the purple band down to roughly 89,000 - a short of about 20% - with the 88,998.5 line as the destination.",
+    "chart_created_label": "oneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30",
+    "ohlc_line": {"open": 121493.2, "high": 122497.0, "low": 101516.5, "close": 112811.3, "change": -8681.9, "change_pct": -7.15}
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "waiting for btc to hit 79k...",
+    "with patience !!!"
+  ],
+  "boasts": [
+    "@everyone personally speaking I hate listening to noise [pepe-with-crown-and-sunglasses emoji] [pepe-with-pencil emoji]"
+  ],
+  "indicators": [
+    "horizontal support/resistance lines (black)",
+    "purple supply/demand band",
+    "hand-drawn projection arrow",
+    "volume histogram"
+  ],
+  "confidence": "high",
+  "notes": "This is the scroll continuation of IMG_7799 - the same 12h Binance BTCUSDT.P chart (created Oct 11 2025 03:54 UTC+5:30) is now fully visible, so the lower line reads 88,998.5 where IMG_7799 only showed '88,9'. The purple band still has no price tag of its own and is left null. 317.1K is the volume-pane tag, not a price level. The embedded dark-theme card is a screenshot of Discord messages dated 'February 15, 2026' with timestamps rendered 2/15/26 (MM/DD/YY in that screenshot, confirmed by the day-divider text), converted to 2026-02-15. The bottom '@everyone personally speaking I hate listening to noise' message is highlighted (mention background) and its author/timestamp are cut off below the visible area, so author is assumed Ace from channel context but the timestamp is null. The two emojis after 'noise' are custom Discord emojis (a Pepe wearing a crown and sunglasses, and a Pepe holding a pencil) whose emoji names are not readable."
+}

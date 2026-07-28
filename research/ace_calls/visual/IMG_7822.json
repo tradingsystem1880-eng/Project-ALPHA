@@ -1,0 +1,79 @@
+{
+  "file": "IMG_7822",
+  "kind": "chat",
+  "transcript": "22:24\n#🔒 📓 -ace-journals >\n99\n\nAce 31/03/2026, 00:28\nNobody was there to teach me i remember waking up, thinking one day i will change my life... you guys have me we will do it together i love each & every single on of you\n💯 2\n\nBack at entry just don't be a weak hand in 13 days we will be where we need to be\nACE - 👑\n\nAce  Now what's gonna happen is basically we going to trade side ways till NYC OPENS & Dumps i...\nAce 31/03/2026, 03:31\nExactly as planned !!! ∞\n👍 1\n\nAce 31/03/2026, 05:35\nOut at 2% profit - it will rise up a little\n👍 1\n\n68.600-68.800 im looking to short\n👍 1\n\nAce 31/03/2026, 05:50\nso basically look if you in not high lv position be in short @everyone\n[reaction row partially hidden]\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-31 00:28",
+      "text": "Nobody was there to teach me i remember waking up, thinking one day i will change my life... you guys have me we will do it together i love each & every single on of you"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Back at entry just don't be a weak hand in 13 days we will be where we need to be"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "ACE - 👑"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-31 03:31",
+      "text": "Exactly as planned !!! ∞"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-31 05:35",
+      "text": "Out at 2% profit - it will rise up a little"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "68.600-68.800 im looking to short"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-31 05:50",
+      "text": "so basically look if you in not high lv position be in short @everyone"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "Back at entry just don't be a weak hand in 13 days we will be where we need to be",
+    "Out at 2% profit - it will rise up a little",
+    "68.600-68.800 im looking to short",
+    "so basically look if you in not high lv position be in short"
+  ],
+  "boasts": [
+    "Nobody was there to teach me i remember waking up, thinking one day i will change my life... you guys have me we will do it together i love each & every single on of you",
+    "Exactly as planned !!!"
+  ],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "Numbers read cleanly: '2% profit', '68.600-68.800' (his own period-as-thousands-separator style, i.e. 68,600-68,800), '13 days'. The exit claim 'Out at 2% profit' is stated as a percentage only - no entry, exit price, size or leverage is given, so it is not independently verifiable from this image. The quoted-reply preview 'Ace Now what's gonna happen is basically we going to trade side ways till NYC OPENS & Dumps i...' is truncated by the Discord UI (the full text appears in IMG_7821). The reaction row under the 05:50 message is cut off at the bottom by the '#ticket-0514' banner - a thumbs-up and the add-reaction button are partially visible but the count could not be read. 'Back at entry...', 'ACE -' and '68.600-68.800 im looking to short' are grouped continuation messages with no timestamps of their own; they follow 00:28 and 05:35 respectively. Note the sequencing: at 05:35 he says he is OUT at 2% profit and expects a rise, then in the same group says he is looking to SHORT 68.600-68.800, then at 05:50 tells everyone to be in short."
+}

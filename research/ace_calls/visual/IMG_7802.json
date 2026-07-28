@@ -1,0 +1,93 @@
+{
+  "file": "IMG_7802",
+  "kind": "chat",
+  "transcript": "22:23\n99\n#🔒 📓-ace-journals >\n\nAce  79k is what am i looking at.. atm 🖼\nAce 13/03/2026, 23:56\nAfter\n\n[attached chart image]\n₿ Bitcoin/USD Tether Perpetual C...\n72,107.4  +1,625.0 (+2.31%)\n91,738.8\n90,608.9\n89,239.5\n89,027.3\n88,000.0\n85,148.0\n85,126.6\n84,000.0\n82,490.4\n82,000.0\n80,905.2\n80,000.0\n78,000.0\n74,617.4\n74,617.0\n74,577.3\n73,773.7\n72,107.4\n07:52\n70,000.0\n69,361.4\n69,011.1\n68,051.6\n66,000.0\n65,174.3\n64,000.0\n62,694.3\n62,656.5\n62,620.5\n60,000.0\n59,549.6\n59,515.7\n58,000.0\n56,000.0\nTradingView\nMar  5  9  13  17\nPUMPUS…\nBTCUSD…  2H\nAVAXUS…\nWatchlist   Chart   Explore   Community   Menu\n\n❤️ 4\n\nLook at how beautiful everything is playing out ❤️\n❤️ 3\n\n14 March 2026\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "79k is what am i looking at.. atm"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-13 23:56",
+      "text": "After"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Look at how beautiful everything is playing out ❤️"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual C... (toolbar shows BTCUSD…, i.e. BTCUSDT perpetual)",
+    "timeframe": "2H",
+    "venue": null,
+    "last_price": 72107.4,
+    "drawn_levels": [
+      {"price": 91738.8, "colour": "red", "role": "level (tag clipped at top edge)"},
+      {"price": 90608.9, "colour": "red", "role": "level"},
+      {"price": 89239.5, "colour": "grey", "role": "level"},
+      {"price": 89027.3, "colour": "green", "role": "solid green horizontal line spanning the full chart (upper)"},
+      {"price": 85148.0, "colour": "grey", "role": "level"},
+      {"price": 85126.6, "colour": "cyan", "role": "cyan dashed horizontal line"},
+      {"price": 82490.4, "colour": "cyan", "role": "cyan dashed horizontal line"},
+      {"price": 80905.2, "colour": "red", "role": "level"},
+      {"price": 74617.4, "colour": "teal/green", "role": "level"},
+      {"price": 74617.0, "colour": "teal/green", "role": "level"},
+      {"price": 74577.3, "colour": "cyan", "role": "cyan dashed line = top of the green box (target)"},
+      {"price": 73773.7, "colour": "teal/green", "role": "level (bottom of grey band)"},
+      {"price": 72107.4, "colour": "red", "role": "live price tag with bar countdown 07:52 (dotted current-price line)"},
+      {"price": 69361.4, "colour": "red", "role": "level"},
+      {"price": 69011.1, "colour": "green", "role": "solid green horizontal line spanning the full chart (lower)"},
+      {"price": 68051.6, "colour": "grey", "role": "shading boundary inside the green box"},
+      {"price": 65174.3, "colour": "teal", "role": "level"},
+      {"price": 62694.3, "colour": "cyan", "role": "cyan dashed line = boundary between green box and pink box"},
+      {"price": 62656.5, "colour": "grey", "role": "level"},
+      {"price": 62620.5, "colour": "grey", "role": "level"},
+      {"price": 59549.6, "colour": "red", "role": "level (pink box bottom area)"},
+      {"price": 59515.7, "colour": "red", "role": "level (pink box bottom area)"}
+    ],
+    "drawn_objects": [
+      "long position tool style box: green/teal profit box from 62,694.3 up to 74,577.3, pink loss box from 62,694.3 down to approx 59,515.7; internal shading boundary at 68,051.6",
+      "grey horizontal band running to the right edge between approx 73,773.7 and 74,617",
+      "hand-drawn black zig-zag over realised price: up from the swing low at the 62,694 line to the peak near 74,000, down to the low near 65,600, then the big rally leg",
+      "hand-drawn black projection arrow rising steeply from that low, through 72,000 and past the 78,000 gridline, tip at roughly the 79,000 area (untagged)",
+      "grey dashed rising diagonal trendline from lower-left up to the 68,000 area",
+      "cyan dashed full-width horizontal lines at 85,126.6, 82,490.4, 74,577.3 and 62,694.3",
+      "solid green full-width horizontal lines at 89,027.3 and 69,011.1",
+      "dotted full-width current-price line at 72,107.4"
+    ],
+    "visible_date_range": "1 March to approximately 18 March 2026 (x-axis labels: Mar, 5, 9, 13, 17); the last real candle sits near 13-14 March and the arrow runs into the blank future space",
+    "what_the_drawing_says": "The 'After' proof shot: the low near 65-66k held exactly where the arrow said it would, price has run to 72,107.4 (+2.31%) and is now printing straight up the drawn arrow toward the ~79k tip, with 73,773-74,617 the grey band immediately overhead."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "79k is what am i looking at.. atm"
+  ],
+  "boasts": [
+    "Look at how beautiful everything is playing out ❤️"
+  ],
+  "indicators": [
+    "long position tool (green profit box / pink loss box)",
+    "horizontal support and resistance levels (cyan dashed, green solid, red, grey, teal)",
+    "rising dashed diagonal trendline",
+    "grey supply band",
+    "hand-drawn projection arrow / zig-zag path"
+  ],
+  "confidence": "high",
+  "notes": "This is the scroll continuation of IMG_7801 and shows the same 'After' chart in full, which resolves two things left null there: the timeframe is 2H (toolbar reads 'BTCUSD… 2H') and the x-axis runs Mar / 5 / 9 / 13 / 17 in 2026. Both green horizontal lines are now visible in one frame (89,027.3 and 69,011.1), confirming they are separate drawings and not the same line re-labelled between IMG_7798 and IMG_7801. The exchange/venue is still not shown - the symbol label is truncated as 'Bitcoin/USD Tether Perpetual C...' - so venue is null. The projection arrow tip carries no price tag; the ~79k reading is an axis inference and is not recorded as a numeric level. 'Look at how beautiful everything is playing out ❤️' is a grouped follow-up message with no repeated header, so its timestamp is null (it sits between the 13/03 23:56 message and the '14 March 2026' divider, so it was posted on 13 March). Watchlist tickers behind the toolbar are only partly legible ('PUMPUS…', 'AVAXUS…')."
+}

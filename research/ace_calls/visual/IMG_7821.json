@@ -1,0 +1,89 @@
+{
+  "file": "IMG_7821",
+  "kind": "chat",
+  "transcript": "22:24\n#🔒 📓 -ace-journals >\n99\n\nAce 30/03/2026, 08:30\nI'm not surprised by this its back at my entry if 67.130 is broken we will see 68k be prepared\nI'm shorting.\nLook here closely\n[chart image: BTCUSDT Perpetual Contract · 1h · Bybit  O65,990.7 H67,049.6 L65,747.8 C66,533.6 +542.9 (+0.82%) | 66,532.0 SELL  0.1  66,532.1 BUY | 4 | USDT | axis: 68,800.0  68,400.0  68,000.0  67,600.0  67,200.0  66,800.0  66,533.6 26:27  66,000.0  65,600.0  65,200.0  64,800.0  64,400.0  64,000.0  63,885.1  63,600.0 | time axis: 12:30 25 12:30 26 12:30 27 12:30 28 12:30 29 12:30 30 12:30 31 12:30 Apr 12:30 | Thu 02 Apr '26 20:30]\nI knew this was coming to scare the mass, relax we gonna be fine lol 👑\n\nAce  it might will goto 68k and dump pls be patient\nAce 30/03/2026, 08:42\nChances of that happening is very Low ... Pls do not freak out\n🧑‍🍳 2\n\nNow what's gonna happen is basically we going to trade side ways till NYC OPENS & Dumps in asian Good night !!! 👑\n\nAce 30/03/2026, 08:51\nJust Pay - tience\n🤝 2\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-30 08:30",
+      "text": "I'm not surprised by this its back at my entry if 67.130 is broken we will see 68k be prepared"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-30 08:30",
+      "text": "I'm shorting."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-30 08:30",
+      "text": "Look here closely"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "I knew this was coming to scare the mass, relax we gonna be fine lol 👑"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-30 08:42",
+      "text": "Chances of that happening is very Low ... Pls do not freak out"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Now what's gonna happen is basically we going to trade side ways till NYC OPENS & Dumps in asian Good night !!! 👑"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-30 08:51",
+      "text": "Just Pay - tience"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "BTCUSDT Perpetual Contract",
+    "timeframe": "1h",
+    "venue": "Bybit",
+    "last_price": 66533.6,
+    "drawn_levels": [
+      {"price": null, "colour": "grey", "role": "upper resistance line 1 (upper of a tight pair); sits just ABOVE the readable 67,200.0 gridline"},
+      {"price": null, "colour": "grey", "role": "upper resistance line 2 (lower of the tight pair); sits just BELOW the readable 67,200.0 gridline"},
+      {"price": null, "colour": "grey", "role": "lower support line 1 (upper of a tight pair); sits just ABOVE the readable 66,000.0 gridline"},
+      {"price": null, "colour": "grey", "role": "lower support line 2 (lower of the tight pair); sits just BELOW the readable 66,000.0 gridline"}
+    ],
+    "drawn_objects": [
+      "four plain grey horizontal rays, drawn as two tight pairs (a band near 67.2k and a band near 66.0k) - i.e. two zones rather than two single lines",
+      "upper pair extends to the right edge of the chart (forward-projected); lower pair terminates before the right edge",
+      "order-entry widget top-left: 66,532.0 SELL / 0.1 / 66,532.1 BUY (platform UI, not a drawing)",
+      "crosshair tags: price 63,885.1 and time Thu 02 Apr '26 20:30 (cursor position, not a drawn level)"
+    ],
+    "visible_date_range": "approx 24/25 March - 2 April 2026 (x-axis day ticks 25, 26, 27, 28, 29, 30, 31, Apr; last candle around 30 March)",
+    "what_the_drawing_says": "Two horizontal zones bracket price: a supply/resistance band around 67.1-67.3k projected forward to the right, and a demand/support band around 65.9-66.1k that price is currently wicking through. Read as a range: sell the upper band, expect reaction at the lower band - consistent with his text that a break of 67.130 opens 68k."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "if 67.130 is broken we will see 68k be prepared",
+    "I'm shorting.",
+    "Chances of that happening is very Low ... Pls do not freak out",
+    "Now what's gonna happen is basically we going to trade side ways till NYC OPENS & Dumps in asian Good night !!!"
+  ],
+  "boasts": [
+    "I'm not surprised by this its back at my entry",
+    "I knew this was coming to scare the mass, relax we gonna be fine lol"
+  ],
+  "indicators": ["horizontal support/resistance zones", "session timing (NYC open / asian session)"],
+  "confidence": "high",
+  "notes": "Chart header read at 3x upscale and is unambiguous: BTCUSDT Perpetual Contract, 1h, Bybit, O65,990.7 H67,049.6 L65,747.8 C66,533.6 +542.9 (+0.82%); last-price tag 66,533.6 with a 26:27 bar countdown. IMPORTANT: the four horizontal lines he DREW carry NO price-axis tags - they are plain grey rays, so no price can be read for them and all four are recorded as null. From pixel interpolation against the readable 67,200.0 / 66,800.0 / 66,000.0 gridlines the pair sits at roughly 67.28k and 67.11k (upper) and roughly 66.12k and 65.87k (lower), but these are ESTIMATES derived from pixel position, not values read off the image, and must not be used as prices. The estimated lower-upper line (~67.11k) is close to the 67.130 he names in text, which is a plausible but unconfirmed correspondence. The black 63,885.1 tag with a plus icon and the 'Thu 02 Apr '26 20:30' tag are crosshair readouts, not drawn levels. 'I knew this was coming...' and 'Now what's gonna happen...' are grouped continuation messages with no timestamps of their own. 'Just Pay - tience' is transcribed exactly as written (his spacing of 'Patience'). Reaction emoji counts: heart-less here - 🧑‍🍳 2 and 🤝 2."
+}

@@ -1,0 +1,70 @@
+{
+  "file": "IMG_7799",
+  "kind": "chat",
+  "transcript": "22:22\n99\n#🔒 📓-ace-journals >\n\nAce 09/03/2026, 21:44\nI'm heavy on link & i didn't pull my money out yet\n\nAce 09/03/2026, 22:33\nI shorted btc at this level at 40x lv, I remember doing it all by myself alone… I understand this market better than anybody else in this whole world\n\n• and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link\n\nI'm the greatest trader alive no doubt\n\n[attached screenshot]\n<   You\n11/10/25, 3:55 AM\n✏️  ⋯\n\noneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30\nBitcoin / TetherUS PERPETUAL CONTRACT · 12h · Binance  O121,493.2  H122,497.0  L101,516.5  C112,811.3  −8,681.9 (−7.15%)\n150,000.0\n140,000.0\n130,000.0\n120,000.0\n113,871.3\n112,811.3\n01:35:30\n100,000.0\n88,9…\n80,0…\n70,000.0\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-09 21:44",
+      "text": "I'm heavy on link & i didn't pull my money out yet"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-09 22:33",
+      "text": "I shorted btc at this level at 40x lv, I remember doing it all by myself alone… I understand this market better than anybody else in this whole world\n\n• and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link\n\nI'm the greatest trader alive no doubt"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin / TetherUS PERPETUAL CONTRACT (BTCUSDT.P)",
+    "timeframe": "12h",
+    "venue": "Binance",
+    "last_price": 112811.3,
+    "drawn_levels": [
+      {"price": 113871.3, "colour": "black", "role": "horizontal line (upper), black axis tag"},
+      {"price": null, "colour": "purple/violet", "role": "shaded horizontal band that the drawn arrow points into, sitting between the 100,000 gridline and the 88,9xx line; no price tag rendered so the band's price is unreadable"},
+      {"price": null, "colour": "black", "role": "lower horizontal line; axis tag reads '88,9' before being covered by the app's scroll-to-bottom button, so only the first three digits are legible"}
+    ],
+    "drawn_objects": [
+      "hand-drawn black zig-zag projection to the right of live price: down from around the 113,871 line, a small bounce, then a longer leg down ending in an arrowhead inside the purple band (roughly the 96,000 area on the axis, untagged)",
+      "black horizontal line at 113,871.3 spanning the chart",
+      "purple/violet shaded horizontal band (untagged) below 100,000",
+      "black horizontal line at 88,9xx spanning the chart",
+      "red live-price tag 112,811.3 with bar countdown 01:35:30"
+    ],
+    "visible_date_range": null,
+    "what_the_drawing_says": "A short setup: from the 113.8k line the drawn arrow projects a lower-high then a slide down into the purple band in the mid-90ks, i.e. price rejects the highs and mean-reverts roughly 15% lower. The OHLC line already shows a −7.15% 12h candle.",
+    "chart_created_label": "oneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30",
+    "ohlc_line": {"open": 121493.2, "high": 122497.0, "low": 101516.5, "close": 112811.3, "change": -8681.9, "change_pct": -7.15}
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC", "LINK", "XRP"],
+  "claims": [
+    "I'm heavy on link & i didn't pull my money out yet",
+    "I shorted btc at this level at 40x lv",
+    "and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link"
+  ],
+  "boasts": [
+    "I remember doing it all by myself alone…",
+    "I understand this market better than anybody else in this whole world",
+    "I'm the greatest trader alive no doubt"
+  ],
+  "indicators": [
+    "horizontal support/resistance lines (black)",
+    "purple supply/demand band",
+    "hand-drawn projection arrow"
+  ],
+  "confidence": "high",
+  "notes": "The attached image is a screenshot-of-a-screenshot: it carries an iOS-style share header reading '< You  11/10/25, 3:55 AM' (DD/MM/YY = 11 October 2025), and the TradingView watermark inside reads 'oneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30'. So the chart evidencing 'I shorted btc at this level at 40x lv' is from 11 Oct 2025, five months before the 2026-03-09 Discord post. The purple band has no price tag at all and the lower black line's tag is partly hidden behind the app's scroll-to-bottom button ('88,9' is all that is legible) - both recorded as null rather than guessed. The chart image is cut off at the bottom edge of the screen, so lower axis labels and any x-axis dates are not visible. The 40x leverage and short entry are claims in text; the chart shows no exchange position panel to verify them."
+}

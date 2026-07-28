@@ -1,0 +1,90 @@
+{
+  "file": "IMG_7818",
+  "kind": "chat",
+  "transcript": "22:24\n#⚡ 📓-ace-journals >\n99\n[CHART IMAGE]\nBitcoin/USD Tether Perpetual C...\n69,194.1 −2,109.9 (−2.96%)\n82,000.0\n80,905.2\n80,000.0\n78,000.0\n74,939.5\n74,617.4\n74,617.0\n74,577.3\n74,428.4\n73,773.7\n72,000.0\n71,172.9\n69,361.4\n69,194.1\n22:19\n69,011.1\n68,051.6\n66,000.0\n65,174.3\n64,000.0\n62,694.3\n62,656.5\n62,620.5\n60,000.0\n59,549.6\n59,515.7\n21  23  25  27  29\nPUMPUS...\nBTCUSD   1H\nAVAXUS...\nWatchlist  Chart  Explore  Community  Menu\nHere look closely, this is what we call a zone area where the scoop most likely to happen... 69k-68.1k was the level for the scoop... like wise CME gaps get filled same as bearish order blocks time to time depending on the momentum\n[reply to] Ace  Rejected bearish orderblock at 69k green line now we will flow\nAce  27/03/2026, 04:44\nWhen bearish order blocks get rejected it\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Here look closely, this is what we call a zone area where the scoop most likely to happen... 69k-68.1k was the level for the scoop... like wise CME gaps get filled same as bearish order blocks time to time depending on the momentum"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 04:44",
+      "text": "When bearish order blocks get rejected it"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BTCUSD / BTCUSDT.P)",
+    "timeframe": "1H",
+    "venue": null,
+    "last_price": 69194.1,
+    "drawn_levels": [
+      {"price": 80905.2, "colour": "red", "role": "level"},
+      {"price": 74939.5, "colour": "red", "role": "level"},
+      {"price": 74617.4, "colour": "teal/dark green", "role": "level"},
+      {"price": 74617.0, "colour": "teal/dark green", "role": "level"},
+      {"price": 74577.3, "colour": "blue/cyan", "role": "dashed cyan level at the top of the grey supply band"},
+      {"price": 74428.4, "colour": "grey", "role": "top of the grey supply band"},
+      {"price": 73773.7, "colour": "teal/dark green", "role": "bottom of the grey supply band"},
+      {"price": 71172.9, "colour": "teal/dark green", "role": "level"},
+      {"price": 69361.4, "colour": "red", "role": "level just above the last price - the 'bearish orderblock at 69k' area"},
+      {"price": 69194.1, "colour": "teal/green", "role": "last price label with bar countdown 22:19; green dotted horizontal line"},
+      {"price": 69011.1, "colour": "light green", "role": "the solid GREEN horizontal line running the full chart width - Ace's 'green line' (confirmed by interpolating the 72,000/66,000 gridlines: line measures ~68,920-69,040)"},
+      {"price": 68051.6, "colour": "grey", "role": "lower bound of the grey 'zone area' / scoop zone"},
+      {"price": 65174.3, "colour": "teal/dark green", "role": "level"},
+      {"price": 62694.3, "colour": "blue/cyan", "role": "dashed cyan horizontal level"},
+      {"price": 62656.5, "colour": "grey", "role": "entry line of a long position tool"},
+      {"price": 62620.5, "colour": "grey", "role": "entry line of a second overlapping long position tool"},
+      {"price": 59549.6, "colour": "red", "role": "stop of a long position tool"},
+      {"price": 59515.7, "colour": "red", "role": "stop of the second overlapping long position tool"}
+    ],
+    "drawn_objects": [
+      "solid green horizontal line at 69,011.1 (the 'green line') running the full width",
+      "green dotted last-price line at 69,194.1",
+      "grey supply band spanning the full width, 73,773.7 to 74,428.4, capped by the dashed cyan 74,577.3",
+      "grey shaded 'zone area' rectangle roughly Mar 22 - Mar 29, approximately 68,050 to 68,750 (bottom aligned with the 68,051.6 tag), with a black hand-drawn dashed line running through the middle of it (~68,450)",
+      "hand-drawn black solid horizontal line above price spanning approx Mar 23 - Mar 27, at approximately 72,250 (no price tag)",
+      "hand-drawn black solid horizontal line below price spanning approx Mar 23 - Mar 29, at approximately 67,450 (no price tag)",
+      "dashed cyan horizontal line at 62,694.3 below price",
+      "no hand-drawn projection arrows in this frame (they are gone / scrolled off compared with IMG_7815)"
+    ],
+    "visible_date_range": "approx Mar 20 - Mar 29 2026 (x-axis ticks 21, 23, 25, 27, 29)",
+    "what_the_drawing_says": "BTC broke down from the 73.8k-74.4k grey supply band and is now chopping around the solid green line at 69,011 with a grey 'scoop' accumulation zone drawn just underneath (~68.05k-68.75k, bisected by a dashed line) and hand-drawn black rails bracketing the range at roughly 72,250 above and 67,450 below. The message names the same zone as '69k-68.1k'."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "this is what we call a zone area where the scoop most likely to happen",
+    "69k-68.1k was the level for the scoop",
+    "like wise CME gaps get filled same as bearish order blocks time to time depending on the momentum",
+    "When bearish order blocks get rejected it"
+  ],
+  "boasts": [
+    "Here look closely, this is what we call a zone area where the scoop most likely to happen"
+  ],
+  "indicators": [
+    "green line (solid horizontal at 69,011.1)",
+    "zone area / scoop zone (69k-68.1k)",
+    "bearish order block",
+    "CME gap fill",
+    "grey supply band 73.8k-74.4k",
+    "dashed cyan horizontal levels",
+    "momentum",
+    "hand-drawn range rails"
+  ],
+  "confidence": "high",
+  "notes": "Important read: the solid green horizontal line - the 'green line' Ace repeatedly trades off - sits at 69,011.1, not at 69,361.4. Verified by linear interpolation between the plain 72,000.0 and 66,000.0 gridline labels (the line measures ~68,920-69,040, i.e. the light-green 69,011.1 tag); 69,361.4 is a separate red level immediately above. NOTE: the same green line appears in IMG_7815 and IMG_7812 where colliding tags made it look like 69,361.4 - the IMG_7815 record has been annotated accordingly. Last price is unambiguous: teal label '69,194.1' with countdown '22:19', matching the header quote 69,194.1 −2,109.9 (−2.96%). Timeframe from the TradingView footer ('BTCUSD  1H'); no venue string is legible (the title is truncated as 'Perpetual C...'). The two hand-drawn black horizontal lines and the grey zone box carry NO price tags - the ~72,250, ~67,450 and ~68,050-68,750 figures are interpolated from the gridlines and are approximations, flagged as such rather than presented as read values. The 'Here look closely...' message has no visible author/timestamp header (Discord grouped it under the preceding 27/03 04:40 message seen in IMG_7817), so its timestamp is left null. The greyed line above the 04:44 message is a reply-quote of the 27/03 02:01 message. The 04:44 message is cut off mid-sentence at the bottom of the frame ('When bearish order blocks get rejected it' - continues below). Faint watchlist rows 'PUMPUS...' and 'AVAXUS...' bleed through behind the footer. No reaction counts visible."
+}

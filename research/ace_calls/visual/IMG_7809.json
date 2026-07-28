@@ -1,0 +1,113 @@
+{
+  "file": "IMG_7809",
+  "kind": "chat",
+  "transcript": "22:23\n99\n#-ace-journals\n\nAce Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look close...\nAce 17/03/2026, 19:51\nxrp at 1.38 was a steal\n👍 4\n\nNot forcing any trade... until 79-81k big week for crypto as usual\n👍 4\n\n18 March 2026\n\nAce Current thoughts about BTC 🤴 [image]\nAce 18/03/2026, 19:46\nFOMC - We Gonna Drop a bit, Finest trade fr ... but had to buy a watch so i exit 🤴\n\nAce 18/03/2026, 19:57\nThis month is so crucial - Starting of Q2 ( I can't even tell you guys how excited I'm )\n\nAce Current thoughts about BTC 🤴 [image]\nAce 18/03/2026, 22:59\nWell the thought was right ❤️😏 undefeated\n\n[attached chart, only the top sliver visible]\nMar 18, 2026 20:27 UTC+5:30\nBitcoin/USD Tether Perpetual Contract · 2h · BingX...\n82,490.4\n80,905.2\n80,000.0\n78,000.0\n74,939.5\n74,617.4\n74,617.0\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:51",
+      "text": "xrp at 1.38 was a steal"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:51",
+      "text": "Not forcing any trade... until 79-81k big week for crypto as usual"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-18 19:46",
+      "text": "FOMC - We Gonna Drop a bit, Finest trade fr ... but had to buy a watch so i exit 🤴"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-18 19:57",
+      "text": "This month is so crucial - Starting of Q2 ( I can't even tell you guys how excited I'm )"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-18 22:59",
+      "text": "Well the thought was right ❤️😏 undefeated"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BTCUSDT perpetual)",
+    "timeframe": "2h",
+    "venue": "BingX (chart subtitle reads 'Bitcoin/USD Tether Perpetual Contract · 2h · BingX...'); charting app is TradingView, timezone UTC+5:30",
+    "last_price": null,
+    "drawn_levels": [
+      {
+        "price": 82490.4,
+        "colour": "cyan/blue",
+        "role": "full-width cyan DASHED horizontal line across the top of the visible sliver - same level as in IMG_7807"
+      },
+      {
+        "price": 80905.2,
+        "colour": "red",
+        "role": "level tag; no line segment visible in the sliver"
+      },
+      {
+        "price": 74939.5,
+        "colour": "red",
+        "role": "level tag; same value as the short-position STOP in IMG_7807"
+      },
+      {
+        "price": 74617.4,
+        "colour": "teal/green",
+        "role": "level tag; same value as in IMG_7807"
+      },
+      {
+        "price": 74617.0,
+        "colour": "teal/green",
+        "role": "level tag; same value as in IMG_7807"
+      }
+    ],
+    "drawn_objects": [
+      "Hand-drawn black UP arrow on the left of the visible sliver, tip pointing up-right into the ~78k+ area (the upper part of the same freehand arrow seen in IMG_7807).",
+      "Crosshair/date readout at top-left: 'Mar 18, 2026 20:27 UTC+5:30'.",
+      "A single small candle (green body with a red wick segment) visible low-centre; the rest of the visible sliver is empty air above the price action."
+    ],
+    "visible_date_range": "Not readable - the time axis is below the screen edge. The crosshair readout is stamped Mar 18, 2026 20:27 UTC+5:30.",
+    "what_the_drawing_says": "Only the empty upper region of the chart (roughly 74.6k to 82.5k) is on screen, so no trade structure can be read here. It carries the same drawn levels as the IMG_7807 chart - the cyan dashed 82,490.4 ceiling and the 80,905.2 / 74,939.5 / 74,617.x tags - plus the top of the same freehand up arrow, confirming this is an updated snapshot of the same BTC layout one day later."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": [
+    "BTC",
+    "XRP"
+  ],
+  "claims": [
+    "Not forcing any trade... until 79-81k big week for crypto as usual",
+    "FOMC - We Gonna Drop a bit",
+    "This month is so crucial - Starting of Q2",
+    "Well the thought was right"
+  ],
+  "boasts": [
+    "xrp at 1.38 was a steal",
+    "Finest trade fr",
+    "but had to buy a watch so i exit 🤴",
+    "Well the thought was right ❤️😏 undefeated",
+    "Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look close..."
+  ],
+  "indicators": [
+    "cyan dashed line 82,490.4",
+    "hand-drawn up arrow",
+    "79-81k zone (named in text)"
+  ],
+  "confidence": "high",
+  "notes": "HIGH-VALUE DETAIL: this is the first image in this batch that names the VENUE. The chart subtitle reads 'Bitcoin/USD Tether Perpetual Contract · 2h · BingX...' - so the BTC charts (including the fully-drawn one in IMG_7807, which carries the identical level tags 82,490.4 / 80,905.2 / 74,939.5 / 74,617.4 / 74,617.0) are BingX BTCUSDT perpetual on a 2h timeframe. The crosshair readout also fixes the chart timezone as UTC+5:30 and the snapshot time as Mar 18, 2026 20:27 - note this is ~2.5h BEFORE the 22:59 message it is attached to. Chat text is fully legible (high confidence); the chart is NOT - only its top sliver is above the screen edge, showing empty air above the price, one lone candle and the upper part of the freehand up arrow, so no last price, time axis or trade structure could be read and those fields are null. 80,000.0 and 78,000.0 are plain grey axis gridlines and are deliberately EXCLUDED from drawn_levels. The ' ... ' in 'Finest trade fr ... but had to buy a watch' is Ace's own ellipsis, not app truncation - the message continues on the next line. Both 'Ace Current thoughts about BTC 🤴 [image]' lines are reply previews quoting his earlier 17/03 18:24 post (the IMG_7807 chart), not new statements, so they are in the transcript but not in 'statements'. The first two lines are a repeat of the end of IMG_7808 (consecutive scroll). FACTUAL ODDITY worth flagging for the later analysis, recorded verbatim without correction: on 18 March he writes 'This month is so crucial - Starting of Q2' - March is Q1, not the start of Q2. Also note the sequence 17/03 19:37 'going to buy a watch' -> 18/03 19:46 'but had to buy a watch so i exit', i.e. the watch purchase is repeatedly given as the exit rationale. Spelling/grammar left verbatim ('how excited I'm').",
+  "unclear_fields": [
+    "chart.last_price",
+    "chart.visible_date_range"
+  ]
+}

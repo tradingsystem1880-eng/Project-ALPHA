@@ -1,0 +1,103 @@
+{
+  "file": "IMG_7817",
+  "kind": "chat",
+  "transcript": "22:24\n#⚡ 📓-ace-journals >\n99\nAce  26/03/2026, 21:22\nMy bad i was driving.. so what I'm thinking atm on the reverse side btc is creating a double down we might will see 70400 if that rejected 72220 nice 10 % move since tbh since last night { Personally speaking I'm looking for 49k } but i need strong momentum\nI'm just reacting towards the market - ACE 🤴\nMarkets are super shit - right now\n27 March 2026\n[reply to] Ace  Shorts activated - after closing at green line last night ( shorting until 66k - green line is no jo... 🖼\nAce  27/03/2026, 02:01\nRejected bearish orderblock at 69k green line now we will flow\nI'm happy you guys took TP1 at green line\nNo need to trade just chill and have 20-30% short still flow\ntake the rest around 68's ish level\nAce  27/03/2026, 04:40\nLet me teach you all something which most of the time traders don't see it while trading, CME gaps liquidity and sweep is all bs\n[CHART IMAGE, top portion only]\nBitcoin/USD Tether Perpetual C...\n69,194.1 −2,109.9 (−2.96%)\n82,000.0\n80,905.2\n80,000.0\n78,000.0\n74,939.5\n74,617.4\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-26 21:22",
+      "text": "My bad i was driving.. so what I'm thinking atm on the reverse side btc is creating a double down we might will see 70400 if that rejected 72220 nice 10 % move since tbh since last night { Personally speaking I'm looking for 49k } but i need strong momentum"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-26 21:22",
+      "text": "I'm just reacting towards the market - ACE 🤴"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-26 21:22",
+      "text": "Markets are super shit - right now"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 02:01",
+      "text": "Rejected bearish orderblock at 69k green line now we will flow"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 02:01",
+      "text": "I'm happy you guys took TP1 at green line"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 02:01",
+      "text": "No need to trade just chill and have 20-30% short still flow"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 02:01",
+      "text": "take the rest around 68's ish level"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 04:40",
+      "text": "Let me teach you all something which most of the time traders don't see it while trading, CME gaps liquidity and sweep is all bs"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BTCUSDT.P)",
+    "timeframe": null,
+    "venue": null,
+    "last_price": 69194.1,
+    "drawn_levels": [
+      {"price": 80905.2, "colour": "red", "role": "level"},
+      {"price": 74939.5, "colour": "red", "role": "level"},
+      {"price": 74617.4, "colour": "teal/dark green", "role": "level (partially clipped at the bottom of the crop)"}
+    ],
+    "drawn_objects": [
+      "same persistent level stack as IMG_7812/7815/7816 (red 80,905.2, red 74,939.5, teal 74,617.4)"
+    ],
+    "visible_date_range": null,
+    "what_the_drawing_says": "Only a narrow top strip of the chart is in frame - BTC quoted 69,194.1 (−2,109.9, −2.96%) with the same red 80,905.2 and 74,939.5 reference tags far above spot. No candles, timeframe or dates readable."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "btc is creating a double down we might will see 70400 if that rejected 72220",
+    "nice 10 % move since tbh since last night",
+    "Personally speaking I'm looking for 49k",
+    "but i need strong momentum",
+    "Rejected bearish orderblock at 69k green line now we will flow",
+    "No need to trade just chill and have 20-30% short still flow",
+    "take the rest around 68's ish level",
+    "CME gaps liquidity and sweep is all bs"
+  ],
+  "boasts": [
+    "I'm just reacting towards the market - ACE 🤴",
+    "I'm happy you guys took TP1 at green line",
+    "Let me teach you all something which most of the time traders don't see it while trading, CME gaps liquidity and sweep is all bs"
+  ],
+  "indicators": [
+    "green line",
+    "bearish orderblock (69k)",
+    "double top / 'double down'",
+    "momentum",
+    "CME gaps (dismissed)",
+    "liquidity sweep (dismissed)",
+    "TP1 / partial profit taking (20-30% runner)"
+  ],
+  "confidence": "high",
+  "notes": "All message text is crisp; numbers 70400, 72220, 49k, 69k, 68's, 20-30% and the chart quote 69,194.1 / −2,109.9 / −2.96% were re-read at 4x zoom. The three lines under the 21:22 header and the four lines under the 02:01 header are separate Discord messages grouped under one timestamp - each is recorded as its own statement carrying the group timestamp. The greyed line above the 02:01 message is a reply-quote of the 25/03 20:44 message, not a new statement. '27 March 2026' is a day divider. The embedded chart is cut off by the bottom of the frame: no timeframe, venue, candles, drawn objects or date range are visible, and the axis labels 82,000.0 / 80,000.0 / 78,000.0 are plain gridlines, not drawn levels. No reaction counts visible on any message in this screenshot."
+}

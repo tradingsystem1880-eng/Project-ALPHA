@@ -1,0 +1,86 @@
+{
+  "file": "IMG_7808",
+  "kind": "chat",
+  "transcript": "22:23\n99\n#-ace-journals\n\nAce 17/03/2026, 19:25\nNote - keep mind everyone it has to reject hard of that grey zone just like it did last 2 times or I'm out\nwatching carefully rn not out yet\n\nAce 17/03/2026, 19:37\nokay i'm out since it enter the zone 73900 { profit is profit }... going to buy a watch\n🔥 1\nJust a small scalp\n\nAce 17/03/2026, 19:44\nJust want everybody to know... i was watching alts as i said everyone to take some profits as per safety { personally i took profits on btc/eth had rest of the bag riding } but on alts i'm still long xrp/link\n\n[position panel]\nPositions 3 | Orders 6 | Trades | Claims\nPOSITION | SIZE | NET VALUE | COLLATERAL | ENTRY PRICE | MARK PRICE | LIQUIDATION PRICE\nLINK/USD | $1,000,814.99 | $246,256.55 | $134,797.44 | $8.7933 | $9.7929 | $7.6577\n7.42x Long | Orders (1) | +$111,404.77 (+82.39%) | (134,810.12 USDC)\n\n✡️ 2\n\nAce Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look close...\nAce 17/03/2026, 19:51\nxrp at 1.38 was a steal\n👍 4\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:25",
+      "text": "Note - keep mind everyone it has to reject hard of that grey zone just like it did last 2 times or I'm out"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:25",
+      "text": "watching carefully rn not out yet"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:37",
+      "text": "okay i'm out since it enter the zone 73900 { profit is profit }... going to buy a watch"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:37",
+      "text": "Just a small scalp"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:44",
+      "text": "Just want everybody to know... i was watching alts as i said everyone to take some profits as per safety { personally i took profits on btc/eth had rest of the bag riding } but on alts i'm still long xrp/link"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 19:51",
+      "text": "xrp at 1.38 was a steal"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": true,
+    "symbol": "LINK/USD",
+    "side": "Long",
+    "leverage": "7.42x",
+    "entry": 8.7933,
+    "mark": 9.7929,
+    "liquidation": 7.6577,
+    "collateral": 134797.44,
+    "position_value": 1000814.99,
+    "unrealised_pnl": 111404.77
+  },
+  "assets": [
+    "LINK",
+    "BTC",
+    "XRP",
+    "ETH"
+  ],
+  "claims": [
+    "okay i'm out since it enter the zone 73900 { profit is profit }",
+    "i was watching alts as i said everyone to take some profits as per safety",
+    "personally i took profits on btc/eth had rest of the bag riding",
+    "but on alts i'm still long xrp/link",
+    "xrp at 1.38 was a steal"
+  ],
+  "boasts": [
+    "okay i'm out since it enter the zone 73900 { profit is profit }... going to buy a watch",
+    "xrp at 1.38 was a steal",
+    "Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look close..."
+  ],
+  "indicators": [
+    "the zone / grey zone (73900 named as its edge)"
+  ],
+  "confidence": "high",
+  "notes": "Chat text and the position panel are fully legible; panel values verified at 3x zoom. This screenshot RESOLVES the ambiguity flagged in IMG_7807: the 19:25 message is shown in full here and unambiguously reads 'just like it did last 2 times or I'm out' - the digit is 2. IMPORTANT CROSS-CHECK for the later analysis: at 19:25 he says he is out if the grey zone is not rejected; at 19:37 he says 'okay i'm out since it enter the zone 73900'. The grey zone measured off the IMG_7807 chart was ~73,774-74,577, so 73,900 sits INSIDE that band - the two are consistent. The LINK/USD position is the same one tracked across IMG_7805 (entry $8.7933 throughout, SIZE $1,000,814.99 throughout); here leverage has risen again to 7.42x with collateral down to $134,797.44 and mark $9.7929 (+$111,404.77 / +82.39%). Header again reads 'Positions 3' so two other positions exist off-panel. Venue is not named. The line 'Ace Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look close...' is a QUOTED/replied-to earlier Ace message shown as a reply preview (truncated with an ellipsis by the app), not a new message posted at this point in the scroll - it is recorded in the transcript and in boasts but deliberately NOT given a timestamp in 'statements'. One further message line is partially visible below the 👍 4 reaction, but only the top 1-2 pixel rows of its glyphs clear the 'Done reading?' banner - it is NOT transcribed because it cannot be read. The 19:37 and 19:44 blocks each contain an untimestamped continuation line from the same minute-group ('Just a small scalp'), attributed to the group's timestamp. The reaction on the position-panel message renders as a purple star-of-David-style emoji with count 2. Spelling and grammar left verbatim throughout ('since it enter the zone').",
+  "unclear_fields": [
+    "one further message line below the '👍 4' reaction is occluded by the banner and could not be read"
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "file": "IMG_7801",
+  "kind": "chat",
+  "transcript": "22:23\n99\n#🔒 📓-ace-journals >\n\nAce 13/03/2026, 23:27\nJust got out of the match... I'm quite most of the time even looking at what's goin on { when i posted we not going lower than 66k - most people thought they missed out when it went to 67.5-68k } what's the point ? Now you missed out on 6k move. Think wisely it's never been about money it's been always about your mental... It's all your decisions & emotions.\n❤️ 4\n\n@everyone\n\nAce  Tap to see attachment 🖼\nAce 13/03/2026, 23:38\n[attached position panel image]\nPositions 3   Orders 6   Trades   Claims\nPOSITION | SIZE | NET VALUE | COLLATERAL | ENTRY PRICE | MARK PRICE | LIQUIDATION PRICE\nLINK/USD\n5.78x Long\n$1,000,814.99\nOrders (1)\n$228,289.28\n+$55,008.72 (+31.64%)\n$173,009.79\n(173,020.01 USDC)\n$8.7933\n$9.3236\n$7.3219\n\nAce  79k is what am i looking at.. atm 🖼\nAce 13/03/2026, 23:56\nAfter\n\n[attached chart image]\n₿ Bitcoin/USD Tether Perpetual C...\n72,107.4  +1,625.0 (+2.31%)\n91,738.8\n90,608.9\n89,239.5\n89,027.3\n88,000.0\n85,148.0\n85,126.6\n84,000.0\n82,490.4\n82,000.0\n80,905.2\n80,000.0\n78,000.0\n74,617.4\n74,617.0\n74,577.3\n73,773.7\n72,107.4\n07:52\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-13 23:27",
+      "text": "Just got out of the match... I'm quite most of the time even looking at what's goin on { when i posted we not going lower than 66k - most people thought they missed out when it went to 67.5-68k } what's the point ? Now you missed out on 6k move. Think wisely it's never been about money it's been always about your mental... It's all your decisions & emotions."
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "@everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Tap to see attachment"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-13 23:38",
+      "text": "[image only: LINK/USD long position panel]"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "79k is what am i looking at.. atm"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-13 23:56",
+      "text": "After"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual C... (BTCUSDT perpetual)",
+    "timeframe": null,
+    "venue": null,
+    "last_price": 72107.4,
+    "drawn_levels": [
+      {"price": 91738.8, "colour": "red", "role": "level (tag partly cut off at the top edge of the crop)"},
+      {"price": 90608.9, "colour": "red", "role": "level"},
+      {"price": 89239.5, "colour": "grey", "role": "level"},
+      {"price": 89027.3, "colour": "green", "role": "solid green horizontal line spanning the full chart"},
+      {"price": 85148.0, "colour": "grey", "role": "level"},
+      {"price": 85126.6, "colour": "cyan", "role": "cyan dashed horizontal line"},
+      {"price": 82490.4, "colour": "cyan", "role": "cyan dashed horizontal line"},
+      {"price": 80905.2, "colour": "red", "role": "level"},
+      {"price": 74617.4, "colour": "teal/green", "role": "level"},
+      {"price": 74617.0, "colour": "teal/green", "role": "level"},
+      {"price": 74577.3, "colour": "cyan", "role": "cyan dashed line = top of the green box (target)"},
+      {"price": 73773.7, "colour": "teal/green", "role": "level (bottom of grey band)"},
+      {"price": 72107.4, "colour": "red", "role": "live price tag with bar countdown 07:52 (dotted current-price line)"}
+    ],
+    "drawn_objects": [
+      "same drawing set as IMG_7798, now with price having rallied: green/teal box whose top edge is the cyan dashed 74,577.3 line",
+      "grey horizontal band running right between approx 73,773.7 and 74,617",
+      "hand-drawn black projection arrow rising steeply from the prior low up past 78,000 toward roughly 79,000 (arrow tip untagged)",
+      "hand-drawn black zig-zag over the earlier peak and decline on the left of the frame",
+      "cyan dashed full-width horizontal lines at 85,126.6, 82,490.4 and 74,577.3",
+      "solid green full-width horizontal line at 89,027.3",
+      "dotted full-width current-price line at 72,107.4"
+    ],
+    "visible_date_range": null,
+    "what_the_drawing_says": "This is the 'After' snapshot of the same drawing he posted on 9 March: price has rallied from the ~66k low to 72,107.4 (+2.31% on the bar) and is tracking up the drawn arrow toward the ~79k target, with the 74,577.3 box top the next obstacle."
+  },
+  "position": {
+    "present": true,
+    "symbol": "LINK/USD",
+    "side": "Long",
+    "leverage": "5.78x",
+    "entry": 8.7933,
+    "mark": 9.3236,
+    "liquidation": 7.3219,
+    "collateral": 173009.79,
+    "position_value": 1000814.99,
+    "unrealised_pnl": 55008.72
+  },
+  "assets": ["BTC", "LINK"],
+  "claims": [
+    "when i posted we not going lower than 66k",
+    "Now you missed out on 6k move.",
+    "79k is what am i looking at.. atm"
+  ],
+  "boasts": [
+    "Just got out of the match... I'm quite most of the time even looking at what's goin on",
+    "most people thought they missed out when it went to 67.5-68k } what's the point ? Now you missed out on 6k move.",
+    "Think wisely it's never been about money it's been always about your mental... It's all your decisions & emotions."
+  ],
+  "indicators": [
+    "horizontal support/resistance levels (cyan dashed, green solid, red, grey, teal)",
+    "long position box / zone",
+    "hand-drawn projection arrow"
+  ],
+  "confidence": "high",
+  "notes": "The position panel is fully legible and is a dark-theme perp DEX UI (tabs: Positions 3, Orders 6, Trades, Claims) - the exchange name is not shown anywhere in the crop, only a small blue token icon, so the venue is not recorded. Position fields captured verbatim: LINK/USD 5.78x Long, SIZE $1,000,814.99 with 'Orders (1)', NET VALUE $228,289.28 with +$55,008.72 (+31.64%), COLLATERAL $173,009.79 (173,020.01 USDC), ENTRY $8.7933, MARK $9.3236, LIQUIDATION $7.3219. Note 'SIZE' here is the notional position value, not a token quantity, and 'unrealised_pnl' is taken from the +$55,008.72 figure. The BTC chart's timeframe and venue are not visible (symbol label truncated to 'Bitcoin/USD Tether Perpetual C...', no interval button in frame) and no x-axis dates are shown, so those are null. The 91,738.8 tag is clipped at the top of the frame but the digits are still readable. The projection arrow tip has no price tag; the ~79k reading is inferred from the axis and not recorded as a level. The '@everyone' highlighted row is a separate grouped message from Ace with no repeated timestamp, so its timestamp is null; likewise the two grey reply-quote previews."
+}

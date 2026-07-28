@@ -1,0 +1,68 @@
+{
+  "file": "IMG_7794",
+  "kind": "chat",
+  "transcript": "22:22\n[#] [lock] [notebook emoji] -ace-journals >\n\nAce  02/03/2026, 04:10\n#Altcoin dominance (monthly) has broken out, indicating a clear regime shift.\nOur signal framework is now flashing conditions last observed in June 2020.\n\n[attached TradingView chart, dark theme]\nbatman0001 created with TradingView.com, Mar 02, 2026 01:38 UTC+5:30\nOTHERS.D/BTC.D · 3W · CRYPTOCAP  O0.13% H0.13% L0.13% C0.13%  −0.00 (−0.29%)\n%\naxis: 0.50% 0.45% 0.40% 0.35% 0.30% 0.25% 0.24% 0.20% 0.15% 0.13% 0.13% 7d 4h 0.10% 0.05% 0.00%\nmeasure tooltip: 0.15 (160.73%) 15 / 27 bars, 553d\nx axis: 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025 2026 2027 2028 2029 2030\nTradingView\n\n[reply quote] Ace  MEMORANDUM Subject: Strategy Update: BTC/USDT Key Levels  Execution Summary  In li... [image icon]\nAce  02/03/2026, 07:07\nOkay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look closely blue and green line daily open 4H time frame. I'm not a day trader.\n\nBut incase you are a day trader blue line & green line where everything and all u need to look at..\n\n• 64.3k per btc I'm long 5x LV\n• I have a million dollar 6x lv position opened on link\n• I have bought insane amount of XRP at\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-02 04:10",
+      "text": "#Altcoin dominance (monthly) has broken out, indicating a clear regime shift.\nOur signal framework is now flashing conditions last observed in June 2020."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-02 07:07",
+      "text": "Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look closely blue and green line daily open 4H time frame. I'm not a day trader.\n\nBut incase you are a day trader blue line & green line where everything and all u need to look at..\n\n• 64.3k per btc I'm long 5x LV\n• I have a million dollar 6x lv position opened on link\n• I have bought insane amount of XRP at [message cut off at bottom of screenshot]"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "OTHERS.D/BTC.D (CRYPTOCAP)",
+    "timeframe": "3W",
+    "venue": "TradingView / CRYPTOCAP",
+    "last_price": 0.13,
+    "drawn_levels": [
+      {"price": 0.24, "colour": "white/light dashed", "role": "upper horizontal target line (0.24%) — the 2022/2023 highs level"},
+      {"price": null, "colour": "grey dashed", "role": "lower horizontal line at roughly the 0.10-0.11% multi-year base; the line itself carries no readable price tag"},
+      {"price": 0.13, "colour": "red dotted", "role": "last-price line / horizontal red level at 0.13%"}
+    ],
+    "drawn_objects": [
+      "blue measure/projection tool drawn from the current ~0.10% area up to the 0.24% line and forward into 2027-2028, tooltip '0.15 (160.73%) 15 / 27 bars, 553d'",
+      "grey shaded horizontal band around the 0.10% base",
+      "red/pink shaded band around the 0.13% level"
+    ],
+    "visible_date_range": "2015 - 2030 on the x axis (history to early 2026, projection into 2028)",
+    "what_the_drawing_says": "The altcoin-vs-bitcoin dominance ratio has spent years basing around 0.10-0.13% and he is projecting a move back to the 0.24% line — a +160.73% expansion over roughly 27 three-week bars (553 days), i.e. an extended altseason call rather than a trade."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC", "LINK", "XRP", "ALTCOINS"],
+  "claims": [
+    "#Altcoin dominance (monthly) has broken out, indicating a clear regime shift.",
+    "Our signal framework is now flashing conditions last observed in June 2020.",
+    "Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc, look closely blue and green line daily open 4H time frame.",
+    "But incase you are a day trader blue line & green line where everything and all u need to look at..",
+    "64.3k per btc I'm long 5x LV",
+    "I have a million dollar 6x lv position opened on link",
+    "I have bought insane amount of XRP at"
+  ],
+  "boasts": [
+    "Okay yes I'm {long} with Hefty amount already at avg rn sitting at 64.3k per btc",
+    "I'm not a day trader.",
+    "I have a million dollar 6x lv position opened on link",
+    "I have bought insane amount of XRP at",
+    "Our signal framework is now flashing conditions last observed in June 2020."
+  ],
+  "indicators": ["altcoin dominance OTHERS.D/BTC.D 3W", "horizontal dashed levels", "measure/projection tool", "blue line", "green line"],
+  "confidence": "high",
+  "notes": "The 07:07 message is a reply to the 01/03 MEMORANDUM (reply-quote header visible). It is cut off mid-bullet: 'I have bought insane amount of XRP at' — the price and any further bullets are below the fold. Position claims here are TEXT ONLY (no exchange position panel in this image), so the 'position' block is left present=false; the stated figures are BTC long, avg 64.3k, 5x leverage, plus a claimed $1m 6x LINK long. The lower dashed line on the dominance chart has no readable price tag, so its price is null (it sits at roughly the 0.10% gridline). The measure tooltip's trailing '15' on the first line is transcribed exactly as rendered; its meaning is not clear from the crop."
+}

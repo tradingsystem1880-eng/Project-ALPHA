@@ -1,0 +1,75 @@
+{
+  "file": "IMG_7813",
+  "kind": "chat",
+  "transcript": "22:24\n#⚡ 📓-ace-journals >\n99\nAce  21/03/2026, 02:42\nI actually just landed going home, stay away from longs @everyone\nAce  21/03/2026, 10:55\nLongs continues...\n22 March 2026\nAce  22/03/2026, 01:47\nNot trading currently We don't need to catch every move in the market 🤴 - Chilling relaxing spending profits - ACE\n🤝 3\nAce  22/03/2026, 16:46\nDump incoming, be careful @everyone\n🤴 3\n23 March 2026\nAce  23/03/2026, 19:11\nIt's consolidating at peak rn I'm out at entry\nOh my god\nAdding shorts...\nAce  23/03/2026, 19:20\nNo matter what we going to see 62k just a[obscured] pump to eliminate shorts & stop it out\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-21 02:42",
+      "text": "I actually just landed going home, stay away from longs @everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-21 10:55",
+      "text": "Longs continues..."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-22 01:47",
+      "text": "Not trading currently We don't need to catch every move in the market 🤴 - Chilling relaxing spending profits - ACE"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-22 16:46",
+      "text": "Dump incoming, be careful @everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-23 19:11",
+      "text": "It's consolidating at peak rn I'm out at entry\nOh my god\nAdding shorts..."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-23 19:20",
+      "text": "No matter what we going to see 62k just a[obscured] pump to eliminate shorts & stop it out"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "stay away from longs",
+    "Longs continues...",
+    "Dump incoming, be careful",
+    "It's consolidating at peak rn I'm out at entry",
+    "Adding shorts...",
+    "No matter what we going to see 62k just a[obscured] pump to eliminate shorts & stop it out"
+  ],
+  "boasts": [
+    "Not trading currently We don't need to catch every move in the market 🤴 - Chilling relaxing spending profits - ACE"
+  ],
+  "indicators": [],
+  "confidence": "high",
+  "notes": "All timestamps crisp (DD/MM/YYYY converted). Day dividers '22 March 2026' and '23 March 2026' recorded in the transcript but not as statements. The final message at 19:20 is partially covered by the floating scroll-down button: after 'we going to see 62k just a' one or two words are hidden before 'pump to eliminate shorts & stop it out' - marked [obscured] rather than guessed. The message may also continue below the visible crop. Reaction counts: 🤝 3 on the 22/03 01:47 message, 🤴 3 on the 22/03 16:46 message. No asset is named explicitly in these messages; BTC inferred from the '62k' figure and the surrounding BTC-only journal context, so treat the asset tag as contextual rather than read from the image. The 19:11 message contains three lines that Discord grouped under one timestamp; recorded as a single statement with line breaks."
+}

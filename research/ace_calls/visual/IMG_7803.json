@@ -1,0 +1,79 @@
+{
+  "file": "IMG_7803",
+  "kind": "chat",
+  "transcript": "22:23\n99\n#🔒 📓-ace-journals >\n\nAce 14/03/2026, 00:00\nI proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool..\n\nI try my best to make it less complicated ❤️💎 I appreciate & love all of you - ACE @everyone\n❤️ 7   🥹 2\n\nAce  I shorted btc at this level at 40x lv, I remember doing it all by myself alone… I unders… 🖼\nAce 14/03/2026, 08:47\nA lot of people would not believe it but let me just spoil it out for you guys btc rn even though i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED {  PPM } ...\n\nAce  After 🖼\nAce 14/03/2026, 08:55\nThat grey region is made for shorts ... I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm [pepe-with-crown-and-sunglasses emoji]\n\nAce 14/03/2026, 10:07\nEverything depends on the green line now\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 00:00",
+      "text": "I proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool..\n\nI try my best to make it less complicated ❤️💎 I appreciate & love all of you - ACE @everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "I shorted btc at this level at 40x lv, I remember doing it all by myself alone… I unders…"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 08:47",
+      "text": "A lot of people would not believe it but let me just spoil it out for you guys btc rn even though i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED {  PPM } ..."
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "After"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 08:55",
+      "text": "That grey region is made for shorts ... I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm [pepe-with-crown-and-sunglasses emoji]"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 10:07",
+      "text": "Everything depends on the green line now"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "I shorted btc at this level at 40x lv",
+    "btc rn even though i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED {  PPM } ...",
+    "That grey region is made for shorts ...",
+    "Everything depends on the green line now"
+  ],
+  "boasts": [
+    "I proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool..",
+    "I try my best to make it less complicated ❤️💎 I appreciate & love all of you - ACE",
+    "A lot of people would not believe it but let me just spoil it out for you guys",
+    "I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm [pepe-with-crown-and-sunglasses emoji]"
+  ],
+  "indicators": [
+    "grey region / grey band (described as 'made for shorts')",
+    "green line"
+  ],
+  "confidence": "high",
+  "notes": "Text-only screen, no chart or position panel of its own - the two grey reply-quote previews point back to the images already captured in IMG_7799 (the 40x short screenshot) and IMG_7801/7802 (the 'After' chart), and are recorded with timestamp null since grouped reply previews carry no timestamp. The 00:00 message sits on a highlighted @everyone background. The final message at 10:07 has its last word partially covered by the app's scroll-to-bottom button - only 'nov' is fully rendered, read as 'now'; there may also be further text below the visible area. The emoji ending the 08:55 message is a custom Discord emoji (Pepe wearing a crown and sunglasses) whose emoji name is not readable. 'PPM' in the 08:47 message is written exactly as shown, with a double space after the opening brace, and is not expanded anywhere in this image."
+}

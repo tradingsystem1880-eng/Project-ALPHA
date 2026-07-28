@@ -1,0 +1,90 @@
+{
+  "file": "IMG_7819",
+  "kind": "chat",
+  "transcript": "22:24\n#🔒 📓 -ace-journals >\n99\n\nAce 27/03/2026, 04:44\nWhen bearish order blocks get rejected it flows to zone area wait for confirmation to get filled a long the time\nSince it's filled so is my order way above the entry where I took profits until I see BTC at 49k\nHappy trading guys - ACE 👑\n❤️ 2\n\n@everyone\n\nAce  Shorts activated - after closing at green line last night ( shorting until 66k - green line is no jo... [image]\nAce 27/03/2026, 20:05\nMarket confirmed @everyone\n❤️ 2\n\nGreen line was no joke tbh that's why I been skeptical 🐸\nNot trading let the Q2 start & we smash\n\nAce 27/03/2026, 20:18\nWe will start fresh - I'll focus only on swing from now ∞👑\n\nAce  BTC went from 64 to 76k { ofc majority of people will sell into this levels } what I'm thinking ...\nAce 27/03/2026, 20:28\nLet me give you guys some beautiful intak[e]\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 04:44",
+      "text": "When bearish order blocks get rejected it flows to zone area wait for confirmation to get filled a long the time"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 04:44",
+      "text": "Since it's filled so is my order way above the entry where I took profits until I see BTC at 49k"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 04:44",
+      "text": "Happy trading guys - ACE 👑"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "@everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 20:05",
+      "text": "Market confirmed @everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Green line was no joke tbh that's why I been skeptical 🐸"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Not trading let the Q2 start & we smash"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 20:18",
+      "text": "We will start fresh - I'll focus only on swing from now ∞👑"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-27 20:28",
+      "text": "Let me give you guys some beautiful intak"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "Since it's filled so is my order way above the entry where I took profits until I see BTC at 49k",
+    "Not trading let the Q2 start & we smash",
+    "We will start fresh - I'll focus only on swing from now",
+    "Shorts activated - after closing at green line last night ( shorting until 66k - green line is no jo... [quoted reply preview, truncated]"
+  ],
+  "boasts": [
+    "Market confirmed",
+    "Green line was no joke tbh that's why I been skeptical",
+    "Let me give you guys some beautiful intak[e] [text cut off by UI]"
+  ],
+  "indicators": ["bearish order blocks", "zone area", "green line"],
+  "confidence": "high",
+  "notes": "Two quoted-reply previews are truncated by Discord's UI and could not be read in full: (1) 'Ace Shorts activated - after closing at green line last night ( shorting until 66k - green line is no jo...' with an attached image icon, and (2) 'Ace BTC went from 64 to 76k { ofc majority of people will sell into this levels } what I'm thinking ...'. The final message 'Let me give you guys some beautiful intak' is cut off at the right edge by the scroll-down button overlay; the last word is most likely 'intake' but the trailing characters are not readable. Messages 'Green line was no joke tbh that's why I been skeptical' and 'Not trading let the Q2 start & we smash' are grouped continuation messages with no visible timestamp of their own; they sit between 20:05 and 20:18 on 2026-03-27, so their timestamps are recorded as null. Numbers read: 49k, 66k (in the truncated quote), 64 and 76k (in the truncated quote)."
+}
