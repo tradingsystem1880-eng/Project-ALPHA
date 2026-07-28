@@ -65,23 +65,27 @@ Library: [`arch.bootstrap`](https://arch.readthedocs.io/en/latest/bootstrap/boot
 import numpy as np
 from arch.bootstrap import StationaryBootstrap, IIDBootstrap
 
+
 def max_drawdown(returns):
     eq = np.cumprod(1.0 + returns)
     peak = np.maximum.accumulate(eq)
     return np.min(eq / peak - 1.0)
+
 
 # Sequence risk via PERMUTATION (composition fixed)
 def permutation_mdd(returns, B=10000, rng=None):
     rng = rng or np.random.default_rng(42)
     return np.array([max_drawdown(rng.permutation(returns)) for _ in range(B)])
 
+
 # Distribution of MDD/CAGR via STATIONARY block bootstrap (preserves autocorr)
 def bootstrap_stat(returns, stat_fn, block=5, reps=10000):
     bs = StationaryBootstrap(block, returns)
     return np.array([stat_fn(d[0][0]) for d in bs.bootstrap(reps)])
 
+
 mdd_dist = bootstrap_stat(returns, max_drawdown, block=5)
-print(np.percentile(mdd_dist, [50, 95, 99]))   # median / 95th / 99th pct drawdown
+print(np.percentile(mdd_dist, [50, 95, 99]))  # median / 95th / 99th pct drawdown
 ```
 
 **Other pitfalls:** (i) choose block length to match observed autocorrelation decay (e.g. via `arch`'s `optimal_block_length`); (ii) per-trade resampling ignores that position *sizes* vary — resample *returns on equity*, not raw P&L, or you mix scales; (iii) report the *whole distribution*, not just the mean — the point is the tail.
@@ -117,18 +121,21 @@ import numpy as np
 import statsmodels.api as sm
 
 # 1) FIT a 2-regime switching model (switching mean AND variance)
-mod = sm.tsa.MarkovRegression(returns, k_regimes=2, trend='c', switching_variance=True)
+mod = sm.tsa.MarkovRegression(returns, k_regimes=2, trend="c", switching_variance=True)
 res = mod.fit()
-P   = res.regime_transition_matrix[..., 0]   # KxK transition matrix
-mu  = res.params[[0, 1]]                      # regime means (indexing depends on spec)
+P = res.regime_transition_matrix[..., 0]  # KxK transition matrix
+mu = res.params[[0, 1]]  # regime means (indexing depends on spec)
 # smoothed_marginal_probabilities gives P(S_t = k | data) for regime labeling
+
 
 # 2) SIMULATE forward
 def simulate_regime_paths(P, mus, sigmas, T, B, rng=None):
     rng = rng or np.random.default_rng(0)
     K = P.shape[0]
     # stationary dist = left eigenvector for eigenvalue 1
-    w, v = np.linalg.eig(P.T); pi = np.real(v[:, np.argmin(abs(w-1))]); pi /= pi.sum()
+    w, v = np.linalg.eig(P.T)
+    pi = np.real(v[:, np.argmin(abs(w - 1))])
+    pi /= pi.sum()
     out = np.empty((B, T))
     for b in range(B):
         s = rng.choice(K, p=pi)
@@ -175,16 +182,21 @@ from scipy import stats
 # FIT df (nu), loc (mu), scale (sigma_s) by MLE
 nu, loc, scale = stats.t.fit(returns)
 
+
 # SIMULATE B paths of length T from the fitted fat-tailed law
 def simulate_t_paths(nu, loc, scale, T, B, rng=None):
     rng = rng or np.random.default_rng(7)
     return stats.t.rvs(nu, loc=loc, scale=scale, size=(B, T), random_state=rng)
 
+
 # Tail risk readouts
 paths = simulate_t_paths(nu, loc, scale, T=252, B=20000)
-term  = np.prod(1 + paths, axis=1) - 1
-print("VaR/CVaR(99%) of 1y return:",
-      np.percentile(term, 1), term[term <= np.percentile(term, 1)].mean())
+term = np.prod(1 + paths, axis=1) - 1
+print(
+    "VaR/CVaR(99%) of 1y return:",
+    np.percentile(term, 1),
+    term[term <= np.percentile(term, 1)].mean(),
+)
 ```
 
 ### Pitfalls
@@ -212,9 +224,11 @@ print("VaR/CVaR(99%) of 1y return:",
 
 ```python
 from sklearn.model_selection import TimeSeriesSplit
+
 tscv = TimeSeriesSplit(n_splits=8, max_train_size=None)  # None=anchored; int=rolling
 for tr, te in tscv.split(X):
-    params = optimize(X.iloc[tr]); oos.append(evaluate(params, X.iloc[te]))
+    params = optimize(X.iloc[tr])
+    oos.append(evaluate(params, X.iloc[te]))
 ```
 
 **Pitfall:** WFA still tests *one* path through time. It does not correct for the fact that you tried many strategies (use B.3/B.4) and it has only one OOS realization per period (use B.2 to get many).
@@ -237,6 +251,7 @@ for tr, te in tscv.split(X):
 
 ```python
 from skfolio.model_selection import CombinatorialPurgedCV
+
 cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2, purged_size=10, embargo_size=5)
 paths_perf = []
 for train_idx, test_idx in cv.split(X, y):
@@ -272,13 +287,17 @@ $$
 import numpy as np
 from scipy.stats import norm
 
+
 def psr(sr, sr0, T, skew, kurt):  # sr, sr0 NON-annualized
-    se = np.sqrt((1 - skew*sr + (kurt-1)/4*sr**2) / (T-1))
+    se = np.sqrt((1 - skew * sr + (kurt - 1) / 4 * sr**2) / (T - 1))
     return norm.cdf((sr - sr0) / se)
 
+
 def deflated_sr(sr, T, skew, kurt, sr_trials):
-    N = len(sr_trials); V = np.var(sr_trials, ddof=1); g = 0.5772156649
-    sr0 = np.sqrt(V) * ((1-g)*norm.ppf(1 - 1/N) + g*norm.ppf(1 - 1/(N*np.e)))
+    N = len(sr_trials)
+    V = np.var(sr_trials, ddof=1)
+    g = 0.5772156649
+    sr0 = np.sqrt(V) * ((1 - g) * norm.ppf(1 - 1 / N) + g * norm.ppf(1 - 1 / (N * np.e)))
     return psr(sr, sr0, T, skew, kurt), sr0
 ```
 
@@ -304,11 +323,12 @@ High PBO (→1) ⇒ selecting on IS performance is *anti-predictive* OOS ⇒ ove
 
 ```python
 from arch.bootstrap import SPA
+
 # losses: DataFrame (T x m) of NEGATIVE returns (or -PnL) per candidate rule
 # benchmark: T-vector benchmark losses
 spa = SPA(benchmark_losses, candidate_losses, reps=5000, block_size=10)
 spa.compute()
-print(spa.pvalues)   # 'lower' (RC-like), 'consistent', 'upper' bounds
+print(spa.pvalues)  # 'lower' (RC-like), 'consistent', 'upper' bounds
 ```
 
 **Pitfall:** block size must reflect dependence; RC's conservatism vs SPA's power; both assume the candidate set is fixed *a priori* (sequential search still cheats).
@@ -324,11 +344,13 @@ A point estimate of Sharpe or CAGR is nearly useless without an interval — and
 import numpy as np
 from arch.bootstrap import StationaryBootstrap
 
+
 def sharpe(x):  # per-period
     return x.mean() / x.std(ddof=1)
 
-bs = StationaryBootstrap(10, returns)              # block bootstrap
-ci = bs.conf_int(sharpe, reps=10000, method='bca') # BCa interval
+
+bs = StationaryBootstrap(10, returns)  # block bootstrap
+ci = bs.conf_int(sharpe, reps=10000, method="bca")  # BCa interval
 print("Sharpe 95% CI:", ci.ravel())
 ```
 
@@ -372,12 +394,13 @@ For asymmetry (leverage effect — vol rises more after losses) use **GJR-GARCH*
 **Library:** [`arch`](https://arch.readthedocs.io/) (Kevin Sheppard) — the canonical free Python GARCH library.
 ```python
 from arch import arch_model
+
 # GJR-GARCH(1,1) with Student-t innovations on returns scaled to ~%
-am  = arch_model(returns*100, mean='Constant', vol='GARCH', p=1, o=1, q=1, dist='t')
-res = am.fit(disp='off')
-print(res.params)                       # mu, omega, alpha[1], gamma[1], beta[1], nu
-fc  = res.forecast(horizon=10, reindex=False, method='analytical')
-sigma_fc = (fc.variance.iloc[-1]**0.5)  # /100 to undo the scaling
+am = arch_model(returns * 100, mean="Constant", vol="GARCH", p=1, o=1, q=1, dist="t")
+res = am.fit(disp="off")
+print(res.params)  # mu, omega, alpha[1], gamma[1], beta[1], nu
+fc = res.forecast(horizon=10, reindex=False, method="analytical")
+sigma_fc = fc.variance.iloc[-1] ** 0.5  # /100 to undo the scaling
 ```
 **Pitfalls:** (i) `arch` strongly recommends **scaling returns to roughly 1–1000** (e.g. ×100 for daily) for optimizer stability — remember to *unscale* forecasts; (ii) horizons >1 for asymmetric models need `method='simulation'`/`'bootstrap'` (no closed form); (iii) GARCH forecasts **conditional** vol — don't confuse with unconditional; (iv) refit periodically (parameters drift).
 
@@ -486,16 +509,22 @@ $$
 
 ```python
 import numpy as np
+
+
 def p_target_before_loss(mu, sigma, A, B):  # arithmetic BM, X0=0
     if abs(mu) < 1e-12:
         return B / (A + B)
-    a = np.exp(-2*mu*A/sigma**2); b = np.exp(2*mu*B/sigma**2)
+    a = np.exp(-2 * mu * A / sigma**2)
+    b = np.exp(2 * mu * B / sigma**2)
     return (1 - b) / (a - b)
 
+
 def expected_exit_time(mu, sigma, A, B):
-    if abs(mu) < 1e-12: return A*B/sigma**2
+    if abs(mu) < 1e-12:
+        return A * B / sigma**2
     pA = p_target_before_loss(mu, sigma, A, B)
-    return (A*pA - B*(1-pA)) / mu
+    return (A * pA - B * (1 - pA)) / mu
+
 
 # Optimize leverage for pass-prob ONLY IF mu>0; for trailing DD use MC simulation.
 ```

@@ -185,3 +185,122 @@ def inject_descending_trendline(
         tuple(peak_bars),
         break_bar,
     )
+
+
+def inject_head_shoulders(
+    n_bars: int = 500,
+    *,
+    direction: str = "bullish",
+    anchor_bars: tuple[int, int, int] = (80, 220, 360),
+    level: float = 1.0,
+    head_depth: float = 0.10,
+    neck_rise: float = 0.12,
+    shoulder_tilt: float = 0.0,
+    bos_overshoot: float = 0.0,
+    breakout: float = 0.10,
+    noise: float = 0.001,
+    seed: int = 7,
+    symbol: str = "SYNTH_HS",
+) -> tuple[OHLCV, dict[str, int]]:
+    """A series containing exactly one head-and-shoulders structure at known bars.
+
+    Built as an explicit zig-zag through seven anchor points — start, left shoulder, neckline pivot,
+    head, neckline pivot, right shoulder, breakout — joined by straight legs. Because every leg is
+    monotonic, the only local extrema in the whole series are the anchors themselves, which is what
+    lets a test assert *exact* recovery rather than "found it, plus whatever the filler created".
+    This replaces the plateau-drift trick used by ``inject_triple_tap``: a zig-zag needs no drift
+    because it has no flat region to generate spurious pivots.
+
+    ``shoulder_tilt`` raises the right shoulder by that fraction (the ascending-shoulder variant the
+    user's own chart shows). ``bos_overshoot`` lifts the *second* neckline pivot above the first, so
+    the post-head rally makes a genuine higher high — that is the **break of structure**, and it is
+    what turns an inverse head and shoulders into a Quasimodo. Leave it at 0 for a plain H&S.
+    ``direction="bearish"`` mirrors everything into a topping pattern.
+
+    Returns the bars and a dict of the injected indices keyed ``ls``/``n1``/``head``/``n2``/``rs``,
+    so a test can compare against detector output directly.
+    """
+    if direction not in ("bullish", "bearish"):
+        raise DataError(f"direction must be bullish|bearish, got {direction}")
+    ls_bar, head_bar, rs_bar = anchor_bars
+    if not 0 < ls_bar < head_bar < rs_bar < n_bars:
+        raise DataError(f"anchor_bars must be increasing inside (0, {n_bars}), got {anchor_bars}")
+    if head_depth <= 0.0 or neck_rise <= 0.0:
+        raise DataError("head_depth and neck_rise must be > 0")
+
+    rng = np.random.default_rng(seed)
+    sign = 1.0 if direction == "bullish" else -1.0
+
+    # Anchor levels. For a bottoming pattern the head is the lowest point and the neckline pivots
+    # sit above the shoulders; `sign` mirrors that for a topping pattern.
+    shoulder = level
+    right_shoulder = level * (1.0 + sign * shoulder_tilt)
+    head_lvl = level * (1.0 - sign * head_depth)
+    neck_lvl = level * (1.0 + sign * neck_rise)
+    neck2_lvl = neck_lvl * (1.0 + sign * bos_overshoot)
+    end_lvl = (
+        max(neck_lvl, neck2_lvl) * (1.0 + sign * breakout)
+        if sign > 0
+        else (min(neck_lvl, neck2_lvl) * (1.0 + sign * breakout))
+    )
+
+    n1_bar = (ls_bar + head_bar) // 2
+    n2_bar = (head_bar + rs_bar) // 2
+    knots = [
+        (0, neck_lvl),
+        (ls_bar, shoulder),
+        (n1_bar, neck_lvl),
+        (head_bar, head_lvl),
+        (n2_bar, neck2_lvl),
+        (rs_bar, right_shoulder),
+        (n_bars - 1, end_lvl),
+    ]
+
+    closes = np.empty(n_bars, dtype=np.float64)
+    for (i0, v0), (i1, v1) in zip(knots, knots[1:], strict=False):
+        closes[i0 : i1 + 1] = np.linspace(v0, v1, i1 - i0 + 1)
+    closes *= 1.0 + rng.normal(0.0, noise, size=n_bars)
+    for idx, lvl in (
+        (ls_bar, shoulder),
+        (n1_bar, neck_lvl),
+        (head_bar, head_lvl),
+        (n2_bar, neck2_lvl),
+        (rs_bar, right_shoulder),
+    ):
+        closes[idx] = lvl  # pin exactly; noise must not blur an injected level
+
+    bars = _bars_from_closes(closes, wiggle=noise, rng=rng, symbol=symbol)
+    lows = np.minimum(bars.low, np.minimum(bars.open, bars.close))
+    highs = np.maximum(bars.high, np.maximum(bars.open, bars.close))
+
+    # Drive each anchor strictly beyond every other bar within a wide neighbourhood. A fixed pin
+    # is not enough: an adjacent bar's random wiggle can beat a shallow one and silently shift the
+    # detected pivot by a bar. The window must exceed the largest fractal lookback under test.
+    anchor_is_low = direction == "bullish"
+    for idx in (ls_bar, head_bar, rs_bar):
+        _pin(lows if anchor_is_low else highs, idx, n_bars, deeper=anchor_is_low)
+    for idx in (n1_bar, n2_bar):
+        _pin(highs if anchor_is_low else lows, idx, n_bars, deeper=not anchor_is_low)
+
+    return (
+        OHLCV(
+            ts=bars.ts,
+            open=bars.open,
+            high=np.maximum(highs, np.maximum(bars.open, bars.close)),
+            low=np.minimum(lows, np.minimum(bars.open, bars.close)),
+            close=bars.close,
+            volume=bars.volume,
+            symbol=symbol,
+        ),
+        {"ls": ls_bar, "n1": n1_bar, "head": head_bar, "n2": n2_bar, "rs": rs_bar},
+    )
+
+
+def _pin(values: FloatArray, index: int, n_bars: int, *, deeper: bool, radius: int = 30) -> None:
+    """Force ``values[index]`` strictly beyond every neighbour within ``radius`` bars, in place."""
+    lo, hi = max(0, index - radius), min(n_bars, index + radius + 1)
+    neighbourhood = np.delete(values[lo:hi], index - lo)
+    if deeper:
+        values[index] = float(np.min(neighbourhood)) * (1.0 - 3e-3)
+    else:
+        values[index] = float(np.max(neighbourhood)) * (1.0 + 3e-3)

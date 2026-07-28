@@ -175,11 +175,13 @@ This is exactly the formula in the practitioner literature: *Position Size = Dol
 ```python
 import numpy as np, pandas as pd
 
+
 def wilder_atr(df: pd.DataFrame, n: int = 20) -> pd.Series:
     h, l, c = df["high"], df["low"], df["close"]
     prev_c = c.shift(1)
     tr = pd.concat([(h - l), (h - prev_c).abs(), (l - prev_c).abs()], axis=1).max(axis=1)
     return tr.ewm(alpha=1 / n, adjust=False, min_periods=n).mean()  # Wilder smoothing
+
 
 def position_size(equity, risk_fraction, stop_distance_price, point_value, lot=1):
     """stop_distance_price = m*ATR (ATR-stops) OR |entry-stop| (structural stops)."""
@@ -219,12 +221,14 @@ the excess-return-to-variance ratio; for a strategy, `f* ≈ mean(return) / var(
 **Use fractional Kelly. This is not optional for a solo researcher.** Full Kelly assumes you *know* `p`, `b`, `mu`, `sigma`; you don't — you estimated them from a finite, possibly overfit sample, so true Kelly is unknown and full Kelly massively over-bets. Half-Kelly retains ~75% of the growth with roughly half the drawdown; most practitioners use **half- or quarter-Kelly**, and Chan treats the Kelly leverage as an **upper limit**, not a target. ([epchan.blogspot.com — "How much leverage should you use?"](http://epchan.blogspot.com/2006/10/how-much-leverage-should-you-use.html), [coriva.eu.org](https://coriva.eu.org/en/kelly-criterion-position-sizing/))
 
 ```python
-def kelly_binary(p, b):           # b = avg_win/avg_loss
+def kelly_binary(p, b):  # b = avg_win/avg_loss
     return p - (1 - p) / b
+
 
 def kelly_continuous(returns, rf=0.0):
     mu, var = returns.mean() - rf, returns.var(ddof=1)
-    return 0.0 if var == 0 else mu / var          # this IS leverage
+    return 0.0 if var == 0 else mu / var  # this IS leverage
+
 
 def fractional_kelly(f_star, fraction=0.5, cap=1.0):
     return float(np.clip(f_star * fraction, -cap, cap))
@@ -242,22 +246,25 @@ Equalizes each asset's *standalone* volatility contribution. **True risk parity*
 
 ```python
 def inverse_vol_weights(returns: pd.DataFrame, lookback=60):
-    vol = returns.tail(lookback).std(ddof=1)            # past data only
+    vol = returns.tail(lookback).std(ddof=1)  # past data only
     inv = 1.0 / vol.replace(0, np.nan)
     w = inv / inv.sum()
     return w.fillna(0.0)
 
+
 def risk_parity_weights(returns: pd.DataFrame, lookback=120, iters=500, lr=0.1):
     """Equal risk contribution via simple projected gradient (numpy-only)."""
     cov = returns.tail(lookback).cov().values
-    n = cov.shape[0]; w = np.ones(n) / n
+    n = cov.shape[0]
+    w = np.ones(n) / n
     for _ in range(iters):
         port_var = w @ cov @ w
-        mrc = cov @ w                       # marginal risk contribution
-        rc = w * mrc                        # risk contribution
-        grad = rc - port_var / n            # drive toward equal RC
+        mrc = cov @ w  # marginal risk contribution
+        rc = w * mrc  # risk contribution
+        grad = rc - port_var / n  # drive toward equal RC
         w = np.clip(w - lr * grad, 0, None)
-        s = w.sum(); w = w / s if s > 0 else np.ones(n) / n
+        s = w.sum()
+        w = w / s if s > 0 else np.ones(n) / n
     return w
 ```
 For a single-instrument intraday strategy, B.4 mainly matters once you run **multiple** uncorrelated strategies and want to allocate capital across them — which is the right way to grow this project.

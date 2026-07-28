@@ -226,21 +226,23 @@ Configuration is a classic place where AI-written code goes wrong silently: a st
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class CostModel(BaseModel):
-    commission_bps: float = Field(ge=0)        # validated: can't be negative
+    commission_bps: float = Field(ge=0)  # validated: can't be negative
     slippage_bps: float = Field(ge=0)
+
 
 class BacktestSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="ALPHA_",
-        env_nested_delimiter="__",   # ALPHA_COSTS__COMMISSION_BPS=1.0
+        env_nested_delimiter="__",  # ALPHA_COSTS__COMMISSION_BPS=1.0
     )
     start: str
     end: str
     initial_cash: float = Field(gt=0)
     costs: CostModel
-    seed: int = 42                    # reproducibility: a single seed for the whole run
+    seed: int = 42  # reproducibility: a single seed for the whole run
 ```
 Env vars (`ALPHA_INITIAL_CASH=100000`, `ALPHA_COSTS__COMMISSION_BPS=1.0`) and `.env` are read automatically; type coercion + validation are free. ([pydantic-settings docs](https://pydantic.dev/docs/validation/latest/concepts/pydantic_settings/)). For experiment configs prefer **TOML committed next to the run** (reproducibility) via a `TomlConfigSettingsSource` in `settings_customise_sources`.
 
@@ -298,6 +300,7 @@ Markets are full of invariants Hypothesis can hammer with thousands of generated
 ```python
 from hypothesis import given, strategies as st
 
+
 @given(prices=st.lists(st.floats(1, 1e4, allow_nan=False), min_size=2))
 def test_returns_are_inverse_of_cumprod(prices):
     # property: reconstructing prices from returns recovers the originals
@@ -326,9 +329,9 @@ def test_no_lookahead_via_future_poison(strategy, panel):
     poisoned = panel.with_columns(
         pl.when(pl.col("ts") > CUTOFF).then(float("nan")).otherwise(pl.col("close")).alias("close")
     )
-    sig_clean    = strategy.run(panel.up_to(CUTOFF))
+    sig_clean = strategy.run(panel.up_to(CUTOFF))
     sig_poisoned = strategy.run(poisoned.up_to(CUTOFF))
-    assert sig_clean.equals(sig_poisoned)   # future data must NOT change the past
+    assert sig_clean.equals(sig_poisoned)  # future data must NOT change the past
 ```
 
 **Pattern 3 — Causality / shift test for features.**

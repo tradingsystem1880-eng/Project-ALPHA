@@ -26,6 +26,13 @@ from alpha_patterns.context import (
     trend_state_vwap,
 )
 from alpha_patterns.controls import MatchedControls, sample_matched_controls
+from alpha_patterns.head_shoulders import (
+    VARIANT_NAMES,
+    HSConfig,
+    HSEvent,
+    ShoulderRule,
+    detect_head_shoulders,
+)
 from alpha_patterns.series import (
     OHLCV,
     FloatArray,
@@ -36,10 +43,18 @@ from alpha_patterns.series import (
     rolling_vwap,
     true_range,
 )
+from alpha_patterns.structure import (
+    StructureBreak,
+    break_of_structure,
+    extreme_between,
+    last_pivot_before,
+    swing_sequence,
+)
 from alpha_patterns.swings import Swing, SwingKind, find_swings, swings_known_by
 from alpha_patterns.synthetic import (
     geometric_brownian_series,
     inject_descending_trendline,
+    inject_head_shoulders,
     inject_triple_tap,
 )
 from alpha_patterns.trendline import (
@@ -65,17 +80,21 @@ __version__ = version("alpha-patterns")
 
 __all__ = [
     "ALL_BREAK_RULES",
-    "OHLCV",
     "BandReference",
     "BreakRule",
     "Direction",
     "FairValueGap",
     "FloatArray",
+    "HSConfig",
+    "HSEvent",
     "IntArray",
     "MatchedControls",
+    "OHLCV",
     "OrderBlock",
     "Population",
     "Scale",
+    "ShoulderRule",
+    "StructureBreak",
     "Swing",
     "SwingKind",
     "TrendState",
@@ -84,23 +103,30 @@ __all__ = [
     "TrendlineConfig",
     "TripleTap",
     "TripleTapConfig",
+    "VARIANT_NAMES",
     "__version__",
     "atr",
+    "break_of_structure",
     "build_trendlines",
+    "detect_head_shoulders",
     "detect_nth_taps",
     "detect_triple_taps",
     "distance_from_low",
+    "extreme_between",
     "find_breaks",
     "find_fair_value_gaps",
     "find_order_blocks",
     "find_swings",
     "geometric_brownian_series",
     "inject_descending_trendline",
+    "inject_head_shoulders",
     "inject_triple_tap",
+    "last_pivot_before",
     "rolling_max",
     "rolling_min",
     "rolling_vwap",
     "sample_matched_controls",
+    "swing_sequence",
     "swings_known_by",
     "trend_state_ma",
     "trend_state_vwap",
