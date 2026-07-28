@@ -14,6 +14,8 @@ Everything is seeded and reproducible.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from alpha_core import DataError
@@ -293,6 +295,136 @@ def inject_head_shoulders(
             symbol=symbol,
         ),
         {"ls": ls_bar, "n1": n1_bar, "head": head_bar, "n2": n2_bar, "rs": rs_bar},
+    )
+
+
+@dataclass(frozen=True)
+class WedgeTruth:
+    """What :func:`inject_wedge` actually built — the ground truth a detector must recover.
+
+    Typed rather than a loose dict so a test that misreads a field fails at type-check time instead
+    of comparing an integer against a tuple and passing for the wrong reason.
+    """
+
+    highs: tuple[int, ...]  # bar indices of the upper-boundary pivots
+    lows: tuple[int, ...]  # bar indices of the lower-boundary pivots
+    apex: int  # the bar the two boundaries were generated to meet on
+    break_bar: int
+    kind: str
+
+
+def inject_wedge(
+    n_bars: int = 420,
+    *,
+    kind: str = "falling",
+    start_upper: float = 1.30,
+    start_lower: float = 1.00,
+    apex_bar: int = 320,
+    first_pivot: int = 30,
+    pivot_gap: int = 40,
+    n_pivots: int = 6,
+    break_bar: int = 300,
+    break_direction: int = 1,
+    break_size: float = 0.10,
+    inset: float = 0.006,
+    noise: float = 0.0004,
+    seed: int = 7,
+    symbol: str = "SYNTH_WEDGE",
+) -> tuple[OHLCV, WedgeTruth]:
+    """A series that oscillates between two converging boundaries meeting at a known apex.
+
+    Built in **log space**, matching :class:`~alpha_patterns.wedge.WedgeConfig`'s default scale, so
+    a detector fitting a log-linear line through two exact anchors recovers the generating boundary
+    exactly and the computed apex lands on ``apex_bar`` rather than near it. That exactness is the
+    whole point: it lets a test assert recovery instead of resemblance.
+
+    Pivots alternate high, low, high, low from ``first_pivot`` every ``pivot_gap`` bars. Closes are
+    inset from the boundaries by ``inset`` so the "no close outside the lines" validity rule holds,
+    while the pivot bars' own high/low sit exactly *on* the line — a touch, not a break.
+
+    Returns the bars and a :class:`WedgeTruth` carrying the pivot bar indices, the generated apex
+    bar and the break bar, so a test can assert exact recovery rather than resemblance.
+    """
+    if kind not in ("falling", "rising", "symmetrical"):
+        raise DataError(f"kind must be falling|rising|symmetrical, got {kind}")
+    if not 0.0 < start_lower < start_upper:
+        raise DataError("need 0 < start_lower < start_upper")
+    if break_direction not in (-1, 1):
+        raise DataError(f"break_direction must be -1 or 1, got {break_direction}")
+    if n_pivots < 4:
+        raise DataError(f"need >= 4 pivots to define both lines, got {n_pivots}")
+
+    pivots = [first_pivot + k * pivot_gap for k in range(n_pivots)]
+    if not (pivots[0] > 0 and pivots[-1] < break_bar < n_bars):
+        raise DataError(f"pivots {pivots} and break_bar {break_bar} must fit inside {n_bars} bars")
+    if apex_bar <= pivots[-1]:
+        raise DataError("apex_bar must lie beyond the last pivot")
+
+    rng = np.random.default_rng(seed)
+    # Both boundaries converge on one apex level; which side that level sits on is what makes the
+    # formation falling (both lines down), rising (both up) or symmetrical (one of each).
+    if kind == "falling":
+        apex_level = start_lower * 0.88
+    elif kind == "rising":
+        apex_level = start_upper * 1.12
+    else:
+        apex_level = float(np.sqrt(start_upper * start_lower))
+
+    frac = np.arange(n_bars, dtype=np.float64) / float(apex_bar)
+    log_upper = np.log(start_upper) + (np.log(apex_level) - np.log(start_upper)) * frac
+    log_lower = np.log(start_lower) + (np.log(apex_level) - np.log(start_lower)) * frac
+    upper, lower = np.exp(log_upper), np.exp(log_lower)
+
+    high_pivots = pivots[0::2]
+    low_pivots = pivots[1::2]
+
+    # Zig-zag the closes through the pivots, inset from each boundary so no close ever leaves the
+    # formation — a close outside is exactly what the detector treats as invalidation.
+    knots: list[tuple[int, float]] = [(0, float(lower[0] * (1.0 + inset)))]
+    for p in pivots:
+        level = upper[p] * (1.0 - inset) if p in high_pivots else lower[p] * (1.0 + inset)
+        knots.append((p, float(level)))
+    knots.append((break_bar, float((upper[break_bar] + lower[break_bar]) / 2.0)))
+
+    closes = np.empty(n_bars, dtype=np.float64)
+    for (i0, v0), (i1, v1) in zip(knots, knots[1:], strict=False):
+        closes[i0 : i1 + 1] = np.linspace(v0, v1, i1 - i0 + 1)
+
+    # The break leaves the formation and keeps going, so it cannot be mistaken for a wick.
+    tail = np.arange(n_bars - break_bar, dtype=np.float64) / max(1, n_bars - break_bar - 1)
+    edge = upper[break_bar:] if break_direction > 0 else lower[break_bar:]
+    closes[break_bar:] = edge * (1.0 + break_direction * break_size * (0.2 + 0.8 * tail))
+    closes *= 1.0 + rng.normal(0.0, noise, size=n_bars)
+
+    opens = np.concatenate(([closes[0]], closes[:-1]))
+    body_hi = np.maximum(opens, closes)
+    body_lo = np.minimum(opens, closes)
+    # Deterministic wicks rather than random ones: a random wiggle can beat a pivot's pin and
+    # silently move the detected swing by a bar, which would make "exact recovery" untestable.
+    highs = body_hi * (1.0 + noise)
+    lows = body_lo * (1.0 - noise)
+    for p in high_pivots:
+        highs[p] = float(upper[p])
+    for p in low_pivots:
+        lows[p] = float(lower[p])
+    highs = np.maximum(highs, body_hi)
+    lows = np.minimum(lows, body_lo)
+
+    bars = OHLCV(
+        ts=np.arange(n_bars, dtype=np.float64) * _BAR_MS,
+        open=opens,
+        high=highs,
+        low=lows,
+        close=closes,
+        volume=1_000.0 + rng.random(n_bars) * 200.0,
+        symbol=symbol,
+    )
+    return bars, WedgeTruth(
+        highs=tuple(high_pivots),
+        lows=tuple(low_pivots),
+        apex=apex_bar,
+        break_bar=break_bar,
+        kind=kind,
     )
 
 
