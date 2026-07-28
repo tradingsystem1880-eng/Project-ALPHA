@@ -1,0 +1,61 @@
+{
+  "file": "IMG_7806",
+  "file_id": "1Uq9c-oCW3-Yh6MWqkzM4OX_UxlfrmFjg",
+  "kind": "chat",
+  "raw_text": "22:23\n\n99\n\n\\# -ace-journals \\>\n\n4\n\n30\n\nAce 17/03/2026, 15:23\n\nThere's a way of taking profits, you don't go 100% full take profit, you go like 50% move your sl to you entry... Little by Little & I don't feel we topped yet tbh\n\n1\n\nAce 17/03/2026, 15:59\n\nBTC went from 64 to 76k { ofc majority of people will sell into this levels } what I'm thinking right is as usual chill take some profits & spend it on your fav stuff why we need to strees? no point... if i have to take shorts i'll be looking at 79-81k's levels\n\n1\n\nTime to just chill relax spend profits and wait for the right move, we already up heavy - ACE\n\n1\n\nAce 17/03/2026, 18:24\n\nCurrent thoughts about BTC\n\nBitcoin/USD Tether Perpetual C...\n\n82,490.4\n\n74,279.6-554.8 (-0.74%)\n\n82,000.0\n\n80,905.2\n\n80,000.0\n\nDone reading? Check out \\#ticket-0514.\n\n  \n  \nImage labels: \\[Text messaging; Screenshot; Photo caption; Girl\\]",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 15:23",
+      "text": "There's a way of taking profits, you don't go 100% full take profit, you go like 50% move your sl to you entry... Little by Little & I don't feel we topped yet tbh"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 15:59",
+      "text": "BTC went from 64 to 76k { ofc majority of people will sell into this levels } what I'm thinking right is as usual chill take some profits & spend it on your fav stuff why we need to strees? no point... if i have to take shorts i'll be looking at 79-81k's levels"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 15:59",
+      "text": "Time to just chill relax spend profits and wait for the right move, we already up heavy - ACE"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-17 18:24",
+      "text": "Current thoughts about BTC [chart attachment] Bitcoin/USD Tether Perpetual C... 74,279.6 -554.8 (-0.74%)"
+    }
+  ],
+  "assets": [
+    "BTC"
+  ],
+  "direction": "neutral",
+  "levels": {
+    "entry": null,
+    "stop": null,
+    "target": null,
+    "other": [
+      "prospective SHORT zone 79,000-81,000 ('if i have to take shorts i'll be looking at 79-81k's levels') - conditional, not an entered trade",
+      "stated move already made: 'BTC went from 64 to 76k'",
+      "chart last price 74,279.6 -554.8 (-0.74%) at 17/03/2026 18:24",
+      "chart price labels: 82,490.4 / 82,000.0 / 80,905.2 / 80,000.0"
+    ]
+  },
+  "pnl": {
+    "value": null,
+    "currency": null,
+    "percent": null,
+    "size": null,
+    "leverage": null
+  },
+  "indicators": [],
+  "timeframes": [],
+  "claims": [
+    "if i have to take shorts i'll be looking at 79-81k's levels",
+    "ofc majority of people will sell into this levels",
+    "I don't feel we topped yet tbh",
+    "Time to just chill relax spend profits and wait for the right move, we already up heavy"
+  ],
+  "needs_visual": true,
+  "extraction_confidence": "high",
+  "notes": "Text is clean; the attached BTC chart is only partially captured (cropped to the 80-82.5k band plus the last price), so any drawn structure behind 'Current thoughts about BTC' is not recoverable - hence needs_visual true. Dates DD/MM/YYYY. MOST BACKTESTABLE CALL IN THIS BATCH: 'if i have to take shorts i'll be looking at 79-81k's levels' - a specific, dated (17/03/2026 15:59), falsifiable short zone of 79,000-81,000 on BTC. It is CONDITIONAL and no position was entered, so levels.entry is left null and the zone is recorded in levels.other; direction is 'neutral' because at this moment he is scaling out of longs, not short. CONTRADICTION TO CARRY INTO THE VERDICT: on 13/03/2026 he quoted himself as having said 'we not going lower than 66k' (IMG_7801), yet here on 17/03 he states 'BTC went from 64 to 76k' - by his own account price traded to 64k, roughly 2k BELOW his stated floor. His framing converts that miss into a win ('we already up heavy'). PRICE TRAIL FOR VERIFICATION: BTC 72,107.4 on 13/03 23:56 (IMG_7801/7802), low ~64k and high ~76k per this message, 74,279.6 at 17/03 18:24. Note 79k recurs yet again - first a downside target (Feb), then an upside target (13 March), now a short-entry zone - so 79k functions as a floating reference level rather than a consistent directional call."
+}

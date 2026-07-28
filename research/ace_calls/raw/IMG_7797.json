@@ -1,0 +1,52 @@
+{
+  "file": "IMG_7797",
+  "file_id": "1GDAoYlQN_j8VKHxXrTzhd4ean8DYYQeu",
+  "kind": "position",
+  "raw_text": "22:22\n\n31\n\n\\#\n\n99\n\n\\-ace-journals \\>\n\nQ\n\ndon't listen to noise which most of are listening\n\ntoo\n\n3\n\nAce Huge Week Coming for financial market, Crisis Opportunity\n\nAce 03/03/2026, 02:03\n\nMarket confirmed\n\n2\n\n4 March 2026\n\nAce Tap to see attachment P\n\nAce 04/03/2026, 19:26\n\nPositions\n\nOrders Trades Claims\n\nPOSITION\n\nLINK/USD 691x Long\n\n5\n\nENTRY PRICE\n\nMARK PRICE\n\nLIQUIDATION PRICE\n\nCOLLATERAL\n\n$1,000.814.99\n\n$144,891.46 (14489982 D\n\n58.7933\n\n$92140\n\n$7.5495\n\nAce Huge Week Coming for financial market, Crisis = Opportunity\n\nAce 04/03/2026, 19:31\n\n@everyone I hope everybody is having a great week\\!\\!\\! I appreciate all of you, Love you all - ACE\n\n6\n\n& No I'm not selling atm lol\n\n↓\n\nDone reading? Check out \\#ticket-0514.\n\n  \n  \nImage labels: \\[Text messaging; Screenshot; Photo caption; Mobile phone; Camera phone\\]",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-03 02:03",
+      "text": "Market confirmed"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-04 19:26",
+      "text": "[attachment: LINK/USD position panel] POSITION LINK/USD 6.91x Long — ENTRY PRICE $8.7933, MARK PRICE $9.2140, LIQUIDATION PRICE $7.5495, COLLATERAL $144,891.46, position value $1,000,814.99"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-04 19:31",
+      "text": "@everyone I hope everybody is having a great week!!! I appreciate all of you, Love you all - ACE"
+    }
+  ],
+  "assets": ["LINK"],
+  "direction": "long",
+  "levels": {
+    "entry": "8.7933",
+    "stop": null,
+    "target": null,
+    "other": [
+      "MARK PRICE $9.2140",
+      "LIQUIDATION PRICE $7.5495",
+      "COLLATERAL $144,891.46 (14489982 USDC as OCR'd, likely 144,899.82 USDC)",
+      "position value $1,000,814.99"
+    ]
+  },
+  "pnl": {
+    "value": null,
+    "currency": "USD",
+    "percent": null,
+    "size": "$1,000,814.99 position value; $144,891.46 collateral",
+    "leverage": "6.91x"
+  },
+  "indicators": [],
+  "timeframes": [],
+  "claims": [
+    "Market confirmed",
+    "& No I'm not selling atm lol"
+  ],
+  "needs_visual": false,
+  "extraction_confidence": "high",
+  "notes": "CRITICAL CROSS-VALIDATION FILE — this panel carries the field LABELS that IMG_7796 lacked, resolving two of that file's ambiguities. ENTRY PRICE $8.7933 (OCR '58.7933' = '$8.7933'), MARK PRICE $9.2140 (OCR '$92140'), LIQUIDATION PRICE $7.5495, COLLATERAL $144,891.46. This CONFIRMS that (a) $8.7933 in IMG_7796 was the entry price, and (b) IMG_7796's impossible '87.5635' liquidation price was indeed a low-$7s figure — here it reads $7.5495 two days later. 'LINK/USD 691x Long' is 6.91x (decimal point lost); leverage has drifted 6.88x -> 6.91x and collateral fell $145,520.94 -> $144,891.46 between 02/03 and 04/03, consistent with funding costs on an unchanged ~$1.0M notional. POSITION IS IN PROFIT at this snapshot: mark $9.2140 vs entry $8.7933, ~+4.8% on price, but NO PnL figure is displayed so pnl.value/percent are left null rather than computed. Ace explicitly states he is NOT closing ('No I'm not selling atm lol'), so this is an unrealised mark, not a result. TIMESTAMP NOTE: 03/03/2026 02:03 carries a short 'Market confirmed' message here, while IMG_7796 shows a longer message at the SAME 02:03 timestamp ('& the market confirmed @everyone as i said...') — these are two distinct messages posted in the same minute, both retained. '& No I'm not selling atm lol' appears after a reaction badge and may be a separate untimestamped message; kept in claims, not attributed to a specific timestamp. Tab row reads 'Positions Orders Trades Claims', indicating a Hyperliquid-style perps interface."
+}

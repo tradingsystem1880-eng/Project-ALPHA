@@ -1,0 +1,67 @@
+{
+  "file": "IMG_7803",
+  "file_id": "1wm1jufXVY0QrJMCWkNVVAv6UK4LjojkS",
+  "kind": "chat",
+  "raw_text": "22:23\n\n31\n\n\\#\n\n99\n\n\\-ace-journals \\>\n\nAce 14/03/2026, 00:00\n\nI proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool..\n\nI try my best to make it less complicated I appreciate & love all of you - ACE\n\n@everyone\n\n7 60 2\n\nAce I shorted btc at this level at 40x lv, I remember doing it all by myself alone... I unders... Ace 14/03/2026, 08:47\n\nA lot of people would not believe it but let me just spoil it out for you guys btc rn even\n\nthough i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED { PPM } ...\n\nAce After\n\nAce 14/03/2026, 08:55\n\nThat grey region is made for shorts... I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm\n\nAce 14/03/2026, 10:07\n\nEverything depends on the green line nov↓\n\nDone reading? Check out \\#ticket-0514.\n\n  \n  \nImage labels: \\[Text messaging; Screenshot; Photo caption; Girl; Love\\]",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 00:00",
+      "text": "I proved myself again & again I don't post news because I'm not a news channel I don't post a pic from my insane terminal to make my self look cool.."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 00:00",
+      "text": "I try my best to make it less complicated I appreciate & love all of you - ACE"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 08:47",
+      "text": "A lot of people would not believe it but let me just spoil it out for you guys btc rn even though i shorted at the region.. BTC rn should be at 150k no doubt the price is being MANIPULATED { PPM } ..."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 08:55",
+      "text": "That grey region is made for shorts... I do complex stuff behind the scene to get you a clearer image, you are listening to a actual market maker atm"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-14 10:07",
+      "text": "Everything depends on the green line nov↓"
+    }
+  ],
+  "assets": [
+    "BTC"
+  ],
+  "direction": "short",
+  "levels": {
+    "entry": null,
+    "stop": null,
+    "target": null,
+    "other": [
+      "'BTC rn should be at 150k' - fair-value assertion, NOT a target for his short position",
+      "'the region' / 'That grey region' - the drawn zone he says he shorted from (no numeric level given)",
+      "'the green line' - the drawn line he says everything now depends on (no numeric level given)"
+    ]
+  },
+  "pnl": {
+    "value": null,
+    "currency": null,
+    "percent": null,
+    "size": null,
+    "leverage": "40x"
+  },
+  "indicators": [
+    "grey region",
+    "green line"
+  ],
+  "timeframes": [],
+  "claims": [
+    "BTC rn should be at 150k no doubt the price is being MANIPULATED { PPM }",
+    "That grey region is made for shorts",
+    "Everything depends on the green line nov↓"
+  ],
+  "needs_visual": false,
+  "extraction_confidence": "high",
+  "notes": "Pure text chat, no chart in this frame - OCR is clean and the statements are reliable. Dates DD/MM/YYYY (14/03/2026 = 14 March 2026). CONTRADICTION WORTH FLAGGING FOR THE VERDICT: at 08:47 on 14 March he says he is SHORT ('though i shorted at the region') while simultaneously asserting 'BTC rn should be at 150k' and blaming manipulation ('{ PPM }') - i.e. he claims the market is wrong rather than his position. This is an unfalsifiable escape hatch, not a call, which is why 150k is recorded under levels.other rather than as a target. The line 'Ace I shorted btc at this level at 40x lv, I remember doing it all by myself alone... I unders...' is a TRUNCATED REPLY-QUOTE of his earlier 09/03/2026 22:33 message (see IMG_7799), not a new statement, so it is excluded from statements; the '40x' leverage recorded in pnl comes from that quote and refers to the same 9 March short, NOT a newly opened position - do not double-count it. 'Ace After' at 08:55 is an attachment caption whose image is not in this frame. He references a 'grey region' and a 'green line' that are drawn on a chart NOT present in this screenshot, so those calls cannot be assigned prices from this image alone; needs_visual is false only because this frame is text, but the referenced chart objects require the matching chart screenshot to be priced. '7 60 2' is an emoji-reaction count row."
+}

@@ -1,0 +1,65 @@
+{
+  "file": "IMG_7799",
+  "file_id": "10QsAdn13I29t8avERhJGJIYxH1zDnq5B",
+  "kind": "chat",
+  "raw_text": "22:22\n\n31\n\n\\#\n\n99\n\n\\-ace-journals \\>\n\nAce 09/03/2026, 21:44\n\nI'm heavy on link & i didn't pull my money out yet\n\nAce 09/03/2026, 22:33\n\nI shorted btc at this level at 40x lv, I remember doing it all by myself alone... I understand this market better than anybody else in this whole world\n\n⚫ and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link\n\nI'm the greatest trader alive no doubt\n\n\\<\n\noneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30\n\nYou 11/10/25, 3:55 AM\n\n150,000.0\n\nBitcoin/TetherUS PERPETUAL CONTRACT 12h Binance 01214932 H122,470 L101585 C1128113-86819 (-25)\n\n140,000.0\n\nDone reading? Check out \\#ticket-0514.\n\n130,000 0\n\n100,000.0\n\n70,000.0\n\n  \n  \nImage labels: \\[Screenshot; Text messaging; Letter; Text\\]",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-09 21:44",
+      "text": "I'm heavy on link & i didn't pull my money out yet"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-09 22:33",
+      "text": "I shorted btc at this level at 40x lv, I remember doing it all by myself alone... I understand this market better than anybody else in this whole world"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-09 22:33",
+      "text": "and as I've said earlier I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-03-09 22:33",
+      "text": "I'm the greatest trader alive no doubt"
+    },
+    {
+      "author": "You",
+      "timestamp": "2025-10-11 03:55",
+      "text": "[TradingView chart attachment] Bitcoin/TetherUS PERPETUAL CONTRACT 12h Binance ... H122,470 L101585 C1128113-86819 (-25) - oneofonebatman created with TradingView.com, Oct 11, 2025 03:54 UTC+5:30"
+    }
+  ],
+  "assets": [
+    "BTC",
+    "LINK",
+    "XRP"
+  ],
+  "direction": "short",
+  "levels": {
+    "entry": null,
+    "stop": null,
+    "target": 79000,
+    "other": [
+      "chart price-axis labels: 150,000.0 / 140,000.0 / 130,000 0 / 100,000.0 / 70,000.0",
+      "chart OHLC line (garbled OCR): H122,470 L101585 C1128113-86819 (-25)"
+    ]
+  },
+  "pnl": {
+    "value": null,
+    "currency": null,
+    "percent": null,
+    "size": null,
+    "leverage": "40x"
+  },
+  "indicators": [],
+  "timeframes": [
+    "12h"
+  ],
+  "claims": [
+    "I'm patiently waiting btc to hit 79k along the alt coins like I'm heavy invested in such as xrp,link"
+  ],
+  "needs_visual": true,
+  "extraction_confidence": "medium",
+  "notes": "Discord-style chat ('-ace-journals' channel) with an attached TradingView chart of BTC/USDT PERPETUAL 12h on Binance. Ace says he shorted BTC 'at this level at 40x lv' but NO entry price is in the text - the level is only marked on the chart, so the entry is not recoverable without the visual. Chart OHLC OCR is garbled (C1128113-86819 is not a usable close). Chronology oddity worth flagging: Ace's messages are dated 09/03/2026 (9 March 2026) while the attached chart and the 'You' message are dated 11 October 2025 - the screenshot appears to stitch or scroll across two periods, or the chart is a re-post of an older image. The 79k BTC target is his stated destination and is the one backtestable claim here. Direction recorded as 'short' for the explicit BTC trade; note he is simultaneously LONG/'heavy invested' in XRP and LINK, so the image carries mixed directions. 'Done reading? Check out #ticket-0514.' is app UI text captured in the screenshot, not a message from Ace."
+}
