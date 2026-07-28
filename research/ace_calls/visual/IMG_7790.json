@@ -1,0 +1,50 @@
+{
+  "file": "IMG_7790",
+  "kind": "chat",
+  "transcript": "Ace  20/07/2026, 03:59\n[custom emoji: pepe holding pencil] - The whole crypto market is on the verge of a breakout\n\n21 July 2026\n\nAce  21/07/2026, 14:00\nXRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias\nThis is an actual - FOMO [custom emoji: pepe wearing crown and sunglasses]\n\n22 July 2026",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-20 03:59",
+      "text": "[custom emoji: pepe holding pencil] - The whole crypto market is on the verge of a breakout"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-21 14:00",
+      "text": "XRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias\nThis is an actual - FOMO [custom emoji: pepe wearing crown and sunglasses]"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["XRP", "CRYPTO_MARKET"],
+  "claims": [
+    "The whole crypto market is on the verge of a breakout",
+    "XRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias",
+    "This is an actual - FOMO"
+  ],
+  "boasts": [],
+  "indicators": ["inverse head and shoulder", "breakout"],
+  "confidence": "high",
+  "notes": "Light-theme Discord chat screenshot, no chart or position panel. A sliver of a cut-off line of text is visible at the very top edge above the 20/07/2026 message and is unreadable — not transcribed. Two custom Discord emoji (a pepe-style frog with a pencil, and a pepe-style frog with crown + sunglasses) are described in brackets since their names are not visible. Day dividers '21 July 2026' and '22 July 2026' are UI labels, not statements. No prices, levels or targets given anywhere in the image."
+}
