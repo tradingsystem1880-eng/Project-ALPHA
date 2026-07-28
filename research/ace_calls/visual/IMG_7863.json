@@ -1,0 +1,107 @@
+{
+  "file": "IMG_7863",
+  "kind": "chat",
+  "transcript": "22:28\n\n<- 99  #  -ace-journals  >\n\nAce  14/07/2026, 04:19\n[chart image]\nJul 14, 2026 01:47 UTC+5:30\nBitcoin/USD Tether Perpetual Contract · 4h · BingX...\n89,027.3\n85,148.0\n85,126.6\n82,498.7\n82,490.4\n80,905.2\n75,205.4\n74,939.5\n74,617.4\n74,617.0\n74,577.3\n74,428.4\n73,970.4\n73,773.7\n72,250.0\n71,172.9\n69,361.4\n69,011.1\n68,051.6\n65,174.3\n62,694.3\n62,656.5\n62,620.5\n62,138.6\n03:42:32\n59,549.6\n59,515.7\n56,000.0\n52,000.0\n48,000.0\n44,000.0\nMay   Jun   Jul   Aug\nTradingView\n\n❤️ 4\n\nClassic inverse head and shoulder pattern\nLive call soon everyone @everyone\n\n15 July 2026\n\nAce  15/07/2026, 02:24\nEverything as planned\n\n20 July 2026\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-14 04:19",
+      "text": "[chart image: Bitcoin/USD Tether Perpetual Contract · 4h · BingX]"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Classic inverse head and shoulder pattern"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Live call soon everyone @everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-15 02:24",
+      "text": "Everything as planned"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BTCUSDT.P)",
+    "timeframe": "4h",
+    "venue": "BingX",
+    "last_price": 62138.6,
+    "drawn_levels": [
+      {"price": 89027.3, "colour": "green", "role": "level"},
+      {"price": 85148.0, "colour": "grey", "role": "level/zone"},
+      {"price": 85126.6, "colour": "blue", "role": "level"},
+      {"price": 82498.7, "colour": "teal", "role": "level"},
+      {"price": 82490.4, "colour": "blue", "role": "level"},
+      {"price": 80905.2, "colour": "red", "role": "level"},
+      {"price": 75205.4, "colour": "grey", "role": "level/zone"},
+      {"price": 74939.5, "colour": "red", "role": "level"},
+      {"price": 74617.4, "colour": "teal", "role": "level"},
+      {"price": 74617.0, "colour": "teal", "role": "level"},
+      {"price": 74577.3, "colour": "blue", "role": "level"},
+      {"price": 74428.4, "colour": "grey", "role": "level/zone"},
+      {"price": 73970.4, "colour": "red", "role": "level"},
+      {"price": 73773.7, "colour": "teal", "role": "level"},
+      {"price": 72250.0, "colour": "green", "role": "level"},
+      {"price": 71172.9, "colour": "teal", "role": "level"},
+      {"price": 69361.4, "colour": "red", "role": "level"},
+      {"price": 69011.1, "colour": "green", "role": "level"},
+      {"price": 68051.6, "colour": "grey", "role": "level/zone"},
+      {"price": 65174.3, "colour": "teal", "role": "level"},
+      {"price": 62694.3, "colour": "blue", "role": "level"},
+      {"price": 62656.5, "colour": "grey", "role": "level/zone"},
+      {"price": 62620.5, "colour": "grey", "role": "level/zone"},
+      {"price": 62138.6, "colour": "red", "role": "last price (countdown 03:42:32 under the tag)"},
+      {"price": 59549.6, "colour": "red", "role": "level"},
+      {"price": 59515.7, "colour": "red", "role": "level"}
+    ],
+    "drawn_objects": [
+      "hand-drawn black inverse head-and-shoulders: left shoulder low (~early Jun), deeper head low (~late Jun/early Jul), right shoulder low, then an up-arrow breaking up through the neckline at the right edge",
+      "long position tool over the May rally: teal profit box above a pink stop box (entry/target/stop labels not shown)",
+      "grey supply/demand zone near the top of the chart with a black dashed midline",
+      "wide grey zone across the ~75k area",
+      "grey zone across the ~69-71k area (where price broke down)",
+      "grey zone at the bottom around the 44,000-48,000 region with a black dashed midline",
+      "four solid green horizontal lines (one truncated at ~mid-Jun, three full-width)",
+      "four blue/cyan dashed horizontal lines, the lowest sitting just under the current price",
+      "red dotted last-price line",
+      "purple lightning-bolt icon on the time axis (TradingView event marker)"
+    ],
+    "visible_date_range": "axis labelled May, Jun, Jul, Aug 2026; candle data runs from ~late Apr/May 2026 to 14 Jul 2026, with empty projection space out to Aug",
+    "what_the_drawing_says": "BTC topped near 74.5k in May, broke down through the ~69-71k grey zone and has been basing between roughly 59.5k and 62.7k; Ace has traced a hand-drawn inverse head-and-shoulders across that base with the neckline at ~62.1-62.7k and an arrow breaking out upward, i.e. he expects the base to resolve higher back toward the stacked levels at 65k-75k. A separate untested demand zone sits far below at ~44-48k."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "Classic inverse head and shoulder pattern",
+    "Live call soon everyone",
+    "Everything as planned"
+  ],
+  "boasts": [
+    "Everything as planned"
+  ],
+  "indicators": [
+    "inverse head and shoulder pattern",
+    "order block / supply-demand zones",
+    "horizontal support-resistance levels",
+    "long position tool",
+    "neckline breakout arrow",
+    "4h timeframe"
+  ],
+  "confidence": "high",
+  "notes": "Same 14/07/2026 04:19 chart as IMG_7862 but scrolled so the full chart, time axis and the follow-up text are visible; the extra axis tags 59,549.6 and 59,515.7 (both red) are readable here. 56,000.0 / 52,000.0 / 48,000.0 / 44,000.0 are ordinary grey axis gridline labels, NOT drawn levels, so they are excluded from drawn_levels. One grey tag above 89,027.3 remains cut off ('89,2??.?') and is not recorded; a stray '0' glyph sits to its right. 'Classic inverse head and shoulder pattern' and 'Live call soon everyone @everyone' appear below the chart's reaction row as grouped follow-up messages with no visible timestamp header — author is Ace, time is after 2026-07-14 04:19 but not readable, so timestamps are null. Only the second line carries the yellow @everyone mention highlight, which is why the two lines are recorded as separate messages rather than one block. Reaction count on the chart message: ❤️ 4. 'Everything as planned' is listed in both claims and boasts: it is a retrospective, unfalsifiable self-validation with no numbers attached. The '20 July 2026' day divider at the bottom is partially occluded by the '#ticket-0514' banner."
+}

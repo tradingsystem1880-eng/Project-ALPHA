@@ -1,0 +1,95 @@
+{
+  "file": "IMG_7864",
+  "kind": "chat",
+  "transcript": "22:28\n\n<- 99  #  -ace-journals  >\n\n15 July 2026\n\nAce  15/07/2026, 02:24\nEverything as planned\n\n20 July 2026\n\nAce  20/07/2026, 03:59\n[pepe emoji]  - The whole crypto market is on the verge of a breakout\n\n21 July 2026\n\nAce  21/07/2026, 14:00\nXRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias\nThis is an actual - FOMO [crowned pepe emoji]\n\n22 July 2026\n\nAce  Looking for 69-72k resistance level\nAce  22/07/2026, 05:56\n.\nFinally touched 67k first resistance level\n\n🔥 4\n\n@everyone [crowned pepe emoji]\n58 to 67k = 9k move\nThis is how you trade [pepe emoji]\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-15 02:24",
+      "text": "Everything as planned"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-20 03:59",
+      "text": "- The whole crypto market is on the verge of a breakout"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-21 14:00",
+      "text": "XRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-21 14:00",
+      "text": "This is an actual - FOMO"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-22 05:56",
+      "text": "."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-07-22 05:56",
+      "text": "Finally touched 67k first resistance level"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "@everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "58 to 67k = 9k move"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "This is how you trade"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC", "XRP"],
+  "claims": [
+    "The whole crypto market is on the verge of a breakout",
+    "XRP's price action is signaling a potential trend reversal (inverse head and shoulder) , with multiple technical factors reinforcing the upside bias",
+    "This is an actual - FOMO",
+    "Finally touched 67k first resistance level",
+    "58 to 67k = 9k move"
+  ],
+  "boasts": [
+    "Everything as planned",
+    "This is how you trade"
+  ],
+  "indicators": [
+    "inverse head and shoulder",
+    "resistance level",
+    "breakout",
+    "trend reversal"
+  ],
+  "confidence": "high",
+  "notes": "All text is crisply legible; no chart or position panel. The 15/07 message repeats from IMG_7863 (scroll overlap). The 22/07/2026 05:56 message is a reply to Ace's own earlier message 'Looking for 69-72k resistance level' (posted 08/07/2026 08:51, visible in IMG_7862); its first line is a bare full stop '.'. The trailing '@everyone', '58 to 67k = 9k move' and 'This is how you trade' lines sit BELOW the 🔥 4 reaction row, so they are separate follow-up messages from Ace with no visible timestamp header — timestamps recorded as null; they follow 2026-07-22 05:56. Only the '@everyone' line carries the yellow mention highlight, which is why the consecutive lines are split into separate statements rather than one block. The 20/07 message begins with a pepe emoji before the dash. Numbers readable and recorded: 69-72k (prior level range, quoted in the reply preview), 67k, 58 to 67k, 9k. Note for later verification: the 67k he says was 'finally touched' is below the 69-72k range he originally named."
+}

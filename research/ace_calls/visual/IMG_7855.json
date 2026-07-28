@@ -1,0 +1,59 @@
+{
+  "file": "IMG_7855",
+  "kind": "chart",
+  "transcript": "22:27\n#🔒 📓-ace-journals >\n99\n[top edge: cut-off 'TradingView' logo of the previous chart embed]\nBullish are showing in this region\n\n[Chart embed]\nJun 27, 2026 01:43 UTC+4\nXRP / TetherUS PERPETUAL CONTRACT · 1D · Binance...\n3.4000\n3.2000\n3.0000\n2.8000\n2.6000\n2.4000\n2.2000\n2.0000\n1.8000\n1.6000\n1.5377\n1.4000\n1.2139\n1.0458\n02:16:30\n0.9617\n0.8000\n0.6000\n0.4000\nMar  May  Jul  Sep\nTradingView\n\nI'm buying insane amount of XRP here\n0.96 was my region but this is the best spot to buy XRP\n\nAce 27/06/2026, 05:47\n[Chart embed]\nJun 27, 2026 01:46 UTC+4\n...\n18.000\n17.073\n16.000\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": null, "text": "Bullish are showing in this region"},
+    {"author": "Ace", "timestamp": null, "text": "I'm buying insane amount of XRP here"},
+    {"author": "Ace", "timestamp": null, "text": "0.96 was my region but this is the best spot to buy XRP"},
+    {"author": "Ace", "timestamp": "2026-06-27 05:47", "text": "[chart-only message: chart snapshot stamped Jun 27, 2026 01:46 UTC+4, symbol truncated, black dashed level 17.073]"}
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "XRP / TetherUS PERPETUAL CONTRACT (XRPUSDT.P)",
+    "timeframe": "1D",
+    "venue": "Binance",
+    "last_price": 1.0458,
+    "drawn_levels": [
+      {"price": 1.5377, "colour": "red", "role": "end value of the red descending trend/moving-average line"},
+      {"price": 1.2139, "colour": "black", "role": "black dashed horizontal line across the chart"},
+      {"price": 1.0458, "colour": "green/teal", "role": "live last-price tag (bar countdown 02:16:30), green dotted horizontal line"},
+      {"price": 0.9617, "colour": "light green", "role": "green dashed horizontal line below price - the '0.96 region' he names"}
+    ],
+    "drawn_objects": [
+      "grey shaded rectangle (range/supply box) spanning most of the chart width, roughly 1.58 down to 1.36 - edges NOT tagged on the axis",
+      "red descending curved line (downtrend/moving average) ending at the 1.5377 tag",
+      "black dashed horizontal line at 1.2139",
+      "green dotted horizontal line at ~1.0458 (current price)",
+      "green dashed horizontal line at 0.9617"
+    ],
+    "visible_date_range": "approx Mar - Sep 2026 (x-axis ticks Mar, May, Jul, Sep; candles end around late Jun)",
+    "what_the_drawing_says": "XRP daily has broken down out of a grey 1.36-1.58 range and fallen to 1.0458; a black dashed line at 1.2139 marks the broken support now overhead, and a green dashed line at 0.9617 marks the buy region he says he wanted. He is calling the current 1.04 area the best spot to buy."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["XRP"],
+  "claims": [
+    "Bullish are showing in this region",
+    "I'm buying insane amount of XRP here",
+    "0.96 was my region but this is the best spot to buy XRP"
+  ],
+  "boasts": [],
+  "indicators": [
+    "horizontal support/resistance levels (dashed/dotted)",
+    "grey range/supply box",
+    "descending red trend/moving-average line"
+  ],
+  "confidence": "high",
+  "notes": "This is a scroll continuation of IMG_7854 - the 'Bullish are showing in this region' line and the XRP chart are repeated. The three text lines ('Bullish are showing...', 'I'm buying insane amount of XRP here', '0.96 was my region...') are grouped messages under Ace's 05:39 header (not visible in this crop), so no per-message timestamps are shown; timestamps set to null. The second chart embed under the 'Ace 27/06/2026, 05:47' header is cut off at the bottom of the screen: the instrument title is rendered as '...' and unreadable, so its symbol, timeframe and venue are unknown; only the axis labels 18.000 / 16.000 and a black dashed level at 17.073 can be read. The grey range box on the XRP chart has no axis price tags, so its boundaries are NOT recorded as numbers."
+}

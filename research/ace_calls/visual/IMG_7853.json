@@ -1,0 +1,96 @@
+{
+  "file": "IMG_7853",
+  "kind": "chat",
+  "transcript": "22:27\n99\n#-ace-journals >\n\nAce 21/06/2026, 18:08\nSell here like 20% keep taking profits\nAnd I'm completely out [crown pepe emoji]\n\n23 June 2026\n\nAce 23/06/2026, 05:38\nNo trading until monthly candles [candle emoji] [pepe emoji]\nThis monthly candle is special because it's half yearly\n\n24 June 2026\n\nAce 24/06/2026, 23:20\nIt's time [crown pepe emoji]\nJun 24, 2026 19:16 UTC+4\nBitcoin/USD Tether Perpetual Contract · 2h · BingX...\n88,000.0\n84,266.9\n82,807.9\n82,357.1\n82,328.2\n80,000.0\n76,451.3\n75,858.0\n74,235.5\n74,225.9\n70,985.0\n68,554.4\n65,836.9\n64,524.8\n63,342.4\n62,926.0\n62,877.7\n61,827.0\n60,937.5\n43:16\n60,062.9\n60,013.3\n52,000.0\n48,482.7\n44,000.0\n40,000.0\n36,000.0\n32,000.0\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-21 18:08",
+      "text": "Sell here like 20% keep taking profits\nAnd I'm completely out [crown pepe emoji]"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-23 05:38",
+      "text": "No trading until monthly candles [candle emoji] [pepe emoji]\nThis monthly candle is special because it's half yearly"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-24 23:20",
+      "text": "It's time [crown pepe emoji]"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BingX)",
+    "timeframe": "2h",
+    "venue": "BingX",
+    "last_price": 60937.5,
+    "drawn_levels": [
+      {"price": 61827.0, "colour": "grey", "role": "entry line of a NEW SHORT position tool (pink risk box above it, green profit box below). Verified by axis calibration."},
+      {"price": 63342.4, "colour": "red", "role": "stop — top edge of the pink risk box of the short tool. Verified by calibration."},
+      {"price": 48482.7, "colour": "green", "role": "target — bottom edge of the green profit box of the short tool. Verified by calibration."},
+      {"price": 82807.9, "colour": "black", "role": "upper black dashed horizontal level (carried over from the earlier charts). Verified by calibration."},
+      {"price": 62877.7, "colour": "black", "role": "middle black dashed horizontal level. Verified by calibration."},
+      {"price": 60013.3, "colour": "black", "role": "lower black dashed horizontal level. Verified by calibration."},
+      {"price": 60937.5, "colour": "red", "role": "last price / current-price dotted line with 43:16 bar countdown (platform line, not hand-drawn)"},
+      {"price": 68771.6, "colour": "green", "role": "top edge of the grey ~68.6-68.8k horizontal band (the 'bearish order block'); the band measured 68,582-68,766, i.e. it spans the 68,554.4/68,771.6 tag pair"},
+      {"price": 68554.4, "colour": "red", "role": "bottom edge of that same grey ~68.6-68.8k order-block band"},
+      {"price": 74235.5, "colour": "grey", "role": "inside the grey shaded band (measured ~73,850-74,460) carrying the purple dashed line"},
+      {"price": 74225.9, "colour": "green", "role": "inside the same grey band around ~74.2k"},
+      {"price": 84266.9, "colour": "red", "role": "belongs to an older position-tool drawing at the far left of the chart (pink box measured 84,202 down to ~82,4xx) — stop of that earlier short"},
+      {"price": 82357.1, "colour": "grey", "role": "entry line of that same older left-edge position tool (pink/green boundary measured ~82,3xx)"},
+      {"price": 82328.2, "colour": "green", "role": "tag adjacent to the older left-edge tool's entry; exact role not determinable"},
+      {"price": 76451.3, "colour": "red", "role": "belongs to a second older left-edge position tool (a thin pink band measured ~76,1xx-76,4xx)"},
+      {"price": 75858.0, "colour": "green", "role": "belongs to that second older left-edge tool (green box below the pink band)"},
+      {"price": 70985.0, "colour": "grey", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 65836.9, "colour": "green", "role": "unassigned; the nearest measured object is an untagged grey ray at ~65.4-65.6k, which is not a confident match"},
+      {"price": 64524.8, "colour": "red", "role": "unassigned price-axis tag — no corresponding line confidently located"},
+      {"price": 62926.0, "colour": "grey", "role": "grey level tag just above the 62,877.7 black dashed line (carried over from earlier charts)"},
+      {"price": 60062.9, "colour": "red", "role": "unassigned price-axis tag ~50 above the 60,013.3 black dashed level (carried over)"}
+    ],
+    "drawn_objects": [
+      "NEW short position tool: entry 61,827.0, stop 63,342.4 (pink box above), target 48,482.7 (large green box below) — roughly 8.8:1 reward-to-risk",
+      "grey horizontal band at ~68.55-68.77k (the 'bearish order block') extending to the right",
+      "purple dashed line inside a grey band around ~73,850-74,460",
+      "black dashed horizontals at 82,807.9, 62,877.7 and 60,013.3",
+      "large grey rectangle zone across the bottom of the chart, measured roughly 44,260-47,900 (untagged) — the demand area just under the short's target",
+      "untagged grey ray at ~65.4-65.6k",
+      "two older position-tool drawings at the far left edge of the chart (see drawn_levels for their measured boxes)",
+      "red moving-average line"
+    ],
+    "visible_date_range": "x-axis dates are cut off by the bottom banner and not readable; chart header stamp reads 'Jun 24, 2026 19:16 UTC+4'",
+    "what_the_drawing_says": "He has flipped from long to short. With price at 60,937.5 he has a short marked from 61,827.0 with a tight stop at 63,342.4 and a very distant target at 48,482.7 — the top of the big grey demand block that spans roughly 44.3k-47.9k. The 68.55-68.77k order block above is now overhead supply. The 'It's time' caption frames this as the moment to take the downside trade."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "Sell here like 20% keep taking profits",
+    "And I'm completely out",
+    "No trading until monthly candles",
+    "This monthly candle is special because it's half yearly",
+    "It's time"
+  ],
+  "boasts": [],
+  "indicators": [
+    "bearish order block (~68.55-68.77k band)",
+    "short position tool (entry/stop/target boxes)",
+    "monthly candle / half-yearly candle close",
+    "black dashed horizontal levels",
+    "purple dashed level / grey supply band",
+    "grey demand zone (~44.3k-47.9k)",
+    "moving average (red line)"
+  ],
+  "confidence": "high",
+  "notes": "All prices come from price-axis tags. Line-to-tag assignments were verified by calibrating the axis against the 4,000-unit gridlines (88,000 at the top gridline) and measuring each drawn object's row; the verified matches sat within ~1 pixel (±60 in price). The 68.55-68.77k object measures as a thin band spanning both tags rather than a single line, which is consistent with it being the drawn 'order block' zone. Several tags could not be matched to any line in the visible window and are marked unassigned rather than guessed. 'And I'm completely out' is a statement about his own position with no exchange panel or fill screenshot attached, so it is unverified. The chart's x-axis is cut off by the in-app banner."
+}

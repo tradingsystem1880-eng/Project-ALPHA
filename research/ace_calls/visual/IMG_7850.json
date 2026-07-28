@@ -1,0 +1,92 @@
+{
+  "file": "IMG_7850",
+  "kind": "chat",
+  "transcript": "22:27\n99\n#-ace-journals >\n\nAce 20/06/2026, 05:00\nBtc current thoughts after that rejection as mentioned at 65k to 62k ( I'm looking for a pull back to 68.8k bearish order block as previously mentioned )\nJun 20, 2026 00:57 UTC+4\nBitcoin/USD Tether Perpetual Contract · 2h · BingX...\n86,000.0\n84,266.9\n82,807.9\n82,357.1\n82,328.2\n80,000.0\n78,000.0\n76,451.3\n75,858.0\n74,235.5\n74,225.9\n72,000.0\n70,985.0\n70,000.0\n68,771.6\n68,554.4\n68,000.0\n65,836.9\n65,323.0\n64,000.0\n63,188.4\n01:02:03\n62,926.0\n62,877.7\n62,616.3\n61,091.7\n60,062.9\n60,013.3\n56,000.0\n54,000.0\n52,000.0\n50,000.0\n6 11 16 21 26 Ju\nTradingView\n\nAce 20/06/2026, 05:14\n@everyone\n\nAce 20/06/2026, 16:50\n[attachment, cut off: Bitcoin/USD Tether Perpetual Contract ...]\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-20 05:00",
+      "text": "Btc current thoughts after that rejection as mentioned at 65k to 62k ( I'm looking for a pull back to 68.8k bearish order block as previously mentioned )"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-20 05:14",
+      "text": "@everyone"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-20 16:50",
+      "text": "[image attachment — another Bitcoin/USD Tether Perpetual Contract chart; only the top edge is visible, cut off by the bottom of the screenshot]"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BingX)",
+    "timeframe": "2h",
+    "venue": "BingX",
+    "last_price": 63188.4,
+    "drawn_levels": [
+      {"price": 68771.6, "colour": "green", "role": "target — top edge of the long-position tool's green profit box, coincident with a light-grey horizontal ray at ~68.8k (the 'bearish order block' he names in the text). Verified by pixel-to-axis calibration."},
+      {"price": 62616.3, "colour": "grey", "role": "entry — the solid grey entry line of the long-position tool (green box above, pink box below). Verified by calibration."},
+      {"price": 61091.7, "colour": "red", "role": "stop — bottom edge of the long-position tool's pink risk box. Verified by calibration."},
+      {"price": 82807.9, "colour": "black", "role": "upper black dashed horizontal level (same level as on the 1D chart in IMG_7848). Verified by calibration."},
+      {"price": 62877.7, "colour": "black", "role": "middle black dashed horizontal level, just under current price. Verified by calibration."},
+      {"price": 60013.3, "colour": "black", "role": "lower black dashed horizontal level (same level as on the 1D chart in IMG_7848). Verified by calibration."},
+      {"price": 63188.4, "colour": "green", "role": "last price / current-price dotted line, with 01:02:03 bar countdown (platform line, not hand-drawn)"},
+      {"price": 84266.9, "colour": "red", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 82357.1, "colour": "grey", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 82328.2, "colour": "green", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 76451.3, "colour": "red", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 75858.0, "colour": "green", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 74235.5, "colour": "grey", "role": "sits inside the grey shaded band (measured ~73,920-74,500) that carries the purple dashed line"},
+      {"price": 74225.9, "colour": "green", "role": "sits inside the same grey shaded band around ~74.2k"},
+      {"price": 70985.0, "colour": "grey", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 68554.4, "colour": "red", "role": "unassigned price-axis tag, ~200 below the 68.8k order-block ray"},
+      {"price": 65836.9, "colour": "green", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 65323.0, "colour": "red", "role": "unassigned price-axis tag — no corresponding line found in the visible plot area"},
+      {"price": 62926.0, "colour": "grey", "role": "near the grey rectangle zone drawn over the ~62.8-62.9k congestion on the left of the chart"},
+      {"price": 60062.9, "colour": "red", "role": "unassigned price-axis tag, ~50 above the 60,013.3 black dashed level"}
+    ],
+    "drawn_objects": [
+      "long position tool: entry 62,616.3, target 68,771.6 (green box), stop 61,091.7 (pink box) — roughly 4:1 reward-to-risk",
+      "light-grey horizontal ray at ~68.8k extending to the right (the 'bearish order block')",
+      "black dashed horizontals at 82,807.9, 62,877.7 and 60,013.3",
+      "purple dashed line inside a grey shaded band spanning roughly 73,920-74,500",
+      "grey rectangle zone over the ~62.8-62.9k congestion on the left, plus a small grey block near ~64k beside the recent candles",
+      "hand-drawn black arrow projecting price up from ~63k to ~68.7k, preceded by a small down-then-up zig-zag near 63.5k",
+      "red moving-average line overlaid on price"
+    ],
+    "visible_date_range": "x-axis ticks 6, 11, 16, 21, 26, Ju(l) — approx 4 June to early July 2026 (2h bars); chart header stamp 'Jun 20, 2026 00:57 UTC+4'",
+    "what_the_drawing_says": "After the crash and the bounce off ~60k, he is long from 62,616.3 with a stop at 61,091.7 and a target at 68,771.6, i.e. a ~4:1 long back up into the light-grey 68.8k 'bearish order block' ray; the hand-drawn arrow spells out the expected path — a small dip, then a rally straight into that block, which is where he expects supply."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "I'm looking for a pull back to 68.8k bearish order block as previously mentioned"
+  ],
+  "boasts": [
+    "Btc current thoughts after that rejection as mentioned at 65k to 62k"
+  ],
+  "indicators": [
+    "bearish order block",
+    "long position tool (entry/stop/target boxes)",
+    "black dashed horizontal levels",
+    "purple dashed level / grey supply band",
+    "grey rectangle zones",
+    "moving average (red line)",
+    "hand-drawn projection arrow"
+  ],
+  "confidence": "high",
+  "notes": "Every price recorded here is read from a price-axis tag; no price is estimated from pixel position. Line-to-tag assignments for the position tool, the three black dashed levels and the 68.8k ray were verified by calibrating the axis against the 2,000-unit gridlines (86,000 at the top gridline) and measuring each drawn line's row — each matched a tag to within ~1 pixel. Ten further coloured tags are visible on the axis with no corresponding line inside the visible plot window (they belong to objects drawn outside the visible x-range, or to alerts); they are recorded with colour and marked unassigned rather than guessed. The 20/06 05:00 message and its chart also appear, cropped, at the bottom of IMG_7849."
+}

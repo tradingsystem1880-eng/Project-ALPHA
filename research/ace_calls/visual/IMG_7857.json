@@ -1,0 +1,64 @@
+{
+  "file": "IMG_7857",
+  "kind": "chart",
+  "transcript": "22:27\n#🔒 📓-ace-journals >\n99\nAce 27/06/2026, 17:40\n[Chart embed]\nJun 27, 2026 13:39 UTC+4\nXRP / TetherUS PERPETUAL CONTRACT · 1D · Binance...\n3.4000\n3.2000\n3.0000\n2.8000\n2.6000\n2.4000\n2.2000\n2.0000\n1.8000\n1.6000\n1.5329\n1.4000\n1.2139\n1.0557\n14:20:33\n0.9617\n0.8000\n0.6000\n0.4000\n2026  Mar  May  Jul  Sep  Nov\nTradingView\n\n29 June 2026\n\nAce 29/06/2026, 00:56\nthe weekly needed to close at 1.20 or above to confirm bullish symmetery (edited)\n@everyone hence im out of the trade [custom emoji: pepe frog wearing a crown and sunglasses]\nand btc to 48k no rush\n4% profit accumulated [custom emoji: pepe frog wearing a crown and sunglasses] profit is profit\n\n30 June 2026\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-06-27 17:40", "text": "[chart-only message: XRP / TetherUS PERPETUAL CONTRACT · 1D · Binance, snapshot Jun 27, 2026 13:39 UTC+4, with a hand-drawn V-shaped projection arrow]"},
+    {"author": "Ace", "timestamp": "2026-06-29 00:56", "text": "the weekly needed to close at 1.20 or above to confirm bullish symmetery (edited)"},
+    {"author": "Ace", "timestamp": null, "text": "@everyone hence im out of the trade [emoji]"},
+    {"author": "Ace", "timestamp": null, "text": "and btc to 48k no rush"},
+    {"author": "Ace", "timestamp": null, "text": "4% profit accumulated [emoji] profit is profit"}
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "XRP / TetherUS PERPETUAL CONTRACT (XRPUSDT.P)",
+    "timeframe": "1D",
+    "venue": "Binance",
+    "last_price": 1.0557,
+    "drawn_levels": [
+      {"price": 1.5329, "colour": "red", "role": "end value of the red descending trend/moving-average line"},
+      {"price": 1.2139, "colour": "black", "role": "black dashed horizontal line across the chart"},
+      {"price": 1.0557, "colour": "green/teal", "role": "live last-price tag (bar countdown 14:20:33), green dotted horizontal line"},
+      {"price": 0.9617, "colour": "light green", "role": "green dashed horizontal line below price"}
+    ],
+    "drawn_objects": [
+      "large hand-drawn black V-shaped projection arrow: down from ~1.22 to a low around the 1.03-1.05 area, then a steep rally whose arrowhead terminates just below the 2.8000 gridline (the arrow is a freehand drawing, its endpoints are NOT axis-tagged)",
+      "grey shaded range box roughly 1.36-1.58 spanning the Feb-Jun consolidation (edges untagged)",
+      "red descending curved line (downtrend/moving average) ending at the 1.5329 tag",
+      "black dashed horizontal line at 1.2139",
+      "green dotted line at 1.0557 (price) and green dashed line at 0.9617"
+    ],
+    "visible_date_range": "2026 (Jan) through Nov 2026 on the x-axis (ticks 2026, Mar, May, Jul, Sep, Nov); candles end late Jun 2026 and the rest of the axis is empty future space used for the projection arrow",
+    "what_the_drawing_says": "He is drawing an XRP bottom: one more dip into the 1.03-1.05 area followed by a near-vertical rally toward the high-2s, with 1.2139 as the level to reclaim and 0.9617 as the lower buy region. The projected upside targets the empty right-hand space out to roughly Sep-Nov 2026."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["XRP", "BTC"],
+  "claims": [
+    "the weekly needed to close at 1.20 or above to confirm bullish symmetery",
+    "and btc to 48k no rush"
+  ],
+  "boasts": [
+    "4% profit accumulated [emoji] profit is profit"
+  ],
+  "indicators": [
+    "weekly close confirmation level (1.20)",
+    "\"bullish symmetery\" (symmetry)",
+    "grey range box",
+    "descending red trend/moving-average line",
+    "horizontal dashed/dotted levels",
+    "freehand projection arrow"
+  ],
+  "confidence": "high",
+  "notes": "The Ace 27/06/2026 17:40 header at the top is partially cut off by the channel bar but is legible. The three lines after the 00:56 message ('@everyone hence im out of the trade', 'and btc to 48k no rush', '4% profit accumulated ... profit is profit') are grouped messages with no individually visible timestamps, so their timestamps are null - they sit between the 00:56 message and the '30 June 2026' day divider, so they are on 29 June 2026. '@everyone hence im out of the trade' line is highlighted (mention background). 'symmetery' is his spelling, left uncorrected. The V-arrow's endpoints are freehand and carry no axis tags; the only positional claim recorded is that the arrowhead sits just below the labelled 2.8000 gridline. The 4% profit figure is his own unverified claim - recorded under boasts because nothing in the image substantiates it. Day dividers '29 June 2026' and '30 June 2026' are not statements."
+}
