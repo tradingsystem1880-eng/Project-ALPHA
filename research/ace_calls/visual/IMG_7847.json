@@ -1,0 +1,67 @@
+{
+  "file": "IMG_7847",
+  "kind": "chat",
+  "transcript": "22:27\n99\n#-ace-journals >\n@everyone a cute 45% today just in few hours\nI hope u guys following\n\nAce 10/06/2026, 22:17\n[attached TradingView chart image]\nJun 10, 2026 18:16 UTC+4\nSandisk Corporation · 30 · NASDAQ 1,715.49...\n2,100.00\n2,050.00\n2,000.00\n1,950.00\n1,900.00\n1,850.00\n1,795.61\n1,750.00\n1,726.28\n1,715.49 13:04\n1,650.00\n1,609.03\n1,550.00\n1,510.18\n1,450.00\n1,400.00\n1,350.00\n1,300.00\n1,250.00\n1,200.00\nun 3 5 9 11\nTradingView\n\nAce Tap to see attachment [image icon]\nAce 10/06/2026, 23:56\nout at 1657 just rn\n\n11 June 2026\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "@everyone a cute 45% today just in few hours\nI hope u guys following"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-10 22:17",
+      "text": "[image attachment only — TradingView chart of Sandisk Corporation, 30-minute, NASDAQ]"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-10 23:56",
+      "text": "out at 1657 just rn"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Sandisk Corporation (NASDAQ)",
+    "timeframe": "30",
+    "venue": "TradingView (NASDAQ feed)",
+    "last_price": 1715.49,
+    "drawn_levels": [
+      {"price": 1795.61, "colour": "red", "role": "top of red box of position tool — stop level"},
+      {"price": 1726.28, "colour": "grey", "role": "position-tool entry line (black dashed horizontal)"},
+      {"price": 1510.18, "colour": "green", "role": "bottom of green box of position tool — target level"},
+      {"price": 1609.03, "colour": "red", "role": "price-axis tag where the red moving-average line terminates (indicator last value, not a hand-drawn horizontal)"}
+    ],
+    "drawn_objects": [
+      "short position tool: entry line ~1,726.28 (black dashed), red risk box above extending to 1,795.61, green reward box below extending to 1,510.18",
+      "grey shaded horizontal rectangle/zone spanning roughly 1,700-1,750 across the recent bars",
+      "dotted horizontal current-price line at 1,715.49"
+    ],
+    "visible_date_range": "x-axis ticks labelled 'un'(Jun) 3, 5, 9, 11 — approx 1 Jun to 11 Jun 2026; header stamp 'Jun 10, 2026 18:16 UTC+4'",
+    "what_the_drawing_says": "A short setup from a grey supply/consolidation zone around 1,700-1,750: entry ~1,726, stop above the zone at ~1,795.61, and a much larger downside target at ~1,510.18 (roughly 3:1 reward-to-risk). Price is trading at 1,715.49, just below the entry line, with a red moving average below at ~1,609."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["SNDK"],
+  "claims": [],
+  "boasts": [
+    "@everyone a cute 45% today just in few hours I hope u guys following"
+  ],
+  "indicators": [
+    "position tool (risk/reward boxes)",
+    "red moving average line",
+    "grey rectangle zone / consolidation box",
+    "dotted current-price line"
+  ],
+  "confidence": "high",
+  "notes": "The '@everyone a cute 45% today...' message sits at the very top of the screenshot with its author/timestamp header scrolled off, so its author is inferred from the channel (#-ace-journals) and is recorded with a null timestamp. Above it a sliver of a previous attachment (a green line and a dark-purple line) is visible but unreadable. 'out at 1657 just rn' has no attached exit chart in view. The 22:17 message contains only the chart image (no caption text visible). Note the chart's price scale (~1,200-2,100) is far above real SNDK trading levels; recorded verbatim as shown, no interpretation applied. A further message below the '11 June 2026' divider is cut off by the '#ticket-0514' banner and unreadable ('Ace ... out at 1657 just...' partially legible) so it is not recorded as a statement."
+}

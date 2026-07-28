@@ -160,9 +160,7 @@ def load_raw(source: Path | None = None) -> list[Record]:
             Record(
                 file=str(data.get("file") or path.stem),
                 kind=str(data.get("kind") or "unknown"),
-                raw_text=next(
-                    (str(data[f]) for f in _TEXT_FIELDS if data.get(f)), ""
-                ),
+                raw_text=next((str(data[f]) for f in _TEXT_FIELDS if data.get(f)), ""),
                 data=data,
             )
         )
