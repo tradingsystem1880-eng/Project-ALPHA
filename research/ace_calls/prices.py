@@ -100,8 +100,18 @@ def canonical(asset: str) -> str:
 
 
 def _ohlcv_source(symbol: str) -> object | None:
-    """The longest-history OHLCV mirror for a symbol, or None if there is not one."""
-    candidates = [s for s in SOURCES if s.symbol == symbol and s.supports("1d")]
+    """The longest-history OHLCV mirror for a symbol whose file is actually on disk.
+
+    Existence of the *file* is part of the question, not an afterthought. The mirrors are declared
+    in config but gitignored, so on a fresh checkout — CI, or anyone else's machine — the source
+    exists and the data does not. Reporting "ohlcv" in that situation makes every caller believe it
+    has intraday extremes right up until the loader raises.
+    """
+    candidates = [
+        s
+        for s in SOURCES
+        if s.symbol == symbol and s.supports("1d") and (REPO_ROOT / s.path).exists()
+    ]
     if not candidates:
         return None
     # Prefer the mirror that runs latest — a call from July 2026 cannot be scored on a series that
@@ -110,7 +120,7 @@ def _ohlcv_source(symbol: str) -> object | None:
 
 
 def tier_for(asset: str) -> Tier:
-    """What quality of data exists for an asset, without loading it."""
+    """What quality of data is actually available for an asset, without parsing it."""
     symbol = canonical(asset)
     if _ohlcv_source(symbol) is not None:
         return "ohlcv"

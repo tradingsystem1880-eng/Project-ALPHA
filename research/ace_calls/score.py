@@ -183,7 +183,8 @@ def score_call(call: Call, rng: np.random.Generator) -> Score:
 
     try:
         series = load_series(asset)
-    except DataError as exc:
+    except (DataError, FileNotFoundError, OSError) as exc:
+        # A declared-but-absent mirror must degrade to "no data", not crash the whole record.
         return Score(call, "no_data", "none", reason=str(exc))
 
     horizon = call.horizon_days  # daily bars throughout
