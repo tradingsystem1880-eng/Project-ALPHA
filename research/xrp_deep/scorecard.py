@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -57,7 +58,7 @@ class LiveRow:
         )
 
 
-def build_scorecard(horizon: int = C.PRIMARY_HORIZON) -> dict[str, object]:
+def build_scorecard(horizon: int = C.PRIMARY_HORIZON) -> dict[str, Any]:
     panel = build_panel()
     conditions, _ = screen(build_conditions(panel))
     last = len(panel) - 1
@@ -121,7 +122,7 @@ def build_scorecard(horizon: int = C.PRIMARY_HORIZON) -> dict[str, object]:
 
 def main() -> int:
     card = build_scorecard()
-    rows: list[LiveRow] = card["rows"]  # type: ignore[assignment]
+    rows: list[LiveRow] = card["rows"]
     live = [r for r in rows if r.live]
 
     print("=" * 104)
@@ -130,7 +131,7 @@ def main() -> int:
     print("\n  The data ends where the mirrors end. This is the last bar available, not today.")
 
     print("\n  READINGS")
-    for name, value in card["readings"].items():  # type: ignore[union-attr]
+    for name, value in card["readings"].items():
         print(f"    {name:22} {value:>10.4f}")
 
     print(f"\n  CONDITIONS CURRENTLY TRUE: {len(live)} of {len(rows)}")

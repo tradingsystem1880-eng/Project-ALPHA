@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -61,7 +62,7 @@ CONFLUENCE_BULLISH: tuple[str, ...] = (
 )
 
 
-def cycle_analysis(panel: Panel) -> dict[str, object]:
+def cycle_analysis(panel: Panel) -> dict[str, Any]:
     """Spectral and memory structure, each against its own null."""
     close = panel.bars.close
     logp = np.log(close)
@@ -99,7 +100,7 @@ def cycle_analysis(panel: Panel) -> dict[str, object]:
     }
 
 
-def leadlag_analysis(panel: Panel) -> dict[str, object]:
+def leadlag_analysis(panel: Panel) -> dict[str, Any]:
     """Cross-correlation of XRP against BTC/ETH/SOL at lags, and where the peak sits.
 
     Sign convention follows ``cross_correlation_lags``: a **negative** lag correlates XRP's present
@@ -107,7 +108,7 @@ def leadlag_analysis(panel: Panel) -> dict[str, object]:
     means the two move together and there is nothing to act on, however large the correlation.
     """
     rets = log_returns(panel.bars.close)
-    out: dict[str, object] = {}
+    out: dict[str, Any] = {}
     for key in C.CONTROL_KEYS:
         other = panel.features.get(f"{key.lower()}_ret_1")
         if other is None:
@@ -158,15 +159,15 @@ def _independent_blocks(selected: np.ndarray, horizon: int) -> int:
     return min(total, int(idx.size))
 
 
-def seasonality_analysis(panel: Panel) -> dict[str, object]:
+def seasonality_analysis(panel: Panel) -> dict[str, Any]:
     """Month, weekday and turn-of-month forward hit rates with honest independent counts."""
     outcomes = build_outcomes(panel)
     outcome = outcomes[f"fwd_positive_{C.PRIMARY_HORIZON}"]
     month = panel.features["month"]
     weekday = panel.features["weekday"]
 
-    def _table(labels: np.ndarray, names: dict[int, str], overlap: int) -> list[dict[str, object]]:
-        rows: list[dict[str, object]] = []
+    def _table(labels: np.ndarray, names: dict[int, str], overlap: int) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
         for value, name in sorted(names.items()):
             sel = (labels == value) & outcome.valid
             n = int(sel.sum())
@@ -223,7 +224,7 @@ class ConfluenceRow:
     upper: float
 
 
-def confluence_analysis(panel: Panel) -> dict[str, object]:
+def confluence_analysis(panel: Panel) -> dict[str, Any]:
     """Does stacking bullish conditions raise the forward hit rate monotonically?"""
     conditions, _ = screen(build_conditions(panel))
     by_key = {c.key: c for c in conditions}
@@ -307,7 +308,7 @@ def main() -> int:  # noqa: PLR0915 — a report, printed in one pass
         f"   -> z = {cyc['hurst_z']:+.2f}"
     )
     print("\n  variance ratio (>1 trending, <1 mean-reverting, |z|>2 to matter):")
-    for q, v in cyc["variance_ratios"].items():  # type: ignore[union-attr]
+    for q, v in cyc["variance_ratios"].items():
         print(f"    q={q:>3}  ratio {v['ratio']:.3f}  z {v['z']:+6.2f}  {v['verdict']}")
 
     print("\n" + "=" * 96)
@@ -331,7 +332,7 @@ def main() -> int:  # noqa: PLR0915 — a report, printed in one pass
         f"  {'':6} {'n':>5} {'n_eff':>7} {'rate':>7}  {'95% CI (nominal)':>20}  {'CI at n_eff':>20}"
     )
     for group in ("months", "weekdays"):
-        for row in seas[group]:  # type: ignore[union-attr]
+        for row in seas[group]:
             print(
                 f"  {row['name']:6} {row['n']:>5} {row['n_effective']:>7.1f} {row['rate']:>6.1%}"
                 f"  [{row['ci'][0]:>6.1%},{row['ci'][1]:>6.1%}]"
@@ -348,7 +349,7 @@ def main() -> int:  # noqa: PLR0915 — a report, printed in one pass
     else:
         print(f"\n  stacking {conf['n_conditions']} bullish conditions, one per family\n")
         print(f"  {'count':>5} {'n':>6} {'n_eff':>7} {'rate':>7}  95% CI")
-        for row in conf["rows"]:  # type: ignore[union-attr]
+        for row in conf["rows"]:
             print(
                 f"  {row['count']:>5} {row['n']:>6} {row['n_effective']:>7.1f} "
                 f"{row['rate']:>6.1%}  [{row['ci'][0]:>6.1%},{row['ci'][1]:>6.1%}]"

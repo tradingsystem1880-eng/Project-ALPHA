@@ -49,6 +49,7 @@ from alpha_patterns import (
     wilder_smooth,
     williams_r,
 )
+from alpha_patterns.swings import Swing
 
 CUT = 300
 
@@ -196,11 +197,11 @@ class TestFibAnchorsOnConfirmedSwingsOnly:
         )
 
 
-def _swings(bars: OHLCV):  # type: ignore[no-untyped-def]
+def _swings(bars: OHLCV) -> list[Swing]:
     return find_swings(bars, lookback=5, kind="high") + find_swings(bars, lookback=5, kind="low")
 
 
-def _latest_by_index(swings: list, index: int):  # type: ignore[no-untyped-def]
+def _latest_by_index(swings: list[Swing], index: int) -> Swing | None:
     """The naive anchor: most recent swing by *occurrence*, ignoring when it became knowable."""
     known = [s for s in swings if s.index <= index]
     highs = [s for s in known if s.kind == "high"]
