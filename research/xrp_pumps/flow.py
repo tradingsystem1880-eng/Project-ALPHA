@@ -216,7 +216,8 @@ def scam_pump_test(
             "rate_perp_led": lift.rate_condition,
             "rate_spot_led": lift.rate_complement,
             "difference": lift.difference,
-            "ci": (lift.interval_difference.lower, lift.interval_difference.upper),
+            "ci_lo": lift.interval_difference.lower,
+            "ci_hi": lift.interval_difference.upper,
             "n_eff_perp": lift.n_condition_eff,
             "pvalue": lift.pvalue,
             "separated": lift.separated,
@@ -275,7 +276,6 @@ def report(symbol: str = "XRP") -> None:
                 f"spot-led {res['n_spot_led']})"
             )
             continue
-        lo, hi = res["ci"]  # type: ignore[misc]
         print(
             f"    P(gave it back in 10d | PERP-led) = {res['rate_perp_led']:.1%}  "
             f"(n={res['n_perp_led']}, n_eff={res['n_eff_perp']})"
@@ -285,7 +285,8 @@ def report(symbol: str = "XRP") -> None:
             f"(n={res['n_spot_led']})"
         )
         print(
-            f"    difference {res['difference']:>+.1%}  95% CI [{lo:+.1%}, {hi:+.1%}]  "
+            f"    difference {res['difference']:>+.1%}  "
+            f"95% CI [{res['ci_lo']:+.1%}, {res['ci_hi']:+.1%}]  "
             f"p={res['pvalue']:.3g}  ->  "
             f"{'SEPARATES from zero' if res['separated'] else 'contains zero'}"
         )

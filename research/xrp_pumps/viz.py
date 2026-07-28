@@ -27,6 +27,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import polars as pl  # noqa: E402
+from matplotlib.axes import Axes  # noqa: E402
+from matplotlib.lines import Line2D  # noqa: E402
 
 from alpha_patterns import HSConfig, WedgeConfig, detect_head_shoulders, detect_wedges  # noqa: E402
 from research.hs_quasimodo.data import load  # noqa: E402
@@ -37,7 +39,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT = REPO_ROOT / "research" / "xrp_pumps"
 
 
-def _style(ax: plt.Axes, title: str, xlabel: str = "", ylabel: str = "") -> None:
+def _style(ax: Axes, title: str, xlabel: str = "", ylabel: str = "") -> None:
     ax.set_facecolor(C.PANEL)
     ax.set_title(title, color=C.FG, fontsize=11, loc="left", pad=10)
     ax.set_xlabel(xlabel, color=C.MUTED, fontsize=9)
@@ -103,9 +105,7 @@ def forest(frame: pl.DataFrame, outcome: str, dest: Path) -> None:
         f"solid = 95% interval excludes zero · n = effective (overlap-deflated) sample size",
         xlabel="P(pump | condition) − P(pump | not condition)",
     )
-    handles = [
-        plt.Line2D([], [], color=col, lw=2, label=fam) for fam, col in C.FAMILY_COLOURS.items()
-    ]
+    handles = [Line2D([], [], color=col, lw=2, label=fam) for fam, col in C.FAMILY_COLOURS.items()]
     leg = ax.legend(handles=handles, loc="lower right", fontsize=8, framealpha=0.9)
     leg.get_frame().set_facecolor(C.PANEL)
     leg.get_frame().set_edgecolor(C.GRID)

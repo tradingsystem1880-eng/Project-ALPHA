@@ -1,0 +1,83 @@
+{
+  "file": "IMG_7849",
+  "kind": "chat",
+  "transcript": "22:27\n99\n#-ace-journals >\n\nAce 18/06/2026, 16:24\nBtc rn at 64k ish on verge of rejecting 65.5k rejections we might move to 68k or 74k\n\nAce 18/06/2026, 18:32\nRejections 68k or we dump bad\nNot taking any trades save your money\nMarkets are really bad I can't force things at the moment already made a bit 83k-77k downside [crown pepe emoji] not trading is also making money\n[reactions] heart 3, add-reaction button\n\nAce 18/06/2026, 20:58\nLOOKIN AT THIS anything below 63.500 is a rejection [crown pepe emoji]\n\nAce 18/06/2026, 21:41\nrejected dont trade\n\n20 June 2026\n\nAce 20/06/2026, 05:00\nBtc current thoughts after that rejection as mentioned at 65k to 62k ( I'm looking for a pull back to 68.8k bearish order block as previously mentioned )\nJun 20, 2026 00:57 UTC+4\nBitcoin/USD Tether Perpetual Contract · 2h · BingX...\n86,000.0\n84,266.9\n82,807.9\n82,357.1\n82,328.2\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-18 16:24",
+      "text": "Btc rn at 64k ish on verge of rejecting 65.5k rejections we might move to 68k or 74k"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-18 18:32",
+      "text": "Rejections 68k or we dump bad\nNot taking any trades save your money\nMarkets are really bad I can't force things at the moment already made a bit 83k-77k downside [crown pepe emoji] not trading is also making money"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-18 20:58",
+      "text": "LOOKIN AT THIS anything below 63.500 is a rejection [crown pepe emoji]"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-18 21:41",
+      "text": "rejected dont trade"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-20 05:00",
+      "text": "Btc current thoughts after that rejection as mentioned at 65k to 62k ( I'm looking for a pull back to 68.8k bearish order block as previously mentioned )"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BingX)",
+    "timeframe": "2h",
+    "venue": "BingX",
+    "last_price": null,
+    "drawn_levels": [
+      {"price": 84266.9, "colour": "red", "role": "unknown — only the top strip of the chart is visible; could be last price or a drawn/indicator level"},
+      {"price": 82807.9, "colour": "black", "role": "black tag, same value as the upper black dashed level on the 1D chart in IMG_7848"},
+      {"price": 82357.1, "colour": "grey", "role": "unknown — grey tag (position-tool entry style)"},
+      {"price": 82328.2, "colour": "green", "role": "unknown — green tag"}
+    ],
+    "drawn_objects": [
+      "one black dashed horizontal line running across the visible strip, near the 82,3xx-82,8xx tags (exact tag-to-line pairing not determinable because the tags are stacked)"
+    ],
+    "visible_date_range": "not visible — only the top ~15% of the chart is on screen, the rest is cut off by the '#ticket-0514' banner; chart header stamp reads 'Jun 20, 2026 00:57 UTC+4'",
+    "what_the_drawing_says": "Cannot be read: only a top sliver of the 2h chart is visible, showing a black dashed horizontal level and four stacked price tags with no candles in frame."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC"],
+  "claims": [
+    "Btc rn at 64k ish on verge of rejecting 65.5k rejections we might move to 68k or 74k",
+    "Rejections 68k or we dump bad",
+    "Not taking any trades save your money",
+    "LOOKIN AT THIS anything below 63.500 is a rejection",
+    "rejected dont trade",
+    "I'm looking for a pull back to 68.8k bearish order block as previously mentioned"
+  ],
+  "boasts": [
+    "already made a bit 83k-77k downside",
+    "not trading is also making money",
+    "Btc current thoughts after that rejection as mentioned at 65k to 62k"
+  ],
+  "indicators": [
+    "rejection / rejection level",
+    "bearish order block",
+    "black dashed horizontal level"
+  ],
+  "confidence": "medium",
+  "notes": "Chat text is fully legible (high confidence); the attached chart is only a top sliver so the chart block is low confidence. Two internal inconsistencies worth flagging for later verification, recorded as seen and not reconciled: (a) the 18/06 text says BTC is at 64k while the attached 2h BingX chart's visible tags are 82,3xx-84,2xx; (b) no candles are in frame to identify which tag is the last price, so last_price is null. 'LOOKIN AT THIS' at 20:58 has no attachment visible in this screenshot — it may refer to a previous or following image. The 18:32 message carries a heart reaction with count 3."
+}

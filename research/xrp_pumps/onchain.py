@@ -264,11 +264,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         dom = panel.filter(pl.col("btc_dominance").is_not_null())
         if dom.height:
-            print(
-                f"majors BTC dominance: {dom['btc_dominance'][-1]:.1%} on "
-                f"{str(dom['date'][-1])[:10]}"
-                f"  (range {dom['btc_dominance'].min():.1%}-{dom['btc_dominance'].max():.1%})"
-            )
+            as_of = dom.select(pl.col("date").cast(pl.Utf8))["date"][-1][:10]
+            # Explicit float(): polars' stubs type Series.min()/max() loosely enough that mypy
+            # cannot rule out bytes, and a percent format spec on bytes would fail at runtime.
+            latest = float(dom["btc_dominance"][-1])
+            lo = float(dom["btc_dominance"].min())  # type: ignore[arg-type]
+            hi = float(dom["btc_dominance"].max())  # type: ignore[arg-type]
+            print(f"majors BTC dominance: {latest:.1%} on {as_of}  (range {lo:.1%}-{hi:.1%})")
     return 0
 
 

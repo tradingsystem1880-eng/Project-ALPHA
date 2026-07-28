@@ -484,10 +484,12 @@ def run(timeframe: str, *, assets: tuple[str, ...], quick: bool) -> pl.DataFrame
             for r in evaluate(ap, label_names=(primary_label,), predictor_names=primaries)
         }
         cells = []
-        for p in primaries:
-            r = res.get(p)
+        for name in primaries:
+            cell = res.get(name)
             cells.append(
-                f"{'--':>24}" if r is None else f"{r.difference:>+16.1%} n={r.n_condition_eff:<5}"
+                f"{'--':>24}"
+                if cell is None
+                else f"{cell.difference:>+16.1%} n={cell.n_condition_eff:<5}"
             )
         print(f"  {key:<14} " + " ".join(cells))
         if key != subject.key:
@@ -547,8 +549,8 @@ def run(timeframe: str, *, assets: tuple[str, ...], quick: bool) -> pl.DataFrame
         "  is visible rather than hidden."
     )
     for lab_name in (*labels.POST_HOC, primary_label):
-        lab = subject.labels.get(lab_name)
-        n_eff = labels.effective_n(lab) if lab else 0.0
+        maybe_label = subject.labels.get(lab_name)
+        n_eff = labels.effective_n(maybe_label) if maybe_label else 0.0
         print(f"\n  [{lab_name}]  n_eff {n_eff:.0f}")
         for family in C.FAMILIES:
             try:
@@ -570,11 +572,12 @@ def run(timeframe: str, *, assets: tuple[str, ...], quick: bool) -> pl.DataFrame
     if claim is None:
         print("     NOT COMPUTABLE on this sample")
     else:
-        d = claim.interval_difference
+        claim_ci = claim.interval_difference
         print(
             f"     P(+20% in 30d | market compressed) = {claim.rate_condition:.1%}\n"
             f"     P(+20% in 30d | not)               = {claim.rate_complement:.1%}\n"
-            f"     difference {claim.difference:+.1%} [{d.lower:+.1%}, {d.upper:+.1%}] "
+            f"     difference {claim.difference:+.1%} "
+            f"[{claim_ci.lower:+.1%}, {claim_ci.upper:+.1%}] "
             f"at n_eff={claim.n_condition_eff}, p={claim.pvalue:.3g}"
         )
     print('\n  B. "Multiple technical factors reinforcing the upside bias"')

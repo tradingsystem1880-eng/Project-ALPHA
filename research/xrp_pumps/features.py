@@ -134,7 +134,7 @@ def _years_since_halving(ts_millis: np.ndarray) -> np.ndarray:
     events = np.array([np.datetime64(d, "ms").astype(np.float64) for d in C.HALVINGS])
     idx = np.searchsorted(events, ts_millis, side="right") - 1
     idx = np.clip(idx, 0, events.size - 1)
-    return (ts_millis - events[idx]) / (365.25 * _MS_PER_DAY)
+    return np.asarray((ts_millis - events[idx]) / (365.25 * _MS_PER_DAY))
 
 
 def market_features(timeframe: str, subject_key: str) -> pl.DataFrame:

@@ -1,0 +1,77 @@
+{
+  "file": "IMG_7848",
+  "kind": "chat",
+  "transcript": "22:27\n99\n#-ace-journals >\n\nAce out at 1657 just rn\nAce 11/06/2026, 00:02\nyou can still keep the shorts up until tmrw maket open todays market close will be around 1700's i feel so taking profits in\n\n16 June 2026\n\nAce 16/06/2026, 18:39\nWe don't trade every day in here also 68.8k btc has a bearish order block\nI wanna see that rejection level before I place my bets in till than no further updates\n\n17 June 2026\n\nAce 17/06/2026, 22:09\nWe moving towards the bearish order block 68.8k ... the other 2 zones are the max extension [crown pepe emoji]\nJun 17, 2026 18:05 UTC+4\nBitcoin/USD Tether Perpetual Contract · 1D · BingX...\n130,000.0\n120,000.0\n110,000.0\n100,000.0\n90,000.0\n82,807.9\n80,000.0\n78,407.2\n70,000.0\n65,117.1 09:54:36\n60,013.3\n50,000.0\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-11 00:02",
+      "text": "you can still keep the shorts up until tmrw maket open todays market close will be around 1700's i feel so taking profits in"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-16 18:39",
+      "text": "We don't trade every day in here also 68.8k btc has a bearish order block\nI wanna see that rejection level before I place my bets in till than no further updates"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-06-17 22:09",
+      "text": "We moving towards the bearish order block 68.8k ... the other 2 zones are the max extension [crown pepe emoji]"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin/USD Tether Perpetual Contract (BingX)",
+    "timeframe": "1D",
+    "venue": "BingX",
+    "last_price": 65117.1,
+    "drawn_levels": [
+      {"price": 82807.9, "colour": "black", "role": "upper black dashed horizontal level"},
+      {"price": 60013.3, "colour": "black", "role": "lower black dashed horizontal level"},
+      {"price": null, "colour": "purple/violet", "role": "dashed horizontal level with a shaded band, sitting roughly between 72,000 and 74,000; its price tag is not visible in the screenshot"},
+      {"price": null, "colour": "grey", "role": "short horizontal ray drawn to the right of price at roughly 68-69k — plausibly the '68.8k bearish order block' he names in the text, but it carries no readable price tag"},
+      {"price": 65117.1, "colour": "red", "role": "dotted current-price line with 09:54:36 bar countdown (platform line, not hand-drawn)"},
+      {"price": 78407.2, "colour": "red", "role": "price-axis tag where the red moving-average line terminates (indicator last value, not a hand-drawn horizontal)"}
+    ],
+    "drawn_objects": [
+      "black dashed horizontal at 82,807.9",
+      "black dashed horizontal at 60,013.3",
+      "purple dashed horizontal with shaded band around ~73k (untagged)",
+      "short grey horizontal ray ahead of price around ~69k (untagged)"
+    ],
+    "visible_date_range": "x-axis dates are hidden behind the '#ticket-0514' banner and are not readable; chart header stamp reads 'Jun 17, 2026 18:05 UTC+4'",
+    "what_the_drawing_says": "Daily BTC perp has crashed from ~95k to a low near 60,013.3 (the lower black dashed level, which held) and is bouncing at 65,117.1 back toward overhead supply: a purple band around ~73k, the ~68.8k 'bearish order block' marked by a short grey ray, and the upper black dashed level at 82,807.9, with a declining red moving average above price. The read is bounce-into-resistance, i.e. a short-setup watch rather than an entry."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC", "SNDK"],
+  "claims": [
+    "you can still keep the shorts up until tmrw maket open todays market close will be around 1700's i feel so taking profits in",
+    "68.8k btc has a bearish order block",
+    "I wanna see that rejection level before I place my bets in till than no further updates",
+    "We moving towards the bearish order block 68.8k ... the other 2 zones are the max extension"
+  ],
+  "boasts": [
+    "We don't trade every day in here"
+  ],
+  "indicators": [
+    "bearish order block",
+    "rejection level",
+    "zones / max extension",
+    "moving average (red line)",
+    "black dashed horizontal levels",
+    "purple dashed level / band"
+  ],
+  "confidence": "high",
+  "notes": "The 11/06 00:02 message is a reply quoting Ace's own earlier 'out at 1657 just rn' and refers to the Sandisk short from IMG_7847 (hence SNDK listed in assets alongside BTC). The purple dashed level and the short grey ray on the BTC chart have no readable price tags, so their prices are recorded as null rather than estimated from pixel position. The chart's x-axis date labels are obscured by the in-app banner. 'We don't trade every day in here' is recorded as a boast because it is an unfalsifiable discipline claim, not a checkable call."
+}
