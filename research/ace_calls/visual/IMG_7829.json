@@ -1,0 +1,45 @@
+{
+  "file": "IMG_7829",
+  "kind": "chat",
+  "transcript": "22:25\n#🔒 📓-ace-journals >\n99\nAce  17/04/2026, 02:05\nhttps://x.com/aceakarains/status/2044839024993665227?s=46\n\nAce aka Mr. Make it Rain (@aceakarains)\nLet's Give this internet thingy a try & let's all win together\n\nBTC PLAN - Ace aka Mr. Make it rain 🎯\n\n[embedded TradingView chart]\n...ofonebatman created with TradingView.com, Apr 16, 2026 23:23 UTC+5:30\nBitcoin / U.S. Dollar · 1D · Coinbase  O74,839.97  H75,299.67  L73,298.01  C74,369.01  −467.30 (−0.62%)\n140,000.00\n130,000.00\n120,000.00\n110,000.00\n100,000.00\n90,000.00\n80,000.00\n74,369.01\n06:06:28\n60,000.00\n50,000.00\n40,000.00\n30,000.00\nSep  Oct  Nov  Dec  2025  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec  2026  Mar  Apr  May  Jun  Jul  Aug\nTradingView\n\nX | 17/04/2026, 02:03\n\n@everyone\n\nAce  17/04/2026, 02:30\nApr 16, 2026 22:30 UTC+4\nXRP / TetherUS PERPETUAL CONTRACT · 1D · Binance...\nEMA (200, close)\n4.5000\n4.0000\n3.5000\n3.0000\n2.5000\n2.4193\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-04-17 02:05", "text": "https://x.com/aceakarains/status/2044839024993665227?s=46"},
+    {"author": "Ace (via embedded X post @aceakarains, posted 2026-04-17 02:03)", "timestamp": "2026-04-17 02:03", "text": "Let's Give this internet thingy a try & let's all win together"},
+    {"author": "Ace (via embedded X post @aceakarains, posted 2026-04-17 02:03)", "timestamp": "2026-04-17 02:03", "text": "BTC PLAN - Ace aka Mr. Make it rain 🎯"},
+    {"author": "Ace", "timestamp": null, "text": "@everyone"},
+    {"author": "Ace", "timestamp": "2026-04-17 02:30", "text": "[XRP/TetherUS 1D Binance chart posted with no accompanying text]"}
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "Bitcoin / U.S. Dollar (BTCUSD)",
+    "timeframe": "1D",
+    "venue": "Coinbase (chart created with TradingView.com)",
+    "last_price": 74369.01,
+    "drawn_levels": [
+      {"price": 74369.01, "colour": "red", "role": "live price tag with 06:06:28 countdown (TradingView's own last-price tag, not a drawn level)"}
+    ],
+    "drawn_objects": [
+      "white/grey up-sloping trendline drawn from roughly 78,000 in late 2024 to roughly 100,000 at the right edge (Aug 2026) — connects the Apr 2025 and Dec 2025 lows and now sits overhead",
+      "short grey horizontal line drawn beneath the Feb-Apr 2026 lows (roughly 63,000-64,000, NO price tag attached so the exact value is unreadable)",
+      "yellow up-arrow drawn from the current ~74,000 price up to roughly 98,000 around May-Jun 2026, terminating at the white trendline",
+      "small US-flag emoji/sticker placed near the Apr 2026 area at the ~30,000 level"
+    ],
+    "visible_date_range": "Sep 2024 through Aug 2026 (x-axis: Sep Oct Nov Dec 2025 Mar Apr May Jun Jul Aug Sep Oct Nov Dec 2026 Mar Apr May Jun Jul Aug); price action ends 16 Apr 2026",
+    "what_the_drawing_says": "The 'BTC PLAN': BTC has crashed from ~125k to a ~63-64k base and is now ~74.4k; he draws a yellow arrow projecting a rally from here to roughly 98,000 by May-June 2026, back up into the multi-year rising trendline."
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["BTC", "XRP"],
+  "claims": [],
+  "boasts": [
+    "Ace aka Mr. Make it Rain (@aceakarains)",
+    "Let's Give this internet thingy a try & let's all win together",
+    "BTC PLAN - Ace aka Mr. Make it rain 🎯"
+  ],
+  "indicators": ["rising trendline", "horizontal support line", "projection arrow", "EMA (200, close) (on the partially visible XRP chart below)"],
+  "confidence": "high",
+  "notes": "This is a scroll overlap with IMG_7827 (top) and IMG_7828 (bottom) showing the same 17/04 messages; the BTC 'BTC PLAN' embed is fully visible here for the first time. The yellow arrow's terminal price (~98,000) and the grey horizontal support line (~63-64k) are READ OFF THE AXIS BY EYE — no price tags are attached to either drawing, so I have deliberately not recorded them as exact numbers in drawn_levels. The TradingView watermark username is clipped ('...ofonebatman'). The XRP chart at the bottom is the same one fully captured in IMG_7828; only its header, 4.5000-2.5000 gridlines and the 2.4193 tag are visible here."
+}

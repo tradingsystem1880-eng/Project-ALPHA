@@ -1,0 +1,43 @@
+{
+  "file": "IMG_7828",
+  "kind": "chart",
+  "transcript": "22:25\n#🔒 📓-ace-journals >\n99\n\n[embedded X/TradingView BTC chart, continuation of the previous message's embed]\nBitcoin / U.S. Dollar · 1D · Coinbase  O74,839.97  H75,299.67  L73,298.01  C74,369.01  −467.30 (−0.62%)\n140,000.00\n130,000.00\n120,000.00\n110,000.00\n100,000.00\n90,000.00\n80,000.00\n74,369.01\n06:06:28\n70,000.00\n60,000.00\n50,000.00\n40,000.00\n30,000.00\nSep  Oct  Nov  Dec  2025  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec  2026  Mar  Apr  May  Jun  Jul  Aug\nTradingView\n\nX | 17/04/2026, 02:03\n\n@everyone\n\nAce  17/04/2026, 02:30\n\n[chart image]\nApr 16, 2026 22:30 UTC+4\nXRP / TetherUS PERPETUAL CONTRACT · 1D · Binance...\nEMA (200, close)\n4.5000\n4.0000\n3.5000\n3.0000\n2.5000\n2.4193\n2.0860\n2.0000\n1.8031\n1.5000\n1.4321\n05:29:58\n1.0000\n0.5000\n0.0000\n−0.1932 (−12.95%) −1,932\n304 bars, 304d\nVol 64.77 B\n2026    Jul\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": null, "text": "@everyone"},
+    {"author": "Ace", "timestamp": "2026-04-17 02:30", "text": "[XRP/TetherUS 1D Binance chart posted with no accompanying text]"}
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "XRP / TetherUS PERPETUAL CONTRACT (XRPUSDT.P)",
+    "timeframe": "1D",
+    "venue": "Binance (label truncated: 'Binance...')",
+    "last_price": 1.4321,
+    "drawn_levels": [
+      {"price": 2.4193, "colour": "black", "role": "dashed horizontal resistance"},
+      {"price": 2.0860, "colour": "black", "role": "dashed horizontal resistance / target of the drawn up-arrow"},
+      {"price": 1.8031, "colour": "red", "role": "level tag (red) — intermediate resistance"},
+      {"price": 1.4321, "colour": "green/teal", "role": "live price tag with 05:29:58 countdown, sits inside the blue accumulation band"}
+    ],
+    "drawn_objects": [
+      "light blue shaded horizontal band (accumulation/range zone) centred on ~1.43, with a solid blue horizontal line and a blue right-pointing arrow running through it",
+      "blue down-arrow drawn inside the blue band (implying one more flush lower first)",
+      "black freehand projection path: starts below the band, rallies steeply to ~1.83, pulls back to ~1.75, then rallies into an up-arrowhead landing on the 2.0860 dashed line",
+      "two black dashed horizontal lines at 2.4193 and 2.0860",
+      "red EMA (200, close) line sloping down from ~2.6 to ~1.8",
+      "TradingView measurement tool box reading −0.1932 (−12.95%) −1,932 / 304 bars, 304d / Vol 64.77 B"
+    ],
+    "visible_date_range": "x-axis shows only '2026' and 'Jul'; visible price action runs from roughly late 2025 into mid-April 2026 with empty projection space to the right",
+    "what_the_drawing_says": "XRP is basing in a blue band around 1.43 well under a falling 200 EMA; he expects a possible final dip (blue down-arrow), then a rally to ~1.80, a pullback, and a push up to the 2.0860 dashed level, with 2.4193 above that."
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["XRP", "BTC"],
+  "claims": [],
+  "boasts": [],
+  "indicators": ["EMA (200, close)", "dashed horizontal resistance levels", "accumulation band / range zone", "trendline", "measurement tool", "freehand projection path"],
+  "confidence": "high",
+  "notes": "This screenshot contains TWO charts. (1) TOP — the rest of the embedded X/TradingView 'BTC PLAN' chart from the previous message (Bitcoin / U.S. Dollar · 1D · Coinbase, O74,839.97 H75,299.67 L73,298.01 C74,369.01 −467.30 (−0.62%), live tag 74,369.01 with 06:06:28 countdown, axis 30,000–140,000 in 10k steps, x-axis Sep 2024 through Aug 2026). Its drawn objects are: a white/grey up-sloping trendline running from ~78k in late 2024 to ~100k at the right edge (Aug 2026); a short grey horizontal line beneath the Feb–Apr 2026 lows (roughly 63–64k — NO price tag is attached so I did not record a number); and a YELLOW up-arrow from the current ~74k price to ~98k around May–Jun 2026, i.e. the 'BTC PLAN' is a rally into the rising trendline. The embed footer reads 'X | 17/04/2026, 02:03'. (2) BOTTOM — Ace's own XRP chart at 17/04/2026 02:30, recorded in the chart block above. The BTC chart's drawn levels are recorded here rather than in chart.drawn_levels because that block describes the XRP chart. The '@everyone' line appears alone with a mention highlight and no timestamp header, so its timestamp is null (it follows the 02:05 link message). The XRP chart was posted with no accompanying message text visible."
+}

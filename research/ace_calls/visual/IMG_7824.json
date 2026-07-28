@@ -1,0 +1,76 @@
+{
+  "file": "IMG_7824",
+  "kind": "chat",
+  "transcript": "22:24\n#🔒 📓 -ace-journals >\n99\n\nAce 03/04/2026, 20:34\n62k is the main region i'm looking for if incase 60k's are broken we will much down side potentially 20% move lower before real reversal begins\n👍 6\n\nPersonally speaking as i said earlier im looking for btc at 49k.\n👍 5\n\n6 April 2026\n\nAce 06/04/2026, 07:55\nSo, Many things wrong with this pump !!! Masses wouldn't be able to see it\n\n7 April 2026\n\nAce 07/04/2026, 00:44\nNEVER TRUST SUNDAY NIGHT MOVES 👑\n\nAce 07/04/2026, 00:53\n70.2k = bearish retest 🐶\nINCASE ANYBODY REMEMBER - On live call about hype if it gives me 44-46 I'll short hype till 30\n\n14 April 2026\n\nAce 14/04/2026, 07:28\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-03 20:34",
+      "text": "62k is the main region i'm looking for if incase 60k's are broken we will much down side potentially 20% move lower before real reversal begins"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "Personally speaking as i said earlier im looking for btc at 49k."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-06 07:55",
+      "text": "So, Many things wrong with this pump !!! Masses wouldn't be able to see it"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-07 00:44",
+      "text": "NEVER TRUST SUNDAY NIGHT MOVES 👑"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-07 00:53",
+      "text": "70.2k = bearish retest 🐶"
+    },
+    {
+      "author": "Ace",
+      "timestamp": null,
+      "text": "INCASE ANYBODY REMEMBER - On live call about hype if it gives me 44-46 I'll short hype till 30"
+    }
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["BTC", "HYPE"],
+  "claims": [
+    "62k is the main region i'm looking for if incase 60k's are broken we will much down side potentially 20% move lower before real reversal begins",
+    "Personally speaking as i said earlier im looking for btc at 49k.",
+    "So, Many things wrong with this pump !!!",
+    "NEVER TRUST SUNDAY NIGHT MOVES",
+    "70.2k = bearish retest",
+    "On live call about hype if it gives me 44-46 I'll short hype till 30"
+  ],
+  "boasts": [
+    "Masses wouldn't be able to see it",
+    "INCASE ANYBODY REMEMBER - On live call about hype if it gives me 44-46 I'll short hype till 30"
+  ],
+  "indicators": ["horizontal region/level (62k, 60k's, 49k, 70.2k)", "bearish retest", "day-of-week seasonality (Sunday night moves)"],
+  "confidence": "high",
+  "notes": "Numbers read cleanly: 62k, 60k's, 20%, 49k, 70.2k, 44-46, 30. 'hype' is lower-case in the original and is read as the HYPE token (Hyperliquid), so the 44-46 short target and the 30 target are HYPE prices in dollars, not BTC - this is an inference from context, not stated in the image. The HYPE call is a retrospective reference to an unrecorded 'live call', so it cannot be dated or verified from this corpus. 'Personally speaking as i said earlier im looking for btc at 49k.' and the HYPE message are grouped continuation messages with no timestamps of their own (following 2026-04-03 20:34 and 2026-04-07 00:53 respectively). A message at 14/04/2026, 07:28 is beginning at the bottom of the frame but its body is entirely hidden behind the '#ticket-0514' banner - only the author line and timestamp are readable. Day-divider labels (6, 7, 14 April 2026) are transcribed but not treated as statements."
+}

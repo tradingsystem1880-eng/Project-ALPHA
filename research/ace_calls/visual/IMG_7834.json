@@ -1,0 +1,43 @@
+{
+  "file": "IMG_7834",
+  "kind": "chat",
+  "transcript": "22:25\n\n# -ace-journals >\n\nAce  18/04/2026, 07:23\nIM LONG MAKE SURE TO LONG UNTIL JUNE @everyone I know exactly what's going on\n(edited)\n❤️ 1\n\nI will update everyone and do not text me nothing I'm trying to cool my brain and thing of this situation\n❤️ 1\n\nDo not trade consolidation\n❤️ 1\n\nAce  18/04/2026, 09:46\nNote - Do not Look for shorts\n❤️ 1\n\nUntil i say it\n❤️ 1\n\n19 April 2026\n\nAce  19/04/2026, 02:52\n89k\n❤️ 3\n\n23 April 2026\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-04-18 07:23", "text": "IM LONG MAKE SURE TO LONG UNTIL JUNE @everyone I know exactly what's going on"},
+    {"author": "Ace", "timestamp": "2026-04-18 07:23", "text": "I will update everyone and do not text me nothing I'm trying to cool my brain and thing of this situation"},
+    {"author": "Ace", "timestamp": "2026-04-18 07:23", "text": "Do not trade consolidation"},
+    {"author": "Ace", "timestamp": "2026-04-18 09:46", "text": "Note - Do not Look for shorts"},
+    {"author": "Ace", "timestamp": "2026-04-18 09:46", "text": "Until i say it"},
+    {"author": "Ace", "timestamp": "2026-04-19 02:52", "text": "89k"}
+  ],
+  "chart": {
+    "present": false,
+    "symbol": null,
+    "timeframe": null,
+    "venue": null,
+    "last_price": null,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": null,
+    "what_the_drawing_says": null
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": [],
+  "claims": [
+    "IM LONG MAKE SURE TO LONG UNTIL JUNE",
+    "Do not trade consolidation",
+    "Note - Do not Look for shorts",
+    "Until i say it",
+    "89k"
+  ],
+  "boasts": [
+    "I know exactly what's going on"
+  ],
+  "indicators": ["consolidation"],
+  "confidence": "high",
+  "notes": "Discord mobile screenshot, phone clock 22:25. The 07:23 message is highlighted (orange left bar / cream background) because it contains an @everyone mention, and is marked '(edited)' — the pre-edit wording is unknown. Three messages (07:23 group) and two (09:46 group) are grouped under one timestamp each; per-message times are not individually shown, so the group timestamp is reused. '89k' at 19/04/2026 02:52 is the entire message — no ticker, no side, no context given in this image; BTC is the obvious inference but is NOT stated, so assets left empty. '19 April 2026' and '23 April 2026' are day dividers, not statements. Bottom banner 'Done reading? Check out #ticket-0514.' is Discord UI chrome. A message under the 23 April divider is hidden behind that banner and unreadable."
+}

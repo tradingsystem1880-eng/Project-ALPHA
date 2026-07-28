@@ -1,0 +1,47 @@
+{
+  "file": "IMG_7831",
+  "kind": "chat",
+  "transcript": "22:25\n#🔒 📓-ace-journals >\n99\nAce  17/04/2026, 02:53\nThe break out has begun, are you all ready ?\n🤴\n\n❤️ 3\n\nAce  17/04/2026, 03:49\nEth is at resistance level if eth breaks 2371 and some how manage to get to 2400 bears will get rekt 🐸\nA cute Bull Run abt to begun\n\nAce  17/04/2026, 06:54\nThe trend line doesn't work in 2026 - Remember this @everyone\n•  Ace aka mr. make it rain ♾️ 🤴\n\n[reply reference] Ace  Right now at #398 🖼\nAce  17/04/2026, 15:53\nJust the matter of time @everyone 🤴 - Ace\n\n[CoinGecko screenshot]\nCryptocurrencies  >  GMX Price\nGMX  GMX Price  #378\n$6.70  ▲ 9.3% (24h) ⓘ\n0.00008935 BTC  ▲ 9.0%\n$6.12        24h Range        $6.69\n☆ Add to Portfolio • 62.81K added\nMarket Cap ⓘ                      $69,521,017 ⌄\nFully Diluted Valuation ⓘ         $69,521,017 ⌄\n24 Hour Trading Vol ⓘ             $8,973,231\nTotal Value Locked (TVL) ⓘ        $266,589,333\nCirculating Supply ⓘ              10,384,307\nTotal Supply ⓘ                    10,384,307\nMax Supply ⓘ                      13,250,000\nBuy / Sell ⌄   Wallet ⌄   Earn Crypto ⌄\nOverview  Markets  News  Similar Coins  Historical Data ↗\nPrice ⌄   Compare ⌄   [chart icons]   24H  7D  1M  3M  YTD  1Y  Max\n$6.80\n$6.70\n$6.60\n$6.50\n$6.40\n$6.30\n$6.20\n$6.10\ncoingecko\n14:30   17:30   20:30   23:30   02:30   17. Apr   08:30   11:30\n\n❤️ 1\n\nyou've been warned\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {"author": "Ace", "timestamp": "2026-04-17 02:53", "text": "The break out has begun, are you all ready ?\n🤴"},
+    {"author": "Ace", "timestamp": "2026-04-17 03:49", "text": "Eth is at resistance level if eth breaks 2371 and some how manage to get to 2400 bears will get rekt 🐸"},
+    {"author": "Ace", "timestamp": null, "text": "A cute Bull Run abt to begun"},
+    {"author": "Ace", "timestamp": "2026-04-17 06:54", "text": "The trend line doesn't work in 2026 - Remember this @everyone"},
+    {"author": "Ace", "timestamp": null, "text": "Ace aka mr. make it rain ♾️ 🤴"},
+    {"author": "Ace", "timestamp": "2026-04-17 15:53", "text": "Just the matter of time @everyone 🤴 - Ace"},
+    {"author": "Ace", "timestamp": null, "text": "you've been warned"}
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "GMX",
+    "timeframe": "24H",
+    "venue": "CoinGecko (aggregate price page, not an exchange chart)",
+    "last_price": 6.70,
+    "drawn_levels": [],
+    "drawn_objects": [],
+    "visible_date_range": "24 hours: x-axis 14:30, 17:30, 20:30, 23:30, 02:30, 17. Apr, 08:30, 11:30 (i.e. 16-17 Apr 2026)",
+    "what_the_drawing_says": "No annotations — an unmarked CoinGecko GMX page posted as proof the call worked: GMX at $6.70, +9.3% over 24h, rank improved from #398 to #378, with a near-vertical spike at the right edge (~11:30-15:30 on 17 Apr) taking price from ~$6.32 to ~$6.70."
+  },
+  "position": {
+    "present": false, "symbol": null, "side": null, "leverage": null,
+    "entry": null, "mark": null, "liquidation": null, "collateral": null,
+    "position_value": null, "unrealised_pnl": null
+  },
+  "assets": ["GMX", "ETH", "BTC"],
+  "claims": [
+    "The break out has begun, are you all ready ?",
+    "Eth is at resistance level if eth breaks 2371 and some how manage to get to 2400 bears will get rekt 🐸",
+    "A cute Bull Run abt to begun",
+    "The trend line doesn't work in 2026 - Remember this",
+    "Just the matter of time",
+    "you've been warned"
+  ],
+  "boasts": [
+    "Ace aka mr. make it rain ♾️ 🤴",
+    "Just the matter of time @everyone 🤴 - Ace",
+    "you've been warned"
+  ],
+  "indicators": ["resistance level", "breakout", "trend line (explicitly dismissed: 'The trend line doesn't work in 2026')"],
+  "confidence": "high",
+  "notes": "Overlaps IMG_7830 for the 02:53 and 03:49 messages. The 06:54 message is followed by a bulleted signature line 'Ace aka mr. make it rain ♾️ 🤴'; the glyph after 'rain' renders as an infinity/♾️ symbol — I read it as infinity but the exact emoji is small and could be a different symbol. The 15:53 message is a reply to his own earlier 'Right now at #398' GMX post. The GMX rank badge has moved from #398 (previous screenshot, price $6.26) to #378 (this screenshot, price $6.70). 'you've been warned' at the very bottom is partially clipped by the bottom banner but fully legible; it has no timestamp header so its timestamp is null. Note the tension between 'The trend line doesn't work in 2026' here and the trendline-based BTC PLAN chart he posted at 02:05 the same day."
+}

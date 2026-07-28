@@ -1,0 +1,91 @@
+{
+  "file": "IMG_7825",
+  "kind": "chart",
+  "transcript": "22:24\n#🔒 📓 -ace-journals >\n99\n\nAce 14/04/2026, 07:28\nGMX 3X - LV HERE\n[chart image 1: GMX / TetherUS PERPETUAL CONTRACT · 1W · Binance  O5.889 H6.220 L5.808 C6.216 +0.327 (+5.55%) | 6.216 SELL  0.002  6.218 BUY | 4 | USDT | axis: 120.000 110.000 100.000 90.000 80.000 70.000 60.000 50.000 40.000 30.000 20.000 10.000 0.000 -10.000 | last price tag 6.216  6d 1h]\n\nAce 14/04/2026, 09:06\nEverything is invalidated with this pump bullish region forming ....\n\nAce 14/04/2026, 14:37\nIncase we don't get rejection under 76-82k area extention could be upwards 99k\n\nAce 14/04/2026, 14:48\nIM LOOKING CLOSELY AT THIS\n[chart image 2: ₿ Bitcoin/USD Tether Perpetual C...  74,419.2 +39.3 (+0.05%) | price-axis tags top to bottom: 107,098.9  107,098.9  107,088.2  106,817.7  106,546.4  106,077.5  105,071.4  102,662.9  99,665.9  97,335.5  96,475.2  93,348.6  92,264.1  91,738.8  90,608.9  89,239.5  89,027.3  85,148.0  85,126.6  82,490.4  80,905.2  74,939.5]\n\nDone reading? Check out #ticket-0514.",
+  "statements": [
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-14 07:28",
+      "text": "GMX 3X - LV HERE"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-14 09:06",
+      "text": "Everything is invalidated with this pump bullish region forming ...."
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-14 14:37",
+      "text": "Incase we don't get rejection under 76-82k area extention could be upwards 99k"
+    },
+    {
+      "author": "Ace",
+      "timestamp": "2026-04-14 14:48",
+      "text": "IM LOOKING CLOSELY AT THIS"
+    }
+  ],
+  "chart": {
+    "present": true,
+    "symbol": "two charts: (1) GMX / TetherUS PERPETUAL CONTRACT; (2) Bitcoin/USD Tether Perpetual C... (title truncated)",
+    "timeframe": "(1) 1W; (2) not visible",
+    "venue": "(1) Binance; (2) not visible (title truncated)",
+    "last_price": 6.216,
+    "drawn_levels": [
+      {"price": 107098.9, "colour": "light green", "role": "drawn horizontal level (upper cluster)"},
+      {"price": 107098.9, "colour": "teal", "role": "drawn horizontal level (second object at the same price as the green one)"},
+      {"price": 107088.2, "colour": "grey", "role": "drawn horizontal level (upper cluster)"},
+      {"price": 106817.7, "colour": "light green", "role": "drawn horizontal level"},
+      {"price": 106546.4, "colour": "teal", "role": "drawn horizontal level"},
+      {"price": 106077.5, "colour": "light green", "role": "drawn horizontal level"},
+      {"price": 105071.4, "colour": "black", "role": "drawn horizontal level (the one black-tagged line)"},
+      {"price": 102662.9, "colour": "teal", "role": "drawn horizontal level"},
+      {"price": 99665.9, "colour": "grey", "role": "drawn horizontal level"},
+      {"price": 97335.5, "colour": "red", "role": "drawn horizontal level"},
+      {"price": 96475.2, "colour": "teal", "role": "drawn horizontal level"},
+      {"price": 93348.6, "colour": "teal", "role": "drawn horizontal level"},
+      {"price": 92264.1, "colour": "grey", "role": "drawn horizontal level"},
+      {"price": 91738.8, "colour": "red", "role": "drawn horizontal level"},
+      {"price": 90608.9, "colour": "red", "role": "drawn horizontal level"},
+      {"price": 89239.5, "colour": "grey", "role": "drawn horizontal level"},
+      {"price": 89027.3, "colour": "light green", "role": "drawn horizontal level"},
+      {"price": 85148.0, "colour": "grey", "role": "drawn horizontal level"},
+      {"price": 85126.6, "colour": "blue/cyan", "role": "drawn horizontal level"},
+      {"price": 82490.4, "colour": "blue/cyan", "role": "drawn horizontal level"},
+      {"price": 80905.2, "colour": "red", "role": "drawn horizontal level"},
+      {"price": 74939.5, "colour": "red", "role": "drawn horizontal level (lowest tag visible before the image is cut off)"}
+    ],
+    "drawn_objects": [
+      "chart 1 (GMX 1W): NO annotations at all - a clean weekly chart showing a multi-year decline from roughly 90 down to 6.216",
+      "chart 2 (BTC): a dense stack of ~22 drawn horizontal rays of varying lengths, colour-coded green / teal / red / grey / black / blue",
+      "chart 2: several light-blue dashed horizontal lines (one near the top of the frame, one near the bottom)",
+      "chart 2: grey shaded horizontal bands (zone/order-block rectangles) around the mid and lower price area, one with a black dashed centre line",
+      "chart 2: a teal/green shaded vertical rectangle and a red shaded vertical rectangle overlapping the candles - consistent with position/measure tools (green = target box, red = stop box)",
+      "chart 2: a HAND-DRAWN black projected path on the right (future) side - a small V dip, then a steep rally with an ARROWHEAD pointing up, then a line descending to the right"
+    ],
+    "visible_date_range": "not readable - the time axis is cropped out of both embedded chart images",
+    "what_the_drawing_says": "Chart 1 is an unannotated GMX weekly showing price collapsed to ~6.2 from ~90, posted as a '3X leverage here' bottom-fishing idea. Chart 2 is his BTC level map: a ladder of ~22 horizontal levels from ~74.9k up to ~107.1k, with price at 74,419.2 sitting at the very bottom of the ladder, and a hand-drawn projection that says dip slightly, then rally hard (arrow up) into the levels above, then roll over and sell off again."
+  },
+  "position": {
+    "present": false,
+    "symbol": null,
+    "side": null,
+    "leverage": null,
+    "entry": null,
+    "mark": null,
+    "liquidation": null,
+    "collateral": null,
+    "position_value": null,
+    "unrealised_pnl": null
+  },
+  "assets": ["GMX", "BTC"],
+  "claims": [
+    "GMX 3X - LV HERE",
+    "Everything is invalidated with this pump bullish region forming ....",
+    "Incase we don't get rejection under 76-82k area extention could be upwards 99k",
+    "IM LOOKING CLOSELY AT THIS"
+  ],
+  "boasts": [],
+  "indicators": ["horizontal support/resistance level ladder", "shaded supply/demand zones (order blocks)", "position/target-stop boxes", "hand-drawn price projection with arrow", "bullish region"],
+  "confidence": "high",
+  "notes": "Both embedded charts were re-read at 3-7x upscale. CHART 1 (GMX) header is unambiguous: GMX / TetherUS PERPETUAL CONTRACT, 1W, Binance, O5.889 H6.220 L5.808 C6.216 +0.327 (+5.55%), last-price tag 6.216 with a '6d 1h' bar countdown, order widget 6.216 SELL / 0.002 / 6.218 BUY. It carries no drawings whatsoever. CHART 2 (BTC) title is truncated by the chart's own width ('Bitcoin/USD Tether Perpetual C...') so the exact contract and the venue cannot be read, and the timeframe is not shown anywhere in the visible frame; both are recorded as not visible. Chart 2's quoted price is 74,419.2 +39.3 (+0.05%) - read cleanly - and 'last_price' in this JSON is set to the GMX value 6.216 because the schema has a single field; the BTC last price 74,419.2 is recorded here and in the transcript. All 22 price-axis tags on chart 2 were read at high magnification and are reported verbatim with their tag colours; note that the two topmost tags are BOTH 107,098.9 (one green, one teal) - this is not a transcription error, they are two separate objects at the same price. IMPORTANT CAVEAT: the tag column is heavily crowded, so tag vertical positions are stacked by the platform and do NOT map linearly to the y-axis - the tag VALUES are reliable, but which specific drawn line each tag belongs to cannot be resolved from this image, so every 'role' is generic. The embedded BTC chart image is cut off at its bottom edge just below the 74,939.5 tag, so there may be further levels below that are not visible. No time axis is visible on either chart, so no date range could be recovered. 'LV' in 'GMX 3X - LV HERE' is read as leverage but is not spelled out in the image."
+}
