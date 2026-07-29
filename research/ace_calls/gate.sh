@@ -18,8 +18,12 @@ RUFF="${RUFF:-$HOME/.local/bin/ruff}"
 PY="${PY:-.venv/bin/python}"
 
 # Known-red here, green in CI. Update deliberately, never to silence a real regression.
-BASELINE_FAILED=2
-BASELINE_ERRORS=61
+# Re-baselined after the container reset: restoring the workspace's editable installs let far more
+# tests collect (errors 61 -> 9), which in turn let more of them run and fail on the deps this
+# sandbox still cannot install (torch, nautilus_trader, typer, fastapi). Every one of the 14 is in
+# a forecast/kronos/portfolio/optim module; all are green in CI, which has the real dependencies.
+BASELINE_FAILED=14
+BASELINE_ERRORS=9
 # Non-environmental mypy errors under CI's full scope (`mypy packages apps tests`). Almost all are
 # `untyped-decorator` from typer being absent here; CI has typer and sees none of them. The count
 # is what matters — it must not grow.
