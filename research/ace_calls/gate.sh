@@ -24,10 +24,15 @@ PY="${PY:-.venv/bin/python}"
 # a forecast/kronos/portfolio/optim module; all are green in CI, which has the real dependencies.
 BASELINE_FAILED=14
 BASELINE_ERRORS=9
-# Non-environmental mypy errors under CI's full scope (`mypy packages apps tests`). Almost all are
-# `untyped-decorator` from typer being absent here; CI has typer and sees none of them. The count
-# is what matters — it must not grow.
-BASELINE_MYPY=93
+# Real mypy errors under CI's full scope (`mypy packages apps tests`), after filtering the three
+# classes this sandbox manufactures and CI does not:
+#   import-not-found / import-untyped  — torch, nautilus, typer, fastapi cannot be installed here
+#   untyped-decorator                  — the same missing packages leave typer/fastmcp/fastapi
+#                                        decorators untyped, so every command and route reports one
+# Filtering by CLASS rather than tracking a count is deliberate. The raw number moved 93 -> 129
+# purely because restoring the workspace's editable installs let more modules import, and a gate
+# whose threshold has to be renegotiated after every container reset is a gate nobody trusts.
+BASELINE_MYPY=12
 
 PINNED=$(awk '/^name = "ruff"$/{f=1} f&&/^version = /{gsub(/"/,"",$3); print $3; exit}' uv.lock)
 HAVE=$("$RUFF" --version 2>/dev/null | awk '{print $2}')
@@ -58,13 +63,14 @@ step "uv lock --check"     uv lock --check --offline
 printf '%-26s' "mypy full vs baseline"
 mypy_out=$("$PY" -m mypy packages apps tests 2>&1)
 got_m=$(grep -E "error:" <<<"$mypy_out" \
-        | grep -vcE "import-not-found|import-untyped|Cannot find implementation" || echo 0)
+        | grep -vcE "import-not-found|import-untyped|Cannot find implementation|untyped-decorator" || echo 0)
 if [ "${got_m:-0}" -le "$BASELINE_MYPY" ]; then
   echo "ok  (${got_m:-0} real errors, baseline $BASELINE_MYPY)"
 else
   echo "FAIL  ${got_m:-0} real mypy errors vs baseline $BASELINE_MYPY"
   grep -E "error:" <<<"$mypy_out" \
-    | grep -vE "import-not-found|import-untyped|Cannot find implementation" | tail -12 | sed 's/^/    /'
+    | grep -vE "import-not-found|import-untyped|Cannot find implementation|untyped-decorator" \
+    | tail -12 | sed 's/^/    /'
   fail=1
 fi
 
