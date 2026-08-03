@@ -3483,9 +3483,47 @@
             "title": "Command",
             "type": "string"
           },
+          "command_path": {
+            "title": "Command Path",
+            "type": "string"
+          },
           "created_at": {
             "title": "Created At",
             "type": "number"
+          },
+          "current_step": {
+            "title": "Current Step",
+            "type": "string"
+          },
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "eta_sample_count": {
+            "title": "Eta Sample Count",
+            "type": "integer"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
           },
           "job_id": {
             "title": "Job Id",
@@ -3512,6 +3550,26 @@
           "n_lines": {
             "title": "N Lines",
             "type": "integer"
+          },
+          "progress_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Fraction"
+          },
+          "progress_mode": {
+            "enum": [
+              "indeterminate",
+              "estimated",
+              "terminal"
+            ],
+            "title": "Progress Mode",
+            "type": "string"
           },
           "returncode": {
             "anyOf": [
@@ -3557,6 +3615,14 @@
           "kind",
           "status",
           "created_at",
+          "finished_at",
+          "elapsed_seconds",
+          "command_path",
+          "current_step",
+          "progress_mode",
+          "progress_fraction",
+          "eta_seconds",
+          "eta_sample_count",
           "run_id",
           "session_id",
           "returncode",
@@ -3626,9 +3692,47 @@
             "title": "Command",
             "type": "string"
           },
+          "command_path": {
+            "title": "Command Path",
+            "type": "string"
+          },
           "created_at": {
             "title": "Created At",
             "type": "number"
+          },
+          "current_step": {
+            "title": "Current Step",
+            "type": "string"
+          },
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "eta_sample_count": {
+            "title": "Eta Sample Count",
+            "type": "integer"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
           },
           "job_id": {
             "title": "Job Id",
@@ -3648,6 +3752,26 @@
           "n_lines": {
             "title": "N Lines",
             "type": "integer"
+          },
+          "progress_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Fraction"
+          },
+          "progress_mode": {
+            "enum": [
+              "indeterminate",
+              "estimated",
+              "terminal"
+            ],
+            "title": "Progress Mode",
+            "type": "string"
           },
           "returncode": {
             "anyOf": [
@@ -3693,6 +3817,14 @@
           "kind",
           "status",
           "created_at",
+          "finished_at",
+          "elapsed_seconds",
+          "command_path",
+          "current_step",
+          "progress_mode",
+          "progress_fraction",
+          "eta_seconds",
+          "eta_sample_count",
           "run_id",
           "session_id",
           "returncode",

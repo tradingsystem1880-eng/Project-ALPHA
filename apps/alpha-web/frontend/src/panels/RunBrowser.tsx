@@ -14,14 +14,30 @@ import { setLinked } from '../context/linked'
 import { useActivityField } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
+import { runKindMatches } from './runBrowserModel'
 
 const KINDS = ['all', 'runs', 'optim', 'portfolio', 'cross_sectional', 'propfirm', 'forecast']
 
 export function RunBrowser(props: IDockviewPanelProps) {
-  const requestedKind = String(
-    (props.params as { defaultKind?: string } | undefined)?.defaultKind ?? 'all',
+  const params = props.params as {
+    defaultKind?: string
+    defaultCommand?: string
+    allowedKinds?: string[]
+  } | undefined
+  const allowedKinds = useMemo(
+    () => Array.isArray(params?.allowedKinds)
+      ? params.allowedKinds.filter((kind) => kind !== 'all' && KINDS.includes(kind))
+      : [],
+    [params?.allowedKinds],
   )
-  const defaultKind = KINDS.includes(requestedKind) ? requestedKind : 'all'
+  const kindOptions = allowedKinds.length > 0 ? ['all', ...allowedKinds] : KINDS
+  const requestedKind = String(
+    params?.defaultKind ?? 'all',
+  )
+  const defaultKind = kindOptions.includes(requestedKind) ? requestedKind : 'all'
+  const defaultCommand = String(
+    params?.defaultCommand ?? '',
+  )
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -49,8 +65,11 @@ export function RunBrowser(props: IDockviewPanelProps) {
   }, [runsVersion])
 
   const filtered = useMemo(
-    () => (items ?? []).filter((r) => kind === 'all' || r.kind === kind),
-    [items, kind],
+    () => (items ?? []).filter(
+      (r) => runKindMatches(r.kind, kind, allowedKinds)
+        && (!defaultCommand || r.command === defaultCommand),
+    ),
+    [allowedKinds, defaultCommand, items, kind],
   )
 
   const columns = useMemo<ColumnDef<RunListItem, unknown>[]>(
@@ -153,7 +172,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
           value={kind}
           onChange={(e) => setKind(e.target.value)}
         >
-          {KINDS.map((k) => (
+          {kindOptions.map((k) => (
             <option key={k} value={k}>
               {k}
             </option>

@@ -660,7 +660,7 @@ export function MlResearch() {
           <div><span className="eyebrow">Isolation</span><span className="mono">{status?.isolation ?? 'separate worker lock'}</span></div>
           <div><span className="eyebrow">Heavy concurrency</span><span className="mono">{status?.concurrency_limit ?? 1}</span></div>
         </div>
-        {experiments?.items.length ? (
+        {experiments === null ? null : experiments.items.length ? (
           <div className="ml-experiment-list">
             {experiments.items.map((experiment) => (
               <div className="ml-experiment" key={experiment.experiment_id}>
@@ -684,7 +684,9 @@ export function MlResearch() {
           </div>
         )}
         <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate a locked experiment through the isolated worker service' : 'Validated ML worker service and selected project required'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate ML experiment'}</button>
-        {!status?.available ? <span className="muted mono">BUTTON DISABLED · /api/ml/status did not report an available isolated worker service</span> : null}
+        {status === null && !error ? <span className="muted mono">CHECKING ISOLATED WORKER READINESS…</span> : null}
+        {status && !status.available ? <span className="muted mono">BUTTON DISABLED · {status.message ?? 'isolated worker service unavailable'}</span> : null}
+        {status?.available && status.worker_ready && !linked.projectId ? <span className="muted mono">SELECT OR CREATE A STRATEGY PROJECT IN DEVELOPMENT CENTER TO ENABLE TRAINING</span> : null}
       </div>
     </div>
   )

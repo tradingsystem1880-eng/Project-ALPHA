@@ -3583,8 +3583,20 @@ export interface components {
         JobDetail: {
             /** Command */
             command: string;
+            /** Command Path */
+            command_path: string;
             /** Created At */
             created_at: number;
+            /** Current Step */
+            current_step: string;
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /** Eta Sample Count */
+            eta_sample_count: number;
+            /** Eta Seconds */
+            eta_seconds: number | null;
+            /** Finished At */
+            finished_at: number | null;
             /** Job Id */
             job_id: string;
             /** Kind */
@@ -3593,6 +3605,13 @@ export interface components {
             lines: string[];
             /** N Lines */
             n_lines: number;
+            /** Progress Fraction */
+            progress_fraction: number | null;
+            /**
+             * Progress Mode
+             * @enum {string}
+             */
+            progress_mode: "indeterminate" | "estimated" | "terminal";
             /** Returncode */
             returncode: number | null;
             /** Run Id */
@@ -3622,14 +3641,33 @@ export interface components {
         JobSummary: {
             /** Command */
             command: string;
+            /** Command Path */
+            command_path: string;
             /** Created At */
             created_at: number;
+            /** Current Step */
+            current_step: string;
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /** Eta Sample Count */
+            eta_sample_count: number;
+            /** Eta Seconds */
+            eta_seconds: number | null;
+            /** Finished At */
+            finished_at: number | null;
             /** Job Id */
             job_id: string;
             /** Kind */
             kind: string | null;
             /** N Lines */
             n_lines: number;
+            /** Progress Fraction */
+            progress_fraction: number | null;
+            /**
+             * Progress Mode
+             * @enum {string}
+             */
+            progress_mode: "indeterminate" | "estimated" | "terminal";
             /** Returncode */
             returncode: number | null;
             /** Run Id */

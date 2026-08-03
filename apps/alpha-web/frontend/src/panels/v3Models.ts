@@ -6,6 +6,7 @@ import type {
   ForecastPaths,
   NativeCalendarReturn,
   ProjectDetail,
+  RunDetail,
   StageState,
 } from '../api/types'
 
@@ -22,6 +23,33 @@ export interface EvidenceMarker {
 export interface DecisionEvidence {
   indicators: ChartIndicator[]
   annotations: ChartAnnotation[]
+}
+
+export type RunScope = 'any' | 'portfolio' | 'forecast' | 'ml-replay'
+
+export function runCommand(detail: RunDetail): string | null {
+  const command = detail.manifest.command
+  return typeof command === 'string' ? command : null
+}
+
+export function matchesRunScope(detail: RunDetail, scope: RunScope): boolean {
+  if (scope === 'any') return true
+  if (scope === 'portfolio') return detail.kind === 'portfolio' || detail.kind === 'cross_sectional'
+  if (scope === 'forecast') return detail.kind === 'forecast'
+  return detail.kind === 'runs' && runCommand(detail) === 'ml_replay'
+}
+
+export function runScopeFromParams(params: unknown): RunScope {
+  if (params === null || typeof params !== 'object' || Array.isArray(params)) return 'any'
+  const value = (params as Record<string, unknown>).runScope
+  return value === 'portfolio' || value === 'forecast' || value === 'ml-replay' ? value : 'any'
+}
+
+export function runScopeLabel(scope: RunScope): string {
+  if (scope === 'portfolio') return 'portfolio or cross-sectional'
+  if (scope === 'forecast') return 'Kronos forecast'
+  if (scope === 'ml-replay') return 'canonical ML replay'
+  return 'compatible'
 }
 
 export function evidenceForDecision(
@@ -121,6 +149,42 @@ export function buildEvidenceMarkers(bundle: ChartBundle, barTimestamps: number[
     }
   }
   return markers.sort((left, right) => left.barTs - right.barTs || left.id.localeCompare(right.id))
+}
+
+export type EvidenceLayer = 'executions' | 'decisions' | 'all'
+
+function markerInLayer(marker: EvidenceMarker, layer: EvidenceLayer): boolean {
+  if (layer === 'all') return true
+  if (layer === 'decisions') return marker.kind === 'decision'
+  return marker.kind !== 'decision'
+}
+
+/** A deterministic visual projection only; the complete causal trace remains in the evidence table. */
+export function visibleEvidenceMarkers(
+  markers: EvidenceMarker[],
+  layer: EvidenceLayer,
+  selectedSequenceId: number | null,
+  limit = 140,
+): EvidenceMarker[] {
+  if (limit < 1) return []
+  const eligible = markers.filter(
+    (marker) => markerInLayer(marker, layer) || marker.sequenceId === selectedSequenceId,
+  )
+  if (eligible.length <= limit) return eligible
+
+  const selected = eligible.filter((marker) => marker.sequenceId === selectedSequenceId)
+  const remainder = eligible.filter((marker) => marker.sequenceId !== selectedSequenceId)
+  const slots = Math.max(0, limit - selected.length)
+  const sampled = slots >= remainder.length
+    ? remainder
+    : slots === 1
+      ? [remainder[0]]
+      : Array.from({ length: slots }, (_, index) =>
+          remainder[Math.round(index * (remainder.length - 1) / (slots - 1))],
+        )
+  return [...selected, ...sampled]
+    .filter((marker): marker is EvidenceMarker => marker !== undefined)
+    .sort((left, right) => left.barTs - right.barTs || left.id.localeCompare(right.id))
 }
 
 export function terminalReturns(paths: ForecastPaths, originClose: number): Array<{ sample: number; value: number }> {

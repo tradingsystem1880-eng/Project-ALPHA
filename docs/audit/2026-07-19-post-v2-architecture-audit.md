@@ -71,6 +71,28 @@ most 17.5 ms; p95 at most 20 ms). Committed generated contracts and SPA assets a
 deterministic. This closes the Workstation v3 offline gate only: R-22 still blocks distribution;
 the R-14 Binance network smoke and R-24 UTC-rollover soak remain pending operational acceptance.
 
+### 2026-08-03 Live UI Hardening Checkpoint
+
+The six desks were re-audited in the production build against representative v3 development,
+portfolio, causal-trace, Kronos, evidence-ledger, and real isolated-Qlib artifacts. Run-kind-aware
+panels suppressed incompatible artifact and risk requests; inactive Dockview tabs made no data
+requests; Qlib suite lineage resolved its project, managed exchange, and canonical replay; chart
+layers preserved the full event table while capping visual markers; native tear sheets separated
+explicit unavailability from missing artifacts; and the browser console remained free of warnings
+and errors. Live jobs stayed ahead of terminal history and exposed exact elapsed/current-operation/
+output state; ETA remained indeterminate until backed by a comparable successful same-session run.
+
+The checkpoint passed locked dependency sync, Ruff, format, all 12 import contracts, strict mypy,
+OpenAPI freshness, wheel build/import smoke, and 1,159 offline Python tests with five expected
+deselections at 93.20% owned-source coverage. The isolated Qlib lane passed nine tests. Frontend
+locked install, lint, 103 Vitest tests, generated-client idempotence, production build, zero high
+severity dependency findings, and the complete Playwright/axe/visual matrix passed (29 executed,
+16 intentional viewport skips). The 25,000-bar/200-annotation probe draws vector annotations in one
+official Lightweight Charts primitive and compares interactive cadence with an adjacent no-input
+rAF baseline; interactive median remains at most 18 ms, p99 at most 34 ms, and scheduler slips may
+exceed baseline by at most five percentage points. This checkpoint adds no real-order,
+distribution, metric-composition, or holdout authority.
+
 ## Executive Finding
 
 The attached greenfield workstation prompt describes a system ALPHA largely already has. Replacing

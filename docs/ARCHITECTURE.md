@@ -187,7 +187,10 @@ The job journal and the operating process remain separate authorities. Direct he
 launched by the Workstation or MCP own isolated process groups and an independent five-second
 heartbeat/cancellation lease (the supported interval is capped at ten seconds). A failed renewal or
 audited cancellation stops the child group with TERM, a bounded grace period, then KILL if needed,
-and reaps the direct child. Lease liveness follows the whole process group, so heartbeats continue
+and reaps the direct child. The Workstation reports exact elapsed/current-operation/output state;
+same-session ETA is indeterminate until a comparable successful command supplies a median.
+UI-launched heavyweight children run at reduced OS scheduling priority to favor desk input without
+changing analytical commands. Lease liveness follows the whole process group, so heartbeats continue
 when a leader exits while a descendant still runs or retains a pipe. Constructor, selector, lease-
 thread, and output-pump initialization all sit behind verified group cleanup; cleanup failure keeps
 the journal nonterminal and the shared slot reserved. The lease owns the failure/cancellation

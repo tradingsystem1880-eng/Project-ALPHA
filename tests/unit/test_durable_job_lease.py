@@ -44,6 +44,16 @@ def _silent_child(seconds: float = 0.25) -> subprocess.Popen[str]:
     )
 
 
+def _shared_group_child(seconds: float = 30.0) -> subprocess.Popen[str]:
+    """A child deliberately left in the caller's process group (no new session)."""
+    return subprocess.Popen(
+        [sys.executable, "-c", f"import time; time.sleep({seconds!r})"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+
+
 def _process_is_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -443,6 +453,24 @@ def test_live_child_with_unverifiable_process_group_fails_closed(
             child.wait(timeout=1)
 
 
+def test_live_child_sharing_the_callers_process_group_is_rejected() -> None:
+    child = _shared_group_child()
+    try:
+        with pytest.raises(DurableLeaseError, match="does not own an isolated process group"):
+            DurableJobLease(
+                child,
+                renew=lambda: None,
+                fail_journal=lambda _message: None,
+                interval_seconds=0.02,
+                label="shared group child",
+            )
+    finally:
+        # The child shares the test runner's process group: signal the pid directly.
+        with contextlib.suppress(ProcessLookupError):
+            child.kill()
+        child.wait(timeout=1)
+
+
 def test_constructor_failure_boundary_reaps_before_failing_journal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -497,6 +525,37 @@ def test_constructor_cleanup_failure_does_not_terminalize_journal(
         with contextlib.suppress(ProcessLookupError):
             os.killpg(child.pid, signal.SIGKILL)
         child.wait(timeout=1)
+
+
+def test_constructor_boundary_journal_failure_raises_both_errors_after_reap() -> None:
+    child = _silent_child(30.0)
+
+    def journal_failure(_message: str) -> None:
+        raise RuntimeError("terminal journal unavailable")
+
+    try:
+        with pytest.raises(
+            DurableLeaseError,
+            match="lease initialization failed.*terminal journal update also failed",
+        ) as excinfo:
+            DurableJobLease.start_for_process(
+                child,
+                renew=lambda: None,
+                fail_journal=journal_failure,
+                interval_seconds=0.0,
+                terminate_grace_seconds=0.2,
+                label="constructor journal failure",
+            )
+        # The child was reaped before the journal attempt, and the original
+        # initialization error stays chained beneath the combined failure.
+        assert child.poll() is not None
+        assert isinstance(excinfo.value.__cause__, ValueError)
+    finally:
+        if child.poll() is None:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(child.pid, signal.SIGKILL)
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            child.wait(timeout=1)
 
 
 @pytest.mark.parametrize("interval", [0.0, float("nan"), 10.01])
@@ -647,6 +706,21 @@ def test_post_kill_process_group_survival_fails_loudly(
     finally:
         with contextlib.suppress(ProcessLookupError):
             os.killpg(child.pid, signal.SIGKILL)
+        child.wait(timeout=1)
+
+
+def test_live_leader_outside_its_recorded_group_cannot_be_reaped_and_fails_loudly() -> None:
+    # The pid-matching group id has no live group (the child never owned one), so group-exit
+    # verification passes while the never-signalled leader keeps running: reaping must fail
+    # loudly instead of silently reporting a clean shutdown.
+    child = _shared_group_child()
+    try:
+        with pytest.raises(DurableLeaseError, match="could not be reaped after SIGKILL"):
+            terminate_and_reap(child, grace_seconds=0.1, process_group_id=child.pid)
+        assert child.poll() is None
+    finally:
+        with contextlib.suppress(ProcessLookupError):
+            child.kill()
         child.wait(timeout=1)
 
 

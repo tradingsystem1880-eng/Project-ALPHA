@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { api } from './client'
+import { api, clearImmutableApiCache } from './client'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -10,6 +10,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 afterEach(() => {
+  clearImmutableApiCache()
   vi.unstubAllGlobals()
 })
 
@@ -69,8 +70,32 @@ describe('control-plane API client', () => {
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      '/api/runs/0123456789abcdef/native-tearsheet?point_limit=2000',
+      '/api/runs/0123456789abcdef/native-tearsheet?point_limit=750',
     )
+  })
+
+  it('deduplicates immutable run projections and retries a rejected request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ run_id: 'run-cache' }))
+      .mockResolvedValueOnce(jsonResponse({ detail: 'temporary' }, 503))
+      .mockResolvedValueOnce(jsonResponse({ run_id: 'run-retry' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const [first, second] = await Promise.all([api.run('run-cache'), api.run('run-cache')])
+    expect(first).toBe(second)
+    expect(fetchMock).toHaveBeenCalledOnce()
+
+    await expect(api.run('run-retry')).rejects.toThrow('temporary')
+    await expect(api.run('run-retry')).resolves.toMatchObject({ run_id: 'run-retry' })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('extracts typed API details without leaking JSON response framing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ detail: 'run has no equity stream' }, 422)))
+
+    await expect(api.providers()).rejects.toThrow('422 — run has no equity stream')
+    await expect(api.providers()).rejects.not.toThrow('{"detail"')
   })
 
   it('sends the linked date window with the causal chart bundle request', async () => {

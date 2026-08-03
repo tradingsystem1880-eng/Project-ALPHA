@@ -54,10 +54,52 @@ import type {
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`)
+    const body = await res.text().catch(() => '')
+    let detail = body
+    try {
+      const parsed: unknown = JSON.parse(body)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const value = (parsed as Record<string, unknown>).detail
+        if (typeof value === 'string') detail = value
+      }
+    } catch {
+      // Plain-text failures are valid for infrastructure endpoints.
+    }
+    detail = detail
+      .split('\n')
+      .map((line) => line.replace(/^[│┃]\s?/, '').trim())
+      .filter((line) => line && !/^usage:/i.test(line) && !/^try ['`]/i.test(line) && !/^[╭╰─━┄┅┈┉]+/.test(line))
+      .join(' ')
+    const status = `${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
+    throw new Error(`${status}${detail ? ` — ${detail}` : ''}`)
   }
   return (await res.json()) as T
+}
+
+const IMMUTABLE_CACHE_LIMIT = 128
+const immutableCache = new Map<string, Promise<unknown>>()
+
+function getImmutableJSON<T>(url: string): Promise<T> {
+  const existing = immutableCache.get(url)
+  if (existing) {
+    immutableCache.delete(url)
+    immutableCache.set(url, existing)
+    return existing as Promise<T>
+  }
+  const request = getJSON<T>(url).catch((error: unknown) => {
+    immutableCache.delete(url)
+    throw error
+  })
+  immutableCache.set(url, request)
+  if (immutableCache.size > IMMUTABLE_CACHE_LIMIT) {
+    const oldest = immutableCache.keys().next().value
+    if (oldest !== undefined) immutableCache.delete(oldest)
+  }
+  return request
+}
+
+export function clearImmutableApiCache(): void {
+  immutableCache.clear()
 }
 
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
@@ -75,30 +117,30 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
 
 export const api = {
   runs: (query = ''): Promise<RunList> => getJSON(`/api/runs${query}`),
-  run: (id: string): Promise<RunDetail> => getJSON(`/api/runs/${id}`),
+  run: (id: string): Promise<RunDetail> => getImmutableJSON(`/api/runs/${id}`),
   chartBundle(id: string, limit = 2_000, start?: string | null, end?: string | null): Promise<ChartBundle> {
     const params = new URLSearchParams({ limit: String(limit) })
     if (start) params.set('start', start)
     if (end) params.set('end', end)
-    return getJSON(`/api/runs/${id}/chart-bundle?${params.toString()}`)
+    return getImmutableJSON(`/api/runs/${id}/chart-bundle?${params.toString()}`)
   },
-  equity: (id: string): Promise<EquitySeries> => getJSON(`/api/runs/${id}/equity`),
-  trades: (id: string): Promise<TradeRow[]> => getJSON(`/api/runs/${id}/trades`),
-  forecast: (id: string): Promise<ForecastSeries> => getJSON(`/api/runs/${id}/forecast`),
+  equity: (id: string): Promise<EquitySeries> => getImmutableJSON(`/api/runs/${id}/equity`),
+  trades: (id: string): Promise<TradeRow[]> => getImmutableJSON(`/api/runs/${id}/trades`),
+  forecast: (id: string): Promise<ForecastSeries> => getImmutableJSON(`/api/runs/${id}/forecast`),
   forecastPaths: (id: string, n = 20): Promise<ForecastPaths> =>
-    getJSON(`/api/runs/${id}/forecast/paths?n=${n}`),
-  nulls: (id: string): Promise<NullTiers> => getJSON(`/api/runs/${id}/nulls`),
-  trials: (id: string): Promise<OptimTrials> => getJSON(`/api/runs/${id}/trials`),
-  propfirmPaths: (id: string): Promise<PropfirmPaths> => getJSON(`/api/runs/${id}/propfirm-paths`),
-  origins: (id: string): Promise<ForecastOrigins> => getJSON(`/api/runs/${id}/origins`),
-  nativeTearsheet: (id: string, pointLimit = 2000): Promise<NativeTearSheetProjection> =>
-    getJSON(`/api/runs/${id}/native-tearsheet?point_limit=${pointLimit}`),
+    getImmutableJSON(`/api/runs/${id}/forecast/paths?n=${n}`),
+  nulls: (id: string): Promise<NullTiers> => getImmutableJSON(`/api/runs/${id}/nulls`),
+  trials: (id: string): Promise<OptimTrials> => getImmutableJSON(`/api/runs/${id}/trials`),
+  propfirmPaths: (id: string): Promise<PropfirmPaths> => getImmutableJSON(`/api/runs/${id}/propfirm-paths`),
+  origins: (id: string): Promise<ForecastOrigins> => getImmutableJSON(`/api/runs/${id}/origins`),
+  nativeTearsheet: (id: string, pointLimit = 750): Promise<NativeTearSheetProjection> =>
+    getImmutableJSON(`/api/runs/${id}/native-tearsheet?point_limit=${pointLimit}`),
   portfolioAnalytics: (
     id: string,
     timestampLimit = 2000,
     symbolLimit = 50,
   ): Promise<PortfolioAnalyticsProjection> =>
-    getJSON(
+    getImmutableJSON(
       `/api/runs/${id}/portfolio-analytics?timestamp_limit=${timestampLimit}&symbol_limit=${symbolLimit}`,
     ),
   tearsheetUrl: (id: string): string => `/api/runs/${id}/tearsheet`,

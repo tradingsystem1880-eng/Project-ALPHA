@@ -20,10 +20,15 @@ import { usePanelLinked } from '../context/usePanelLinked'
 import type { FoldRow } from '../explain/types'
 import { AXIS, CHART } from '../util/chartTheme'
 import { fmtPct, shortId } from '../util/format'
+import {
+  buildCalendarRows,
+  matchesRunScope,
+  runScopeFromParams,
+  runScopeLabel,
+} from './v3Models'
 import { MetricGrid, Section } from './rundetail/common'
 import { asObj, type Dict } from './rundetail/commonUtils'
 import { TradesTab } from './rundetail/TradesTab'
-import { buildCalendarRows } from './v3Models'
 
 function metricsFor(manifest: Dict): Dict | null {
   return asObj(manifest.oos_metrics) ?? asObj(manifest.metrics)
@@ -52,6 +57,16 @@ function ArtifactGap({ title, contract }: { title: string; contract: string }) {
         Waiting for <code>{contract}</code>. The workstation will not derive this statistic from
         another series.
       </p>
+    </div>
+  )
+}
+
+function ExplicitUnavailable({ title, reason }: { title: string; reason: string | null | undefined }) {
+  return (
+    <div className="tear-gap">
+      <div className="tear-gap-title">{title}</div>
+      <div className="tear-gap-state mono">EXPLICITLY UNAVAILABLE</div>
+      <p>{reason ?? 'The authoritative artifact records that this metric is not available for this run type.'}</p>
     </div>
   )
 }
@@ -274,6 +289,17 @@ export function NativeTearSheetBody({
     .map(([label, value]) => [label, displayValue(value)] as const)
     .filter((entry): entry is readonly [string, string] => entry[1] !== null)
 
+  if (native?.available === false && !metrics && !equity && !detail.has_trades) {
+    return (
+      <div className="native-tear">
+        <div className="tear-provenance">
+          {provenance.map(([label, value]) => <div key={label}><span className="eyebrow">{label}</span><span className="mono">{value}</span></div>)}
+        </div>
+        <Placeholder big="NATIVE ANALYTICS UNAVAILABLE">This legacy run predates the v3 analytics contract. Rerun the immutable specification to generate the dark tear-sheet artifacts; ALPHA will not reconstruct them in the browser.</Placeholder>
+      </div>
+    )
+  }
+
   return (
     <div className="native-tear">
       <div className="tear-provenance">
@@ -316,17 +342,17 @@ export function NativeTearSheetBody({
             <Section title="Benchmark comparison" right={<span className="muted">benchmark_comparison.parquet · {native.benchmark[0]?.benchmark_kind ?? 'declared benchmark'}</span>}>
               <BenchmarkChart native={native} />
             </Section>
-          ) : <ArtifactGap title="Benchmark comparison" contract="benchmark_comparison.parquet · explicit unavailable" />}
+          ) : <ExplicitUnavailable title="Benchmark comparison" reason={native.benchmark[0]?.unavailable_reason} />}
           {native.exposure_available || native.turnover_available ? (
             <Section title="Exposure & turnover" right={<span className="muted">exposure_turnover.parquet · canonical post-fill state</span>}>
               <ExposureTurnoverChart native={native} />
             </Section>
-          ) : <ArtifactGap title="Exposure & turnover" contract="exposure_turnover.parquet · explicit unavailable" />}
+          ) : <ExplicitUnavailable title="Exposure & turnover" reason={native.exposure_turnover[0]?.exposure_unavailable_reason ?? native.exposure_turnover[0]?.turnover_unavailable_reason} />}
           {native.trade_statistics_available ? (
             <Section title="Closed trade statistics" right={<span className="muted">trade_statistics.parquet · canonical closed trades</span>}>
               <TradeStatistics native={native} />
             </Section>
-          ) : <ArtifactGap title="Closed trade statistics" contract="trade_statistics.parquet · explicit unavailable" />}
+          ) : <ExplicitUnavailable title="Closed trade statistics" reason={native.trade_statistics.find((row) => row.unavailable_reason)?.unavailable_reason} />}
           <div className="native-source-line mono">
             SOURCE {Object.keys(native.provenance.artifact_sha256).join(' · ')} · NAMESPACE {native.provenance.metric_namespace} · TZ UTC · CONTRACT V{native.provenance.artifact_contract_version ?? '—'}
             {native.bounds.qq.truncated ? ` · Q-Q ${native.bounds.qq.returned}/${native.bounds.qq.original}` : ''}
@@ -335,20 +361,20 @@ export function NativeTearSheetBody({
             {native.bounds.benchmark.truncated ? ` · BENCHMARK ${native.bounds.benchmark.returned}/${native.bounds.benchmark.original}` : ''}
           </div>
         </>
+      ) : native === null && nativeError === null ? (
+        <div className="skeleton" style={{ height: 180 }} aria-label="Loading native analytics" />
       ) : (
-        <div className="tear-analysis-grid">
-          <ArtifactGap title="Monthly & yearly returns" contract="calendar_returns.parquet" />
-          <ArtifactGap title="Distribution & Q-Q" contract="return_distribution.parquet" />
-          <ArtifactGap title="Rolling statistics" contract="rolling_metrics.parquet" />
-          {nativeError ? <div className="tear-projection-error mono">PROJECTION ERROR · {nativeError}</div> : null}
+        <div className="workbench-notice">
+          <strong>NATIVE ANALYTICS UNAVAILABLE</strong>
+          <span>{nativeError ?? 'This run does not contain the v3 calendar, distribution, and rolling artifacts. Rerun its immutable specification to generate them.'}</span>
         </div>
       )}
 
       {detail.has_trades ? (
         <TradesTab trades={trades} runId={detail.run_id} />
-      ) : (
+      ) : native?.available ? (
         <ArtifactGap title="Trade analysis" contract="trades.parquet" />
-      )}
+      ) : null}
 
       {detail.has_tearsheet ? (
         <div className="tear-audit-row">
@@ -369,6 +395,7 @@ export function NativeTearSheet(props: IDockviewPanelProps) {
   const [equity, setEquity] = useState<EquitySeries | null>(null)
   const [trades, setTrades] = useState<TradeRow[]>([])
   const [error, setError] = useState<string | null>(null)
+  const runScope = runScopeFromParams(props.params)
 
   useEffect(() => {
     if (!runId) {
@@ -386,6 +413,10 @@ export function NativeTearSheet(props: IDockviewPanelProps) {
     api
       .run(runId)
       .then(async (next) => {
+        if (!matchesRunScope(next, runScope)) {
+          if (live) setDetail(next)
+          return
+        }
         const [nextEquity, nextTrades] = await Promise.all([
           next.has_equity ? api.equity(runId) : Promise.resolve(null),
           next.has_trades ? api.trades(runId) : Promise.resolve([]),
@@ -399,7 +430,7 @@ export function NativeTearSheet(props: IDockviewPanelProps) {
     return () => {
       live = false
     }
-  }, [runId])
+  }, [runId, runScope])
 
   const title = useMemo(() => (runId ? shortId(runId) : 'NO RUN'), [runId])
 
@@ -418,6 +449,8 @@ export function NativeTearSheet(props: IDockviewPanelProps) {
           <Placeholder big="NO RUN">Select a stored run to inspect its canonical metrics and artifacts.</Placeholder>
         ) : error ? (
           <Placeholder big="ERROR">{error}</Placeholder>
+        ) : detail && !matchesRunScope(detail, runScope) ? (
+          <Placeholder big="INCOMPATIBLE RUN">Select a {runScopeLabel(runScope)} run for this workspace. Canonical evidence from other run types is not relabeled.</Placeholder>
         ) : detail ? (
           <NativeTearSheetBody detail={detail} equity={equity} trades={trades} />
         ) : (

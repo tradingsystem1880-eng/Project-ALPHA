@@ -225,13 +225,17 @@ interface — Bloomberg/OpenBB-class, but $0.
 - **Six curated desks** — Market, Development, Kronos, ML Research, Portfolio & Risk, and Operations,
   with linked A/B/C/D instrument contexts, preserved free-form layouts, and an atomic v2→v3
   migrator that keeps the legacy source and rejects unknown panels without partial persistence.
+  Each desk accepts only compatible run families, while inactive tabs suspend background requests.
 - **Professional market evidence** — a large native candle/volume chart with decisions, next-open
   fills, exits, holding intervals, vector pattern anchors, and linked tables sourced only from causal
-  v3 artifacts. Legacy runs are never reconstructed from hindsight.
+  v3 artifacts. Execution/decision/all layers keep dense overlays readable through a deterministic
+  visual cap while the complete returned evidence remains inspectable. Legacy runs are never
+  reconstructed from hindsight.
 - **Native quant tear sheets** — equity/drawdown, calendar returns, distribution/Q-Q, rolling stats,
   benchmark/exposure/turnover, and trade analysis authored by Python; QuantStats-Lumi HTML remains a
   deterministic audit/export view. Dense series are deterministically endpoint-preserving and
-  bounded, with original/returned/truncated metadata.
+  bounded, with original/returned/truncated metadata. Explicitly unavailable analytics remain
+  distinct from artifacts that were not emitted.
 - **Development Center** — immutable setup, 14 exposed stage IDs (12 core lifecycle stages plus
   separate Kronos and ML tracks), resolved one-click suites,
   holdout/attempt governance, durable jobs, decision packets, Asset Memory, and AgentBrief export.
@@ -249,6 +253,10 @@ interface — Bloomberg/OpenBB-class, but $0.
   probe.
 - **Paper Monitor** — permanent SANDBOX identity, durable sessions/heartbeats, latest position event,
   order/fill/rejection blotter, incremental event log, and known-job cancellation.
+- **Live Job Monitor** — running work stays above terminal history with exact elapsed time, current
+  operation, output activity, accessible progress, live logs, and cancellation. ETA remains visibly
+  indeterminate until a comparable successful command provides a same-session median; UI-launched
+  Kronos/Qlib children use reduced scheduling priority to keep the desk responsive.
 - **Command palette + savable workspaces** (dockable/floating/popout panels).
 
 Built as a Vite/React/TypeScript SPA (Dockview + Lightweight Charts + uPlot + TanStack Table/Virtual +

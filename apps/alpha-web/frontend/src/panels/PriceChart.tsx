@@ -19,7 +19,11 @@ import {
 import { openDevelopmentCenter } from './actions'
 import { ChartDataAlternative } from './ChartDataAlternative'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
-import { buildEvidenceMarkers } from './v3Models'
+import {
+  buildEvidenceMarkers,
+  visibleEvidenceMarkers,
+  type EvidenceLayer,
+} from './v3Models'
 
 export function PriceChart(props: IDockviewPanelProps) {
   const panelLink = usePanelLinked(props)
@@ -28,6 +32,7 @@ export function PriceChart(props: IDockviewPanelProps) {
   const [bars, setBars] = useState<Candle[] | null>(null)
   const [bundle, setBundle] = useState<ChartBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [evidenceLayer, setEvidenceLayer] = useState<EvidenceLayer>('executions')
   const chartSelection = useChartSelection()
 
   useEffect(() => {
@@ -67,7 +72,7 @@ export function PriceChart(props: IDockviewPanelProps) {
     setBars(null)
     setBundle(null)
     api
-      .chartBundle(linked.runId, 5_000, linked.start, linked.end)
+      .chartBundle(linked.runId, 1_000, linked.start, linked.end)
       .then((next) => {
         if (!live) return
         setBundle(next)
@@ -111,6 +116,10 @@ export function PriceChart(props: IDockviewPanelProps) {
     () => (bundle && selected ? matchingTradeTrace(selected, bundle.trace) : null),
     [bundle, selected],
   )
+  const visibleEvidence = useMemo(
+    () => visibleEvidenceMarkers(evidence, evidenceLayer, selectedSequenceId),
+    [evidence, evidenceLayer, selectedSequenceId],
+  )
   const selectEvidence = useCallback((sequenceId: number) => {
     if (!bundle) return
     const event = bundle.trace.find((candidate) => candidate.sequence_id === sequenceId)
@@ -118,8 +127,8 @@ export function PriceChart(props: IDockviewPanelProps) {
   }, [bundle])
 
   return (
-    <div className="panel">
-      <div className="panel-toolbar">
+    <div className="panel price-panel">
+      <div className="panel-toolbar price-toolbar">
         <span className="title">Price</span>
         <PanelLinkControl controller={panelLink} />
         <input
@@ -132,11 +141,19 @@ export function PriceChart(props: IDockviewPanelProps) {
         />
         {bars ? <span className="count">{bars.length} bars</span> : null}
         {bundle ? (
-          <span className={`chip ${bundle.trace_status === 'available' ? 'kind' : ''}`}>
+          <span className={`chip chart-trace-count ${bundle.trace_status === 'available' ? 'kind' : ''}`}>
             {bundle.trace_status === 'available' ? `${bundle.trace.length} returned causal events` : 'trace unavailable'}
           </span>
         ) : null}
-        {bundle ? <span className="chip">{bundle.provenance.command ?? 'run'} · artifact v{bundle.provenance.artifact_contract_version ?? 'legacy'}</span> : null}
+        {bundle ? <span className="chip chart-run-provenance">{bundle.provenance.command ?? 'run'} · artifact v{bundle.provenance.artifact_contract_version ?? 'legacy'}</span> : null}
+        {bundle?.trace_status === 'available' ? (
+          <span className="chart-layer-controls" aria-label="Chart evidence layer">
+            {(['executions', 'decisions', 'all'] as const).map((layer) => (
+              <button key={layer} className={`btn${evidenceLayer === layer ? ' selected' : ''}`} aria-pressed={evidenceLayer === layer} onClick={() => setEvidenceLayer(layer)}>{layer}</button>
+            ))}
+            <span className="muted mono">{visibleEvidence.length}/{evidence.length} markers shown</span>
+          </span>
+        ) : null}
       </div>
       <div className="panel-body price-body price-evidence-layout">
         {error ? (
@@ -152,7 +169,7 @@ export function PriceChart(props: IDockviewPanelProps) {
             <div className="price-chart-canvas-wrap">
               <PriceChartCanvas
                 bars={bars}
-                evidence={evidence}
+                evidence={visibleEvidence}
                 annotations={bundle?.annotations ?? []}
                 selectedSequenceId={selectedSequenceId}
                 selectedTrade={selectedTrade}

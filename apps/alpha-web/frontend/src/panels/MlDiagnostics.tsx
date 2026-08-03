@@ -14,6 +14,7 @@ import {
   buildScorePlot,
   buildTrainingHistory,
   isoToEpochSeconds,
+  mlExperimentPlaceholderLabel,
   type MlExperimentSummaryProjection,
   type MlFoldDiagnosticProjection,
   type MlTearSheetProjection,
@@ -420,6 +421,7 @@ export function MlDiagnostics(_props: IDockviewPanelProps) {
     [experiments, selectedId],
   )
   const step = sheet?.timeline_limit ?? 500
+  const selectorPlaceholder = mlExperimentPlaceholderLabel(experiments, error)
 
   function selectExperiment(next: string) {
     setSelectedId(next || null)
@@ -438,9 +440,9 @@ export function MlDiagnostics(_props: IDockviewPanelProps) {
             aria-label="ML diagnostic experiment"
             value={selectedId ?? ''}
             onChange={(event) => selectExperiment(event.target.value)}
-            disabled={!experiments?.items.length}
+            disabled={experiments === null || experiments.items.length === 0}
           >
-            {!experiments?.items.length ? <option value="">NO VALIDATED EXPERIMENT</option> : null}
+            {selectorPlaceholder ? <option value="">{selectorPlaceholder}</option> : null}
             {experiments?.items.map((experiment) => (
               <option key={experiment.experiment_id} value={experiment.experiment_id}>
                 {shortId(experiment.experiment_id)} · {experiment.status} · {experiment.universe_size} symbols

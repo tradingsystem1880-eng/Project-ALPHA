@@ -496,9 +496,44 @@ button.btn.primary {
   border-color: var(--accent-line);
   color: var(--accent-strong);
 }
+button.btn.selected,
+button.btn[aria-pressed='true'] {
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
 button.btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.chart-layer-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.chart-layer-controls .btn {
+  padding: 3px 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.price-panel {
+  container-type: inline-size;
+}
+
+.price-toolbar > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@container (max-width: 760px) {
+  .price-toolbar .chart-trace-count,
+  .price-toolbar .chart-run-provenance {
+    display: none;
+  }
 }
 
 input.field,
@@ -1547,10 +1582,9 @@ select.field:focus {
 }
 .job-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 12px;
-  min-height: var(--row-h);
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 12px 9px;
   cursor: pointer;
   font-size: 12px;
 }
@@ -1564,6 +1598,62 @@ select.field:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+}
+.job-primary,
+.job-progress-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+.job-progress-meta {
+  padding-left: 20px;
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+.job-progress-meta b {
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.job-current-step {
+  flex: 1;
+  min-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-progress-track {
+  position: relative;
+  width: calc(100% - 20px);
+  height: 3px;
+  margin-left: 20px;
+  overflow: hidden;
+  background: var(--line-strong);
+  border-radius: 1px;
+}
+.job-progress-track > span {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+  transition: width 400ms linear;
+}
+.job-progress-track.status-done > span { background: var(--green); }
+.job-progress-track.status-failed > span,
+.job-progress-track.status-cancelled > span { background: var(--red); }
+.job-progress-track.indeterminate > span {
+  width: 32%;
+  animation: job-progress-scan 1.6s ease-in-out infinite;
+}
+@keyframes job-progress-scan {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(340%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .job-progress-track.indeterminate > span { animation: none; transform: translateX(105%); }
 }
 
 /* fan chart + outcome histograms */

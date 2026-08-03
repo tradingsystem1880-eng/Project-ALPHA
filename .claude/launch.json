@@ -5,6 +5,7 @@
       "name": "alpha-web",
       "runtimeExecutable": "uv",
       "runtimeArgs": ["run", "alpha-web"],
+      "autoPort": true,
       "port": 8800
     }
   ]

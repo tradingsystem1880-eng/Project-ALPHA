@@ -304,6 +304,35 @@ def test_existing_exchanges_project_to_frontend_ml_experiments(
     assert item["replay_run_id"] == "0123456789abcdef"
 
 
+def test_qlib_suite_projects_managed_exchange_and_canonical_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_exchange(tmp_path)
+    monkeypatch.setattr(
+        _ml,
+        "_durable_jobs",
+        lambda **_: [
+            {
+                "kind": "suite:qlib",
+                "status": "succeeded",
+                "project_id": "project-1",
+                "result_run_id": "0123456789abcdef",
+                "request": {
+                    "action": "qlib",
+                    "governance": {"managed_resource_id": EXCHANGE_ID},
+                },
+            }
+        ],
+    )
+
+    page = _ml.list_experiments(data_dir=tmp_path, project_id="project-1", limit=10, offset=0)
+
+    item = page["items"][0]
+    assert item["experiment_id"] == EXCHANGE_ID
+    assert item["project_id"] == "project-1"
+    assert item["replay_run_id"] == "0123456789abcdef"
+
+
 def test_exchange_ids_and_input_bundles_are_traversal_safe(tmp_path: Path) -> None:
     with pytest.raises(_ml.MlNotFoundError, match="invalid exchange_id"):
         _ml.exchange_detail("../secret", data_dir=tmp_path)

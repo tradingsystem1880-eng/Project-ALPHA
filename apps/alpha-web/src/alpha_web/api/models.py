@@ -552,6 +552,14 @@ class JobSummary(StrictModel):
     kind: str | None
     status: str
     created_at: float
+    finished_at: float | None
+    elapsed_seconds: float
+    command_path: str
+    current_step: str
+    progress_mode: Literal["indeterminate", "estimated", "terminal"]
+    progress_fraction: float | None
+    eta_seconds: float | None
+    eta_sample_count: int
     run_id: str | None
     session_id: str | None
     returncode: int | None

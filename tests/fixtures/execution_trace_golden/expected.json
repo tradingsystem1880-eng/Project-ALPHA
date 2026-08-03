@@ -1,0 +1,877 @@
+{
+  "chart_annotations.parquet": {
+    "rows": [
+      {
+        "anchor_index": 0,
+        "annotation_id": 1,
+        "decision_sequence_id": 1,
+        "kind": "polyline",
+        "label": "entry channel",
+        "reason": "breakout channel",
+        "ts": "2026-01-02T23:00:00+00:00",
+        "unit": "price",
+        "value": 98.0
+      },
+      {
+        "anchor_index": 0,
+        "annotation_id": 2,
+        "decision_sequence_id": 2,
+        "kind": "zone",
+        "label": "short band",
+        "reason": "mean-reversion band",
+        "ts": "2026-01-02T23:00:00+00:00",
+        "unit": "price",
+        "value": 212.0
+      },
+      {
+        "anchor_index": 0,
+        "annotation_id": 3,
+        "decision_sequence_id": 10,
+        "kind": "line",
+        "label": "exit level",
+        "reason": "flatten at target",
+        "ts": "2026-01-05T23:00:00+00:00",
+        "unit": "price",
+        "value": 101.5
+      },
+      {
+        "anchor_index": 1,
+        "annotation_id": 1,
+        "decision_sequence_id": 1,
+        "kind": "polyline",
+        "label": "entry channel",
+        "reason": "breakout channel",
+        "ts": "2026-01-03T23:00:00+00:00",
+        "unit": "price",
+        "value": 99.0
+      },
+      {
+        "anchor_index": 1,
+        "annotation_id": 2,
+        "decision_sequence_id": 2,
+        "kind": "zone",
+        "label": "short band",
+        "reason": "mean-reversion band",
+        "ts": "2026-01-05T23:00:00+00:00",
+        "unit": "price",
+        "value": 208.0
+      },
+      {
+        "anchor_index": 1,
+        "annotation_id": 3,
+        "decision_sequence_id": 10,
+        "kind": "line",
+        "label": "exit level",
+        "reason": "flatten at target",
+        "ts": "2026-01-06T23:00:00+00:00",
+        "unit": "price",
+        "value": 101.5
+      },
+      {
+        "anchor_index": 2,
+        "annotation_id": 1,
+        "decision_sequence_id": 1,
+        "kind": "polyline",
+        "label": "entry channel",
+        "reason": "breakout channel",
+        "ts": "2026-01-05T23:00:00+00:00",
+        "unit": "price",
+        "value": 100.0
+      }
+    ],
+    "schema": [
+      {
+        "dtype": "Int64",
+        "name": "annotation_id"
+      },
+      {
+        "dtype": "Int64",
+        "name": "decision_sequence_id"
+      },
+      {
+        "dtype": "String",
+        "name": "kind"
+      },
+      {
+        "dtype": "String",
+        "name": "label"
+      },
+      {
+        "dtype": "String",
+        "name": "unit"
+      },
+      {
+        "dtype": "String",
+        "name": "reason"
+      },
+      {
+        "dtype": "Int64",
+        "name": "anchor_index"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "ts"
+      },
+      {
+        "dtype": "Float64",
+        "name": "value"
+      }
+    ]
+  },
+  "decision_trace.parquet": {
+    "rows": [
+      {
+        "instrument_id": "AAPL.SIM",
+        "reason": "enter long",
+        "sequence_id": 1,
+        "signal": 1,
+        "target_quantity": 10.0,
+        "ts": "2026-01-05T23:00:00+00:00"
+      },
+      {
+        "instrument_id": "AAPL.SIM",
+        "reason": "exit long",
+        "sequence_id": 10,
+        "signal": 0,
+        "target_quantity": 0.0,
+        "ts": "2026-01-06T23:00:00+00:00"
+      },
+      {
+        "instrument_id": "MSFT.SIM",
+        "reason": "enter short",
+        "sequence_id": 2,
+        "signal": -1,
+        "target_quantity": 4.0,
+        "ts": "2026-01-05T23:00:00+00:00"
+      },
+      {
+        "instrument_id": "MSFT.SIM",
+        "reason": "exit short",
+        "sequence_id": 11,
+        "signal": 0,
+        "target_quantity": 0.0,
+        "ts": "2026-01-06T23:00:00+00:00"
+      }
+    ],
+    "schema": [
+      {
+        "dtype": "Int64",
+        "name": "sequence_id"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "ts"
+      },
+      {
+        "dtype": "String",
+        "name": "instrument_id"
+      },
+      {
+        "dtype": "Int64",
+        "name": "signal"
+      },
+      {
+        "dtype": "Float64",
+        "name": "target_quantity"
+      },
+      {
+        "dtype": "String",
+        "name": "reason"
+      }
+    ]
+  },
+  "execution_trace.parquet": {
+    "rows": [
+      {
+        "decision_reason": "enter long",
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "decision",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": null,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": null,
+        "price": null,
+        "quantity": 10.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 1,
+        "side": null,
+        "signal": 1,
+        "status": null,
+        "ts": "2026-01-05T23:00:00+00:00"
+      },
+      {
+        "decision_reason": "enter short",
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "decision",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": null,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": null,
+        "price": null,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 2,
+        "side": null,
+        "signal": -1,
+        "status": null,
+        "ts": "2026-01-05T23:00:00+00:00"
+      },
+      {
+        "decision_reason": "exit long",
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "decision",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": null,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": null,
+        "price": null,
+        "quantity": 0.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 10,
+        "side": null,
+        "signal": 0,
+        "status": null,
+        "ts": "2026-01-06T23:00:00+00:00"
+      },
+      {
+        "decision_reason": "exit short",
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "decision",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": null,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": null,
+        "price": null,
+        "quantity": 0.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 11,
+        "side": null,
+        "signal": 0,
+        "status": null,
+        "ts": "2026-01-06T23:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": 100.55,
+        "entry_ts": "2026-01-06T00:00:00+00:00",
+        "event_type": "trade",
+        "exit_price": 102.0,
+        "exit_ts": "2026-01-07T00:00:00+00:00",
+        "filled_quantity": null,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 14,
+        "price": 102.0,
+        "quantity": 10.0,
+        "realized_pnl": 14.5,
+        "realized_return": 0.0144,
+        "sequence_id": 16,
+        "side": "BUY",
+        "signal": null,
+        "status": "CLOSED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": 210.0,
+        "entry_ts": "2026-01-06T00:00:00+00:00",
+        "event_type": "trade",
+        "exit_price": 208.5,
+        "exit_ts": "2026-01-07T00:00:00+00:00",
+        "filled_quantity": null,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": 15,
+        "price": 208.5,
+        "quantity": 4.0,
+        "realized_pnl": 6.0,
+        "realized_return": 0.00714,
+        "sequence_id": 17,
+        "side": "SELL",
+        "signal": null,
+        "status": "CLOSED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": 50.0,
+        "entry_ts": "2026-01-06T00:00:00+00:00",
+        "event_type": "trade",
+        "exit_price": 51.0,
+        "exit_ts": "2026-01-07T00:00:00+00:00",
+        "filled_quantity": null,
+        "instrument_id": "TSLA.SIM",
+        "parent_sequence_id": null,
+        "price": 51.0,
+        "quantity": 1.0,
+        "realized_pnl": 1.0,
+        "realized_return": 0.02,
+        "sequence_id": 18,
+        "side": "BUY",
+        "signal": null,
+        "status": "CLOSED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "fill",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 10.0,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 12,
+        "price": 102.0,
+        "quantity": 10.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 14,
+        "side": "SELL",
+        "signal": null,
+        "status": null,
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "fill",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 4.0,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 4,
+        "price": 100.625,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 8,
+        "side": "BUY",
+        "signal": null,
+        "status": null,
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "fill",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 4.0,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": 13,
+        "price": 208.5,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 15,
+        "side": "BUY",
+        "signal": null,
+        "status": null,
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "fill",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 4.0,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": 5,
+        "price": 210.0,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 9,
+        "side": "SELL",
+        "signal": null,
+        "status": null,
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "fill",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 6.0,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 3,
+        "price": 100.5,
+        "quantity": 6.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 7,
+        "side": "BUY",
+        "signal": null,
+        "status": null,
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "order",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 0.0,
+        "instrument_id": "TSLA.SIM",
+        "parent_sequence_id": null,
+        "price": null,
+        "quantity": 1.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 6,
+        "side": "BUY",
+        "signal": null,
+        "status": "REJECTED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "order",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 10.0,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 10,
+        "price": null,
+        "quantity": 10.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 12,
+        "side": "SELL",
+        "signal": null,
+        "status": "FILLED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "order",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 4.0,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 1,
+        "price": null,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 4,
+        "side": "BUY",
+        "signal": null,
+        "status": "FILLED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "order",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 4.0,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": 11,
+        "price": null,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 13,
+        "side": "BUY",
+        "signal": null,
+        "status": "FILLED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "order",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 4.0,
+        "instrument_id": "MSFT.SIM",
+        "parent_sequence_id": 2,
+        "price": null,
+        "quantity": 4.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 5,
+        "side": "SELL",
+        "signal": null,
+        "status": "FILLED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_reason": null,
+        "entry_price": null,
+        "entry_ts": null,
+        "event_type": "order",
+        "exit_price": null,
+        "exit_ts": null,
+        "filled_quantity": 6.0,
+        "instrument_id": "AAPL.SIM",
+        "parent_sequence_id": 1,
+        "price": null,
+        "quantity": 6.0,
+        "realized_pnl": null,
+        "realized_return": null,
+        "sequence_id": 3,
+        "side": "BUY",
+        "signal": null,
+        "status": "FILLED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      }
+    ],
+    "schema": [
+      {
+        "dtype": "Int64",
+        "name": "sequence_id"
+      },
+      {
+        "dtype": "String",
+        "name": "event_type"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "ts"
+      },
+      {
+        "dtype": "Int64",
+        "name": "parent_sequence_id"
+      },
+      {
+        "dtype": "String",
+        "name": "instrument_id"
+      },
+      {
+        "dtype": "String",
+        "name": "side"
+      },
+      {
+        "dtype": "Float64",
+        "name": "quantity"
+      },
+      {
+        "dtype": "Float64",
+        "name": "filled_quantity"
+      },
+      {
+        "dtype": "Float64",
+        "name": "price"
+      },
+      {
+        "dtype": "String",
+        "name": "status"
+      },
+      {
+        "dtype": "Int64",
+        "name": "signal"
+      },
+      {
+        "dtype": "String",
+        "name": "decision_reason"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "entry_ts"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "exit_ts"
+      },
+      {
+        "dtype": "Float64",
+        "name": "entry_price"
+      },
+      {
+        "dtype": "Float64",
+        "name": "exit_price"
+      },
+      {
+        "dtype": "Float64",
+        "name": "realized_pnl"
+      },
+      {
+        "dtype": "Float64",
+        "name": "realized_return"
+      }
+    ]
+  },
+  "fills.parquet": {
+    "rows": [
+      {
+        "instrument_id": "AAPL.SIM",
+        "order_sequence_id": 1,
+        "price": 100.5,
+        "quantity": 6.0,
+        "sequence_id": 1,
+        "side": "BUY",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "instrument_id": "AAPL.SIM",
+        "order_sequence_id": 10,
+        "price": 100.625,
+        "quantity": 4.0,
+        "sequence_id": 2,
+        "side": "BUY",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "instrument_id": "AAPL.SIM",
+        "order_sequence_id": 4,
+        "price": 102.0,
+        "quantity": 10.0,
+        "sequence_id": 4,
+        "side": "SELL",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "instrument_id": "MSFT.SIM",
+        "order_sequence_id": 3,
+        "price": 210.0,
+        "quantity": 4.0,
+        "sequence_id": 3,
+        "side": "SELL",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "instrument_id": "MSFT.SIM",
+        "order_sequence_id": 5,
+        "price": 208.5,
+        "quantity": 4.0,
+        "sequence_id": 5,
+        "side": "BUY",
+        "ts": "2026-01-07T00:00:00+00:00"
+      }
+    ],
+    "schema": [
+      {
+        "dtype": "Int64",
+        "name": "sequence_id"
+      },
+      {
+        "dtype": "Int64",
+        "name": "order_sequence_id"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "ts"
+      },
+      {
+        "dtype": "String",
+        "name": "instrument_id"
+      },
+      {
+        "dtype": "String",
+        "name": "side"
+      },
+      {
+        "dtype": "Float64",
+        "name": "quantity"
+      },
+      {
+        "dtype": "Float64",
+        "name": "price"
+      }
+    ]
+  },
+  "indicator_series.parquet": {
+    "rows": [
+      {
+        "decision_sequence_id": 1,
+        "instrument_id": "AAPL.SIM",
+        "name": "close",
+        "sequence_id": 1,
+        "ts": "2026-01-05T23:00:00+00:00",
+        "unit": "price",
+        "value": 100.0
+      },
+      {
+        "decision_sequence_id": 1,
+        "instrument_id": "AAPL.SIM",
+        "name": "momentum_63",
+        "sequence_id": 2,
+        "ts": "2026-01-05T23:00:00+00:00",
+        "unit": "ratio",
+        "value": 0.05
+      },
+      {
+        "decision_sequence_id": 10,
+        "instrument_id": "AAPL.SIM",
+        "name": "close",
+        "sequence_id": 4,
+        "ts": "2026-01-06T23:00:00+00:00",
+        "unit": "price",
+        "value": 101.5
+      },
+      {
+        "decision_sequence_id": 11,
+        "instrument_id": "MSFT.SIM",
+        "name": "close",
+        "sequence_id": 5,
+        "ts": "2026-01-06T23:00:00+00:00",
+        "unit": "price",
+        "value": 209.5
+      },
+      {
+        "decision_sequence_id": 2,
+        "instrument_id": "MSFT.SIM",
+        "name": "close",
+        "sequence_id": 3,
+        "ts": "2026-01-05T23:00:00+00:00",
+        "unit": "price",
+        "value": 211.0
+      }
+    ],
+    "schema": [
+      {
+        "dtype": "Int64",
+        "name": "sequence_id"
+      },
+      {
+        "dtype": "Int64",
+        "name": "decision_sequence_id"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "ts"
+      },
+      {
+        "dtype": "String",
+        "name": "instrument_id"
+      },
+      {
+        "dtype": "String",
+        "name": "name"
+      },
+      {
+        "dtype": "Float64",
+        "name": "value"
+      },
+      {
+        "dtype": "String",
+        "name": "unit"
+      }
+    ]
+  },
+  "orders.parquet": {
+    "rows": [
+      {
+        "decision_sequence_id": 1,
+        "filled_quantity": 4.0,
+        "instrument_id": "AAPL.SIM",
+        "quantity": 4.0,
+        "sequence_id": 10,
+        "side": "BUY",
+        "status": "FILLED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_sequence_id": 1,
+        "filled_quantity": 6.0,
+        "instrument_id": "AAPL.SIM",
+        "quantity": 6.0,
+        "sequence_id": 1,
+        "side": "BUY",
+        "status": "FILLED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_sequence_id": 10,
+        "filled_quantity": 10.0,
+        "instrument_id": "AAPL.SIM",
+        "quantity": 10.0,
+        "sequence_id": 4,
+        "side": "SELL",
+        "status": "FILLED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_sequence_id": 11,
+        "filled_quantity": 4.0,
+        "instrument_id": "MSFT.SIM",
+        "quantity": 4.0,
+        "sequence_id": 5,
+        "side": "BUY",
+        "status": "FILLED",
+        "ts": "2026-01-07T00:00:00+00:00"
+      },
+      {
+        "decision_sequence_id": 2,
+        "filled_quantity": 4.0,
+        "instrument_id": "MSFT.SIM",
+        "quantity": 4.0,
+        "sequence_id": 3,
+        "side": "SELL",
+        "status": "FILLED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      },
+      {
+        "decision_sequence_id": null,
+        "filled_quantity": 0.0,
+        "instrument_id": "TSLA.SIM",
+        "quantity": 1.0,
+        "sequence_id": 6,
+        "side": "BUY",
+        "status": "REJECTED",
+        "ts": "2026-01-06T00:00:00+00:00"
+      }
+    ],
+    "schema": [
+      {
+        "dtype": "Int64",
+        "name": "sequence_id"
+      },
+      {
+        "dtype": "Int64",
+        "name": "decision_sequence_id"
+      },
+      {
+        "dtype": "Datetime(time_unit='us', time_zone='UTC')",
+        "name": "ts"
+      },
+      {
+        "dtype": "String",
+        "name": "instrument_id"
+      },
+      {
+        "dtype": "String",
+        "name": "side"
+      },
+      {
+        "dtype": "Float64",
+        "name": "quantity"
+      },
+      {
+        "dtype": "Float64",
+        "name": "filled_quantity"
+      },
+      {
+        "dtype": "String",
+        "name": "status"
+      }
+    ]
+  }
+}

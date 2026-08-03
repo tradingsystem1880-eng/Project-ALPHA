@@ -27,6 +27,7 @@ import { Placeholder } from '../../components/Placeholder'
 import { usePanelLinked } from '../../context/usePanelLinked'
 import { openStrategyLab } from '../actions'
 import { NativeTearSheetBody } from '../NativeTearSheet'
+import { matchesRunScope, runScopeFromParams, runScopeLabel } from '../v3Models'
 import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
 import { ForecastDetail } from './ForecastDetail'
@@ -65,6 +66,7 @@ export function RunDetail(props: IDockviewPanelProps) {
   const [portfolioAnalyticsLoading, setPortfolioAnalyticsLoading] = useState(false)
   const [tab, setTab] = useState<TabId>('overview')
   const { explain } = useSettings()
+  const runScope = runScopeFromParams(props.params)
 
   useEffect(() => {
     if (!runId) return
@@ -82,6 +84,7 @@ export function RunDetail(props: IDockviewPanelProps) {
       .then((d) => {
         if (!live) return
         setDetail(d)
+        if (!matchesRunScope(d, runScope)) return
         if (d.has_equity) api.equity(runId).then((e) => live && setEq(e)).catch(() => {})
         if (d.has_trades) api.trades(runId).then((t) => live && setTrades(t)).catch(() => {})
         if (d.has_forecast) api.forecast(runId).then((f) => live && setFc(f)).catch(() => {})
@@ -104,7 +107,7 @@ export function RunDetail(props: IDockviewPanelProps) {
     return () => {
       live = false
     }
-  }, [runId])
+  }, [runId, runScope])
 
   const onLaunch = useMemo(
     () => (command: string, args: string) => openStrategyLab(props.containerApi!, { command, args }),
@@ -137,6 +140,15 @@ export function RunDetail(props: IDockviewPanelProps) {
         </div>
       </div>
     )
+
+  if (!matchesRunScope(detail, runScope)) {
+    return (
+      <div className="panel">
+        <div className="panel-toolbar"><span className="title">Run</span><PanelLinkControl controller={panelLink} /><span className="id mono">{runId}</span></div>
+        <div className="panel-body"><Placeholder big="INCOMPATIBLE RUN">Select a {runScopeLabel(runScope)} run for this workspace. The linked run was left unchanged for other panels.</Placeholder></div>
+      </div>
+    )
+  }
 
   const m = detail.manifest
   const command = asStr(m.command)

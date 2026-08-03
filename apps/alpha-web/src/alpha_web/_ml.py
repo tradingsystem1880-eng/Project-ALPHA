@@ -33,7 +33,7 @@ from alpha_cli.durable_lease import (
 from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KINDS
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
-from alpha_web._catalog import _command, _run_json
+from alpha_web._catalog import _command, _run_json, _strip_ansi
 from alpha_web._catalog import commands as _catalog_commands
 
 MlAction = Literal[
@@ -646,6 +646,10 @@ def _job_exchange(row: Mapping[str, Any]) -> str | None:
     if not isinstance(request, dict):
         return None
     value = request.get("exchange_id")
+    if value is None and row.get("kind") == "suite:qlib":
+        governance = request.get("governance")
+        if isinstance(governance, dict):
+            value = governance.get("managed_resource_id")
     return value if isinstance(value, str) and _ID.fullmatch(value) is not None else None
 
 
@@ -700,7 +704,7 @@ def list_experiments(
             )
         result_run_id = job.get("result_run_id")
         if (
-            job.get("kind") == "ml_replay"
+            job.get("kind") in {"ml_replay", "suite:qlib"}
             and job.get("status") == "succeeded"
             and isinstance(result_run_id, str)
         ):
@@ -777,6 +781,7 @@ def _journal(
     args: list[str], *, data_dir: Path, timeout_seconds: float | None = None
 ) -> dict[str, Any]:
     if timeout_seconds is None:
+        # inherit _run_json's bounded default — journal calls are never unbounded
         value = _run_json(args, data_dir=data_dir)
     else:
         value = _run_json(args, data_dir=data_dir, timeout_seconds=timeout_seconds)
@@ -912,7 +917,9 @@ def _execute_job(
             job_id=job_id,
         )
         if returncode != 0:
-            detail = _sanitize_message(stderr.strip() or stdout.strip(), data_dir=data_dir)
+            detail = _sanitize_message(
+                _strip_ansi(stderr).strip() or _strip_ansi(stdout).strip(), data_dir=data_dir
+            )
             _journal(
                 [
                     "project",
@@ -1046,7 +1053,9 @@ def _execute_pipeline(
                 )
                 return
             if returncode != 0:
-                detail = _sanitize_message(stderr.strip() or stdout.strip(), data_dir=data_dir)
+                detail = _sanitize_message(
+                    _strip_ansi(stderr).strip() or _strip_ansi(stdout).strip(), data_dir=data_dir
+                )
                 _journal(
                     [
                         "project",

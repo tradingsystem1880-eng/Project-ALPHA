@@ -6,14 +6,18 @@ import type {
   ForecastPaths,
   NativeTearSheetProjection,
   ProjectDetail,
+  RunDetail,
 } from '../api/types'
 import {
   DEVELOPMENT_STAGES,
   buildCalendarRows,
   buildEvidenceMarkers,
   evidenceForDecision,
+  matchesRunScope,
   projectStageRows,
+  visibleEvidenceMarkers,
   terminalReturns,
+  type EvidenceMarker,
 } from './v3Models'
 
 function event(overrides: Partial<ChartTraceEvent>): ChartTraceEvent {
@@ -178,6 +182,64 @@ describe('causal chart evidence', () => {
       [3, 'fill'],
       [5, 'exit'],
     ])
+  })
+
+  it('uses a bounded visual marker projection while retaining selected evidence', () => {
+    const markers: EvidenceMarker[] = Array.from({ length: 30 }, (_, index) => ({
+      id: `${index}:decision`,
+      sequenceId: index,
+      kind: 'decision' as const,
+      barTs: index,
+      exactTs: index,
+      label: 'D',
+      tone: 'selection' as const,
+    }))
+    markers.push({
+      id: '99:fill',
+      sequenceId: 99,
+      kind: 'fill',
+      barTs: 99,
+      exactTs: 99,
+      label: 'F BUY',
+      tone: 'positive',
+    })
+
+    const decisions = visibleEvidenceMarkers(markers, 'decisions', null, 5)
+    expect(decisions).toHaveLength(5)
+    expect(decisions[0].sequenceId).toBe(0)
+    expect(decisions.at(-1)?.sequenceId).toBe(29)
+    expect(visibleEvidenceMarkers(markers, 'executions', 17, 5).map((row) => row.sequenceId))
+      .toEqual([17, 99])
+  })
+})
+
+describe('run workspace capabilities', () => {
+  function detail(kind: string, command: string, hasEquity = false): RunDetail {
+    return {
+      run_id: '0123456789abcdef',
+      kind,
+      mtime: 0,
+      manifest: { command },
+      has_equity: hasEquity,
+      has_trades: false,
+      has_tearsheet: false,
+      has_forecast: false,
+      has_nulls: false,
+      has_trials: false,
+      has_forecast_paths: false,
+      has_propfirm_paths: false,
+      has_origins: false,
+      has_portfolio_analytics: false,
+    }
+  }
+
+  it('keeps portfolio, forecast, and ML replay evidence in their declared desks', () => {
+    expect(matchesRunScope(detail('portfolio', 'backtest_portfolio'), 'portfolio')).toBe(true)
+    expect(matchesRunScope(detail('cross_sectional', 'cross_sectional'), 'portfolio')).toBe(true)
+    expect(matchesRunScope(detail('forecast', 'forecast_run'), 'portfolio')).toBe(false)
+    expect(matchesRunScope(detail('forecast', 'forecast_eval'), 'forecast')).toBe(true)
+    expect(matchesRunScope(detail('runs', 'ml_replay'), 'ml-replay')).toBe(true)
+    expect(matchesRunScope(detail('runs', 'backtest_run'), 'ml-replay')).toBe(false)
   })
 })
 

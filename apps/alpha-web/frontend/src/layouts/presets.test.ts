@@ -101,6 +101,18 @@ describe('v3 workspace presets', () => {
     )
   })
 
+  it('pins curated workspaces to their compatible run contracts', () => {
+    const kronos = WORKSPACE_PRESETS.find((preset) => preset.id === 'kronos')
+    const ml = WORKSPACE_PRESETS.find((preset) => preset.id === 'ml')
+    const portfolio = WORKSPACE_PRESETS.find((preset) => preset.id === 'portfolio')
+
+    expect(kronos?.panels.find((panel) => panel.key === 'detail')?.params).toEqual({ runScope: 'forecast' })
+    expect(ml?.panels.find((panel) => panel.key === 'runs')?.params).toEqual({ defaultKind: 'runs', defaultCommand: 'ml_replay' })
+    expect(ml?.panels.find((panel) => panel.key === 'tear')?.params).toEqual({ runScope: 'ml-replay' })
+    expect(portfolio?.panels.find((panel) => panel.key === 'runs')?.params).toEqual({ allowedKinds: ['portfolio', 'cross_sectional'] })
+    expect(portfolio?.panels.find((panel) => panel.key === 'risk')?.params).toEqual({ runScope: 'portfolio' })
+  })
+
   it('documents every historical v2 component as a canonical identity alias', () => {
     expect(Object.keys(V2_PANEL_COMPONENT_ALIASES).sort()).toEqual(
       [

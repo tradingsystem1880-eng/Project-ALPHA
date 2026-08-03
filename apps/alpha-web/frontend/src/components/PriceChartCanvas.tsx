@@ -18,6 +18,7 @@ import { useEffect, useRef } from 'react'
 import type { Candle, ChartAnnotation, ChartTraceEvent } from '../api/types'
 import type { EvidenceMarker } from '../panels/v3Models'
 import { CHART } from '../util/chartTheme'
+import { createChartAnnotationPrimitive } from './ChartAnnotationPrimitive'
 
 interface Props {
   bars: Candle[]
@@ -50,8 +51,8 @@ function seriesMarker(marker: EvidenceMarker, selected: boolean): SeriesMarker<U
             : 'arrowUp'
           : 'square',
     color: markerColor(marker),
-    text: marker.label,
     size: selected ? 1.8 : 1.1,
+    ...(selected ? { text: marker.label } : {}),
   }
 }
 
@@ -109,22 +110,8 @@ export function PriceChartCanvas({
         color: b.c >= b.o ? 'rgba(46, 160, 74, 0.35)' : 'rgba(239, 83, 80, 0.35)',
       })),
     )
-    for (const annotation of annotations.filter((row) => row.unit === 'price')) {
-      const annotationSeries = chart.addSeries(LineSeries, {
-        color: annotation.kind === 'zone' ? CHART.gold : CHART.accent,
-        lineWidth: 1,
-        lineStyle: annotation.kind === 'zone' ? LineStyle.Dashed : LineStyle.Solid,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        title: annotation.label,
-      })
-      annotationSeries.setData(
-        annotation.anchors.map((anchor) => ({
-          time: anchor.ts as UTCTimestamp,
-          value: anchor.value,
-        })),
-      )
-    }
+    const annotationPrimitive = createChartAnnotationPrimitive(annotations)
+    series.attachPrimitive(annotationPrimitive)
     if (
       selectedTrade?.event_type === 'trade' &&
       selectedTrade.entry_ts !== null &&
@@ -213,6 +200,7 @@ export function PriceChartCanvas({
       ro.disconnect()
       chart.unsubscribeClick(handleClick)
       chart.unsubscribeCrosshairMove(handleCrosshair)
+      series.detachPrimitive(annotationPrimitive)
       markerPlugin.detach()
       chart.remove()
     }

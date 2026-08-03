@@ -10,6 +10,7 @@ import { PanelLinkControl } from '../components/PanelLinkControl'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { fmtNum, fmtPct } from '../util/format'
 import { Placeholder } from '../components/Placeholder'
+import { matchesRunScope, runScopeFromParams, runScopeLabel } from './v3Models'
 
 export function RiskMonitor(props: IDockviewPanelProps) {
   const panelLink = usePanelLinked(props)
@@ -17,25 +18,41 @@ export function RiskMonitor(props: IDockviewPanelProps) {
   const [runInput, setRunInput] = useState(runId)
   const [report, setReport] = useState<RiskReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [compatibility, setCompatibility] = useState<string | null>(null)
+  const runScope = runScopeFromParams(props.params)
 
   useEffect(() => setRunInput(runId), [runId])
 
   useEffect(() => {
     if (!runId) {
       setReport(null)
+      setCompatibility(null)
       return
     }
     let live = true
     setError(null)
     setReport(null)
+    setCompatibility(null)
     api
-      .riskScenario(runId)
-      .then((value) => live && setReport(value))
+      .run(runId)
+      .then(async (detail) => {
+        if (!live) return
+        if (!matchesRunScope(detail, runScope)) {
+          setCompatibility(`Select a ${runScopeLabel(runScope)} run for this workspace.`)
+          return
+        }
+        if (!detail.has_equity) {
+          setCompatibility('This run has no realized equity stream. Rerun it with v3 artifacts or select an eligible run.')
+          return
+        }
+        const value = await api.riskScenario(runId)
+        if (live) setReport(value)
+      })
       .catch((e: unknown) => live && setError(String(e)))
     return () => {
       live = false
     }
-  }, [runId])
+  }, [runId, runScope])
 
   function commitRun(): void {
     const next = runInput.trim()
@@ -61,6 +78,8 @@ export function RiskMonitor(props: IDockviewPanelProps) {
       <div className="panel-body">
         {error ? (
           <Placeholder big="no data">{error}</Placeholder>
+        ) : compatibility ? (
+          <Placeholder big="UNAVAILABLE">{compatibility}</Placeholder>
         ) : !runId ? (
           <Placeholder big="no run">Select a run in the browser (or paste a run id)</Placeholder>
         ) : !report ? (

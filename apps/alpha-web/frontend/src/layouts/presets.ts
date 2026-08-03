@@ -47,7 +47,7 @@ interface PresetPanel {
   initialWidth?: number
   initialHeight?: number
   inactive?: boolean
-  params?: Record<string, string>
+  params?: Record<string, unknown>
 }
 
 export interface WorkspacePreset {
@@ -100,8 +100,8 @@ export const WORKSPACE_PRESETS: WorkspacePreset[] = [
     panels: [
       { key: 'forecast', component: 'KronosStudio', title: 'Kronos Forecast Studio' },
       { key: 'runs', component: 'RunBrowser', title: 'Forecast Runs', anchor: 'forecast', direction: 'left', initialWidth: 320, params: { defaultKind: 'forecast' } },
-      { key: 'detail', component: 'RunDetail', title: 'Run Evidence', anchor: 'forecast', direction: 'right', initialWidth: 460, inactive: true },
-      { key: 'tear', component: 'NativeTearSheet', title: 'Quant Tear Sheet', anchor: 'detail', direction: 'within', inactive: true },
+      { key: 'detail', component: 'RunDetail', title: 'Run Evidence', anchor: 'forecast', direction: 'right', initialWidth: 460, inactive: true, params: { runScope: 'forecast' } },
+      { key: 'tear', component: 'NativeTearSheet', title: 'Quant Tear Sheet', anchor: 'detail', direction: 'within', inactive: true, params: { runScope: 'forecast' } },
       { key: 'jobs', component: 'JobMonitor', title: 'Forecast Jobs', anchor: 'forecast', direction: 'below', initialHeight: 230 },
       { key: 'system', component: 'ProviderSystem', title: 'Model Readiness', anchor: 'jobs', direction: 'within', inactive: true },
     ],
@@ -114,11 +114,11 @@ export const WORKSPACE_PRESETS: WorkspacePreset[] = [
     panels: [
       { key: 'diagnostics', component: 'MlDiagnostics', title: 'ML Signal Tear Sheet' },
       { key: 'ml', component: 'MlResearch', title: 'ML Control', anchor: 'diagnostics', direction: 'left', initialWidth: 360 },
-      { key: 'runs', component: 'RunBrowser', title: 'Research Runs', anchor: 'ml', direction: 'within', inactive: true },
+      { key: 'runs', component: 'RunBrowser', title: 'Research Runs', anchor: 'ml', direction: 'within', inactive: true, params: { defaultKind: 'runs', defaultCommand: 'ml_replay' } },
       { key: 'agent', component: 'AiConsole', title: 'Agent Research', anchor: 'ml', direction: 'within', inactive: true },
       { key: 'memory', component: 'AssetMemory', title: 'Asset Memory', anchor: 'ml', direction: 'within', inactive: true },
       { key: 'lab', component: 'StrategyLab', title: 'Experiment Configuration', anchor: 'diagnostics', direction: 'right', initialWidth: 390 },
-      { key: 'tear', component: 'NativeTearSheet', title: 'Canonical Replay Tear Sheet', anchor: 'diagnostics', direction: 'below', initialHeight: 310 },
+      { key: 'tear', component: 'NativeTearSheet', title: 'Canonical Replay Tear Sheet', anchor: 'diagnostics', direction: 'below', initialHeight: 310, params: { runScope: 'ml-replay' } },
       { key: 'jobs', component: 'JobMonitor', title: 'Training Jobs', anchor: 'lab', direction: 'below', initialHeight: 230 },
     ],
   },
@@ -128,10 +128,10 @@ export const WORKSPACE_PRESETS: WorkspacePreset[] = [
     shortName: 'PORTFOLIO',
     requiredComponents: ['RunBrowser', 'RunDetail', 'RiskMonitor', 'NativeTearSheet'],
     panels: [
-      { key: 'detail', component: 'RunDetail', title: 'Portfolio Evidence' },
-      { key: 'runs', component: 'RunBrowser', title: 'Portfolio Runs', anchor: 'detail', direction: 'left', initialWidth: 330, params: { defaultKind: 'portfolio' } },
-      { key: 'risk', component: 'RiskMonitor', title: 'Scenario Risk', anchor: 'detail', direction: 'right', initialWidth: 390 },
-      { key: 'tear', component: 'NativeTearSheet', title: 'Quant Tear Sheet', anchor: 'detail', direction: 'below', initialHeight: 320 },
+      { key: 'detail', component: 'RunDetail', title: 'Portfolio Evidence', params: { runScope: 'portfolio' } },
+      { key: 'runs', component: 'RunBrowser', title: 'Portfolio Runs', anchor: 'detail', direction: 'left', initialWidth: 330, params: { allowedKinds: ['portfolio', 'cross_sectional'] } },
+      { key: 'risk', component: 'RiskMonitor', title: 'Scenario Risk', anchor: 'detail', direction: 'right', initialWidth: 390, params: { runScope: 'portfolio' } },
+      { key: 'tear', component: 'NativeTearSheet', title: 'Quant Tear Sheet', anchor: 'detail', direction: 'below', initialHeight: 320, params: { runScope: 'portfolio' } },
       { key: 'chart', component: 'PriceChart', title: 'Asset Chart', anchor: 'risk', direction: 'within', inactive: true },
     ],
   },

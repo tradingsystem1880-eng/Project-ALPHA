@@ -13,6 +13,7 @@ import json
 import os
 import re
 import signal
+import statistics
 import subprocess
 import threading
 import time
@@ -45,6 +46,8 @@ _SESSION_ID_RE = re.compile(
 RUN_TYPE = COMMAND_RUN_TYPES
 _DURABLE_HEARTBEAT_INTERVAL_S = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
 _DURABLE_HEARTBEAT_TIMEOUT_S = 5.0
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_UI_HEAVYWEIGHT_NICE = 10
 
 
 def _command(args: list[str]) -> list[str]:
@@ -68,6 +71,7 @@ class Job:
         self.command_str = " ".join(args)
         self.run_type = run_type
         self.created_at = time.time()  # memory-only wall-clock; never enters a byte-stable manifest
+        self.finished_at: float | None = None
         self.lines: list[str] = []
         self.finished = False
         self.cancelled = False
@@ -110,14 +114,64 @@ class Job:
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(os.getpgid(pid), signal.SIGTERM)
 
-    def summary(self) -> dict[str, Any]:
+    @property
+    def command_path(self) -> str:
+        """Stable command-family label used for honest same-session duration estimates."""
+        matches = [path for path in RUN_TYPE if self.command_str.startswith(f"{path} ")]
+        if self.command_str in RUN_TYPE:
+            matches.append(self.command_str)
+        if matches:
+            return max(matches, key=len)
+        return " ".join(self.args[:2]) if len(self.args) > 1 else self.command_str
+
+    def _current_step(self) -> str:
+        with self._lock:
+            lines = list(reversed(self.lines))
+        for raw in lines:
+            line = _ANSI_ESCAPE_RE.sub("", raw).strip()
+            if line:
+                return line[:160]
+        return f"Running alpha {self.command_path}"
+
+    def summary(self, *, now: float | None = None) -> dict[str, Any]:
         """A compact status record for the job list / detail endpoints."""
+        observed_at = time.time() if now is None else now
+        elapsed_seconds = max(0.0, (self.finished_at or observed_at) - self.created_at)
+        samples = [
+            candidate.finished_at - candidate.created_at
+            for candidate in list(JOBS.values())
+            if candidate is not self
+            and candidate.status == "done"
+            and candidate.command_path == self.command_path
+            and candidate.finished_at is not None
+        ]
+        estimate_seconds = statistics.median(samples) if samples else None
+        if self.finished:
+            progress_mode = "terminal"
+            progress_fraction = 1.0
+            eta_seconds = None
+        elif estimate_seconds is None:
+            progress_mode = "indeterminate"
+            progress_fraction = None
+            eta_seconds = None
+        else:
+            progress_mode = "estimated"
+            progress_fraction = min(elapsed_seconds / max(estimate_seconds, 0.001), 0.95)
+            eta_seconds = max(0.0, estimate_seconds - elapsed_seconds)
         return {
             "job_id": self.job_id,
             "command": self.command_str,
             "kind": self.run_type,
             "status": self.status,
             "created_at": self.created_at,
+            "finished_at": self.finished_at,
+            "elapsed_seconds": elapsed_seconds,
+            "command_path": self.command_path,
+            "current_step": self._current_step(),
+            "progress_mode": progress_mode,
+            "progress_fraction": progress_fraction,
+            "eta_seconds": eta_seconds,
+            "eta_sample_count": len(samples),
             "run_id": self.run_id,
             "session_id": self.session_id,
             "returncode": self.returncode,
@@ -296,6 +350,11 @@ def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
         JOBS.pop(job.job_id, None)
         raise
     job._proc = proc
+    if durable_job_id is not None and hasattr(os, "setpriority"):
+        # UI-launched Kronos/Qlib work may saturate several cores for minutes. Lower scheduling
+        # priority protects chart/input responsiveness without changing the analytical command.
+        with contextlib.suppress(OSError):
+            os.setpriority(os.PRIO_PROCESS, proc.pid, _UI_HEAVYWEIGHT_NICE)
     try:
         _set_durable_status(job, "running", data_dir=data_dir)
     except (RuntimeError, ValueError, OSError):
@@ -378,6 +437,7 @@ def _pump(job: Job, proc: subprocess.Popen[str], data_dir: Path) -> None:
                 job._append(str(exc))
                 job.cancelled = True
                 job._lease = None
+                job.finished_at = time.time()
                 job.finished = True
                 return
             try:
@@ -386,6 +446,7 @@ def _pump(job: Job, proc: subprocess.Popen[str], data_dir: Path) -> None:
                 job._append(str(exc))
                 job.terminal_error = str(exc)
                 job._lease = None
+                job.finished_at = time.time()
                 job.finished = True
                 return
             job._lease = None
@@ -410,6 +471,7 @@ def _pump(job: Job, proc: subprocess.Popen[str], data_dir: Path) -> None:
                     terminal_error="workstation could not complete the durable heavyweight journal",
                 )
             job._append(job.terminal_error)
+        job.finished_at = time.time()
         job.finished = True
 
 

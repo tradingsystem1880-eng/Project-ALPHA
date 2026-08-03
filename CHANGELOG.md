@@ -54,6 +54,13 @@ open.
 
 ### Changed
 
+- Live Workstation jobs now remain ahead of terminal history and expose exact elapsed time, current
+  operation, output activity, accessible progress, and cancellation from one dense status card.
+  ETA and percentage are explicitly indeterminate until a comparable successful command completes
+  in the same server session; later estimates use the visible same-command median rather than a
+  fabricated duration. Expanded rows show only the live log instead of duplicating status controls.
+  UI-launched heavyweight Kronos/Qlib children run at reduced OS scheduling priority so chart and
+  input work remain favored while research continues.
 - QuantStats-Lumi HTML is now byte-deterministic: scoped Matplotlib SVG salts are fixed and volatile
   metadata is removed, so the audit export can be pinned by immutable v3 manifests.
 - The primary research experience is Python-authored native chart/tear-sheet data; React renders
@@ -97,6 +104,20 @@ open.
 
 ### Fixed
 
+- Curated desks now scope run selection and artifact requests by capability, including portfolio and
+  cross-sectional compatibility, forecast-only Kronos evidence, and canonical ML replay evidence.
+  Incompatible runs display a typed state without probing unrelated risk or artifact endpoints.
+- Hidden Dockview tabs now suspend their panel effects and polling. Causal chart overlays expose
+  execution/decision/all layers, cap only the visual marker set deterministically, retain selected
+  evidence, and keep the complete returned event table available.
+- Immutable run projections use a bounded LRU cache, chart/native payloads are reduced and gzip
+  compressed, and API failures surface clean typed detail without terminal formatting noise.
+- Governed `suite:qlib` jobs now reconcile their managed exchange, project, and canonical replay
+  lineage in the ML desk. Loading, blocked, failed, successful-empty, and trained states remain
+  distinct in both ML control and diagnostics.
+- Native tear sheets now distinguish an artifact that explicitly declares data unavailable from an
+  artifact that was never emitted. Vector annotations render through one chart primitive instead of
+  one series per annotation, preserving deterministic anchors without dense-series overhead.
 - Identity-matched reruns now normalize JSON-domain containers before immutable-manifest comparison,
   preventing tuple/list representation differences from producing false conflicts while preserving
   byte-mismatch failure.

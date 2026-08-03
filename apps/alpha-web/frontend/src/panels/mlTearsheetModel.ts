@@ -1,11 +1,20 @@
 import type { components } from '../api/generated'
-import type { MlExperimentSummary, MlTearSheetProjection } from '../api/types'
+import type { MlExperimentPage, MlExperimentSummary, MlTearSheetProjection } from '../api/types'
 
 type Schema = components['schemas']
 
 export type { MlTearSheetProjection }
 export type MlExperimentSummaryProjection = MlExperimentSummary
 export type MlFoldDiagnosticProjection = Schema['MlFoldDiagnostic']
+
+export function mlExperimentPlaceholderLabel(
+  experiments: MlExperimentPage | null,
+  error: string | null,
+): string | null {
+  if (error) return 'EXPERIMENT QUERY FAILED'
+  if (experiments === null) return 'LOADING EXPERIMENTS…'
+  return experiments.items.length === 0 ? 'NO VALIDATED EXPERIMENT' : null
+}
 
 export interface ScorePlotModel {
   min: number

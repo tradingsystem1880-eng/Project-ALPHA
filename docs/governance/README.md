@@ -6,7 +6,7 @@ release posture:
 | Document | Purpose | Last reviewed |
 |---|---|---|
 | [Dependency/license matrix](2026-07-19-dependency-license-matrix.md) | Root, frontend-test, and isolated-worker inventory; upstream disposition and distribution gate | 2026-07-19 |
-| [Post-v2 + v3 risk register](2026-07-19-post-v2-risk-register.md) | Provider/paper and Workstation v3 safety, determinism, authority, surface, and release risks | 2026-07-19 |
+| [Post-v2 + v3 risk register](2026-07-19-post-v2-risk-register.md) | Provider/paper and Workstation v3 safety, determinism, authority, surface, and release risks | 2026-08-03 |
 
 Related architecture decisions:
 
