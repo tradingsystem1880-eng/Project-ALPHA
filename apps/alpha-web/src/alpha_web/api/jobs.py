@@ -37,7 +37,12 @@ def launch_job(req: LaunchRequest) -> dict[str, Any]:
     if not argv:
         raise HTTPException(status_code=422, detail="empty command")
     run_type = _invoke.RUN_TYPE.get(req.command)
-    job = _invoke.launch(argv, data_dir=data_dir(), run_type=run_type)
+    try:
+        job = _invoke.launch(argv, data_dir=data_dir(), run_type=run_type)
+    except RuntimeError as exc:
+        if "heavyweight job capacity is occupied" in str(exc):
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise
     return {"job_id": job.job_id, "status": job.status, "session_id": job.session_id}
 
 
@@ -70,7 +75,7 @@ async def stream_job(job_id: str, request: Request) -> EventSourceResponse:
 @router.delete("/jobs/{job_id}", response_model=JobStatus)
 def cancel_job(job_id: str) -> dict[str, Any]:
     """Cancel a running job (idempotent no-op if already finished)."""
-    job = _invoke.cancel_job(job_id)
+    job = _invoke.cancel_job(job_id, data_dir=data_dir())
     if job is None:
         raise HTTPException(status_code=404, detail="unknown job")
     return {"job_id": job_id, "status": job.status, "session_id": job.session_id}

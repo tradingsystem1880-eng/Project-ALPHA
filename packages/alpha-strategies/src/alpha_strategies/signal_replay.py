@@ -9,7 +9,7 @@ silently trade flat.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from nautilus_trader.model.data import BarType
 from nautilus_trader.model.identifiers import InstrumentId
@@ -59,3 +59,11 @@ class SignalReplay(VolTargetStrategy):
                 "(cadence/warmup changed since the precompute?); re-run through the alpha CLI"
             )
         return int(value)
+
+    def _indicator_snapshot(self) -> Mapping[str, tuple[float, str]]:
+        values = dict(super()._indicator_snapshot())
+        index = len(self._closes) - 1
+        value = self._signals[index] if index < len(self._signals) else None
+        if value is not None:
+            values["forecast_signal"] = (float(value), "signal")
+        return values

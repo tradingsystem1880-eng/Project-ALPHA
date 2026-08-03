@@ -8,11 +8,27 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
 
 _ALPHA_BIN = "alpha"
+
+#: Bounded wall-clock ceiling for every synchronous ``alpha`` projection. A hung CLI child must
+#: surface as a typed error (the routers' 422) instead of pinning the request thread forever;
+#: genuinely long launch-style calls pass an explicit larger — still finite — value.
+DEFAULT_TIMEOUT_SECONDS = 60.0
+
+# Typer/Rich decorate CLI output with terminal escapes (CSI such as ``\x1b[2m`` plus OSC
+# sequences terminated by BEL or ST). Strip both before output lands in an HTTP error detail.
+_ANSI_CSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+_ANSI_OSC = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI CSI/OSC escapes (and any stray ESC bytes), keeping the semantic text intact."""
+    return _ANSI_CSI.sub("", _ANSI_OSC.sub("", text)).replace("\x1b", "")
 
 
 def _command(args: list[str]) -> list[str]:
@@ -20,11 +36,26 @@ def _command(args: list[str]) -> list[str]:
     return [_ALPHA_BIN, *args]
 
 
-def _run_json(args: list[str], *, data_dir: Path) -> Any:
+def _run_json(
+    args: list[str], *, data_dir: Path, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+) -> Any:
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
-    proc = subprocess.run(_command(args), capture_output=True, text=True, env=env)
+    try:
+        proc = subprocess.run(
+            _command(args),
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"alpha {' '.join(args)} timed out after {timeout_seconds:g} seconds"
+        ) from exc
     if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"alpha {args} failed")
+        stderr = _strip_ansi(proc.stderr).strip()
+        stdout = _strip_ansi(proc.stdout).strip()
+        raise RuntimeError(stderr or stdout or f"alpha {args} failed")
     return json.loads(proc.stdout)
 
 

@@ -5,13 +5,19 @@ import { useMemo, useState } from 'react'
 
 import type { TradeRow } from '../../api/types'
 import { DataTable } from '../../components/DataTable'
+import {
+  selectTradeRow,
+  selectionMatchesTrade,
+  useChartSelection,
+} from '../../state/chartSelection'
 import { fmtNum } from '../../util/format'
 import { Section } from './common'
 
 const NUM_COLS = ['quantity', 'entry_price', 'exit_price', 'realized_pnl', 'realized_return']
 
-export function TradesTab({ trades }: { trades: TradeRow[] }) {
+export function TradesTab({ trades, runId }: { trades: TradeRow[]; runId?: string }) {
   const [query, setQuery] = useState('')
+  const selection = useChartSelection()
 
   const columns = useMemo<ColumnDef<TradeRow, unknown>[]>(() => {
     const cols: ColumnDef<TradeRow, unknown>[] = [
@@ -65,12 +71,25 @@ export function TradesTab({ trades }: { trades: TradeRow[] }) {
         <input
           className="field toolbar-search"
           placeholder="filter…"
+          aria-label="Filter trades"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       }
     >
-      <DataTable data={trades} columns={columns} globalFilter={query} />
+      <DataTable
+        data={trades}
+        columns={columns}
+        globalFilter={query}
+        onRowClick={runId ? (trade) => selectTradeRow(runId, trade) : undefined}
+        onRowEnter={runId ? (trade) => selectTradeRow(runId, trade) : undefined}
+        rowClass={(trade) =>
+          runId && selectionMatchesTrade(selection, runId, trade)
+            ? 'trade-row selected'
+            : 'trade-row'
+        }
+        rowCurrent={(trade) => Boolean(runId && selectionMatchesTrade(selection, runId, trade))}
+      />
     </Section>
   )
 }

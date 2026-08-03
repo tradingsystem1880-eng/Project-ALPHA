@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { RunListItem, WorkspaceMeta } from '../api/types'
 import { setLinked } from '../context/linked'
+import { WORKSPACE_PRESETS, type WorkspacePresetId } from '../layouts/presets'
 import { PANEL_MENU } from '../panels/registry'
 import { getSettings, setSettings } from '../state/settings'
 import { shortId } from '../util/format'
@@ -18,6 +19,7 @@ interface Props {
   onOpenPanel: (component: string, title: string) => void
   onOpenRun: (runId: string) => void
   onLoadWorkspace: (slug: string) => void
+  onLoadPreset: (id: WorkspacePresetId) => void
   onSaveWorkspace: () => void
 }
 
@@ -36,6 +38,7 @@ export function CommandPalette({
   onOpenPanel,
   onOpenRun,
   onLoadWorkspace,
+  onLoadPreset,
   onSaveWorkspace,
 }: Props) {
   const [page, setPage] = useState<Page>('root')
@@ -125,6 +128,21 @@ export function CommandPalette({
                   <Command.Item value="load workspace" onSelect={() => setPage('workspaces')}>
                     Load workspace… <span className="hint">saved layouts</span>
                   </Command.Item>
+                </Command.Group>
+                <Command.Group heading="Curated desks">
+                  {WORKSPACE_PRESETS.map((preset) => (
+                    <Command.Item
+                      key={preset.id}
+                      value={`desk ${preset.name}`}
+                      onSelect={() => {
+                        onLoadPreset(preset.id)
+                        close()
+                      }}
+                    >
+                      {preset.name}
+                      <span className="hint">curated layout</span>
+                    </Command.Item>
+                  ))}
                 </Command.Group>
                 <Command.Group heading="Open panel">
                   {PANEL_MENU.map((p) => (

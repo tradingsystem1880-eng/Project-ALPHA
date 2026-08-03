@@ -12,7 +12,8 @@ import pytest
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
-from alpha_core import Bar
+from alpha_core import ActionType, Bar, CorporateAction
+from alpha_data.store import ParquetStore
 from tests.fixtures.forecast_fixtures import daily_bars, store_bars
 
 pytestmark = pytest.mark.bias_guard
@@ -53,7 +54,13 @@ def _run_and_read(tmp_path: Path, as_of: str) -> tuple[str, bytes]:
         ],
     )
     assert result.exit_code == 0, result.output
-    (rdir,) = sorted(p for p in (tmp_path / "forecast").iterdir() if p.is_dir())
+    matching = [
+        path
+        for path in (tmp_path / "forecast").iterdir()
+        if path.is_dir() and f"run {path.name}:" in result.output
+    ]
+    assert len(matching) == 1, result.output
+    (rdir,) = matching
     manifest = json.loads((rdir / "manifest.json").read_text())
     return manifest["run_id"], (rdir / "quantiles.parquet").read_bytes()
 
@@ -66,10 +73,34 @@ def test_future_poison_does_not_change_as_of_forecast(
     as_of = clean[24].ts.date().isoformat()
 
     store_bars(tmp_path, clean)
+    ParquetStore(tmp_path / "store").write_actions(
+        "SPY",
+        [
+            CorporateAction(
+                symbol="SPY",
+                action_type=ActionType.SPLIT,
+                ex_date=date(2027, 1, 4),
+                announce_date=date(2026, 12, 1),
+                ratio=2.0,
+            )
+        ],
+    )
     run_a, quantiles_a = _run_and_read(tmp_path, as_of)
 
     poisoned = clean[:25] + [_spike(b) for b in clean[25:]]  # poison strictly after as-of
     store_bars(tmp_path, poisoned)
+    ParquetStore(tmp_path / "store").write_actions(
+        "SPY",
+        [
+            CorporateAction(
+                symbol="SPY",
+                action_type=ActionType.SPLIT,
+                ex_date=date(2027, 1, 4),
+                announce_date=date(2026, 12, 1),
+                ratio=9.0,
+            )
+        ],
+    )
     run_b, quantiles_b = _run_and_read(tmp_path, as_of)
 
     assert run_a == run_b

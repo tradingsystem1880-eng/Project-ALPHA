@@ -357,9 +357,10 @@ npm run build
 Generated OpenAPI/TypeScript and committed `static/app` assets must be clean after regeneration.
 The real Binance connection/quote smoke is marked `network` and remains outside deterministic CI.
 
-The feature may be called implemented after offline gates plus the network smoke. Phase 4 may be
-called operationally complete only after an owner-initiated sandbox soak crosses a UTC date boundary
-without stale heartbeat, reconciliation, precision, or shutdown defects.
+The offline implementation may be called complete after deterministic offline gates. R-14 remains
+the separate Binance connectivity acceptance gate. Phase 4 becomes operationally complete only
+after the R-24 owner-initiated sandbox soak crosses a UTC date boundary without stale heartbeat,
+reconciliation, precision, or shutdown defects.
 
 ## 10. Migration, Rollback, and Deferred Work
 

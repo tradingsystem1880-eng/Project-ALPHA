@@ -1,8 +1,8 @@
-# Dependency and License Matrix — Post-v2 Provider/Paper Track
+# Dependency and License Matrix — Post-v2 and Workstation v3 Tracks
 
 - **Reviewed:** 2026-07-19
-- **Scope:** direct Python runtime dependencies with architectural/legal significance, vendored
-  code, and upstream projects considered by the attached workstation recommendation
+- **Scope:** direct Python runtime dependencies, isolated workers, vendored code, and upstream
+  projects considered by the post-v2 and Workstation v3 decisions
 - **Status:** engineering inventory; not legal advice
 
 ## Root Project License and Distribution Gate
@@ -61,13 +61,25 @@ This table intentionally does not claim to be a software-bill-of-materials. `uv.
 `apps/alpha-web/frontend/package-lock.json` are the complete resolution inputs; a distributable
 release needs an automated exact-version/transitive notice report.
 
+## Frontend Test-only Dependencies
+
+These packages are development/release gates and are not analytical or production runtime
+authorities. Their exact transitive resolution remains pinned by the frontend lockfile.
+
+| Dependency | Exact pin | License signal reviewed | Boundary role |
+|---|---:|---|---|
+| @playwright/test | 1.61.1 | Apache-2.0 | Chromium desk, responsive, keyboard, and visual-structure release tests |
+| @axe-core/playwright | 4.12.1 | MPL-2.0 | WCAG A/AA serious/critical accessibility assertions inside Playwright |
+| axe-core | 4.12.1 | MPL-2.0 | transitive accessibility rule engine used only by the browser test gate |
+| Playwright-managed Chromium | resolved by `@playwright/test` 1.61.1 | Chromium BSD-style license plus bundled third-party notices; exact downloaded bundle requires release-time notice collection | Test-only local/CI browser; never shipped in the ALPHA wheel or used as an analytical runtime |
+
 ## Considered Upstream Projects
 
 | Project | License reviewed | Capability overlap/gap | Disposition for this track |
 |---|---|---|---|
 | NautilusTrader | [LGPL-3.0](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | Already supplies engine, Binance data, sandbox execution | **Adopted already**; exact compatibility pin, no replacement |
 | OpenBB | [AGPL-3.0](https://github.com/OpenBB-finance/OpenBB/blob/develop/LICENSE) | Provider federation pattern; ALPHA already has data/CLI/UI authorities | Architecture reference only; no code/runtime dependency |
-| Qlib | [MIT](https://github.com/microsoft/qlib/blob/main/LICENSE); [official dependency manifest](https://github.com/microsoft/qlib/blob/main/pyproject.toml) | ML workflow/recorder capabilities beyond this track, but broad stack and environment conflict | Deferred separate environment; immutable snapshot in, timestamped OOS signals/provenance out |
+| Qlib | [MIT](https://github.com/microsoft/qlib/blob/main/LICENSE); [official dependency manifest](https://github.com/microsoft/qlib/blob/main/pyproject.toml) | Cross-sectional ML workflow/recorder gap; broad stack conflicts with the root NumPy/pandas boundary | **Approved only as the ADR-0016 isolated worker**; immutable snapshot/folds in, timestamped OOS JSON/Parquet out; never a root dependency or analytical authority |
 | FinancePy | [GPL-3.0](https://github.com/domokane/FinancePy/blob/master/LICENSE) | Broader derivatives products not presently required | Deferred product-specific external worker + fresh legal review |
 | TradingAgents | [Apache-2.0](https://github.com/TauricResearch/TradingAgents/blob/main/LICENSE) | AI research overlay; ALPHA already has MCP/research desk | Research-only candidate; no execution authority or runtime dependency |
 | TensorTrade | [Apache-2.0](https://github.com/tensortrade-org/tensortrade/blob/master/LICENSE) | RL experiments; not an execution/validation authority | Isolated research candidate only; separate spec/environment |
@@ -78,6 +90,42 @@ release needs an automated exact-version/transitive notice report.
 Process isolation is a risk-control and replaceability technique, not a declaration that a license
 has no effect. Any future AGPL/GPL/LGPL integration still requires review of the exact use,
 modifications, linking/deployment model, notices, and distribution behavior.
+
+## Workstation v3 dependency decision
+
+Workstation v3 adds no root runtime or frontend visualization dependency for the shell, control
+plane, causal charts, native tear sheet, or evidence ledger. It retains Dockview, Lightweight
+Charts, uPlot, TanStack, Polars, Nautilus, QuantStats-Lumi, and the vendored Kronos facade.
+
+Qlib is the one approved external capability addition. Its separately generated
+`workers/qlib/uv.lock` is the exact resolution input for that optional process and must be reviewed
+independently before distribution. The root `pyproject.toml` and `uv.lock` must remain free of Qlib,
+LightGBM, MLflow, and worker-only transitive dependencies. ALPHA exchanges only validated
+JSON/Parquet and never imports/deserializes the worker runtime or its model objects.
+
+The implemented worker's direct runtime pins are:
+
+| Worker dependency | Exact pin | License signal reviewed | Boundary role |
+|---|---:|---|---|
+| pyqlib | release/package `0.9.7` | MIT; notice copied to `workers/qlib/THIRD_PARTY_NOTICES.md` | fold orchestration, feature/model workflow, diagnostic recorder concepts |
+| lightgbm | release/package `4.6.0` | MIT; notice copied to `workers/qlib/THIRD_PARTY_NOTICES.md` | CPU cross-sectional starter model |
+| numpy | 2.2.6 | BSD-3-Clause plus bundled notices | worker-local numeric arrays; deliberately distinct from the root resolution |
+| pandas | 2.3.3 | BSD-3-Clause | Qlib-compatible worker dataframe boundary |
+| polars | 1.41.2 | MIT | deterministic JSON/Parquet exchange validation and publication |
+
+The worker gate runs its own locked sync, Ruff, strict mypy, and pytest job. Distribution still
+requires a generated complete transitive notice bundle; the two copied direct notices are not a
+complete SBOM.
+
+Implementation checkpoint: `workers/qlib/uv.lock` resolves both exact release pins and currently
+hashes to `6616ac9c86600794d15416ca010a9f9e073ea7a100e9322b31b7a8dcb5659713`. Any worker-lock change
+must update this reviewed hash and rerun the isolated gate. The removal path is bounded and recorded
+in `workers/qlib/README.md`: delete the isolated project, remove root `alpha ml` projections, and
+delete worker exchange/control links; no root package dependency or historical run rewrite is
+required.
+
+Optuna, DuckDB, ECharts, skfolio, LEAN, TradingAgents, FinRL, and RD-Agent are not adopted by v3.
+They require a new concrete capability gap and a separate ADR-0011 acceptance record.
 
 ## Required Review on Change
 

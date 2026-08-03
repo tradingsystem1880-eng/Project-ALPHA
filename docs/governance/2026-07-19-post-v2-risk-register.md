@@ -1,7 +1,7 @@
-# Risk Register — Provider Control Plane + Crypto Paper Trading
+# Risk Register — Provider/Paper + Workstation v3
 
 - **Opened:** 2026-07-19
-- **Track:** Post-v2 Recommended
+- **Track:** Post-v2 Recommended and owner-approved Workstation v3
 - **Risk owner:** Project ALPHA owner; implementation agents supply controls/evidence but cannot
   accept financial, legal, or distribution risk on the owner's behalf
 
@@ -13,10 +13,24 @@
 - Tests must assert the control. Documentation or a UI label alone does not close a safety risk.
 - A network smoke is evidence for connectivity only, never permission for real execution.
 
-**Implementation checkpoint (2026-07-19):** the offline controls and focused deterministic tests for
-the provider, admission, strategy, node, journal, API, and panel paths are implemented. Gate risks
-remain subject to the final full Python/frontend acceptance run. R-22 remains an owner-decision
-blocker; R-24 and the real Binance connectivity portion of R-14 remain pending opt-in evidence.
+**Implementation checkpoint (2026-07-19):** the provider/paper controls and Workstation v3
+identity, causal evidence, control-plane, agent, ML, surface, migration, and browser controls are
+implemented and passed the final full root/frontend/worker offline acceptance run. R-22 remains an
+owner-decision blocker; R-14's opt-in real Binance connectivity smoke and R-24's reviewed
+UTC-rollover sandbox soak remain pending evidence.
+
+**Offline release evidence — passed 2026-07-19:** 1,136 offline Python tests passed with five
+deselected and 93.13% coverage; 39 dedicated bias guards passed; all 12 import contracts, strict
+mypy across 334 files, Ruff/format, OpenAPI freshness, 11 wheel builds, and 11 installed-version
+imports passed. The isolated worker passed lock/sync, Ruff/format, strict mypy, nine tests, and two
+root isolation tests. Frontend lint passed with zero warnings, Vitest passed 91/91, generated
+TypeScript and the 182-module production bundle were stable, and Playwright passed 26 tests with
+ten intentional viewport-specific skips. All six desks were checked at 1280x720, 1440x900, and
+1920x1080; twelve 1440/1920 pixel baselines passed; axe found zero serious/critical WCAG 2.2 A/AA
+violations. Target Mac mini (`Mac16,10`, Apple M4, 10 cores, 16 GB) probes met the 1.5-second cold
+shell, 100 ms cached-switch, and 60 Hz 25,000-bar/200-annotation budgets. Generated contracts and
+committed SPA assets were clean. This evidence does not close R-22, R-14's network acceptance, or
+R-24's UTC-rollover acceptance.
 
 ## Register
 
@@ -46,6 +60,36 @@ blocker; R-24 and the real Binance connectivity portion of R-14 remain pending o
 | R-22 | ALPHA is distributed without a root license decision or required notices | Medium | High | No implicit license; matrix and README warning; distribution/release blocked pending owner selection and legal review | Root license decision, exact SBOM/notices, reviewed release checklist | Owner — **Owner decision / blocker** |
 | R-23 | "SANDBOX" is mistaken for profitable, validated, testnet, or real execution evidence | Medium | High | Permanent SANDBOX banner; session plane separate from validation; no passed/verdict field; docs distinguish local fills from exchange execution | API schema lacks validation status; frontend copy tests; ADR-0012 | Product/owner — **Gate** |
 | R-24 | Crypto 24/7 cadence or UTC rollover exposes a timestamp/session bug | Medium | High | Calendar-day cadence; UTC timestamps; separately opted-in soak crossing UTC midnight; inspect heartbeat/position/events | Reviewed soak record with no stale heartbeat, duplicate decision, precision, reconciliation, or shutdown defect | Owner + paper owner — Phase-4 completion gate |
+| R-25 | Parameter-only IDs alias runs from different strategy source revisions | Medium | High | Manifest/run identity v3 includes execution fingerprint; completed directories immutable; conflicting bytes fail | Identity sensitivity, legacy-read, and immutable-rerun tests | CLI/artifact owner — **Verified offline 2026-07-19** |
+| R-26 | Chart/OOS/holdout evidence is reconstructed with hindsight or contaminated by a discovery-period portfolio | Medium | High | Persist prefix-emitted traces; causally prime history without an engine; execute a fresh scored portfolio; scope decisions/orders/fills/trades/indicators/annotations and metrics from that same run | Future-poison prefix stability, close/open reconciliation, and OOS/holdout tests proving no pre-boundary position or event survives | Strategy/engine/artifact owners — **Verified offline 2026-07-19** |
+| R-27 | Optimization, an agent, or a spoofed terminal stage bypasses sealed-holdout governance | Medium | High | Terminal analytical states are suite-owned; verify expected v3 run kind/hash/evidence/prerequisites; dated one-shot reveal; post-reveal changes contaminate lineage | Terminal-transition denial, forged/tampered run rejection, prerequisite rebuild, reveal, contamination, and stale-propagation tests | Development-control owner — **Verified offline 2026-07-19** |
+| R-28 | SQLite control state is partial, concurrent, or mistaken for analytical evidence | Low | High | Transactional migrations/events outside `RUN_DIRS`; immutable content hashes; canonical metrics remain run artifacts | Migration, conflict, concurrency, crash/restart, and run-separation tests | CLI/control owner — **Verified offline 2026-07-19** |
+| R-29 | Research memory or an AgentBrief leaks later/tampered evidence, scope, stage, or holdout state; accepts an impossible version/experiment lineage; or accepts a citation whose artifact hash no longer matches | Medium | High | Separate data cutoff/knowledge time; append-only evidence revisions and `project_scope_events`; one point-in-time scope/stage/run/holdout read snapshot; fail-closed legacy scope fallback; exact experiment-to-version match; verify source v3 manifest and cited artifact hash before admission | Evidence and AgentBrief future-poison, historical scope/reselection, pre/post-reveal, revision-chain, lineage-mismatch, artifact-tamper, source-integrity, and negative-result tests | Evidence/control owner — **Verified offline 2026-07-19** |
+| R-30 | An agent bypasses gates, impersonates a human/reviewer, corroborates its own claim, reveals holdout, launches paper, or executes arbitrary code | Low | High | Typed bounded actions; retained deprecated option maps use closed per-tool key/value/count/length bounds; managed model/tokenizer values reject filesystem-like paths; action responses cap manifest reads and verify declared v3 artifacts; MCP evidence writes force agent provenance + draft; no raw SQL/dynamic Python; owner-only transitions absent | MCP/API allowlist, option/path rejection, manifest tamper/oversize, author/status spoof, payload, authority, and rejection tests | MCP/web/control owners — **Verified offline 2026-07-19** |
+| R-31 | Qlib or worker-only dependencies enter the root/web/MCP runtime | Medium | High | Separate project/lock/process; import and lock deny tests; JSON/Parquet-only exchange | Root lock/import graph checks and independent worker gate | ML/build owners — **Verified offline 2026-07-19** |
+| R-32 | ML normalization, labels, folds, or predictions leak future data, including treating a complete daily OHLCV row as known at midnight or admitting a terminal target with no following open | Medium | High | Fold-local fit; effective purge/embargo minimum of one session for the open-to-open label horizon; `available_at = session_ts + 23h`; target must immediately follow origin and itself have a following aligned open; strict source-panel equality; no pickle | Feature/label future-poison, midnight and terminal-target rejection, zero-buffer boundary rejection, duplicate/non-finite/wrong-hash/fold-overlap rejection, and synchronized replay tests | ML/data/CLI owners — **Verified offline 2026-07-19** |
+| R-33 | The Workstation presents fabricated analytics, frontend-computed verdicts, or a marker/anchor that maps to the wrong execution event | Medium | High | Python-authored typed artifacts only; decision linkage uses the finalized global execution-sequence ID across decisions/orders/fills/indicators/annotations; duplicate/orphan references fail; one backend/frontend date window filters bars and every evidence series; legacy/missing states explicit; no fake frontier | Global-ID reconciliation with interleaved fill/decision events, duplicate/orphan rejection, API/renderer parity, range-filtered markers/annotations, old-run `trace_unavailable`, copy, and visual tests | Engine/artifact/web/frontend owners — **Verified offline 2026-07-19** |
+| R-34 | A caller uses an arbitrary durable job kind or a different launch surface to bypass reserved suite ownership or the one-heavyweight Kronos/Qlib limit | Medium | High | Reserve `suite:*` kinds; generic creation rejects them; one shared capacity class covers REST, MCP, direct Qlib/Kronos, and suite kinds; active-state check and insert share one `BEGIN IMMEDIATE` transaction | Reserved-kind, direct/direct concurrency, direct/suite concurrency, REST/MCP conflict, and terminal-release tests | CLI/control owner — **Verified offline 2026-07-19** |
+| R-35 | A direct or suite heavyweight child ignores cancellation, runs without a renewable lease, is overwritten by a later success state, or is reconciled through an unsafe PID action | Medium | High | Persist idempotent cancellation requests; direct Workstation/MCP children use isolated process groups and an independent heartbeat/cancel lease capped at ten seconds; suites poll cancellation continuously and heartbeat each live step at five seconds; renewal/poll failure fails the journal; cancellation uses TERM→bounded grace→KILL/reap; direct lease stop/join precedes any subsequent caller terminal publication; stale reconciliation is logical only and exposes no raw PID API | Silent-child heartbeat, renewal/poll failure, in-flight direct and suite cancellation, process reap, no-later-terminal, capacity release, reload rehydration, stale/fresh reconciliation, and idempotence tests | CLI/web/MCP owners — **Verified offline 2026-07-19** |
+| R-36 | v2→v3 layout migration partially writes, drops an unknown panel, or destroys the only recoverable legacy layout | Medium | Medium | Complete alias table; reject unknown components atomically; preserve legacy keys; persist v3 only after Dockview accepts the whole migrated document | Real-shaped v2 fixture, unknown-component rejection, Dockview-failure, and legacy-preservation tests | Frontend owner — **Verified offline 2026-07-19** |
+| R-37 | Tear sheets, chart bundles, comparisons, or retained legacy MCP reads create unbounded memory/token payloads | Medium | Medium | Typed request caps, deterministic downsampling/windowing, pagination, endpoint-preserving series, and bounds metadata | Min/max rejection, original/returned/truncated assertions, stable sampling, and legacy-read cap tests | CLI/web/MCP owners — **Verified offline 2026-07-19** |
+| R-38 | Dense desktop styling is unusable by keyboard, relies on color alone, or ships serious/critical accessibility defects | Medium | High | Named controls/regions, visible focus, textual chart alternatives, non-color labels, and Playwright axe A/AA gate | Six-desk keyboard checks and zero serious/critical axe findings at required viewports | Frontend owner — **Verified offline 2026-07-19** |
+| R-39 | The terminal fails supported desk sizes or misses cold-shell/workspace-switch/chart-navigation performance budgets | Medium | Medium | Test 1280x720, 1440x900, and 1920x1080; production-preview performance probes for 1.5s cold shell, <100ms cached switch, and 25k bars/200 annotations navigation | Recorded bounded timing/animation evidence on the target profile plus responsive screenshots | Frontend/release owners — **Target verified 2026-07-19** |
+| R-40 | REST clients cannot select a stable v3 contract, allowing incompatible schema drift | Medium | Medium | Explicit `/api/v3` aliases for development, ML, chart, native-tearsheet, and forecast-path contracts; retain `/api` compatibility routes; generated TypeScript freshness | Versioned/legacy parity and bounds tests, OpenAPI diff check, and generated-client build | Web/API owners — **Verified offline 2026-07-19** |
+
+### 2026-08-03 Live UI Hardening Evidence
+
+- **R-33:** capability-scoped panels reject incompatible runs without relabeling evidence; native
+  missing/explicit-unavailable states are distinct; causal execution/decision/all layers preserve
+  the full returned event table behind a deterministic visual marker cap.
+- **R-37:** immutable projections use a bounded LRU, native/chart payload limits remain explicit,
+  and loopback JSON responses are gzip-compressed without changing artifact authority.
+- **R-39:** inactive Dockview tabs issue no requests until activated; vector annotations use a
+  single canvas primitive; the 25k-bar/200-annotation probe compares interactive cadence with an
+  adjacent no-input rAF baseline. Running jobs expose exact elapsed/current work, avoid invented ETA,
+  and lower UI-launched heavyweight scheduling priority so desk input remains favored.
+- **R-40:** OpenAPI and generated TypeScript were regenerated byte-identically, and versioned and
+  compatibility projections remained green in the full offline test suite.
 
 ## Residual-Risk Decisions
 
@@ -55,8 +99,10 @@ The following remain accepted only within the stated personal sandbox scope:
 - Nautilus sandbox fills are simulations; they do not prove exchange queue position, latency,
   slippage, fee, rejection, liquidation, or operational behavior.
 - A local JSON journal is sufficient for one process/user but is not a multi-host transaction log.
-- Stale heartbeat detection reports uncertainty; it does not guarantee whether an orphan process is
-  alive.
+- Stale heartbeat detection and reconciliation report a logical journal state only. If a surface
+  owner crashes, its operating-system child may survive; ALPHA does not recover by persisted PID,
+  cannot prove physical heavyweight capacity is free, and requires the operator to confirm/reap any
+  orphan before reconciling and relaunching.
 - Historical free-vendor data retains survivorship/provider-adjustment limitations.
 
 Any move to real or testnet exchange execution, remote hosting, multiple users/hosts, or automated

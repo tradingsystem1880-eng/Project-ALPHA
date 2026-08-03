@@ -25,12 +25,18 @@ The development server proxies API traffic according to `vite.config.ts`. For th
 npm run lint -- --deny-warnings
 npm run test:coverage
 npm run generate:api
-npm run build
+npm run test:e2e
 ```
 
 CI requires zero lint warnings, the committed V8 coverage floors, fresh generated TypeScript API
-definitions, a successful TypeScript/Vite build, and byte-identical committed assets.
+definitions, a successful TypeScript/Vite build, and byte-identical committed assets. The browser
+gate builds the production SPA, serves it through Vite preview with deterministic API mocks, checks
+all six curated desks at 1280×720, 1440×900, and 1920×1080, exercises the desk selector by keyboard,
+runs the 25,000-bar/200-annotation interaction fixture at the reference viewport, and fails on any
+serious or critical axe violation. Install Chromium once locally with
+`npx playwright install chromium` before running `npm run test:e2e`.
 
 `openapi.json` is generated from the backend by `scripts/generate_web_openapi.py`; the generated
 `src/api/generated.ts` is authoritative. Keep handwritten API types to small aliases in
-`src/api/types.ts`.
+`src/api/types.ts`. New Workstation control/ML/chart consumers should use the explicit `/api/v3`
+aliases; unversioned `/api` routes remain for compatibility.

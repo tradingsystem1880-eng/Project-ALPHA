@@ -62,8 +62,32 @@ jobs:
       - name: Generated TypeScript freshness
         working-directory: apps/alpha-web/frontend
         run: npm run generate:api && git diff --exit-code -- src/api/generated.ts
-      - name: Type-check and build SPA
+      - name: Install Playwright Chromium
         working-directory: apps/alpha-web/frontend
-        run: npm run build
+        run: npx playwright install --with-deps chromium
+      - name: Browser release gate (build, six desks, layouts, axe)
+        working-directory: apps/alpha-web/frontend
+        run: npm run test:e2e
       - name: Committed SPA asset freshness
         run: git diff --exit-code -- apps/alpha-web/src/alpha_web/static/app
+
+  qlib-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: workers/qlib
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install isolated worker (locked)
+        run: uv sync --locked
+      - name: Lint and format
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Types
+        run: uv run mypy
+      - name: Worker tests
+        run: uv run pytest -q

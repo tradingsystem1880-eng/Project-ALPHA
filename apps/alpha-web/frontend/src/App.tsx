@@ -14,12 +14,64 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api/client'
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
-import { setLinked, useLinked } from './context/linked'
-import { buildDeskLayout, LAYOUT_KEY } from './layouts/presets'
+import { restoreLinked, setLinked, useLinked, type LinkGroup } from './context/linked'
+import {
+  buildDeskLayout,
+  buildWorkspaceLayout,
+  LAYOUT_KEY,
+  restoreStoredLayout,
+  WORKSPACE_PRESETS,
+  type WorkspacePresetId,
+} from './layouts/presets'
 import { openRunDetail, runIdFromHash } from './panels/actions'
 import { PANELS } from './panels/registry'
 import { initActivity, useActivityField } from './state/activity'
 import { setSettings, useSettings } from './state/settings'
+import { shortId } from './util/format'
+
+function DeskControl({
+  value,
+  onChange,
+}: {
+  value: WorkspacePresetId | 'custom'
+  onChange: (value: WorkspacePresetId) => void
+}) {
+  return (
+    <label className="desk-control" title="Switch curated workstation layout">
+      <span className="tag">DESK</span>
+      <select
+        value={value}
+        onChange={(event) => {
+          if (event.target.value !== 'custom') onChange(event.target.value as WorkspacePresetId)
+        }}
+      >
+        {value === 'custom' ? <option value="custom">CUSTOM</option> : null}
+        {WORKSPACE_PRESETS.map((preset) => (
+          <option key={preset.id} value={preset.id}>
+            {preset.shortName}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function LinkGroupControl() {
+  const linked = useLinked()
+  return (
+    <label className="group-control" title="Active panel link group">
+      <span className="tag">LINK</span>
+      <select
+        value={linked.linkGroup}
+        onChange={(event) => setLinked({ linkGroup: event.target.value as LinkGroup })}
+      >
+        {(['A', 'B', 'C', 'D'] as const).map((group) => (
+          <option key={group}>{group}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
 
 function SymControl() {
   const linked = useLinked()
@@ -93,6 +145,56 @@ function AsofControl() {
   )
 }
 
+function ResearchContextControl() {
+  const linked = useLinked()
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="research-context-wrap">
+      <button
+        className="research-context-summary"
+        title="Project, version, universe, timeframe, snapshot, and run context"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span><b>PRJ</b> {linked.projectId ?? '—'}</span>
+        <span><b>VER</b> {linked.versionId ?? '—'}</span>
+        <span><b>UNI</b> {linked.universe ?? '—'}</span>
+        <span><b>TF</b> {linked.timeframe}</span>
+        <span><b>SNAP</b> {linked.snapshotId ?? '—'}</span>
+        <span><b>RUN</b> {linked.runId ? shortId(linked.runId) : '—'}</span>
+      </button>
+      {open ? (
+        <span className="research-context-pop" onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
+          <label>
+            <span className="eyebrow">project</span>
+            <input className="field" value={linked.projectId ?? ''} onChange={(event) => setLinked({ projectId: event.target.value || null })} placeholder="project id" />
+          </label>
+          <label>
+            <span className="eyebrow">version</span>
+            <input className="field" value={linked.versionId ?? ''} onChange={(event) => setLinked({ versionId: event.target.value || null })} placeholder="version id" />
+          </label>
+          <label>
+            <span className="eyebrow">universe</span>
+            <input className="field" value={linked.universe ?? ''} onChange={(event) => setLinked({ universe: event.target.value || null })} placeholder="universe id" />
+          </label>
+          <label>
+            <span className="eyebrow">timeframe</span>
+            <select className="field" value={linked.timeframe} disabled><option value="1D">1D · daily</option></select>
+          </label>
+          <label>
+            <span className="eyebrow">snapshot</span>
+            <input className="field" value={linked.snapshotId ?? ''} onChange={(event) => setLinked({ snapshotId: event.target.value || null })} placeholder="snapshot id" />
+          </label>
+          <label>
+            <span className="eyebrow">run</span>
+            <input className="field" value={linked.runId ?? ''} onChange={(event) => setLinked({ runId: event.target.value || null })} placeholder="run id" />
+          </label>
+          <button className="btn primary" onClick={() => setOpen(false)}>done</button>
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 function StatusCluster() {
   const connection = useActivityField('connection')
   const runningJobs = useActivityField('runningJobs')
@@ -110,6 +212,7 @@ export function App() {
   const dockRef = useRef<DockviewApi | null>(null)
   const seq = useRef(0)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [activePreset, setActivePreset] = useState<WorkspacePresetId | 'custom'>('market')
   const { density, explain } = useSettings()
 
   useEffect(() => {
@@ -118,17 +221,9 @@ export function App() {
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     dockRef.current = event.api
-    const saved = localStorage.getItem(LAYOUT_KEY)
-    let restored = false
-    if (saved) {
-      try {
-        event.api.fromJSON(JSON.parse(saved))
-        restored = event.api.panels.length > 0
-      } catch {
-        restored = false
-      }
-    }
+    const restored = restoreStoredLayout(event.api, localStorage)
     if (!restored) buildDeskLayout(event.api)
+    setActivePreset(restored ? 'custom' : 'market')
     event.api.onDidLayoutChange(() => {
       try {
         localStorage.setItem(LAYOUT_KEY, JSON.stringify(event.api.toJSON()))
@@ -177,8 +272,16 @@ export function App() {
         if (dv.panels.length === 0) buildDeskLayout(dv)
         return
       }
-      if (doc.linked_context) setLinked(doc.linked_context)
+      if (doc.linked_context) restoreLinked(doc.linked_context)
+      setActivePreset('custom')
     })
+  }, [])
+
+  const loadPreset = useCallback((id: WorkspacePresetId) => {
+    const dv = dockRef.current
+    if (!dv) return
+    buildWorkspaceLayout(dv, id)
+    setActivePreset(id)
   }, [])
 
   useEffect(() => {
@@ -204,10 +307,13 @@ export function App() {
           <span className="mark">ALPHA</span>
           <span className="sub">WORKSTATION</span>
         </div>
+        <DeskControl value={activePreset} onChange={loadPreset} />
         <div className="linked">
+          <LinkGroupControl />
           <SymControl />
           <AsofControl />
         </div>
+        <ResearchContextControl />
         <div className="spacer" />
         <button
           className="kbd"
@@ -238,6 +344,7 @@ export function App() {
         onOpenPanel={openPanel}
         onOpenRun={openRun}
         onLoadWorkspace={loadWorkspace}
+        onLoadPreset={loadPreset}
         onSaveWorkspace={() => openPanel('Workspaces', 'Workspaces')}
       />
     </div>

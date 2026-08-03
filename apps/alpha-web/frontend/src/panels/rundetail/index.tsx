@@ -10,6 +10,7 @@ import { api } from '../../api/client'
 import type {
   EquitySeries,
   ForecastSeries,
+  PortfolioAnalyticsProjection,
   RunDetail as RunDetailData,
   TradeRow,
 } from '../../api/types'
@@ -21,8 +22,12 @@ import type {
   ValidateManifest,
 } from '../../explain/types'
 import { setSettings, useSettings } from '../../state/settings'
+import { PanelLinkControl } from '../../components/PanelLinkControl'
 import { Placeholder } from '../../components/Placeholder'
+import { usePanelLinked } from '../../context/usePanelLinked'
 import { openStrategyLab } from '../actions'
+import { NativeTearSheetBody } from '../NativeTearSheet'
+import { matchesRunScope, runScopeFromParams, runScopeLabel } from '../v3Models'
 import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
 import { ForecastDetail } from './ForecastDetail'
@@ -36,7 +41,7 @@ import { Risk } from './Risk'
 import { TradesTab } from './TradesTab'
 import { WalkForward } from './WalkForward'
 
-type TabId = 'overview' | 'gates' | 'walkforward' | 'risk' | 'trades' | 'artifacts'
+type TabId = 'overview' | 'gates' | 'walkforward' | 'risk' | 'trades' | 'tearsheet' | 'artifacts'
 
 const VALIDATE_TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -44,18 +49,24 @@ const VALIDATE_TABS: { id: TabId; label: string }[] = [
   { id: 'walkforward', label: 'Walk-forward' },
   { id: 'risk', label: 'Risk' },
   { id: 'trades', label: 'Trades' },
+  { id: 'tearsheet', label: 'Tear Sheet' },
   { id: 'artifacts', label: 'Artifacts' },
 ]
 
 export function RunDetail(props: IDockviewPanelProps) {
-  const runId = String((props.params as { runId?: string }).runId ?? '')
+  const panelLink = usePanelLinked(props)
+  const runId = panelLink.linked.runId ?? ''
   const [detail, setDetail] = useState<RunDetailData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [eq, setEq] = useState<EquitySeries | null>(null)
   const [trades, setTrades] = useState<TradeRow[]>([])
   const [fc, setFc] = useState<ForecastSeries | null>(null)
+  const [portfolioAnalytics, setPortfolioAnalytics] = useState<PortfolioAnalyticsProjection | null>(null)
+  const [portfolioAnalyticsError, setPortfolioAnalyticsError] = useState<string | null>(null)
+  const [portfolioAnalyticsLoading, setPortfolioAnalyticsLoading] = useState(false)
   const [tab, setTab] = useState<TabId>('overview')
   const { explain } = useSettings()
+  const runScope = runScopeFromParams(props.params)
 
   useEffect(() => {
     if (!runId) return
@@ -65,35 +76,79 @@ export function RunDetail(props: IDockviewPanelProps) {
     setEq(null)
     setTrades([])
     setFc(null)
+    setPortfolioAnalytics(null)
+    setPortfolioAnalyticsError(null)
+    setPortfolioAnalyticsLoading(false)
     api
       .run(runId)
       .then((d) => {
         if (!live) return
         setDetail(d)
+        if (!matchesRunScope(d, runScope)) return
         if (d.has_equity) api.equity(runId).then((e) => live && setEq(e)).catch(() => {})
         if (d.has_trades) api.trades(runId).then((t) => live && setTrades(t)).catch(() => {})
         if (d.has_forecast) api.forecast(runId).then((f) => live && setFc(f)).catch(() => {})
+        if (d.has_portfolio_analytics) {
+          setPortfolioAnalyticsLoading(true)
+          api
+            .portfolioAnalytics(runId)
+            .then((value) => {
+              if (live) setPortfolioAnalytics(value)
+            })
+            .catch((reason: unknown) => {
+              if (live) setPortfolioAnalyticsError(String(reason))
+            })
+            .finally(() => {
+              if (live) setPortfolioAnalyticsLoading(false)
+            })
+        }
       })
       .catch((e: unknown) => live && setError(String(e)))
     return () => {
       live = false
     }
-  }, [runId])
+  }, [runId, runScope])
 
   const onLaunch = useMemo(
     () => (command: string, args: string) => openStrategyLab(props.containerApi!, { command, args }),
     [props.containerApi],
   )
 
-  if (!runId) return <Placeholder>no run selected</Placeholder>
-  if (error) return <Placeholder big="error">{error}</Placeholder>
-  if (!detail)
+  if (!runId) {
     return (
-      <div className="panel-pad">
-        <div className="skeleton" style={{ height: 60, marginBottom: 8 }} />
-        <div className="skeleton" style={{ height: 200 }} />
+      <div className="panel">
+        <div className="panel-toolbar"><span className="title">Run</span><PanelLinkControl controller={panelLink} /></div>
+        <div className="panel-body"><Placeholder>no run selected</Placeholder></div>
       </div>
     )
+  }
+  if (error) {
+    return (
+      <div className="panel">
+        <div className="panel-toolbar"><span className="title">Run</span><PanelLinkControl controller={panelLink} /><span className="id mono">{runId}</span></div>
+        <div className="panel-body"><Placeholder big="error">{error}</Placeholder></div>
+      </div>
+    )
+  }
+  if (!detail)
+    return (
+      <div className="panel">
+        <div className="panel-toolbar"><span className="title">Run</span><PanelLinkControl controller={panelLink} /><span className="id mono">{runId}</span></div>
+        <div className="panel-body panel-pad">
+          <div className="skeleton" style={{ height: 60, marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 200 }} />
+        </div>
+      </div>
+    )
+
+  if (!matchesRunScope(detail, runScope)) {
+    return (
+      <div className="panel">
+        <div className="panel-toolbar"><span className="title">Run</span><PanelLinkControl controller={panelLink} /><span className="id mono">{runId}</span></div>
+        <div className="panel-body"><Placeholder big="INCOMPATIBLE RUN">Select a {runScopeLabel(runScope)} run for this workspace. The linked run was left unchanged for other panels.</Placeholder></div>
+      </div>
+    )
+  }
 
   const m = detail.manifest
   const command = asStr(m.command)
@@ -114,7 +169,16 @@ export function RunDetail(props: IDockviewPanelProps) {
         )
       case 'portfolio':
       case 'cross_sectional':
-        return <PortfolioDetail manifest={m as PortfolioManifest} eq={eq} onLaunch={onLaunch} />
+        return (
+          <PortfolioDetail
+            manifest={m as PortfolioManifest}
+            eq={eq}
+            analytics={portfolioAnalytics}
+            analyticsError={portfolioAnalyticsError}
+            analyticsLoading={portfolioAnalyticsLoading}
+            onLaunch={onLaunch}
+          />
+        )
       case 'propfirm':
         return (
           <PropfirmDetail
@@ -151,7 +215,9 @@ export function RunDetail(props: IDockviewPanelProps) {
           case 'risk':
             return <Risk manifest={vm} runId={runId} />
           case 'trades':
-            return <TradesTab trades={trades} />
+            return <TradesTab trades={trades} runId={runId} />
+          case 'tearsheet':
+            return <NativeTearSheetBody detail={detail} equity={eq} trades={trades} />
           case 'artifacts':
             return (
               <Artifacts manifest={vm} kind={detail.kind} runId={runId} hasTearsheet={detail.has_tearsheet} />
@@ -167,6 +233,7 @@ export function RunDetail(props: IDockviewPanelProps) {
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Run</span>
+        <PanelLinkControl controller={panelLink} />
         <span className="id mono">{runId}</span>
         <span className="chip kind">{kindLabel}</span>
         {detail.kind === 'runs' && isValidate ? (

@@ -127,8 +127,6 @@ def run(
         payload["symbol"] = symbol
         payload["snapshot"] = snapshot
         payload.update(vars(spec))
-    run_id = _runner.run_id_for(payload)
-
     try:
         out = _propfirm.run_propfirm(
             data_dir=settings.data_dir,
@@ -146,6 +144,12 @@ def run(
     except DataError as exc:  # missing run, unknown firm, degenerate returns, bad rule override
         raise typer.BadParameter(str(exc)) from exc
 
+    identity = _runner.run_identity_for(
+        payload,
+        source_fingerprint=out.source_fingerprint,
+        snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot),
+    )
+    run_id = identity.run_id
     rdir = settings.data_dir / "propfirm" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
     # per-path outcomes BEFORE the manifest (manifest.json is the run-exists marker)
@@ -157,6 +161,7 @@ def run(
         payout=out.result.path_payout,
     )
     manifest = _manifest(out, run_id=run_id, seed=resolved_seed)
+    manifest.update(identity.manifest_fields())
     _artifacts.write_manifest(rdir, manifest)
 
     res = out.result

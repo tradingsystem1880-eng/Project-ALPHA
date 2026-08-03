@@ -1,7 +1,8 @@
 # Design — `alpha-mcp`: an MCP server over Project ALPHA (QuantPad parity Phase 3)
 
-> **Implemented-state pointer (2026-07-18):** This historical plan predates forecast tools and the
-> public run-store/catalog seams. The shipped MCP surface contains exactly 12 tools; use
+> **Current-state pointer (2026-07-19):** This historical plan predates forecast and Workstation v3
+> tools. The shipped MCP surface now contains 42 tools (12 retained legacy + 30 typed v3). Retained
+> action `options` expose only closed, bounded per-tool deprecated compatibility vocabularies; use
 > [`CLAUDE.md`](../../../CLAUDE.md) and [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for the
 > current contract.
 

@@ -5,26 +5,29 @@ gauntlet, so the glue lives here. This module currently owns the deterministic r
 walk-forward OOS stitch; the engine-running helpers (``load_bars``, ``run_full_backtest``) are added
 with the backtest command.
 
-Walk-forward for a *fixed-parameter* strategy is out-of-sample evaluation, not refitting: one
-deterministic full-series backtest is sliced into the scored test windows (the train windows are
-indicator warmup). The OOS return stream is the concatenation of those test-window slices — and
-because walk-forward test windows tile contiguously, that stream is gap-free.
+Walk-forward for a *fixed-parameter* strategy is out-of-sample evaluation, not refitting. Fold
+geometry is derived from the immutable session calendar, historical bars causally prime indicators
+without creating orders or positions, and a fresh portfolio executes across the contiguous scored
+test window. The resulting OOS metrics and chart evidence therefore describe the same state.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 
+from alpha_cli._identity import RunIdentity, execution_fingerprint, strategy_fingerprint
 from alpha_core import Bar, CorporateAction, DataError
+from alpha_data.snapshot import snapshot_manifest_hash
 from alpha_validation import (
     FloatArray,
     FoldSummary,
@@ -129,6 +132,19 @@ def parse_strategy_params(
     return normalize_params(strategy_name, tuple(parsed))
 
 
+def parse_as_of(value: str | None) -> datetime | None:
+    """Parse an optional canonical daily research cutoff as an inclusive UTC instant."""
+    if value is None:
+        return None
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise DataError(f"as_of must be canonical YYYY-MM-DD, got {value!r}") from exc
+    if parsed.isoformat() != value:
+        raise DataError(f"as_of must be canonical YYYY-MM-DD, got {value!r}")
+    return datetime.combine(parsed, time(23, 59, 59), tzinfo=UTC)
+
+
 def load_bars(
     symbol: str,
     *,
@@ -147,12 +163,12 @@ def load_bars(
     what the run actually consumed — the live store is wholesale-replaced by pulls and cannot back a
     reproducibility claim. Fails loud (``DataError``) on a missing/tampered snapshot or < 2 bars.
     """
-    from alpha_data.snapshot import verify_snapshot
+    from alpha_data.snapshot import resolve_snapshot_dir, verify_snapshot
     from alpha_data.source import PointInTimeSource
     from alpha_data.store import ParquetStore
 
     if snapshot_id is not None:
-        snap_dir = data_dir / "snapshots" / snapshot_id
+        snap_dir = resolve_snapshot_dir(data_dir / "snapshots", snapshot_id)
         verify_snapshot(snap_dir)  # re-hash against the manifest before trusting the bytes
         store = ParquetStore(snap_dir)
     else:
@@ -166,7 +182,11 @@ def load_bars(
 
 
 def load_dividends(
-    symbol: str, *, data_dir: Path, snapshot_id: str | None = None
+    symbol: str,
+    *,
+    data_dir: Path,
+    snapshot_id: str | None = None,
+    as_of: datetime | None = None,
 ) -> list[CorporateAction]:
     """The symbol's knowledge-complete DIVIDEND actions from the store (or a frozen snapshot).
 
@@ -174,22 +194,27 @@ def load_dividends(
     returns ``[]`` for symbols with no stored actions (crypto, stooq). The engine credits these
     at pay date against the pre-ex holding — decoupled from prices (spec §6.1.4).
     """
-    from alpha_data.snapshot import verify_snapshot
+    from alpha_data.snapshot import resolve_snapshot_dir, verify_snapshot
     from alpha_data.source import PointInTimeSource
     from alpha_data.store import ParquetStore
 
     if snapshot_id is not None:
-        snap_dir = data_dir / "snapshots" / snapshot_id
+        snap_dir = resolve_snapshot_dir(data_dir / "snapshots", snapshot_id)
         verify_snapshot(snap_dir)
         store = ParquetStore(snap_dir)
     else:
         store = ParquetStore(data_dir / "store")
     source = PointInTimeSource(store, {symbol: store.read_actions(symbol)})
-    return source.dividends_as_of(symbol, datetime(2999, 1, 1, tzinfo=UTC))
+    when = as_of if as_of is not None else datetime(2999, 1, 1, tzinfo=UTC)
+    return source.dividends_as_of(symbol, when)
 
 
 def run_full_backtest(
-    bars: Sequence[Bar], spec: RunSpec, *, dividends: Sequence[CorporateAction] = ()
+    bars: Sequence[Bar],
+    spec: RunSpec,
+    *,
+    dividends: Sequence[CorporateAction] = (),
+    warmup_bars: Sequence[Bar] = (),
 ) -> BacktestResult:
     """Run ``spec``'s fixed-parameter strategy over ``bars`` once, net of costs.
 
@@ -215,6 +240,18 @@ def run_full_backtest(
         slippage_bps=spec.slippage_bps,
     )
     strategy = _strategies.build_strategy(spec, instrument.id, bar_type)
+    if warmup_bars:
+        if warmup_bars[-1].ts >= bars[0].ts:
+            raise DataError("warmup bars must end before the first executable bar")
+        prime_history = getattr(strategy, "prime_history", None)
+        if not callable(prime_history):
+            raise DataError(
+                f"strategy {spec.strategy_name!r} does not support causal history priming"
+            )
+        # Priming updates trailing indicators and deterministic rebalance cadence only.  It runs
+        # before the strategy is attached to the engine, so no historical target, order, fill, or
+        # position can cross the scored execution boundary.
+        prime_history(warmup_bars)
     # Fail loud (golden rule): don't silently coerce a typo'd/cased value to CASH and drop leverage.
     account_kind = spec.account_type.upper()
     if account_kind not in ("CASH", "MARGIN"):
@@ -261,6 +298,196 @@ def walk_forward_oos_for_spec(
     )
 
 
+def _normalized_curve(
+    rows: Sequence[tuple[datetime, float]], *, label: str
+) -> list[tuple[datetime, float]]:
+    if len(rows) < 2:
+        raise DataError(f"{label} contains fewer than two scored sessions")
+    first = float(rows[0][1])
+    if not math.isfinite(first) or first <= 0.0:
+        raise DataError(f"{label} begins with invalid equity {first!r}")
+    return [(ts, float(value) / first) for ts, value in rows]
+
+
+def _scope_execution(
+    result: BacktestResult,
+    *,
+    equity: Sequence[tuple[datetime, float]],
+    execution_dates: set[date],
+    decision_dates: set[date],
+) -> BacktestResult:
+    """Keep only evidence which can affect the explicitly scored execution sessions."""
+    orders = [row for row in result.order_trace if row.ts.date() in execution_dates]
+    order_ids = {row.sequence_id: index for index, row in enumerate(orders, start=1)}
+    scoped_orders = tuple(
+        dataclasses.replace(row, sequence_id=order_ids[row.sequence_id]) for row in orders
+    )
+    scoped_fills = tuple(
+        dataclasses.replace(
+            row,
+            sequence_id=index,
+            order_sequence_id=order_ids[row.order_sequence_id],
+        )
+        for index, row in enumerate(
+            (fill for fill in result.fill_trace if fill.order_sequence_id in order_ids),
+            start=1,
+        )
+    )
+    trades = [
+        trade
+        for trade in result.trades
+        if trade.entry_ts.date() in execution_dates and trade.exit_ts.date() in execution_dates
+    ]
+    benchmark = [row for row in result.benchmark_curve if row[0].date() in execution_dates]
+    if benchmark:
+        baseline = benchmark[0][1]
+        benchmark = [(ts, value / baseline) for ts, value in benchmark]
+    return dataclasses.replace(
+        result,
+        orders=len(scoped_orders),
+        fills=len(scoped_fills),
+        rejected=sum(row.status.upper() == "REJECTED" for row in scoped_orders),
+        trades=trades,
+        equity_curve=list(equity),
+        decision_trace=tuple(
+            row for row in result.decision_trace if row.ts.date() in decision_dates
+        ),
+        indicator_trace=tuple(
+            row for row in result.indicator_trace if row.ts.date() in decision_dates
+        ),
+        chart_annotations=tuple(
+            row for row in result.chart_annotations if row.decision_ts.date() in decision_dates
+        ),
+        order_trace=scoped_orders,
+        fill_trace=scoped_fills,
+        portfolio_state_trace=tuple(
+            row for row in result.portfolio_state_trace if row.ts.date() in execution_dates
+        ),
+        benchmark_curve=tuple(benchmark),
+    )
+
+
+def fresh_scored_execution(
+    bars: Sequence[Bar],
+    spec: RunSpec,
+    *,
+    first_scored_index: int,
+    final_scored_index: int,
+    dividends: Sequence[CorporateAction] = (),
+    normalize_equity: bool,
+) -> BacktestResult:
+    """Prime causal history, then execute a fresh portfolio over one contiguous scored window.
+
+    ``first_scored_index`` is the baseline equity session and ``final_scored_index`` is the final
+    realized-equity session, both inclusive.  The immediately preceding close is executed only to
+    originate a possible first-session fill; it is never itself scored or published as equity.
+    """
+    if not 0 < first_scored_index <= final_scored_index < len(bars):
+        raise DataError("scored execution window is outside the available bar history")
+    decision_index = first_scored_index - 1
+    executable = bars[decision_index : final_scored_index + 1]
+    fresh = run_full_backtest(
+        executable,
+        spec,
+        dividends=dividends,
+        warmup_bars=bars[:decision_index],
+    )
+    execution_dates = {bar.ts.date() for bar in bars[first_scored_index : final_scored_index + 1]}
+    decision_dates = {bar.ts.date() for bar in bars[decision_index:final_scored_index]}
+    raw_equity = [row for row in fresh.equity_curve if row[0].date() in execution_dates]
+    if len(raw_equity) < 2:
+        raise DataError("scored execution contains fewer than two sessions")
+    equity = (
+        _normalized_curve(raw_equity, label="scored execution") if normalize_equity else raw_equity
+    )
+    return _scope_execution(
+        fresh,
+        equity=equity,
+        execution_dates=execution_dates,
+        decision_dates=decision_dates,
+    )
+
+
+def _recalculate_fold_metrics(
+    folds: Sequence[FoldSummary], returns: FloatArray, *, periods_per_year: int
+) -> tuple[FoldSummary, ...]:
+    """Recompute every fold verdict from the fresh-state OOS stream actually published."""
+    rows: list[FoldSummary] = []
+    offset = 0
+    for fold in folds:
+        values = returns[offset : offset + fold.n_test]
+        if values.size != fold.n_test:
+            raise DataError("fresh OOS stream does not reconcile to declared fold lengths")
+        oos_return, oos_sharpe, oos_cagr = _fold_metrics(values, periods_per_year)
+        rows.append(
+            dataclasses.replace(
+                fold,
+                oos_return=oos_return,
+                oos_sharpe=oos_sharpe,
+                oos_cagr=oos_cagr,
+            )
+        )
+        offset += fold.n_test
+    if offset != returns.size:
+        raise DataError("fresh OOS stream contains sessions outside declared folds")
+    return tuple(rows)
+
+
+def fresh_oos_execution(
+    bars: Sequence[Bar],
+    spec: RunSpec,
+    *,
+    dividends: Sequence[CorporateAction] = (),
+) -> tuple[OOSResult, BacktestResult]:
+    """Evaluate fixed rules OOS from a fresh portfolio and return matching causal evidence.
+
+    Fold geometry depends only on the observed session calendar, not on discovery-run positions.
+    A constant dummy curve therefore establishes the canonical windows without executing the
+    strategy over discovery data.  The strategy is then history-primed without an engine and run
+    exactly once from the prior close through the contiguous OOS sessions.  Reported metrics and
+    every returned trace row consequently describe the same execution state.
+    """
+    layout = walk_forward_oos_for_spec([(bar.ts, 1.0) for bar in bars], spec)
+    first_scored_index = layout.folds[0].test_start
+    final_scored_index = layout.folds[-1].test_end
+    result = fresh_scored_execution(
+        bars,
+        spec,
+        first_scored_index=first_scored_index,
+        final_scored_index=final_scored_index,
+        dividends=dividends,
+        normalize_equity=True,
+    )
+    values = np.asarray([value for _, value in result.equity_curve], dtype=np.float64)
+    returns = to_returns(values)
+    folds = _recalculate_fold_metrics(
+        layout.folds,
+        returns,
+        periods_per_year=spec.periods_per_year,
+    )
+    return (
+        OOSResult(
+            oos_returns=returns,
+            oos_equity=values,
+            oos_timestamps=[ts for ts, _ in result.equity_curve],
+            folds=folds,
+        ),
+        result,
+    )
+
+
+def fold_manifest(fold: FoldSummary, bars: Sequence[Bar]) -> dict[str, object]:
+    """Project one OOS fold with explicit causal/session timestamps for chart attribution."""
+    return {
+        **dataclasses.asdict(fold),
+        "train_start_ts": bars[fold.train_start].ts.isoformat(),
+        "train_end_ts": bars[fold.train_end].ts.isoformat(),
+        "test_decision_start_ts": bars[fold.test_start - 1].ts.isoformat(),
+        "test_start_ts": bars[fold.test_start].ts.isoformat(),
+        "test_end_ts": bars[fold.test_end].ts.isoformat(),
+    }
+
+
 @dataclass(frozen=True)
 class OOSResult:
     """Stitched out-of-sample returns/equity (aligned timestamps) plus per-fold summaries."""
@@ -271,16 +498,144 @@ class OOSResult:
     folds: tuple[FoldSummary, ...]
 
 
-def run_id_for(payload: Mapping[str, object]) -> str:
+def source_fingerprint(bars: Sequence[Bar], *, dividends: Sequence[CorporateAction] = ()) -> str:
+    """Hash the exact observed market-data content consumed by a run.
+
+    The canonical JSON representation is independent of filesystem paths, Parquet encodings, and
+    caller insertion order. This prevents mutable live-store revisions from targeting an existing
+    immutable run directory while keeping equivalent snapshots/content on the same identity.
+    """
+    bar_rows = sorted(
+        (
+            bar.symbol,
+            bar.ts.isoformat(),
+            bar.open,
+            bar.high,
+            bar.low,
+            bar.close,
+            bar.volume,
+        )
+        for bar in bars
+    )
+    action_rows = sorted(
+        (
+            action.symbol,
+            action.action_type.value,
+            action.ex_date.isoformat(),
+            action.announce_date.isoformat() if action.announce_date is not None else None,
+            action.record_date.isoformat() if action.record_date is not None else None,
+            action.pay_date.isoformat() if action.pay_date is not None else None,
+            action.ratio,
+            action.amount,
+        )
+        for action in dividends
+    )
+    canonical = json.dumps(
+        {"bars": bar_rows, "dividends": action_rows},
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    return hashlib.sha256(
+        b"project-alpha-observed-market-data-v1\0" + canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def combine_source_fingerprints(sources: Mapping[str, str]) -> str:
+    """Combine named source digests into one order-independent multi-source digest."""
+    for name, fingerprint in sources.items():
+        if not name or len(fingerprint) != 64:
+            raise DataError(f"invalid source fingerprint for {name!r}")
+        try:
+            int(fingerprint, 16)
+        except ValueError:
+            raise DataError(f"invalid source fingerprint for {name!r}") from None
+    canonical = json.dumps(dict(sorted(sources.items())), separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(
+        b"project-alpha-combined-observed-sources-v1\0" + canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def numeric_source_fingerprint(values: Sequence[float], *, domain: str) -> str:
+    """Hash an observed numeric source stream when its upstream artifact is the source contract."""
+    canonical = json.dumps(list(values), separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(
+        b"project-alpha-observed-numeric-source-v1\0"
+        + domain.encode("utf-8")
+        + b"\0"
+        + canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def run_identity_for(
+    payload: Mapping[str, object],
+    *,
+    source_fingerprint: str | None = None,
+    snapshot_hash: str | None = None,
+) -> RunIdentity:
+    """Build versioned identity including code, strategy, and observed source content."""
+    from alpha_cli._identity import RUN_IDENTITY_VERSION, strategy_name_from_payload
+
+    execution = execution_fingerprint()
+    strategy = strategy_fingerprint(strategy_name_from_payload(payload))
+    source = (
+        source_fingerprint or hashlib.sha256(b"project-alpha-no-observed-source-v1").hexdigest()
+    )
+    payload_snapshot_hash = payload.get("snapshot_hash")
+    if snapshot_hash is None and isinstance(payload_snapshot_hash, str):
+        snapshot_hash = payload_snapshot_hash
+    if snapshot_hash is not None:
+        if len(snapshot_hash) != 64:
+            raise DataError("snapshot_hash must be a 64-hex SHA-256 digest")
+        try:
+            int(snapshot_hash, 16)
+        except ValueError:
+            raise DataError("snapshot_hash must be a 64-hex SHA-256 digest") from None
+    identity_payload = {
+        "run_identity_version": RUN_IDENTITY_VERSION,
+        "execution_fingerprint": execution,
+        "strategy_fingerprint": strategy,
+        "source_fingerprint": source,
+        "snapshot_hash": snapshot_hash,
+        "payload": payload,
+    }
+    canonical = json.dumps(
+        identity_payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
+    )
+    return RunIdentity(
+        run_id=hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],
+        execution_fingerprint=execution,
+        strategy_fingerprint=strategy,
+        source_fingerprint=source,
+        snapshot_hash=snapshot_hash,
+    )
+
+
+def run_id_for(
+    payload: Mapping[str, object],
+    *,
+    source_fingerprint: str | None = None,
+    snapshot_hash: str | None = None,
+) -> str:
     """A deterministic 16-hex-char id for a run, from its canonical (sorted-key) JSON payload.
 
     Same symbol + params + costs + seed → same id → same artifact directory → reproducible
     (spec §11.4). No wall-clock goes in, so re-running is byte-identical.
     """
-    canonical = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+    return run_identity_for(
+        payload,
+        source_fingerprint=source_fingerprint,
+        snapshot_hash=snapshot_hash,
+    ).run_id
+
+
+def verified_snapshot_hash(data_dir: Path, snapshot_id: str | None) -> str | None:
+    """Resolve one frozen snapshot to the exact verified manifest digest used by run identity."""
+    if snapshot_id is None:
+        return None
+    from alpha_data.snapshot import resolve_snapshot_dir
+
+    return snapshot_manifest_hash(resolve_snapshot_dir(data_dir / "snapshots", snapshot_id))
 
 
 def _fold_metrics(slice_: FloatArray, periods_per_year: int) -> tuple[float, float, float]:

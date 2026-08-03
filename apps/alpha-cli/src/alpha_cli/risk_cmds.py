@@ -25,7 +25,8 @@ def scenario(
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Re-evaluate risk under vol-scaling and tail-shock scenarios for a stored run."""
-    from alpha_cli._artifacts import find_run_dir, read_equity
+    from alpha_cli._artifacts import find_run_dir, read_equity, read_manifest
+    from alpha_cli.artifact_contract import sha256_file
     from alpha_validation import scenario_metrics
     from alpha_validation.metrics import to_returns
 
@@ -34,7 +35,9 @@ def scenario(
     if rdir is None:
         raise typer.BadParameter(f"no run {from_run!r} found")
     try:
-        equity = [value for _, value in read_equity(rdir)]
+        manifest = read_manifest(rdir)
+        equity_rows = read_equity(rdir)
+        equity = [value for _, value in equity_rows]
         summaries = scenario_metrics(
             to_returns(equity), periods_per_year=periods_per_year, confidence=confidence
         )
@@ -45,6 +48,21 @@ def scenario(
         "run_id": from_run,
         "confidence": confidence,
         "scenarios": [dataclasses.asdict(s) for s in summaries],
+        "provenance": {
+            "source_run_id": from_run,
+            "source_command": manifest.get("command"),
+            "source_artifact": "equity_curve.parquet",
+            "source_artifact_sha256": sha256_file(rdir / "equity_curve.parquet"),
+            "snapshot_id": manifest.get("snapshot_id"),
+            "snapshot_hash": manifest.get("snapshot_hash"),
+            "research_cutoff": manifest.get("research_cutoff"),
+            "as_of": equity_rows[-1][0].isoformat() if equity_rows else None,
+            "timezone": "UTC",
+            "derived_projection": True,
+            "metric_namespace": "alpha_validation.scenario",
+            "periods_per_year": periods_per_year,
+            "confidence": confidence,
+        },
     }
     if json_out:
         typer.echo(json.dumps(payload))

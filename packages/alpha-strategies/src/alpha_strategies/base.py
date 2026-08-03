@@ -11,6 +11,7 @@ remains the standalone reference implementation; this base is the template for t
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
@@ -22,7 +23,14 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.objects import Quantity
 from nautilus_trader.trading.strategy import Strategy
 
-from alpha_core import Bar, DataError, ExecutionEventSink
+from alpha_core import (
+    Bar,
+    ChartAnnotationTrace,
+    DataError,
+    DecisionTrace,
+    ExecutionEventSink,
+    IndicatorTrace,
+)
 from alpha_strategies.sizing import realized_volatility, vol_target_size
 
 
@@ -103,12 +111,16 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self._closes: list[float] = []
         self._highs: list[float] = []
         self._lows: list[float] = []
+        self._history_ts: list[datetime] = []
         self._eligible_bars = 0  # bars seen once history suffices; drives the rebalance cadence
         self._target_units: float | None = None
         self.net_units = 0.0
         self.fills = 0
         self.rejections = 0  # orders denied (risk/buying-power) or rejected by the venue
         self._event_sink: ExecutionEventSink | None = None
+        self._decision_trace: list[DecisionTrace] = []
+        self._indicator_trace: list[IndicatorTrace] = []
+        self._chart_annotations: list[ChartAnnotationTrace] = []
 
     @property
     def history_size(self) -> int:
@@ -125,6 +137,60 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         """The next-open target, exposed read-only for paper safety checks."""
         return self._target_units
 
+    @property
+    def decision_trace(self) -> tuple[DecisionTrace, ...]:
+        """Observed close-time decisions; indicators/patterns are intentionally not inferred."""
+        return tuple(self._decision_trace)
+
+    @property
+    def indicator_trace(self) -> tuple[IndicatorTrace, ...]:
+        """Causal indicator values captured by the strategy at each decision."""
+        return tuple(self._indicator_trace)
+
+    @property
+    def chart_annotations(self) -> tuple[ChartAnnotationTrace, ...]:
+        """Deterministic vector annotations captured from the same trailing decision prefix."""
+        return tuple(self._chart_annotations)
+
+    def _indicator_snapshot(self) -> Mapping[str, tuple[float, str]]:
+        """Named values visible at the current decision; subclasses add strategy indicators."""
+        return {"close": (self._closes[-1], "price")}
+
+    def _annotation_snapshot(self, decision_ts: datetime) -> Sequence[ChartAnnotationTrace]:
+        """Vector evidence for the current decision; most strategies need no annotation."""
+        del decision_ts
+        return ()
+
+    def _record_decision(
+        self,
+        bar: NautilusBar,
+        *,
+        signal: int | None,
+        target_quantity: float,
+        reason: str,
+    ) -> None:
+        decision_ts = datetime.fromtimestamp(int(bar.ts_event) / 1_000_000_000, tz=UTC)
+        self._decision_trace.append(
+            DecisionTrace(
+                ts=decision_ts,
+                instrument_id=str(self._iid),
+                signal=signal,
+                target_quantity=target_quantity,
+                reason=reason,
+            )
+        )
+        for name, (value, unit) in sorted(self._indicator_snapshot().items()):
+            self._indicator_trace.append(
+                IndicatorTrace(
+                    ts=decision_ts,
+                    instrument_id=str(self._iid),
+                    name=name,
+                    value=value,
+                    unit=unit,
+                )
+            )
+        self._chart_annotations.extend(self._annotation_snapshot(decision_ts))
+
     def set_execution_event_sink(self, sink: ExecutionEventSink | None) -> None:
         """Attach the operational paper journal; deterministic backtests leave this unset."""
         self._event_sink = sink
@@ -139,11 +205,12 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         if self._event_sink is not None:
             self._event_sink.emit(event_type, payload, ts_event_ns=ts_event_ns)
 
-    def _append_history(self, close: float, high: float, low: float) -> bool:
+    def _append_history(self, ts: datetime, close: float, high: float, low: float) -> bool:
         """Append one bar and advance cadence; return whether this bar may rebalance."""
         self._closes.append(close)
         self._highs.append(high)
         self._lows.append(low)
+        self._history_ts.append(ts)
         if len(self._closes) < self._min_history:
             return False
         rebalance_due = self._eligible_bars % self._rebalance_every == 0
@@ -162,7 +229,7 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         for bar in bars:
             if previous is not None and bar.ts <= previous:
                 raise ValueError("paper warmup bars must have strictly increasing timestamps")
-            self._append_history(bar.close, bar.high, bar.low)
+            self._append_history(bar.ts, bar.close, bar.high, bar.low)
             previous = bar.ts
         self._target_units = None
 
@@ -185,7 +252,8 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
 
     def on_bar(self, bar: NautilusBar) -> None:
         # Decide on the close of t; the order is placed at the next open (see on_quote_tick).
-        if not self._append_history(float(bar.close), float(bar.high), float(bar.low)):
+        decision_ts = datetime.fromtimestamp(int(bar.ts_event) / 1_000_000_000, tz=UTC)
+        if not self._append_history(decision_ts, float(bar.close), float(bar.high), float(bar.low)):
             return
         capital = self._capital
         if self._size_on_equity or self._halt_drawdown is not None:
@@ -196,21 +264,28 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             ):
                 self.halted = True  # kill-switch: flatten at the next open, never re-enter
                 self._target_units = 0.0
+                self._record_decision(bar, signal=None, target_quantity=0.0, reason="drawdown_halt")
                 return
             if self._size_on_equity:
                 if equity <= 0.0:
                     self._target_units = 0.0  # blown-up book cannot be vol-sized; stay flat
+                    self._record_decision(
+                        bar, signal=None, target_quantity=0.0, reason="nonpositive_equity"
+                    )
                     return
                 capital = equity
         signal = self._signal()
         if signal == 0 or (signal < 0 and not self._allow_short):
             self._target_units = 0.0  # flat: no signal, or a short we are not permitted to take
+            reason = "flat_signal" if signal == 0 else "short_disallowed"
+            self._record_decision(bar, signal=signal, target_quantity=0.0, reason=reason)
             return
         annualized_vol = realized_volatility(
             self._closes[-(self._vol_window + 1) :], periods_per_year=self._periods_per_year
         )
         if annualized_vol <= 0.0:
             self._target_units = 0.0  # no realized volatility to target this window -> hold flat
+            self._record_decision(bar, signal=signal, target_quantity=0.0, reason="zero_volatility")
             return
         self._target_units = vol_target_size(
             signal,
@@ -219,6 +294,9 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             target_vol=self._target_vol,
             capital=capital,
             max_leverage=self._max_leverage,
+        )
+        self._record_decision(
+            bar, signal=signal, target_quantity=self._target_units, reason="target"
         )
 
     def on_quote_tick(self, quote: QuoteTick) -> None:

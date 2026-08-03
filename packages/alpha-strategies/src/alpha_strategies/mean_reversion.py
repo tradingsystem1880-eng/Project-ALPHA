@@ -7,6 +7,9 @@ t+1).
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
+
 from nautilus_trader.model.data import BarType
 from nautilus_trader.model.identifiers import InstrumentId
 
@@ -53,3 +56,21 @@ class MeanReversion(VolTargetStrategy):
 
     def _signal(self) -> int:
         return zscore_reversion_signal(self._closes, self._window, self._entry_z)
+
+    def _indicator_snapshot(self) -> Mapping[str, tuple[float, str]]:
+        values = dict(super()._indicator_snapshot())
+        sample = self._closes[-self._window :]
+        mean = sum(sample) / self._window
+        variance = sum((value - mean) ** 2 for value in sample) / (self._window - 1)
+        std = math.sqrt(variance)
+        zscore = (sample[-1] - mean) / std if std > 0.0 else 0.0
+        values.update(
+            {
+                "rolling_mean": (mean, "price"),
+                "upper_entry_band": (mean + self._entry_z * std, "price"),
+                "lower_entry_band": (mean - self._entry_z * std, "price"),
+                "zscore": (zscore, "standard_deviation"),
+                "entry_z": (self._entry_z, "standard_deviation"),
+            }
+        )
+        return values

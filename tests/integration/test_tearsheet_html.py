@@ -6,6 +6,9 @@ fast unit suite. It is not a network test.
 
 from __future__ import annotations
 
+import subprocess
+import sys
+import textwrap
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -112,3 +115,35 @@ def test_renders_html_with_quantstats_body_and_gauntlet_section(tmp_path: Path) 
         "Risk of Ruin",
     ):
         assert marker in body, marker
+
+
+def test_returns_tearsheet_is_byte_stable_across_fresh_processes(tmp_path: Path) -> None:
+    script = textwrap.dedent(
+        """
+        import sys
+        from datetime import UTC, datetime, timedelta
+        from pathlib import Path
+
+        import numpy as np
+
+        from alpha_validation import render_returns_tearsheet
+
+        count = 120
+        returns = np.random.default_rng(7).normal(0.0005, 0.01, count)
+        start = datetime(2020, 1, 1, tzinfo=UTC)
+        timestamps = [start + timedelta(days=index) for index in range(count)]
+        render_returns_tearsheet(
+            returns,
+            timestamps,
+            title="ALPHA deterministic export",
+            summary_rows=(("Run", "0123456789abcdef"),),
+            output_path=Path(sys.argv[1]),
+        )
+        """
+    )
+    first = tmp_path / "first.html"
+    second = tmp_path / "second.html"
+    subprocess.run([sys.executable, "-c", script, str(first)], check=True)
+    subprocess.run([sys.executable, "-c", script, str(second)], check=True)
+
+    assert first.read_bytes() == second.read_bytes()

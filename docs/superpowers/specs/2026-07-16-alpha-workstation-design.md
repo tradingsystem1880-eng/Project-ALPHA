@@ -162,6 +162,11 @@ keyboard shortcuts.
 
 ## Offline CI with a Node/Vite tree
 
+> **Current-state note (2026-07-19):** this historical non-gating proposal was superseded. The
+> frontend job now performs a locked Node install, generated-contract check, production build,
+> Playwright/axe release gate, and committed `static/app` freshness check. The root Python job still
+> does not require Node to install or serve ALPHA.
+
 - Exclude `apps/alpha-web/frontend` from the Python gate via `[tool.ruff] extend-exclude` (mypy only
   walks `.py`; pytest `testpaths=["tests"]` never sees it) — the same precedent as the vendored
   Kronos dir.

@@ -13,5 +13,7 @@ def compare(*, data_dir: Path, symbol: str, strategies: str = "") -> dict[str, A
     args = ["research", "compare", symbol, "--json"]
     if strategies:
         args += ["--strategies", strategies]
-    result: dict[str, Any] = _run_json(args, data_dir=data_dir)
+    # compare runs a full engine backtest per registered strategy — allow well past the default
+    # projection bound, but stay finite so a hung CLI can never pin the request thread.
+    result: dict[str, Any] = _run_json(args, data_dir=data_dir, timeout_seconds=600.0)
     return result

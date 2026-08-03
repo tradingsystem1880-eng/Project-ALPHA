@@ -12,18 +12,29 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0004](0004-two-clock-corporate-actions.md) | Two-clock corporate actions (knowledge time vs ex-date) | Accepted | 2026-06-26 |
 | [0005](0005-point-in-time-firewall.md) | A single point-in-time `as_of` firewall | Accepted | 2026-06-26 |
 | [0006](0006-two-tier-null-model.md) | Two-tier null model (returns-level + full-engine) | Accepted | 2026-06-26 |
-| [0007](0007-deterministic-run-id-and-seeds.md) | Content-addressed run id + independent child seeds | Accepted | 2026-06-26 |
+| [0007](0007-deterministic-run-id-and-seeds.md) | Historical v1/v2 content IDs + positional child seeds | Superseded for v3 by 0013 | 2026-06-26 |
 | [0008](0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted | 2026-07-04 |
 | [0009](0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration | Accepted | 2026-07-04 |
 | [0010](0010-local-kronos-weights-offline-policy.md) | Local Kronos weights + code-wired offline loading policy | Accepted | 2026-07-18 |
 | [0011](0011-evidence-gated-external-integrations.md) | Evidence-gated adoption of external integrations | Accepted | 2026-07-19 |
 | [0012](0012-operational-paper-sessions.md) | Operational paper sessions remain separate from deterministic research runs | Accepted | 2026-07-19 |
+| [0013](0013-run-identity-v3-and-causal-artifacts.md) | Version run identity and publish causal artifact contracts | Accepted | 2026-07-19 |
+| [0014](0014-cli-owned-development-control-plane.md) | Keep development lifecycle state in a CLI-owned control plane | Accepted | 2026-07-19 |
+| [0015](0015-evidence-ledger-not-agent-memory.md) | Store cited evidence revisions, not an agent truth database | Accepted | 2026-07-19 |
+| [0016](0016-isolated-qlib-worker.md) | Isolate Qlib behind immutable JSON/Parquet exchange contracts | Accepted | 2026-07-19 |
 
 ## Conventions
 
 - **Numbering:** zero-padded, sequential, never reused. A superseded ADR keeps its number and links forward to the one that replaces it.
-- **Status:** one of `Proposed` · `Accepted` · `Superseded`. All current records are `Accepted` — they document decisions already live in `main`.
-- **Template:** Status/Date/Deciders header → `Context` → `Decision` → `Options Considered` (each option scored on a `| Dimension | Assessment |` table over Complexity / Cost / Correctness-risk / Fit) → `Trade-off Analysis` → `Consequences` (easier / harder / revisit). Every record cites exact `file:symbol` anchors so it can be checked against the code.
+- **Status:** one of `Proposed` · `Accepted` · `Superseded`. Accepted records capture approved
+  load-bearing decisions; implementation status is reported separately in `CLAUDE.md` and the
+  changelog.
+- **Structure:** Every record keeps the Status/Date/Deciders header plus explicit `Context`,
+  `Decision`, and `Consequences` sections. Options and trade-offs must be recorded in proportion to
+  the decision: concise bullets are acceptable for a narrow choice; a comparison table or separate
+  trade-off section is preferred when several viable options need dimension-by-dimension analysis.
+  Implementation-backed records cite the most precise practical `file:symbol` or test anchors so
+  the decision can be checked against the code.
 - **Deciders:** the AI agents that build and operate the platform (per [`CLAUDE.md`](../../CLAUDE.md)); there is no separate human sign-off step.
 
 ## Candidate future ADRs

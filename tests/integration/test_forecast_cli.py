@@ -10,6 +10,8 @@ import pytest
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
+from alpha_core import DataError
+from alpha_web import _runs
 from tests.fixtures.cli_fixtures import seed_store
 
 runner = CliRunner()
@@ -65,8 +67,10 @@ def test_forecast_run_writes_manifest_paths_quantiles(
     for row in quantiles.iter_rows(named=True):
         assert row["q05"] <= row["q25"] <= row["q50"] <= row["q75"] <= row["q95"]
     history = pl.read_parquet(rdir / "history.parquet")
-    assert history.height == 30  # full fixture (< 120-bar tail cap)
-    assert set(history.columns) == {"ts", "close"}
+    assert history.height == 30  # full fixture (< 180-bar tail cap)
+    assert set(history.columns) == {"ts", "open", "high", "low", "close", "volume"}
+    assert history.select((pl.col("low") <= pl.col("open")).all()).item() is True
+    assert history.select((pl.col("high") >= pl.col("close")).all()).item() is True
 
 
 def test_forecast_run_is_deterministic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -82,6 +86,30 @@ def test_forecast_run_is_deterministic(tmp_path: Path, monkeypatch: pytest.Monke
     assert second.exit_code == 0, second.output
     assert _forecast_dirs(tmp_path) == [rdir]  # same run id -> same dir
     assert (rdir / "manifest.json").read_bytes() == manifest_bytes
+
+
+def test_web_forecast_projection_rejects_tampered_v3_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=30)
+    result = runner.invoke(app, _ARGS)
+    assert result.exit_code == 0, result.output
+    (rdir,) = _forecast_dirs(tmp_path)
+
+    first = _runs.forecast_series(rdir.name, data_dir=tmp_path)
+    assert first is not None and first["history_ohlcv_available"] is True
+    assert _runs.run_record("forecast", rdir.name, data_dir=tmp_path)["run_id"] == rdir.name
+    history = pl.read_parquet(rdir / "history.parquet").with_columns(
+        (pl.col("close") + 1.0).alias("close")
+    )
+    history.write_parquet(rdir / "history.parquet")
+    with pytest.raises(DataError, match="history.parquet (hash|size) mismatch"):
+        _runs.forecast_series(rdir.name, data_dir=tmp_path)
+    with pytest.raises(DataError, match="history.parquet (hash|size) mismatch"):
+        _runs.run_detail(rdir.name, data_dir=tmp_path)
+    with pytest.raises(DataError, match="history.parquet (hash|size) mismatch"):
+        _runs.run_record("forecast", rdir.name, data_dir=tmp_path)
 
 
 def test_forecast_run_warns_on_pretrain_overlap(

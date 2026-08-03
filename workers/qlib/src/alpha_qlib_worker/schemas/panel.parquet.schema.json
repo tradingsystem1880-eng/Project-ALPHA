@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "format": "parquet",
+  "columns": [
+    {"name": "symbol", "physical_type": "BYTE_ARRAY", "logical_type": "UTF8", "nullable": false},
+    {"name": "session_ts", "physical_type": "INT64", "logical_type": "TIMESTAMP_MICROS_UTC", "nullable": false},
+    {"name": "available_at", "physical_type": "INT64", "logical_type": "TIMESTAMP_MICROS_UTC", "nullable": false},
+    {"name": "open", "physical_type": "DOUBLE", "logical_type": null, "nullable": false},
+    {"name": "high", "physical_type": "DOUBLE", "logical_type": null, "nullable": false},
+    {"name": "low", "physical_type": "DOUBLE", "logical_type": null, "nullable": false},
+    {"name": "close", "physical_type": "DOUBLE", "logical_type": null, "nullable": false},
+    {"name": "volume", "physical_type": "DOUBLE", "logical_type": null, "nullable": false}
+  ],
+  "sort_by": ["session_ts", "symbol"],
+  "unique_by": ["session_ts", "symbol"],
+  "minimum_symbols": 20,
+  "minimum_aligned_sessions": 756
+}

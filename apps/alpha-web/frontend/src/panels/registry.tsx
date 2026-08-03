@@ -9,6 +9,9 @@ import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
 import { Glossary } from './Glossary'
 import { JobMonitor } from './JobMonitor'
+import { KronosStudio } from './KronosStudio'
+import { MlDiagnostics } from './MlDiagnostics'
+import { NativeTearSheet } from './NativeTearSheet'
 import { OptionsGreeks } from './OptionsGreeks'
 import { PaperMonitor } from './PaperMonitor'
 import { Pipeline } from './Pipeline'
@@ -19,6 +22,7 @@ import { RunBrowser } from './RunBrowser'
 import { Screener } from './Screener'
 import { RunDetail } from './rundetail'
 import { StrategyLab } from './StrategyLab'
+import { AssetMemory, DevelopmentCenter, MlResearch } from './V3Workbenches'
 import { Workspaces } from './Workspaces'
 import { guarded } from './guarded'
 
@@ -33,6 +37,8 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RunDetail,
   ActivityFeed,
   JobMonitor,
+  KronosStudio,
+  MlDiagnostics,
   Pipeline,
   PaperMonitor,
   StrategyLab,
@@ -45,6 +51,10 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   Workspaces,
   AiConsole,
   Glossary,
+  NativeTearSheet,
+  DevelopmentCenter,
+  MlResearch,
+  AssetMemory,
 }
 
 export const PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = Object.fromEntries(
@@ -68,4 +78,10 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'AiConsole', title: 'AI Research', hint: 'compare·console' },
   { component: 'Workspaces', title: 'Workspaces', hint: 'layouts' },
   { component: 'Glossary', title: 'Glossary', hint: 'metric definitions' },
+  { component: 'NativeTearSheet', title: 'Quant Tear Sheet', hint: 'native·artifact only' },
+  { component: 'KronosStudio', title: 'Kronos Forecast Studio', hint: 'OHLCV paths·calibration' },
+  { component: 'DevelopmentCenter', title: 'Development Center', hint: 'projects·stages' },
+  { component: 'MlResearch', title: 'ML Research', hint: 'Qlib·OOS signals' },
+  { component: 'MlDiagnostics', title: 'ML Signal Tear Sheet', hint: 'IC·folds·LightGBM provenance' },
+  { component: 'AssetMemory', title: 'Asset Memory', hint: 'cited findings·negative results' },
 ]

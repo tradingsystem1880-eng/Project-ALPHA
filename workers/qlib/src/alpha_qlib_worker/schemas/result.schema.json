@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-alpha.local/contracts/qlib/result-v1.schema.json",
+  "title": "Project ALPHA isolated ML worker result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "request_sha256",
+    "snapshot_hash",
+    "config_hash",
+    "worker_lock_hash",
+    "seed",
+    "worker",
+    "predictions",
+    "diagnostics",
+    "diagnostic_only",
+    "counterfactual_refit"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "succeeded"},
+    "request_sha256": {"$ref": "#/$defs/hash"},
+    "snapshot_hash": {"$ref": "#/$defs/hash"},
+    "config_hash": {"$ref": "#/$defs/hash"},
+    "worker_lock_hash": {"$ref": "#/$defs/hash"},
+    "seed": {"type": "integer", "minimum": 0},
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "implementation_version"],
+      "properties": {
+        "kind": {"enum": ["fake", "qlib"]},
+        "implementation_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "predictions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "rows"],
+      "properties": {
+        "path": {"const": "predictions.parquet"},
+        "sha256": {"$ref": "#/$defs/hash"},
+        "rows": {"type": "integer", "minimum": 1}
+      }
+    },
+    "diagnostics": {"type": "object"},
+    "diagnostic_only": {"const": true},
+    "counterfactual_refit": {"const": false}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

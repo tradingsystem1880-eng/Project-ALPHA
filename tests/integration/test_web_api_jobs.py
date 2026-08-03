@@ -6,12 +6,15 @@ cancel are exercised without the engine.
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_cli.control_store import ControlStore
 from alpha_web import _invoke
 from alpha_web.app import create_app
 
@@ -50,6 +53,49 @@ def test_launch_lists_and_gets(monkeypatch: pytest.MonkeyPatch) -> None:
     detail = client.get(f"/api/jobs/{job_id}").json()
     assert any("hi from job" in ln for ln in detail["lines"])
     assert detail["session_id"] is None
+    assert detail["command_path"] == "info"
+    assert detail["progress_mode"] == "terminal"
+    assert detail["progress_fraction"] == 1.0
+    assert detail["elapsed_seconds"] >= 0
+    assert detail["finished_at"] is not None
+
+
+def test_running_job_estimate_uses_only_comparable_successful_session_history(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    previous = _invoke.Job(["forecast", "eval", "SPY", "--horizon", "21"], "forecast")
+    previous.created_at = 100.0
+    previous.finished_at = 220.0
+    previous.finished = True
+    previous.returncode = 0
+    current = _invoke.Job(["forecast", "eval", "AMZN", "--horizon", "21"], "forecast")
+    current.created_at = 300.0
+    monkeypatch.setattr(_invoke, "JOBS", {previous.job_id: previous, current.job_id: current})
+
+    summary = current.summary(now=360.0)
+
+    assert summary["command_path"] == "forecast eval"
+    assert summary["progress_mode"] == "estimated"
+    assert summary["progress_fraction"] == pytest.approx(0.5)
+    assert summary["eta_seconds"] == pytest.approx(60.0)
+    assert summary["eta_sample_count"] == 1
+
+
+def test_running_job_without_history_is_indeterminate_and_names_current_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = _invoke.Job(["validate", "AAPL"], "runs")
+    job.created_at = 100.0
+    job._append("\x1b[32mloading causal artifacts\x1b[0m")
+    monkeypatch.setattr(_invoke, "JOBS", {job.job_id: job})
+
+    summary = job.summary(now=145.0)
+
+    assert summary["progress_mode"] == "indeterminate"
+    assert summary["progress_fraction"] is None
+    assert summary["eta_seconds"] is None
+    assert summary["elapsed_seconds"] == pytest.approx(45.0)
+    assert summary["current_step"] == "loading causal artifacts"
 
 
 def test_job_projects_paper_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -92,3 +138,41 @@ def test_cancel_running_job(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cancel_unknown_is_404() -> None:
     assert TestClient(create_app()).delete("/api/jobs/nope").status_code == 404
+
+
+def test_direct_kronos_launches_share_durable_atomic_capacity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    priorities: list[tuple[int, int, int]] = []
+    monkeypatch.setattr(
+        os,
+        "setpriority",
+        lambda which, pid, priority: priorities.append((which, pid, priority)),
+    )
+    _fake(monkeypatch, "import time; print('started', flush=True); time.sleep(10)")
+    client = TestClient(create_app())
+
+    first = client.post("/api/jobs", json={"command": "forecast run", "args": "SPY --model fake"})
+    assert first.status_code == 200, first.text
+    job_id = first.json()["job_id"]
+    durable = ControlStore(tmp_path).get_job(job_id)
+    assert durable["kind"] == "kronos_forecast"
+    assert durable["status"] == "running"
+    process = _invoke.JOBS[job_id]._proc
+    assert process is not None
+    assert priorities == [(os.PRIO_PROCESS, process.pid, 10)]
+
+    blocked = client.post("/api/jobs", json={"args": "forecast eval SPY --model fake"})
+    assert blocked.status_code == 409, blocked.text
+    assert "heavyweight job capacity is occupied" in blocked.json()["detail"]
+
+    assert client.delete(f"/api/jobs/{job_id}").status_code == 200
+    assert _wait_status(client, job_id, "cancelled") == "cancelled"
+    assert ControlStore(tmp_path).get_job(job_id)["status"] == "cancelled"
+
+    released = client.post("/api/jobs", json={"args": "forecast eval SPY --model fake"})
+    assert released.status_code == 200, released.text
+    released_job_id = released.json()["job_id"]
+    assert client.delete(f"/api/jobs/{released_job_id}").status_code == 200
+    assert _wait_status(client, released_job_id, "cancelled") == "cancelled"

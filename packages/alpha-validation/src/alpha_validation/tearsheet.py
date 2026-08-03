@@ -14,6 +14,7 @@ from __future__ import annotations
 import dataclasses
 import html
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +26,8 @@ from alpha_validation.metrics import FloatArray
 from alpha_validation.verdict import VerdictSummary
 
 _SCHEMA_VERSION = 2  # 2: null tiers carry convention_divergence / flagged_low_fidelity
+_QUANTSTATS_SVG_HASH_SALT = "project-alpha-quantstats-v3"
+_SVG_GENERATED_DATE = re.compile(r"\s*<dc:date>[^<]*</dc:date>")
 
 
 @dataclass(frozen=True)
@@ -419,8 +422,9 @@ def _render_with_section(
 
     The heavy rendering stack (matplotlib/quantstats) is imported lazily so merely importing
     ``alpha_validation`` stays cheap. ``periods_per_year`` is passed through explicitly because
-    quantstats defaults to 365 (calendar) — our daily convention is 252. The HTML carries volatile
-    fields (timestamps, fonts) and is deliberately outside the byte-identity guarantee (spec §11.4).
+    quantstats defaults to 365 (calendar) — our daily convention is 252. QuantStats embeds
+    Matplotlib SVGs, so the SVG hash salt is fixed and its wall-clock creation metadata is removed
+    before publication. This keeps identical exports byte-stable across fresh processes.
     """
     if len(returns) != len(timestamps):
         raise DataError(
@@ -443,10 +447,12 @@ def _render_with_section(
     # quantstats interpolates the title into its HTML unescaped; strip markup-significant
     # characters so a hostile symbol string cannot inject script into the served tear sheet
     safe_title = title.replace("<", "").replace(">", "").replace("&", "")
-    qs.reports.html(
-        series, output=str(output_path), title=safe_title, periods_per_year=periods_per_year
-    )
+    with matplotlib.rc_context({"svg.hashsalt": _QUANTSTATS_SVG_HASH_SALT}):
+        qs.reports.html(
+            series, output=str(output_path), title=safe_title, periods_per_year=periods_per_year
+        )
     rendered = output_path.read_text(encoding="utf-8")
+    rendered = _SVG_GENERATED_DATE.sub("", rendered)
     marker = "</body>"
     injected = (
         rendered.replace(marker, section_html + marker, 1)

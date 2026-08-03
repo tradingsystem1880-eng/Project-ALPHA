@@ -31,6 +31,7 @@ interface Props<T> {
   onRowDoubleClick?: (row: T) => void
   onRowEnter?: (row: T) => void
   rowClass?: (row: T) => string
+  rowCurrent?: (row: T) => boolean
   /** Rendered when the (filtered) table is empty. */
   empty?: ReactNode
   initialSorting?: SortingState
@@ -44,6 +45,7 @@ export function DataTable<T>({
   onRowDoubleClick,
   onRowEnter,
   rowClass,
+  rowCurrent,
   empty,
   initialSorting = [],
 }: Props<T>) {
@@ -88,6 +90,7 @@ export function DataTable<T>({
       key={row.id}
       style={style}
       className={rowClass?.(row.original) ?? ''}
+      aria-current={rowCurrent?.(row.original) || undefined}
       tabIndex={onRowClick || onRowEnter ? 0 : undefined}
       onClick={onRowClick ? () => onRowClick(row.original) : undefined}
       onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row.original) : undefined}
