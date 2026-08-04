@@ -1,9 +1,11 @@
+import json
 from datetime import date
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from alpha_cli import data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
 from alpha_data.adapters.base import FetchResult
@@ -96,6 +98,12 @@ def test_pull_then_snapshot_then_verify(tmp_path: Path, monkeypatch: pytest.Monk
     assert r3.exit_code == 0, r3.output
     assert "ok" in r3.output.lower()
 
+    status = runner.invoke(app, ["data", "source-status", "AAPL", "--json"])
+    assert status.exit_code == 0, status.output
+    payload = json.loads(status.stdout)
+    assert payload["provenance"]["source"] == "fake"
+    assert payload["promotion_pending"] is False
+
 
 def test_pull_fails_loud_on_blocked_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # A gated/blocked source raises DataError; the CLI must show a clean message, not a traceback.
@@ -138,6 +146,39 @@ def test_pull_rejects_malformed_date(tmp_path: Path, monkeypatch: pytest.MonkeyP
     )
     assert r.exit_code == 2
     assert "YYYY-MM-DD" in r.output and "Traceback" not in r.output
+
+
+def test_audit_and_explicit_repair_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    quality = tmp_path / "store" / "candidates" / "tiingo" / "receipt" / "quality.json"
+    quality.parent.mkdir(parents=True)
+    quality.write_text('{"status":"passed","symbol":"SPY"}', encoding="utf-8")
+    audited = runner.invoke(app, ["data", "audit", "tiingo", "receipt", "--json"])
+    assert audited.exit_code == 0 and json.loads(audited.stdout)["status"] == "passed"
+
+    class Outcome:
+        provider = "tiingo"
+        receipt_id = "receipt"
+        symbol = "SPY"
+
+    monkeypatch.setattr(data_cmds, "promote_quarantined", lambda *args, **kwargs: Outcome())
+    repaired = runner.invoke(
+        app,
+        ["data", "repair", "tiingo", "receipt", "--approve-differences"],
+    )
+    assert repaired.exit_code == 0 and "promoted reviewed receipt" in repaired.output
+    monkeypatch.setattr(
+        data_cmds,
+        "rollback_interrupted_promotion",
+        lambda *args, **kwargs: None,
+    )
+    rolled_back = runner.invoke(
+        app,
+        ["data", "rollback-promotion", "SPY", "--acknowledge"],
+    )
+    assert rolled_back.exit_code == 0 and "restored pre-promotion" in rolled_back.output
 
 
 def test_snapshot_fails_loud_on_unknown_symbol(

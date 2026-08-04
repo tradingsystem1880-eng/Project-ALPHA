@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "instruments": [
+    {
+      "symbol": "SPY",
+      "provider_symbol": "SPY",
+      "instrument_id": "SPY.ARCA",
+      "asset_class": "etf",
+      "venue": "ARCX",
+      "calendar": "XNYS",
+      "currency": "USD",
+      "history_start": "2000-01-03",
+      "correction_delay_minutes": 120,
+      "nav": 100000.0,
+      "strategy": "ts_momentum",
+      "strategy_params": {},
+      "lookback": 252,
+      "skip": 21,
+      "vol_window": 63,
+      "target_vol": 0.15,
+      "rebalance_every": 21,
+      "cutoff_minutes_after_open": 5
+    }
+  ]
+}

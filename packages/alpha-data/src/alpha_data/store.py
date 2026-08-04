@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from alpha_core import CorporateAction, DataError
 from alpha_data._atomic import publish, write_text
+from alpha_data.adapters.base import DatasetIdentity, FetchReceipt
 
 _BAR_COLUMNS = ["ts", "open", "high", "low", "close", "volume"]
 
@@ -31,6 +32,34 @@ class ParquetStore:
         # slash kept as a subdirectory (BTC/USD -> bars/BTC/USD.parquet) so it never
         # collides with a literal BTC_USD; `..` etc. are rejected above for traversal safety.
         return self.root / "bars" / f"{symbol}.parquet"
+
+    def _promotion_path(self, symbol: str) -> Path:
+        if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):
+            raise DataError(f"invalid symbol for storage: {symbol!r}")
+        return self.root / "promotions" / f"{symbol}.json"
+
+    def promotion_pending(self, symbol: str) -> bool:
+        return self._promotion_path(symbol).exists()
+
+    def begin_promotion(self, symbol: str, payload: dict[str, object]) -> None:
+        """Publish a fail-closed marker before replacing canonical peer files."""
+        path = self._promotion_path(symbol)
+        if path.exists():
+            raise DataError(f"canonical promotion already pending for {symbol!r}")
+        write_text(path, json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n")
+
+    def finish_promotion(self, symbol: str) -> None:
+        path = self._promotion_path(symbol)
+        if not path.exists():
+            raise DataError(f"no canonical promotion pending for {symbol!r}")
+        path.unlink()
+
+    def _require_stable(self, symbol: str) -> None:
+        if self.promotion_pending(symbol):
+            raise DataError(
+                f"canonical data for {symbol!r} has an interrupted promotion; "
+                "run the explicit data repair workflow"
+            )
 
     def write_bars(self, symbol: str, df: pl.DataFrame) -> Path:
         """Write bars for symbol. REPLACES the symbol's data wholesale (no append/merge).
@@ -54,6 +83,7 @@ class ParquetStore:
         return path
 
     def read_bars(self, symbol: str) -> pl.DataFrame:
+        self._require_stable(symbol)
         path = self._bars_path(symbol)
         if not path.exists():
             raise DataError(f"no bars stored for symbol {symbol!r} at {path}")
@@ -84,6 +114,7 @@ class ParquetStore:
         return path
 
     def read_actions(self, symbol: str) -> list[CorporateAction]:
+        self._require_stable(symbol)
         path = self._actions_path(symbol)
         if not path.exists():
             return []
@@ -107,15 +138,33 @@ class ParquetStore:
         source: str,
         adapter_version: str,
         parser_version: str,
+        identity: DatasetIdentity | None = None,
+        receipt: FetchReceipt | None = None,
     ) -> Path:
         """Atomically bind the current symbol bytes to the adapter that pulled them."""
-        values = {
+        values: dict[str, object] = {
             "source": source,
             "adapter_version": adapter_version,
             "parser_version": parser_version,
         }
-        if any(not value.strip() for value in values.values()):
+        if any(not value.strip() for value in (source, adapter_version, parser_version)):
             raise DataError("data provenance values must be non-empty strings")
+        if (identity is None) != (receipt is None):
+            raise DataError("versioned provenance requires both dataset identity and fetch receipt")
+        if identity is not None and receipt is not None:
+            if identity.symbol != symbol or identity.provider != source:
+                raise DataError("provenance dataset does not match symbol/source")
+            if (
+                receipt.adapter_version != adapter_version
+                or receipt.parser_version != parser_version
+            ):
+                raise DataError("provenance versions do not match fetch receipt")
+            values = {
+                "schema_version": 2,
+                **values,
+                "dataset": identity.to_dict(),
+                "receipt": receipt.to_dict(),
+            }
         path = self._provenance_path(symbol)
         write_text(path, json.dumps(values, indent=2, sort_keys=True, allow_nan=False) + "\n")
         return path
@@ -124,8 +173,9 @@ class ParquetStore:
         """Invalidate provenance before replacing bytes so stale evidence cannot survive a crash."""
         self._provenance_path(symbol).unlink(missing_ok=True)
 
-    def read_provenance(self, symbol: str) -> dict[str, str] | None:
+    def read_provenance(self, symbol: str) -> dict[str, object] | None:
         """Read strict pull provenance, or ``None`` for a legacy/manually seeded symbol."""
+        self._require_stable(symbol)
         path = self._provenance_path(symbol)
         if not path.exists():
             return None
@@ -133,11 +183,27 @@ class ParquetStore:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
             raise DataError(f"corrupt data provenance for {symbol!r} at {path}") from exc
-        fields = {"source", "adapter_version", "parser_version"}
-        if (
-            not isinstance(raw, dict)
-            or set(raw) != fields
-            or any(not isinstance(raw[name], str) or not raw[name].strip() for name in fields)
-        ):
+        legacy_fields = {"source", "adapter_version", "parser_version"}
+        if not isinstance(raw, dict):
             raise DataError(f"invalid data provenance for {symbol!r} at {path}")
-        return {name: raw[name] for name in sorted(fields)}
+        if set(raw) == legacy_fields:
+            if any(
+                not isinstance(raw[name], str) or not raw[name].strip() for name in legacy_fields
+            ):
+                raise DataError(f"invalid data provenance for {symbol!r} at {path}")
+            return {name: raw[name] for name in sorted(legacy_fields)}
+        versioned_fields = {*legacy_fields, "schema_version", "dataset", "receipt"}
+        if set(raw) != versioned_fields or raw.get("schema_version") != 2:
+            raise DataError(f"invalid data provenance for {symbol!r} at {path}")
+        if any(not isinstance(raw[name], str) or not raw[name].strip() for name in legacy_fields):
+            raise DataError(f"invalid data provenance for {symbol!r} at {path}")
+        identity = DatasetIdentity.from_dict(raw["dataset"])
+        receipt = FetchReceipt.from_dict(raw["receipt"])
+        if (
+            identity.symbol != symbol
+            or identity.provider != raw["source"]
+            or receipt.adapter_version != raw["adapter_version"]
+            or receipt.parser_version != raw["parser_version"]
+        ):
+            raise DataError(f"mismatched data provenance for {symbol!r} at {path}")
+        return raw

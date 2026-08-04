@@ -122,6 +122,64 @@ def test_published_artifact_is_idempotent_but_never_replaced(tmp_path: Path) -> 
     assert artifact.read_bytes() == original_artifact
 
 
+def test_manifest_rejects_replacement_and_incomplete_required_contract(tmp_path: Path) -> None:
+    rdir = tmp_path / "runs" / "0123456789abcdef"
+    rdir.mkdir(parents=True)
+    original = {
+        "run_id": rdir.name,
+        "command": "test_fixture",
+        "label": "original",
+        **_identity(),
+    }
+    _artifacts.write_manifest(rdir, original)
+
+    with pytest.raises(DataError, match="immutable manifest"):
+        _artifacts.write_manifest(rdir, {**original, "label": "replacement"})
+
+    incomplete = tmp_path / "runs" / "fedcba9876543210"
+    incomplete.mkdir(parents=True)
+    with pytest.raises(DataError, match="missing artifacts"):
+        _artifacts.write_manifest(
+            incomplete,
+            {"run_id": incomplete.name, "command": "backtest_run", **_identity()},
+        )
+
+
+def test_manifest_rejects_a_different_concurrent_winner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rdir = tmp_path / "runs" / "0123456789abcdef"
+    rdir.mkdir(parents=True)
+
+    def collide(source: Path, destination: Path) -> None:
+        winner = json.loads(source.read_text(encoding="utf-8"))
+        winner["label"] = "concurrent-winner"
+        destination.write_text(json.dumps(winner), encoding="utf-8")
+        raise FileExistsError
+
+    monkeypatch.setattr("alpha_cli._artifacts.os.link", collide)
+    with pytest.raises(DataError, match="concurrently published with different content"):
+        _artifacts.write_manifest(
+            rdir,
+            {"run_id": rdir.name, "command": "test_fixture", **_identity()},
+        )
+    assert not list(rdir.glob(".manifest.json.*.tmp"))
+
+
+def test_manifest_reader_rejects_corrupt_and_non_object_json(tmp_path: Path) -> None:
+    rdir = tmp_path / "runs" / "0123456789abcdef"
+    rdir.mkdir(parents=True)
+    manifest = rdir / "manifest.json"
+
+    manifest.write_text("{", encoding="utf-8")
+    with pytest.raises(DataError, match="corrupt run manifest"):
+        _artifacts.read_manifest(rdir)
+
+    manifest.write_text("[]", encoding="utf-8")
+    with pytest.raises(DataError, match="expected a JSON object"):
+        _artifacts.read_manifest(rdir)
+
+
 @pytest.mark.parametrize("schema_version", [1, 2])
 def test_v1_v2_manifests_remain_readable(tmp_path: Path, schema_version: int) -> None:
     rdir = tmp_path / "runs" / f"{schema_version:016x}"

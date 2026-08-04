@@ -78,14 +78,14 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | Package | Layer | Charter | May import |
 |---|---|---|---|
 | `alpha_core` | 0 — domain | Frozen domain types, typed errors/settings, structural protocols including the low-volume operational `ExecutionEventSink`; paper opt-in defaults false. | *(nothing internal)* |
-| `alpha_data` | 1 — data | Ingestion adapters, raw Parquet store, **point-in-time `as_of` firewall**, corporate-action clocks, immutable hashed snapshots; CCXT pull provenance is venue-qualified, persisted per symbol, and copied into hashed snapshot sidecars so exchanges cannot be relabelled. | `core` |
-| `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming and venue-increment quantity normalization preserve the SIM path. | `core` |
+| `alpha_data` | 1 — data | Receipt-backed Tiingo EOD and provider-derived ingestion, raw Parquet store, candidate quality/quarantine/promotion recovery, **point-in-time `as_of` firewall**, corporate-action clocks, and immutable hashed snapshots. CCXT provenance remains venue-qualified. | `core` |
+| `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_forecast` | 1 — model | Kronos foundation-model facade: vendored pinned weights code, typed `Forecaster` protocol, per-sample OHLCV paths, deterministic seeding, offline `FakeForecaster`. torch/pandas confined inside; importing the package never imports torch. See [ADR-0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md). | `core` |
 | `alpha_options` | 1 — analytics | Pure Black–Scholes pricing, Greeks, and implied volatility. | `core` |
 | `alpha_screener` | 1 — market edge | Typed Finnhub quote/news parsing plus the opt-in API-key-gated network adapter. | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
-| `alpha_cli` | 3 — compose/control | The **only** composition layer. Owns deterministic research orchestration, v3 run/artifact contracts, the SQLite project/job/evidence control plane, isolated-worker exchange validation, provider/system registry, verified Binance paper admission/node assembly, and the separate public operational paper journal. Engine imports are lazy. | everything in the root DAG |
+| `alpha_cli` | 3 — compose/control | The **only** composition layer. Owns deterministic research orchestration, v3 run/artifact contracts, the SQLite project/job/evidence control plane, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
 | `alpha_mcp` | 4 — surface | stdio MCP server exposing 42 bounded tools: 12 retained generic tools plus 30 typed v3 resources/actions for projects, stages, durable job/suite cancellation and reconciliation, evidence, charts/comparisons, and ML planning/launch. Retained deprecated action options use closed, bounded per-tool vocabularies. **Subprocesses the `alpha` CLI**, composes nothing, cannot reveal a holdout or place orders. | `core`, supported public `cli` seams |
 | `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed six-desk SPA. Subprocesses CLI actions/projections and renders typed artifacts/control records; it never queries SQLite, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
 | `workers/qlib` | isolated process | Daily cross-sectional Alpha158-style/LightGBM training with fold-local preprocessing. Accepts an immutable exchange bundle and returns validated close-stamped OOS predictions; models/pickles never cross the boundary. | its own `pyqlib`/LightGBM lock only |
@@ -105,7 +105,9 @@ below so an in-sample portfolio can never leak into scored execution:
 
 ```mermaid
 flowchart TD
-    A["provider-derived adapters<br/>yfinance · ccxt:venue · stooq"] --> B["ParquetStore<br/>raw unadjusted OHLCV + actions"]
+    A["providers<br/>Tiingo/CCXT authority · Yahoo/Stooq comparison"] --> R["immutable receipt<br/>identity · versions · response hash"]
+    R --> Q["provider candidate<br/>quality gate or quarantine"]
+    Q --> B["canonical ParquetStore<br/>raw unadjusted OHLCV + actions"]
     B --> C{{"PointInTimeReader.as_of<br/>look-ahead firewall: ts ≤ when"}}
     C --> D["PointInTimeSource.as_of<br/>typed Bars (split-adjusted)"]
     D --> E["strategy signal<br/>trailing window only"]
@@ -120,8 +122,10 @@ flowchart TD
 <details><summary>ASCII fallback</summary>
 
 ```
-provider-derived adapters (yfinance/ccxt:venue/stooq)
-   → ParquetStore (raw, unadjusted OHLCV + corporate actions)
+providers (Tiingo/CCXT authority; Yahoo/Stooq comparison)
+   → immutable response receipt + dataset identity
+   → provider candidate → quality gate/quarantine
+   → canonical ParquetStore (raw, unadjusted OHLCV + corporate actions)
    → PointInTimeReader.as_of   ── look-ahead firewall: filter ts ≤ when ──┐
    → PointInTimeSource.as_of   ── typed Bars, split-adjusted              │ strategies read ONLY here
    → strategy signal           ── trailing-window only (no peek)          ┘
@@ -135,6 +139,12 @@ provider-derived adapters (yfinance/ccxt:venue/stooq)
 </details>
 
 Two firewalls govern correctness end-to-end: the **PIT `as_of` seam** (no strategy ever sees a future bar — **[ADR-0005](adr/0005-point-in-time-firewall.md)**) and the **t+1 fill encoding** (a decision on the close of `t` can only fill at the open of `t+1` — **[ADR-0003](adr/0003-t+1-fill-encoding.md)**). The gauntlet's headline gate is a **two-tier null** that the observed result must beat in *both* tiers — **[ADR-0006](adr/0006-two-tier-null-model.md)**.
+
+QuantPad currently sits outside this canonical flow: Codex uses its OAuth MCP server only for
+symbol/schema/coverage discovery and bounded previews, while bulk historical bars/ticks/L1/L2 use
+the official REST/Python API. Those downloads remain research scratch input until they enter the
+same receipt → candidate → quality/quarantine path through a tested adapter. They cannot directly
+feed strategies, snapshots, charts, or paper intents. See **[ADR-0018](adr/0018-quantpad-external-research-data-boundary.md)**.
 
 The two surfaces wrap this same loop without re-implementing it:
 
@@ -203,27 +213,36 @@ surface itself crashes, an operating-system child may survive: reconciliation ca
 orphan is dead or that physical heavyweight capacity is free, so an operator must confirm/reap it
 before reconciling and relaunching. There is intentionally no automatic PID recovery.
 
-The operational paper plane deliberately shares strategy code but not research identity:
+The operational paper plane deliberately shares strategy code but not research identity. Crypto
+retains public Binance data with local Sandbox execution; equities consume only scheduler-issued
+Tiingo snapshot intents through native IBKR Paper:
 
 ```mermaid
 flowchart LR
-    REG["CLI ProviderDefinition registry"] --> HIST["verified fresh ccxt:binance snapshot"]
-    HIST --> PRIME["same rule strategy<br/>prime_history: no orders"]
-    PRIME --> NODE["Nautilus TradingNode"]
-    NODE --> DATA["public Binance LIVE data"]
-    NODE --> EXEC["local Sandbox execution<br/>venue BINANCE"]
-    NODE --> SINK["ExecutionEventSink"]
+    REG["CLI ProviderDefinition registry"] --> CRYPTO["verified ccxt:binance snapshot"]
+    CRYPTO --> BINANCE["Nautilus<br/>public Binance data + local Sandbox"]
+    REG --> TIINGO["Tiingo receipt → gate → snapshot"]
+    TIINGO --> SIM["deterministic Nautilus simulation"]
+    SIM --> INTENT["immutable one-shot OrderIntent<br/>strategy + snapshot + target + cutoff"]
+    INTENT --> IB["Nautilus native IBKR Paper<br/>loopback:4002 · DU account · reconciliation"]
+    BINANCE --> SINK["ExecutionEventSink"]
+    IB --> SINK
     SINK --> PAPER[("data_dir/paper/session UUID<br/>session.json + atomic events")]
     WEB["Workstation Paper Monitor"] --> PAPER
 ```
 
-Admission requires `ALPHA_PAPER_ENABLED=true`, a supported rule strategy, and an immutable
-same-symbol snapshot whose source is exactly `ccxt:binance`; future, stale, insufficient, or
-hash-invalid history fails before node/network construction. Public Binance data is the only live
-client and Nautilus local sandbox is the only execution client. No Binance execution client,
-testnet/live-order mode, or real-order credential surface exists. Mutable UUID/PID/heartbeat/event
-state never enters `RUN_DIRS`, `RunSpec`, run hashing, or validation evidence. See
-[ADR-0012](adr/0012-operational-paper-sessions.md).
+Binance admission requires `ALPHA_PAPER_ENABLED=true`, a supported rule strategy, and an immutable
+same-symbol `ccxt:binance` snapshot; only public data and local Nautilus Sandbox execution exist.
+IBKR admission additionally requires a qualified Tiingo snapshot, exact unexpired scheduler intent,
+both paper enable flags, loopback paper port 4002, a digest-pinned gateway, a `DU…` account,
+instrument/client-ID allowlists, a quote no older than five seconds, and exact account/journal
+reconciliation. An atomic release claim makes the intent hash one-shot across process restarts; the
+same hash is journaled before submission and becomes the broker client-order ID. Reconciled
+overnight units seed the strategy's target delta rather than assuming a flat account.
+Safe stop cancels ALPHA DAY orders and never flattens. Mutable UUID/PID/heartbeat/event state never
+enters `RUN_DIRS`, `RunSpec`, run hashing, or strategy-validation evidence. See
+[ADR-0012](adr/0012-operational-paper-sessions.md) and
+[ADR-0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md).
 
 ## 5. Cross-cutting Invariants
 
@@ -240,11 +259,13 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **Model weights are local and machine-scoped.** The Kronos cache path and offline-only switch never enter run ids or manifests; missing offline weights fail loudly before network access. → [ADR-0010](adr/0010-local-kronos-weights-offline-policy.md)
 - **External integrations are evidence-gated.** A repository recommendation is not an adoption decision; every new integration must prove a missing capability, boundary fit, maintenance and license posture, deterministic behavior, and a replacement path. → [ADR-0011](adr/0011-evidence-gated-external-integrations.md)
 - **Operational sessions are not research runs.** Paper sessions use UUIDs, clocks, heartbeats, and an operational event journal outside deterministic `RUN_DIRS`; they never become validation evidence or alter a research `run_id`. → [ADR-0012](adr/0012-operational-paper-sessions.md)
+- **Vendor bytes qualify before strategy visibility.** Tiingo daily responses become immutable receipts and candidates; only the configured authority can auto-promote after every critical check, and no comparison feed can silently replace it. → [ADR-0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)
+- **QuantPad discovery and bulk payloads are separate.** MCP is for bounded discovery/previews; the official API/SDK is for bulk historical research. Neither becomes canonical or paper-authoritative without receipt-backed qualification. → [ADR-0018](adr/0018-quantpad-external-research-data-boundary.md)
 - **Development state is external lineage.** Mutable projects, stages, attempts, sealed holdouts, jobs, and decisions are atomic CLI-owned SQLite records; immutable manifests are never edited to attach workflow state. Append-only project-scope selection events support point-in-time AgentBrief projections. Direct and suite Qlib/Kronos launches share one transactional capacity class. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
 - **Evidence is cited, revisioned, and time-aware.** Agent findings begin as drafts and must name exact run/artifact/field selectors; supplied experiment/version links must match the immutable lineage. As-of AgentBrief reads filter version/experiment scope, stages, run links, holdout audit, and evidence to the requested cutoff; no opaque vector memory is authoritative. → [ADR-0015](adr/0015-evidence-ledger-not-agent-memory.md)
 - **Qlib is isolated; ALPHA replay is authoritative.** The root runtime never imports Qlib/LightGBM or deserializes models. Fold-local, close-stamped predictions must pass strict contract and future-leakage validation before synchronized canonical replay. Qlib diagnostics remain advisory, and replay is labeled model-not-recomputed until a counterfactual retraining design exists. → [ADR-0016](adr/0016-isolated-qlib-worker.md)
 - **Surface state is bounded and recoverable.** REST publishes an explicit contract version and endpoint limits; chart windows filter bars and every linked evidence series together; tear sheets report downsampling bounds; the saved-layout migrator persists v3 only after Dockview accepts the whole migrated v2 document; direct and suite durable jobs rehydrate, expose failure, and use owner-driven heartbeat/cancellation/reconciliation rather than raw PID authority. Journal recovery alone does not prove an orphan child has stopped.
-- **Paper means local sandbox only.** Launch is disabled by default; public Binance market data has no order authority, stale heartbeat never authorizes a PID kill, and Kronos has no live-paper support without a separately approved causal cache.
+- **Paper authority is narrow and never live capital.** Crypto execution is local Sandbox only. IBKR is paper-account only and consumes an exact immutable intent after reconciliation, dual flags, fresh quote, and cutoff checks. Futures remain connectivity probes, not research. Kronos has no live-paper support without a separately approved causal cache.
 - **No implicit project license.** ALPHA has no root license declaration; distribution/publication is blocked on an explicit owner decision and exact dependency/notice review.
 
 ## 6. Key Decisions (ADR index)
@@ -252,7 +273,6 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 | ADR | Decision | Status |
 |---|---|---|
 | [0001](adr/0001-strict-layered-dag.md) | Strict layered DAG enforced by `import-linter` (not convention) | Accepted |
-| [0002](adr/0002-cli-sole-composer-subprocess-surfaces.md) | `alpha_cli` is the sole composer; `alpha_mcp`/`alpha_web` subprocess the CLI | Accepted |
 | [0003](adr/0003-t+1-fill-encoding.md) | t+1 fills via a dual-event feed (`QuoteTick` at open + close-stamped decision `Bar`) | Accepted |
 | [0004](adr/0004-two-clock-corporate-actions.md) | Two-clock corporate actions; dividends decoupled as cash, never folded into prices | Accepted |
 | [0005](adr/0005-point-in-time-firewall.md) | A single point-in-time `as_of` firewall, guarded by future-poison tests | Accepted |
@@ -267,6 +287,8 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 | [0014](adr/0014-cli-owned-development-control-plane.md) | SQLite project/stage/job/holdout state is CLI-owned external lineage | Accepted |
 | [0015](adr/0015-evidence-ledger-not-agent-memory.md) | Append-only cited evidence replaces opaque agent memory | Accepted |
 | [0016](adr/0016-isolated-qlib-worker.md) | Qlib/LightGBM remain in a separately locked process with validated prediction exchange | Accepted |
+| [0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md) | Qualify authoritative daily data before releasing broker-paper intents | Accepted |
+| [0018](adr/0018-quantpad-external-research-data-boundary.md) | Separate QuantPad MCP discovery from API/SDK bulk research data | Accepted |
 
 ## 7. References
 
@@ -276,6 +298,7 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - [`research/07-architecture-ai-workflow.md`](../research/07-architecture-ai-workflow.md) — repo layout, tooling, and AI build-workflow rationale.
 - [`audit/2026-07-19-post-v2-architecture-audit.md`](audit/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
 - [`superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
+- [`superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
 - [`superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
 - [`superpowers/specs/2026-07-19-workstation-v3-development-control-plane-design.md`](superpowers/specs/2026-07-19-workstation-v3-development-control-plane-design.md) — durable lifecycle, suites, jobs, and sealed-holdout contract.
 - [`superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md`](superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md) — cited evidence ledger and bounded agent interface contract.

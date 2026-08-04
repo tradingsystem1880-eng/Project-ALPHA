@@ -16,7 +16,7 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
     ids = [provider.id for provider in providers]
 
     assert len(ids) == len(set(ids))
-    assert {"yfinance", "ccxt", "stooq", "finnhub", "binance"} == set(ids)
+    assert {"yfinance", "ccxt", "stooq", "tiingo", "finnhub", "binance", "ibkr"} == set(ids)
     historical_ids = {
         provider.id for provider in providers_with_capability("historical_bars", providers)
     }
@@ -24,6 +24,7 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "yfinance",
         "ccxt",
         "stooq",
+        "tiingo",
     }
     assert all(
         provider.historical_adapter_factory is not None
@@ -79,3 +80,23 @@ def test_ccxt_adapter_provenance_is_venue_qualified_and_rejects_other_exchanges(
     assert CCXTAdapter(exchange="binance").name == "ccxt:binance"
     with pytest.raises(DataError, match="unsupported CCXT exchange"):
         CCXTAdapter(exchange="kraken")
+
+
+def test_tiingo_is_authoritative_daily_equity_provider() -> None:
+    tiingo = next(
+        provider for provider in provider_definitions(environ={}) if provider.id == "tiingo"
+    )
+    assert tiingo.asset_classes == ("stock", "etf")
+    assert tiingo.timeframes == ("1D",)
+    assert tiingo.research_authority is True
+    assert tiingo.paper_execution is False
+    assert tiingo.budget_tier == "free_500_symbols"
+    assert [credential.name for credential in tiingo.credential_env] == ["ALPHA_TIINGO_API_KEY"]
+
+
+def test_ibkr_is_paper_only_and_never_a_research_authority() -> None:
+    ibkr = next(provider for provider in provider_definitions(environ={}) if provider.id == "ibkr")
+    assert ibkr.asset_classes == ("stock", "etf", "future")
+    assert ibkr.research_authority is False
+    assert ibkr.paper_execution is True
+    assert "paper_execution" in ibkr.capabilities

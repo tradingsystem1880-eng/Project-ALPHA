@@ -52,7 +52,7 @@ function seriesMarker(marker: EvidenceMarker, selected: boolean): SeriesMarker<U
           : 'square',
     color: markerColor(marker),
     size: selected ? 1.8 : 1.1,
-    ...(selected ? { text: marker.label } : {}),
+    ...(selected || marker.id.startsWith('paper:') ? { text: marker.label } : {}),
   }
 }
 

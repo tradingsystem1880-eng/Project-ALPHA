@@ -24,6 +24,7 @@ import type {
   OptimTrials,
   PaperEvent,
   PaperJobSummary,
+  PaperReadinessReport,
   PaperSession,
   PortfolioAnalyticsProjection,
   PropfirmPaths,
@@ -315,6 +316,7 @@ export const api = {
   createMlExperiment: (projectId: string): Promise<MlExperimentJobAccepted> =>
     postJSON('/api/ml/experiments', { project_id: projectId }),
   paperSessions: (): Promise<PaperSession[]> => getJSON('/api/paper/sessions'),
+  paperReadiness: (): Promise<PaperReadinessReport> => getJSON('/api/paper/readiness'),
   paperSession: (id: string): Promise<PaperSession> =>
     getJSON(`/api/paper/sessions/${encodeURIComponent(id)}`),
   paperEvents: (id: string, after = 0): Promise<PaperEvent[]> =>

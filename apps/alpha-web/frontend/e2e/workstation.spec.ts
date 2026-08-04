@@ -14,6 +14,7 @@ const DESKS = [
 const EMPTY_PAGE = { items: [], limit: 50, offset: 0, has_more: false }
 const SYSTEM_STATUS = {
   paper_enabled: false,
+  ibkr_paper_enabled: false,
   counts: { symbols: 0, snapshots: 0 },
   data_dir: {
     path: '/deterministic-test-data',
@@ -427,6 +428,16 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === '/api/jobs') return options.jobs ?? []
   if (url.pathname === '/api/workspaces') return []
   if (url.pathname === '/api/paper/sessions') return []
+  if (url.pathname === '/api/paper/readiness') return {
+    schema_version: 1,
+    status: 'pending',
+    paper_passed: false,
+    requirements: [],
+    blocking_events: [],
+    futures_research_supported: false,
+    live_capital_routing: 'absent',
+    derived_from_elapsed_time: false,
+  }
   if (url.pathname === '/api/screener/quote') {
     return {
       symbol: url.searchParams.get('symbol') ?? 'AAPL',

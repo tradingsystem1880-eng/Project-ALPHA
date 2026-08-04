@@ -4,3 +4,6 @@ args = [
     "run",
     "alpha-mcp",
 ]
+
+[mcp_servers.quantpad-data]
+url = "https://quantpad.ai/api/mcp"

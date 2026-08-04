@@ -10,6 +10,7 @@ dependencies = [
     "polars>=1.0",
     "pydantic>=2.7",
     "yfinance>=1.0",
+    "exchange-calendars==4.13.2",
 ]
 
 [tool.uv.sources]

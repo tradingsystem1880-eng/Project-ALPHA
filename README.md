@@ -18,11 +18,15 @@ records behind the load-bearing choices — see [`docs/ARCHITECTURE.md`](docs/AR
 The approved post-v2 extension is bounded by the
 [architecture audit](docs/audit/2026-07-19-post-v2-architecture-audit.md),
 [provider/paper implementation spec](docs/superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md),
+[daily-data/IBKR Paper hardening](docs/superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md),
+[QuantPad external research boundary](docs/adr/0018-quantpad-external-research-data-boundary.md),
 [dependency/license matrix](docs/governance/2026-07-19-dependency-license-matrix.md), and
 [risk register](docs/governance/2026-07-19-post-v2-risk-register.md).
 The professional Workstation v3 program is implemented and passed its offline release gate. Root
-licensing (R-22) still blocks distribution; R-14's Binance network smoke and R-24's UTC-rollover
-sandbox soak remain pending. The program is governed by four specifications covering
+licensing (R-22) still blocks distribution. The R-14 public Binance quote smoke passed locally on
+2026-08-04, while durable Binance readiness evidence and R-24's UTC-rollover sandbox soak remain
+pending, as do current-universe Tiingo qualification and real IBKR Paper acceptance. The program is
+governed by four specifications covering
 [causal chart artifacts](docs/superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md),
 [strategy development](docs/superpowers/specs/2026-07-19-workstation-v3-development-control-plane-design.md),
 [cited evidence/agents](docs/superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md),
@@ -66,14 +70,14 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pyt
 
 ```bash
 # 1. Pull raw, unadjusted data into the point-in-time store (needs network — see Caveats)
-uv run alpha data pull AAPL    --source yfinance --start 2010-01-01 --end 2024-12-31   # equities
-uv run alpha data pull SPY     --source yfinance --start 2010-01-01 --end 2024-12-31   # ETF — yfinance is the reliable equity/ETF source
+# with ALPHA_TIINGO_API_KEY already injected from the OS keychain
+uv run alpha data pull AAPL --source tiingo --venue XNAS --calendar XNAS --start 2010-01-01 --end 2024-12-31
+uv run alpha data pull SPY --source tiingo --asset-class etf --venue ARCX --calendar XNYS --start 2010-01-01 --end 2024-12-31
 uv run alpha data pull BTC/USD --source ccxt --exchange coinbase --start 2018-01-01 --end 2024-12-31
-# Stooq adds $0 FX / commodities / indices (e.g. `--source stooq` for `spy.us`, `^spx`) but is
-# best-effort: it now sits behind an anti-bot gate and then fails loud — see Caveats.
+# Yahoo/Stooq remain explicit comparison feeds; neither may silently replace canonical Tiingo.
 
 # 2. (optional) Freeze an immutable, content-hashed snapshot for reproducibility
-uv run alpha data snapshot equities-2024 AAPL SPY --source yfinance
+uv run alpha data snapshot equities-2024 AAPL SPY --source tiingo
 uv run alpha data snapshot btc-coinbase-2024 BTC/USD --source ccxt --exchange coinbase
 uv run alpha data verify equities-2024
 
@@ -106,23 +110,29 @@ ALPHA_PAPER_ENABLED=true uv run alpha paper run BTC/USDT \
   --provider binance --snapshot binance-warmup --strategy ma_crossover
 uv run alpha paper sessions --json
 
-# 10. Analytics for the Workstation panels (all offline except screener, which needs a finnhub key)
+# 10. Daily stock/ETF decision path (see docs/operations/README.md before enabling IBKR Paper)
+uv run alpha paper scheduler-status --config /absolute/private/daily-paper.json
+uv run alpha paper scheduler-tick --config /absolute/private/daily-paper.json
+uv run alpha paper ibkr-preflight SPY.ARCA --asset-class etf
+uv run alpha paper readiness --json
+
+# 11. Analytics for the Workstation panels (all offline except screener, which needs a finnhub key)
 uv run alpha options greeks 100 100 --vol 0.2              # Black-Scholes price + greeks
 uv run alpha risk scenario --from-run <run_id>            # vol-scaling + tail-shock stress
 uv run alpha research compare AAPL                        # rank every strategy on a symbol
 uv run alpha screener quote AAPL                          # finnhub (set ALPHA_FINNHUB_API_KEY)
 
-# 11. Start a governed strategy-development project and resolve a one-click suite
+# 12. Start a governed strategy-development project and resolve a one-click suite
 uv run alpha project create "AAPL mean reversion" \
   --hypothesis "Short-horizon dislocations revert after costs" \
   --falsification "Reject if locked holdout Sharpe is non-positive"
 uv run alpha suite actions --json
 
-# 12. Search exact cited evidence / export a bounded Codex brief
+# 13. Search exact cited evidence / export a bounded Codex brief
 uv run alpha evidence list --asset AAPL --json
 uv run alpha project agent-brief <project_id> --json
 
-# 13. Inspect the isolated ML boundary (Qlib is never imported into this root environment)
+# 14. Inspect the isolated ML boundary (Qlib is never imported into this root environment)
 uv run alpha ml --help
 uv run --directory workers/qlib alpha-qlib-worker --help
 ```
@@ -143,12 +153,15 @@ validation evidence. Run any command with `--help` for all options.
   licenses ALPHA's original code. Distribution, publication, or hosted use is gated on an explicit
   owner license decision and release-time dependency/notice review; see the
   [license matrix](docs/governance/2026-07-19-dependency-license-matrix.md).
-- **Live data needs outbound network.** `alpha data pull` hits Yahoo or a selected CCXT exchange;
-  yfinance and Coinbase are verified working end-to-end. The Binance paper adapter is fully
-  assembled and offline-tested, but its real connection/quote smoke and UTC-rollover soak remain
-  explicit opt-in acceptance steps. **Stooq is best-effort:** it gates its free CSV behind an
+- **Live data needs outbound network.** `alpha data pull` may hit Tiingo, Yahoo, Stooq, or a selected
+  CCXT exchange. Tiingo is the authoritative stock/ETF EOD path but requires an owner key and
+  current-universe qualification before operational authority is claimed. Yahoo/Stooq are
+  comparison-only once Tiingo is canonical. A short AAPL Tiingo pull passed the complete live
+  receipt→promotion→snapshot→candle path on 2026-08-04; this is not current-universe qualification.
+  The Binance public quote smoke also passed, while durable readiness evidence and the UTC-rollover
+  soak remain explicit opt-in acceptance steps. **Stooq is best-effort:** it gates its free CSV behind an
   anti-bot challenge + a per-IP download quota, so `--source stooq` often **fails loud** with a
-  `DataError` (it does *not* silently 404) — prefer `--source yfinance` for equities/ETFs. In a
+  `DataError` (it does *not* silently 404). In a
   sandbox with a restricted egress allowlist any host may be blocked; run where the network policy
   permits them. The pure parsers are unit-tested offline; the live `fetch` paths are
   `@pytest.mark.network` (run with `-m network`).
@@ -156,15 +169,16 @@ validation evidence. Run any command with `--help` for all options.
   vol-targeted notional that exceeds buying power (e.g. a low-volatility asset plus fees) has its
   orders rejected — the run **fails loud** with guidance rather than silently reporting flat equity.
   Use `--account-type MARGIN`, a lower `--target-vol`, or `--max-leverage` below 1.
-- **Free data is survivorship-biased and (for Stooq) provider-adjusted.** Documented limitations of
-  the $0 data tier; the bias-guard tests make the assumptions explicit.
+- **Daily vendor data retains survivorship, revision, calendar, and licensing limits.** Tiingo raw
+  fields are canonical only after qualification; adjusted fields are a check. Comparison feeds and
+  bias guards make disagreements/assumptions explicit rather than providing silent fallback.
 - **Validation has been run end-to-end against real market data.** yfinance (AAPL, incl. the 2020
   4:1 split) and Coinbase (BTC/USD, 2018–2024) feed the full gauntlet. On real AAPL it correctly
   **rejects** single-name `ts_momentum` (OOS Sharpe 0.65, but the returns-level null and a
   zero-straddling bootstrap CI fail it); a diversified `inverse_vol` basket clears it (OOS Sharpe
   ~1.18, PSR ~1.0). The parsers and gauntlet primitives are also covered offline.
 
-## Paper trading (Phase 4 — sandbox-only)
+## Paper trading (Phase 4 — local Sandbox + IBKR Paper, never live capital)
 
 The deterministic offline implementation is complete. `alpha paper run BASE/USDT` primes one of
 the four rule strategies from a fresh, hash-verified, same-symbol `ccxt:binance` snapshot whose
@@ -190,6 +204,24 @@ This proves assembly, safety gates, journaling, and deterministic compatibility 
 profitability. Before calling Phase 4 operationally accepted, run the separately marked network
 smoke and one owner-initiated sandbox soak across UTC midnight.
 
+For stocks/ETFs, the wake-safe five-minute scheduler uses exchange calendars and UTC to perform
+Tiingo receipt → candidate gate/quarantine → canonical promotion → immutable snapshot → Nautilus
+simulation → immutable next-session `OrderIntent`. Native Nautilus IB clients can release only that
+exact intent to IBKR Paper after dual flags, loopback paper port 4002, a DU account, digest-pinned
+gateway, instrument/client-ID allowlists, exact journal/broker reconciliation, fresh quote, and
+cutoff checks. Long-only equity limits are 5% NAV/order, 10%/position, 50% gross, 1% daily-loss halt,
+and five open orders. The intent hash is atomically claimed once across process restarts, journaled
+before submission, and used as the client-order ID; an ambiguous attempt is reconciled, never
+resubmitted. Safe stop cancels ALPHA-owned DAY orders and never flattens positions. Full account
+identifiers and secrets stay outside API/browser state.
+
+Journal schema v2 distinguishes `local_sandbox` and `ibkr_paper` while reading v1 Binance sessions.
+`alpha paper readiness --json` passes only from every required machine event and no blockers; it is
+currently pending until the external Binance, Tiingo, and real IBKR scenarios are performed. IBKR
+Paper fills do not prove live execution quality. Explicit dated micro futures are connectivity
+probes only; futures research and live-capital routing are absent. See the
+[operations runbook](docs/operations/README.md) and [ADR-0017](docs/adr/0017-authoritative-daily-data-and-broker-paper-boundary.md).
+
 ## Conversational agent (MCP server)
 
 `alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server with 42 bounded tools: the
@@ -214,6 +246,16 @@ Desktop, add to `claude_desktop_config.json`:
 
 Then drive ALPHA in plain language: *"pull AAPL, run the gauntlet on a momentum strategy, then
 check it against a Topstep combine."* No API keys, $0.
+
+### QuantPad external market-data MCP
+
+The project-scoped `.codex/config.toml` also registers QuantPad's OAuth MCP endpoint. After starting
+a new Codex session, run `/mcp` and sign in with the paid QuantPad account. Use its MCP tools for
+symbol resolution, coverage/schema discovery, usage checks, and small OHLCV previews. Use the
+official `quantpad-data` SDK/REST API for bulk bars, ticks, L1, or `mbp-10` L2; never assemble a
+dataset by looping MCP previews or scraping the website. QuantPad output is research scratch data,
+not canonical ALPHA data or paper evidence, until the ADR-0018 adapter/qualification gate exists.
+The keychain and routing procedure is in the [operations runbook](docs/operations/README.md).
 
 ## ALPHA Workstation (web terminal)
 
@@ -251,8 +293,9 @@ interface — Bloomberg/OpenBB-class, but $0.
 - **Providers · System** — registry-driven provider readiness, limitations, redacted credential
   presence, data-directory capacity, dependency/cache status, and paper opt-in state; no network
   probe.
-- **Paper Monitor** — permanent SANDBOX identity, durable sessions/heartbeats, latest position event,
-  order/fill/rejection blotter, incremental event log, and known-job cancellation.
+- **Paper Monitor** — permanent PAPER/NO-LIVE-CAPITAL identity, separate local Sandbox and IBKR Paper
+  modes, reconciliation/risk/readiness state, latest position, bounded event log, and order/fill/
+  cancellation/expiration markers on the existing price chart.
 - **Live Job Monitor** — running work stays above terminal history with exact elapsed time, current
   operation, output activity, accessible progress, live logs, and cancellation. ETA remains visibly
   indeterminate until a comparable successful command provides a same-session median; UI-launched
@@ -287,8 +330,8 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Not yet built (intentional)
 
-- Real or exchange-testnet order execution, additional paper venues/providers, and automated orphan
-  recovery (the shipped path is Binance public data + local sandbox execution only).
+- Live or exchange-testnet order execution, paper venues beyond IBKR/local Sandbox, strategy futures,
+  automatic rolls, and automated orphan recovery.
 - Kronos live-paper cache semantics (the four rule strategies are supported).
 - Full-engine cross-sectional with per-instrument t+1 fills (a returns-level panel version ships now).
 - FRED macro / regime filters (needs a non-OHLCV store).
@@ -307,4 +350,6 @@ root wheels, and the separately locked Qlib worker. Historical hardening evidenc
 [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md);
 exact current v3 release evidence is recorded in the
 [post-v2 audit](docs/audit/2026-07-19-post-v2-architecture-audit.md). The root-license
-decision (R-22), Binance network smoke (R-14), and UTC-rollover sandbox soak (R-24) remain pending.
+decision (R-22), durable Binance readiness evidence, UTC-rollover sandbox soak (R-24),
+current-universe Tiingo qualification, and every real IBKR Paper acceptance scenario remain
+pending. The standalone R-14 public-quote network smoke passed locally on 2026-08-04.

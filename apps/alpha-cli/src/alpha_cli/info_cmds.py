@@ -171,3 +171,4 @@ def system(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> 
         f"(pinned {status['nautilus']['pinned_version']})"
     )
     typer.echo(f"paper_enabled={status['paper_enabled']}")
+    typer.echo(f"ibkr_paper_enabled={status['ibkr_paper_enabled']}")

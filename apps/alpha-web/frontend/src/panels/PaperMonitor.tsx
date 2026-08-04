@@ -9,6 +9,7 @@ import type {
   JsonScalar,
   PaperEvent,
   PaperJobSummary,
+  PaperReadinessReport,
   PaperSession,
   SystemStatus,
 } from '../api/types'
@@ -50,7 +51,8 @@ function SessionList({
   if (!sessions.length) {
     return (
       <Placeholder big="no paper sessions">
-        Opt in with <code>ALPHA_PAPER_ENABLED=true</code>, then launch <code>alpha paper run</code>.
+        Enable the selected paper path, then launch <code>alpha paper run</code> or{' '}
+        <code>alpha paper ibkr-run</code>.
       </Placeholder>
     )
   }
@@ -150,6 +152,7 @@ export function PaperMonitor() {
   const [system, setSystem] = useState<SystemStatus | null>(null)
   const [sessions, setSessions] = useState<PaperSession[] | null>(null)
   const [jobs, setJobs] = useState<PaperJobSummary[]>([])
+  const [readiness, setReadiness] = useState<PaperReadinessReport | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [session, setSession] = useState<PaperSession | null>(null)
   const [events, setEvents] = useState<PaperEvent[]>([])
@@ -160,10 +163,11 @@ export function PaperMonitor() {
   const eventCursor = useRef(0)
 
   const loadOverview = useCallback(() => {
-    void Promise.all([api.system(), api.paperSessions(), api.jobs()])
-      .then(([status, journal, jobList]) => {
+    void Promise.all([api.system(), api.paperSessions(), api.paperReadiness(), api.jobs()])
+      .then(([status, journal, paperReadiness, jobList]) => {
         setSystem(status)
         setSessions(journal)
+        setReadiness(paperReadiness)
         setJobs(jobList)
         setOverviewError(null)
         setSelectedId((current) => {
@@ -240,6 +244,11 @@ export function PaperMonitor() {
           </span>
         ) : null}
         {sessions ? <span className="count">{sessions.length} sessions</span> : null}
+        {readiness ? (
+          <span className={`chip ${readiness.paper_passed ? 'pass' : 'kind'}`}>
+            EVIDENCE {readiness.status.toUpperCase()}
+          </span>
+        ) : null}
         <div className="spacer" />
         <span className="muted mono">event cursor {eventCursor.current}</span>
         <button className="btn" onClick={loadOverview}>
@@ -247,13 +256,13 @@ export function PaperMonitor() {
         </button>
       </div>
       <div className="sandbox-banner" role="status">
-        SANDBOX · PUBLIC BINANCE DATA · NO REAL ORDER ROUTING · SANDBOX
+        PAPER ONLY · BINANCE LOCAL SANDBOX + IBKR PAPER · LIVE-CAPITAL ROUTING ABSENT
       </div>
       <div
         className="panel-body paper-monitor"
         data-state={overviewState}
         tabIndex={0}
-        aria-label="Sandbox paper sessions"
+        aria-label="Paper trading sessions"
       >
         {overviewError ? <div className="leak paper-overview-error">⚠ {overviewError}</div> : null}
         {system && !system.paper_enabled ? (
@@ -322,7 +331,13 @@ export function PaperMonitor() {
                 </div>
                 <div>
                   <span className="eyebrow">Provider</span>
-                  <div className="mono">{session.provider} · SANDBOX</div>
+                  <div className="mono">{session.provider} · {session.execution_mode}</div>
+                </div>
+                <div>
+                  <span className="eyebrow">Risk · reconciliation</span>
+                  <div className="mono">
+                    {session.risk_profile_id} · {session.reconciliation_state}
+                  </div>
                 </div>
                 <div>
                   <span className="eyebrow">Snapshot</span>
