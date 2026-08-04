@@ -12,6 +12,7 @@ from typing import Any, cast
 
 import polars as pl
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 from alpha_cli import _ibkr_paper, _paper, daily_scheduler, paper_store
@@ -677,8 +678,9 @@ def test_ibkr_run_requires_scheduler_intent_after_all_other_checks(
             "--nav",
             "100000",
         ],
+        color=True,
     )
-    assert result.exit_code != 0 and "requires --intent" in result.output
+    assert result.exit_code != 0 and "requires --intent" in unstyle(result.output)
     assert paper_store.list_sessions(tmp_path) == []
 
 
@@ -800,9 +802,11 @@ def test_paper_run_rejects_any_non_binance_provider(
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("ALPHA_PAPER_ENABLED", "true")
     result = runner.invoke(
-        app, ["paper", "run", "BTC/USDT", "--provider", "kraken", "--snapshot", "warmup"]
+        app,
+        ["paper", "run", "BTC/USDT", "--provider", "kraken", "--snapshot", "warmup"],
+        color=True,
     )
-    assert result.exit_code != 0 and "--provider must be 'binance'" in result.output
+    assert result.exit_code != 0 and "--provider must be 'binance'" in unstyle(result.output)
 
 
 def test_ibkr_preflight_requires_secret_sources(monkeypatch: pytest.MonkeyPatch) -> None:
