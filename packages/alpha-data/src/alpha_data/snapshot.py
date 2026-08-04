@@ -112,7 +112,8 @@ def _copy_snapshot_files(
                 f"cannot snapshot {sym!r} as {source!r}: stored bars have no pull provenance"
             )
         if provenance is not None:
-            if provenance != expected:
+            actual = {name: provenance.get(name) for name in expected}
+            if actual != expected:
                 raise DataError(
                     f"cannot snapshot {sym!r} as {source!r}: stored pull provenance is "
                     f"{provenance['source']!r}"

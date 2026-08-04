@@ -5,7 +5,7 @@ import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
-import type { Candle, ChartBundle } from '../api/types'
+import type { Candle, CandleProvenance, ChartBundle, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { PanelLinkControl } from '../components/PanelLinkControl'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
@@ -31,6 +31,8 @@ export function PriceChart(props: IDockviewPanelProps) {
   const [symbol, setSymbol] = useState(linked.symbol ?? '')
   const [bars, setBars] = useState<Candle[] | null>(null)
   const [bundle, setBundle] = useState<ChartBundle | null>(null)
+  const [paperMarkers, setPaperMarkers] = useState<PaperCandleMarker[]>([])
+  const [candleProvenance, setCandleProvenance] = useState<CandleProvenance | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [evidenceLayer, setEvidenceLayer] = useState<EvidenceLayer>('executions')
   const chartSelection = useChartSelection()
@@ -55,7 +57,12 @@ export function PriceChart(props: IDockviewPanelProps) {
     const query = params.toString() ? `?${params.toString()}` : ''
     api
       .candles(symbol, query)
-      .then((c) => live && setBars(c.bars))
+      .then((c) => {
+        if (!live) return
+        setBars(c.bars)
+        setPaperMarkers(c.paper_markers)
+        setCandleProvenance(c.provenance)
+      })
       .catch((e: unknown) => live && setError(String(e)))
     return () => {
       live = false
@@ -70,6 +77,8 @@ export function PriceChart(props: IDockviewPanelProps) {
     let live = true
     setError(null)
     setBars(null)
+    setPaperMarkers([])
+    setCandleProvenance(null)
     setBundle(null)
     api
       .chartBundle(linked.runId, 1_000, linked.start, linked.end)
@@ -98,8 +107,19 @@ export function PriceChart(props: IDockviewPanelProps) {
   }, [linked.runId, linked.snapshotId, linked.symbol, linked.start, linked.end, setPanelLinked])
 
   const evidence = useMemo(
-    () => (bars && bundle ? buildEvidenceMarkers(bundle, bars.map((bar) => bar.t)) : []),
-    [bars, bundle],
+    () => {
+      if (bars && bundle) return buildEvidenceMarkers(bundle, bars.map((bar) => bar.t))
+      return paperMarkers.map((marker) => ({
+        id: `paper:${marker.session_id}:${marker.sequence}`,
+        sequenceId: marker.sequence,
+        kind: marker.event_type === 'fill' ? 'fill' as const : 'decision' as const,
+        barTs: marker.t,
+        exactTs: marker.exact_ts,
+        label: `P ${marker.event_type.toUpperCase()}${marker.side ? ` ${marker.side}` : ''}`,
+        tone: marker.side?.toUpperCase().includes('SELL') ? 'negative' as const : 'positive' as const,
+      }))
+    },
+    [bars, bundle, paperMarkers],
   )
   const selectedSequenceId = useMemo(
     () =>
@@ -146,6 +166,12 @@ export function PriceChart(props: IDockviewPanelProps) {
           </span>
         ) : null}
         {bundle ? <span className="chip chart-run-provenance">{bundle.provenance.command ?? 'run'} · artifact v{bundle.provenance.artifact_contract_version ?? 'legacy'}</span> : null}
+        {!bundle && paperMarkers.length ? <span className="chip kind">{paperMarkers.length} paper events</span> : null}
+        {!bundle && candleProvenance ? (
+          <span className={`chip ${candleProvenance.quality_status === 'legacy_unqualified' ? 'fail' : 'pass'}`}>
+            {candleProvenance.source} · {candleProvenance.venue ?? 'venue n/a'} · {candleProvenance.timeframe} · {candleProvenance.quality_status}
+          </span>
+        ) : null}
         {bundle?.trace_status === 'available' ? (
           <span className="chart-layer-controls" aria-label="Chart evidence layer">
             {(['executions', 'decisions', 'all'] as const).map((layer) => (
@@ -181,7 +207,7 @@ export function PriceChart(props: IDockviewPanelProps) {
               <span>TIME · UTC</span>
               <span>AS OF {linked.end ?? new Date((bundle?.provenance.as_of ?? bars.at(-1)!.t) * 1_000).toISOString().slice(0, 10)}</span>
               <span>SNAPSHOT · {linked.snapshotId ?? 'CURRENT STORE'}</span>
-              <span>D decision · F fill · ENTRY / EXIT artifact markers</span>
+              <span>D decision · F fill · P paper journal event</span>
             </div>
           </div>
         )}

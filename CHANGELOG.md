@@ -6,10 +6,40 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 ## Unreleased
 
 **Release state:** Workstation v3 is implemented and its offline release gate passed on 2026-07-19.
-R-22 still blocks distribution; the R-14 Binance network smoke and R-24 UTC-rollover soak remain
-open.
+R-22 still blocks distribution; the R-14 public Binance quote smoke passed locally on 2026-08-04,
+while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. Daily-data/IBKR
+Paper hardening is implemented offline; current-universe Tiingo qualification and every real IBKR
+Paper acceptance scenario remain pending.
 
 ### Added
+
+- Project-scoped QuantPad OAuth MCP registration plus ADR-0018 and operator guidance that routes
+  symbol/schema/coverage discovery and small previews through MCP, bulk bars/ticks/L1/L2 through the
+  official REST/Python API, and keeps all QuantPad output research-only pending a receipt-backed
+  adapter, qualification, and retention-license evidence.
+- macOS keychain service conventions for QuantPad, Tiingo, and the masked IBKR Paper account, plus a
+  staged Dell i5/16-GB operations-host evaluation that grants no paper or canonical-data authority.
+- Authoritative Tiingo stock/ETF EOD ingestion with immutable raw response receipts, canonical and
+  provider symbol identity, raw OHLCV, explicit split/dividend actions, adjusted-price consistency
+  checks, and versioned provenance that preserves legacy store/snapshot reads.
+- Provider candidates, quality reports, quarantine, correction old/new hashes, no-delete merging,
+  immutable pre-promotion backups, fail-closed promotion markers, and explicit review/rollback data
+  commands. Yahoo Finance and Stooq remain comparison-only once Tiingo is canonical.
+- A wake-safe exchange-calendar daily scheduler and launchd example that qualify Tiingo, freeze the
+  exact snapshot, run the registered deterministic strategy through Nautilus, and publish an
+  immutable next-session `OrderIntent`; crash recovery resumes an already-published exact snapshot
+  without a second vendor fetch.
+- Native Nautilus IBKR Paper preflight/execution with loopback port 4002, DU-account and instrument/
+  client-ID allowlists, digest-pinned gateway configuration, dual enable flags, exact intent release,
+  one-shot cross-process intent claims, account/journal reconciliation, overnight-position delta
+  seeding, hard equity-paper risk, exact quote/cutoff checks, cancellation/expiration events, and
+  safe stop.
+- Paper journal schema v2 with v1 Binance readability, machine-derived readiness requirements,
+  reconciliation/safe-stop commands, a readiness API, source-quality candle provenance, and
+  low-volume paper intent/order/fill markers on the existing Lightweight Charts surface.
+- ADR-0017, an implemented current-state/threat-model specification, local operations runbook, and
+  expanded dependency/license and risk records for Tiingo, exchange calendars, Nautilus IB extras,
+  IBKR, and the gateway image boundary.
 
 - Workstation v3 specifications and ADR-0013 through ADR-0016 covering causal run artifacts,
   lifecycle/holdout governance, cited evidence, and an isolated Qlib boundary.
@@ -53,6 +83,21 @@ open.
   isolated build/import verification for all 11 wheels.
 
 ### Changed
+
+- Receipt and order-intent readers now reject coercive JSON types; candidate repair re-verifies its
+  quality identity and immutable raw-response hash; approved quarantines remain retry-idempotent;
+  invalid thresholds and corrupt canonical comparison prices fail with typed data errors.
+- The frontend lock now resolves transitive build-time PostCSS 8.5.25, clearing the prior moderate
+  source-map path advisory without changing the direct Vite dependency.
+- Release-candidate live smokes passed for Binance public quotes, CCXT history, Kronos, Yahoo, and a
+  short AAPL Tiingo receipt→promotion→snapshot→candle cycle; Stooq produced its documented anti-bot
+  skip. These do not replace durable readiness, UTC rollover, or Tiingo-universe qualification.
+
+- NautilusTrader remains exactly `1.228.0` but now installs its reviewed `ib` and `docker` extras;
+  `exchange-calendars==4.13.2` is pinned for session completeness and wake-safe UTC scheduling.
+- Stock/ETF paper decisions now flow only through Tiingo receipt → quality gate → canonical store →
+  immutable snapshot → Nautilus simulation → immutable intent → native IBKR Paper. React/FastAPI and
+  the direct Lightweight Charts integration remain the sole visual stack.
 
 - Live Workstation jobs now remain ahead of terminal history and expose exact elapsed time, current
   operation, output activity, accessible progress, and cancellation from one dense status card.
@@ -173,10 +218,16 @@ open.
 
 ### Deferred
 
-- Real broker/exchange execution, intraday/microstructure ingestion, Qlib single-asset equivalence,
+- Live-capital routing, strategy-generated futures orders, automatic rolls, and futures strategy
+  validation remain absent. Futures are limited to an explicit dated micro-contract connectivity
+  probe after owner prerequisites are available.
+- Massive, Databento, QuantConnect/LEAN, MetaTrader, and Streamlit remain outside this milestone.
+  Reconsider paid intraday/futures feeds only when a measured universe or research requirement
+  exceeds Tiingo EOD and CCXT.
+- Live broker/exchange execution, intraday/microstructure ingestion, Qlib single-asset equivalence,
   counterfactual Qlib retraining, and an efficient frontier remain outside v3. Null results from the
   current ML replay are labeled as model-not-recomputed under counterfactual paths.
-- Real or exchange-testnet execution, additional paper venues, Kronos live-cache semantics,
+- Live or exchange-testnet execution, paper venues beyond IBKR/Sandbox, Kronos live-cache semantics,
   FRED/non-OHLCV macro storage, full-engine cross-sectional execution, and model fine-tuning remain
   intentionally out of scope. The Binance network smoke and UTC-rollover sandbox soak remain
   opt-in operational acceptance gates.

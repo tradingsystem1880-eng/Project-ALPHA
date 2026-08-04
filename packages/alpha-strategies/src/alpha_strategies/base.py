@@ -10,16 +10,18 @@ remains the standalone reference implementation; this base is the template for t
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
 from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.data import BarType, QuoteTick
-from nautilus_trader.model.enums import OrderSide
-from nautilus_trader.model.events import OrderFilled
-from nautilus_trader.model.identifiers import InstrumentId
+from nautilus_trader.model.enums import OrderSide, TimeInForce
+from nautilus_trader.model.events import OrderCanceled, OrderExpired, OrderFilled
+from nautilus_trader.model.identifiers import AccountId, ClientOrderId, InstrumentId
 from nautilus_trader.model.objects import Quantity
 from nautilus_trader.trading.strategy import Strategy
 
@@ -32,6 +34,51 @@ from alpha_core import (
     IndicatorTrace,
 )
 from alpha_strategies.sizing import realized_volatility, vol_target_size
+
+
+@dataclass(frozen=True, slots=True)
+class PaperRiskLimits:
+    """Absolute limits derived by ``alpha_cli`` from an approved paper risk profile."""
+
+    max_order_notional: float
+    max_position_notional: float
+    max_gross_notional: float
+    daily_loss_fraction: float
+    max_open_orders: int
+    max_quote_age_seconds: float
+    intent_id: str
+    account_id: str | None = None
+    expected_position_units: float = 0.0
+    order_cutoff: datetime | None = None
+
+    def __post_init__(self) -> None:
+        positive = (
+            self.max_order_notional,
+            self.max_position_notional,
+            self.max_gross_notional,
+            self.daily_loss_fraction,
+            self.max_quote_age_seconds,
+        )
+        if any(not math.isfinite(value) or value <= 0.0 for value in positive):
+            raise DataError("paper risk limits must be finite and positive")
+        if self.max_order_notional > self.max_position_notional:
+            raise DataError("paper max order notional cannot exceed max position notional")
+        if self.max_position_notional > self.max_gross_notional:
+            raise DataError("paper max position notional cannot exceed max gross notional")
+        if not 0.0 < self.daily_loss_fraction < 1.0 or self.max_open_orders < 1:
+            raise DataError("invalid paper daily-loss or open-order limit")
+        if len(self.intent_id) != 64 or any(
+            character not in "0123456789abcdef" for character in self.intent_id
+        ):
+            raise DataError("paper intent id must be a lowercase SHA-256")
+        if self.account_id is not None and not self.account_id.startswith("DU"):
+            raise DataError("paper risk account must be an IBKR DU… account")
+        if not math.isfinite(self.expected_position_units):
+            raise DataError("paper expected position must be finite")
+        if self.order_cutoff is not None and (
+            self.order_cutoff.tzinfo is None or self.order_cutoff.utcoffset() is None
+        ):
+            raise DataError("paper order cutoff must be timezone-aware")
 
 
 def _sum_money(pnls: Any) -> float:
@@ -118,6 +165,11 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self.fills = 0
         self.rejections = 0  # orders denied (risk/buying-power) or rejected by the venue
         self._event_sink: ExecutionEventSink | None = None
+        self._paper_risk: PaperRiskLimits | None = None
+        self._paper_reconciled = False
+        self._paper_session_date: date | None = None
+        self._paper_session_equity: float | None = None
+        self._paper_intents: set[str] = set()
         self._decision_trace: list[DecisionTrace] = []
         self._indicator_trace: list[IndicatorTrace] = []
         self._chart_annotations: list[ChartAnnotationTrace] = []
@@ -195,6 +247,32 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         """Attach the operational paper journal; deterministic backtests leave this unset."""
         self._event_sink = sink
 
+    def configure_paper_risk(self, limits: PaperRiskLimits, *, reconciled: bool = False) -> None:
+        """Enable broker-paper controls without changing deterministic backtest defaults."""
+        if self._event_sink is None:
+            raise DataError("paper risk requires a durable execution event sink")
+        self._paper_risk = limits
+        self._paper_reconciled = reconciled
+
+    def mark_paper_reconciled(self) -> None:
+        """Release paper order authority only after exact broker-state reconciliation."""
+        risk = self._paper_risk
+        if risk is None:
+            raise DataError("paper risk is not configured")
+        self.net_units = risk.expected_position_units
+        self._paper_reconciled = True
+
+    def release_paper_intent(self, *, intent_id: str, target_quantity: float) -> None:
+        """Stage the exact CLI-approved target for release on the next fresh quote."""
+        risk = self._paper_risk
+        if risk is None:
+            raise DataError("paper risk is not configured")
+        if intent_id != risk.intent_id:
+            raise DataError("released paper intent does not match the approved risk boundary")
+        if not math.isfinite(target_quantity):
+            raise DataError("released paper target quantity must be finite")
+        self._target_units = target_quantity
+
     def _emit(
         self,
         event_type: str,
@@ -249,11 +327,94 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
     def on_start(self) -> None:
         self.subscribe_bars(self._bar_type)
         self.subscribe_quote_ticks(self._iid)
+        risk = self._paper_risk
+        if risk is None or self._paper_reconciled:
+            return
+        if risk.account_id is None:
+            self.halted = True
+            self._emit("reconciliation", {"state": "mismatch", "reason": "missing_account"})
+            return
+        account_id = AccountId(risk.account_id)
+        account = self.cache.account_for_venue(self._iid.venue, account_id=account_id)
+        open_orders = self.cache.orders_open(account_id=account_id)
+        open_positions = self.cache.positions_open(account_id=account_id)
+        instrument_positions = self.cache.positions_open(
+            instrument_id=self._iid,
+            account_id=account_id,
+        )
+        actual_units = sum(float(position.signed_qty) for position in instrument_positions)
+        unexpected_positions = len(open_positions) - len(instrument_positions)
+        self._emit(
+            "account_snapshot",
+            {
+                "account_present": account is not None,
+                "open_orders": len(open_orders),
+                "open_positions": len(open_positions),
+                "unexpected_positions": unexpected_positions,
+                "expected_units": risk.expected_position_units,
+                "actual_units": actual_units,
+            },
+        )
+        if (
+            account is None
+            or open_orders
+            or unexpected_positions
+            or not math.isclose(actual_units, risk.expected_position_units, abs_tol=1e-9)
+        ):
+            self.halted = True
+            self._emit(
+                "reconciliation",
+                {
+                    "state": "mismatch",
+                    "account_present": account is not None,
+                    "open_orders": len(open_orders),
+                    "open_positions": len(open_positions),
+                    "unexpected_positions": unexpected_positions,
+                    "expected_units": risk.expected_position_units,
+                    "actual_units": actual_units,
+                },
+            )
+            return
+        self.mark_paper_reconciled()
+        self._emit(
+            "reconciliation",
+            {
+                "state": "matched",
+                "account_present": True,
+                "open_orders": len(open_orders),
+                "open_positions": len(open_positions),
+                "expected_units": risk.expected_position_units,
+                "actual_units": actual_units,
+            },
+        )
 
     def on_bar(self, bar: NautilusBar) -> None:
         # Decide on the close of t; the order is placed at the next open (see on_quote_tick).
         decision_ts = datetime.fromtimestamp(int(bar.ts_event) / 1_000_000_000, tz=UTC)
-        if not self._append_history(decision_ts, float(bar.close), float(bar.high), float(bar.low)):
+        rebalance_due = self._append_history(
+            decision_ts, float(bar.close), float(bar.high), float(bar.low)
+        )
+        if self._paper_risk is not None:
+            equity = self._net_liq()
+            if self._paper_session_date != decision_ts.date():
+                self._paper_session_date = decision_ts.date()
+                self._paper_session_equity = equity
+            session_equity = self._paper_session_equity
+            if session_equity is not None and equity <= session_equity * (
+                1.0 - self._paper_risk.daily_loss_fraction
+            ):
+                self.halted = True
+                self._target_units = 0.0
+                self._emit(
+                    "risk_check",
+                    {"check": "daily_loss", "passed": False, "equity": equity},
+                    ts_event_ns=int(bar.ts_event),
+                )
+                self._record_decision(
+                    bar, signal=None, target_quantity=0.0, reason="daily_loss_halt"
+                )
+                return
+        if not rebalance_due:
             return
         capital = self._capital
         if self._size_on_equity or self._halt_drawdown is not None:
@@ -295,6 +456,9 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             capital=capital,
             max_leverage=self._max_leverage,
         )
+        if self._paper_risk is not None:
+            max_units = self._paper_risk.max_position_notional / self._closes[-1]
+            self._target_units = max(-max_units, min(max_units, self._target_units))
         self._record_decision(
             bar, signal=signal, target_quantity=self._target_units, reason="target"
         )
@@ -306,6 +470,43 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         target = self._target_units
         self._target_units = None
         delta = target - self.net_units
+        risk = self._paper_risk
+        if risk is not None:
+            if not self._paper_reconciled:
+                self.halted = True
+                self._emit(
+                    "risk_check",
+                    {"check": "reconciliation", "passed": False},
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
+            now = self.clock.utc_now()
+            if risk.order_cutoff is not None and now >= risk.order_cutoff:
+                self._emit(
+                    "expired",
+                    {"reason": "order_cutoff", "cutoff": risk.order_cutoff.isoformat()},
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
+            quote_time = datetime.fromtimestamp(int(quote.ts_event) / 1_000_000_000, tz=UTC)
+            quote_age = (now - quote_time).total_seconds()
+            if quote_age > risk.max_quote_age_seconds or quote_age < -1.0:
+                self.halted = True
+                self._emit(
+                    "risk_check",
+                    {"check": "quote_freshness", "passed": False, "age_seconds": quote_age},
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
+            open_orders = self.cache.orders_open(account_id=None)
+            if len(open_orders) >= risk.max_open_orders:
+                self.halted = True
+                self._emit(
+                    "risk_check",
+                    {"check": "open_orders", "passed": False, "count": len(open_orders)},
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
         instrument = self.cache.instrument(self._iid)
         if instrument is None:
             self.rejections += 1
@@ -318,6 +519,19 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
                 ts_event_ns=int(quote.ts_event),
             )
             return
+        side = OrderSide.BUY if delta > 0.0 else OrderSide.SELL
+        if risk is not None:
+            reference_price = float(quote.ask_price if side == OrderSide.BUY else quote.bid_price)
+            if not math.isfinite(reference_price) or reference_price <= 0.0:
+                self.halted = True
+                self._emit(
+                    "risk_check",
+                    {"check": "quote_price", "passed": False},
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
+            max_delta = risk.max_order_notional / reference_price
+            delta = max(-max_delta, min(max_delta, delta))
         quantity = normalize_order_quantity(
             delta,
             size_precision=int(instrument.size_precision),
@@ -325,9 +539,37 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         )
         if quantity is None:
             return
-        side = OrderSide.BUY if target > self.net_units else OrderSide.SELL
+        intent_id = None
+        if risk is not None:
+            intent_id = risk.intent_id
+            if intent_id in self._paper_intents:
+                self.halted = True
+                self._emit(
+                    "risk_check",
+                    {"check": "duplicate_intent", "passed": False, "intent_id": intent_id},
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
+            # Journal authority before submission. Any storage failure propagates and no order is
+            # sent; the content hash becomes the Nautilus/IB idempotency reference.
+            self._emit(
+                "intent",
+                {
+                    "intent_id": intent_id,
+                    "instrument_id": str(self._iid),
+                    "side": str(side),
+                    "quantity": float(quantity),
+                    "risk_profile": "ibkr-equity-paper-v1",
+                },
+                ts_event_ns=int(quote.ts_event),
+            )
+            self._paper_intents.add(intent_id)
         order = self.order_factory.market(
-            instrument_id=self._iid, order_side=side, quantity=quantity
+            instrument_id=self._iid,
+            order_side=side,
+            quantity=quantity,
+            time_in_force=TimeInForce.DAY if risk is not None else TimeInForce.GTC,
+            client_order_id=ClientOrderId(intent_id) if intent_id is not None else None,
         )
         self.submit_order(order)
         self._emit(
@@ -337,9 +579,14 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
                 "client_order_id": str(order.client_order_id),
                 "side": str(side),
                 "quantity": float(quantity),
+                "intent_id": intent_id,
             },
             ts_event_ns=int(quote.ts_event),
         )
+
+    def on_stop(self) -> None:
+        """Cancel this strategy's open orders; safe stop intentionally never flattens positions."""
+        self.cancel_all_orders(self._iid)
 
     def on_order_filled(self, event: OrderFilled) -> None:
         self.fills += 1
@@ -363,6 +610,24 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             ts_event_ns=ts_event_ns,
         )
 
+    def on_order_canceled(self, event: OrderCanceled) -> None:
+        self._emit_order_terminal(event, "cancel")
+
+    def on_order_expired(self, event: OrderExpired) -> None:
+        self._emit_order_terminal(event, "expired")
+
+    def _emit_order_terminal(self, event: object, event_type: str) -> None:
+        ts_event = getattr(event, "ts_event", None)
+        self._emit(
+            event_type,
+            {
+                "instrument_id": str(getattr(event, "instrument_id", self._iid)),
+                "client_order_id": str(getattr(event, "client_order_id", "")),
+                "venue_order_id": str(getattr(event, "venue_order_id", "")),
+            },
+            ts_event_ns=int(ts_event) if ts_event is not None else None,
+        )
+
     def on_order_denied(self, event: object) -> None:
         # pre-trade risk denial (e.g. notional exceeds CASH buying power) — count, never swallow
         self.rejections += 1
@@ -373,6 +638,8 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self._emit_rejection(event, "rejected")
 
     def _emit_rejection(self, event: object, outcome: str) -> None:
+        if self._paper_risk is not None:
+            self.halted = True
         reason = getattr(event, "reason", None)
         ts_event = getattr(event, "ts_event", None)
         self._emit(

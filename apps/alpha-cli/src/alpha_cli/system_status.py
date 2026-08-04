@@ -71,4 +71,5 @@ def system_status(settings: AlphaSettings | None = None) -> dict[str, Any]:
             "local_only": resolved.forecast_local_only,
         },
         "paper_enabled": resolved.paper_enabled,
+        "ibkr_paper_enabled": resolved.ibkr_paper_enabled,
     }

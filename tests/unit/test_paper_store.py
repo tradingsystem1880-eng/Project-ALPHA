@@ -38,6 +38,9 @@ def test_create_append_heartbeat_and_finish_are_durable(tmp_path: Path) -> None:
     assert created["session_id"] == SESSION_ID
     assert created["status"] == "starting"
     assert created["sandbox"] is True
+    assert created["paper"] is True
+    assert created["execution_mode"] == "local_sandbox"
+    assert created["reconciliation_state"] == "not_applicable"
     assert created["last_sequence"] == 0
     assert created["stale"] is False
 
@@ -111,7 +114,7 @@ def test_stale_is_computed_only_for_nonterminal_sessions(tmp_path: Path) -> None
 
 @pytest.mark.parametrize(
     "event_type",
-    ["lifecycle", "order", "fill", "rejection", "position", "reconciliation_warning"],
+    sorted(paper_store.EVENT_TYPES),
 )
 def test_only_low_volume_operational_event_types_are_supported(
     tmp_path: Path, event_type: str
@@ -126,6 +129,86 @@ def test_high_volume_or_unknown_event_types_are_rejected(tmp_path: Path, event_t
     _create(tmp_path)
     with pytest.raises(DataError, match="unsupported paper event type"):
         paper_store.append_event(tmp_path, SESSION_ID, event_type, {})
+
+
+def test_ibkr_v2_session_requires_account_and_tracks_reconciliation(tmp_path: Path) -> None:
+    with pytest.raises(DataError, match="account_alias"):
+        paper_store.create_session(
+            tmp_path,
+            provider="ibkr",
+            symbol="SPY",
+            instrument_id="SPY.ARCA",
+            strategy="ts_momentum",
+            strategy_params={},
+            snapshot_id="spy-eod",
+            execution_mode="ibkr_paper",
+        )
+
+    created = paper_store.create_session(
+        tmp_path,
+        provider="ibkr",
+        symbol="SPY",
+        instrument_id="SPY.ARCA",
+        strategy="ts_momentum",
+        strategy_params={},
+        snapshot_id="spy-eod",
+        session_id="20d917a3-05f1-4c41-9b88-ce0b0917c143",
+        started_at=START,
+        execution_mode="ibkr_paper",
+        account_alias="DU1234567",
+        risk_profile_id="ibkr-equity-paper-v1",
+        decision_artifact_id="a" * 64,
+    )
+    assert created["sandbox"] is False
+    assert created["reconciliation_state"] == "pending"
+    matched = paper_store.set_reconciliation_state(
+        tmp_path,
+        str(created["session_id"]),
+        "matched",
+        at=START + timedelta(seconds=1),
+    )
+    assert matched["reconciliation_state"] == "matched"
+
+
+def test_legacy_v1_session_remains_readable_and_mutable(tmp_path: Path) -> None:
+    _create(tmp_path)
+    session_path = tmp_path / "paper" / SESSION_ID / "session.json"
+    current = json.loads(session_path.read_text(encoding="utf-8"))
+    for field in (
+        "paper",
+        "execution_mode",
+        "account_alias",
+        "risk_profile_id",
+        "decision_artifact_id",
+        "reconciliation_state",
+    ):
+        current.pop(field)
+    current["schema_version"] = 1
+    session_path.write_text(json.dumps(current), encoding="utf-8")
+
+    view = paper_store.read_session(tmp_path, SESSION_ID, now=START)
+    assert view["schema_version"] == 1
+    assert view["execution_mode"] == "local_sandbox"
+    paper_store.heartbeat_session(tmp_path, SESSION_ID, at=START + timedelta(seconds=1))
+    persisted = json.loads(session_path.read_text(encoding="utf-8"))
+    assert set(persisted) == set(current)
+
+
+def test_safe_stop_is_cooperative_idempotent_and_never_requests_flatten(tmp_path: Path) -> None:
+    _create(tmp_path)
+    stopped = paper_store.request_safe_stop(tmp_path, SESSION_ID, at=START + timedelta(seconds=1))
+    assert stopped["status"] == "stopping"
+    assert paper_store.safe_stop_requested(tmp_path, SESSION_ID) is True
+    marker = json.loads(
+        (tmp_path / "paper" / SESSION_ID / "safe-stop.request.json").read_text(encoding="utf-8")
+    )
+    assert marker["flatten_positions"] is False
+    assert (
+        paper_store.request_safe_stop(tmp_path, SESSION_ID, at=START + timedelta(seconds=2))[
+            "status"
+        ]
+        == "stopping"
+    )
 
 
 @pytest.mark.parametrize(
@@ -342,3 +425,66 @@ def test_lifecycle_and_cursor_guards_fail_closed(tmp_path: Path) -> None:
         paper_store.heartbeat_session(tmp_path, SESSION_ID)
     with pytest.raises(DataError, match="cannot append to terminal"):
         paper_store.append_event(tmp_path, SESSION_ID, "order", {})
+
+
+def test_paper_store_creation_staleness_and_duplicate_guards(tmp_path: Path) -> None:
+    with pytest.raises(DataError, match="unsupported paper execution_mode"):
+        paper_store.create_session(
+            tmp_path,
+            provider="binance",
+            symbol="BTC/USDT",
+            instrument_id="BTCUSDT.BINANCE",
+            strategy="ts_momentum",
+            strategy_params={},
+            snapshot_id="warmup",
+            execution_mode="live",  # type: ignore[arg-type]
+        )
+    _create(tmp_path)
+    with pytest.raises(DataError, match="already exists"):
+        _create(tmp_path)
+    with pytest.raises(DataError, match="stale_after_seconds"):
+        paper_store.read_session(tmp_path, SESSION_ID, stale_after_seconds=0.0)
+
+
+def test_ibkr_event_sink_drives_reconciliation_and_halt_state(tmp_path: Path) -> None:
+    _create(tmp_path)
+    created = paper_store.create_session(
+        tmp_path,
+        provider="ibkr",
+        symbol="SPY",
+        instrument_id="SPY.ARCA",
+        strategy="ts_momentum",
+        strategy_params={},
+        snapshot_id="spy-eod",
+        session_id="20d917a3-05f1-4c41-9b88-ce0b0917c143",
+        started_at=START,
+        execution_mode="ibkr_paper",
+        account_alias="DU…4567",
+    )
+    session_id = str(created["session_id"])
+    sink = paper_store.PaperEventSink(tmp_path, session_id)
+    sink.emit("reconciliation", {"state": "matched"})
+    assert paper_store.read_session(tmp_path, session_id)["reconciliation_state"] == "matched"
+    sink.emit("rejection", {"reason": "broker_rejected"})
+    assert paper_store.read_session(tmp_path, session_id)["reconciliation_state"] == "halted"
+    sink.emit("reconciliation", {"state": "mismatch"})
+    assert paper_store.read_session(tmp_path, session_id)["reconciliation_state"] == "mismatch"
+    sink.emit("reconciliation", {"state": "halted"})
+    sink.emit("risk_check", {"passed": False})
+    assert paper_store.read_session(tmp_path, session_id)["reconciliation_state"] == "halted"
+
+    with pytest.raises(DataError, match="unsupported IBKR reconciliation state"):
+        paper_store.set_reconciliation_state(tmp_path, session_id, "approved")  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="only to v2 IBKR"):
+        paper_store.set_reconciliation_state(tmp_path, SESSION_ID, "matched")
+    paper_store.set_session_status(
+        tmp_path, session_id, "running", at=datetime(2098, 1, 1, tzinfo=UTC)
+    )
+    terminal_at = datetime(2099, 1, 1, tzinfo=UTC)
+    paper_store.finish_session(tmp_path, session_id, status="completed", at=terminal_at)
+    with pytest.raises(DataError, match="cannot reconcile terminal"):
+        paper_store.set_reconciliation_state(tmp_path, session_id, "matched")
+    stopped = paper_store.request_safe_stop(
+        tmp_path, session_id, at=terminal_at + timedelta(seconds=1)
+    )
+    assert stopped["status"] == "completed"

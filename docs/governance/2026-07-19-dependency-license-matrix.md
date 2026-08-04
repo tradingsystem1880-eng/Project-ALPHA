@@ -1,6 +1,6 @@
 # Dependency and License Matrix — Post-v2 and Workstation v3 Tracks
 
-- **Reviewed:** 2026-07-19
+- **Reviewed:** 2026-08-03
 - **Scope:** direct Python runtime dependencies, isolated workers, vendored code, and upstream
   projects considered by the post-v2 and Workstation v3 decisions
 - **Status:** engineering inventory; not legal advice
@@ -35,7 +35,8 @@ track; it is not a legal conclusion.
 | pandas | 2.3.3 | BSD-3-Clause | three sanctioned vendor/library edges | retain constrained edge |
 | polars | 1.41.2 | MIT | default dataframe/store/artifacts | retain |
 | yfinance | 1.4.1 | [Apache-2.0](https://github.com/ranaroussi/yfinance/blob/main/LICENSE.txt) | historical equity vendor edge | retain |
-| nautilus-trader | 1.228.0 | [LGPL-3.0](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | authoritative engine and reviewed Binance/sandbox factories | pin exactly `1.228.0`; upgrade only after compatibility review |
+| nautilus-trader `[ib,docker]` | 1.228.0 | [LGPL-3.0](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | authoritative engine; reviewed Binance/Sandbox and native IBKR Paper factories | pin exactly `1.228.0`; upgrade only after compatibility and paper-boundary review |
+| exchange-calendars | 4.13.2 | Apache-2.0 package metadata | authoritative session/DST scheduling and daily completeness checks | exact pin; calendar-version changes require data/scheduler regression review |
 | numpy | 2.4.6 | BSD-3-Clause plus bundled notices | validation/forecast numerics | retain; preserve Qlib RL incompatibility gate |
 | scipy | 1.17.1 | BSD-3-Clause | validation/options numerics | retain |
 | torch | 2.12.1 | BSD-3-Clause | Kronos internals only | retain CPU-index policy |
@@ -52,6 +53,33 @@ track; it is not a legal conclusion.
 | uvicorn | 0.49.0 | BSD-3-Clause | loopback server | retain |
 | sse-starlette | 3.4.5 | BSD-3-Clause | Workstation streams | retain |
 | anyio | 4.14.0 | MIT | async web support | retain |
+
+### IB/Docker extra and external-service review
+
+Enabling Nautilus's pinned `ib` and `docker` extras adds `docker==7.2.0` (Apache-2.0),
+`defusedxml==0.7.1` (PSF), `protobuf==5.29.5` (BSD-3-Clause), and
+`nautilus-ibapi==10.45.1`. The installed `nautilus-ibapi` metadata identifies the **IB API
+Non-Commercial License or IB API Commercial License**. This is not treated as an open-source grant;
+distribution/hosted use requires exact terms, entitlement, and legal review in addition to ALPHA's
+existing root-license blocker.
+
+Tiingo is an external commercial data service, not code licensed by this repository. The approved
+scope is private single-operator research/paper use under the owner's Tiingo plan; raw/canonical data
+and charts are not redistributed or exposed publicly. IBKR account, exchange subscriptions, and API
+permissions are also owner-provided service prerequisites.
+
+QuantPad is also an external commercial data service. The approved present scope is its OAuth MCP
+interface for bounded discovery/previews and its official REST/Python interface for private
+historical research. No QuantPad package is yet a root runtime dependency, and its output is not a
+canonical or paper-authoritative source. The public product material demonstrates API-to-Parquet
+bulk workflows, while the service license separately restricts bulk export/retention without express
+permission; permanent archives, post-subscription retention, redistribution, and commercial/public
+use therefore remain blocked on written permission.
+
+The IB Gateway container image is not pinned in source. Operations must provide an independently
+dependency-reviewed `registry/image@sha256:<digest>`; mutable tags are rejected by code. The image's
+software/license/notice inventory and credentials delivery (Docker secrets or OS-keychain wrapper)
+must be reviewed before use. A digest proves identity, not licensing or trust.
 
 The vendored `alpha_forecast._vendor.kronos` source is pinned upstream code under MIT terms and is
 kept behind the `alpha_forecast` facade. Its license/notices must stay with any permitted
@@ -77,7 +105,12 @@ authorities. Their exact transitive resolution remains pinned by the frontend lo
 
 | Project | License reviewed | Capability overlap/gap | Disposition for this track |
 |---|---|---|---|
-| NautilusTrader | [LGPL-3.0](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | Already supplies engine, Binance data, sandbox execution | **Adopted already**; exact compatibility pin, no replacement |
+| NautilusTrader | [LGPL-3.0](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | Already supplies engine, Binance data, Sandbox execution, and native IBKR Paper clients | **Adopted already**; exact compatibility pin, no replacement; IB extra terms reviewed separately above |
+| Tiingo EOD | Commercial service/data terms | Missing authoritative long-history stock/ETF daily-data receipt source | **Adopted for private EOD ingestion only**; credentials stay server-side and redistribution is prohibited |
+| QuantPad MCP + REST/Python data | Commercial service/data terms | Broad historical futures/equity/options bars, ticks, L1, and short-window L2 research | **Adopted as external research access only**; MCP for bounded discovery, API/SDK for bulk; no canonical/paper authority pending adapter and written retention evidence |
+| IBKR Paper / IB Gateway | Commercial broker/API terms; exact image inventory varies by chosen digest | Missing stock/ETF broker-paper connectivity and reconciliation path | **Adopted paper-only through Nautilus**; loopback/4002/DU account, dual flags, digest review, no live route |
+| Massive / Databento | Commercial services | Larger/intraday universes and funded research-grade futures history | Deferred until a measured capacity/research requirement and fresh evidence/license review |
+| QuantConnect LEAN / MetaTrader | Engine/terminal overlap | Would duplicate Nautilus authority or add terminal-process coupling | Not adopted in this milestone |
 | OpenBB | [AGPL-3.0](https://github.com/OpenBB-finance/OpenBB/blob/develop/LICENSE) | Provider federation pattern; ALPHA already has data/CLI/UI authorities | Architecture reference only; no code/runtime dependency |
 | Qlib | [MIT](https://github.com/microsoft/qlib/blob/main/LICENSE); [official dependency manifest](https://github.com/microsoft/qlib/blob/main/pyproject.toml) | Cross-sectional ML workflow/recorder gap; broad stack conflicts with the root NumPy/pandas boundary | **Approved only as the ADR-0016 isolated worker**; immutable snapshot/folds in, timestamped OOS JSON/Parquet out; never a root dependency or analytical authority |
 | FinancePy | [GPL-3.0](https://github.com/domokane/FinancePy/blob/master/LICENSE) | Broader derivatives products not presently required | Deferred product-specific external worker + fresh legal review |

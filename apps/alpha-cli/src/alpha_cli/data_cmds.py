@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, date, datetime, time
 from inspect import Parameter, signature
@@ -18,6 +19,11 @@ from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.adapters.base import DataAdapter
 from alpha_data.ingest import store_fetch_result
+from alpha_data.pipeline import (
+    promote_quarantined,
+    rollback_interrupted_promotion,
+    stage_and_promote,
+)
 from alpha_data.snapshot import create_snapshot, verify_snapshot
 from alpha_data.store import ParquetStore
 
@@ -37,7 +43,56 @@ def _snaps_root() -> Path:
     return AlphaSettings().data_dir / "snapshots"
 
 
-def _adapter(source: str, exchange: str) -> DataAdapter:
+def _candle_provenance(
+    symbol: str,
+    *,
+    snapshot_id: str | None,
+    knowledge_cutoff: datetime | None,
+) -> dict[str, object]:
+    data_root = AlphaSettings().data_dir
+    root = data_root / "snapshots" / snapshot_id if snapshot_id else data_root / "store"
+    store = ParquetStore(root)
+    provenance = store.read_provenance(symbol)
+    path = store._provenance_path(symbol)  # noqa: SLF001 -- CLI/store projection seam
+    provenance_hash = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    source = provenance.get("source") if provenance is not None else "unknown"
+    dataset = provenance.get("dataset") if provenance is not None else None
+    venue = dataset.get("venue") if isinstance(dataset, dict) else None
+    timeframe = dataset.get("timeframe") if isinstance(dataset, dict) else "1D"
+    receipt = provenance.get("receipt") if provenance is not None else None
+    receipt_id = receipt.get("receipt_id") if isinstance(receipt, dict) else None
+    quality_status = "legacy_unqualified"
+    if isinstance(receipt_id, str) and isinstance(source, str):
+        passed = data_root / "store" / "candidates" / source / receipt_id / "quality.json"
+        reviewed = data_root / "store" / "quarantine" / source / receipt_id / "quality.json"
+        quality_status = (
+            "passed"
+            if passed.is_file()
+            else "owner_approved"
+            if reviewed.is_file()
+            else "qualified"
+        )
+    return {
+        "source": source,
+        "venue": venue,
+        "timeframe": timeframe,
+        "snapshot_id": snapshot_id,
+        "provenance_sha256": provenance_hash,
+        "receipt_id": receipt_id,
+        "knowledge_cutoff": knowledge_cutoff.isoformat() if knowledge_cutoff is not None else None,
+        "quality_status": quality_status,
+    }
+
+
+def _adapter(
+    source: str,
+    exchange: str,
+    *,
+    asset_class: str = "stock",
+    venue: str = "US",
+    calendar: str = "XNYS",
+    currency: str = "USD",
+) -> DataAdapter:
     factory = _ADAPTERS.get(source)
     if factory is None:
         raise typer.BadParameter(f"unknown source {source!r}; known: {sorted(_ADAPTERS)}")
@@ -57,6 +112,19 @@ def _adapter(source: str, exchange: str) -> DataAdapter:
             params = ()
         if any(param.name == "exchange" or param.kind is Parameter.VAR_KEYWORD for param in params):
             kwargs["exchange"] = exchange
+    if source == "tiingo":
+        choices = provider_option_choices("tiingo", "asset_class")
+        if asset_class not in choices:
+            raise typer.BadParameter(
+                f"unknown Tiingo asset class {asset_class!r}; known: {list(choices)}",
+                param_hint="--asset-class",
+            )
+        kwargs.update(
+            asset_class=asset_class,
+            venue=venue,
+            calendar=calendar,
+            currency=currency,
+        )
     return factory(**kwargs)
 
 
@@ -65,11 +133,22 @@ def pull(
     symbol: str,
     source: str = "yfinance",
     exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
+    asset_class: str = typer.Option("stock", help="Tiingo asset class: stock or etf"),
+    venue: str = typer.Option("US", help="Tiingo MIC/provider venue identifier"),
+    calendar: str = typer.Option("XNYS", help="Tiingo exchange calendar identifier"),
+    currency: str = typer.Option("USD", help="Tiingo quote currency"),
     start: str = typer.Option(...),
     end: str = typer.Option(...),
 ) -> None:
     """Pull raw bars + corporate actions for SYMBOL and store them."""
-    adapter = _adapter(source, exchange)
+    adapter = _adapter(
+        source,
+        exchange,
+        asset_class=asset_class,
+        venue=venue,
+        calendar=calendar,
+        currency=currency,
+    )
     try:
         start_date, end_date = date.fromisoformat(start), date.fromisoformat(end)
     except ValueError as exc:
@@ -77,19 +156,147 @@ def pull(
     try:
         result = adapter.fetch(symbol, start_date, end_date)
         store = _store()
-        store.clear_provenance(result.symbol)
-        store_fetch_result(store, result)
-        store.write_provenance(
-            result.symbol,
-            source=adapter.name,
-            adapter_version=adapter.version,
-            parser_version=adapter.parser_version,
-        )
+        if (
+            result.identity is not None
+            or result.receipt is not None
+            or result.raw_response is not None
+        ):
+            outcome = stage_and_promote(store, result, authoritative_source=adapter.name)
+            detail = f", receipt {outcome.receipt_id} promoted"
+        else:
+            existing = store.read_provenance(result.symbol)
+            if (
+                existing is not None
+                and existing.get("source") == "tiingo"
+                and adapter.name != "tiingo"
+            ):
+                raise DataError(
+                    f"{adapter.name} is audit-only for {result.symbol}; canonical Tiingo data "
+                    "cannot be silently replaced"
+                )
+            store.clear_provenance(result.symbol)
+            store_fetch_result(store, result)
+            store.write_provenance(
+                result.symbol,
+                source=adapter.name,
+                adapter_version=adapter.version,
+                parser_version=adapter.parser_version,
+            )
+            detail = ""
     except DataError as exc:  # expected domain failure (no data, anti-bot gate, bad vendor row)
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(
-        f"pulled {symbol} from {source}: {result.bars.height} bars, {len(result.actions)} actions"
+        f"pulled {symbol} from {source}: {result.bars.height} bars, "
+        f"{len(result.actions)} actions{detail}"
     )
+
+
+@data_app.command("source-status")
+def source_status(
+    symbol: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Show canonical provenance and pending candidate/quarantine receipts for SYMBOL."""
+    store = _store()
+    try:
+        provenance = store.read_provenance(symbol)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    candidates: list[str] = []
+    quarantined: list[str] = []
+    for provider_dir in (store.root / "candidates").glob("*"):
+        for candidate in provider_dir.glob("*"):
+            if (candidate / "provenance" / f"{symbol}.json").is_file():
+                candidates.append(f"{provider_dir.name}:{candidate.name}")
+    for provider_dir in (store.root / "quarantine").glob("*"):
+        for candidate in provider_dir.glob("*"):
+            if (candidate / "provenance" / f"{symbol}.json").is_file():
+                quarantined.append(f"{provider_dir.name}:{candidate.name}")
+    payload: dict[str, object] = {
+        "symbol": symbol,
+        "provenance": provenance,
+        "promotion_pending": store.promotion_pending(symbol),
+        "candidates": sorted(candidates),
+        "quarantined": sorted(quarantined),
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, sort_keys=True, allow_nan=False))
+        return
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+
+
+@data_app.command()
+def audit(
+    provider: str,
+    receipt_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Read one immutable candidate/quarantine quality report."""
+    if any(part in provider or part in receipt_id for part in ("/", "\\", "..")):
+        raise typer.BadParameter("provider/receipt id must be opaque path-safe values")
+    roots = (
+        _store().root / "candidates" / provider / receipt_id,
+        _store().root / "quarantine" / provider / receipt_id,
+    )
+    quality = next(
+        (root / "quality.json" for root in roots if (root / "quality.json").is_file()), None
+    )
+    if quality is None:
+        raise typer.BadParameter(f"no quality report for {provider}:{receipt_id}")
+    try:
+        payload = json.loads(quality.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"corrupt quality report at {quality}") from exc
+    typer.echo(
+        json.dumps(
+            payload,
+            indent=None if json_out else 2,
+            sort_keys=True,
+            allow_nan=False,
+        )
+    )
+
+
+@data_app.command()
+def repair(
+    provider: str,
+    receipt_id: str,
+    approve_differences: bool = typer.Option(
+        False,
+        "--approve-differences",
+        help="owner-reviewed override for this exact quarantined receipt",
+    ),
+) -> None:
+    """Promote one exact quarantined receipt after explicit owner review."""
+    try:
+        outcome = promote_quarantined(
+            _store(),
+            provider=provider,
+            receipt_id=receipt_id,
+            approve_differences=approve_differences,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(
+        f"promoted reviewed receipt {outcome.provider}:{outcome.receipt_id} for {outcome.symbol}"
+    )
+
+
+@data_app.command("rollback-promotion")
+def rollback_promotion(
+    symbol: str,
+    acknowledge: bool = typer.Option(
+        False,
+        "--acknowledge",
+        help="restore the immutable pre-promotion backup for this exact symbol",
+    ),
+) -> None:
+    """Recover a canonical symbol after a process interruption during promotion."""
+    try:
+        rollback_interrupted_promotion(_store(), symbol=symbol, acknowledge=acknowledge)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"restored pre-promotion canonical bytes for {symbol}")
 
 
 @data_app.command()
@@ -151,7 +358,21 @@ def candles(
         if lower is None or b.ts.date() >= lower
     ]
     if json_out:
-        typer.echo(json.dumps({"symbol": symbol, "snapshot_id": snap, "bars": rows}))
+        cutoff = when or (bars[-1].ts if bars else None)
+        typer.echo(
+            json.dumps(
+                {
+                    "symbol": symbol,
+                    "snapshot_id": snap,
+                    "provenance": _candle_provenance(
+                        symbol,
+                        snapshot_id=snap,
+                        knowledge_cutoff=cutoff,
+                    ),
+                    "bars": rows,
+                }
+            )
+        )
     else:
         typer.echo(f"{symbol}: {len(rows)} candles")
 

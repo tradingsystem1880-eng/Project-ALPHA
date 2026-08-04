@@ -430,10 +430,36 @@ class Candle(StrictModel):
     v: float
 
 
+class CandleProvenance(StrictModel):
+    source: str
+    venue: str | None
+    timeframe: Literal["1D"]
+    snapshot_id: str | None
+    provenance_sha256: str | None
+    receipt_id: str | None
+    knowledge_cutoff: str | None
+    quality_status: Literal["legacy_unqualified", "qualified", "passed", "owner_approved"]
+
+
+class PaperCandleMarker(StrictModel):
+    session_id: str
+    sequence: int
+    t: int
+    exact_ts: int
+    event_type: Literal["intent", "order", "fill", "cancel", "expired"]
+    execution_mode: Literal["local_sandbox", "ibkr_paper"]
+    side: str | None
+    quantity: float | None
+    price: float | None
+    intent_id: str | None
+
+
 class Candles(StrictModel):
     symbol: str
     snapshot_id: str | None
+    provenance: CandleProvenance
     bars: list[Candle]
+    paper_markers: list[PaperCandleMarker]
 
 
 class ParamDefinition(StrictModel):
@@ -473,6 +499,11 @@ class ProviderDefinition(StrictModel):
     credential_env: list[CredentialStatus]
     options: dict[str, ProviderOption]
     limitations: list[str]
+    asset_classes: list[str]
+    timeframes: list[str]
+    research_authority: bool
+    paper_execution: bool
+    budget_tier: str
     installed: bool
     configured: bool
 
@@ -509,6 +540,7 @@ class SystemStatus(StrictModel):
     nautilus: NautilusStatus
     kronos_cache: KronosCacheStatus
     paper_enabled: bool
+    ibkr_paper_enabled: bool
 
 
 class CommandOption(StrictModel):
@@ -1048,7 +1080,13 @@ class PaperSession(StrictModel):
     session_id: str
     status: Literal["starting", "running", "stopping", "completed", "cancelled", "failed"]
     provider: str
-    sandbox: Literal[True]
+    paper: Literal[True]
+    sandbox: bool
+    execution_mode: Literal["local_sandbox", "ibkr_paper"]
+    account_alias: str | None
+    risk_profile_id: str
+    decision_artifact_id: str | None
+    reconciliation_state: Literal["not_applicable", "pending", "matched", "mismatch", "halted"]
     symbol: str
     instrument_id: str
     strategy: str
@@ -1068,11 +1106,53 @@ class PaperEvent(StrictModel):
     session_id: str
     sequence: int
     event_type: Literal[
-        "lifecycle", "order", "fill", "rejection", "position", "reconciliation_warning"
+        "lifecycle",
+        "intent",
+        "risk_check",
+        "connection",
+        "account_snapshot",
+        "order",
+        "fill",
+        "cancel",
+        "expired",
+        "rejection",
+        "position",
+        "reconciliation",
+        "reconciliation_warning",
     ]
     recorded_at: str
     ts_event_ns: int | None
     payload: dict[str, JsonScalar]
+
+
+class PaperReadinessEvidence(StrictModel):
+    session_id: str
+    sequence: int
+    event_type: str
+    execution_mode: Literal["local_sandbox", "ibkr_paper"]
+
+
+class PaperReadinessRequirement(StrictModel):
+    id: str
+    passed: bool
+    evidence: list[PaperReadinessEvidence]
+
+
+class PaperReadinessBlocker(StrictModel):
+    session_id: str
+    sequence: int
+    event_type: str
+
+
+class PaperReadinessReport(StrictModel):
+    schema_version: Literal[1]
+    status: Literal["passed", "pending"]
+    paper_passed: bool
+    requirements: list[PaperReadinessRequirement]
+    blocking_events: list[PaperReadinessBlocker]
+    futures_research_supported: Literal[False]
+    live_capital_routing: Literal["absent"]
+    derived_from_elapsed_time: Literal[False]
 
 
 class WorkspaceMeta(StrictModel):

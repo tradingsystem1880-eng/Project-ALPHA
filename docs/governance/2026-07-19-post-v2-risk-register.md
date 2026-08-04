@@ -19,6 +19,22 @@ implemented and passed the final full root/frontend/worker offline acceptance ru
 owner-decision blocker; R-14's opt-in real Binance connectivity smoke and R-24's reviewed
 UTC-rollover sandbox soak remain pending evidence.
 
+**Daily-data/IBKR checkpoint (2026-08-03):** Tiingo receipt qualification, correction/quarantine
+promotion recovery, exchange-calendar scheduling, immutable Nautilus decision intents, native
+IBKR Paper boundary/reconciliation/risk, journal v2, readiness projection, and chart monitoring are
+implemented offline. This does not close the current-universe Tiingo qualification, R-14, R-24, or
+any real IBKR Paper scenario; the readiness report must remain pending until machine evidence exists.
+
+**QuantPad research checkpoint (2026-08-04):** OAuth MCP discovery and official API/SDK bulk access
+are approved as external research interfaces only. No QuantPad payload is canonical, validation, or
+paper evidence until an adapter and qualification gate exist; permanent retention remains a license
+evidence gate.
+
+**Release-candidate checkpoint (2026-08-04):** the R-14 public Binance quote smoke, CCXT history,
+Kronos live smoke, and Yahoo history passed locally; Stooq produced its documented anti-bot skip.
+This closes the standalone connectivity probe only. Durable readiness evidence, R-24 UTC rollover,
+Tiingo universe qualification, and all real IBKR scenarios remain open.
+
 **Offline release evidence — passed 2026-07-19:** 1,136 offline Python tests passed with five
 deselected and 93.13% coverage; 39 dedicated bias guards passed; all 12 import contracts, strict
 mypy across 334 files, Ruff/format, OpenAPI freshness, 11 wheel builds, and 11 installed-version
@@ -49,7 +65,7 @@ R-24's UTC-rollover acceptance.
 | R-11 | Stale heartbeat leads to killing an unrelated reused PID | Low | High | Stale is informational; cancellation only through the in-memory known child job/process group; no raw PID-kill API or recovery action | API/frontend tests show stale state and no kill; cancellation tests target only registered live job | Web/job owner — **Gate** |
 | R-12 | Session journal becomes an unbounded market-data firehose | Medium | Medium | Event-type allowlist excludes bars/ticks; cursor-incremental reads; persist lifecycle/order/fill/rejection/position/warnings only | Sink/store tests reject high-volume market-data types and prove monotonic `after` reads | Core/paper-store owner — **Gate** |
 | R-13 | Nautilus adapter API drift breaks assembly or changes behavior | Medium | High | Exact `nautilus-trader==1.228.0` pin across direct manifests; deliberate upgrade checklist with fake-node + network smoke | Lock check, dependency tests, documented compatibility review before any version change | Build/paper owners — **Gate** |
-| R-14 | Public Binance outage/rate limit/time skew leaves an ambiguous session | Medium | Medium | Fail loud; heartbeat/status transition; terminal error; unconditional node disposal; no retry loop that duplicates orders | Factory/run exception tests, disconnect simulation, terminal journal assertion, network smoke | Paper owner — **Gate** |
+| R-14 | Public Binance outage/rate limit/time skew leaves an ambiguous session | Medium | Medium | Fail loud; heartbeat/status transition; terminal error; unconditional node disposal; no retry loop that duplicates orders | Factory/run exception tests, disconnect simulation, terminal journal assertion, network smoke | Paper owner — **Public quote smoke passed 2026-08-04; durable operational evidence pending** |
 | R-15 | Signal handling leaves node/resources running or mislabels cancellation | Medium | Medium | Register SIGINT/SIGTERM clean stop; add strategy/factories before build; `dispose` in `finally`; idempotent terminal transition | Fake-node ordered-call assertions for success, signal, build/run failure, and double-stop | Paper owner — **Gate** |
 | R-16 | Kronos enters paper without causal live forecast-cache semantics | Low | High | `supports_live_paper=false`; explicit fail-loud guidance; no metadata default that auto-enables new strategies | Catalog/admission/frontend tests reject Kronos and unknown strategies | Strategy/catalog owner — **Gate** |
 | R-17 | Provider choices drift between CLI, API, and Data Explorer | Medium | Medium | One immutable CLI registry and JSON projection; Data Explorer derives sources/options; frontend never hard-codes a parallel source list | Registry uniqueness/filter tests, CLI/API parity, frontend dynamic-option tests | Provider/web owners — **Gate** |
@@ -76,6 +92,15 @@ R-24's UTC-rollover acceptance.
 | R-38 | Dense desktop styling is unusable by keyboard, relies on color alone, or ships serious/critical accessibility defects | Medium | High | Named controls/regions, visible focus, textual chart alternatives, non-color labels, and Playwright axe A/AA gate | Six-desk keyboard checks and zero serious/critical axe findings at required viewports | Frontend owner — **Verified offline 2026-07-19** |
 | R-39 | The terminal fails supported desk sizes or misses cold-shell/workspace-switch/chart-navigation performance budgets | Medium | Medium | Test 1280x720, 1440x900, and 1920x1080; production-preview performance probes for 1.5s cold shell, <100ms cached switch, and 25k bars/200 annotations navigation | Recorded bounded timing/animation evidence on the target profile plus responsive screenshots | Frontend/release owners — **Target verified 2026-07-19** |
 | R-40 | REST clients cannot select a stable v3 contract, allowing incompatible schema drift | Medium | Medium | Explicit `/api/v3` aliases for development, ML, chart, native-tearsheet, and forecast-path contracts; retain `/api` compatibility routes; generated TypeScript freshness | Versioned/legacy parity and bounds tests, OpenAPI diff check, and generated-client build | Web/API owners — **Verified offline 2026-07-19** |
+| R-41 | Tiingo is promoted despite gaps, invalid/duplicate bars, action conflicts, or unexplained comparison differences | Medium | High | Immutable receipt/candidate; raw-basis parsing; exchange-calendar/action/cross-source gate; authority allowlist; quarantine with no fallback | Parser/quality/quarantine tests plus zero unresolved current-universe discrepancies above 1% on non-action dates | Data + owner — **Short AAPL live pipeline passed 2026-08-04; universe qualification gate** |
+| R-42 | A correction or crash leaves partial canonical data or silently deletes history | Low | High | Merge without absent-row deletion; old/new correction hashes; atomic peer writes; immutable pre-promotion backup and blocking marker; automatic/explicit exact rollback; repair re-verifies raw receipt bytes and identity | Idempotency, correction, receipt tamper, failure injection, legacy-read, backup hash, and rollback tests | Data owner — **Verified offline 2026-08-04** |
+| R-43 | IB clients connect to a live port/account, remote gateway, mutable image, or unapproved client/instrument | Low | High | No live mode; force loopback/4002/DU account/digest/client-ID/instrument allowlists; dual independent flags before node construction | Boundary deny tests and real evidence report with zero live-port attempts | CLI/broker owner — **Offline controls verified; operational gate** |
+| R-44 | A later quote/config creates an order different from the approved deterministic decision | Low | High | Scheduler runs Nautilus on the exact snapshot; immutable intent binds strategy/version/params/NAV/snapshot/instrument/target/session/cutoff/risk; release revalidates every field; intent hash is client-order ID | Intent sensitivity/tamper/expiry/idempotency and CLI mismatch tests; zero duplicate live callbacks | CLI/strategy owner — **Verified offline 2026-08-03** |
+| R-45 | Reconnect, uncertain submission, journal drift, or overnight position causes duplicate/unexplained broker state | Medium | High | Native Nautilus execution reconciliation; permanent one-shot intent release claim; intent-before-submit journal; journal-expected position seeds the target delta; reject open orders/unexpected instruments/mismatch; never resubmit an ambiguous intent | Duplicate-process, overnight-unit, cancellation/expiration, disconnect/restart/partial-fill/callback injection plus real overnight gateway-restart cycle with zero unresolved state | Broker/paper owner — **Offline controls partial; real broker gate** |
+| R-46 | IBKR Paper fills are mistaken for live execution quality or futures research validity | High | High | Permanent paper labeling; readiness says futures research unsupported; explicit dated micro probes only; no strategy futures/rolls/live route | UI/API copy and readiness tests; one owner-directed micro probe remains connectivity evidence only | Product/owner — **Gate** |
+| R-47 | Mac sleep, DST, or a missed timer skips/duplicates a daily decision or trades after cutoff | Medium | High | Five-minute short launchd tick; UTC exchange calendar and correction window; immutable per-session outcome/crash marker; resume from an already-published exact snapshot; exact next-session expiry | Calendar/DST/weekend/wake tests, post-snapshot interruption recovery without refetch, and target-host sleep/wake observation | Operations owner — **Offline verified; target-host evidence pending** |
+| R-48 | Tiingo/QuantPad/IBKR secrets or full account identity reach logs, journal, API, browser, or repository | Low | High | Header-only vendor tokens; OAuth MCP where supported; redacted errors/metadata; keychain/Docker-secret operations; masked account alias; no browser vendor/broker clients | Distinctive-secret failure tests, repository/log/API scan, real gateway evidence scenario | Data/broker/web owners — **Offline controls verified; operational scan gate** |
+| R-49 | QuantPad preview/bulk data is scraped, over-retained, relabeled as canonical, or used as futures/L2 validation without sufficient contract/history evidence | Medium | High | MCP preview bounds; official API/SDK only; scratch-data label; no direct strategy/paper path; receipt-backed adapter and written retention permission required before promotion/archive | OAuth/tool smoke, schema/coverage samples, terms response, adapter quality/correction tests, dated-contract and 30-day-L2 limitation evidence | Data/owner — **External evidence gate** |
 
 ### 2026-08-03 Live UI Hardening Evidence
 
@@ -104,10 +129,16 @@ The following remain accepted only within the stated personal sandbox scope:
   cannot prove physical heavyweight capacity is free, and requires the operator to confirm/reap any
   orphan before reconciling and relaunching.
 - Historical free-vendor data retains survivorship/provider-adjustment limitations.
+- Tiingo data/service limits and revisions remain external; its adjusted fields are a check, never
+  canonical prices. IBKR Paper top-of-book simulation cannot establish live queue/fill quality.
+- QuantPad is historical research access, not a live feed. Its short L2 window and continuous-future
+  presentation cannot establish long-horizon microstructure or dated-contract strategy validity.
+- The reviewed gateway digest, paper permissions, market-data subscriptions, and account operation
+  remain owner prerequisites; a digest alone does not establish image trust or license suitability.
 
-Any move to real or testnet exchange execution, remote hosting, multiple users/hosts, or automated
-recovery reopens R-01, R-09, R-11, R-14, R-19, R-22, R-23, and R-24 and requires a new threat/risk
-model.
+Any move to live capital, exchange testnet execution, remote hosting, multiple users/hosts, or
+automated recovery reopens R-01, R-09, R-11, R-14, R-19, R-22, R-23, R-24, and R-43–R-48 and
+requires a separate ADR and threat/risk model.
 
 ## Review Cadence
 
@@ -116,6 +147,7 @@ Review this register:
 - at each implementation slice that closes a Gate risk;
 - before the full offline acceptance gate;
 - after the Binance network smoke and UTC-rollover soak;
-- on any Nautilus/provider upgrade or new provider;
+- after Tiingo universe qualification and each real IBKR equity/futures evidence run;
+- on any Nautilus/provider upgrade or new provider, including a QuantPad adapter;
 - before any distribution/license decision; and
 - immediately after any unexpected order, reconciliation warning, stale session, or corrupt journal.

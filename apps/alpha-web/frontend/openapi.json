@@ -381,6 +381,97 @@
         "title": "Candle",
         "type": "object"
       },
+      "CandleProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "provenance_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance Sha256"
+          },
+          "quality_status": {
+            "enum": [
+              "legacy_unqualified",
+              "qualified",
+              "passed",
+              "owner_approved"
+            ],
+            "title": "Quality Status",
+            "type": "string"
+          },
+          "receipt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Id"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "timeframe": {
+            "const": "1D",
+            "title": "Timeframe",
+            "type": "string"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue"
+          }
+        },
+        "required": [
+          "source",
+          "venue",
+          "timeframe",
+          "snapshot_id",
+          "provenance_sha256",
+          "receipt_id",
+          "knowledge_cutoff",
+          "quality_status"
+        ],
+        "title": "CandleProvenance",
+        "type": "object"
+      },
       "Candles": {
         "additionalProperties": false,
         "properties": {
@@ -390,6 +481,16 @@
             },
             "title": "Bars",
             "type": "array"
+          },
+          "paper_markers": {
+            "items": {
+              "$ref": "#/components/schemas/PaperCandleMarker"
+            },
+            "title": "Paper Markers",
+            "type": "array"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/CandleProvenance"
           },
           "snapshot_id": {
             "anyOf": [
@@ -410,7 +511,9 @@
         "required": [
           "symbol",
           "snapshot_id",
-          "bars"
+          "provenance",
+          "bars",
+          "paper_markers"
         ],
         "title": "Candles",
         "type": "object"
@@ -7221,16 +7324,121 @@
         "title": "OptionGreeks",
         "type": "object"
       },
+      "PaperCandleMarker": {
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "enum": [
+              "intent",
+              "order",
+              "fill",
+              "cancel",
+              "expired"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "exact_ts": {
+            "title": "Exact Ts",
+            "type": "integer"
+          },
+          "execution_mode": {
+            "enum": [
+              "local_sandbox",
+              "ibkr_paper"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "intent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent Id"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "side": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Side"
+          },
+          "t": {
+            "title": "T",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "sequence",
+          "t",
+          "exact_ts",
+          "event_type",
+          "execution_mode",
+          "side",
+          "quantity",
+          "price",
+          "intent_id"
+        ],
+        "title": "PaperCandleMarker",
+        "type": "object"
+      },
       "PaperEvent": {
         "additionalProperties": false,
         "properties": {
           "event_type": {
             "enum": [
               "lifecycle",
+              "intent",
+              "risk_check",
+              "connection",
+              "account_snapshot",
               "order",
               "fill",
+              "cancel",
+              "expired",
               "rejection",
               "position",
+              "reconciliation",
               "reconciliation_warning"
             ],
             "title": "Event Type",
@@ -7283,9 +7491,178 @@
         "title": "PaperEvent",
         "type": "object"
       },
+      "PaperReadinessBlocker": {
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "sequence",
+          "event_type"
+        ],
+        "title": "PaperReadinessBlocker",
+        "type": "object"
+      },
+      "PaperReadinessEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "execution_mode": {
+            "enum": [
+              "local_sandbox",
+              "ibkr_paper"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "sequence",
+          "event_type",
+          "execution_mode"
+        ],
+        "title": "PaperReadinessEvidence",
+        "type": "object"
+      },
+      "PaperReadinessReport": {
+        "additionalProperties": false,
+        "properties": {
+          "blocking_events": {
+            "items": {
+              "$ref": "#/components/schemas/PaperReadinessBlocker"
+            },
+            "title": "Blocking Events",
+            "type": "array"
+          },
+          "derived_from_elapsed_time": {
+            "const": false,
+            "title": "Derived From Elapsed Time",
+            "type": "boolean"
+          },
+          "futures_research_supported": {
+            "const": false,
+            "title": "Futures Research Supported",
+            "type": "boolean"
+          },
+          "live_capital_routing": {
+            "const": "absent",
+            "title": "Live Capital Routing",
+            "type": "string"
+          },
+          "paper_passed": {
+            "title": "Paper Passed",
+            "type": "boolean"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/PaperReadinessRequirement"
+            },
+            "title": "Requirements",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "status",
+          "paper_passed",
+          "requirements",
+          "blocking_events",
+          "futures_research_supported",
+          "live_capital_routing",
+          "derived_from_elapsed_time"
+        ],
+        "title": "PaperReadinessReport",
+        "type": "object"
+      },
+      "PaperReadinessRequirement": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/PaperReadinessEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "passed",
+          "evidence"
+        ],
+        "title": "PaperReadinessRequirement",
+        "type": "object"
+      },
       "PaperSession": {
         "additionalProperties": false,
         "properties": {
+          "account_alias": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Alias"
+          },
+          "decision_artifact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Artifact Id"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -7296,6 +7673,14 @@
               }
             ],
             "title": "Ended At"
+          },
+          "execution_mode": {
+            "enum": [
+              "local_sandbox",
+              "ibkr_paper"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
           },
           "heartbeat_at": {
             "title": "Heartbeat At",
@@ -7308,6 +7693,11 @@
           "last_sequence": {
             "title": "Last Sequence",
             "type": "integer"
+          },
+          "paper": {
+            "const": true,
+            "title": "Paper",
+            "type": "boolean"
           },
           "pid": {
             "anyOf": [
@@ -7324,8 +7714,22 @@
             "title": "Provider",
             "type": "string"
           },
+          "reconciliation_state": {
+            "enum": [
+              "not_applicable",
+              "pending",
+              "matched",
+              "mismatch",
+              "halted"
+            ],
+            "title": "Reconciliation State",
+            "type": "string"
+          },
+          "risk_profile_id": {
+            "title": "Risk Profile Id",
+            "type": "string"
+          },
           "sandbox": {
-            "const": true,
             "title": "Sandbox",
             "type": "boolean"
           },
@@ -7393,7 +7797,13 @@
           "session_id",
           "status",
           "provider",
+          "paper",
           "sandbox",
+          "execution_mode",
+          "account_alias",
+          "risk_profile_id",
+          "decision_artifact_id",
+          "reconciliation_state",
           "symbol",
           "instrument_id",
           "strategy",
@@ -8242,6 +8652,17 @@
       "ProviderDefinition": {
         "additionalProperties": false,
         "properties": {
+          "asset_classes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Asset Classes",
+            "type": "array"
+          },
+          "budget_tier": {
+            "title": "Budget Tier",
+            "type": "string"
+          },
           "capabilities": {
             "items": {
               "type": "string"
@@ -8289,6 +8710,21 @@
             },
             "title": "Options",
             "type": "object"
+          },
+          "paper_execution": {
+            "title": "Paper Execution",
+            "type": "boolean"
+          },
+          "research_authority": {
+            "title": "Research Authority",
+            "type": "boolean"
+          },
+          "timeframes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Timeframes",
+            "type": "array"
           }
         },
         "required": [
@@ -8299,6 +8735,11 @@
           "credential_env",
           "options",
           "limitations",
+          "asset_classes",
+          "timeframes",
+          "research_authority",
+          "paper_execution",
+          "budget_tier",
           "installed",
           "configured"
         ],
@@ -9667,6 +10108,10 @@
           "data_dir": {
             "$ref": "#/components/schemas/SystemDataDirectory"
           },
+          "ibkr_paper_enabled": {
+            "title": "Ibkr Paper Enabled",
+            "type": "boolean"
+          },
           "kronos_cache": {
             "$ref": "#/components/schemas/KronosCacheStatus"
           },
@@ -9683,7 +10128,8 @@
           "counts",
           "nautilus",
           "kronos_cache",
-          "paper_enabled"
+          "paper_enabled",
+          "ibkr_paper_enabled"
         ],
         "title": "SystemStatus",
         "type": "object"
@@ -12315,6 +12761,28 @@
         "summary": "Options Iv",
         "tags": [
           "options"
+        ]
+      }
+    },
+    "/api/paper/readiness": {
+      "get": {
+        "description": "Machine-derived paper acceptance state; elapsed time cannot mark it passed.",
+        "operationId": "get_paper_readiness_api_paper_readiness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperReadinessReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Paper Readiness",
+        "tags": [
+          "paper"
         ]
       }
     },

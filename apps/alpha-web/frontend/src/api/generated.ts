@@ -703,6 +703,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/paper/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Paper Readiness
+         * @description Machine-derived paper acceptance state; elapsed time cannot mark it passed.
+         */
+        get: operations["get_paper_readiness_api_paper_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/paper/sessions": {
         parameters: {
             query?: never;
@@ -2700,10 +2720,38 @@ export interface components {
             /** V */
             v: number;
         };
+        /** CandleProvenance */
+        CandleProvenance: {
+            /** Knowledge Cutoff */
+            knowledge_cutoff: string | null;
+            /** Provenance Sha256 */
+            provenance_sha256: string | null;
+            /**
+             * Quality Status
+             * @enum {string}
+             */
+            quality_status: "legacy_unqualified" | "qualified" | "passed" | "owner_approved";
+            /** Receipt Id */
+            receipt_id: string | null;
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Timeframe
+             * @constant
+             */
+            timeframe: "1D";
+            /** Venue */
+            venue: string | null;
+        };
         /** Candles */
         Candles: {
             /** Bars */
             bars: components["schemas"]["Candle"][];
+            /** Paper Markers */
+            paper_markers: components["schemas"]["PaperCandleMarker"][];
+            provenance: components["schemas"]["CandleProvenance"];
             /** Snapshot Id */
             snapshot_id: string | null;
             /** Symbol */
@@ -4851,13 +4899,42 @@ export interface components {
             /** Vol */
             vol: number;
         };
+        /** PaperCandleMarker */
+        PaperCandleMarker: {
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "intent" | "order" | "fill" | "cancel" | "expired";
+            /** Exact Ts */
+            exact_ts: number;
+            /**
+             * Execution Mode
+             * @enum {string}
+             */
+            execution_mode: "local_sandbox" | "ibkr_paper";
+            /** Intent Id */
+            intent_id: string | null;
+            /** Price */
+            price: number | null;
+            /** Quantity */
+            quantity: number | null;
+            /** Sequence */
+            sequence: number;
+            /** Session Id */
+            session_id: string;
+            /** Side */
+            side: string | null;
+            /** T */
+            t: number;
+        };
         /** PaperEvent */
         PaperEvent: {
             /**
              * Event Type
              * @enum {string}
              */
-            event_type: "lifecycle" | "order" | "fill" | "rejection" | "position" | "reconciliation_warning";
+            event_type: "lifecycle" | "intent" | "risk_check" | "connection" | "account_snapshot" | "order" | "fill" | "cancel" | "expired" | "rejection" | "position" | "reconciliation" | "reconciliation_warning";
             /** Payload */
             payload: {
                 [key: string]: components["schemas"]["JsonScalar"];
@@ -4873,25 +4950,109 @@ export interface components {
             /** Ts Event Ns */
             ts_event_ns: number | null;
         };
+        /** PaperReadinessBlocker */
+        PaperReadinessBlocker: {
+            /** Event Type */
+            event_type: string;
+            /** Sequence */
+            sequence: number;
+            /** Session Id */
+            session_id: string;
+        };
+        /** PaperReadinessEvidence */
+        PaperReadinessEvidence: {
+            /** Event Type */
+            event_type: string;
+            /**
+             * Execution Mode
+             * @enum {string}
+             */
+            execution_mode: "local_sandbox" | "ibkr_paper";
+            /** Sequence */
+            sequence: number;
+            /** Session Id */
+            session_id: string;
+        };
+        /** PaperReadinessReport */
+        PaperReadinessReport: {
+            /** Blocking Events */
+            blocking_events: components["schemas"]["PaperReadinessBlocker"][];
+            /**
+             * Derived From Elapsed Time
+             * @constant
+             */
+            derived_from_elapsed_time: false;
+            /**
+             * Futures Research Supported
+             * @constant
+             */
+            futures_research_supported: false;
+            /**
+             * Live Capital Routing
+             * @constant
+             */
+            live_capital_routing: "absent";
+            /** Paper Passed */
+            paper_passed: boolean;
+            /** Requirements */
+            requirements: components["schemas"]["PaperReadinessRequirement"][];
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "pending";
+        };
+        /** PaperReadinessRequirement */
+        PaperReadinessRequirement: {
+            /** Evidence */
+            evidence: components["schemas"]["PaperReadinessEvidence"][];
+            /** Id */
+            id: string;
+            /** Passed */
+            passed: boolean;
+        };
         /** PaperSession */
         PaperSession: {
+            /** Account Alias */
+            account_alias: string | null;
+            /** Decision Artifact Id */
+            decision_artifact_id: string | null;
             /** Ended At */
             ended_at: string | null;
+            /**
+             * Execution Mode
+             * @enum {string}
+             */
+            execution_mode: "local_sandbox" | "ibkr_paper";
             /** Heartbeat At */
             heartbeat_at: string;
             /** Instrument Id */
             instrument_id: string;
             /** Last Sequence */
             last_sequence: number;
+            /**
+             * Paper
+             * @constant
+             */
+            paper: true;
             /** Pid */
             pid: number | null;
             /** Provider */
             provider: string;
             /**
-             * Sandbox
-             * @constant
+             * Reconciliation State
+             * @enum {string}
              */
-            sandbox: true;
+            reconciliation_state: "not_applicable" | "pending" | "matched" | "mismatch" | "halted";
+            /** Risk Profile Id */
+            risk_profile_id: string;
+            /** Sandbox */
+            sandbox: boolean;
             /** Schema Version */
             schema_version: number;
             /** Session Id */
@@ -5205,6 +5366,10 @@ export interface components {
         };
         /** ProviderDefinition */
         ProviderDefinition: {
+            /** Asset Classes */
+            asset_classes: string[];
+            /** Budget Tier */
+            budget_tier: string;
             /** Capabilities */
             capabilities: string[];
             /** Configured */
@@ -5225,6 +5390,12 @@ export interface components {
             options: {
                 [key: string]: components["schemas"]["ProviderOption"];
             };
+            /** Paper Execution */
+            paper_execution: boolean;
+            /** Research Authority */
+            research_authority: boolean;
+            /** Timeframes */
+            timeframes: string[];
         };
         /** ProviderOption */
         ProviderOption: {
@@ -5658,6 +5829,8 @@ export interface components {
         SystemStatus: {
             counts: components["schemas"]["SystemCounts"];
             data_dir: components["schemas"]["SystemDataDirectory"];
+            /** Ibkr Paper Enabled */
+            ibkr_paper_enabled: boolean;
             kronos_cache: components["schemas"]["KronosCacheStatus"];
             nautilus: components["schemas"]["NautilusStatus"];
             /** Paper Enabled */
@@ -7093,6 +7266,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_paper_readiness_api_paper_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperReadinessReport"];
                 };
             };
         };

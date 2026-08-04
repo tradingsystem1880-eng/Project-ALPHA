@@ -16,6 +16,7 @@ from typing import Any
 from alpha_data.adapters.base import DataAdapter
 from alpha_data.adapters.ccxt_adapter import SUPPORTED_CCXT_EXCHANGES, CCXTAdapter
 from alpha_data.adapters.stooq_adapter import StooqAdapter
+from alpha_data.adapters.tiingo_adapter import TiingoAdapter
 from alpha_data.adapters.yfinance_adapter import YFinanceAdapter
 
 HistoricalAdapterFactory = Callable[..., DataAdapter]
@@ -56,6 +57,11 @@ class ProviderDefinition:
     credential_env: tuple[CredentialStatus, ...]
     options: Mapping[str, ProviderOption]
     limitations: tuple[str, ...]
+    asset_classes: tuple[str, ...]
+    timeframes: tuple[str, ...]
+    research_authority: bool
+    paper_execution: bool
+    budget_tier: str
     installed: bool
     configured: bool
     historical_adapter_factory: HistoricalAdapterFactory | None = field(
@@ -72,6 +78,11 @@ class ProviderDefinition:
             "credential_env": [credential.to_dict() for credential in self.credential_env],
             "options": {name: option.to_dict() for name, option in self.options.items()},
             "limitations": list(self.limitations),
+            "asset_classes": list(self.asset_classes),
+            "timeframes": list(self.timeframes),
+            "research_authority": self.research_authority,
+            "paper_execution": self.paper_execution,
+            "budget_tier": self.budget_tier,
             "installed": self.installed,
             "configured": self.configured,
         }
@@ -102,6 +113,11 @@ def _definition(
     credential_names: tuple[str, ...],
     options: Mapping[str, ProviderOption],
     limitations: tuple[str, ...],
+    asset_classes: tuple[str, ...],
+    timeframes: tuple[str, ...],
+    research_authority: bool,
+    paper_execution: bool,
+    budget_tier: str,
     factory: HistoricalAdapterFactory | None,
     environ: Mapping[str, str],
     module_available: ModuleAvailable,
@@ -116,6 +132,11 @@ def _definition(
         credential_env=credentials,
         options=options,
         limitations=limitations,
+        asset_classes=asset_classes,
+        timeframes=timeframes,
+        research_authority=research_authority,
+        paper_execution=paper_execution,
+        budget_tier=budget_tier,
         installed=installed,
         configured=installed and all(credential.present for credential in credentials),
         historical_adapter_factory=factory,
@@ -142,6 +163,11 @@ def provider_definitions(
                 "Unofficial public endpoint; availability and throttling are vendor-controlled.",
                 "Daily history only in ALPHA; raw prices are reconstructed from adjusted rows.",
             ),
+            asset_classes=("stock", "etf"),
+            timeframes=("1D",),
+            research_authority=False,
+            paper_execution=False,
+            budget_tier="free_audit_only",
             factory=YFinanceAdapter,
             environ=env,
             module_available=module_available,
@@ -164,6 +190,11 @@ def provider_definitions(
                 "Public daily OHLCV only; exchange retention and rate limits vary.",
                 "No corporate actions; the current incomplete UTC candle is excluded.",
             ),
+            asset_classes=("crypto",),
+            timeframes=("1D",),
+            research_authority=True,
+            paper_execution=False,
+            budget_tier="free_public",
             factory=CCXTAdapter,
             environ=env,
             module_available=module_available,
@@ -180,7 +211,39 @@ def provider_definitions(
                 "Provider-adjusted prices with no separate corporate-action history.",
                 "The public CSV endpoint can be blocked by anti-bot or per-IP gates.",
             ),
+            asset_classes=("stock", "etf"),
+            timeframes=("1D",),
+            research_authority=False,
+            paper_execution=False,
+            budget_tier="free_audit_only",
             factory=StooqAdapter,
+            environ=env,
+            module_available=module_available,
+        ),
+        _definition(
+            provider_id="tiingo",
+            label="Tiingo End-of-Day",
+            capabilities=("historical_bars", "corporate_actions"),
+            module="alpha_data.adapters.tiingo_adapter",
+            network_required=True,
+            credential_names=("ALPHA_TIINGO_API_KEY",),
+            options={
+                "asset_class": ProviderOption(
+                    label="Asset class",
+                    choices=("stock", "etf"),
+                    default="stock",
+                )
+            },
+            limitations=(
+                "Internal-use EOD data; the free tier is limited to 500 unique symbols per month.",
+                "Daily research only; provider data is never called directly from the browser.",
+            ),
+            asset_classes=("stock", "etf"),
+            timeframes=("1D",),
+            research_authority=True,
+            paper_execution=False,
+            budget_tier="free_500_symbols",
+            factory=TiingoAdapter,
             environ=env,
             module_available=module_available,
         ),
@@ -193,6 +256,11 @@ def provider_definitions(
             credential_names=("ALPHA_FINNHUB_API_KEY",),
             options={},
             limitations=("Free API-key tier is subject to provider rate limits.",),
+            asset_classes=("stock", "etf"),
+            timeframes=("quote",),
+            research_authority=False,
+            paper_execution=False,
+            budget_tier="free_optional",
             factory=None,
             environ=env,
             module_available=module_available,
@@ -209,6 +277,38 @@ def provider_definitions(
                 "Public Binance market data only; ALPHA never constructs Binance execution.",
                 "Paper orders route exclusively to local Nautilus sandbox execution.",
             ),
+            asset_classes=("crypto",),
+            timeframes=("live", "1D"),
+            research_authority=False,
+            paper_execution=True,
+            budget_tier="free_public",
+            factory=None,
+            environ=env,
+            module_available=module_available,
+        ),
+        _definition(
+            provider_id="ibkr",
+            label="Interactive Brokers Paper (NautilusTrader)",
+            capabilities=("live_quotes", "paper_execution", "reconciliation"),
+            module="nautilus_trader.adapters.interactive_brokers",
+            network_required=True,
+            credential_names=(
+                "TWS_USERNAME",
+                "TWS_PASSWORD",
+                "ALPHA_IBKR_PAPER_ACCOUNT",
+                "ALPHA_IBKR_GATEWAY_IMAGE",
+            ),
+            options={},
+            limitations=(
+                "Paper account and port 4002 only; live-capital routing is absent.",
+                "CME futures are connectivity probes only and require explicit dated micro "
+                "contracts.",
+            ),
+            asset_classes=("stock", "etf", "future"),
+            timeframes=("live",),
+            research_authority=False,
+            paper_execution=True,
+            budget_tier="broker_external",
             factory=None,
             environ=env,
             module_available=module_available,

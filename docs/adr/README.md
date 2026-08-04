@@ -22,6 +22,8 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0014](0014-cli-owned-development-control-plane.md) | Keep development lifecycle state in a CLI-owned control plane | Accepted | 2026-07-19 |
 | [0015](0015-evidence-ledger-not-agent-memory.md) | Store cited evidence revisions, not an agent truth database | Accepted | 2026-07-19 |
 | [0016](0016-isolated-qlib-worker.md) | Isolate Qlib behind immutable JSON/Parquet exchange contracts | Accepted | 2026-07-19 |
+| [0017](0017-authoritative-daily-data-and-broker-paper-boundary.md) | Qualify authoritative daily data before releasing broker-paper intents | Accepted | 2026-08-03 |
+| [0018](0018-quantpad-external-research-data-boundary.md) | Split QuantPad discovery from bulk research-data access | Accepted | 2026-08-04 |
 
 ## Conventions
 
