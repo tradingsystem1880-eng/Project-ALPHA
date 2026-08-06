@@ -56,7 +56,12 @@ def _run_json(
         stderr = _strip_ansi(proc.stderr).strip()
         stdout = _strip_ansi(proc.stdout).strip()
         raise RuntimeError(stderr or stdout or f"alpha {args} failed")
-    return json.loads(proc.stdout)
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        # e.g. an option-shaped argument makes the CLI print help with exit 0; the routers
+        # map RuntimeError to a typed 4xx, never a 500.
+        raise RuntimeError(f"alpha {' '.join(args)} did not return valid JSON") from exc
 
 
 _STRATEGIES_CACHE: list[dict[str, Any]] | None = None

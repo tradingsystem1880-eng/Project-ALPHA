@@ -224,3 +224,12 @@ def test_unknown_research_case_reads_are_404(
     assert client.get(f"/api/research/cases/{project_id}").status_code == 404
     assert client.get(f"/api/research/cases/{project_id}/status").status_code == 404
     assert client.get(f"/api/research/cases/{project_id}/report").status_code == 404
+
+
+def test_option_shaped_project_id_maps_to_a_typed_error_not_a_500(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``--help`` makes the CLI print help with exit 0; non-JSON output must not crash the route."""
+    resp = _client(tmp_path, monkeypatch).get("/api/research/cases/--help")
+    assert resp.status_code == 404
+    assert "did not return valid JSON" in resp.json()["detail"]
