@@ -68,7 +68,8 @@ def detect_double_bottom_events(
 
     A trough is not available until its complete right pivot window has closed. When several first
     troughs could pair with one second trough, the most recent qualifying trough wins. Once emitted,
-    a later pattern must begin strictly after the prior confirmation bar.
+    a later pattern must begin strictly after the prior confirmation bar. ``confirmed_at`` covers
+    every bar the pattern semantically depends on, including the first trough's left pivot window.
     """
     pivots = _pivot_lows(bars, spec)
     events: list[DoubleBottomEvent] = []
@@ -101,7 +102,8 @@ def detect_double_bottom_events(
                     first_trough_at=bars.bars[first].end,
                     second_trough_at=bars.bars[second].end,
                     confirmed_at=max(
-                        bar.available_at for bar in bars.bars[first : confirmation + 1]
+                        bar.available_at
+                        for bar in bars.bars[first - spec.pivot_left : confirmation + 1]
                     ),
                     neckline=neckline,
                     trough_difference=trough_difference,

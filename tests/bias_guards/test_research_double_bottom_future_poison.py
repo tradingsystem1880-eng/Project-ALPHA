@@ -78,3 +78,23 @@ def test_delayed_earlier_bar_moves_event_knowledge_time_forward() -> None:
 
     assert event.confirmed_at == delayed_until
     assert event.confirmed_at > collection.bars[event.confirmation_index].available_at
+
+
+def test_delayed_left_pivot_window_bar_moves_event_knowledge_time_forward() -> None:
+    """Proving the first trough is a pivot needs bars BEFORE it; they gate knowledge too."""
+    collection = _collection([101, 98, 95, 98, 100, 99, 95.5, 98, 99, 101])
+    delayed_until = collection.bars[9].available_at + timedelta(hours=2)
+    delayed_bars = (
+        collection.bars[0],
+        replace(collection.bars[1], available_at=delayed_until),
+        *collection.bars[2:],
+    )
+
+    event = detect_double_bottom_events(
+        EqualDurationResearchBars(collection.dataset, delayed_bars),
+        DoubleBottomSpec(1, 2, 3, 6, 0.03, 0.05),
+    )[0]
+
+    assert event.first_trough_index == 2
+    assert event.first_trough_index - 1 == 1  # the delayed bar is the left pivot window
+    assert event.confirmed_at == delayed_until
