@@ -28,6 +28,10 @@ _SUITE_ACTIONS = frozenset(
 )
 _AGENT_RUNNABLE_SUITE_ACTIONS = _SUITE_ACTIONS - {"holdout_reveal"}
 _RESEARCH_ANSWER_KEYS = frozenset({"chart_construction", "event_availability", "primary_outcome"})
+# The D0 pilot computes and publishes a run; a projection-class timeout would kill it
+# mid-compute and permanently consume one of the three lifetime launch reservations.
+# Matches the launch-class ceiling used by alpha_web/_research.py::launch.
+_RESEARCH_LAUNCH_TIMEOUT_S = 120.0
 
 
 def bound(name: str, value: int, maximum: int) -> int:
@@ -125,6 +129,7 @@ def research_launch(project_id: str, stage: str, *, data_dir: Path) -> dict[str,
         _invoke.run_json(
             ["research", "run", stage, project_id, "--json"],
             data_dir=data_dir,
+            timeout_seconds=_RESEARCH_LAUNCH_TIMEOUT_S,
         ),
         "research launch",
     )

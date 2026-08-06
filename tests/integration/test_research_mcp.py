@@ -87,3 +87,34 @@ def test_research_mcp_launch_cannot_confirm_or_bypass_owner_approval(
     for unavailable_stage in ("deep", "confirm"):
         with pytest.raises(ValueError, match="must be pilot"):
             server.research_launch(project_id, unavailable_stage)
+
+
+def test_research_launch_uses_a_launch_class_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A projection-class timeout would kill a mid-compute pilot and burn a lifetime slot."""
+    from alpha_mcp import _control
+
+    captured: dict[str, object] = {}
+
+    def _fake_run_json(
+        args: list[str], *, data_dir: Path, timeout_seconds: float = 30.0
+    ) -> dict[str, object]:
+        captured["args"] = args
+        captured["timeout_seconds"] = timeout_seconds
+        return {}
+
+    monkeypatch.setattr(_control._invoke, "run_json", _fake_run_json)
+    _control.research_launch("00000000-0000-4000-8000-000000000000", "pilot", data_dir=tmp_path)
+
+    assert captured["args"] == [
+        "research",
+        "run",
+        "pilot",
+        "00000000-0000-4000-8000-000000000000",
+        "--json",
+    ]
+    web_launch_timeout = 120.0  # alpha_web/_research.py::launch uses this launch-class ceiling
+    timeout_seconds = captured["timeout_seconds"]
+    assert isinstance(timeout_seconds, float)
+    assert timeout_seconds >= web_launch_timeout
