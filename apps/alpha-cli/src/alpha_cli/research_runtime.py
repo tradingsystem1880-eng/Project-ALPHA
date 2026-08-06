@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, NamedTuple
 
 from alpha_cli import _artifacts
 from alpha_core import DataError
@@ -17,6 +17,7 @@ from alpha_research import (
     DoubleBottomEvent,
     DoubleBottomSpec,
     EqualDurationResearchBars,
+    ProspectivePowerResult,
     ResearchBar,
     ResearchChartData,
     ResearchChartFingerprintV1,
@@ -447,8 +448,24 @@ def _d0_acceptance_payload(
     }
 
 
-def _recomputed_d0_measurements() -> dict[str, object]:
-    """Re-execute every deterministic Gate-1 criterion from the registered fixture."""
+class _ExecutedD0Fixture(NamedTuple):
+    planted: EqualDurationResearchBars
+    planted_events: tuple[DoubleBottomEvent, ...]
+    monotonic_events: tuple[DoubleBottomEvent, ...]
+    single_trough_events: tuple[DoubleBottomEvent, ...]
+    topology: ResearchEvidenceTopology
+    rejected_boundaries: list[str]
+    required_observations: int
+    power: ProspectivePowerResult
+    measurements: dict[str, object]
+
+
+def _execute_registered_d0_fixture() -> _ExecutedD0Fixture:
+    """Execute every deterministic Gate-1 criterion from the registered fixture.
+
+    The ONE builder shared by the pilot (write path) and acceptance verification
+    (read path), so the two can never drift apart.
+    """
 
     planted = _bars(_PLANTED_LOWS, "d0-planted", _sha(_d0_fixture_definition()))
     monotonic = _bars(_MONOTONIC_LOWS, "d0-monotonic", _sha(_MONOTONIC_LOWS))
@@ -464,6 +481,8 @@ def _recomputed_d0_measurements() -> dict[str, object]:
         len(planted.bars),
         forward_outcome_observations=_D0_HORIZON_TRADING_MINUTES // 60,
     )
+    if topology.to_dict().get("schema_version") != _D0_TOPOLOGY_SCHEMA_VERSION:
+        raise DataError("registered D0 topology version does not match the executable topology")
     rejected_boundaries: list[str] = []
     for phase, boundary_index in (
         ("D1_D2", topology.discovery.stop - topology.forward_outcome_observations),
@@ -491,7 +510,7 @@ def _recomputed_d0_measurements() -> dict[str, object]:
         simulations=20_000,
         seed=7,
     )
-    return {
+    measurements: dict[str, object] = {
         "planted_events": [_event_payload(event) for event in planted_events],
         "monotonic_event_count": len(monotonic_events),
         "single_trough_event_count": len(single_trough_events),
@@ -512,6 +531,23 @@ def _recomputed_d0_measurements() -> dict[str, object]:
             "estimated_power": power.estimated_power,
         },
     }
+    return _ExecutedD0Fixture(
+        planted=planted,
+        planted_events=planted_events,
+        monotonic_events=monotonic_events,
+        single_trough_events=single_trough_events,
+        topology=topology,
+        rejected_boundaries=rejected_boundaries,
+        required_observations=required,
+        power=power,
+        measurements=measurements,
+    )
+
+
+def _recomputed_d0_measurements() -> dict[str, object]:
+    """Re-execute every deterministic Gate-1 criterion from the registered fixture."""
+
+    return _execute_registered_d0_fixture().measurements
 
 
 def validate_d0_acceptance_artifact(
@@ -625,53 +661,14 @@ def run_synthetic_pilot(
     d0_operator = validate_d0_pilot_contract(contract)
 
     dataset_hash = _sha(_d0_fixture_definition())
-    planted = _bars(_PLANTED_LOWS, "d0-planted", dataset_hash)
-    monotonic = _bars(_MONOTONIC_LOWS, "d0-monotonic", _sha(_MONOTONIC_LOWS))
-    single_trough = _bars(
-        _SINGLE_TROUGH_LOWS,
-        "d0-single-trough",
-        _sha(_SINGLE_TROUGH_LOWS),
-    )
-    events = detect_double_bottom_events(planted, _SPEC)
-    monotonic_events = detect_double_bottom_events(monotonic, _SPEC)
-    single_trough_events = detect_double_bottom_events(single_trough, _SPEC)
-    if len(events) != 1 or monotonic_events or single_trough_events:
+    executed = _execute_registered_d0_fixture()
+    planted = executed.planted
+    events = executed.planted_events
+    if len(events) != 1 or executed.monotonic_events or executed.single_trough_events:
         raise DataError("synthetic research acceptance fixture did not calibrate as planted")
-
-    topology = ResearchEvidenceTopology.for_observations(
-        len(planted.bars),
-        forward_outcome_observations=_D0_HORIZON_TRADING_MINUTES // 60,
-    )
-    topology_payload = topology.to_dict()
-    if topology_payload.get("schema_version") != _D0_TOPOLOGY_SCHEMA_VERSION:
-        raise DataError("registered D0 topology version does not match the executable topology")
-    rejected_boundaries: list[str] = []
-    for phase, boundary_index in (
-        ("D1_D2", topology.discovery.stop - topology.forward_outcome_observations),
-        ("D2_D3", topology.confirmation.stop - topology.forward_outcome_observations),
-    ):
-        try:
-            topology.event_partition_for(boundary_index)
-        except DataError:
-            rejected_boundaries.append(phase)
-        else:  # pragma: no cover - a topology regression must stop publication immediately.
-            raise DataError(f"registered D0 topology failed to reject {phase} boundary crossing")
-    required = required_observations_known_sigma(
-        alternative_effect=0.0075,
-        minimum_effect=_D0_MINIMUM_EFFECT_RETURN,
-        standard_deviation=0.015,
-        alpha=0.05,
-        target_power=0.90,
-    )
-    power = simulate_prospective_power_known_sigma(
-        sample_size=required,
-        alternative_effect=0.0075,
-        minimum_effect=_D0_MINIMUM_EFFECT_RETURN,
-        standard_deviation=0.015,
-        alpha=0.05,
-        simulations=20_000,
-        seed=7,
-    )
+    topology_payload = executed.topology.to_dict()
+    required = executed.required_observations
+    power = executed.power
     event_rows = [_event_payload(event) for event in events]
     contract_hash = _sha(contract)
     contract_hashes = contract.get("hashes", {})
@@ -744,27 +741,7 @@ def run_synthetic_pilot(
         "window. Monotonic and single-trough fixtures produced no events. D1, D2, and D3 were "
         "not accessed.\n",
     )
-    measurements: dict[str, object] = {
-        "planted_events": event_rows,
-        "monotonic_event_count": len(monotonic_events),
-        "single_trough_event_count": len(single_trough_events),
-        "topology": {
-            "contract_hash": topology.contract_hash,
-            "forward_outcome_observations": topology.forward_outcome_observations,
-            "rejected_boundaries": rejected_boundaries,
-        },
-        "power": {
-            "alternative_effect": 0.0075,
-            "minimum_effect": _D0_MINIMUM_EFFECT_RETURN,
-            "standard_deviation": 0.015,
-            "alpha": 0.05,
-            "target_power": 0.90,
-            "required_observations": required,
-            "simulations": 20_000,
-            "seed": 7,
-            "estimated_power": power.estimated_power,
-        },
-    }
+    measurements = executed.measurements
     d0_operator_fingerprint = str(d0_operator["fingerprint"])
     _publish_text(
         run_dir / _D0_ACCEPTANCE_ARTIFACT,

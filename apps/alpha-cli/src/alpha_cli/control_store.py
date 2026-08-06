@@ -1309,6 +1309,51 @@ class ControlStore:
         result["latest_review"] = None if review is None else dict(review)
         return result
 
+    @staticmethod
+    def _require_revision_d2_reuse(
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        d2: Mapping[str, object],
+        boundary_hash: str,
+        exclude_contract_id: str | None,
+        subject: str,
+    ) -> None:
+        """The one revise-reuse authority rule, shared by approval-time and reopen-time gates.
+
+        ``exclude_contract_id`` ignores the candidate's own D2 events at approval time (the
+        revision's sealed event already exists by then); reopen runs before the revision has
+        any D2 event of its own, so nothing is excluded there.
+        """
+
+        if d2.get("relation_to_prior") not in RESEARCH_D2_REVISION_RELATIONS:
+            raise DataError(
+                f"{subject} requires unopened_sealed_reuse, non_overlapping_future, "
+                "or external_replication D2 data"
+            )
+        if exclude_contract_id is None:
+            overlap_rows = connection.execute(
+                """SELECT state FROM research_d2_events
+                WHERE project_id = ? AND boundary_hash = ?""",
+                (project_id, boundary_hash),
+            ).fetchall()
+        else:
+            overlap_rows = connection.execute(
+                """SELECT state FROM research_d2_events
+                WHERE project_id = ? AND boundary_hash = ? AND contract_id <> ?""",
+                (project_id, boundary_hash, exclude_contract_id),
+            ).fetchall()
+        if d2.get("relation_to_prior") == "unopened_sealed_reuse":
+            exposed = connection.execute(
+                """SELECT 1 FROM research_d2_events
+                WHERE project_id = ? AND state <> 'sealed' LIMIT 1""",
+                (project_id,),
+            ).fetchone()
+            if exposed is not None or any(item["state"] != "sealed" for item in overlap_rows):
+                raise DataError(f"{subject} may reuse only a never-authorized sealed D2 boundary")
+        elif overlap_rows:
+            raise DataError(f"{subject} requires a distinct D2 boundary")
+
     @classmethod
     def _validate_research_contract_for_approval(
         cls, connection: sqlite3.Connection, row: sqlite3.Row
@@ -1402,32 +1447,14 @@ class ControlStore:
                 (row["project_id"], parent_id, parent_id),
             ).fetchone()
             if prior_decision is not None and prior_decision["disposition"] == "revise":
-                relation = d2.get("relation_to_prior")
-                if relation not in RESEARCH_D2_REVISION_RELATIONS:
-                    raise DataError(
-                        "revised exploration requires unopened_sealed_reuse, "
-                        "non_overlapping_future, or external_replication D2 data"
-                    )
-                overlap_rows = connection.execute(
-                    """SELECT state FROM research_d2_events
-                    WHERE project_id = ? AND boundary_hash = ? AND contract_id <> ?""",
-                    (row["project_id"], d2_boundary, row["contract_id"]),
-                ).fetchall()
-                if relation == "unopened_sealed_reuse":
-                    exposed = connection.execute(
-                        """SELECT 1 FROM research_d2_events
-                        WHERE project_id = ? AND state <> 'sealed' LIMIT 1""",
-                        (row["project_id"],),
-                    ).fetchone()
-                    if exposed is not None or any(
-                        item["state"] != "sealed" for item in overlap_rows
-                    ):
-                        raise DataError(
-                            "revised exploration may reuse only a never-authorized sealed D2 "
-                            "boundary"
-                        )
-                elif overlap_rows:
-                    raise DataError("revised exploration requires a distinct D2 boundary")
+                cls._require_revision_d2_reuse(
+                    connection,
+                    project_id=str(row["project_id"]),
+                    d2=d2,
+                    boundary_hash=d2_boundary,
+                    exclude_contract_id=str(row["contract_id"]),
+                    subject="revised exploration",
+                )
         if row["scope"] == "confirmation":
             if not isinstance(parent_id, str):
                 raise DataError("confirmation approval requires an exploration parent")
@@ -2135,6 +2162,63 @@ class ControlStore:
     def _capture_fault_checkpoint(_label: str) -> None:
         """No-op seam used by transactional fault-injection tests."""
 
+    def _bootstrap_research_case_authority(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        actor: str,
+        boundary_hash: str,
+        at: str,
+    ) -> None:
+        """Create the captured-phase / idle-execution / sealed-D2 authority triplet.
+
+        Shared by ``capture_research_case`` and ``create_research_contract`` so the two
+        bootstrap paths cannot drift apart; the fault checkpoints are production no-ops.
+        """
+
+        self._append_research_phase_event(
+            connection,
+            project_id=project_id,
+            contract_id=contract_id,
+            phase="captured",
+            actor=actor,
+            reason="research contract draft captured",
+            next_action="Triage the captured research idea.",
+            responsibility="codex",
+            blocker=None,
+            recovery=None,
+            at=at,
+        )
+        self._capture_fault_checkpoint("captured")
+        connection.execute(
+            """INSERT INTO research_execution_events (
+                project_id, sequence, contract_id, state, occurred_at, actor, reason,
+                next_action, responsibility, active_job_id, checkpoint, blocker, recovery
+            ) VALUES (?, 1, ?, 'idle', ?, ?, ?, ?, 'codex', NULL, NULL, NULL, NULL)""",
+            (
+                project_id,
+                contract_id,
+                at,
+                actor,
+                "research case captured",
+                "Triage the captured research idea.",
+            ),
+        )
+        self._capture_fault_checkpoint("execution")
+        self._append_research_d2_event(
+            connection,
+            project_id=project_id,
+            contract_id=contract_id,
+            state="sealed",
+            boundary_hash=boundary_hash,
+            actor="system",
+            reason="confirmation data remains sealed before D2 authorization",
+            at=at,
+        )
+        self._capture_fault_checkpoint("d2")
+
     def capture_research_case(
         self,
         *,
@@ -2287,46 +2371,14 @@ class ControlStore:
             if phase is None:
                 if execution is not None or d2 is not None:
                     raise DataError("research capture has partial authority state")
-                self._append_research_phase_event(
+                self._bootstrap_research_case_authority(
                     connection,
                     project_id=pid,
                     contract_id=contract_id,
-                    phase="captured",
                     actor=clean_actor,
-                    reason="research contract draft captured",
-                    next_action="Triage the captured research idea.",
-                    responsibility="codex",
-                    blocker=None,
-                    recovery=None,
-                    at=timestamp,
-                )
-                self._capture_fault_checkpoint("captured")
-                connection.execute(
-                    """INSERT INTO research_execution_events (
-                        project_id, sequence, contract_id, state, occurred_at, actor, reason,
-                        next_action, responsibility, active_job_id, checkpoint, blocker, recovery
-                    ) VALUES (?, 1, ?, 'idle', ?, ?, ?, ?, 'codex', NULL, NULL, NULL, NULL)""",
-                    (
-                        pid,
-                        contract_id,
-                        timestamp,
-                        clean_actor,
-                        "research case captured",
-                        "Triage the captured research idea.",
-                    ),
-                )
-                self._capture_fault_checkpoint("execution")
-                self._append_research_d2_event(
-                    connection,
-                    project_id=pid,
-                    contract_id=contract_id,
-                    state="sealed",
                     boundary_hash=draft_d2_boundary,
-                    actor="system",
-                    reason="confirmation data remains sealed before D2 authorization",
                     at=timestamp,
                 )
-                self._capture_fault_checkpoint("d2")
                 phase = self._latest_research_phase(connection, pid)
             if execution is None:
                 execution = self._latest_research_execution(connection, pid)
@@ -2696,42 +2748,12 @@ class ControlStore:
                 if phase is None:
                     if clean_scope != "exploration":  # pragma: no cover
                         raise DataError("a research case must begin with an exploration contract")
-                    self._append_research_phase_event(
+                    self._bootstrap_research_case_authority(
                         connection,
                         project_id=project_id,
                         contract_id=contract_id,
-                        phase="captured",
                         actor=clean_author,
-                        reason="research contract draft captured",
-                        next_action="Triage the captured research idea.",
-                        responsibility="codex",
-                        blocker=None,
-                        recovery=None,
-                        at=timestamp,
-                    )
-                    connection.execute(
-                        """INSERT INTO research_execution_events (
-                            project_id, sequence, contract_id, state, occurred_at, actor, reason,
-                            next_action, responsibility, active_job_id, checkpoint, blocker,
-                            recovery
-                        ) VALUES (?, 1, ?, 'idle', ?, ?, ?, ?, 'codex', NULL, NULL, NULL, NULL)""",
-                        (
-                            project_id,
-                            contract_id,
-                            timestamp,
-                            clean_author,
-                            "research case captured",
-                            "Triage the captured research idea.",
-                        ),
-                    )
-                    self._append_research_d2_event(
-                        connection,
-                        project_id=project_id,
-                        contract_id=contract_id,
-                        state="sealed",
                         boundary_hash=draft_d2_boundary,
-                        actor="system",
-                        reason="confirmation data remains sealed before D2 authorization",
                         at=timestamp,
                     )
                 elif clean_scope == "exploration" and phase["phase"] in {
@@ -2827,28 +2849,14 @@ class ControlStore:
 
             payload = self._validate_research_contract_for_approval(connection, revision)
             d2, boundary_hash = _research_d2_topology(payload)
-            if d2.get("relation_to_prior") not in RESEARCH_D2_REVISION_RELATIONS:
-                raise DataError(
-                    "research revision requires unopened_sealed_reuse, non_overlapping_future, "
-                    "or external_replication D2 data"
-                )
-            overlap_rows = connection.execute(
-                """SELECT state FROM research_d2_events
-                WHERE project_id = ? AND boundary_hash = ?""",
-                (project_id, boundary_hash),
-            ).fetchall()
-            if d2.get("relation_to_prior") == "unopened_sealed_reuse":
-                exposed = connection.execute(
-                    """SELECT 1 FROM research_d2_events
-                    WHERE project_id = ? AND state <> 'sealed' LIMIT 1""",
-                    (project_id,),
-                ).fetchone()
-                if exposed is not None or any(item["state"] != "sealed" for item in overlap_rows):
-                    raise DataError(
-                        "research revision may reuse only a never-authorized sealed D2 boundary"
-                    )
-            elif overlap_rows:
-                raise DataError("research revision requires a distinct D2 boundary")
+            self._require_revision_d2_reuse(
+                connection,
+                project_id=project_id,
+                d2=d2,
+                boundary_hash=boundary_hash,
+                exclude_contract_id=None,
+                subject="research revision",
+            )
 
             reopened = self._append_research_phase_event(
                 connection,
