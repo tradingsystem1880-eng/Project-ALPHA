@@ -25,6 +25,7 @@ members = [
     "alpha-forecast",
     "alpha-mcp",
     "alpha-options",
+    "alpha-research",
     "alpha-screener",
     "alpha-strategies",
     "alpha-validation",
@@ -191,6 +192,7 @@ dependencies = [
     { name = "alpha-data" },
     { name = "alpha-forecast" },
     { name = "alpha-options" },
+    { name = "alpha-research" },
     { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
@@ -207,6 +209,7 @@ requires-dist = [
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-options", editable = "packages/alpha-options" },
+    { name = "alpha-research", editable = "packages/alpha-research" },
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
@@ -314,6 +317,25 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "scipy", specifier = ">=1.17.1" },
+]
+
+[[package]]
+name = "alpha-research"
+version = "1.0.0"
+source = { editable = "packages/alpha-research" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "matplotlib", specifier = ">=3.9" },
+    { name = "numpy", specifier = ">=2.4.6" },
     { name = "scipy", specifier = ">=1.17.1" },
 ]
 
@@ -2410,6 +2432,7 @@ dependencies = [
     { name = "alpha-forecast" },
     { name = "alpha-mcp" },
     { name = "alpha-options" },
+    { name = "alpha-research" },
     { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-validation" },
@@ -2437,6 +2460,7 @@ requires-dist = [
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-mcp", editable = "apps/alpha-mcp" },
     { name = "alpha-options", editable = "packages/alpha-options" },
+    { name = "alpha-research", editable = "packages/alpha-research" },
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },

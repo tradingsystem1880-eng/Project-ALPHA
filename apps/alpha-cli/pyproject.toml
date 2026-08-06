@@ -12,6 +12,7 @@ dependencies = [
     "alpha-forecast",
     "alpha-options",
     "alpha-screener",
+    "alpha-research",
     "typer>=0.12",
     "numpy>=1.26",
     "polars>=1.0",
@@ -30,6 +31,7 @@ alpha-validation = { workspace = true }
 alpha-forecast = { workspace = true }
 alpha-options = { workspace = true }
 alpha-screener = { workspace = true }
+alpha-research = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
