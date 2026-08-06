@@ -1,8 +1,8 @@
-# Dependency and License Matrix — Post-v2 and Workstation v3 Tracks
+# Dependency and License Matrix — Post-v2, Workstation v3, and Research Scientist Tracks
 
-- **Reviewed:** 2026-08-03
-- **Scope:** direct Python runtime dependencies, isolated workers, vendored code, and upstream
-  projects considered by the post-v2 and Workstation v3 decisions
+- **Reviewed:** 2026-08-06
+- **Scope:** direct Python runtime dependencies, isolated workers, vendored code, external services,
+  and upstream projects considered by the post-v2, Workstation v3, and Research Scientist decisions
 - **Status:** engineering inventory; not legal advice
 
 ## Root Project License and Distribution Gate
@@ -46,7 +46,7 @@ track; it is not a legal conclusion.
 | tqdm | 4.68.2 | MPL-2.0 and MIT metadata | Kronos progress dependency | retain; preserve notices on distribution |
 | finnhub-python | 2.4.29 | Apache-2.0 metadata | credential-gated quote/news edge | retain |
 | quantstats-lumi | 1.1.5 | Apache-2.0 metadata | tear-sheet pandas edge | retain |
-| matplotlib | 3.11.0 | PSF-style license plus bundled asset notices | tear-sheet rendering | retain; release must include relevant notices |
+| matplotlib | 3.11.0 | PSF-style license plus bundled asset notices | deterministic tear-sheet and research-chart rendering | retain; release must include relevant notices |
 | typer | 0.26.7 | MIT | authoritative CLI | retain |
 | mcp | 1.28.0 | MIT metadata | stdio conversational surface | retain |
 | fastapi | 0.138.0 | MIT | Workstation JSON backend | retain |
@@ -75,6 +75,16 @@ canonical or paper-authoritative source. The public product material demonstrate
 bulk workflows, while the service license separately restricts bulk export/retention without express
 permission; permanent archives, post-subscription retention, redistribution, and commercial/public
 use therefore remain blocked on written permission.
+
+The initial Research Scientist slice adds no academic-search package or service client. The
+first-party `alpha-research` wheel uses the root's already-sanctioned Matplotlib/NumPy/SciPy stack and
+adds no new third-party runtime dependency. Proposed source interfaces—OpenAlex, Semantic Scholar,
+Crossref, Unpaywall, arXiv, SSRN, NBER, RePEc, and direct publisher/repository pages—remain external
+metadata/document services. Gate 2 includes fail-closed URL/DNS/MIME/size/receipt validation
+primitives but performs no network request or document retention. Before network automation, the
+exact API terms, attribution, rate limits, metadata/full-text rights, caching, retention,
+retraction/version semantics, and redistribution boundary must be recorded. Google Scholar remains
+manual/browser-assisted verification and may not be scraped.
 
 The IB Gateway container image is not pinned in source. Operations must provide an independently
 dependency-reviewed `registry/image@sha256:<digest>`; mutable tags are rejected by code. The image's
@@ -115,6 +125,13 @@ authorities. Their exact transitive resolution remains pinned by the frontend lo
 | Qlib | [MIT](https://github.com/microsoft/qlib/blob/main/LICENSE); [official dependency manifest](https://github.com/microsoft/qlib/blob/main/pyproject.toml) | Cross-sectional ML workflow/recorder gap; broad stack conflicts with the root NumPy/pandas boundary | **Approved only as the ADR-0016 isolated worker**; immutable snapshot/folds in, timestamped OOS JSON/Parquet out; never a root dependency or analytical authority |
 | FinancePy | [GPL-3.0](https://github.com/domokane/FinancePy/blob/master/LICENSE) | Broader derivatives products not presently required | Deferred product-specific external worker + fresh legal review |
 | TradingAgents | [Apache-2.0](https://github.com/TauricResearch/TradingAgents/blob/main/LICENSE) | AI research overlay; ALPHA already has MCP/research desk | Research-only candidate; no execution authority or runtime dependency |
+| QuantDinger | License and branding terms vary by reviewed subtree and must be re-verified from an exact revision | Durable-job/capability patterns and factor diagnostics, but also a separate broker/web stack | Architecture reference only; no code, service, broker, UI, or runtime dependency |
+| Vibe-Trading | [MIT](https://github.com/HKUDS/Vibe-Trading/blob/main/LICENSE) plus repository notice obligations | Hypothesis/evidence workflow and source-search patterns; validation shortcuts do not meet ALPHA gates | Architecture reference only; no agent runtime, generated-code execution, or validation authority |
+| AI-Trader | No repository-wide license grant verified for the reviewed source; re-verify exact revision | Networked signal/paper challenge patterns rather than governed strategy research | Conceptual caution only; no code or runtime adoption |
+| atlas-gic | [MIT](https://github.com/chrisworsey55/atlas-gic/blob/main/LICENSE) | Autoresearch keep/revert framing, but released framework omits ALPHA-grade causal validation | Architecture reference only; no code or claimed results adopted |
+| Karpathy autoresearch | Exact revision/license must be re-verified before reuse | Small frozen harness, one mutable target, fixed budget, and keep/reject log | Pattern adopted in the spec; no code or runtime dependency |
+| Hermes agent/self-evolution variants | Exact product/revision/license not selected | General agent runtime and self-modification overlap with Codex/MCP and increases authority risk | Not adopted; proposal-only sandbox requires a measured gap and separate ADR |
+| Scholarly metadata/document services | Service-specific terms; exact Gate 2 review pending | Literature discovery, DOI/version/retraction metadata, and lawful full-text resolution | Validation primitives only; no automated client, request, download, or retained corpus |
 | TensorTrade | [Apache-2.0](https://github.com/tensortrade-org/tensortrade/blob/master/LICENSE) | RL experiments; not an execution/validation authority | Isolated research candidate only; separate spec/environment |
 | Alpaca Python SDK | [Apache-2.0](https://github.com/alpacahq/alpaca-py/blob/master/LICENSE) | Broker/data provider not needed for Binance sandbox scope | Not adopted; evidence gate if a broker-specific use case appears |
 | Vollib | License must be re-verified from the exact package/source revision before use | Potential options parity oracle; no current capability gap | Not adopted; parity-only proposal requires its own evidence/test plan |
@@ -157,8 +174,13 @@ in `workers/qlib/README.md`: delete the isolated project, remove root `alpha ml`
 delete worker exchange/control links; no root package dependency or historical run rewrite is
 required.
 
-Optuna, DuckDB, ECharts, skfolio, LEAN, TradingAgents, FinRL, and RD-Agent are not adopted by v3.
-They require a new concrete capability gap and a separate ADR-0011 acceptance record.
+Optuna, DuckDB, ECharts, skfolio, LEAN, TradingAgents, QuantDinger, Vibe-Trading, AI-Trader,
+atlas-gic, Hermes, FinRL, and RD-Agent are not adopted as ALPHA runtimes. The initial Research
+Scientist slice adds repository-authored skills, the first-party `alpha-research` workspace wheel,
+CLI-owned control/intake/dossier modules, and a pure frontend projection; it adds no third-party
+package or source-service client beyond the already-reviewed Matplotlib/NumPy/SciPy resolution. Any
+executable upstream adoption requires a new concrete capability gap and a separate ADR-0011
+acceptance record.
 
 ## Required Review on Change
 
@@ -168,6 +190,7 @@ occurs:
 - a direct or vendored dependency is added, removed, relicensed, or materially upgraded;
 - NautilusTrader moves off `1.228.0`;
 - a deferred upstream candidate becomes executable in the ALPHA runtime;
+- an academic metadata/full-text client, retained source corpus, or external agent runtime is added;
 - the Workstation binds beyond loopback or becomes multi-user/hosted;
 - ALPHA is prepared for publication or distribution; or
 - the owner chooses a root project license.

@@ -59,7 +59,7 @@ blocked until the owner makes that decision explicitly.
 
 **Code anchors:** `apps/alpha-cli/src/alpha_cli/providers.py` (provider registry),
 `apps/alpha-cli/src/alpha_cli/info_cmds.py` (public projection), root `pyproject.toml` and `uv.lock`
-(approved dependency set), and the twelve named import-linter boundaries in root `pyproject.toml`.
+(approved dependency set), and the thirteen named import-linter boundaries in root `pyproject.toml`.
 
 ## Options Considered
 
