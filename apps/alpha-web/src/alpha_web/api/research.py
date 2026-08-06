@@ -1,4 +1,4 @@
-"""``/api/research/compare`` — multi-strategy leaderboard for the AI Research panel."""
+"""Bounded REST projections for comparison and the governed Research Case workflow."""
 
 from __future__ import annotations
 
@@ -8,7 +8,17 @@ from fastapi import APIRouter, HTTPException
 
 from alpha_web import _research
 from alpha_web.api._common import data_dir
-from alpha_web.api.models import ResearchReport
+from alpha_web.api.models import (
+    ResearchCaptureRequest,
+    ResearchCaptureResponse,
+    ResearchCase,
+    ResearchCaseReport,
+    ResearchLaunchRequest,
+    ResearchLaunchResponse,
+    ResearchProposalRequest,
+    ResearchProposalResponse,
+    ResearchReport,
+)
 
 router = APIRouter(prefix="/api", tags=["research"])
 
@@ -20,3 +30,80 @@ def research_compare(symbol: str, strategies: str = "") -> dict[str, Any]:
         return _research.compare(data_dir=data_dir(), symbol=symbol, strategies=strategies)
     except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/research/cases", response_model=ResearchCaptureResponse)
+def research_capture(body: ResearchCaptureRequest) -> dict[str, Any]:
+    """Capture exact idea wording and bounded triage; never approve or launch work."""
+    try:
+        return _research.capture(data_dir=data_dir(), idea=body.idea, name=body.name)
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/research/cases/{project_id}", response_model=ResearchCase)
+def research_get(project_id: str) -> dict[str, Any]:
+    """Read one complete bounded Research Case summary."""
+    try:
+        return _research.get(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/research/cases/{project_id}/proposal",
+    response_model=ResearchProposalResponse,
+)
+def research_propose(project_id: str, body: ResearchProposalRequest) -> dict[str, Any]:
+    """Create an owner-reviewable contract; owner approval has no REST route."""
+    answers = {
+        "chart_construction": body.answers.chart_construction,
+        "event_availability": body.answers.event_availability,
+        "primary_outcome": body.answers.primary_outcome,
+    }
+    try:
+        return _research.propose(
+            project_id,
+            data_dir=data_dir(),
+            source_pack_id=body.source_pack_id,
+            answers=answers,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post(
+    "/research/cases/{project_id}/launch",
+    response_model=ResearchLaunchResponse,
+)
+def research_launch(project_id: str, body: ResearchLaunchRequest) -> dict[str, Any]:
+    """Run the deterministic D0 pilot after approval performed outside REST."""
+    try:
+        return _research.launch(
+            project_id,
+            data_dir=data_dir(),
+            stage=body.stage,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/research/cases/{project_id}/status", response_model=ResearchCase)
+def research_status(project_id: str) -> dict[str, Any]:
+    """Read current phase, execution state, next action, budget, and firewall state."""
+    try:
+        return _research.status(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/report",
+    response_model=ResearchCaseReport,
+)
+def research_report(project_id: str) -> dict[str, Any]:
+    """Read a progress report or the deterministic packet for an already-closed case."""
+    try:
+        return _research.report(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

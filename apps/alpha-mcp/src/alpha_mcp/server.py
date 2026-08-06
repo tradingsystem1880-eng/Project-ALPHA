@@ -504,6 +504,80 @@ def propfirm_run(
 
 
 @mcp.tool()
+def research_capture(idea: str, name: str | None = None) -> _types.ResearchCaptureOut:
+    """Capture exact owner wording and return one bounded material-question batch.
+
+    This creates only a draft Research Case. It cannot approve a contract, change a budget,
+    reveal sealed data, or reach paper/order capabilities.
+    """
+    return cast(
+        _types.ResearchCaptureOut,
+        _control.research_capture(idea, data_dir=_data_dir(), name=name),
+    )
+
+
+@mcp.tool()
+def research_get(project_id: str) -> _types.ResearchCaseOut:
+    """Read the authoritative Research Case, active contract, next action, and firewall state."""
+    return cast(
+        _types.ResearchCaseOut,
+        _control.research_get(project_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def research_propose(
+    project_id: str,
+    source_pack_id: str,
+    answers: dict[str, str],
+) -> _types.ResearchProposalOut:
+    """Draft an approval-ready exploration contract from exactly three material answers.
+
+    The result still requires a separate human-owner CLI approval. This tool cannot approve its
+    own proposal or alter sealed confirmation/final-holdout state.
+    """
+    return cast(
+        _types.ResearchProposalOut,
+        _control.research_propose(
+            project_id,
+            source_pack_id,
+            answers,
+            data_dir=_data_dir(),
+        ),
+    )
+
+
+@mcp.tool()
+def research_launch(
+    project_id: str,
+    stage: Literal["pilot"],
+) -> _types.ResearchLaunchOut:
+    """Launch the approved synthetic D0 pilot; D1 and D2 runners are unavailable."""
+    return cast(
+        _types.ResearchLaunchOut,
+        _control.research_launch(project_id, stage, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def research_status(project_id: str) -> _types.ResearchCaseOut:
+    """Read one case's current phase, execution, budget, blocker, and exact next action."""
+    return cast(
+        _types.ResearchCaseOut,
+        _control.research_get(project_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def research_report(project_id: str) -> _types.ResearchReportOut:
+    """Read the current progress report or terminal packet without changing research state."""
+    return cast(
+        _types.ResearchReportOut,
+        _control.research_report(project_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
 def create_strategy_project(
     name: str, hypothesis: str, falsification_criterion: str
 ) -> _types.ProjectSummaryOut:

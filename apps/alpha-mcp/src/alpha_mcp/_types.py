@@ -70,6 +70,90 @@ class ProjectPageOut(TypedDict):
     has_more: bool
 
 
+class ResearchCaseOut(TypedDict):
+    schema_version: int
+    project_id: str
+    project_name: str
+    phase: str
+    execution_state: str
+    active_contract_id: str
+    active_contract: JsonObject
+    exploration_contract_id: str
+    confirmation_contract_id: str | None
+    exploration_review: JsonObject
+    confirmation_review: JsonObject
+    research_decision: JsonObject | None
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    blocker: str | None
+    recovery: str | None
+    latest_finding: str | None
+    milestones: list[JsonObject]
+    completed_milestones: list[JsonObject]
+    remaining_milestones: list[str]
+    elapsed_time_seconds: float
+    elapsed_budget: JsonObject
+    remaining_budget: JsonObject
+    active_job_id: str | None
+    checkpoint: str | None
+    hashes: JsonObject
+    source_pack_id: str | None
+    attempt_count: int
+    terminal_attempt_count: int
+    unfinalized_launch_count: int
+    remaining_launches: int
+    latest_launch_reservation_id: str | None
+    latest_launch_number: int | None
+    latest_attempt_id: str | None
+    latest_run_id: str | None
+    latest_run_fingerprint: str | None
+    d2_state: str
+    d2_boundary_hash: str
+    d2_history: list[JsonObject]
+    d3_state: str
+
+
+class ResearchCaptureOut(TypedDict):
+    project: ProjectSummaryOut
+    contract: JsonObject
+    case: ResearchCaseOut
+
+
+class ResearchProposalOut(TypedDict):
+    contract: JsonObject
+    case: ResearchCaseOut
+
+
+class ResearchLaunchOut(TypedDict):
+    manifest: JsonObject
+    attempt: JsonObject
+    case: ResearchCaseOut
+
+
+class ResearchProgressReportOut(TypedDict):
+    report_schema: Literal["ResearchProgressReportV1"]
+    terminal: Literal[False]
+    case: ResearchCaseOut
+    warning: str
+
+
+class ResearchGatePacketOut(TypedDict):
+    report_schema: Literal["ResearchGatePacketV1"]
+    schema_version: Literal[1]
+    terminal: Literal[True]
+    packet_id: str
+    packet_hash: str
+    project_id: str
+    active_contract_id: str
+    scientific_outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    recommended_disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    authority: JsonObject
+    layers: JsonObject
+
+
+type ResearchReportOut = ResearchProgressReportOut | ResearchGatePacketOut
+
+
 class StrategyVersionOut(TypedDict):
     version_id: str
     strategy_name: str
