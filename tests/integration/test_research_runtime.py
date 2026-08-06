@@ -350,10 +350,12 @@ def test_synthetic_pilot_rejects_invalid_authority_inputs(tmp_path: Path) -> Non
             "registered D0 operator binding does not match",
         ),
         (
+            # A well-formed foreign generation is still refused before compute, but as an
+            # explicit generation mismatch rather than an error implying tampering.
             lambda contract: contract["protocol"]["d0_operator"]["fixture"].__setitem__(
                 "fixture_version", 2
             ),
-            "registered D0 operator binding does not match",
+            "generation mismatch, not tampering",
         ),
     ],
 )
@@ -426,4 +428,45 @@ def test_synthetic_pilot_fails_when_fixture_or_hash_contract_drifts(
             project_id="11111111-1111-4111-8111-111111111111",
             contract_id="rc_" + "f" * 64,
             contract=contract,
+        )
+
+
+def test_future_generation_contract_binding_gets_a_generation_error() -> None:
+    """A well-formed different registered generation must not be reported as tampering."""
+    contract = _contract()
+    protocol = contract["protocol"]
+    assert isinstance(protocol, dict)
+    binding = protocol["d0_operator"]
+    assert isinstance(binding, dict)
+    fixture = binding["fixture"]
+    assert isinstance(fixture, dict)
+    fixture["fixture_version"] = 2
+    with pytest.raises(DataError, match="generation mismatch, not tampering"):
+        validate_d0_pilot_contract(contract)
+
+
+def test_future_generation_acceptance_artifact_gets_a_generation_error(tmp_path: Path) -> None:
+    """Reading a run from another registered generation fails with the generation error."""
+    manifest = run_synthetic_pilot(
+        tmp_path,
+        project_id="11111111-1111-4111-8111-111111111111",
+        contract_id="rc_" + "a" * 64,
+        contract=_contract(),
+    )
+    run_dir = tmp_path / "runs" / str(manifest["run_id"])
+    path = run_dir / "d0_acceptance.json"
+    acceptance = json.loads(path.read_text(encoding="utf-8"))
+    acceptance["fixture_version"] = 2
+    path.write_text(_canonical(acceptance), encoding="utf-8")
+
+    with pytest.raises(DataError, match="generation mismatch, not tampering"):
+        research_runtime.validate_d0_acceptance_artifact(
+            run_dir,
+            manifest,
+            project_id=str(manifest["project_id"]),
+            contract_id=str(manifest["research_contract_id"]),
+            contract_hash=str(manifest["contract_hash"]),
+            dataset_hash=str(manifest["dataset_hash"]),
+            execution_fingerprint=str(manifest["execution_fingerprint"]),
+            d0_operator_fingerprint=str(manifest["d0_operator_fingerprint"]),
         )

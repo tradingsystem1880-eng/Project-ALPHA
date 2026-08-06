@@ -51,6 +51,15 @@ _D0_OUTCOME_CHOICE: Final = "four_trading_hour_return_25bp"
 _D0_HORIZON_TRADING_MINUTES: Final = 240
 _D0_MINIMUM_EFFECT_RETURN: Final = 0.0025
 _D0_TOPOLOGY_SCHEMA_VERSION: Final = 2
+# GENERATION POLICY: every registered constant in this module (the detector _SPEC, the
+# planted/null fixture lows, the power parameters and their frozen seed, and
+# _D0_RUNTIME_VERSION) is part of one registered operator generation, identified by
+# (_D0_FIXTURE_ID, _D0_FIXTURE_VERSION). Changing ANY of them is a breaking generation
+# change and MUST bump _D0_FIXTURE_VERSION. Completed runs verify by exact recomputation,
+# so a run from another generation is unreadable by this runtime BY DESIGN — but it must
+# fail with the explicit generation error below (see _require_current_d0_generation),
+# never with an error implying tampering. Reading an earlier generation requires the
+# producing code generation or an explicit owner-approved data-dir migration.
 _D0_FIXTURE_ID: Final = "spy_60m_double_bottom_v1"
 _D0_FIXTURE_VERSION: Final = 1
 _D0_RUNTIME_VERSION: Final = 3
@@ -249,6 +258,35 @@ def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
     return {**payload, "fingerprint": _sha(payload)}
 
 
+def _require_current_d0_generation(
+    fixture_id: object, fixture_version: object, *, source: str
+) -> None:
+    """Separate a well-formed foreign registered generation from evidence of tampering.
+
+    Only an exactly well-formed, different (fixture_id, fixture_version) pair earns the
+    generation error; malformed values fall through to the strict authority comparisons,
+    preserving fail-closed semantics.
+    """
+
+    if fixture_id == _D0_FIXTURE_ID and fixture_version == _D0_FIXTURE_VERSION:
+        return
+    well_formed = (
+        isinstance(fixture_id, str)
+        and bool(fixture_id.strip())
+        and isinstance(fixture_version, int)
+        and not isinstance(fixture_version, bool)
+        and fixture_version >= 1
+    )
+    if well_formed:
+        raise DataError(
+            f"D0 {source} was produced by registered operator generation "
+            f"{fixture_id!r} v{fixture_version} but this runtime executes only "
+            f"{_D0_FIXTURE_ID!r} v{_D0_FIXTURE_VERSION} — a generation mismatch, not "
+            "tampering; read it with the producing code generation or an explicit "
+            "owner-approved data-dir migration"
+        )
+
+
 def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, object]:
     """Fail closed unless ``contract`` binds the exact registered Gate-1 event operator."""
 
@@ -289,6 +327,13 @@ def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, obje
         "d0_operator",
         label="a registered D0 operator binding",
     )
+    binding_fixture = binding.get("fixture")
+    if isinstance(binding_fixture, Mapping):
+        _require_current_d0_generation(
+            binding_fixture.get("fixture_id"),
+            binding_fixture.get("fixture_version"),
+            source="contract operator binding",
+        )
     if _canonical(binding) != _canonical(expected_binding):
         raise DataError("registered D0 operator binding does not match the executable operator")
     return expected_binding
@@ -493,6 +538,11 @@ def validate_d0_acceptance_artifact(
     acceptance: dict[str, object] = parsed
     if raw != _canonical(acceptance).encode("utf-8"):
         raise DataError("D0 acceptance artifact must use canonical JSON bytes")
+    _require_current_d0_generation(
+        acceptance.get("fixture_id"),
+        acceptance.get("fixture_version"),
+        source="acceptance artifact",
+    )
     expected_identity: dict[str, object] = {
         "schema": _D0_ACCEPTANCE_SCHEMA,
         "schema_version": 1,
