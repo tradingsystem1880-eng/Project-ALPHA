@@ -273,7 +273,7 @@ export interface paths {
         put?: never;
         /**
          * Launch Job
-         * @description Launch ``alpha <command> <args>`` as a background job. Returns its id + initial status.
+         * @description Launch a background CLI job, excluding governed Research Case commands.
          */
         post: operations["launch_job_api_jobs_post"];
         delete?: never;
@@ -1079,6 +1079,126 @@ export interface paths {
          * @description Configured provider capabilities with credential names/presence, never secret values.
          */
         get: operations["get_providers_api_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Capture
+         * @description Capture exact idea wording and bounded triage; never approve or launch work.
+         */
+        post: operations["research_capture_api_research_cases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Get
+         * @description Read one complete bounded Research Case summary.
+         */
+        get: operations["research_get_api_research_cases__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/launch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Launch
+         * @description Run the deterministic D0 pilot after approval performed outside REST.
+         */
+        post: operations["research_launch_api_research_cases__project_id__launch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/proposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Propose
+         * @description Create an owner-reviewable contract; owner approval has no REST route.
+         */
+        post: operations["research_propose_api_research_cases__project_id__proposal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Report
+         * @description Read a progress report or the deterministic packet for an already-closed case.
+         */
+        get: operations["research_report_api_research_cases__project_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Status
+         * @description Read current phase, execution state, next action, budget, and firewall state.
+         */
+        get: operations["research_status_api_research_cases__project_id__status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3744,7 +3864,8 @@ export interface components {
         /**
          * LaunchRequest
          * @description Launch body: a command path (e.g. ``"backtest run"``) + its remaining args, or a bare
-         *     ``args`` string (empty ``command``) for the free-form console.
+         *     ``args`` string (empty ``command``) for the free-form console. Governed research commands are
+         *     rejected here; only the legacy non-governance ``research compare`` command is admitted.
          */
         LaunchRequest: {
             /**
@@ -5408,6 +5529,543 @@ export interface components {
         };
         /** @enum {string} */
         PublicStageStateValue: "not_started" | "ready" | "queued" | "running" | "stale";
+        /** ResearchAttempt */
+        ResearchAttempt: {
+            /** Attempt Id */
+            attempt_id: string;
+            budget_used: components["schemas"]["JsonObject"];
+            /** Config Fingerprint */
+            config_fingerprint: string;
+            /** Contract Id */
+            contract_id: string;
+            details: components["schemas"]["JsonObject"];
+            /** Error */
+            error: string | null;
+            /** Kind */
+            kind: string;
+            /** Launch Reservation Id */
+            launch_reservation_id?: string | null;
+            phase: components["schemas"]["ResearchPhaseValue"];
+            /** Project Id */
+            project_id: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Run Id */
+            run_id: string | null;
+            status: components["schemas"]["AttemptStatusValue"];
+        };
+        /** ResearchCaptureRequest */
+        ResearchCaptureRequest: {
+            /** Idea */
+            idea: string;
+            /** Name */
+            name?: string | null;
+        };
+        /** ResearchCaptureResponse */
+        ResearchCaptureResponse: {
+            case: components["schemas"]["ResearchCase"];
+            contract: components["schemas"]["ResearchContract"];
+            project: components["schemas"]["ProjectSummary"];
+        };
+        /** ResearchCase */
+        ResearchCase: {
+            active_contract: components["schemas"]["ResearchContract"];
+            /** Active Contract Id */
+            active_contract_id: string;
+            /** Active Job Id */
+            active_job_id: string | null;
+            /** Attempt Count */
+            attempt_count: number;
+            /** Blocker */
+            blocker: string | null;
+            /** Checkpoint */
+            checkpoint: string | null;
+            /** Completed Milestones */
+            completed_milestones: components["schemas"]["ResearchMilestone"][];
+            /** Confirmation Contract Id */
+            confirmation_contract_id: string | null;
+            confirmation_review: components["schemas"]["ResearchReviewSummary"];
+            /** D2 Boundary Hash */
+            d2_boundary_hash: string;
+            /** D2 History */
+            d2_history: components["schemas"]["ResearchD2Event"][];
+            d2_state: components["schemas"]["ResearchD2StateValue"];
+            d3_state: components["schemas"]["ResearchD3StateValue"];
+            elapsed_budget: components["schemas"]["JsonObject"];
+            /** Elapsed Time Seconds */
+            elapsed_time_seconds: number;
+            execution_state: components["schemas"]["ResearchExecutionStateValue"];
+            /** Exploration Contract Id */
+            exploration_contract_id: string;
+            exploration_review: components["schemas"]["ResearchReviewSummary"];
+            hashes: components["schemas"]["JsonObject"];
+            /** Latest Attempt Id */
+            latest_attempt_id: string | null;
+            /** Latest Finding */
+            latest_finding: string | null;
+            /** Latest Launch Number */
+            latest_launch_number: number | null;
+            /** Latest Launch Reservation Id */
+            latest_launch_reservation_id: string | null;
+            /** Latest Run Fingerprint */
+            latest_run_fingerprint: string | null;
+            /** Latest Run Id */
+            latest_run_id: string | null;
+            /** Milestones */
+            milestones: components["schemas"]["ResearchMilestone"][];
+            /** Next Action */
+            next_action: string;
+            phase: components["schemas"]["ResearchPhaseValue"];
+            /** Project Id */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /** Recovery */
+            recovery: string | null;
+            remaining_budget: components["schemas"]["JsonObject"];
+            /** Remaining Launches */
+            remaining_launches: number;
+            /** Remaining Milestones */
+            remaining_milestones: components["schemas"]["ResearchPhaseValue"][];
+            research_decision: components["schemas"]["ResearchDecisionEvent"] | null;
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Source Pack Id */
+            source_pack_id: string | null;
+            /** Terminal Attempt Count */
+            terminal_attempt_count: number;
+            /** Unfinalized Launch Count */
+            unfinalized_launch_count: number;
+        };
+        ResearchCaseReport: components["schemas"]["ResearchProgressReport"] | components["schemas"]["ResearchGatePacket"];
+        /** @constant */
+        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
+        /** ResearchContract */
+        ResearchContract: {
+            author_kind: components["schemas"]["AuthorKindValue"];
+            /** Contract Id */
+            contract_id: string;
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            latest_review: components["schemas"]["ResearchReviewEvent"] | null;
+            /** Parent Contract Id */
+            parent_contract_id: string | null;
+            payload: components["schemas"]["JsonObject"];
+            /** Project Id */
+            project_id: string;
+            /**
+             * Review State
+             * @enum {string}
+             */
+            review_state: "pending" | "approved" | "rejected";
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "exploration" | "confirmation";
+        };
+        /** ResearchD2Event */
+        ResearchD2Event: {
+            /** Actor */
+            actor: string;
+            /** Boundary Hash */
+            boundary_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /** Occurred At */
+            occurred_at: string;
+            /** Reason */
+            reason: string;
+            state: components["schemas"]["ResearchD2StateValue"];
+        };
+        /** @enum {string} */
+        ResearchD2StateValue: "sealed" | "authorized" | "consumed" | "contaminated";
+        /** @enum {string} */
+        ResearchD3StateValue: "not_sealed" | "sealed" | "consumed" | "contaminated";
+        /** ResearchDecisionEvent */
+        ResearchDecisionEvent: {
+            /** Actor */
+            actor: string;
+            actor_kind: components["schemas"]["AuthorKindValue"];
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "advance_to_strategy" | "revise" | "park" | "reject";
+            /** Occurred At */
+            occurred_at: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID";
+            /** Project Id */
+            project_id: string;
+            /** Reason */
+            reason: string;
+            /** Sequence */
+            sequence: number;
+        };
+        /** @constant */
+        ResearchEventAvailabilityValue: "second_trough_confirmable";
+        /** @enum {string} */
+        ResearchExecutionStateValue: "idle" | "queued" | "running" | "paused" | "blocked" | "failed";
+        /** ResearchGateAuditLedgers */
+        ResearchGateAuditLedgers: {
+            /** D2 Events */
+            d2_events: components["schemas"]["JsonObject"][];
+            /** Decision Events */
+            decision_events: components["schemas"]["JsonObject"][];
+            /** Execution Events */
+            execution_events: components["schemas"]["JsonObject"][];
+            /** Phase Events */
+            phase_events: components["schemas"]["JsonObject"][];
+            /** Review Events */
+            review_events: components["schemas"]["JsonObject"][];
+        };
+        /** ResearchGateAuthority */
+        ResearchGateAuthority: {
+            /**
+             * Evidence Claim
+             * @constant
+             */
+            evidence_claim: "point-in-time-valid predictive association";
+            /**
+             * Paper Ready
+             * @constant
+             */
+            paper_ready: false;
+            /**
+             * Places Orders
+             * @constant
+             */
+            places_orders: false;
+            /**
+             * Strategy Validated
+             * @constant
+             */
+            strategy_validated: false;
+            /**
+             * Uses Final Strategy Holdout
+             * @constant
+             */
+            uses_final_strategy_holdout: false;
+        };
+        /** ResearchGateConclusion */
+        ResearchGateConclusion: {
+            /** Effective Sample Size */
+            effective_sample_size: number | null;
+            /**
+             * Evidence Basis
+             * @enum {string}
+             */
+            evidence_basis: "SEALED_D2" | "EXPLORATORY_D1" | "NO_TYPED_NON_SYNTHETIC_EVIDENCE";
+            /** Owner Decision Reason */
+            owner_decision_reason: string;
+            practical_magnitude: components["schemas"]["ResearchGatePracticalMagnitude"];
+            /** Primary Estimate */
+            primary_estimate: number | null;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Recommended Disposition
+             * @enum {string}
+             */
+            recommended_disposition: "advance_to_strategy" | "revise" | "park" | "reject";
+            /**
+             * Scientific Outcome
+             * @enum {string}
+             */
+            scientific_outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID";
+            /** Strongest Caveat */
+            strongest_caveat: string;
+            /** Thesis */
+            thesis: string;
+            /** Thesis Answer */
+            thesis_answer: string;
+            uncertainty: components["schemas"]["ResearchGateUncertainty"] | null;
+        };
+        /** ResearchGateConfirmationChecks */
+        ResearchGateConfirmationChecks: {
+            /** Corrected Primary Test Passed */
+            corrected_primary_test_passed: boolean;
+            /** Economic Hurdle Cleared */
+            economic_hurdle_cleared: boolean;
+            /** Interval Registered Direction */
+            interval_registered_direction: boolean;
+            /** Interval Wholly Against Direction */
+            interval_wholly_against_direction: boolean;
+        };
+        /** ResearchGateConfounders */
+        ResearchGateConfounders: {
+            /** Resolved */
+            resolved: string[];
+            /** Unresolved */
+            unresolved: string[];
+        };
+        /** ResearchGateFinding */
+        ResearchGateFinding: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PASSED" | "FAILED" | "STABLE" | "UNSTABLE" | "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "NOT_TESTED" | "OBSERVED";
+            /** Summary */
+            summary: string | null;
+        };
+        /** ResearchGateGuidedEvidence */
+        ResearchGateGuidedEvidence: {
+            confirmation_checks: components["schemas"]["ResearchGateConfirmationChecks"] | null;
+            /** Confirmation Classification */
+            confirmation_classification: ("SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID") | null;
+            confounders: components["schemas"]["ResearchGateConfounders"];
+            mechanism: components["schemas"]["ResearchGateFinding"];
+            multiplicity: components["schemas"]["ResearchGateFinding"];
+            negative_controls: components["schemas"]["ResearchGateFinding"];
+            power: components["schemas"]["ResearchGateFinding"];
+            primary_result: components["schemas"]["ResearchGatePrimaryResult"];
+            stability: components["schemas"]["ResearchGateStability"];
+            strongest_contradiction: components["schemas"]["ResearchGateFinding"];
+            strongest_support: components["schemas"]["ResearchGateFinding"];
+            /** Teaching Note */
+            teaching_note: string;
+            /** Untested Work */
+            untested_work: string[];
+            /** What Would Change Conclusion */
+            what_would_change_conclusion: string[];
+        };
+        /** ResearchGateLayers */
+        ResearchGateLayers: {
+            conclusion_90_seconds: components["schemas"]["ResearchGateConclusion"];
+            guided_evidence: components["schemas"]["ResearchGateGuidedEvidence"];
+            technical_appendix: components["schemas"]["ResearchGateTechnicalAppendix"];
+        };
+        /** ResearchGateLedgerBounds */
+        ResearchGateLedgerBounds: {
+            counts: components["schemas"]["ResearchGateLedgerCounts"];
+            /**
+             * Maximum Rows Per Input Ledger
+             * @constant
+             */
+            maximum_rows_per_input_ledger: 10000;
+            /**
+             * Truncated
+             * @constant
+             */
+            truncated: false;
+        };
+        /** ResearchGateLedgerCounts */
+        ResearchGateLedgerCounts: {
+            /** Artifact Links */
+            artifact_links: number;
+            /** Attempts */
+            attempts: number;
+            /** Contracts */
+            contracts: number;
+            /** D2 Events */
+            d2_events: number;
+            /** Decision Events */
+            decision_events: number;
+            /** Execution Events */
+            execution_events: number;
+            /** Launch Attempt Links */
+            launch_attempt_links: number;
+            /** Launch Reservations */
+            launch_reservations: number;
+            /** Phase Events */
+            phase_events: number;
+            /** Review Events */
+            review_events: number;
+            /** Source Packs */
+            source_packs: number;
+            /** Sources */
+            sources: number;
+        };
+        /** ResearchGatePacket */
+        ResearchGatePacket: {
+            /** Active Contract Id */
+            active_contract_id: string;
+            authority: components["schemas"]["ResearchGateAuthority"];
+            layers: components["schemas"]["ResearchGateLayers"];
+            /** Packet Hash */
+            packet_hash: string;
+            /** Packet Id */
+            packet_id: string;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Recommended Disposition
+             * @enum {string}
+             */
+            recommended_disposition: "advance_to_strategy" | "revise" | "park" | "reject";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            report_schema: "ResearchGatePacketV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Scientific Outcome
+             * @enum {string}
+             */
+            scientific_outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID";
+            /**
+             * Terminal
+             * @constant
+             */
+            terminal: true;
+        };
+        /** ResearchGatePracticalMagnitude */
+        ResearchGatePracticalMagnitude: {
+            /** Interpretation */
+            interpretation: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "CLEARS_HURDLE" | "BELOW_HURDLE" | "INCONCLUSIVE" | "NOT_TESTED";
+            /** Unit */
+            unit: string | null;
+            /** Value */
+            value: number | null;
+        };
+        /** ResearchGatePrimaryResult */
+        ResearchGatePrimaryResult: {
+            /** Effective Sample Size */
+            effective_sample_size?: number | null;
+            /** Estimate */
+            estimate: number | null;
+            practical_magnitude: components["schemas"]["ResearchGatePracticalMagnitude"];
+            /** Sample Size */
+            sample_size?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "TESTED" | "NOT_TESTED";
+            uncertainty: components["schemas"]["ResearchGateUncertainty"] | null;
+            /** Unit */
+            unit: string | null;
+        };
+        /** ResearchGateStability */
+        ResearchGateStability: {
+            parameter: components["schemas"]["ResearchGateFinding"];
+            temporal: components["schemas"]["ResearchGateFinding"];
+            transportability: components["schemas"]["ResearchGateFinding"];
+        };
+        /** ResearchGateTechnicalAppendix */
+        ResearchGateTechnicalAppendix: {
+            /** Attempt Ledger */
+            attempt_ledger: components["schemas"]["JsonObject"][];
+            /** Budget Ledger */
+            budget_ledger: components["schemas"]["JsonObject"][];
+            /** Contract Lineage */
+            contract_lineage: components["schemas"]["JsonObject"][];
+            /** Immutable Artifact Links */
+            immutable_artifact_links: components["schemas"]["JsonObject"][];
+            /** Launch Attempt Link Ledger */
+            launch_attempt_link_ledger: components["schemas"]["JsonObject"][];
+            /** Launch Reservation Ledger */
+            launch_reservation_ledger: components["schemas"]["JsonObject"][];
+            ledger_bounds: components["schemas"]["ResearchGateLedgerBounds"];
+            phase_review_d2_ledgers: components["schemas"]["ResearchGateAuditLedgers"];
+            project: components["schemas"]["JsonObject"];
+            selected_evidence: components["schemas"]["JsonObject"] | null;
+            /** Source Ledger */
+            source_ledger: components["schemas"]["JsonObject"][];
+            /** Source Pack Ledger */
+            source_pack_ledger: components["schemas"]["JsonObject"][];
+            /** Variant Ledger */
+            variant_ledger: components["schemas"]["JsonObject"][];
+        };
+        /** ResearchGateUncertainty */
+        ResearchGateUncertainty: {
+            /** Level */
+            level: number;
+            /** Lower */
+            lower: number;
+            /** Method */
+            method: string;
+            /** Upper */
+            upper: number;
+        };
+        /** ResearchLaunchRequest */
+        ResearchLaunchRequest: {
+            /**
+             * Stage
+             * @constant
+             */
+            stage: "pilot";
+        };
+        /** ResearchLaunchResponse */
+        ResearchLaunchResponse: {
+            attempt: components["schemas"]["ResearchAttempt"];
+            case: components["schemas"]["ResearchCase"];
+            manifest: components["schemas"]["JsonObject"];
+        };
+        /** ResearchMaterialAnswers */
+        ResearchMaterialAnswers: {
+            chart_construction: components["schemas"]["ResearchChartConstructionValue"];
+            event_availability: components["schemas"]["ResearchEventAvailabilityValue"];
+            primary_outcome: components["schemas"]["ResearchPrimaryOutcomeValue"];
+        };
+        /** ResearchMilestone */
+        ResearchMilestone: {
+            /** Contract Id */
+            contract_id: string;
+            /** Occurred At */
+            occurred_at: string;
+            phase: components["schemas"]["ResearchPhaseValue"];
+            /** Reason */
+            reason: string;
+        };
+        /** @enum {string} */
+        ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
+        /** @constant */
+        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp";
+        /** ResearchProgressReport */
+        ResearchProgressReport: {
+            case: components["schemas"]["ResearchCase"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            report_schema: "ResearchProgressReportV1";
+            /**
+             * Terminal
+             * @constant
+             */
+            terminal: false;
+            /** Warning */
+            warning: string;
+        };
+        /** ResearchProposalRequest */
+        ResearchProposalRequest: {
+            answers: components["schemas"]["ResearchMaterialAnswers"];
+            /** Source Pack Id */
+            source_pack_id: string;
+        };
+        /** ResearchProposalResponse */
+        ResearchProposalResponse: {
+            case: components["schemas"]["ResearchCase"];
+            contract: components["schemas"]["ResearchContract"];
+        };
         /** ResearchReport */
         ResearchReport: {
             /** N Bars */
@@ -5416,6 +6074,41 @@ export interface components {
             ranked: components["schemas"]["ResearchRow"][];
             /** Symbol */
             symbol: string;
+        };
+        /** ResearchReviewEvent */
+        ResearchReviewEvent: {
+            /** Actor */
+            actor: string;
+            actor_kind: components["schemas"]["AuthorKindValue"];
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Occurred At */
+            occurred_at: string;
+            /** Project Id */
+            project_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "exploration" | "confirmation";
+            /** Sequence */
+            sequence: number;
+        };
+        /** ResearchReviewSummary */
+        ResearchReviewSummary: {
+            event: components["schemas"]["ResearchReviewEvent"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "approved" | "rejected";
         };
         /** ResearchRow */
         ResearchRow: {
@@ -7904,6 +8597,202 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderDefinition"][];
+                };
+            };
+        };
+    };
+    research_capture_api_research_cases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchCaptureRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_get_api_research_cases__project_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchCase"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_launch_api_research_cases__project_id__launch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchLaunchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchLaunchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_propose_api_research_cases__project_id__proposal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchProposalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchProposalResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_report_api_research_cases__project_id__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchCaseReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_status_api_research_cases__project_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchCase"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

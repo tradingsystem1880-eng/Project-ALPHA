@@ -34,6 +34,13 @@ import type {
   ProjectDetail,
   ProjectPage,
   ProjectSummary,
+  ResearchCaptureRequest,
+  ResearchCaptureResponse,
+  ResearchCase,
+  ResearchCaseReport,
+  ResearchLaunchResponse,
+  ResearchProposalRequest,
+  ResearchProposalResponse,
   ResearchReport,
   RiskReport,
   RunDetail,
@@ -195,6 +202,21 @@ export const api = {
     getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
   researchCompare: (symbol: string): Promise<ResearchReport> =>
     getJSON(`/api/research/compare?symbol=${encodeURIComponent(symbol)}`),
+  researchCapture: (body: ResearchCaptureRequest): Promise<ResearchCaptureResponse> =>
+    postJSON('/api/research/cases', body),
+  researchCase: (projectId: string): Promise<ResearchCase> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}`),
+  researchProposal: (
+    projectId: string,
+    body: ResearchProposalRequest,
+  ): Promise<ResearchProposalResponse> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/proposal`, body),
+  researchPilot: (projectId: string): Promise<ResearchLaunchResponse> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/launch`, { stage: 'pilot' }),
+  researchStatus: (projectId: string): Promise<ResearchCase> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/status`),
+  researchProgressReport: (projectId: string): Promise<ResearchCaseReport> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/report`),
   projects: (limit = 50, offset = 0): Promise<ProjectPage> =>
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>
