@@ -418,6 +418,12 @@ def _approved_contracts(
 
 
 def _confirmation_evidence(outcome: str) -> dict[str, object]:
+    claim: dict[str, object] | None = {
+        "direction": "positive",
+        "minimum_effect": 0.0005,
+        "adjusted_p_value": 0.01,
+        "alpha": 0.05,
+    }
     if outcome == "SUPPORTED":
         primary: dict[str, object] = {
             "status": "TESTED",
@@ -470,6 +476,7 @@ def _confirmation_evidence(outcome: str) -> dict[str, object]:
             "economic_hurdle_cleared": False,
             "interval_wholly_against_direction": True,
         }
+        claim = dict(claim or {}, adjusted_p_value=0.6)
     elif outcome == "INVALID":
         primary = {"status": "NOT_TESTED"}
         checks = {
@@ -478,6 +485,7 @@ def _confirmation_evidence(outcome: str) -> dict[str, object]:
             "economic_hurdle_cleared": False,
             "interval_wholly_against_direction": False,
         }
+        claim = None
     else:
         primary = {
             "status": "TESTED",
@@ -504,13 +512,17 @@ def _confirmation_evidence(outcome: str) -> dict[str, object]:
             "economic_hurdle_cleared": False,
             "interval_wholly_against_direction": False,
         }
-    return {
+        claim = dict(claim or {}, adjusted_p_value=0.2)
+    evidence: dict[str, object] = {
         "schema": "ResearchGateEvidenceV1",
         "evidence_zone": "D2",
         "primary_result": primary,
         "confirmation_classification": outcome,
         "confirmation_checks": checks,
     }
+    if claim is not None:
+        evidence["confirmation_claim"] = claim
+    return evidence
 
 
 def _approved_pilot(store: ControlStore) -> tuple[str, dict[str, object]]:

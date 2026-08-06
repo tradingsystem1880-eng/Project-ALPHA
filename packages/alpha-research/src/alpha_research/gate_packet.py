@@ -15,6 +15,11 @@ from dataclasses import dataclass
 from typing import Final, Literal, cast
 
 from alpha_core import DataError
+from alpha_research.confirmation import (
+    ClaimDirection,
+    ConfirmationEvidence,
+    classify_confirmation,
+)
 
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | Sequence[JsonValue] | Mapping[str, JsonValue]
@@ -344,6 +349,88 @@ def _evidence_artifact_reference(value: object, label: str) -> dict[str, JsonVal
     return {"artifact": "research_gate_evidence.json", "content_sha256": digest}
 
 
+def _confirmation_claim(
+    raw: dict[str, JsonValue],
+    primary: dict[str, JsonValue],
+    classification: str,
+    checks: dict[str, JsonValue],
+) -> dict[str, JsonValue] | None:
+    """Bind the D2 classification and check booleans to the numeric evidence.
+
+    The producer supplies the registered claim context (direction, minimum effect, frozen
+    alpha, adjusted p, and an optional invalid reason); the classification is then
+    RECOMPUTED via :func:`classify_confirmation` and every check boolean is compared to
+    its numeric fact.  Producer attestations that disagree with the numbers fail loud.
+    A NOT_TESTED primary result has no numbers to bind, so it must not carry a claim.
+    """
+
+    if primary["status"] != "TESTED":
+        if raw.get("confirmation_claim") is not None:
+            raise DataError("a NOT_TESTED primary_result cannot carry a confirmation_claim")
+        return None
+    claim = _object(raw.get("confirmation_claim"), "D2 gate evidence confirmation_claim")
+    _strict_keys(
+        claim,
+        label="D2 gate evidence confirmation_claim",
+        required=frozenset({"direction", "minimum_effect", "adjusted_p_value", "alpha"}),
+        optional=frozenset({"invalid_reason"}),
+    )
+    direction_text = _text(claim["direction"], "D2 confirmation_claim.direction")
+    if direction_text not in {"positive", "negative"}:
+        raise DataError("D2 confirmation_claim.direction must be positive or negative")
+    invalid_reason = _optional_text(
+        claim.get("invalid_reason"), "D2 confirmation_claim.invalid_reason"
+    )
+    uncertainty = cast(dict[str, JsonValue], primary["uncertainty"])
+    numeric = ConfirmationEvidence(
+        direction=ClaimDirection(direction_text),
+        estimate=_number(primary["estimate"], "D2 confirmation_claim estimate"),
+        ci_lower=_number(uncertainty["lower"], "D2 confirmation_claim ci_lower"),
+        ci_upper=_number(uncertainty["upper"], "D2 confirmation_claim ci_upper"),
+        adjusted_p_value=_number(
+            claim["adjusted_p_value"], "D2 confirmation_claim.adjusted_p_value"
+        ),
+        alpha=_number(claim["alpha"], "D2 confirmation_claim.alpha"),
+        minimum_effect=_number(claim["minimum_effect"], "D2 confirmation_claim.minimum_effect"),
+        invalid_reason=invalid_reason,
+    )
+    recomputed = classify_confirmation(numeric).status.name
+    if classification != recomputed:
+        raise DataError(
+            f"D2 confirmation_classification {classification} disagrees with the mechanical "
+            f"numeric classification {recomputed}"
+        )
+    positive = numeric.direction is ClaimDirection.POSITIVE
+    expected_booleans = {
+        "corrected_primary_test_passed": numeric.adjusted_p_value <= numeric.alpha,
+        "interval_registered_direction": (
+            numeric.ci_lower > 0.0 if positive else numeric.ci_upper < 0.0
+        ),
+        "economic_hurdle_cleared": (
+            numeric.ci_lower > numeric.minimum_effect
+            if positive
+            else numeric.ci_upper < -numeric.minimum_effect
+        ),
+        "interval_wholly_against_direction": (
+            numeric.ci_upper < 0.0 if positive else numeric.ci_lower > 0.0
+        ),
+    }
+    disagreements = sorted(
+        name for name, expected in expected_booleans.items() if checks[name] is not expected
+    )
+    if disagreements:
+        raise DataError(
+            "D2 confirmation_checks disagree with the numeric evidence: " + ", ".join(disagreements)
+        )
+    return {
+        "direction": direction_text,
+        "minimum_effect": numeric.minimum_effect,
+        "adjusted_p_value": numeric.adjusted_p_value,
+        "alpha": numeric.alpha,
+        "invalid_reason": invalid_reason,
+    }
+
+
 def _gate_evidence(value: object) -> dict[str, JsonValue]:
     raw = _object(value, "gate packet evidence")
     _strict_keys(
@@ -353,6 +440,7 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
         optional=frozenset(
             {
                 "confirmation_classification",
+                "confirmation_claim",
                 "confirmation_checks",
                 "mechanism",
                 "strongest_support",
@@ -376,6 +464,7 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
     primary = _primary_result(raw["primary_result"])
     classification: str | None = None
     checks: dict[str, JsonValue] | None = None
+    claim: dict[str, JsonValue] | None = None
     if zone == "D2":
         classification = _text(
             raw.get("confirmation_classification"),
@@ -402,6 +491,7 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
         if not all(isinstance(value, bool) for value in checks_raw.values()):
             raise DataError("D2 gate evidence confirmation_checks must be booleans")
         checks = checks_raw
+        claim = _confirmation_claim(raw, primary, classification, checks)
         supports = (
             checks["corrected_primary_test_passed"] is True
             and checks["interval_registered_direction"] is True
@@ -425,7 +515,11 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
             raise DataError("D2 CONTRADICTED classification checks are inconsistent")
         if classification == "INCONCLUSIVE" and (supports or contradicts):
             raise DataError("D2 INCONCLUSIVE classification checks are inconsistent")
-    elif "confirmation_classification" in raw or "confirmation_checks" in raw:
+    elif (
+        "confirmation_classification" in raw
+        or "confirmation_checks" in raw
+        or "confirmation_claim" in raw
+    ):
         raise DataError("D1 evidence cannot carry D2 confirmation classification")
     confounders = _object(raw.get("confounders", {}), "gate evidence confounders")
     _strict_keys(
@@ -446,6 +540,7 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
         "schema": "ResearchGateEvidenceV1",
         "evidence_zone": zone,
         "confirmation_classification": classification,
+        "confirmation_claim": claim,
         "confirmation_checks": checks,
         "primary_result": primary,
         "mechanism": (

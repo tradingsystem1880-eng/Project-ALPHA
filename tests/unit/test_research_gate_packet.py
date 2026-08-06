@@ -218,6 +218,12 @@ def _d2_evidence() -> dict[str, object]:
         "schema": "ResearchGateEvidenceV1",
         "evidence_zone": "D2",
         "confirmation_classification": "SUPPORTED",
+        "confirmation_claim": {
+            "direction": "positive",
+            "minimum_effect": 0.0025,
+            "adjusted_p_value": 0.011,
+            "alpha": 0.05,
+        },
         "confirmation_checks": {
             "corrected_primary_test_passed": True,
             "interval_registered_direction": True,
@@ -226,19 +232,19 @@ def _d2_evidence() -> dict[str, object]:
         },
         "primary_result": {
             "status": "TESTED",
-            "estimate": 0.0031,
+            "estimate": 0.0051,
             "unit": "return",
             "sample_size": 61,
             "effective_sample_size": 43.5,
             "uncertainty": {
-                "lower": 0.0008,
-                "upper": 0.0054,
+                "lower": 0.0028,
+                "upper": 0.0074,
                 "level": 0.95,
                 "method": "cluster bootstrap",
             },
             "practical_magnitude": {
                 "status": "CLEARS_HURDLE",
-                "value": 0.0031,
+                "value": 0.0051,
                 "unit": "return",
                 "interpretation": "The interval clears the registered 25 bp hurdle.",
             },
@@ -393,9 +399,9 @@ def test_typed_d2_evidence_is_exposed_without_changing_owner_decision() -> None:
     guided = cast(dict[str, object], layers["guided_evidence"])
     primary = cast(dict[str, object], guided["primary_result"])
     assert conclusion["evidence_basis"] == "SEALED_D2"
-    assert primary["estimate"] == 0.0031
+    assert primary["estimate"] == 0.0051
     assert primary["effective_sample_size"] == 43.5
-    assert cast(dict[str, object], primary["uncertainty"])["lower"] == 0.0008
+    assert cast(dict[str, object], primary["uncertainty"])["lower"] == 0.0028
     assert cast(dict[str, object], primary["practical_magnitude"])["status"] == ("CLEARS_HURDLE")
     assert cast(dict[str, object], guided["confounders"])["resolved"] == [
         "weekday",
@@ -496,7 +502,7 @@ def test_packet_rejects_malformed_non_synthetic_evidence_and_non_finite_json() -
         ("evidence_missing_primary", "missing required fields"),
         ("missing_confirmation_classification", "confirmation_classification"),
         ("classification_mismatch", "does not match the owner outcome"),
-        ("supported_check_failure", "SUPPORTED classification checks"),
+        ("supported_check_failure", "confirmation_checks disagree with the numeric evidence"),
     ],
 )
 def test_strict_packet_validation_rejects_corrupt_authority_inputs(
@@ -607,6 +613,7 @@ def test_strict_packet_validation_rejects_corrupt_authority_inputs(
             elif case == "wrong_d1_phase":
                 evidence["evidence_zone"] = "D1"
                 evidence.pop("confirmation_classification")
+                evidence.pop("confirmation_claim")
                 evidence.pop("confirmation_checks")
                 attempt["phase"] = "sealed_confirmation"
             elif case == "artifact_run_mismatch":
@@ -638,7 +645,10 @@ def test_strict_packet_validation_rejects_corrupt_authority_inputs(
             elif case == "missing_confirmation_classification":
                 evidence.pop("confirmation_classification")
             elif case == "classification_mismatch":
+                # Numerically coherent CONTRADICTED evidence, so the surviving failure is
+                # the owner-outcome binding, not the numeric recomputation.
                 evidence["confirmation_classification"] = "CONTRADICTED"
+                cast(dict[str, object], evidence["confirmation_claim"])["adjusted_p_value"] = 0.62
                 checks = cast(dict[str, object], evidence["confirmation_checks"])
                 checks.update(
                     corrected_primary_test_passed=False,
@@ -646,7 +656,11 @@ def test_strict_packet_validation_rejects_corrupt_authority_inputs(
                     economic_hurdle_cleared=False,
                     interval_wholly_against_direction=True,
                 )
-                cast(dict[str, object], primary["practical_magnitude"])["status"] = "BELOW_HURDLE"
+                primary["estimate"] = -0.0031
+                uncertainty = cast(dict[str, object], primary["uncertainty"])
+                uncertainty.update(lower=-0.0074, upper=-0.0008)
+                magnitude = cast(dict[str, object], primary["practical_magnitude"])
+                magnitude.update(status="BELOW_HURDLE", value=-0.0031)
             elif case == "supported_check_failure":
                 cast(dict[str, object], evidence["confirmation_checks"])[
                     "economic_hurdle_cleared"
@@ -661,6 +675,7 @@ def test_exploratory_evidence_is_reported_but_never_treated_as_confirmation() ->
     evidence = _d2_evidence()
     evidence["evidence_zone"] = "D1"
     evidence.pop("confirmation_classification")
+    evidence.pop("confirmation_claim")
     evidence.pop("confirmation_checks")
     inputs, _ = _inputs_with_evidence(
         evidence,
@@ -686,6 +701,7 @@ def test_not_tested_evidence_and_contract_fallbacks_are_explicit() -> None:
     evidence = _d2_evidence()
     evidence["primary_result"] = {"status": "NOT_TESTED"}
     evidence["confirmation_classification"] = "INCONCLUSIVE"
+    evidence.pop("confirmation_claim")
     cast(dict[str, object], evidence["confirmation_checks"]).update(
         corrected_primary_test_passed=False,
         interval_registered_direction=False,
@@ -732,6 +748,7 @@ def test_supported_or_advance_requires_exact_sealed_d2_evidence() -> None:
     evidence = _d2_evidence()
     evidence["evidence_zone"] = "D1"
     evidence.pop("confirmation_classification")
+    evidence.pop("confirmation_claim")
     evidence.pop("confirmation_checks")
     inputs, _ = _inputs_with_evidence(
         evidence,
@@ -748,12 +765,14 @@ def test_public_confirmation_classifier_is_the_single_mechanical_rule_seam() -> 
 
     evidence["evidence_zone"] = "D1"
     evidence.pop("confirmation_classification")
+    evidence.pop("confirmation_claim")
     evidence.pop("confirmation_checks")
     with pytest.raises(DataError, match="requires D2 evidence"):
         confirmation_classification_from_evidence(evidence)
 
     contradicted = _d2_evidence()
     contradicted["confirmation_classification"] = "CONTRADICTED"
+    cast(dict[str, object], contradicted["confirmation_claim"])["adjusted_p_value"] = 0.62
     cast(dict[str, object], contradicted["confirmation_checks"]).update(
         corrected_primary_test_passed=False,
         interval_registered_direction=False,
@@ -761,7 +780,10 @@ def test_public_confirmation_classifier_is_the_single_mechanical_rule_seam() -> 
         interval_wholly_against_direction=True,
     )
     primary = cast(dict[str, object], contradicted["primary_result"])
-    cast(dict[str, object], primary["practical_magnitude"])["status"] = "BELOW_HURDLE"
+    primary["estimate"] = -0.0031
+    cast(dict[str, object], primary["uncertainty"]).update(lower=-0.0074, upper=-0.0008)
+    magnitude = cast(dict[str, object], primary["practical_magnitude"])
+    magnitude.update(status="BELOW_HURDLE", value=-0.0031)
     assert confirmation_classification_from_evidence(contradicted) == "CONTRADICTED"
 
     cast(dict[str, object], primary["practical_magnitude"])["status"] = "CLEARS_HURDLE"
@@ -801,3 +823,63 @@ def test_early_inconclusive_closure_emits_negative_knowledge_with_d2_sealed() ->
     appendix = cast(dict[str, object], layers["technical_appendix"])
     ledgers = cast(dict[str, object], appendix["phase_review_d2_ledgers"])
     assert cast(list[dict[str, object]], ledgers["d2_events"])[-1]["state"] == "sealed"
+
+
+def test_numeric_interval_that_cannot_support_the_claim_is_rejected() -> None:
+    """Producer booleans alone cannot mint SUPPORTED when the interval disagrees."""
+    evidence = _d2_evidence()
+    primary = cast(dict[str, object], evidence["primary_result"])
+    uncertainty = cast(dict[str, object], primary["uncertainty"])
+    # Below the registered 25 bp minimum effect: mechanically INCONCLUSIVE, never SUPPORTED.
+    uncertainty["lower"] = 0.0008
+    with pytest.raises(DataError, match="disagrees with the mechanical numeric classification"):
+        confirmation_classification_from_evidence(evidence)
+
+
+def test_confirmation_booleans_must_match_the_numeric_evidence() -> None:
+    """Each check boolean is bound to its numeric fact, not producer attestation."""
+    evidence = _d2_evidence()
+    evidence["confirmation_classification"] = "INCONCLUSIVE"
+    claim = cast(dict[str, object], evidence["confirmation_claim"])
+    claim["adjusted_p_value"] = 0.2  # numerically fails the frozen alpha
+    with pytest.raises(
+        DataError, match="confirmation_checks disagree.*corrected_primary_test_passed"
+    ):
+        confirmation_classification_from_evidence(evidence)
+
+
+def test_d1_evidence_cannot_carry_a_confirmation_claim() -> None:
+    evidence = _d2_evidence()
+    evidence["evidence_zone"] = "D1"
+    evidence.pop("confirmation_classification")
+    evidence.pop("confirmation_checks")
+    inputs, _ = _inputs_with_evidence(evidence, phase="deep_research", contract_id="rc_explore")
+    decision = cast(list[dict[str, object]], inputs["decision_events"])[0]
+    decision.update(contract_id="rc_confirm", outcome="INCONCLUSIVE", disposition="park")
+    with pytest.raises(DataError, match="D1 evidence cannot carry"):
+        build_research_gate_packet(inputs)
+
+
+def test_not_tested_primary_cannot_carry_a_confirmation_claim() -> None:
+    evidence = _d2_evidence()
+    evidence["primary_result"] = {"status": "NOT_TESTED"}
+    evidence["confirmation_classification"] = "INCONCLUSIVE"
+    cast(dict[str, object], evidence["confirmation_checks"]).update(
+        corrected_primary_test_passed=False,
+        interval_registered_direction=False,
+        economic_hurdle_cleared=False,
+        interval_wholly_against_direction=False,
+    )
+    with pytest.raises(DataError, match="cannot carry a confirmation_claim"):
+        confirmation_classification_from_evidence(evidence)
+
+
+def test_invalid_classification_requires_a_stated_invalid_reason() -> None:
+    evidence = _d2_evidence()
+    evidence["confirmation_classification"] = "INVALID"
+    with pytest.raises(DataError, match="disagrees with the mechanical numeric classification"):
+        confirmation_classification_from_evidence(evidence)
+
+    claim = cast(dict[str, object], evidence["confirmation_claim"])
+    claim["invalid_reason"] = "The evaluator violated the frozen protocol mid-run."
+    assert confirmation_classification_from_evidence(evidence) == "INVALID"
