@@ -515,19 +515,6 @@ CREATE TABLE IF NOT EXISTS project_research_governance (
     recorded_at TEXT NOT NULL
 ) STRICT;
 
-INSERT OR IGNORE INTO project_research_governance (
-    project_id, research_required, origin, recorded_at
-)
-SELECT
-    project_id,
-    CASE WHEN created_at < '2026-08-06T00:00:00.000000Z' THEN 0 ELSE 1 END,
-    CASE
-        WHEN created_at < '2026-08-06T00:00:00.000000Z' THEN 'legacy_import'
-        ELSE 'strategy_development'
-    END,
-    created_at
-FROM projects;
-
 CREATE TABLE IF NOT EXISTS research_source_records (
     source_id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(project_id),
@@ -713,6 +700,30 @@ CREATE INDEX IF NOT EXISTS idx_research_launch_reservations_project
 CREATE INDEX IF NOT EXISTS idx_research_launch_attempt_links_attempt
     ON research_launch_attempt_links(attempt_id);
 """
+
+# Executed exactly once, inside the schema-v2 writer transaction (migration or fresh creation).
+# It must never run on a steady-state open: a re-executed backfill would silently re-derive a
+# lost governance row from the caller-controlled ``created_at`` date rule, and the write lock it
+# takes would make read-only projections contend with concurrent writers.
+_GOVERNANCE_BACKFILL = """
+INSERT OR IGNORE INTO project_research_governance (
+    project_id, research_required, origin, recorded_at
+)
+SELECT
+    project_id,
+    CASE WHEN created_at < '2026-08-06T00:00:00.000000Z' THEN 0 ELSE 1 END,
+    CASE
+        WHEN created_at < '2026-08-06T00:00:00.000000Z' THEN 'legacy_import'
+        ELSE 'strategy_development'
+    END,
+    created_at
+FROM projects;
+"""
+
+_DDL_OBJECT_NAME = re.compile(r"CREATE (?:TABLE|INDEX) IF NOT EXISTS (\w+)")
+_EXPECTED_SCHEMA_OBJECTS: Final = frozenset(
+    _DDL_OBJECT_NAME.findall(_SCHEMA) + _DDL_OBJECT_NAME.findall(_SCHEMA_V2)
+)
 
 
 def _required_text(value: object, field: str, *, max_length: int = _MAX_TEXT) -> str:
@@ -965,6 +976,7 @@ def _apply_schema_v2_locked(
     if include_legacy_schema:
         _execute_static_sql_script(connection, _SCHEMA)
     _execute_static_sql_script(connection, _SCHEMA_V2)
+    _execute_static_sql_script(connection, _GOVERNANCE_BACKFILL)
     connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
@@ -976,6 +988,38 @@ def _apply_schema_v2(
     connection.execute("BEGIN IMMEDIATE")
     try:
         _apply_schema_v2_locked(connection, include_legacy_schema=include_legacy_schema)
+        connection.commit()
+    except sqlite3.Error:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _missing_schema_objects(connection: sqlite3.Connection) -> bool:
+    present = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'index')"
+        )
+    }
+    return not present >= _EXPECTED_SCHEMA_OBJECTS
+
+
+def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
+    """Recreate additively-declared objects a current-version store is missing.
+
+    The probe is read-only, so a steady-state open issues no write statement and never
+    contends for the writer lock. Healing applies idempotent DDL only — never the
+    governance backfill, which runs exactly once at migration or fresh creation.
+    """
+
+    if not _missing_schema_objects(connection):
+        return
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        if _missing_schema_objects(connection):
+            _execute_static_sql_script(connection, _SCHEMA)
+            _execute_static_sql_script(connection, _SCHEMA_V2)
         connection.commit()
     except sqlite3.Error:
         if connection.in_transaction:
@@ -1123,12 +1167,16 @@ class ControlStore:
                 raise DataError(f"unsupported control store schema version {version}")
             if version == LEGACY_SCHEMA_VERSION:
                 _migrate_schema_v1(connection, database)
-            else:
+            elif version < SCHEMA_VERSION:
                 connection.executescript(_SCHEMA)
-                if version < SCHEMA_VERSION:
-                    _apply_schema_v2(connection)
-                else:
-                    connection.executescript(_SCHEMA_V2)
+                _apply_schema_v2(connection)
+            else:
+                # A store already at SCHEMA_VERSION opens with a read-only completeness
+                # probe: no write-bearing statement runs on the steady-state path (reads
+                # must not contend for the writer lock, and a lost governance row must
+                # fail loud, never regenerate from the created_at date rule). Idempotent
+                # DDL healing runs only when a declared object is actually missing.
+                _heal_missing_schema_objects(connection)
             return connection
         except (OSError, sqlite3.Error) as exc:
             if connection is not None:

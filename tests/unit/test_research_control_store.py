@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import shutil
@@ -1334,6 +1335,56 @@ def test_new_projects_require_research_and_legacy_import_is_migration_only(
             parameter_space={},
             at=START + timedelta(minutes=2),
         )
+
+
+def test_lost_governance_row_is_not_silently_recreated_on_reopen(tmp_path: Path) -> None:
+    """A missing governance row must stay missing; reopen must not re-derive it from created_at."""
+    store = ControlStore(tmp_path)
+    store.create_project(
+        name="Backdated governed project",
+        hypothesis="Reopening the store must not re-derive governance from created_at.",
+        falsification_criterion="Reject if schema scripts recreate governance rows.",
+        project_id=PROJECT_ID,
+        at=datetime(2026, 8, 5, 23, 59, tzinfo=UTC),
+    )
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        deleted = connection.execute(
+            "DELETE FROM project_research_governance WHERE project_id = ?", (PROJECT_ID,)
+        )
+        assert deleted.rowcount == 1
+        connection.commit()
+    finally:
+        connection.close()
+
+    with contextlib.suppress(DataError):
+        ControlStore(tmp_path).list_projects()
+
+    connection = sqlite3.connect(database)
+    try:
+        rows = connection.execute(
+            "SELECT research_required, origin FROM project_research_governance"
+            " WHERE project_id = ?",
+            (PROJECT_ID,),
+        ).fetchall()
+    finally:
+        connection.close()
+    assert rows == []
+
+
+def test_read_projection_does_not_take_the_writer_lock_at_open(tmp_path: Path) -> None:
+    """Steady-state opens must issue no write-bearing statement, so reads never contend."""
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    writer = sqlite3.connect(database)
+    try:
+        writer.execute("BEGIN IMMEDIATE")
+        projects = ControlStore(tmp_path).list_projects()
+    finally:
+        writer.close()
+    assert [row["project_id"] for row in projects] == [PROJECT_ID]
 
 
 @pytest.mark.parametrize(
