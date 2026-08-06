@@ -6,6 +6,11 @@ from collections.abc import Sequence
 from typing import Final
 
 HEAVYWEIGHT_JOB_CAPACITY: Final = 1
+# "research:event-study" classifies `alpha research run` today (the D0 pilot occupies the
+# shared slot conservatively). "research:ml" is a RESERVED-FORWARD name for the unshipped
+# empirical research workers (R-34): reserving it now means generic durable-job creation
+# already rejects it, so no future caller can mint the kind outside governed research
+# ownership. No executor creates it yet by design.
 HEAVYWEIGHT_JOB_KINDS: Final = frozenset(
     {
         "ml_train",
