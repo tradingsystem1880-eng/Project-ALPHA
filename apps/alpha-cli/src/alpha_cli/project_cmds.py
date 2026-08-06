@@ -15,6 +15,7 @@ from alpha_cli.control_store import (
     StageState,
     parse_timestamp,
 )
+from alpha_cli.research_intake import draft_exploration_contract
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -51,13 +52,37 @@ def create(
     falsification: str = typer.Option(..., help="criterion that rejects the hypothesis"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Create a strategy-development project."""
+    """Create a governed strategy project and immediately capture its research case."""
     try:
-        row = _store().create_project(
+        store = _store()
+        draft = draft_exploration_contract(hypothesis)
+        questions = draft["blocking_questions"]
+        if not isinstance(questions, list):  # pragma: no cover - intake invariant.
+            raise DataError("research intake returned invalid blocking questions")
+        captured = store.capture_research_case(
             name=name,
             hypothesis=hypothesis,
             falsification_criterion=falsification,
+            draft_payload=draft,
+            created_by="codex",
+            next_action=(
+                f"Owner answers the {len(questions)} material definition questions in one batch."
+                if questions
+                else "Codex checks source and data feasibility."
+            ),
+            responsibility="owner" if questions else "codex",
+            blocker=(
+                "The primary chart, event timestamp, or outcome is materially ambiguous."
+                if questions
+                else None
+            ),
+            recovery=(
+                "Answer the single bounded question batch; Codex handles technical defaults."
+                if questions
+                else None
+            ),
         )
+        row = cast(dict[str, object], captured["project"])
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"created project {row['project_id']} {row['name']}")
@@ -276,6 +301,10 @@ def version(
     source_fingerprint: str = typer.Option(..., help="git/source execution fingerprint"),
     definition_json: str = typer.Option("{}", help="normalized strategy definition JSON object"),
     parameter_space_json: str = typer.Option("{}", help="declared parameter-space JSON object"),
+    research_contract_id: str | None = typer.Option(
+        None,
+        help="owner-advanced confirmation contract required for a research-enabled project",
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Create or reuse an immutable, content-addressed strategy version."""
@@ -286,6 +315,7 @@ def version(
             source_fingerprint=source_fingerprint,
             definition=_object(definition_json, "--definition-json"),
             parameter_space=_object(parameter_space_json, "--parameter-space-json"),
+            research_contract_id=research_contract_id,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
