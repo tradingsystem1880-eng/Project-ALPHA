@@ -13,6 +13,7 @@ from alpha_cli.artifact_contract import verify_manifest_artifacts
 from alpha_cli.research_intake import draft_exploration_contract
 from alpha_cli.research_runtime import (
     _canonical,
+    d0_execution_fingerprint,
     registered_d0_operator,
     run_synthetic_pilot,
     validate_d0_pilot_contract,
@@ -470,3 +471,14 @@ def test_future_generation_acceptance_artifact_gets_a_generation_error(tmp_path:
             execution_fingerprint=str(manifest["execution_fingerprint"]),
             d0_operator_fingerprint=str(manifest["d0_operator_fingerprint"]),
         )
+
+
+def test_registered_d0_fingerprints_are_pinned() -> None:
+    """Golden pin: any registered-constant drift must be a conscious generation bump."""
+    operator = registered_d0_operator(_contract())
+    assert operator["fingerprint"] == (
+        "03911da2217e694b4406dbbc42a641a791889af656299feef6cb4783e77f0c42"
+    )
+    assert d0_execution_fingerprint(_contract()) == (
+        "aec9becaf16abf768a22f2a8a9a1a680524227e07026915b73368db213c1f487"
+    )
