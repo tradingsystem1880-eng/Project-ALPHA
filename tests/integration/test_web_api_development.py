@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -10,6 +11,10 @@ from fastapi.testclient import TestClient
 
 from alpha_cli.control_store import ControlStore
 from alpha_web.app import create_app
+from tests.fixtures.control_store_fixtures import (
+    mark_project_as_migrated_legacy,
+    publish_decision_grade_run,
+)
 
 
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -28,6 +33,18 @@ def _project(client: TestClient, name: str = "AAPL reversal") -> dict[str, objec
     )
     assert response.status_code == 200, response.text
     return cast(dict[str, object], response.json())
+
+
+def _legacy_project(tmp_path: Path, name: str = "AAPL reversal") -> dict[str, object]:
+    store = ControlStore(tmp_path)
+    project = store.create_project(
+        name=name,
+        hypothesis="Large deviations revert after declared costs.",
+        falsification_criterion="Reject on non-positive locked OOS Sharpe.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
+    )
+    mark_project_as_migrated_legacy(store, str(project["project_id"]))
+    return project
 
 
 def _version(client: TestClient, project_id: str) -> dict[str, object]:
@@ -65,13 +82,30 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_id = "0123456789abcdef"
-    run_dir = tmp_path / "runs" / run_id
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        '{"outcomes":{"randomized_price_null":{"passed":false}}}', encoding="utf-8"
+    publish_decision_grade_run(
+        tmp_path,
+        run_id=run_id,
+        manifest_fields={"outcomes": {"randomized_price_null": {"passed": False}}},
     )
     client = _client(tmp_path, monkeypatch)
-    project = _project(client)
+    governed_project = _project(client)
+    blocked = client.post(
+        f"/api/projects/{governed_project['project_id']}/versions",
+        json={
+            "strategy_name": "mean_reversion",
+            "source_fingerprint": "git:must-not-bypass",
+            "definition": {"signal": "zscore", "window": 20},
+            "parameter_space": {"window": [10, 20, 40]},
+        },
+    )
+    assert blocked.status_code == 422
+    assert "research_contract_id" in blocked.text
+    assert (
+        ControlStore(tmp_path).research_case_summary(str(governed_project["project_id"]))["phase"]
+        == "triage"
+    )
+
+    project = _legacy_project(tmp_path)
     project_id = str(project["project_id"])
     version = _version(client, project_id)
     experiment = _experiment(client, project_id, str(version["version_id"]))
@@ -191,7 +225,7 @@ def test_owner_decision_endpoint_freezes_negative_packet(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client = _client(tmp_path, monkeypatch)
-    project = _project(client, "Decision")
+    project = _legacy_project(tmp_path, "Decision")
     project_id = str(project["project_id"])
     version = _version(client, project_id)
     experiment = _experiment(client, project_id, str(version["version_id"]))
@@ -233,13 +267,13 @@ def test_evidence_draft_rejects_mismatched_version_experiment_lineage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_id = "0123456789abcdef"
-    run_dir = tmp_path / "runs" / run_id
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        '{"outcomes":{"randomized_price_null":{"passed":false}}}', encoding="utf-8"
+    publish_decision_grade_run(
+        tmp_path,
+        run_id=run_id,
+        manifest_fields={"outcomes": {"randomized_price_null": {"passed": False}}},
     )
     client = _client(tmp_path, monkeypatch)
-    project = _project(client, "Evidence lineage")
+    project = _legacy_project(tmp_path, "Evidence lineage")
     project_id = str(project["project_id"])
     first_version = _version(client, project_id)
     experiment = _experiment(client, project_id, str(first_version["version_id"]))
@@ -337,13 +371,13 @@ def test_evidence_draft_search_review_and_as_of_are_exactly_cited(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_id = "0123456789abcdef"
-    run_dir = tmp_path / "runs" / run_id
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        '{"outcomes":{"randomized_price_null":{"passed":false}}}', encoding="utf-8"
+    publish_decision_grade_run(
+        tmp_path,
+        run_id=run_id,
+        manifest_fields={"outcomes": {"randomized_price_null": {"passed": False}}},
     )
     client = _client(tmp_path, monkeypatch)
-    project = _project(client)
+    project = _legacy_project(tmp_path)
     project_id = str(project["project_id"])
     version = _version(client, project_id)
     experiment = _experiment(client, project_id, str(version["version_id"]))

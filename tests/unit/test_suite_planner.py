@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -18,6 +19,7 @@ from alpha_cli._suite import (
 )
 from alpha_cli.control_store import ControlStore, StageState
 from alpha_core import DataError
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 type TestRun = tuple[str, str, StageState, bool | None, str | None]
 
@@ -34,8 +36,10 @@ def _experiment(tmp_path: Path, *, seal: bool = True) -> tuple[ControlStore, str
         name="AAPL mean reversion",
         hypothesis="Large close deviations revert.",
         falsification_criterion="Reject when locked OOS Sharpe is non-positive.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="mean_reversion",

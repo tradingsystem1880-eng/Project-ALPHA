@@ -9,6 +9,7 @@ import pytest
 
 from alpha_cli.control_store import ControlStore
 from alpha_cli.project_cmds import _agent_brief
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 pytestmark = pytest.mark.bias_guard
 
@@ -52,6 +53,7 @@ def test_future_project_scope_cannot_poison_agent_brief(tmp_path: Path) -> None:
         project_id=PROJECT_ID,
         at=START,
     )
+    mark_project_as_migrated_legacy(store, PROJECT_ID)
     first_version = _version(
         store,
         source="git:first",

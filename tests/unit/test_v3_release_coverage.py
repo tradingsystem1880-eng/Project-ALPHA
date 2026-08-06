@@ -18,6 +18,7 @@ from alpha_cli._suite import StepExecution, SuiteAction, SuitePlan, SuiteStep
 from alpha_cli.control_store import ControlStore
 from alpha_cli.main import app
 from alpha_core import DataError
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 NOW = datetime(2026, 1, 1, 1, 0, tzinfo=UTC)
 type TestRun = tuple[str, str, control.StageState, bool | None, str | None]
@@ -48,6 +49,7 @@ def _experiment(
         at=NOW,
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="ts_momentum",

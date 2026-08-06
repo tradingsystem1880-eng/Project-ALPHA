@@ -21,6 +21,10 @@ from alpha_data.snapshot import create_snapshot
 from alpha_data.store import ParquetStore
 from alpha_mcp import _invoke, server
 from tests.fixtures.cli_fixtures import seed_store
+from tests.fixtures.control_store_fixtures import (
+    mark_project_as_migrated_legacy,
+    publish_decision_grade_run,
+)
 
 # small-parameter knobs so the fixture's 60 bars warm up, trade, and cost nothing
 _OPTS = {
@@ -159,10 +163,10 @@ def test_control_plane_tools_round_trip_through_cli(
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     run_id = "0123456789abcdef"
-    run_dir = tmp_path / "runs" / run_id
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        '{"outcomes":{"randomized_price_null":{"passed":false}}}', encoding="utf-8"
+    publish_decision_grade_run(
+        tmp_path,
+        run_id=run_id,
+        manifest_fields={"outcomes": {"randomized_price_null": {"passed": False}}},
     )
 
     project = server.create_strategy_project(
@@ -170,7 +174,25 @@ def test_control_plane_tools_round_trip_through_cli(
         "Large deviations revert after costs.",
         "Reject on non-positive locked OOS Sharpe.",
     )
-    project_id = project["project_id"]
+    governed_project_id = project["project_id"]
+    with pytest.raises(RuntimeError, match="research_contract_id"):
+        server.create_strategy_version(
+            governed_project_id,
+            "mean_reversion",
+            "git:must-not-bypass",
+            {"signal": "zscore", "window": 20},
+            {"window": [10, 20, 40]},
+        )
+    assert ControlStore(tmp_path).research_case_summary(governed_project_id)["phase"] == "triage"
+
+    project = ControlStore(tmp_path).create_project(
+        name="Grandfathered AAPL reversal",
+        hypothesis="Large deviations revert after costs.",
+        falsification_criterion="Reject on non-positive locked OOS Sharpe.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
+    )
+    project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(ControlStore(tmp_path), project_id)
     version = server.create_strategy_version(
         project_id,
         "mean_reversion",

@@ -13,6 +13,7 @@ from alpha_cli.main import app
 from alpha_data.snapshot import create_snapshot
 from alpha_data.store import ParquetStore
 from tests.fixtures.cli_fixtures import seed_store
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 
 def test_suite_cli_previews_then_runs_the_exact_resolved_baseline(
@@ -35,8 +36,10 @@ def test_suite_cli_previews_then_runs_the_exact_resolved_baseline(
         name="Suite CLI",
         hypothesis="Momentum persists.",
         falsification_criterion="Reject on failed locked OOS evidence.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="ts_momentum",

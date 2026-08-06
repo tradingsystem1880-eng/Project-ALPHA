@@ -10,6 +10,10 @@ from typer.testing import CliRunner
 
 from alpha_cli.control_store import ControlStore, parse_timestamp
 from alpha_cli.main import app
+from tests.fixtures.control_store_fixtures import (
+    mark_project_as_migrated_legacy,
+    publish_decision_grade_run,
+)
 
 runner = CliRunner()
 
@@ -18,10 +22,9 @@ def test_project_and_evidence_cli_round_trip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    run_dir = tmp_path / "runs" / "0123456789abcdef"
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        '{"outcomes":{"randomized_price_null":{"passed":false}}}', encoding="utf-8"
+    publish_decision_grade_run(
+        tmp_path,
+        manifest_fields={"outcomes": {"randomized_price_null": {"passed": False}}},
     )
 
     created = runner.invoke(
@@ -40,12 +43,43 @@ def test_project_and_evidence_cli_round_trip(
     assert created.exit_code == 0, created.output
     project = json.loads(created.output)
 
-    version_out = runner.invoke(
+    governed_version_out = runner.invoke(
         app,
         [
             "project",
             "version",
             project["project_id"],
+            "--strategy",
+            "mean_reversion",
+            "--source-fingerprint",
+            "git:abc1234",
+            "--definition-json",
+            '{"signal":"zscore","window":20}',
+            "--parameter-space-json",
+            '{"window":[10,20,40]}',
+            "--json",
+        ],
+    )
+    assert governed_version_out.exit_code != 0
+    assert "research_contract_id" in governed_version_out.output
+    research_case = ControlStore(tmp_path).research_case_summary(str(project["project_id"]))
+    assert research_case["phase"] == "triage"
+
+    legacy_store = ControlStore(tmp_path)
+    project = legacy_store.create_project(
+        name="Grandfathered AAPL reversal",
+        hypothesis="Large deviations revert.",
+        falsification_criterion="Reject on non-positive locked OOS Sharpe.",
+        at=parse_timestamp("2026-07-19T09:00:00Z"),
+    )
+    project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(legacy_store, project_id)
+    version_out = runner.invoke(
+        app,
+        [
+            "project",
+            "version",
+            project_id,
             "--strategy",
             "mean_reversion",
             "--source-fingerprint",
@@ -65,7 +99,7 @@ def test_project_and_evidence_cli_round_trip(
         [
             "project",
             "experiment",
-            project["project_id"],
+            project_id,
             "--version-id",
             version["version_id"],
             "--snapshot",
@@ -89,7 +123,7 @@ def test_project_and_evidence_cli_round_trip(
         [
             "project",
             "seal-holdout",
-            project["project_id"],
+            project_id,
             experiment["experiment_id"],
             "--actor",
             "owner",
@@ -107,7 +141,7 @@ def test_project_and_evidence_cli_round_trip(
         [
             "project",
             "reveal-holdout",
-            project["project_id"],
+            project_id,
             experiment["experiment_id"],
             "--actor",
             "owner",
@@ -116,7 +150,7 @@ def test_project_and_evidence_cli_round_trip(
             "--json",
         ],
     )
-    shown = runner.invoke(app, ["project", "show", project["project_id"], "--json"])
+    shown = runner.invoke(app, ["project", "show", project_id, "--json"])
     assert sealed.exit_code == 0, sealed.output
     assert reveal.exit_code != 0
     assert "verified canonical suite evidence" in reveal.output
@@ -144,7 +178,7 @@ def test_project_and_evidence_cli_round_trip(
             "--author-kind",
             "agent",
             "--project-id",
-            project["project_id"],
+            project_id,
             "--source-run-id",
             "0123456789abcdef",
             "--source-artifact",
@@ -185,10 +219,9 @@ def test_agent_brief_is_bounded_point_in_time_and_omits_holdout_reveal_action(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    run_dir = tmp_path / "runs" / "0123456789abcdef"
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        '{"outcomes":{"walk_forward_oos":{},"locked_holdout":{}}}', encoding="utf-8"
+    publish_decision_grade_run(
+        tmp_path,
+        manifest_fields={"outcomes": {"walk_forward_oos": {}, "locked_holdout": {}}},
     )
     store = ControlStore(tmp_path)
     project = store.create_project(
@@ -198,6 +231,7 @@ def test_agent_brief_is_bounded_point_in_time_and_omits_holdout_reveal_action(
         at=parse_timestamp("2026-07-19T07:00:00Z"),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="mean_reversion",
@@ -288,7 +322,9 @@ def test_owner_can_freeze_a_negative_decision_packet_through_cli(
         name="Rejected candidate",
         hypothesis="A test hypothesis.",
         falsification_criterion="Reject on baseline failure.",
+        at=parse_timestamp("2026-07-19T07:00:00Z"),
     )
+    mark_project_as_migrated_legacy(store, str(project["project_id"]))
     version = store.create_strategy_version(
         str(project["project_id"]),
         strategy_name="ts_momentum",
@@ -351,8 +387,10 @@ def test_agent_brief_never_overlays_stage_links_from_an_old_experiment(
         name="Current experiment brief",
         hypothesis="A causal hypothesis.",
         falsification_criterion="Reject on failed OOS.",
+        at=parse_timestamp("2026-07-19T07:00:00Z"),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="mean_reversion",
@@ -445,8 +483,10 @@ def test_project_stage_attempt_and_job_cli_projections(
         name="CLI operations",
         hypothesis="A testable hypothesis.",
         falsification_criterion="Reject on failed OOS.",
+        at=parse_timestamp("2026-07-19T07:00:00Z"),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="mean_reversion",

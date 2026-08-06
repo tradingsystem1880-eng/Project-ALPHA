@@ -145,6 +145,42 @@ def test_manifest_rejects_replacement_and_incomplete_required_contract(tmp_path:
         )
 
 
+def test_research_pilot_requires_typed_acceptance_at_publication_and_read(tmp_path: Path) -> None:
+    incomplete = tmp_path / "runs" / "1111111111111111"
+    for filename in (
+        "events.json",
+        "topology.json",
+        "power.json",
+        "chart-data.json",
+        "detector-validity.png",
+        "report.md",
+    ):
+
+        def write_required(path: Path, *, body: bytes = filename.encode("utf-8")) -> None:
+            path.write_bytes(body)
+
+        _artifacts.publish_artifact(incomplete / filename, write_required)
+    with pytest.raises(DataError, match="missing artifacts.*d0_acceptance.json"):
+        _artifacts.write_manifest(
+            incomplete,
+            {"run_id": incomplete.name, "command": "research_pilot", **_identity()},
+        )
+
+    forged = tmp_path / "runs" / "2222222222222222"
+    forged.mkdir(parents=True)
+    manifest = {
+        "schema_version": 3,
+        "artifact_contract_version": 3,
+        "run_id": forged.name,
+        "command": "research_pilot",
+        "artifacts": {},
+        **_identity(),
+    }
+    (forged / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(DataError, match="research_pilot artifact set mismatch"):
+        _artifacts.read_manifest(forged)
+
+
 def test_manifest_rejects_a_different_concurrent_winner(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

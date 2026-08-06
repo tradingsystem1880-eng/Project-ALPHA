@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -11,6 +12,7 @@ import pytest
 
 from alpha_cli.control_store import ControlStore, StageState
 from alpha_core import DataError
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 type TestRun = tuple[str, str, StageState, bool | None, str | None]
 
@@ -27,8 +29,10 @@ def _setup(tmp_path: Path) -> tuple[ControlStore, str, str, str]:
         name="Candidate",
         hypothesis="A causal edge survives costs.",
         falsification_criterion="Reject on a failed locked holdout.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="ts_momentum",

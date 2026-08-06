@@ -29,6 +29,10 @@ from alpha_cli.control_store import (
 )
 from alpha_cli.project_cmds import _agent_brief
 from alpha_core import DataError
+from tests.fixtures.control_store_fixtures import (
+    mark_project_as_migrated_legacy,
+    publish_decision_grade_run,
+)
 
 PROJECT_ID = "8458c871-8c13-412d-8332-40e90b2041fd"
 JOB_ID = "d5429915-8f7a-430b-b575-0667873179ab"
@@ -44,13 +48,15 @@ def _store(tmp_path: Path) -> ControlStore:
 
 
 def _project(store: ControlStore) -> dict[str, object]:
-    return store.create_project(
+    project = store.create_project(
         name="AAPL mean reversion",
         hypothesis="Large daily deviations mean-revert after costs.",
         falsification_criterion="Reject when locked OOS Sharpe is non-positive.",
         project_id=PROJECT_ID,
         at=START,
     )
+    mark_project_as_migrated_legacy(store, PROJECT_ID)
+    return project
 
 
 def _version(
@@ -293,18 +299,16 @@ def test_legacy_agent_brief_scope_fails_closed_before_last_pointer_mutation(
 
 
 def _publish_run(tmp_path: Path) -> None:
-    run_dir = tmp_path / "runs" / RUN_ID
-    run_dir.mkdir(parents=True)
-    (run_dir / "manifest.json").write_text(
-        """{
-          "outcomes": {
-            "randomized_price_null": {"passed": false},
-            "walk_forward_oos": {"sharpe": 0.4},
-            "locked_holdout": {"sharpe": -0.1}
-          },
-          "cost_sensitivity": {"passed": false}
-        }""",
-        encoding="utf-8",
+    publish_decision_grade_run(
+        tmp_path,
+        manifest_fields={
+            "outcomes": {
+                "randomized_price_null": {"passed": False},
+                "walk_forward_oos": {"sharpe": 0.4},
+                "locked_holdout": {"sharpe": -0.1},
+            },
+            "cost_sensitivity": {"passed": False},
+        },
     )
 
 
@@ -314,10 +318,6 @@ def _publish_correlation_run(
     run_dir = tmp_path / "runs" / RUN_ID
     run_dir.mkdir(parents=True, exist_ok=True)
     snapshot_hash = "b" * 64
-    (run_dir / "manifest.json").write_text(
-        '{"command":"cross_sectional","snapshot_hash":"' + snapshot_hash + '"}',
-        encoding="utf-8",
-    )
     row = {
         "asset_a": "AAPL",
         "asset_b": "MSFT",
@@ -333,6 +333,10 @@ def _publish_correlation_run(
         "unit": "coefficient",
     }
     pl.DataFrame([row]).write_parquet(run_dir / "correlations.parquet")
+    publish_decision_grade_run(
+        tmp_path,
+        manifest_fields={"snapshot_id": "snap-correlation", "snapshot_hash": snapshot_hash},
+    )
     return row
 
 
@@ -351,19 +355,6 @@ def _publish_metric_run(
 ) -> None:
     run_dir = tmp_path / "runs" / RUN_ID
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "manifest.json").write_text(
-        json.dumps(
-            {
-                "metrics": {
-                    "sharpe": 1.25,
-                    "sharpe_name": "annualized_sharpe",
-                    "sharpe_unit": "ratio",
-                }
-            },
-            sort_keys=True,
-        ),
-        encoding="utf-8",
-    )
     columns: dict[str, list[object]] = {
         "symbol": ["AAPL"],
         "metric_name": ["annualized_sharpe"],
@@ -372,6 +363,66 @@ def _publish_metric_run(
     if unit is not None:
         columns["unit"] = [unit]
     pl.DataFrame(columns).write_parquet(run_dir / "metrics.parquet")
+    publish_decision_grade_run(
+        tmp_path,
+        manifest_fields={
+            "metrics": {
+                "sharpe": 1.25,
+                "sharpe_name": "annualized_sharpe",
+                "sharpe_unit": "ratio",
+            }
+        },
+    )
+
+
+def _rewrite_run_manifest(
+    run_dir: Path,
+    *,
+    changes: Mapping[str, object] | None = None,
+    remove: tuple[str, ...] = (),
+) -> None:
+    path = run_dir / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(manifest, dict)
+    for field in remove:
+        manifest.pop(field, None)
+    if changes is not None:
+        manifest.update(changes)
+    path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+def _attempt_evidence_admission(
+    store: ControlStore,
+    *,
+    operation: str,
+) -> None:
+    if operation == "create":
+        _draft(store, evidence_id=EVIDENCE_ID)
+        return
+    if operation != "revise":  # pragma: no cover - closed test parameter set
+        raise AssertionError(f"unsupported test operation {operation!r}")
+    store.revise_evidence(
+        EVIDENCE_ID,
+        status="corroborated",
+        author="owner",
+        author_kind="human",
+        at=START + timedelta(minutes=1),
+    )
+
+
+def _prepare_evidence_admission(
+    tmp_path: Path,
+    *,
+    operation: str,
+) -> tuple[ControlStore, Path]:
+    run_dir = publish_decision_grade_run(
+        tmp_path,
+        manifest_fields={"outcomes": {"randomized_price_null": {"passed": False}}},
+    )
+    store = _store(tmp_path)
+    if operation == "revise":
+        _draft(store, evidence_id=EVIDENCE_ID)
+    return store, run_dir
 
 
 def _complete_pre_holdout(store: ControlStore, experiment_id: str, *, at: datetime = START) -> None:
@@ -1041,6 +1092,133 @@ def test_evidence_rejects_a_tampered_v3_parquet_before_reading_it(tmp_path: Path
             source_field="metric",
             row_selector={"row_index": 0},
         )
+
+
+@pytest.mark.parametrize("operation", ["create", "revise"])
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_evidence_admission_rejects_legacy_manifest_downgrades(
+    tmp_path: Path,
+    operation: str,
+    schema_version: int,
+) -> None:
+    store, run_dir = _prepare_evidence_admission(tmp_path, operation=operation)
+    _rewrite_run_manifest(run_dir, changes={"schema_version": schema_version})
+
+    with pytest.raises(DataError, match="immutable v3 manifest"):
+        _attempt_evidence_admission(store, operation=operation)
+
+    if operation == "create":
+        assert store.list_evidence() == []
+    else:
+        evidence = store.get_evidence(EVIDENCE_ID)
+        assert evidence["status"] == "draft"
+        assert evidence["revision"] == 1
+
+
+@pytest.mark.parametrize("operation", ["create", "revise"])
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        pytest.param(
+            {"artifact_contract_version": 2},
+            "artifact contract",
+            id="artifact-contract-v2",
+        ),
+        pytest.param(
+            {"run_identity_version": 2},
+            "run_identity_version=3",
+            id="run-identity-v2",
+        ),
+        pytest.param(
+            {"run_id": "fedcba9876543210"},
+            "identity does not match directory",
+            id="selector-mismatch",
+        ),
+    ],
+)
+def test_evidence_admission_rejects_v3_authority_downgrades_and_selector_mismatch(
+    tmp_path: Path,
+    operation: str,
+    changes: dict[str, object],
+    message: str,
+) -> None:
+    store, run_dir = _prepare_evidence_admission(tmp_path, operation=operation)
+    _rewrite_run_manifest(run_dir, changes=changes)
+
+    with pytest.raises(DataError, match=message):
+        _attempt_evidence_admission(store, operation=operation)
+
+    if operation == "create":
+        assert store.list_evidence() == []
+    else:
+        assert store.get_evidence(EVIDENCE_ID)["revision"] == 1
+
+
+@pytest.mark.parametrize("operation", ["create", "revise"])
+@pytest.mark.parametrize(
+    ("changes", "remove"),
+    [
+        pytest.param({}, ("command",), id="missing-command"),
+        pytest.param({"command": "validate_v3"}, (), id="aliased-command"),
+    ],
+)
+def test_evidence_admission_requires_a_decision_grade_command(
+    tmp_path: Path,
+    operation: str,
+    changes: dict[str, object],
+    remove: tuple[str, ...],
+) -> None:
+    store, run_dir = _prepare_evidence_admission(tmp_path, operation=operation)
+    _rewrite_run_manifest(run_dir, changes=changes, remove=remove)
+
+    with pytest.raises(DataError, match="decision-grade command"):
+        _attempt_evidence_admission(store, operation=operation)
+
+    if operation == "create":
+        assert store.list_evidence() == []
+    else:
+        assert store.get_evidence(EVIDENCE_ID)["revision"] == 1
+
+
+@pytest.mark.parametrize("operation", ["create", "revise"])
+@pytest.mark.parametrize(
+    ("changes", "remove"),
+    [
+        pytest.param({"command": "research-pilot"}, ("kind",), id="missing-kind"),
+        pytest.param({"kind": "research-v1"}, (), id="aliased-kind"),
+        pytest.param(
+            {"research_contract_id": "rc_" + "1" * 64},
+            ("command", "kind"),
+            id="contract-without-kind-or-command",
+        ),
+        pytest.param({"evidence_zone": "D0"}, (), id="d0-zone"),
+        pytest.param({"evidence_zone": "D1"}, (), id="d1-zone"),
+        pytest.param({"evidence_zone": "D2"}, (), id="d2-zone"),
+        pytest.param({"evidence_zone": "D3"}, (), id="d3-zone"),
+        pytest.param(
+            {"eligible_for_holdout_or_execution": False},
+            (),
+            id="holdout-execution-ineligible",
+        ),
+        pytest.param({"real_market_evidence": False}, (), id="not-real-market-evidence"),
+    ],
+)
+def test_evidence_admission_rejects_every_research_authority_marker(
+    tmp_path: Path,
+    operation: str,
+    changes: dict[str, object],
+    remove: tuple[str, ...],
+) -> None:
+    store, run_dir = _prepare_evidence_admission(tmp_path, operation=operation)
+    _rewrite_run_manifest(run_dir, changes=changes, remove=remove)
+
+    with pytest.raises(DataError, match="research runs cannot enter the generic evidence ledger"):
+        _attempt_evidence_admission(store, operation=operation)
+
+    if operation == "create":
+        assert store.list_evidence() == []
+    else:
+        assert store.get_evidence(EVIDENCE_ID)["revision"] == 1
 
 
 def test_evidence_version_and_experiment_must_share_the_same_lineage(tmp_path: Path) -> None:
