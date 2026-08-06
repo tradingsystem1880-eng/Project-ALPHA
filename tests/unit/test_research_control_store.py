@@ -1431,6 +1431,23 @@ def test_research_capture_is_atomic_and_retry_idempotent(
     with pytest.raises(DataError, match=f"fault after {fault_label}"):
         store.capture_research_case(**kwargs)  # type: ignore[arg-type]
     assert store.list_projects() == []
+    # Row-level proof of atomicity: no partial write survives in ANY capture-touched table.
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        for table in (
+            "projects",
+            "project_research_governance",
+            "project_scope_events",
+            "research_contracts",
+            "research_phase_events",
+            "research_execution_events",
+            "research_d2_events",
+        ):
+            count = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()  # noqa: S608
+            assert count == (0,), f"partial {table} row survived the {fault_label} fault"
+    finally:
+        connection.close()
 
     monkeypatch.setattr(ControlStore, "_capture_fault_checkpoint", staticmethod(original))
     first = store.capture_research_case(**kwargs)  # type: ignore[arg-type]

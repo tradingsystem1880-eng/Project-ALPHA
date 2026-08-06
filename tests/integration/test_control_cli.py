@@ -837,3 +837,53 @@ def test_control_cli_domain_errors_are_safe(
     )
     assert malformed_object.exit_code != 0
     assert "valid JSON object" in malformed_object.output
+
+
+def test_version_command_passes_research_contract_id_to_the_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The governed-version CLI option must reach create_strategy_version verbatim.
+
+    The governed-version SEMANTICS (approved confirmation contract, owner advance
+    decision, denial without them) are exhaustively covered at the store layer in
+    tests/unit/test_research_control_store.py; this guards the CLI plumbing that those
+    tests cannot see.
+    """
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured: dict[str, object] = {}
+
+    def fake_create_strategy_version(
+        self: ControlStore, project_id: str, **kwargs: object
+    ) -> dict[str, object]:
+        captured["project_id"] = project_id
+        captured.update(kwargs)
+        return {"version_id": "sv_fake", "research_contract_id": kwargs["research_contract_id"]}
+
+    monkeypatch.setattr(ControlStore, "create_strategy_version", fake_create_strategy_version)
+    result = runner.invoke(
+        app,
+        [
+            "project",
+            "version",
+            "11111111-1111-4111-8111-111111111111",
+            "--strategy",
+            "double_bottom",
+            "--source-fingerprint",
+            "git:3333333",
+            "--definition-json",
+            '{"detector": "causal-double-bottom-v1"}',
+            "--parameter-space-json",
+            '{"tolerance": [0.005, 0.01]}',
+            "--research-contract-id",
+            "rc_" + "c" * 64,
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["project_id"] == "11111111-1111-4111-8111-111111111111"
+    assert captured["strategy_name"] == "double_bottom"
+    assert captured["source_fingerprint"] == "git:3333333"
+    assert captured["definition"] == {"detector": "causal-double-bottom-v1"}
+    assert captured["parameter_space"] == {"tolerance": [0.005, 0.01]}
+    assert captured["research_contract_id"] == "rc_" + "c" * 64
+    assert json.loads(result.output)["research_contract_id"] == "rc_" + "c" * 64

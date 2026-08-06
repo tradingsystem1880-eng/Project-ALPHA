@@ -11,6 +11,62 @@ from alpha_cli.control_store import ControlStore
 from alpha_core.config import AlphaSettings
 from alpha_mcp import server
 
+# The complete bounded MCP authority surface. Adding, removing, or renaming ANY tool must
+# consciously update this pin (and the 48-tool documentation claim) — a silently grown
+# surface is an authority expansion, not a convenience.
+_EXPECTED_MCP_TOOLS = frozenset(
+    {
+        "advance_experiment_stage",
+        "advance_stage_state",
+        "backtest_cross_sectional",
+        "backtest_portfolio",
+        "backtest_run",
+        "cancel_development_suite",
+        "compare_runs",
+        "create_development_job",
+        "create_experiment_spec",
+        "create_strategy_project",
+        "create_strategy_version",
+        "data_pull",
+        "draft_evidence",
+        "forecast_eval",
+        "forecast_run",
+        "get_agent_brief",
+        "get_chart_bundle",
+        "get_development_job",
+        "get_evidence",
+        "get_experiment_spec",
+        "get_portfolio_analytics",
+        "get_project",
+        "get_run",
+        "get_strategy_version",
+        "launch_development_suite",
+        "launch_ml_experiment",
+        "link_project_run",
+        "list_development_jobs",
+        "list_projects",
+        "list_runs",
+        "list_strategies",
+        "optim_grid",
+        "plan_development_suite",
+        "plan_ml_experiment",
+        "propfirm_run",
+        "reconcile_development_jobs",
+        "record_project_attempt",
+        "research_capture",
+        "research_get",
+        "research_launch",
+        "research_propose",
+        "research_report",
+        "research_status",
+        "review_evidence",
+        "seal_project_holdout",
+        "search_asset_evidence",
+        "search_evidence",
+        "validate",
+    }
+)
+
 
 def test_research_mcp_surface_is_exactly_six_tools_without_owner_authority(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -18,17 +74,16 @@ def test_research_mcp_surface_is_exactly_six_tools_without_owner_authority(
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     names = {tool.name for tool in anyio.run(server.mcp.list_tools)}
 
-    assert {
+    assert names == _EXPECTED_MCP_TOOLS
+    assert len(names) == 48  # the documented bounded-surface claim
+    assert {name for name in names if name.startswith("research_")} == {
         "research_capture",
         "research_get",
         "research_propose",
         "research_launch",
         "research_status",
         "research_report",
-    } <= names
-    assert "research_approve" not in names
-    assert "research_decide" not in names
-    assert "research_reveal" not in names
+    }
 
 
 def test_research_mcp_capture_propose_status_and_report_round_trip(
@@ -93,7 +148,7 @@ def test_research_launch_uses_a_launch_class_timeout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A projection-class timeout would kill a mid-compute pilot and burn a lifetime slot."""
-    from alpha_mcp import _control
+    from alpha_mcp import _control, _invoke
 
     captured: dict[str, object] = {}
 
@@ -104,7 +159,7 @@ def test_research_launch_uses_a_launch_class_timeout(
         captured["timeout_seconds"] = timeout_seconds
         return {}
 
-    monkeypatch.setattr(_control._invoke, "run_json", _fake_run_json)
+    monkeypatch.setattr(_invoke, "run_json", _fake_run_json)
     _control.research_launch("00000000-0000-4000-8000-000000000000", "pilot", data_dir=tmp_path)
 
     assert captured["args"] == [

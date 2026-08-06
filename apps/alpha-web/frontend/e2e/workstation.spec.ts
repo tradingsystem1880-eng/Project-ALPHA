@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import type { components } from '../src/api/generated'
 
 const DESKS = [
   { id: 'market', label: 'MARKET', activePanel: 'Market Chart' },
@@ -27,7 +28,11 @@ const SYSTEM_STATUS = {
   kronos_cache: { configured: false, exists: false, local_only: true, path: null },
 }
 
-const RESEARCH_CASE = {
+const RESEARCH_RAW_IDEA = 'SPY may bounce after a point-in-time double bottom.'
+
+// Typed against the generated contract so ANY future ResearchCase drift fails the
+// frontend type gate instead of silently passing a stale mocked shape to e2e.
+const RESEARCH_CASE: components['schemas']['ResearchCase'] = {
   schema_version: 1,
   project_id: 'research-project-1',
   project_name: 'SPY double bottom',
@@ -40,7 +45,7 @@ const RESEARCH_CASE = {
     scope: 'exploration',
     parent_contract_id: null,
     payload: {
-      raw_idea: 'SPY may bounce after a point-in-time double bottom.',
+      raw_idea: RESEARCH_RAW_IDEA,
       approval_ready: false,
       blocking_questions: [
         'Which equal-duration chart construction is intended?',
@@ -81,6 +86,11 @@ const RESEARCH_CASE = {
   hashes: {},
   source_pack_id: null,
   attempt_count: 0,
+  terminal_attempt_count: 0,
+  unfinalized_launch_count: 0,
+  remaining_launches: 3,
+  latest_launch_reservation_id: null,
+  latest_launch_number: null,
   latest_attempt_id: null,
   latest_run_id: null,
   latest_run_fingerprint: null,
@@ -90,7 +100,7 @@ const RESEARCH_CASE = {
   d3_state: 'not_sealed',
 }
 
-const RESEARCH_CLOSED_CASE = {
+const RESEARCH_CLOSED_CASE: components['schemas']['ResearchCase'] = {
   ...RESEARCH_CASE,
   phase: 'closed',
   active_contract: { ...RESEARCH_CASE.active_contract, review_state: 'approved' },
@@ -801,7 +811,7 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   await page.getByRole('option', { name: /Research Cockpit/ }).click()
 
   await expect(page.locator('.panel-toolbar .title').filter({ hasText: 'Research Cockpit' })).toBeVisible()
-  await page.getByLabel('Raw research idea').fill(RESEARCH_CASE.active_contract.payload.raw_idea)
+  await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
   await page.getByRole('button', { name: 'capture · no compute' }).click()
 
   await expect(page.getByText('TRIAGE', { exact: true })).toBeVisible()
