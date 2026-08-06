@@ -828,28 +828,6 @@ def run_research(
                 contract_id=contract_id,
                 contract=payload,
             )
-            attempt = store.record_research_attempt(
-                project_id,
-                contract_id,
-                kind="d0-synthetic-pilot",
-                status="completed",
-                config_fingerprint=str(manifest["execution_fingerprint"]),
-                budget_used={},
-                details={
-                    "attempt_number": attempt_number,
-                    "evidence_zone": "D0",
-                    "finding": (
-                        "D0 detector, point-in-time timing, null, and power fixtures passed; this "
-                        "is not real-market evidence."
-                    ),
-                    "d0_acceptance_ref": {
-                        "artifact": "d0_acceptance.json",
-                        "content_sha256": _manifest_artifact_sha256(manifest, "d0_acceptance.json"),
-                    },
-                },
-                run_id=str(manifest["run_id"]),
-                launch_reservation_id=reservation_id,
-            )
         except Exception as run_error:
             retries_exhausted = attempt_number >= 3
             error_text = str(run_error).strip() or type(run_error).__name__
@@ -928,6 +906,40 @@ def run_research(
             raise DataError(
                 f"synthetic pilot failed and was checkpointed: {error_text}{checkpoint_suffix}"
             ) from run_error
+        # The pilot succeeded and its immutable run is published. From here on, a store
+        # write failure must never be recorded as a pilot failure: fabricating a terminal
+        # 'failed' attempt would falsify the append-only ledger and mis-checkpoint the case.
+        try:
+            attempt = store.record_research_attempt(
+                project_id,
+                contract_id,
+                kind="d0-synthetic-pilot",
+                status="completed",
+                config_fingerprint=str(manifest["execution_fingerprint"]),
+                budget_used={},
+                details={
+                    "attempt_number": attempt_number,
+                    "evidence_zone": "D0",
+                    "finding": (
+                        "D0 detector, point-in-time timing, null, and power fixtures passed; this "
+                        "is not real-market evidence."
+                    ),
+                    "d0_acceptance_ref": {
+                        "artifact": "d0_acceptance.json",
+                        "content_sha256": _manifest_artifact_sha256(manifest, "d0_acceptance.json"),
+                    },
+                },
+                run_id=str(manifest["run_id"]),
+                launch_reservation_id=reservation_id,
+            )
+        except Exception as record_error:
+            raise DataError(
+                f"the D0 pilot completed and published immutable run {manifest['run_id']}, but "
+                "recording its completed attempt failed; no failed attempt was fabricated. "
+                "Inspect the control store, then `alpha research resume` and re-run the pilot: "
+                "the identical run republishes idempotently and the attempt is recorded on "
+                f"success: {record_error}"
+            ) from record_error
         store.transition_research_execution(
             project_id,
             to_state="idle",

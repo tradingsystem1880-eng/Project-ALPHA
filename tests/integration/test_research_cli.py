@@ -945,6 +945,96 @@ def test_pilot_failures_checkpoint_and_stop_after_two_safe_retries(
     assert conclusion["evidence_basis"] == "NO_TYPED_NON_SYNTHETIC_EVIDENCE"
 
 
+def test_store_failure_after_successful_pilot_never_fabricates_a_failed_attempt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A completed pilot whose attempt write fails must not be recorded as a pilot failure."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Synthetic double bottom attempt-recording fixture")
+    project = captured["project"]
+    assert isinstance(project, dict)
+    project_id = str(project["project_id"])
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Synthetic fixture protocol",
+        locator="owner:synthetic-fixture",
+        provider="owner",
+        access_mode="owner_provided",
+    )
+    pack = store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+    )
+    drafted = _invoke(
+        "draft",
+        project_id,
+        "--source-pack-id",
+        str(pack["pack_id"]),
+        "--answer",
+        "chart_construction=spy_rth_60m_four_hour_window",
+        "--answer",
+        "event_availability=second_trough_confirmable",
+        "--answer",
+        "primary_outcome=four_trading_hour_return_25bp",
+    )
+    contract = drafted["contract"]
+    assert isinstance(contract, dict)
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        str(contract["contract_id"]),
+        "--actor",
+        "owner",
+        "--reason",
+        "Approve the attempt-recording fixture.",
+    )
+
+    original_record = ControlStore.record_research_attempt
+
+    def flaky_record(
+        self: ControlStore, project_id: str, contract_id: str, **kwargs: object
+    ) -> dict[str, object]:
+        if kwargs.get("status") == "completed":
+            raise DataError("injected: attempt store write failed after the pilot succeeded")
+        return original_record(self, project_id, contract_id, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(ControlStore, "record_research_attempt", flaky_record)
+    result = runner.invoke(app, ["research", "run", "pilot", project_id, "--json"])
+    assert result.exit_code != 0
+    assert "completed and published immutable run" in result.output
+    monkeypatch.setattr(ControlStore, "record_research_attempt", original_record)
+
+    # The immutable run was genuinely published.
+    run_dirs = [path for path in (tmp_path / "runs").iterdir() if path.is_dir()]
+    assert len(run_dirs) == 1
+    manifest = json.loads((run_dirs[0] / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["command"] == "research_pilot"
+
+    # The consumed launch stays counted (crash-consumes rule), but no attempt record of any
+    # status was fabricated and the reservation stays visibly unfinalized.
+    case = _invoke("status", project_id)
+    assert case["attempt_count"] == 1
+    assert case["terminal_attempt_count"] == 0
+    assert case["unfinalized_launch_count"] == 1
+    assert case["execution_state"] == "running"
+
+    # The documented recovery path works: resume, re-run, and the identical immutable run
+    # republishes idempotently while the interrupted reservation stays consumed.
+    resumed = _invoke("resume", project_id, "--acknowledge-orphaned-process")
+    assert resumed["execution_state"] == "queued"
+    recovered = _invoke("run", "pilot", project_id)
+    recovered_manifest = recovered["manifest"]
+    recovered_case = recovered["case"]
+    assert isinstance(recovered_manifest, dict) and isinstance(recovered_case, dict)
+    assert recovered_manifest["run_id"] == manifest["run_id"]
+    assert recovered_case["attempt_count"] == 2
+    assert recovered_case["terminal_attempt_count"] == 1
+    assert recovered_case["phase"] == "research_decision"
+    assert recovered_case["remaining_launches"] == 1
+
+
 def test_hard_crashes_consume_launch_slots_budget_and_deny_a_fourth_launch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
