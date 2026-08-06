@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Final
 
 import numpy as np
 
@@ -12,6 +13,12 @@ from alpha_core import DataError
 
 CovariateScalar = str | int | float | bool
 _PREDICTIVE_CAVEAT = "Conditional predictive association; not a causal effect."
+# Below roughly ten effective clusters the percentile cluster-bootstrap interval and the
+# centered-bootstrap p-value become unreliable (the small-cluster bootstrap literature places
+# trouble well above this count). Two clusters remain a hard error; estimates from fewer than
+# this floor are still computed for exploratory use but carry an explicit typed flag that
+# downstream consumers must surface — the flag is never silently dropped.
+_LOW_CLUSTER_FLOOR: Final = 10
 
 
 def _nonempty(name: str, value: object) -> str:
@@ -308,6 +315,7 @@ class PredictiveAssociationEstimate:
     not_yet_available_count: int
     n_resamples: int
     seed: int
+    low_cluster_count: bool
     method: str = "cluster_bootstrap_predictive_mean"
     caveat: str = _PREDICTIVE_CAVEAT
 
@@ -411,6 +419,7 @@ def evaluate_event_association(
         not_yet_available_count=len(observations) - len(known),
         n_resamples=n_resamples,
         seed=seed,
+        low_cluster_count=effective < _LOW_CLUSTER_FLOOR,
     )
 
 
@@ -447,4 +456,5 @@ def evaluate_matched_association(
         not_yet_available_count=matched.not_yet_available_count,
         n_resamples=n_resamples,
         seed=seed,
+        low_cluster_count=effective < _LOW_CLUSTER_FLOOR,
     )

@@ -11,6 +11,10 @@ from alpha_research._canonical import canonical_sha256
 
 EvidencePhase = Literal["discovery", "confirmation", "final_holdout"]
 _EVIDENCE_PHASES = {"discovery", "confirmation", "final_holdout"}
+# Group-count cuts guarantee ~20% of GROUPS to the final holdout, not of observations;
+# this floor guarantees the holdout keeps a defensible observation mass regardless of
+# group-size skew. Unit groups (one observation per group) always realize exactly 20%.
+_MIN_HOLDOUT_OBSERVATION_SHARE = 0.10
 _EVIDENCE_PHASE_ORDER: tuple[EvidencePhase, ...] = (
     "discovery",
     "confirmation",
@@ -200,6 +204,18 @@ class ResearchEvidenceTopology:
             raise DataError(
                 "research evidence windows must equal the canonical 60/20/20 group-atomic "
                 "chronological split"
+            )
+        # Cuts are made on group COUNTS, so size-skewed dependence groups can shift the
+        # realized observation shares. A token holdout would silently hollow out the
+        # program's strongest protection, so it is rejected rather than warned about.
+        holdout_share = self.final_holdout.length / self.total_observations
+        if holdout_share < _MIN_HOLDOUT_OBSERVATION_SHARE:
+            raise DataError(
+                "group-atomic 60/20/20 allocation left the final holdout with "
+                f"{self.final_holdout.length} of {self.total_observations} observations "
+                f"({holdout_share:.1%}, below the {_MIN_HOLDOUT_OBSERVATION_SHARE:.0%} "
+                "floor); dependence groups are too size-skewed — regroup or extend the "
+                "sample"
             )
         for window in actual:
             if window.length <= self.forward_outcome_observations:

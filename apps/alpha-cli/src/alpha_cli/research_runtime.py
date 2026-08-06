@@ -60,6 +60,13 @@ _D0_TOPOLOGY_SCHEMA_VERSION: Final = 2
 # fail with the explicit generation error below (see _require_current_d0_generation),
 # never with an error implying tampering. Reading an earlier generation requires the
 # producing code generation or an explicit owner-approved data-dir migration.
+#
+# SEED POLICY (deliberate deviation from the generic v3 semantic-seed rule): the power
+# simulation seed below is a protocol-frozen literal, like alpha or the planted lows —
+# NOT derived from AlphaSettings.random_seed. Acceptance is re-verified by exact
+# recomputation on every machine that reads the run; a settings-derived seed would make
+# acceptance depend on the reader's local configuration and break machine-independent
+# verification of the one canonical registered fixture.
 _D0_FIXTURE_ID: Final = "spy_60m_double_bottom_v1"
 _D0_FIXTURE_VERSION: Final = 1
 _D0_RUNTIME_VERSION: Final = 3

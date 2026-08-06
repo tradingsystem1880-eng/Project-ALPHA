@@ -476,3 +476,36 @@ def test_association_entrypoints_reject_wrong_populations() -> None:
     )
     with pytest.raises(DataError, match="at least one matched pair"):
         evaluate_matched_association(empty_matched)
+
+
+def test_low_cluster_estimates_carry_an_explicit_flag() -> None:
+    """Percentile intervals from very few clusters must be visibly flagged, never silent."""
+    origin = datetime(2024, 1, 2, tzinfo=UTC)
+    as_of = origin + timedelta(days=400)
+    few = tuple(
+        _observation(
+            f"ev-{index}",
+            day=origin + timedelta(days=7 * index),
+            outcome=0.001 * (index + 1),
+            is_event=True,
+            cluster_id=f"pair-{index % 2}",
+        )
+        for index in range(4)
+    )
+    flagged = evaluate_event_association(few, as_of=as_of)
+    assert flagged.effective_event_count == 2
+    assert flagged.low_cluster_count is True
+
+    many = tuple(
+        _observation(
+            f"ev-{index}",
+            day=origin + timedelta(days=7 * index),
+            outcome=0.001 * ((index % 5) + 1),
+            is_event=True,
+            cluster_id=f"week-{index}",
+        )
+        for index in range(12)
+    )
+    unflagged = evaluate_event_association(many, as_of=as_of)
+    assert unflagged.effective_event_count == 12
+    assert unflagged.low_cluster_count is False

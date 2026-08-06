@@ -223,3 +223,13 @@ def test_topology_rejects_unknown_phase_and_backward_outcome() -> None:
         topology.eligible_event_window("other")  # type: ignore[arg-type]
     with pytest.raises(DataError, match="cannot precede"):
         topology.validate_outcome_window(2, 1)
+
+
+def test_size_skewed_groups_cannot_starve_the_final_holdout() -> None:
+    """Group-count cuts with skewed group sizes must not leave a token holdout."""
+    keys = ["g1"] * 40 + ["g2", "g3", "g4", "g5", "g6"]
+    with pytest.raises(DataError, match="final holdout"):
+        ResearchEvidenceTopology.for_dependency_groups(
+            keys,
+            forward_outcome_observations=0,
+        )
