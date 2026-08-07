@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { Candle, CandleProvenance, ChartBundle, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
-import { PanelLinkControl } from '../components/PanelLinkControl'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
 import { usePanelLinked } from '../context/usePanelLinked'
 import {
@@ -149,7 +148,6 @@ export function PriceChart(props: PanelHandleProps) {
     <div className="panel price-panel">
       <div className="panel-toolbar price-toolbar">
         <span className="title">Price</span>
-        <PanelLinkControl controller={panelLink} />
         <input
           className="field sym-input"
           value={symbol}

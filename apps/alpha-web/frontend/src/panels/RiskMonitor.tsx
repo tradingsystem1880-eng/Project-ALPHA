@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { RiskReport } from '../api/types'
-import { PanelLinkControl } from '../components/PanelLinkControl'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { fmtNum, fmtPct } from '../util/format'
 import { Placeholder } from '../components/Placeholder'
@@ -63,7 +62,6 @@ export function RiskMonitor(props: PanelHandleProps) {
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Risk · Scenarios</span>
-        <PanelLinkControl controller={panelLink} />
         <input
           className="field sym-input"
           style={{ width: 132 }}

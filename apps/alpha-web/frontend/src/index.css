@@ -13,12 +13,17 @@
   --panel-2: #0c1017;
   --elevated: #171d29;
   --line: #1d2431;
+  /* Chart gridlines. Previously existed only as a fallback inside tokens.ts, which
+     meant nothing defined it and the value silently diverged from the figure theme. */
+  --grid: #161d29;
   --line-strong: #2a3242;
 
   /* ink */
   --ink: #e8ecf3;
   --ink-dim: #aab3c4;
-  --muted: #737d90;
+  /* Secondary text. Must clear WCAG AA (4.5:1) against --panel, not just --bg:
+     screens put panel surfaces where the old desk left bare background. */
+  --muted: #7a8497;
   --faint: #495365;
 
   /* signal blue — the single interaction accent */
@@ -573,7 +578,9 @@ select.field:focus {
 .placeholder .big {
   font-family: var(--font-mono);
   font-size: 22px;
-  color: var(--faint);
+  /* --faint is a hairline colour for rules, not for text: 2.35:1 here. An empty state is
+     the one thing a lost user reads, so it takes a legible token. */
+  color: var(--muted);
   letter-spacing: 0.1em;
 }
 
@@ -4014,7 +4021,7 @@ select.field:focus {
   background: none;
   border: 0;
   border-bottom: 2px solid transparent;
-  color: var(--muted);
+  color: var(--ink-dim);
   font: inherit;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -4037,7 +4044,7 @@ select.field:focus {
   padding: var(--pad-sm) var(--pad-sm) 4px;
 }
 .library-toggle {
-  background: none; border: 0; color: var(--muted); cursor: pointer;
+  background: none; border: 0; color: var(--ink-dim); cursor: pointer;
   padding: 2px 6px; font-size: 13px;
 }
 .library-toggle:hover { color: var(--ink); }
@@ -4045,7 +4052,7 @@ select.field:focus {
 .library-section {
   flex: 1; padding: 3px 4px; background: none; border: 0;
   border-bottom: 2px solid transparent;
-  color: var(--muted); font: inherit; font-size: calc(var(--font-size) - 2px); cursor: pointer;
+  color: var(--ink-dim); font: inherit; font-size: calc(var(--font-size) - 2px); cursor: pointer;
 }
 .library-section:hover { color: var(--ink); }
 .library-section.active { color: var(--ink); border-bottom-color: var(--accent); }
@@ -4062,10 +4069,10 @@ select.field:focus {
 .library-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .library-row-main { display: flex; flex-direction: column; min-width: 0; }
 .library-row-sub {
-  color: var(--muted); font-size: calc(var(--font-size) - 2px);
+  color: var(--ink-dim); font-size: calc(var(--font-size) - 2px);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.library-empty, .library-error { padding: var(--pad-sm); color: var(--muted); font-size: calc(var(--font-size) - 1px); }
+.library-empty, .library-error { padding: var(--pad-sm); color: var(--ink-dim); font-size: calc(var(--font-size) - 1px); }
 .library-error { color: var(--down); }
 
 /* ---- context chip ---- */
@@ -4074,7 +4081,7 @@ select.field:focus {
   display: flex; align-items: center; gap: 6px;
   padding: 3px 10px;
   background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: var(--r);
-  color: var(--ink-dim); font: inherit; cursor: pointer;
+  color: var(--ink); font: inherit; cursor: pointer;
 }
 .context-chip:hover { border-color: var(--accent); color: var(--ink); }
 .context-sep { color: var(--faint); }
@@ -4108,7 +4115,7 @@ select.field:focus {
 .area-tabs { display: flex; gap: 1px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .area-tab {
   padding: 3px 10px; background: none; border: 0; border-bottom: 2px solid transparent;
-  color: var(--muted); font: inherit; font-size: calc(var(--font-size) - 1px); cursor: pointer;
+  color: var(--ink-dim); font: inherit; font-size: calc(var(--font-size) - 1px); cursor: pointer;
 }
 .area-tab:hover { color: var(--ink); }
 .area-tab.active { color: var(--ink); border-bottom-color: var(--accent); }

@@ -11,7 +11,6 @@ import type {
 } from '../api/types'
 import { FigureCard } from '../components/FigureCard'
 import { KronosKlineCanvas } from '../components/KronosKlineCanvas'
-import { PanelLinkControl } from '../components/PanelLinkControl'
 import { Placeholder } from '../components/Placeholder'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { asStr, fmtNum, fmtPct, shortId } from '../util/format'
@@ -229,7 +228,6 @@ export function KronosStudio(props: PanelHandleProps) {
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Kronos Forecast Studio</span>
-        <PanelLinkControl controller={panelLink} />
         <span className="chip kind">{command ?? 'NO RUN'}</span>
         {runId ? <span className="id mono">{shortId(runId)}</span> : null}
         <span className="spacer" />
