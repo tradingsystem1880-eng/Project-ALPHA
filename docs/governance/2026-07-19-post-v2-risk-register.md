@@ -60,6 +60,25 @@ evidence, verified owner-presence authentication, or execution authority exists.
 actor fields are trusted-operator audit semantics, not cryptographic identity. R-50–R-57 remain
 open until their full closure evidence is green.
 
+**Research Scientist audit/hardening checkpoint (2026-08-07):** an independent six-reviewer
+read-only audit of the complete uncommitted program found 0 critical/high and 7 medium findings;
+all were fixed test-first before merge (PR #36). Material to this register: steady-state control
+store opens no longer execute schema scripts (reads cannot contend for the writer lock and a lost
+governance row fails loud instead of regenerating from the caller-controlled date rule — closes
+the R-57 backfill-resurrection vector); double-bottom knowledge time now covers the left pivot
+window (closes a latent R-53 look-ahead under delayed publication); TESTED D2 gate evidence
+requires a numeric `confirmation_claim` recomputed via `classify_confirmation` with each check
+boolean bound to its numeric fact (hardens the R-53/R-56 producer-attestation vector before D2
+ships); foreign D0 registered generations fail with an explicit generation-mismatch error under a
+documented fixture-version bump policy; the MCP research launch uses the 120-second launch-class
+timeout so an infrastructure default cannot burn an R-50 lifetime launch slot; a successful pilot
+can never be recorded as a failed attempt (append-only ledger honesty, with the resume/re-run
+recovery executed in tests); cluster-bootstrap estimates below ten effective clusters carry a
+typed `low_cluster_count` flag and size-skewed topologies below a 10% holdout observation share
+fail loud; and the complete 48-tool MCP surface, content-identity digests, and both deliberate
+canonical-JSON conventions are golden-pinned. Full offline Python and frontend gates re-verified
+green on the branch head. R-50–R-57 gate states are otherwise unchanged.
+
 The Gate 0 design review also covered the owner-supplied local inputs
 `/Users/hunternovotny/Desktop/Beast-Mode/docs/research/deep-research-report-1.md` and
 `/Users/hunternovotny/Desktop/Beast-Mode/docs/research/deep-research-report-2.md`. ALPHA retains

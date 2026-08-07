@@ -190,6 +190,31 @@ Paper acceptance scenario remain pending.
 
 ### Fixed
 
+- 2026-08-07 independent Research Scientist audit (six read-only reviewers; 0 critical/high,
+  7 medium findings — all fixed): control-store steady-state opens are now write-free (a read-only
+  schema probe replaces per-open script execution, so reads never contend for the writer lock and a
+  lost governance row fails loud instead of silently regenerating from the caller-controlled
+  `created_at` date rule); double-bottom knowledge time covers the first trough's left pivot window
+  (latent look-ahead under delayed publication; the canonical D0 fixture's acceptance bytes are
+  unchanged); TESTED D2 gate evidence now requires a numeric `confirmation_claim` whose
+  classification is recomputed via `classify_confirmation` with every check boolean bound to its
+  numeric fact (producer attestations that disagree with the numbers fail loud; D1 and NOT_TESTED
+  evidence cannot carry a claim; INVALID requires a stated reason); a well-formed foreign D0
+  registered generation now fails with an explicit generation-mismatch error — never one implying
+  tampering — under a documented policy that any registered-constant change must bump the fixture
+  version; the MCP research launch uses the 120-second launch-class timeout instead of the 30-second
+  projection default (a mid-compute kill permanently consumes a lifetime launch slot); a successful
+  pilot whose completed-attempt store write fails is never recorded as a failed attempt (the
+  append-only ledger cannot be falsified; the resume/re-run recovery path is exercised end to end);
+  and web research routes return a typed 4xx instead of a 500 for option-shaped path values.
+  Hardening added with the fixes: cluster-bootstrap estimates below ten effective clusters carry an
+  explicit `low_cluster_count` flag, size-skewed dependency groups that would leave the final
+  holdout under 10% of observations fail loud, the complete 48-tool MCP surface and the exact
+  research tool subset are pinned in tests, Playwright research fixtures are typed against the
+  generated contract, content-identity digests and both deliberate canonical-JSON conventions are
+  golden-pinned, duplicated revise-reuse/bootstrap/D0-measurement logic is consolidated behind
+  single helpers with byte-identical behavior, and the D0 power seed is documented as
+  protocol-frozen (never settings-derived, preserving machine-independent acceptance verification).
 - Curated desks now scope run selection and artifact requests by capability, including portfolio and
   cross-sectional compatibility, forecast-only Kronos evidence, and canonical ML replay evidence.
   Incompatible runs display a typed state without probing unrelated risk or artifact endpoints.
