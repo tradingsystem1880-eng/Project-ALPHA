@@ -2,31 +2,13 @@
 // CLI's `alpha options` analytics; nothing here reaches market data (it's a pure calculator).
 
 import { useEffect, useMemo, useState } from 'react'
-import type uPlot from 'uplot'
 
 import { api } from '../api/client'
 import type { OptionCurvePoint, OptionGreeks as Greeks } from '../api/types'
-import { AXIS, CHART } from '../util/chartTheme'
+import { CHART } from '../util/chartTheme'
 import { fmtNum } from '../util/format'
-import { UplotChart } from '../components/UplotChart'
+import { MiniLine } from '../components/MiniLine'
 
-function curveOptions(): Omit<uPlot.Options, 'width' | 'height'> {
-  return {
-    scales: { x: { time: false }, price: {}, delta: { range: [-1, 1] } },
-    axes: [
-      { ...AXIS },
-      { ...AXIS, scale: 'price' },
-      { ...AXIS, scale: 'delta', side: 1, grid: { show: false } },
-    ],
-    series: [
-      {},
-      { label: 'Price', scale: 'price', stroke: CHART.accent, width: 1.5, points: { show: false } },
-      { label: 'Delta', scale: 'delta', stroke: CHART.gold, width: 1.5, points: { show: false } },
-    ],
-    legend: { show: false },
-    cursor: { points: { show: false } },
-  }
-}
 
 const GREEK_ROWS: [keyof Greeks, string, number][] = [
   ['price', 'Price', 4],
@@ -81,14 +63,22 @@ export function OptionsGreeks() {
     }
   }, [strike, vol, days, rate, kind])
 
-  const data = useMemo<uPlot.AlignedData | null>(
+  // Price and delta live on different scales, so they are two figures rather than one
+  // chart with two y-axes -- the same rule the server-rendered figures follow.
+  const priceSeries = useMemo(
     () =>
-      curve && curve.length
-        ? [curve.map((p) => p.spot), curve.map((p) => p.price), curve.map((p) => p.delta)]
+      curve?.length
+        ? [{ label: 'Price', colour: CHART.accent, points: curve.map((p) => [p.spot, p.price] as [number, number]) }]
         : null,
     [curve],
   )
-  const options = useMemo(curveOptions, [])
+  const deltaSeries = useMemo(
+    () =>
+      curve?.length
+        ? [{ label: 'Delta', colour: CHART.gold, points: curve.map((p) => [p.spot, p.delta] as [number, number]) }]
+        : null,
+    [curve],
+  )
 
   const field = (
     label: string,
@@ -135,10 +125,21 @@ export function OptionsGreeks() {
           </div>
         ) : null}
 
-        {data ? (
-          <div>
-            <div className="rd-head">Price &amp; delta vs spot</div>
-            <UplotChart data={data} options={options} height={240} />
+        {priceSeries && deltaSeries ? (
+          <div className="options-curves">
+            <div>
+              <div className="rd-head">Option price vs spot</div>
+              <MiniLine
+                series={priceSeries}
+                xLabel="Spot (price)"
+                yLabel="Option price"
+                height={200}
+              />
+            </div>
+            <div>
+              <div className="rd-head">Delta vs spot</div>
+              <MiniLine series={deltaSeries} xLabel="Spot (price)" yLabel="Delta" height={200} />
+            </div>
           </div>
         ) : null}
       </div>

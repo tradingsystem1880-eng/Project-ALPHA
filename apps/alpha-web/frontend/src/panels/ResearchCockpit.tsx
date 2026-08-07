@@ -1,4 +1,3 @@
-import type { IDockviewPanelProps } from 'dockview-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -17,6 +16,7 @@ import {
   researchPilotEligibility,
   researchProposalAvailable,
 } from './researchCockpitModel'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 type ChartConstruction = ResearchMaterialAnswers['chart_construction']
 type EventAvailability = ResearchMaterialAnswers['event_availability']
@@ -305,8 +305,9 @@ function CaseSummary({
   )
 }
 
-export function ResearchCockpit(props: IDockviewPanelProps) {
-  const initialProjectId = typeof props.params?.projectId === 'string' ? props.params.projectId : ''
+export function ResearchCockpit(props: PanelHandleProps) {
+  const params = (props.params ?? {}) as { projectId?: unknown }
+  const initialProjectId = typeof params.projectId === 'string' ? params.projectId : ''
   const [researchCase, setResearchCase] = useState<ResearchCase | null>(null)
   const [report, setReport] = useState<ResearchCaseReport | null>(null)
   const [lookupId, setLookupId] = useState(initialProjectId)

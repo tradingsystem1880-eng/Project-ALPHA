@@ -1,7 +1,6 @@
 // Price — candlesticks for the linked symbol over the linked as-of window (PIT-adjusted). Typing a
 // symbol here rebroadcasts it to every linked panel.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -17,15 +16,15 @@ import {
   useChartSelection,
 } from '../state/chartSelection'
 import { openDevelopmentCenter } from './actions'
-import { ChartDataAlternative } from './ChartDataAlternative'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
 import {
   buildEvidenceMarkers,
   visibleEvidenceMarkers,
   type EvidenceLayer,
 } from './v3Models'
+import type { PanelHandleProps } from '../context/panelHandle'
 
-export function PriceChart(props: IDockviewPanelProps) {
+export function PriceChart(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const { linked, setLinked: setPanelLinked } = panelLink
   const [symbol, setSymbol] = useState(linked.symbol ?? '')
@@ -215,7 +214,7 @@ export function PriceChart(props: IDockviewPanelProps) {
           <div className="trace-unavailable">
             <strong>TRACE UNAVAILABLE</strong>
             <span>Legacy evidence is never reconstructed. Rerun this specification to emit a v3 causal trace.</span>
-            <button className="btn" onClick={() => openDevelopmentCenter(props.containerApi!)}>
+            <button className="btn" onClick={() => openDevelopmentCenter()}>
               Rerun for causal trace
             </button>
           </div>
@@ -226,14 +225,6 @@ export function PriceChart(props: IDockviewPanelProps) {
             selected={selected}
             selectedSequenceId={selectedSequenceId}
             onSelectEvidence={selectEvidence}
-          />
-        ) : null}
-        {bars ? (
-          <ChartDataAlternative
-            bars={bars}
-            truncated={bundle?.truncated.bars ?? false}
-            runId={bundle?.run_id ?? null}
-            symbol={symbol}
           />
         ) : null}
       </div>

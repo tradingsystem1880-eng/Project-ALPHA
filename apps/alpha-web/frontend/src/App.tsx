@@ -1,198 +1,30 @@
-// The shell: topbar (brand, working SYM/ASOF linked-context controls, density/explain toggles,
-// palette, live status), the Dockview desk, completion toasts, and the ⌘K palette.
-// First run (or an incompatible saved layout) opens the curated multi-pane desk preset.
+/**
+ * The shell: a screen switcher, a persistent Library, and one shared context.
+ *
+ * This replaced a free-form docking desk. Docking is the right answer when nobody can
+ * predict which panels a user needs beside which; here the workflow is known, so each
+ * screen is laid out once for the job it serves and the 22 panels stop being furniture the
+ * user has to arrange. Only the active screen mounts, so nothing polls behind a hidden tab.
+ */
 
-import {
-  DockviewReact,
-  themeAbyss,
-  type DockviewApi,
-  type DockviewReadyEvent,
-} from 'dockview-react'
-import 'dockview-react/dist/styles/dockview.css'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-import { api } from './api/client'
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
-import { restoreLinked, setLinked, useLinked, type LinkGroup } from './context/linked'
-import {
-  buildDeskLayout,
-  buildWorkspaceLayout,
-  LAYOUT_KEY,
-  restoreStoredLayout,
-  WORKSPACE_PRESETS,
-  type WorkspacePresetId,
-} from './layouts/presets'
-import { openRunDetail, runIdFromHash } from './panels/actions'
-import { PANELS } from './panels/registry'
+import { setLinked } from './context/linked'
+import { ContextBar } from './shell/ContextBar'
+import { LibraryRail } from './shell/LibraryRail'
+import { PanelHost } from './shell/PanelHost'
+import { areasOf, RESULTS_SCREEN, SCREENS, screen, type ScreenId } from './shell/screens'
 import { initActivity, useActivityField } from './state/activity'
 import { setSettings, useSettings } from './state/settings'
-import { shortId } from './util/format'
 
-function DeskControl({
-  value,
-  onChange,
-}: {
-  value: WorkspacePresetId | 'custom'
-  onChange: (value: WorkspacePresetId) => void
-}) {
-  return (
-    <label className="desk-control" title="Switch curated workstation layout">
-      <span className="tag">DESK</span>
-      <select
-        value={value}
-        onChange={(event) => {
-          if (event.target.value !== 'custom') onChange(event.target.value as WorkspacePresetId)
-        }}
-      >
-        {value === 'custom' ? <option value="custom">CUSTOM</option> : null}
-        {WORKSPACE_PRESETS.map((preset) => (
-          <option key={preset.id} value={preset.id}>
-            {preset.shortName}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
+const SCREEN_KEY = 'alpha.shell.screen'
+const RAIL_KEY = 'alpha.shell.rail'
 
-function LinkGroupControl() {
-  const linked = useLinked()
-  return (
-    <label className="group-control" title="Active panel link group">
-      <span className="tag">LINK</span>
-      <select
-        value={linked.linkGroup}
-        onChange={(event) => setLinked({ linkGroup: event.target.value as LinkGroup })}
-      >
-        {(['A', 'B', 'C', 'D'] as const).map((group) => (
-          <option key={group}>{group}</option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function SymControl() {
-  const linked = useLinked()
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState('')
-  if (!editing)
-    return (
-      <button onClick={() => { setValue(linked.symbol ?? ''); setEditing(true) }} title="Set the active symbol (linked across panels)">
-        <span className="tag">SYM</span>
-        <span className="sym">{linked.symbol ?? '—'}</span>
-      </button>
-    )
-  return (
-    <input
-      className="sym-input mono"
-      value={value}
-      autoFocus
-      spellCheck={false}
-      onChange={(e) => setValue(e.target.value.toUpperCase())}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          const s = value.trim()
-          if (s) setLinked({ symbol: s })
-          setEditing(false)
-        } else if (e.key === 'Escape') setEditing(false)
-      }}
-      onBlur={() => setEditing(false)}
-      placeholder="SPY"
-    />
-  )
-}
-
-function AsofControl() {
-  const linked = useLinked()
-  const [open, setOpen] = useState(false)
-  return (
-    <span className="asof-wrap">
-      <button className="range" title="As-of window (linked across panels)" onClick={() => setOpen((o) => !o)}>
-        <span className="tag">ASOF</span>
-        {`${linked.start ?? '—'} → ${linked.end ?? 'latest'}`}
-      </button>
-      {open ? (
-        <span className="asof-pop" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
-          <label>
-            <span className="eyebrow">start</span>
-            <input
-              className="field"
-              type="date"
-              value={linked.start ?? ''}
-              onChange={(e) => setLinked({ start: e.target.value || null })}
-            />
-          </label>
-          <label>
-            <span className="eyebrow">end (as-of)</span>
-            <input
-              className="field"
-              type="date"
-              value={linked.end ?? ''}
-              onChange={(e) => setLinked({ end: e.target.value || null })}
-            />
-          </label>
-          <button className="btn" onClick={() => setLinked({ start: null, end: null })}>
-            clear
-          </button>
-          <button className="btn primary" onClick={() => setOpen(false)}>
-            done
-          </button>
-        </span>
-      ) : null}
-    </span>
-  )
-}
-
-function ResearchContextControl() {
-  const linked = useLinked()
-  const [open, setOpen] = useState(false)
-  return (
-    <span className="research-context-wrap">
-      <button
-        className="research-context-summary"
-        title="Project, version, universe, timeframe, snapshot, and run context"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span><b>PRJ</b> {linked.projectId ?? '—'}</span>
-        <span><b>VER</b> {linked.versionId ?? '—'}</span>
-        <span><b>UNI</b> {linked.universe ?? '—'}</span>
-        <span><b>TF</b> {linked.timeframe}</span>
-        <span><b>SNAP</b> {linked.snapshotId ?? '—'}</span>
-        <span><b>RUN</b> {linked.runId ? shortId(linked.runId) : '—'}</span>
-      </button>
-      {open ? (
-        <span className="research-context-pop" onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
-          <label>
-            <span className="eyebrow">project</span>
-            <input className="field" value={linked.projectId ?? ''} onChange={(event) => setLinked({ projectId: event.target.value || null })} placeholder="project id" />
-          </label>
-          <label>
-            <span className="eyebrow">version</span>
-            <input className="field" value={linked.versionId ?? ''} onChange={(event) => setLinked({ versionId: event.target.value || null })} placeholder="version id" />
-          </label>
-          <label>
-            <span className="eyebrow">universe</span>
-            <input className="field" value={linked.universe ?? ''} onChange={(event) => setLinked({ universe: event.target.value || null })} placeholder="universe id" />
-          </label>
-          <label>
-            <span className="eyebrow">timeframe</span>
-            <select className="field" value={linked.timeframe} disabled><option value="1D">1D · daily</option></select>
-          </label>
-          <label>
-            <span className="eyebrow">snapshot</span>
-            <input className="field" value={linked.snapshotId ?? ''} onChange={(event) => setLinked({ snapshotId: event.target.value || null })} placeholder="snapshot id" />
-          </label>
-          <label>
-            <span className="eyebrow">run</span>
-            <input className="field" value={linked.runId ?? ''} onChange={(event) => setLinked({ runId: event.target.value || null })} placeholder="run id" />
-          </label>
-          <button className="btn primary" onClick={() => setOpen(false)}>done</button>
-        </span>
-      ) : null}
-    </span>
-  )
+function runIdFromHash(): string | null {
+  const match = /(?:^|[#&])run=([0-9a-f]{16})\b/.exec(window.location.hash)
+  return match ? match[1] : null
 }
 
 function StatusCluster() {
@@ -208,97 +40,120 @@ function StatusCluster() {
   )
 }
 
-export function App() {
-  const dockRef = useRef<DockviewApi | null>(null)
-  const seq = useRef(0)
-  const [paletteOpen, setPaletteOpen] = useState(false)
-  const [activePreset, setActivePreset] = useState<WorkspacePresetId | 'custom'>('market')
+function SettingsMenu() {
   const { density, explain } = useSettings()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="settings-menu">
+      <button className="kbd" aria-expanded={open} onClick={() => setOpen((v) => !v)} title="View settings">
+        ⚙
+      </button>
+      {open ? (
+        <div className="settings-pop" role="dialog" aria-label="View settings">
+          <button
+            className="settings-row"
+            onClick={() => setSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })}
+          >
+            <span>Density</span>
+            <span className="mono">{density}</span>
+          </button>
+          <button
+            className="settings-row"
+            onClick={() => setSettings({ explain: explain === 'terse' ? 'narrative' : 'terse' })}
+          >
+            <span>Explanations</span>
+            <span className="mono">{explain}</span>
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/** One screen area, with tabs when several panes share it. */
+function Area({ areaName, panes }: { areaName: string; panes: ReturnType<typeof areasOf>[number][1] }) {
+  const [active, setActive] = useState(0)
+  const pane = panes[Math.min(active, panes.length - 1)]
+  return (
+    <section className="area" style={{ gridArea: areaName }} aria-label={pane.title}>
+      {panes.length > 1 ? (
+        <nav className="area-tabs" role="tablist" aria-label={`${areaName} panes`}>
+          {panes.map((item, index) => (
+            <button
+              key={item.name}
+              role="tab"
+              aria-selected={index === active}
+              className={`area-tab${index === active ? ' active' : ''}`}
+              onClick={() => setActive(index)}
+            >
+              {item.title}
+            </button>
+          ))}
+        </nav>
+      ) : null}
+      <div className="area-body">
+        <PanelHost key={pane.name} name={pane.name} component={pane.component} />
+      </div>
+    </section>
+  )
+}
+
+export function App() {
+  const [current, setCurrent] = useState<ScreenId>(() => {
+    const stored = localStorage.getItem(SCREEN_KEY)
+    return SCREENS.some((item) => item.id === stored) ? (stored as ScreenId) : 'explore'
+  })
+  const [railCollapsed, setRailCollapsed] = useState(
+    () => localStorage.getItem(RAIL_KEY) === 'collapsed',
+  )
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   useEffect(() => {
     initActivity()
   }, [])
 
-  const onReady = useCallback((event: DockviewReadyEvent) => {
-    dockRef.current = event.api
-    const restored = restoreStoredLayout(event.api, localStorage)
-    if (!restored) buildDeskLayout(event.api)
-    setActivePreset(restored ? 'custom' : 'market')
-    event.api.onDidLayoutChange(() => {
-      try {
-        localStorage.setItem(LAYOUT_KEY, JSON.stringify(event.api.toJSON()))
-      } catch {
-        /* ignore storage quota / serialization errors */
-      }
-    })
-    // hash deep-link: /#run=<id> opens that run's story (openRunDetail keeps the hash current)
-    const linked = runIdFromHash()
-    if (linked) openRunDetail(event.api, linked)
-  }, [])
-
   useEffect(() => {
-    const onHash = () => {
-      const runId = runIdFromHash()
-      if (runId && dockRef.current) openRunDetail(dockRef.current, runId)
-    }
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
-  }, [])
-
-  const openPanel = useCallback((component: string, title: string) => {
-    const dv = dockRef.current
-    if (!dv) return
-    const existing = dv.panels.find((p) => p.id.startsWith(`${component}-`))
-    if (existing) {
-      existing.api.setActive()
-      return
-    }
-    seq.current += 1
-    dv.addPanel({ id: `${component}-${seq.current}`, component, title })
-  }, [])
+    localStorage.setItem(SCREEN_KEY, current)
+  }, [current])
+  useEffect(() => {
+    localStorage.setItem(RAIL_KEY, railCollapsed ? 'collapsed' : 'open')
+  }, [railCollapsed])
 
   const openRun = useCallback((runId: string) => {
-    if (dockRef.current) openRunDetail(dockRef.current, runId)
+    setLinked({ runId })
+    window.location.hash = `run=${runId}`
+    setCurrent(RESULTS_SCREEN)
   }, [])
 
-  const loadWorkspace = useCallback((slug: string) => {
-    const dv = dockRef.current
-    if (!dv) return
-    void api.getWorkspace(slug).then((doc) => {
-      try {
-        dv.fromJSON(doc.dockview as never)
-      } catch (e) {
-        console.error('workspace restore failed', e)
-        if (dv.panels.length === 0) buildDeskLayout(dv)
-        return
+  // `#run=<id>` still deep-links to a run's report, now by switching screens rather than
+  // spawning a floating panel.
+  useEffect(() => {
+    const apply = () => {
+      const runId = runIdFromHash()
+      if (runId) {
+        setLinked({ runId })
+        setCurrent(RESULTS_SCREEN)
       }
-      if (doc.linked_context) restoreLinked(doc.linked_context)
-      setActivePreset('custom')
-    })
-  }, [])
-
-  const loadPreset = useCallback((id: WorkspacePresetId) => {
-    const dv = dockRef.current
-    if (!dv) return
-    buildWorkspaceLayout(dv, id)
-    setActivePreset(id)
+    }
+    apply()
+    window.addEventListener('hashchange', apply)
+    return () => window.removeEventListener('hashchange', apply)
   }, [])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setPaletteOpen((o) => !o)
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
-        e.preventDefault()
-        openPanel('JobMonitor', 'Jobs')
-      } else if (e.key === 'Escape') {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setPaletteOpen((open) => !open)
+      } else if (event.key === 'Escape') {
         setPaletteOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [openPanel])
+  }, [])
+
+  const definition = screen(current)
 
   return (
     <div className="shell">
@@ -307,45 +162,50 @@ export function App() {
           <span className="mark">ALPHA</span>
           <span className="sub">WORKSTATION</span>
         </div>
-        <DeskControl value={activePreset} onChange={loadPreset} />
-        <div className="linked">
-          <LinkGroupControl />
-          <SymControl />
-          <AsofControl />
-        </div>
-        <ResearchContextControl />
+
+        <nav className="screen-tabs" role="tablist" aria-label="Screens">
+          {SCREENS.map((item) => (
+            <button
+              key={item.id}
+              role="tab"
+              aria-selected={item.id === current}
+              className={`screen-tab${item.id === current ? ' active' : ''}`}
+              title={item.purpose}
+              onClick={() => setCurrent(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
         <div className="spacer" />
-        <button
-          className="kbd"
-          title="Display density"
-          onClick={() => setSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })}
-        >
-          {density === 'compact' ? '▤ compact' : '▢ comfortable'}
-        </button>
-        <button
-          className="kbd"
-          title="Explanation voice — full narratives or terse annotations"
-          onClick={() => setSettings({ explain: explain === 'terse' ? 'narrative' : 'terse' })}
-        >
-          {explain === 'terse' ? '# terse' : '¶ narrative'}
-        </button>
+        <ContextBar />
         <button className="kbd" onClick={() => setPaletteOpen(true)}>
           Search <kbd>⌘K</kbd>
         </button>
+        <SettingsMenu />
         <StatusCluster />
       </header>
-      <div className="dock">
-        <DockviewReact components={PANELS} onReady={onReady} theme={themeAbyss} />
+
+      <div className={`workspace${railCollapsed ? ' workspace--rail-collapsed' : ''}`}>
+        <LibraryRail
+          onOpenRun={openRun}
+          collapsed={railCollapsed}
+          onToggle={() => setRailCollapsed((value) => !value)}
+        />
+        <main className={`screen ${definition.layout}`} aria-label={definition.label}>
+          {areasOf(definition).map(([areaName, panes]) => (
+            <Area key={areaName} areaName={areaName} panes={panes} />
+          ))}
+        </main>
       </div>
+
       <Toasts onOpenRun={openRun} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        onOpenPanel={openPanel}
+        onOpenScreen={(id) => setCurrent(id)}
         onOpenRun={openRun}
-        onLoadWorkspace={loadWorkspace}
-        onLoadPreset={loadPreset}
-        onSaveWorkspace={() => openPanel('Workspaces', 'Workspaces')}
       />
     </div>
   )

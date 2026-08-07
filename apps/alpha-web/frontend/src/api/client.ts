@@ -43,6 +43,7 @@ import type {
   ResearchProposalResponse,
   ResearchReport,
   FigureCatalogue,
+  RunComparison,
   FigureMetadata,
   RiskReport,
   RunDetail,
@@ -134,6 +135,8 @@ export const api = {
     if (end) params.set('end', end)
     return getImmutableJSON(`/api/runs/${id}/chart-bundle?${params.toString()}`)
   },
+  compareRuns: (runIds: string[]): Promise<RunComparison> =>
+    postJSON('/api/v3/runs/compare', { run_ids: runIds }),
   figures: (id: string): Promise<FigureCatalogue> => getJSON(`/api/runs/${id}/figures`),
   figureMetadata: (id: string, figureId: string, fmt: 'svg' | 'png' = 'svg'): Promise<FigureMetadata> =>
     getJSON(`/api/runs/${id}/figures/${figureId}?fmt=${fmt}`),
@@ -185,11 +188,11 @@ export const api = {
   streamUrl: (id: string): string => `/api/jobs/${id}/stream`,
   workspaces: (): Promise<WorkspaceMeta[]> => getJSON('/api/workspaces'),
   getWorkspace: (slug: string): Promise<WorkspaceDoc> => getJSON(`/api/workspaces/${slug}`),
-  async saveWorkspace(body: {
-    name: string
-    linked_context: unknown
-    dockview: unknown
-  }): Promise<{ slug: string; name: string }> {
+  async saveWorkspace(
+    slug: string,
+    body: { name: string; linked_context: unknown },
+  ): Promise<{ slug: string; name: string }> {
+    void slug
     const res = await fetch('/api/workspaces', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

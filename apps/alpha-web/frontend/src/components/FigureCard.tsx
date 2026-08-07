@@ -95,11 +95,14 @@ export function FigureCard({ runId, item }: Props) {
 
   return (
     <figure className="figure-card" aria-labelledby={`fig-${meta.figure_id}`}>
+      {/* The figure draws its own title, subtitle, one-line answer and provenance strip --
+          it has to, because an exported PNG travels without this page. Repeating them here
+          would say everything twice, so the heading stays for screen readers and the
+          section anchor only, and the card adds just what the image cannot carry. */}
       <figcaption className="figure-head">
-        <div>
-          <h3 id={`fig-${meta.figure_id}`}>{meta.title}</h3>
-          <p className="figure-subtitle">{meta.subtitle}</p>
-        </div>
+        <h3 id={`fig-${meta.figure_id}`} className="sr-only">
+          {meta.title} — {meta.subtitle}
+        </h3>
         <div className="figure-actions">
           <a className="btn ghost" href={svg} download={`${meta.figure_id}.svg`}>
             SVG
@@ -125,10 +128,6 @@ export function FigureCard({ runId, item }: Props) {
           <span className="eyebrow">What this answers</span>
           {meta.question}
         </p>
-        <p className="figure-answer">
-          <span className="eyebrow">What it says here</span>
-          {meta.plain_language_answer}
-        </p>
         {explain === 'narrative' ? (
           <>
             <p className="figure-caveat">
@@ -140,9 +139,6 @@ export function FigureCard({ runId, item }: Props) {
               {meta.caveat}
             </p>
           </>
-        ) : null}
-        {meta.truncation_note ? (
-          <p className="figure-truncation">{meta.truncation_note}</p>
         ) : null}
       </div>
 
@@ -181,7 +177,6 @@ export function FigureCard({ runId, item }: Props) {
         </div>
       ) : null}
 
-      <p className="figure-caption mono">{meta.caption}</p>
     </figure>
   )
 }

@@ -2,7 +2,6 @@
 // run-producing command, its symbol(s), a strategy + its tunable params, tweak options (only
 // changed values are emitted), and launch; the run streams live and links to its Run Detail.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -10,10 +9,11 @@ import type { CommandDef, StrategyDef } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { openRunDetail, type LabPrefill } from './actions'
 import { livePaperStrategies } from './controlPlane'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 const SKIP_OPTS = new Set(['param', 'grid', 'json', 'strategy'])
 
-export function StrategyLab(props: IDockviewPanelProps) {
+export function StrategyLab(props: PanelHandleProps) {
   const [commands, setCommands] = useState<CommandDef[]>([])
   const [strategies, setStrategies] = useState<StrategyDef[]>([])
   const [cmdId, setCmdId] = useState('backtest run')
@@ -131,7 +131,7 @@ export function StrategyLab(props: IDockviewPanelProps) {
   }
 
   function openRun(runId: string): void {
-    openRunDetail(props.containerApi, runId)
+    openRunDetail(runId)
   }
 
   const shownOpts = cmd?.options.filter((o) => !SKIP_OPTS.has(o.name)) ?? []

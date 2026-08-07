@@ -6728,9 +6728,9 @@ export interface components {
         /** WorkspaceDocument */
         WorkspaceDocument: {
             /** Dockview */
-            dockview: {
+            dockview?: {
                 [key: string]: unknown;
-            };
+            } | null;
             linked_context: components["schemas"]["WorkspaceLinkedContext"];
             /** Name */
             name: string;

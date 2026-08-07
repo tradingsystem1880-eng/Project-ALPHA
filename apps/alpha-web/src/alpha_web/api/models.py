@@ -1208,7 +1208,10 @@ class WorkspaceLinkedContext(WorkspaceGroupLinkedContext):
 class WorkspaceDocument(StrictModel):
     name: str
     linked_context: WorkspaceLinkedContext
-    dockview: dict[str, Any]
+    #: Retired. A workspace used to be a window arrangement; it is now the research
+    #: context you were working in. Documents saved by the old shell still carry a
+    #: layout blob, so the field is read and ignored rather than rejected.
+    dockview: dict[str, Any] | None = None
     updated: float | None = None
 
 
