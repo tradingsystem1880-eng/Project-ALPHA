@@ -406,7 +406,7 @@ def monthly_heatmap(ctx: BuildContext) -> FigureSpec:
             Panel(
                 panel_id="calendar",
                 y_label="Year",
-                y_unit="percent",
+                y_unit="category",
                 legend=False,
                 marks=(
                     HeatmapMark(
@@ -1135,7 +1135,7 @@ def confidence_intervals(ctx: BuildContext) -> FigureSpec:
             Panel(
                 panel_id="forest",
                 y_label="Metric",
-                y_unit="ratio",
+                y_unit="category",
                 legend=False,
                 marks=(
                     ErrorBarMark(
@@ -1251,7 +1251,7 @@ def optim_surface(ctx: BuildContext) -> FigureSpec:
             Panel(
                 panel_id="surface",
                 y_label=f"{y_key or 'configuration'}",
-                y_unit="sharpe",
+                y_unit="category",
                 legend=False,
                 marks=(
                     HeatmapMark(
@@ -1492,7 +1492,7 @@ def portfolio_correlations(ctx: BuildContext) -> FigureSpec:
             Panel(
                 panel_id="correlation",
                 y_label="Sleeve",
-                y_unit="correlation",
+                y_unit="category",
                 legend=False,
                 marks=(
                     HeatmapMark(

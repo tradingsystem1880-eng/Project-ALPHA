@@ -393,7 +393,10 @@ def _draw_heatmap(axes: Axes, theme: Theme, mark: HeatmapMark, figure: Figure) -
     )
     finite = grid[np.isfinite(grid)]
     if finite.size == 0:
-        raise DataError("HeatmapMark has no finite cells to scale against")
+        # Every cell is absent -- an optimisation sweep where nothing completed, say. The
+        # grid still has to be drawn: the reader needs to see that the configurations were
+        # tried and failed, which a raised error or an omitted figure would both hide.
+        finite = np.zeros(1, dtype=float)
     if mark.diverging_center is not None:
         reach = (
             max(
@@ -413,13 +416,15 @@ def _draw_heatmap(axes: Axes, theme: Theme, mark: HeatmapMark, figure: Figure) -
     else:
         cmap = LinearSegmentedColormap.from_list("alpha_sequential", [theme.bg, theme.accent])
         norm = Normalize(vmin=float(finite.min()), vmax=float(finite.max()))
-    cmap.set_bad(color=theme.panel)
+    # `with_extremes`, not `set_bad`: the latter is pending deprecation, and this repo
+    # turns warnings into errors, so a warning here is a broken figure.
+    shaded = cmap.with_extremes(bad=theme.panel)
     masked = np.ma.masked_invalid(grid)
     mesh = axes.pcolormesh(
         np.arange(len(mark.columns) + 1),
         np.arange(len(mark.rows) + 1),
         masked,
-        cmap=cmap,
+        cmap=shaded,
         norm=norm,
         edgecolors=theme.bg,
         linewidth=1.5,

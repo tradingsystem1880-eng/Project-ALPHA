@@ -46,6 +46,9 @@ XKind = Literal["time", "numeric", "category"]
 #: Units a panel may declare. Closed on purpose: "what am I looking at" must never be a
 #: free-text guess, and a test asserts every panel in the catalogue uses one of these.
 YUnit = Literal[
+    # A categorical axis lists labels rather than measuring anything; its quantity, if it
+    # has one, is carried by a colourbar or by the marks themselves.
+    "category",
     "ratio",
     "multiple",
     "percent",
@@ -63,6 +66,7 @@ YUnit = Literal[
 ]
 _Y_UNITS: Final = frozenset(
     (
+        "category",
         "ratio",
         "multiple",
         "percent",
