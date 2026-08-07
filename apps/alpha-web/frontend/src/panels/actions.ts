@@ -26,6 +26,7 @@ let active: Navigator = {
 }
 
 let pendingPrefill: LabPrefill | null = null
+const prefillListeners = new Set<() => void>()
 
 export function registerNavigator(navigator: Navigator): void {
   active = navigator
@@ -53,11 +54,13 @@ export function runIdFromHash(): string | null {
  *
  * The prefill is parked here rather than pushed as a panel parameter: the lab may not be
  * mounted yet when a suggestion is clicked from another screen, and dropping the suggestion
- * silently would be worse than holding it for one read.
+ * silently would be worse than holding it for one read. A mounted lab picks it up through
+ * the subscription instead, since switching screens will not remount it.
  */
 export function openStrategyLab(prefill?: LabPrefill): void {
   if (prefill) pendingPrefill = prefill
   active.showStrategyLab(prefill)
+  if (prefill) for (const listener of [...prefillListeners]) listener()
 }
 
 /** Consume a queued prefill exactly once. */
@@ -65,6 +68,17 @@ export function takeLabPrefill(): LabPrefill | null {
   const value = pendingPrefill
   pendingPrefill = null
   return value
+}
+
+/**
+ * Be told a prefill was queued. The listener is expected to call `takeLabPrefill`, so a
+ * mounted lab consumes it and an unmounted one still finds it waiting at mount.
+ */
+export function onLabPrefill(listener: () => void): () => void {
+  prefillListeners.add(listener)
+  return () => {
+    prefillListeners.delete(listener)
+  }
 }
 
 /** Open the governed lifecycle surface used to resolve and launch a legacy trace rerun. */

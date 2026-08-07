@@ -47,7 +47,7 @@ export function Workspaces(_props: PanelHandleProps) {
     setError(null)
     try {
       const current = getLinked()
-      await api.saveWorkspace(slug, {
+      await api.saveWorkspace({
         name: name.trim(),
         linked_context: current as never,
       })

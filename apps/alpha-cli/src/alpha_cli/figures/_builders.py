@@ -245,6 +245,10 @@ def equity_vs_passive(ctx: BuildContext) -> FigureSpec:
             b_ret = passive[index] / passive[index - 1] - 1.0
             running *= 1.0 + (s_ret - b_ret)
         excess.append(running - 1.0)
+    if passive[-1] <= 0.0:
+        # A passive index that ends at or below zero has no meaningful relative lead, and
+        # dividing by it would abort the whole figure pack with a ZeroDivisionError.
+        raise DataError("passive benchmark ends at or below zero; relative lead is undefined")
     lead = strategy[-1] - passive[-1]
     verdict = "ahead of" if lead > 0 else "behind"
     return ctx.spec(

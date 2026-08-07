@@ -188,11 +188,11 @@ export const api = {
   streamUrl: (id: string): string => `/api/jobs/${id}/stream`,
   workspaces: (): Promise<WorkspaceMeta[]> => getJSON('/api/workspaces'),
   getWorkspace: (slug: string): Promise<WorkspaceDoc> => getJSON(`/api/workspaces/${slug}`),
-  async saveWorkspace(
-    slug: string,
-    body: { name: string; linked_context: unknown },
-  ): Promise<{ slug: string; name: string }> {
-    void slug
+  // The slug is derived server-side from the name, so there is nothing to pass here.
+  async saveWorkspace(body: {
+    name: string
+    linked_context: unknown
+  }): Promise<{ slug: string; name: string }> {
     const res = await fetch('/api/workspaces', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

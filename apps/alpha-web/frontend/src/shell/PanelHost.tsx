@@ -25,16 +25,19 @@ function useParameterHandle(initial: Record<string, unknown>): {
   // A screen can change a panel's inputs (a different run, a different symbol) without
   // remounting it, so incoming parameters have to flow through the same channel a panel's
   // own writes use.
+  //
+  // Notifying listeners happens here rather than inside the state updater: React may call an
+  // updater twice, and a subscriber must not be told about a change twice.
   useEffect(() => {
-    setParams((previous) => {
-      const merged = { ...previous, ...initial }
-      const same =
-        Object.keys(merged).length === Object.keys(previous).length &&
-        Object.entries(merged).every(([key, value]) => previous[key] === value)
-      if (same) return previous
-      for (const listener of listeners.current) listener(merged)
-      return merged
-    })
+    const previous = current.current
+    const merged = { ...previous, ...initial }
+    const same =
+      Object.keys(merged).length === Object.keys(previous).length &&
+      Object.entries(merged).every(([key, value]) => previous[key] === value)
+    if (same) return
+    current.current = merged
+    setParams(merged)
+    for (const listener of listeners.current) listener(merged)
   }, [initial])
 
   const api = useMemo<PanelParameterHandle>(

@@ -13,4 +13,7 @@ from typing import Final
 RENDERER_VERSION: Final = 1
 
 #: Bump only when the cache key composition, on-disk path, or file format changes.
+#:
+#: Restated in ``alpha_cli.figure_cache``, which must stay importable without matplotlib.
+#: A drift test holds the two equal; bump both together.
 FIGURES_CACHE_VERSION: Final = 1

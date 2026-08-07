@@ -229,6 +229,29 @@ class TestForecast:
         assert "Realised coverage differs" in spec.plain_language_answer  # type: ignore[attr-defined]
 
 
+def test_a_wiped_out_passive_index_fails_loud_rather_than_dividing_by_zero(
+    tmp_path: Path,
+) -> None:
+    """The relative lead is undefined when the benchmark ends at zero.
+
+    A ZeroDivisionError here would escape the per-figure handler and abort the whole pack;
+    a DataError leaves the rest of the report intact and says why this one is missing.
+    """
+    rdir = _run_dir(tmp_path, "backtest_run")
+    stamps = _stamps(4)
+    pl.DataFrame(
+        {
+            "ts": stamps,
+            "strategy_equity": [1.0, 1.1, 1.2, 1.3],
+            "benchmark_equity": [1.0, 0.5, 0.1, 0.0],
+            "available": [True] * 4,
+            "unavailable_reason": [None] * 4,
+        }
+    ).write_parquet(rdir / "benchmark_comparison.parquet")
+    with pytest.raises(DataError, match="at or below zero"):
+        _build(rdir, "equity_vs_passive", tmp_path)
+
+
 @pytest.mark.parametrize(
     ("figure_id", "command"),
     [

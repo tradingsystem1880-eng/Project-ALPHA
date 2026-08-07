@@ -42,6 +42,19 @@ def test_save_list_get_delete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert client.get("/api/workspaces").json() == []
 
 
+def test_save_without_a_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A workspace is a research context now; the shell posts no window layout at all."""
+    client = _client(tmp_path, monkeypatch)
+    saved = client.post(
+        "/api/workspaces",
+        json={"name": "Momentum Study", "linked_context": {"symbol": "SPY"}},
+    )
+    assert saved.status_code == 200, saved.text
+    doc = client.get("/api/workspaces/momentum-study").json()
+    assert doc["linked_context"]["symbol"] == "SPY"
+    assert doc["dockview"] is None
+
+
 def test_save_and_restore_v3_linked_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -6707,13 +6707,17 @@ export interface components {
         };
         /**
          * WorkspaceBody
-         * @description A workspace to save: a display name, the linked context, and the Dockview layout.
+         * @description A workspace to save: a display name and the research context it was saved from.
+         *
+         *     ``dockview`` is retired. A workspace used to be a window arrangement, and the shell that
+         *     produced those arrangements is gone -- but an old client may still post one, so the field
+         *     is accepted and stored verbatim rather than rejected.
          */
         WorkspaceBody: {
             /** Dockview */
-            dockview: {
+            dockview?: {
                 [key: string]: unknown;
-            };
+            } | null;
             /**
              * @default {
              *       "linkGroup": "A",

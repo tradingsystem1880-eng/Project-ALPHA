@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
 import { setLinked } from './context/linked'
+import { registerNavigator } from './panels/actions'
 import { ContextBar } from './shell/ContextBar'
 import { LibraryRail } from './shell/LibraryRail'
 import { PanelHost } from './shell/PanelHost'
@@ -70,9 +71,31 @@ function SettingsMenu() {
   )
 }
 
+/** A request from the shell to bring one named pane to the front. */
+interface PaneFocus {
+  pane: string
+  /** Bumped on every request so asking twice for the same pane still focuses it. */
+  seq: number
+}
+
 /** One screen area, with tabs when several panes share it. */
-function Area({ areaName, panes }: { areaName: string; panes: ReturnType<typeof areasOf>[number][1] }) {
+function Area({
+  areaName,
+  panes,
+  focus,
+}: {
+  areaName: string
+  panes: ReturnType<typeof areasOf>[number][1]
+  focus: PaneFocus | null
+}) {
   const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    if (!focus) return
+    const index = panes.findIndex((item) => item.name === focus.pane)
+    if (index >= 0) setActive(index)
+  }, [focus, panes])
+
   const pane = panes[Math.min(active, panes.length - 1)]
   return (
     <section className="area" style={{ gridArea: areaName }} aria-label={pane.title}>
@@ -107,6 +130,7 @@ export function App() {
     () => localStorage.getItem(RAIL_KEY) === 'collapsed',
   )
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [focus, setFocus] = useState<PaneFocus | null>(null)
 
   useEffect(() => {
     initActivity()
@@ -124,6 +148,22 @@ export function App() {
     window.location.hash = `run=${runId}`
     setCurrent(RESULTS_SCREEN)
   }, [])
+
+  const showPane = useCallback((screenId: ScreenId, pane: string) => {
+    setCurrent(screenId)
+    setFocus((previous) => ({ pane, seq: (previous?.seq ?? 0) + 1 }))
+  }, [])
+
+  // Panels raise navigation intents ("show the lab with this command") rather than reaching
+  // into the shell. Without this registration those intents are silently dropped, which is
+  // exactly what happened when the docking container went away.
+  useEffect(() => {
+    registerNavigator({
+      showRun: openRun,
+      showStrategyLab: () => showPane('build', 'StrategyLab'),
+      showProjects: () => showPane('operate', 'DevelopmentCenter'),
+    })
+  }, [openRun, showPane])
 
   // `#run=<id>` still deep-links to a run's report, now by switching screens rather than
   // spawning a floating panel.
@@ -195,7 +235,14 @@ export function App() {
         />
         <main className={`screen ${definition.layout}`} aria-label={definition.label}>
           {areasOf(definition).map(([areaName, panes]) => (
-            <Area key={areaName} areaName={areaName} panes={panes} />
+            // Keyed by screen as well as area: two screens both have a "main", and sharing a
+            // key would carry one screen's selected tab index over to the other's panes.
+            <Area
+              key={`${definition.id}:${areaName}`}
+              areaName={areaName}
+              panes={panes}
+              focus={focus}
+            />
           ))}
         </main>
       </div>

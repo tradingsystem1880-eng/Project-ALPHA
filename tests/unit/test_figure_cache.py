@@ -162,6 +162,21 @@ class TestInputDigest:
         )
 
 
+def test_the_two_cache_versions_never_drift_apart() -> None:
+    """The constant is stated twice on purpose, so this test is what keeps it one value.
+
+    ``alpha_cli.figure_cache`` cannot import it from ``alpha_research.figures``: doing so
+    would execute that package and pull matplotlib into the web process, which the import
+    guard below forbids. Bumping one copy and not the other would leave the renderer
+    producing new output under a key that says nothing changed -- every reader would serve
+    a stale cached figure forever. This mirrors the ``bands.ts``/``verdict.py`` guard.
+    """
+    from alpha_cli.figure_cache import FIGURES_CACHE_VERSION as cache_side
+    from alpha_research.figures import FIGURES_CACHE_VERSION as renderer_side
+
+    assert cache_side == renderer_side
+
+
 def test_the_cache_seam_stays_free_of_heavy_imports() -> None:
     """The web process imports this module on every figure request.
 

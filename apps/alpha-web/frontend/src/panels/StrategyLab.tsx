@@ -2,18 +2,18 @@
 // run-producing command, its symbol(s), a strategy + its tunable params, tweak options (only
 // changed values are emitted), and launch; the run streams live and links to its Run Detail.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
 import type { CommandDef, StrategyDef } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
-import { openRunDetail, type LabPrefill } from './actions'
+import { onLabPrefill, openRunDetail, takeLabPrefill, type LabPrefill } from './actions'
 import { livePaperStrategies } from './controlPlane'
 import type { PanelHandleProps } from '../context/panelHandle'
 
 const SKIP_OPTS = new Set(['param', 'grid', 'json', 'strategy'])
 
-export function StrategyLab(props: PanelHandleProps) {
+export function StrategyLab(_props: PanelHandleProps) {
   const [commands, setCommands] = useState<CommandDef[]>([])
   const [strategies, setStrategies] = useState<StrategyDef[]>([])
   const [cmdId, setCmdId] = useState('backtest run')
@@ -34,10 +34,7 @@ export function StrategyLab(props: PanelHandleProps) {
   // Prefill from a suggestion (Run Detail / Pipeline "next step" actions): seed the form with
   // the proposed command — symbols land in the symbol field, --strategy is honored, everything
   // else goes to the reviewable free-flags field. Nothing launches without a click.
-  const prefill = (props.params as { prefill?: LabPrefill }).prefill
-  const prefillKey = prefill ? `${prefill.command}|${prefill.args}` : ''
-  useEffect(() => {
-    if (!prefill) return
+  const applyPrefill = useCallback((prefill: LabPrefill) => {
     setCmdId(prefill.command)
     const tokens = prefill.args.split(/\s+/).filter(Boolean)
     const syms: string[] = []
@@ -52,8 +49,19 @@ export function StrategyLab(props: PanelHandleProps) {
     }
     if (syms.length) setSymbols(syms.join(' '))
     setExtra(rest.join(' '))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefillKey])
+  }, [])
+
+  // A suggestion raised from another screen is queued before this panel mounts; one raised
+  // from the same screen arrives while it is already mounted. Both funnel through the same
+  // single-consumption take, so a prefill is applied exactly once either way.
+  useEffect(() => {
+    const consume = () => {
+      const queued = takeLabPrefill()
+      if (queued) applyPrefill(queued)
+    }
+    consume()
+    return onLabPrefill(consume)
+  }, [applyPrefill])
 
   const cmd = useMemo(() => commands.find((c) => c.id === cmdId), [commands, cmdId])
   const isPaper = cmdId === 'paper run'

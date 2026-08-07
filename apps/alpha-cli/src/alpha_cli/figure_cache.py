@@ -28,6 +28,11 @@ from alpha_core import DataError
 
 #: Cache layout version. Bump when the path shape or key composition changes -- not for
 #: visual changes, which belong to the renderer version.
+#:
+#: Deliberately restated rather than imported from ``alpha_research.figures.version``:
+#: importing it would execute that package and pull matplotlib into the web process. The
+#: two copies are held equal by ``test_the_two_cache_versions_never_drift_apart``, so bump
+#: both together.
 FIGURES_CACHE_VERSION: Final = 1
 
 FIGURE_ROOT: Final = "figures"

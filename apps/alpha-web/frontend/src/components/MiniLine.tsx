@@ -70,11 +70,13 @@ export function MiniLine({
   const ticksY = [bounds.yMin, (bounds.yMin + bounds.yMax) / 2, bounds.yMax]
   const ticksX = [bounds.xMin, (bounds.xMin + bounds.xMax) / 2, bounds.xMax]
 
+  // The viewBox scales uniformly ("meet"): stretching x and y independently would shear the
+  // tick text and make stroke weights depend on how wide the column happens to be.
   return (
     <figure className="miniline">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-labelledby={titleId}
         className="miniline-svg"

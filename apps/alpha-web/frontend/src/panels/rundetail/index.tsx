@@ -21,6 +21,7 @@ import { FigureReport } from '../FigureReport'
 import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
 import { Gates } from './Gates'
+import { rerunCommand } from './rerun'
 import { Risk } from './Risk'
 import { TradesTab } from './TradesTab'
 
@@ -99,6 +100,10 @@ export function RunDetail(props: PanelHandleProps) {
     command ?? (detail.kind === 'runs' ? (isValidate ? 'validate' : 'backtest') : detail.kind)
   const leak = asStr(manifest.leakage_warning)
   const tabs = tabsFor(detail.kind, isValidate, Boolean(detail.has_trades))
+  const rerun = rerunCommand(command, detail.kind, isValidate)
+  // Identity lives at the top level on some manifests and under `metadata` on others.
+  const metadata = (manifest.metadata ?? {}) as Record<string, unknown>
+  const symbol = asStr(manifest.symbol) ?? asStr(metadata.symbol) ?? ''
 
   const body = (() => {
     switch (tab) {
@@ -143,9 +148,11 @@ export function RunDetail(props: PanelHandleProps) {
           ))}
         </nav>
         <span className="spacer" />
-        <button className="btn ghost" onClick={() => onLaunch('validate', '')}>
-          Run again
-        </button>
+        {rerun ? (
+          <button className="btn ghost" onClick={() => onLaunch(rerun, symbol)}>
+            Run again
+          </button>
+        ) : null}
       </div>
       {leak ? <p className="leak-warning">{leak}</p> : null}
       <div className="panel-body rd-body">{body}</div>
