@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
@@ -98,6 +99,69 @@ def max_drawdown(equity: FloatSeq) -> float:
     arr = _as_equity(equity, "max_drawdown")
     running_peak = np.maximum.accumulate(arr)
     return float((arr / running_peak - 1.0).min())
+
+
+@dataclass(frozen=True, slots=True)
+class DrawdownEpisode:
+    """One peak-to-trough-to-recovery excursion, indexed into the equity curve.
+
+    ``recovery_index`` is ``None`` when the curve never regained its prior peak, which is
+    the case that matters most and the one a "max drawdown" scalar hides.
+    """
+
+    peak_index: int
+    trough_index: int
+    recovery_index: int | None
+    depth: float  # non-positive fraction, e.g. -0.23
+    length: int  # sessions from peak to trough
+    recovery_length: int | None  # sessions from trough back to the peak level
+
+
+def drawdown_episodes(equity: FloatSeq, *, top: int = 5) -> tuple[DrawdownEpisode, ...]:
+    """The deepest drawdown excursions, worst first.
+
+    ``max_drawdown`` answers "how bad did it get"; this answers "how often, for how long,
+    and did it come back" -- which is what actually determines whether a drawdown is
+    survivable. Episodes are non-overlapping by construction: each runs from a running-peak
+    to the trough that precedes the next new peak.
+    """
+    if isinstance(top, bool) or top < 1:
+        raise DataError(f"top must be a positive integer, got {top!r}")
+    arr = _as_equity(equity, "drawdown_episodes")
+    episodes: list[DrawdownEpisode] = []
+    peak_index = 0
+    trough_index = 0
+    in_drawdown = False
+    for index in range(1, arr.size):
+        if arr[index] >= arr[peak_index]:
+            if in_drawdown:
+                episodes.append(_episode(arr, peak_index, trough_index, index))
+                in_drawdown = False
+            peak_index = index
+            trough_index = index
+            continue
+        if not in_drawdown:
+            in_drawdown = True
+            trough_index = index
+        elif arr[index] < arr[trough_index]:
+            trough_index = index
+    if in_drawdown:
+        episodes.append(_episode(arr, peak_index, trough_index, None))
+    episodes.sort(key=lambda item: (item.depth, item.peak_index))
+    return tuple(episodes[:top])
+
+
+def _episode(
+    arr: FloatArray, peak_index: int, trough_index: int, recovery_index: int | None
+) -> DrawdownEpisode:
+    return DrawdownEpisode(
+        peak_index=peak_index,
+        trough_index=trough_index,
+        recovery_index=recovery_index,
+        depth=float(arr[trough_index] / arr[peak_index] - 1.0),
+        length=trough_index - peak_index,
+        recovery_length=None if recovery_index is None else recovery_index - trough_index,
+    )
 
 
 def value_at_risk(returns: FloatSeq, *, confidence: float = 0.95) -> float:

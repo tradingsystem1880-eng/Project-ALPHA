@@ -10,6 +10,13 @@ that CLI startup, which sits on the Workstation's hot path, stays fast.
 
 from __future__ import annotations
 
+from alpha_research.figures.catalog import (
+    FIGURES,
+    FigureDefinition,
+    catalog_document,
+    figure_definition,
+    figures_for_command,
+)
 from alpha_research.figures.render import (
     FigureFormat,
     FigureSize,
@@ -48,12 +55,14 @@ from alpha_research.figures.version import FIGURES_CACHE_VERSION, RENDERER_VERSI
 
 __all__ = [
     "CATEGORICAL_SLOTS",
+    "FIGURES",
     "FIGURES_CACHE_VERSION",
     "RENDERER_VERSION",
     "BandMark",
     "BarMark",
     "CandleMark",
     "ErrorBarMark",
+    "FigureDefinition",
     "FigureFormat",
     "FigureSize",
     "FigureSpec",
@@ -73,7 +82,10 @@ __all__ = [
     "XKind",
     "YUnit",
     "ZoneMark",
+    "catalog_document",
     "default_size",
+    "figure_definition",
+    "figures_for_command",
     "load_theme",
     "render_figure",
     "theme_document",
