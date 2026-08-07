@@ -592,15 +592,56 @@ def _draw_mark(axes: Axes, figure: Figure, theme: Theme, mark: Mark) -> None:
             raise DataError(f"no renderer for mark {type(mark).__name__}")
 
 
+def _fit_label(label: str, budget: int) -> str:
+    """Wrap a y-label to fit its panel, and only elide when wrapping cannot save it.
+
+    A y-label is rotated, so the panel's HEIGHT is what constrains it -- which is why a
+    short stacked panel could only show "Ratio (dim…". Rotated text has width to spare,
+    though, so a second line costs nothing and keeps the unit the label exists to state.
+    """
+    if len(label) <= budget:
+        return label
+    words = label.split(" ")
+    candidates: list[int] = []
+    # Break before the parenthetical first: "Price" / "(native quote)" keeps the quantity
+    # and its unit each whole, where a purely balanced split would cut "(native" from
+    # "quote)". Only if that does not fit do we fall back to the most even break.
+    paren = next((index for index, word in enumerate(words) if word.startswith("(")), None)
+    if paren is not None and 0 < paren < len(words):
+        candidates.append(paren)
+    if len(words) > 1:
+        candidates.append(
+            min(
+                range(1, len(words)),
+                key=lambda cut: max(len(" ".join(words[:cut])), len(" ".join(words[cut:]))),
+            )
+        )
+    for cut in candidates:
+        first, second = " ".join(words[:cut]), " ".join(words[cut:])
+        if max(len(first), len(second)) <= budget:
+            return f"{first}\n{second}"
+    return label[: budget - 1] + "…"
+
+
 def _finish_panel(
-    axes: Axes, theme: Theme, panel: Panel, spec: FigureSpec, last: bool, panel_count: int = 1
+    axes: Axes,
+    theme: Theme,
+    panel: Panel,
+    spec: FigureSpec,
+    last: bool,
+    panel_count: int = 1,
+    panel_height_in: float | None = None,
 ) -> None:
     size = theme.base_font_pt - (0.5 if panel_count < 4 else 1.5)
-    budget = 34 if panel_count < 4 else 22
-    label = (
-        panel.y_label if len(panel.y_label) <= budget else panel.y_label[: budget - 1] + "\u2026"
-    )
-    axes.set_ylabel(label, fontsize=size)
+    # A y-label is rotated, so what constrains it is the panel's HEIGHT, not the panel
+    # count. Budgeting by count alone let a four-panel figure print 22-character labels
+    # into 0.9-inch panels, where consecutive labels ran into each other and into the
+    # panel above. One character occupies roughly 0.6 of the font size in points.
+    if panel_height_in is None:
+        budget = 34 if panel_count < 4 else 22
+    else:
+        budget = max(8, int(panel_height_in * 72.0 / (size * 0.62)))
+    axes.set_ylabel(_fit_label(panel.y_label, budget), fontsize=size)
     if panel.y_scale != "linear":
         axes.set_yscale(panel.y_scale)
     if panel.y_limits is not None:
@@ -612,6 +653,9 @@ def _finish_panel(
     if panel.y_zero_rule:
         axes.axhline(0.0, color=theme.line, linewidth=0.8, zorder=1)
     if panel.note is not None:
+        # The note sits inside the axes, so it can land on the data -- and it did, straight
+        # across the price line. A panel-coloured box behind it keeps both readable rather
+        # than choosing which one to lose.
         axes.text(
             0.006,
             0.04,
@@ -620,6 +664,13 @@ def _finish_panel(
             fontsize=theme.base_font_pt - 1.5,
             color=theme.gold,
             va="bottom",
+            zorder=6,
+            bbox={
+                "facecolor": theme.panel,
+                "edgecolor": theme.line,
+                "boxstyle": "square,pad=0.28",
+                "linewidth": 0.6,
+            },
         )
     entries = panel.legend_entries
     if panel.legend and entries:
@@ -685,6 +736,8 @@ def render_figure(spec: FigureSpec, options: RenderOptions | None = None) -> byt
             for mark in panel.marks
         )
         axes_list: list[Axes] = []
+        plot_in = resolved.size.height_in - HEADER_IN - FOOTER_IN
+        ratio_total = sum(panel.height_ratio for panel in spec.panels) or 1.0
         for index, panel in enumerate(spec.panels):
             axes = figure.add_subplot(
                 grid[index, 0], sharex=axes_list[0] if (shares and axes_list) else None
@@ -698,6 +751,7 @@ def render_figure(spec: FigureSpec, options: RenderOptions | None = None) -> byt
                 spec,
                 last=index == spec.panel_count - 1,
                 panel_count=spec.panel_count,
+                panel_height_in=plot_in * panel.height_ratio / ratio_total,
             )
             axes_list.append(axes)
         if shares:

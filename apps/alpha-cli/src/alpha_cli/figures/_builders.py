@@ -284,7 +284,7 @@ def equity_vs_passive(ctx: BuildContext) -> FigureSpec:
             ),
             Panel(
                 panel_id="excess",
-                y_label="Cumulative excess (%)",
+                y_label="Excess (%)",
                 y_unit="percent",
                 y_percent=True,
                 y_zero_rule=True,
@@ -330,7 +330,7 @@ def rolling_risk(ctx: BuildContext) -> FigureSpec:
         panels=(
             Panel(
                 panel_id="sharpe",
-                y_label=f"Rolling Sharpe ({window}d)",
+                y_label=f"Sharpe ({window}d)",
                 y_unit="sharpe",
                 y_zero_rule=True,
                 legend=False,
@@ -338,20 +338,20 @@ def rolling_risk(ctx: BuildContext) -> FigureSpec:
             ),
             Panel(
                 panel_id="vol",
-                y_label="Annualised volatility (%)",
+                y_label="Volatility (%, ann.)",
                 y_unit="percent",
                 y_percent=True,
                 legend=False,
-                marks=(LineMark(x=ts, y=vol, role="neutral"),),
+                marks=(LineMark(x=ts, y=vol, role="subject"),),
             ),
             Panel(
                 panel_id="return",
-                y_label=f"Rolling return ({window}d, %)",
+                y_label=f"Return (%, {window}d)",
                 y_unit="percent",
                 y_percent=True,
                 y_zero_rule=True,
                 legend=False,
-                marks=(LineMark(x=ts, y=returns, role="neutral"),),
+                marks=(LineMark(x=ts, y=returns, role="subject"),),
             ),
         ),
     )
@@ -513,6 +513,49 @@ def price_signal(ctx: BuildContext) -> FigureSpec:
                     )
                 )
 
+    # Indicators are grouped by unit, not one panel each. A strategy that publishes three
+    # price-unit series (two moving averages and the close it already draws) used to get
+    # three near-identical panels whose rotated labels ran into each other, and the one
+    # series that was NOT a price fell off the end of an alphabetical cap. Anything
+    # measured in price belongs over the price -- which is exactly how a moving average is
+    # read -- and each remaining unit gets one panel with the series named in its legend.
+    indicators = src.frame(ctx.rdir, "indicator_series.parquet", "name", "ts")
+    by_unit: dict[str, list[str]] = {}
+    if indicators is not None and not indicators.is_empty():
+        for name in sorted({str(value) for value in indicators["name"].to_list()}):
+            subset = indicators.filter(indicators["name"] == name)
+            unit = _indicator_unit(str(subset["unit"].to_list()[0]))
+            # `close` restates the price line this figure already draws.
+            if unit == "price" and name == "close":
+                continue
+            by_unit.setdefault(unit, []).append(name)
+
+    def _indicator_marks(unit: str, names: tuple[str, ...], role: str) -> tuple[Mark, ...]:
+        assert indicators is not None
+        drawn_marks: list[Mark] = []
+        for index, name in enumerate(names):
+            subset = indicators.filter(indicators["name"] == name)
+            values = src.floats(subset["value"], name=name)
+            # One series wears the role's own colour. Several sharing a panel must be told
+            # apart, and two gold lines over the same price are two lines you cannot read.
+            categorical = len(names) > 1
+            drawn_marks.append(
+                LineMark(
+                    x=src.epochs(subset["ts"]),
+                    y=values,
+                    role="categorical" if categorical else role,  # type: ignore[arg-type]
+                    palette_index=index if categorical else None,
+                    label=name,
+                    width=1.2,
+                    end_label=ValueLabel(text=f"{values[-1]:,.2f}"),
+                )
+            )
+        return tuple(drawn_marks)
+
+    price_overlays = tuple(by_unit.pop("price", [])[:3])
+    if price_overlays:
+        marks.extend(_indicator_marks("price", price_overlays, "feature"))
+
     panels: list[Panel] = [
         Panel(
             panel_id="price",
@@ -524,28 +567,21 @@ def price_signal(ctx: BuildContext) -> FigureSpec:
         )
     ]
 
-    indicators = src.frame(ctx.rdir, "indicator_series.parquet", "name", "ts")
-    if indicators is not None and not indicators.is_empty():
-        names = sorted({str(value) for value in indicators["name"].to_list()})
-        for index, name in enumerate(names[:3]):
-            subset = indicators.filter(indicators["name"] == name)
-            unit = _indicator_unit(str(subset["unit"].to_list()[0]))
-            panels.append(
-                Panel(
-                    panel_id=f"indicator_{index}",
-                    y_label=f"{name} ({unit})",
-                    y_unit=unit,  # type: ignore[arg-type]
-                    legend=False,
-                    marks=(
-                        LineMark(
-                            x=src.epochs(subset["ts"]),
-                            y=src.floats(subset["value"], name=name),
-                            role="subject",
-                            width=1.2,
-                        ),
-                    ),
-                )
+    for index, (unit, names) in enumerate(sorted(by_unit.items())):
+        capped = tuple(names[:3])
+        panels.append(
+            Panel(
+                panel_id=f"indicator_{index}",
+                y_label=_UNIT_LABELS.get(unit, unit.replace("_", " ").capitalize()),
+                y_unit=unit,  # type: ignore[arg-type]
+                marks=_indicator_marks(unit, capped, "subject"),
+                note=(
+                    None
+                    if len(capped) == len(names)
+                    else f"showing {len(capped)} of {len(names)} {unit} series"
+                ),
             )
+        )
 
     fills_count = 0 if trace is None else int((trace["event_type"] == "fill").sum())
     return ctx.spec(
@@ -1002,7 +1038,7 @@ def null_distribution(ctx: BuildContext) -> FigureSpec:
         panels.append(
             Panel(
                 panel_id=tier,
-                y_label=f"{tier.replace('_', ' ').title()} paths (count)",
+                y_label=f"{tier.replace('_', '-').capitalize()} paths (n)",
                 y_unit="count",
                 marks=tuple(marks),
             )
@@ -1287,6 +1323,26 @@ _INDICATOR_UNITS = {
     "seconds",
     "multiple",
     "account_currency",
+}
+
+#: An axis label must carry a unit a reader recognises, not the vocabulary token -- and it
+#: must fit: these are budgeted for a short stacked panel, so every one stays under about
+#: 22 characters rather than eliding into a shrug.
+_UNIT_LABELS = {
+    "account_currency": "Amount (account ccy)",
+    "correlation": "Correlation (-1 to 1)",
+    "count": "Count (n)",
+    "days": "Duration (days)",
+    "index": "Level (index points)",
+    "multiple": "Multiple (x)",
+    "percent": "Percent (%)",
+    "price": "Price (native quote)",
+    "probability": "Probability (0-1)",
+    "ratio": "Ratio (unitless)",
+    "seconds": "Duration (seconds)",
+    "sharpe": "Sharpe (annualised)",
+    "weight": "Weight (fraction)",
+    "z_score": "Z-score (sigma)",
 }
 
 

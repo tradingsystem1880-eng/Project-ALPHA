@@ -258,3 +258,29 @@ class TestInvariants:
         assert "Degenerate" in _texts(
             _readable(_spec((panel,), x_kind="numeric", x_label="Fold index"))
         )
+
+
+class TestLabelFitting:
+    """A y-label must survive a short panel with its unit intact."""
+
+    def test_a_short_label_is_left_alone(self) -> None:
+        from alpha_research.figures.render import _fit_label
+
+        assert _fit_label("Drawdown (%)", 22) == "Drawdown (%)"
+
+    def test_a_long_label_wraps_rather_than_losing_its_unit(self) -> None:
+        # "Ratio (unitl…" told a reader nothing; the whole point of the label is the unit.
+        from alpha_research.figures.render import _fit_label
+
+        assert _fit_label("Ratio (unitless)", 12) == "Ratio\n(unitless)"
+
+    def test_it_breaks_before_the_unit_rather_than_inside_it(self) -> None:
+        # A purely balanced split would cut "(native" from "quote)".
+        from alpha_research.figures.render import _fit_label
+
+        assert _fit_label("Price (native quote)", 14) == "Price\n(native quote)"
+
+    def test_a_single_unbreakable_word_still_elides(self) -> None:
+        from alpha_research.figures.render import _fit_label
+
+        assert _fit_label("Supercalifragilistic", 10) == "Supercali…"
