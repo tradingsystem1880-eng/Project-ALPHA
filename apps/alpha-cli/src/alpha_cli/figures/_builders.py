@@ -18,6 +18,7 @@ from typing import Any
 from alpha_cli.figures import _sources as src
 from alpha_core import DataError
 from alpha_research.figures import (
+    BandMark,
     BarMark,
     CandleMark,
     ErrorBarMark,
@@ -1350,3 +1351,420 @@ BUILDERS: dict[str, Callable[[BuildContext], FigureSpec]] = {
     "optim_trials": optim_trials,
     "optim_surface": optim_surface,
 }
+
+
+# --------------------------------------------------------------------------- portfolio
+def portfolio_weights(ctx: BuildContext) -> FigureSpec:
+    from alpha_research.figures import CATEGORICAL_SLOTS
+
+    frame = src.require(ctx.rdir, "portfolio_allocations.parquet", "ts", "symbol")
+    symbols = sorted({str(value) for value in frame["symbol"].to_list()})
+    stamps = sorted({value for value in frame["ts"].to_list()})
+    picked = set(src.sample(len(stamps), 1500))
+    kept = [stamps[index] for index in sorted(picked)]
+    view = frame.filter(frame["ts"].is_in(kept))
+    ts = tuple(sorted({v.timestamp() for v in kept}))
+
+    # Rank sleeves by the capital they actually carried, so "other" is genuinely the tail.
+    weight_by_symbol = {
+        symbol: sum(
+            abs(value)
+            for value in view.filter(view["symbol"] == symbol)["weight"].to_list()
+            if value is not None
+        )
+        for symbol in symbols
+    }
+    ranked = sorted(symbols, key=lambda s: -weight_by_symbol[s])
+    named = ranked[: CATEGORICAL_SLOTS - 1] if len(ranked) > CATEGORICAL_SLOTS else ranked
+    tail = [symbol for symbol in ranked if symbol not in named]
+
+    series: dict[str, list[float]] = {name: [] for name in named}
+    other: list[float] = []
+    for stamp in kept:
+        rows = view.filter(view["ts"] == stamp)
+        lookup = {
+            str(sym): float(w or 0.0)
+            for sym, w in zip(rows["symbol"].to_list(), rows["weight"].to_list(), strict=True)
+        }
+        for name in named:
+            series[name].append(lookup.get(name, 0.0))
+        other.append(sum(lookup.get(name, 0.0) for name in tail))
+
+    # Stacked bands, not overlaid lines. An equal-weight book puts every sleeve on exactly
+    # the same value, so lines coincide perfectly and silently hide each other -- the reader
+    # sees one series and concludes there is one holding. Stacking is also the encoding the
+    # quantity deserves: these are shares of one book, and their sum is meaningful.
+    marks: list[Mark] = []
+    floor = [0.0] * len(ts)
+    stack: list[tuple[str, list[float], int | None]] = [
+        (name, series[name], index) for index, name in enumerate(named)
+    ]
+    if tail:
+        stack.append((f"Other ({len(tail)} sleeves)", other, None))
+    for label, values, slot in stack:
+        ceiling = [base + value for base, value in zip(floor, values, strict=True)]
+        marks.append(
+            BandMark(
+                x=ts,
+                lower=tuple(floor),
+                upper=tuple(ceiling),
+                role="categorical" if slot is not None else "substrate",
+                palette_index=slot,
+                label=label,
+                alpha=0.85,
+            )
+        )
+        floor = ceiling
+
+    gross = tuple(
+        sum(abs(series[name][index]) for name in named) + abs(other[index])
+        for index in range(len(ts))
+    )
+    return ctx.spec(
+        "portfolio_weights",
+        x_label="Date (UTC)",
+        artifacts=("portfolio_allocations.parquet",),
+        truncation=_truncation(len(stamps), len(kept), "rebalance dates"),
+        answer=(
+            f"{len(symbols)} sleeves, the largest being {ranked[0]}; combined gross weight "
+            f"peaked at {max(gross):.2f}x."
+            + (f" The smallest {len(tail)} are aggregated as 'other'." if tail else "")
+        ),
+        panels=(
+            Panel(
+                panel_id="weights",
+                y_label="Sleeve weight (x net liq)",
+                y_unit="weight",
+                y_zero_rule=True,
+                height_ratio=2.0,
+                marks=tuple(marks),
+            ),
+            Panel(
+                panel_id="gross",
+                y_label="Combined gross (x net liq)",
+                y_unit="ratio",
+                legend=False,
+                marks=(LineMark(x=ts, y=gross, role="subject", fill_to=0.0),),
+            ),
+        ),
+    )
+
+
+def portfolio_correlations(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "correlations.parquet", "asset_a", "asset_b")
+    assets = sorted({*frame["asset_a"].to_list(), *frame["asset_b"].to_list()})
+    lookup: dict[tuple[str, str], float] = {}
+    samples: dict[tuple[str, str], int] = {}
+    for a, b, value, count in zip(
+        frame["asset_a"].to_list(),
+        frame["asset_b"].to_list(),
+        frame["correlation"].to_list(),
+        frame["sample_count"].to_list(),
+        strict=True,
+    ):
+        if value is None:
+            continue
+        lookup[(str(a), str(b))] = float(value)
+        lookup[(str(b), str(a))] = float(value)
+        samples[(str(a), str(b))] = int(count or 0)
+    values = tuple(tuple(lookup.get((row, column)) for column in assets) for row in assets)
+    text = tuple(
+        tuple(
+            "" if lookup.get((row, col)) is None else f"{lookup[(row, col)]:.2f}" for col in assets
+        )
+        for row in assets
+    )
+    off_diagonal = [
+        value for (a, b), value in lookup.items() if a != b and assets.index(a) < assets.index(b)
+    ]
+    worst = max(off_diagonal) if off_diagonal else 0.0
+    return ctx.spec(
+        "portfolio_correlations",
+        x_label="Sleeve",
+        x_kind="category",
+        x_categories=tuple(assets),
+        artifacts=("correlations.parquet",),
+        answer=(
+            f"The most correlated pair sits at {worst:.2f} over the aligned out-of-sample "
+            f"window; association only, not causation."
+        ),
+        panels=(
+            Panel(
+                panel_id="correlation",
+                y_label="Sleeve",
+                y_unit="correlation",
+                legend=False,
+                marks=(
+                    HeatmapMark(
+                        rows=tuple(assets),
+                        columns=tuple(assets),
+                        values=values,
+                        cell_text=text,
+                        colorbar_label="Correlation (-1 to 1)",
+                        diverging_center=0.0,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+# --------------------------------------------------------------------------- prop firm
+def propfirm_outcomes(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "propfirm_paths.parquet", "path_index")
+    passed = [bool(value) for value in frame["passed"].to_list()]
+    payout = src.floats(frame["payout"], name="payout")
+    raw_days = frame["days_to_pass"].to_list()
+    days = [float(value) for value in raw_days if value is not None and math.isfinite(float(value))]
+    excluded = len(raw_days) - len(days)
+    panels: list[Panel] = []
+    if days:
+        low, high = min(days), max(days)
+        span = (high - low) or 1.0
+        bins = 31
+        edges = tuple(low + span * index / bins for index in range(bins + 1))
+        counts = [0.0] * bins
+        for value in days:
+            counts[min(bins - 1, int((value - low) / span * bins))] += 1
+        panels.append(
+            Panel(
+                panel_id="days",
+                y_label="Paths (count)",
+                y_unit="count",
+                marks=(
+                    HistogramMark(
+                        edges=edges,
+                        counts=tuple(counts),
+                        role="subject",
+                        alpha=0.8,
+                        label=f"{len(days):,} paths that cleared",
+                    ),
+                ),
+                note=(
+                    f"{excluded:,} path(s) never cleared and are excluded here"
+                    if excluded
+                    else None
+                ),
+            )
+        )
+    low_p, high_p = min(payout), max(payout)
+    span_p = (high_p - low_p) or 1.0
+    bins_p = 31
+    edges_p = tuple(low_p + span_p * index / bins_p for index in range(bins_p + 1))
+    counts_p = [0.0] * bins_p
+    for value in payout:
+        counts_p[min(bins_p - 1, int((value - low_p) / span_p * bins_p))] += 1
+    expected = sum(payout) / len(payout)
+    panels.append(
+        Panel(
+            panel_id="payout",
+            y_label="Paths (count)",
+            y_unit="count",
+            marks=(
+                HistogramMark(
+                    edges=edges_p, counts=tuple(counts_p), role="up", alpha=0.75, label="Payout"
+                ),
+                RuleMark(
+                    orientation="vertical",
+                    position=expected,
+                    role="feature",
+                    width=1.4,
+                    annotate=ValueLabel(text=f"expected {money(expected)}"),
+                ),
+            ),
+        )
+    )
+    rate = sum(1 for value in passed if value) / len(passed)
+    return ctx.spec(
+        "propfirm_outcomes",
+        x_label="Days to pass (left panel) / payout in account currency (right scale)",
+        x_kind="numeric",
+        artifacts=("propfirm_paths.parquet",),
+        answer=(
+            f"{pct(rate, 0)} of {len(passed):,} resampled paths cleared the evaluation, with an "
+            f"expected payout of {money(expected)}."
+        ),
+        panels=tuple(panels),
+    )
+
+
+# --------------------------------------------------------------------------- forecast
+def forecast_fan(ctx: BuildContext) -> FigureSpec:
+    quantiles = src.require(ctx.rdir, "quantiles.parquet", "ts")
+    history = src.require(ctx.rdir, "history.parquet", "ts")
+    h_ts = src.epochs(history["ts"])
+    h_close = src.floats(history["close"], name="close")
+    q_ts = src.epochs(quantiles["ts"])
+    q05 = src.floats(quantiles["q05"], name="q05")
+    q25 = src.floats(quantiles["q25"], name="q25")
+    q50 = src.floats(quantiles["q50"], name="q50")
+    q75 = src.floats(quantiles["q75"], name="q75")
+    q95 = src.floats(quantiles["q95"], name="q95")
+    origin = h_ts[-1]
+    move = q50[-1] / h_close[-1] - 1.0
+    width = (q95[-1] - q05[-1]) / h_close[-1]
+    return ctx.spec(
+        "forecast_fan",
+        x_label="Date (UTC)",
+        artifacts=("quantiles.parquet", "history.parquet"),
+        answer=(
+            f"The median path ends {pct(move)} from the last close, with a 90% interval "
+            f"spanning {pct(width)} of price."
+        ),
+        panels=(
+            Panel(
+                panel_id="cone",
+                y_label="Close (native quote)",
+                y_unit="price",
+                marks=(
+                    BandMark(
+                        x=q_ts,
+                        lower=q05,
+                        upper=q95,
+                        role="subject",
+                        alpha=0.14,
+                        label="90% interval",
+                    ),
+                    BandMark(
+                        x=q_ts,
+                        lower=q25,
+                        upper=q75,
+                        role="subject",
+                        alpha=0.26,
+                        label="50% interval",
+                    ),
+                    LineMark(x=h_ts, y=h_close, role="substrate", label="History", width=1.1),
+                    LineMark(
+                        x=q_ts,
+                        y=q50,
+                        role="feature",
+                        dashed=True,
+                        label="Median",
+                        end_label=ValueLabel(text=f"{q50[-1]:.2f}"),
+                    ),
+                    RuleMark(
+                        orientation="vertical",
+                        position=origin,
+                        role="reference",
+                        width=1.0,
+                        label="Forecast origin",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def forecast_skill(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "origins.parquet", "origin_ts")
+    ts = src.epochs(frame["origin_ts"])
+    crps = src.floats(frame["crps"], name="crps")
+    rw = src.floats(frame["crps_rw"], name="crps_rw")
+    boot = src.floats(frame["crps_bootstrap"], name="crps_bootstrap")
+    pre = [bool(value) for value in frame["pre_cutoff"].to_list()]
+    skill = tuple(1.0 - c / b if b else 0.0 for c, b in zip(crps, rw, strict=True))
+    beat = sum(1 for value in skill if value > 0)
+    marks: list[Mark] = [
+        LineMark(x=ts, y=crps, role="categorical", palette_index=0, label="Model", width=1.5),
+        LineMark(x=ts, y=rw, role="categorical", palette_index=1, label="Random walk", width=1.2),
+        LineMark(x=ts, y=boot, role="categorical", palette_index=2, label="Bootstrap", width=1.2),
+    ]
+    if any(pre) and not all(pre):
+        boundary = next(t for t, flag in zip(ts, pre, strict=True) if not flag)
+        marks.append(
+            ZoneMark(
+                x0=ts[0],
+                x1=boundary,
+                role="feature",
+                alpha=0.08,
+                label="Pre-cutoff (may be in training)",
+            )
+        )
+    return ctx.spec(
+        "forecast_skill",
+        x_label="Forecast origin (UTC)",
+        artifacts=("origins.parquet",),
+        answer=(
+            f"The model beat the random-walk baseline at {beat} of {len(skill)} origins "
+            f"({pct(beat / len(skill), 0)})."
+        ),
+        panels=(
+            Panel(
+                panel_id="crps",
+                y_label="CRPS (lower is better)",
+                y_unit="ratio",
+                height_ratio=1.6,
+                marks=tuple(marks),
+            ),
+            Panel(
+                panel_id="skill",
+                y_label="Skill vs random walk",
+                y_unit="ratio",
+                y_zero_rule=True,
+                legend=False,
+                marks=(LineMark(x=ts, y=skill, role="subject", fill_to=0.0),),
+            ),
+        ),
+    )
+
+
+def forecast_calibration(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "origins.parquet", "origin_ts")
+    levels = ((0.5, "cover50"), (0.8, "cover80"), (0.9, "cover90"))
+    nominal: list[float] = []
+    realised: list[float] = []
+    for level, column in levels:
+        flags = [bool(value) for value in frame[column].to_list()]
+        if not flags:
+            continue
+        nominal.append(level)
+        realised.append(sum(1 for flag in flags if flag) / len(flags))
+    if not nominal:
+        raise DataError("no coverage columns stored for this run")
+    gaps = [abs(r - n) for n, r in zip(nominal, realised, strict=True)]
+    return ctx.spec(
+        "forecast_calibration",
+        x_label="Nominal coverage (probability)",
+        x_kind="numeric",
+        artifacts=("origins.parquet",),
+        answer=(
+            f"Realised coverage differs from nominal by up to {pct(max(gaps))} across the "
+            f"{len(nominal)} stored levels."
+        ),
+        panels=(
+            Panel(
+                panel_id="calibration",
+                y_label="Realised coverage (probability)",
+                y_unit="probability",
+                y_limits=(0.0, 1.0),
+                marks=(
+                    LineMark(
+                        x=(0.0, 1.0),
+                        y=(0.0, 1.0),
+                        role="reference",
+                        dashed=True,
+                        label="Perfect calibration",
+                    ),
+                    ScatterMark(
+                        x=tuple(nominal),
+                        y=tuple(realised),
+                        role="subject",
+                        size=48.0,
+                        label="Observed",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+BUILDERS.update(
+    {
+        "portfolio_weights": portfolio_weights,
+        "portfolio_correlations": portfolio_correlations,
+        "propfirm_outcomes": propfirm_outcomes,
+        "forecast_fan": forecast_fan,
+        "forecast_skill": forecast_skill,
+        "forecast_calibration": forecast_calibration,
+    }
+)
