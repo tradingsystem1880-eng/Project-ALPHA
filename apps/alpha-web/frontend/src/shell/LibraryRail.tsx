@@ -46,6 +46,7 @@ export function LibraryRail({
   const [symbols, setSymbols] = useState<string[]>([])
   const [projects, setProjects] = useState<{ project_id: string; name?: string | null }[]>([])
   const [workspaces, setWorkspaces] = useState<WorkspaceMeta[]>([])
+  const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   // The activity stream ticks whenever the store changes, so a run launched from the CLI
@@ -189,8 +190,38 @@ export function LibraryRail({
             ))
           : null}
 
-        {section === 'workspaces'
-          ? workspaces.map((workspace) => (
+        {section === 'workspaces' ? (
+          <>
+            {/* Saving has to live here. The rail is the only place workspaces appear now,
+                so without this the list could only ever be empty. */}
+            <form
+              className="library-save"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const name = draft.trim()
+                if (!name) return
+                setError(null)
+                void api
+                  .saveWorkspace({ name, linked_context: linked })
+                  .then(() => {
+                    setDraft('')
+                    return api.workspaces().then(setWorkspaces)
+                  })
+                  .catch((cause: unknown) => setError(String(cause)))
+              }}
+            >
+              <input
+                className="field"
+                value={draft}
+                placeholder="Name this context…"
+                aria-label="New workspace name"
+                onChange={(event) => setDraft(event.target.value)}
+              />
+              <button className="btn" type="submit" disabled={!draft.trim()}>
+                Save
+              </button>
+            </form>
+            {workspaces.map((workspace) => (
               <button
                 key={workspace.slug}
                 className="library-row"
@@ -202,8 +233,15 @@ export function LibraryRail({
               >
                 <span className="library-row-main">{workspace.name}</span>
               </button>
-            ))
-          : null}
+            ))}
+            {!workspaces.length ? (
+              <p className="library-empty">
+                Nothing saved yet. A workspace stores the symbol, window, project and run above —
+                not a window arrangement.
+              </p>
+            ) : null}
+          </>
+        ) : null}
 
         {section === 'runs' && !visibleRuns.length ? (
           <p className="library-empty">No runs match.</p>

@@ -15,6 +15,7 @@ import {
   useChartSelection,
 } from '../state/chartSelection'
 import { openDevelopmentCenter } from './actions'
+import { ChartDataAlternative } from './ChartDataAlternative'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
 import {
   buildEvidenceMarkers,
@@ -223,6 +224,14 @@ export function PriceChart(props: PanelHandleProps) {
             selected={selected}
             selectedSequenceId={selectedSequenceId}
             onSelectEvidence={selectEvidence}
+          />
+        ) : null}
+        {bars ? (
+          <ChartDataAlternative
+            bars={bars}
+            truncated={bundle?.truncated.bars ?? false}
+            runId={bundle?.run_id ?? null}
+            symbol={symbol}
           />
         ) : null}
       </div>

@@ -3,13 +3,15 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { components } from '../src/api/generated'
 
-const DESKS = [
-  { id: 'market', label: 'MARKET', activePanel: 'Market Chart' },
-  { id: 'development', label: 'DEVELOP', activePanel: 'Development Center' },
-  { id: 'kronos', label: 'KRONOS', activePanel: 'Kronos Forecast Studio' },
-  { id: 'ml', label: 'ML LAB', activePanel: 'ML Signal Tear Sheet' },
-  { id: 'portfolio', label: 'PORTFOLIO', activePanel: 'Portfolio Evidence' },
-  { id: 'operations', label: 'OPS', activePanel: 'Providers & System' },
+// The desk presets are gone: each of these is now a screen laid out for one job, reached
+// from the top-bar tabs rather than assembled by the user.
+const SCREENS = [
+  { label: 'Explore', id: 'explore' },
+  { label: 'Build', id: 'build' },
+  { label: 'Results', id: 'results' },
+  { label: 'Compare', id: 'compare' },
+  { label: 'Studios', id: 'studios' },
+  { label: 'Operate', id: 'operate' },
 ] as const
 
 const EMPTY_PAGE = { items: [], limit: 50, offset: 0, has_more: false }
@@ -581,6 +583,20 @@ interface MockOptions {
   trades?: unknown[]
   mlDiagnostics?: boolean
   jobs?: unknown[]
+  /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
+  runs?: unknown[]
+}
+
+const LIBRARY_RUN = {
+  run_id: 'abcdef0123456789',
+  kind: 'runs',
+  command: 'backtest run',
+  label: 'SPY · ts_momentum',
+  symbol: 'SPY',
+  strategy: 'ts_momentum',
+  mtime: 1_700_000_000,
+  passed: null,
+  verdict: null,
 }
 
 function responseFor(route: Route, options: MockOptions): unknown {
@@ -635,7 +651,30 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}/trades`) {
     return options.trades ?? []
   }
-  if (url.pathname === '/api/runs') return { items: [], total: 0 }
+  if (url.pathname === '/api/runs') {
+    const items = options.runs ?? []
+    return { items, total: items.length }
+  }
+  if (url.pathname === `/api/runs/${LIBRARY_RUN.run_id}`) {
+    return {
+      run_id: LIBRARY_RUN.run_id,
+      kind: 'runs',
+      mtime: LIBRARY_RUN.mtime,
+      manifest: { command: 'backtest_run', symbol: 'SPY', schema_version: 3 },
+      has_equity: false,
+      has_trades: false,
+      has_tearsheet: false,
+      has_forecast: false,
+      has_nulls: false,
+      has_trials: false,
+      has_forecast_paths: false,
+      has_propfirm_paths: false,
+      has_origins: false,
+    }
+  }
+  if (url.pathname === `/api/runs/${LIBRARY_RUN.run_id}/figures`) {
+    return { run_id: LIBRARY_RUN.run_id, kind: 'runs', figures: [] }
+  }
   if (url.pathname === '/api/symbols') return { symbols: [] }
   if (url.pathname === '/api/strategies' || url.pathname === '/api/commands') return []
   if (url.pathname === '/api/providers') return []
@@ -755,14 +794,15 @@ async function expectReleaseAccessibility(page: Page): Promise<void> {
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
 }
 
-for (const desk of DESKS) {
-  test(`${desk.label} desk renders and clears the accessibility release gate`, async ({ page }) => {
+for (const item of SCREENS) {
+  test(`${item.label} screen renders and clears the accessibility release gate`, async ({
+    page,
+  }) => {
     await preparePage(page)
-    const deskControl = page.getByLabel('DESK')
-    await deskControl.selectOption(desk.id)
+    const tab = page.getByRole('tab', { name: item.label, exact: true })
+    await tab.click()
 
-    await expect(deskControl).toHaveValue(desk.id)
-    await expect(page.getByText(desk.activePanel, { exact: true }).first()).toBeVisible()
+    await expect(tab).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
 
     const expectedViewport = PROJECT_VIEWPORTS[test.info().project.name]
@@ -772,6 +812,7 @@ for (const desk of DESKS) {
     const shellBounds = await page.locator('.shell').boundingBox()
     expect(shellBounds?.width).toBe(expectedViewport.width)
     expect(shellBounds?.height).toBe(expectedViewport.height)
+    // The page itself must never scroll sideways; wide content scrolls inside its own pane.
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       expectedViewport.width,
     )
@@ -782,7 +823,7 @@ for (const desk of DESKS) {
       test.info().project.name === 'chromium-wide'
     ) {
       await page.evaluate(() => document.fonts.ready)
-      await expect(page.locator('.shell')).toHaveScreenshot(`${desk.id}-desk.png`, {
+      await expect(page.locator('.shell')).toHaveScreenshot(`${item.id}-screen.png`, {
         animations: 'disabled',
         caret: 'hide',
         maxDiffPixelRatio: 0.02,
@@ -791,24 +832,40 @@ for (const desk of DESKS) {
   })
 }
 
-test('desk control is keyboard operable', async ({ page }) => {
+test('screen tabs are keyboard operable', async ({ page }) => {
   await preparePage(page)
-  const deskControl = page.getByLabel('DESK')
-
+  const explore = page.getByRole('tab', { name: 'Explore', exact: true })
+  await explore.focus()
+  await expect(explore).toBeFocused()
   await page.keyboard.press('Tab')
-  await expect(deskControl).toBeFocused()
-  await page.keyboard.press('d')
+  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+})
 
-  await expect(deskControl).toHaveValue('development')
-  await expect(page.getByText('Development Center', { exact: true }).first()).toBeVisible()
+test('the library rail lists runs and opens one into the report', async ({ page }) => {
+  await preparePage(page, { runs: [LIBRARY_RUN] })
+  const rail = page.getByRole('navigation', { name: 'Library' })
+  await expect(rail).toBeVisible()
+  const firstRun = rail.locator('.library-row').first()
+  await expect(firstRun).toBeVisible()
+  await firstRun.click()
+  // Opening a run switches to Results rather than spawning a floating window.
+  await expect(page.getByRole('tab', { name: 'Results', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
 })
 
 test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport Cockpit gate')
   await preparePage(page)
 
-  await page.getByRole('button', { name: /Search/ }).click()
-  await page.getByRole('option', { name: /Research Cockpit/ }).click()
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
 
   await expect(page.locator('.panel-toolbar .title').filter({ hasText: 'Research Cockpit' })).toBeVisible()
   await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
@@ -825,8 +882,8 @@ test('Research Cockpit teaches the bounded terminal Gate Packet without upgradin
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport terminal-packet gate')
   await preparePage(page)
 
-  await page.getByRole('button', { name: /Search/ }).click()
-  await page.getByRole('option', { name: /Research Cockpit/ }).click()
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
   await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
   await page.getByRole('button', { name: 'open case' }).click()
   await expect(page.getByText('CLOSED', { exact: true })).toBeVisible()
@@ -867,7 +924,8 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
       },
     ],
   })
-  await page.getByLabel('DESK').selectOption('operations')
+  // Jobs sit under the Build screen, beside the lab that launches them.
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
 
   await expect(page.getByText(/Elapsed\s+2m 0\ds/)).toBeVisible()
   await expect(page.getByText(/ETA\s+~3 min/)).toBeVisible()
@@ -880,13 +938,14 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
   await expectReleaseAccessibility(page)
 })
 
-test('ML desk renders bounded Qlib diagnostics and the permanent authority warning', async (
+test('ML diagnostics render bounded Qlib evidence and the permanent authority warning', async (
   { page },
   testInfo,
 ) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport projection gate')
   await preparePage(page, { mlDiagnostics: true })
-  await page.getByLabel('DESK').selectOption('ml')
+  await page.getByRole('tab', { name: 'Studios', exact: true }).click()
+  await page.getByRole('tab', { name: 'ML diagnostics', exact: true }).click()
 
   await expect(page.locator('.rd-head').filter({ hasText: 'Score distribution' })).toBeVisible()
   await expect(page.locator('.rd-head').filter({ hasText: 'IC / RankIC timeline' })).toBeVisible()
@@ -897,13 +956,13 @@ test('ML desk renders bounded Qlib diagnostics and the permanent authority warni
   await expectReleaseAccessibility(page)
 })
 
-test('causal chart paginates evidence, exports exact OHLCV, and links keyboard trade selection', async (
+test('causal chart paginates evidence, selects an event, and exports exact OHLCV', async (
   { page },
   testInfo,
 ) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport interaction gate')
   await preparePage(page, { chartBundle: causalChartBundle(), trades: CAUSAL_TRADES })
-  await page.locator('.research-context-summary').click()
+  await page.locator('.context-chip').click()
   await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
   await page.getByRole('button', { name: 'done' }).click()
 
@@ -913,21 +972,14 @@ test('causal chart paginates evidence, exports exact OHLCV, and links keyboard t
   await page.getByRole('button', { name: 'Next trace page' }).click()
   await expect(page.getByText(/81–91 \/ 91 RETURNED EVENTS/)).toBeVisible()
 
-  const tradeRow = page.locator('tr.trade-row').filter({ hasText: 'AAPL.SIM' })
-  await tradeRow.click()
-  await expect(page.getByText('trade · #91', { exact: true })).toBeVisible()
-  await expect(tradeRow).toHaveClass(/selected/)
+  // Selecting a trace event names it and draws its holding period on the chart. The
+  // two-way link to the trade blotter is not asserted here: the blotter now lives inside
+  // Run Detail on the Results screen, so the two are never on screen together.
   await page.locator('button.trace-event').filter({ hasText: '0091' }).click()
   await expect(page.getByText('trade · #91', { exact: true })).toBeVisible()
-  await expect(tradeRow).toHaveClass(/selected/)
-
   await page.getByRole('button', { name: 'Previous trace page' }).click()
   await page.locator('button.trace-event').first().click()
-  await expect(tradeRow).not.toHaveClass(/selected/)
-  await tradeRow.focus()
-  await page.keyboard.press('Enter')
-  await expect(tradeRow).toHaveClass(/selected/)
-  await expect(page.getByText('trade · #91', { exact: true })).toBeVisible()
+  await expect(page.getByText('trade · #91', { exact: true })).toHaveCount(0)
 
   await page.getByText(/OHLCV TABLE AND EXACT CSV/i).click()
   await expect(page.getByText(/1–100 \/ 205 RETURNED BARS/)).toBeVisible()
@@ -953,7 +1005,7 @@ test('causal chart paginates evidence, exports exact OHLCV, and links keyboard t
 test('dense causal chart layers cap visuals without hiding returned evidence', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport interaction gate')
   await preparePage(page, { chartBundle: denseCausalChartBundle() })
-  await page.locator('.research-context-summary').click()
+  await page.locator('.context-chip').click()
   await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
   await page.getByRole('button', { name: 'done' }).click()
 
@@ -971,33 +1023,43 @@ test('dense causal chart layers cap visuals without hiding returned evidence', a
   await expect(page.getByText(/1–80 \/ 180 RETURNED EVENTS/)).toBeVisible()
 })
 
-test('inactive Dockview tabs do not start their data requests', async ({ page }, testInfo) => {
+test('a screen mounts only what it shows', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport request gate')
   const requested: string[] = []
   page.on('request', (request) => requested.push(new URL(request.url()).pathname))
   await preparePage(page)
 
-  expect(requested).not.toContain('/api/runs')
+  // Explore is the opening screen. Its side area shows Symbols & data; the Quotes & news
+  // pane behind that tab must not be fetching, and neither must any other screen's panels.
   expect(requested).not.toContain('/api/screener/quote')
   expect(requested).not.toContain('/api/screener/news')
-  await page.getByRole('tab', { name: 'Runs', exact: true }).click()
-  await expect.poll(() => requested.filter((path) => path === '/api/runs').length).toBe(1)
+  expect(requested).not.toContain('/api/paper/sessions')
+
+  await page.getByRole('tab', { name: 'Quotes & news', exact: true }).click()
+  await expect
+    .poll(() => requested.filter((path) => path === '/api/screener/quote').length)
+    .toBeGreaterThan(0)
 })
 
 test('legacy trace rerun opens the governed Development Center', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
   await preparePage(page, { chartBundle: causalChartBundle(false) })
-  await page.locator('.research-context-summary').click()
+  await page.locator('.context-chip').click()
   await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
   await page.getByRole('button', { name: 'done' }).click()
 
   await expect(page.getByText('TRACE UNAVAILABLE', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Rerun for causal trace' }).click()
+  // The intent has to reach the shell: switch screens *and* surface the governed panel.
+  await expect(page.getByRole('tab', { name: 'Operate', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
   await expect(page.getByText('Development Center', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
 })
 
-test('cold shell and cached desk switch meet workstation latency budgets', async (
+test('cold shell and screen switch meet workstation latency budgets', async (
   { page },
   testInfo,
 ) => {
@@ -1008,18 +1070,19 @@ test('cold shell and cached desk switch meet workstation latency budgets', async
   expect(coldShellMs).toBeLessThan(1_500)
 
   const switchMs = await page.evaluate(async () => {
-    const select = document.querySelector<HTMLSelectElement>('.desk-control select')
-    if (!select) throw new Error('desk selector is unavailable')
+    const tab = [...document.querySelectorAll<HTMLButtonElement>('.screen-tab')].find(
+      (button) => button.textContent?.trim() === 'Operate',
+    )
+    if (!tab) throw new Error('the Operate screen tab is unavailable')
     const started = performance.now()
-    select.value = 'development'
-    select.dispatchEvent(new Event('change', { bubbles: true }))
+    tab.click()
     for (let frame = 0; frame < 12; frame += 1) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       if (document.body.textContent?.includes('Development Center')) {
         return performance.now() - started
       }
     }
-    throw new Error('development desk did not render within 12 animation frames')
+    throw new Error('the Operate screen did not render within 12 animation frames')
   })
   expect(switchMs).toBeLessThan(100)
 })
@@ -1031,7 +1094,7 @@ test('25k bars and 200 annotations remain interactively responsive', async ({ pa
   await preparePage(page, { chartBundle: bundle })
 
   const renderStarted = Date.now()
-  await page.locator('.research-context-summary').click()
+  await page.locator('.context-chip').click()
   await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
   await page.getByRole('button', { name: 'done' }).click()
 

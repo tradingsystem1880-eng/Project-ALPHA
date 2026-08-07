@@ -123,6 +123,19 @@ export function ContextBar() {
               onChange={(event) => setLinked({ snapshotId: event.target.value || null })}
             />
           </label>
+          {/* The run is part of what you are looking at -- the price chart overlays its
+              causal trace -- and the chip already shows it, so this is where you set or
+              clear one without going back to the Library. */}
+          <label>
+            <span className="eyebrow">Run</span>
+            <input
+              className="field mono"
+              value={linked.runId ?? ''}
+              placeholder="run id"
+              spellCheck={false}
+              onChange={(event) => setLinked({ runId: event.target.value.trim() || null })}
+            />
+          </label>
           <p className="context-note muted">
             Timeframe is daily. Everything above is shared by every screen.
           </p>

@@ -19,7 +19,7 @@ export interface ChartTokens {
 export const FALLBACK: ChartTokens = {
   ink: '#e8ecf3',
   dim: '#aab3c4',
-  muted: '#7a8497',
+  muted: '#7d879b',
   grid: '#161d29',
   line: '#1d2431',
   accent: '#4f8dff',

@@ -21,9 +21,13 @@
   /* ink */
   --ink: #e8ecf3;
   --ink-dim: #aab3c4;
-  /* Secondary text. Must clear WCAG AA (4.5:1) against --panel, not just --bg:
-     screens put panel surfaces where the old desk left bare background. */
-  --muted: #7a8497;
+  /* Secondary text. Must clear WCAG AA (4.5:1) against the *lightest* surface it can land
+     on, which is --elevated, not --bg: an expanded job row is elevated, and a value tuned
+     against the background alone fails there by a hair (4.48:1). Held by test. */
+  --muted: #7d879b;
+  /* Hairlines and rules only -- NEVER text. At 2.35:1 on the background it is a serious
+     WCAG failure wherever it colours a glyph, and it had quietly become the colour of
+     sequence numbers, timestamps and stage indices. Held by test. */
   --faint: #495365;
 
   /* signal blue — the single interaction accent */
@@ -345,7 +349,7 @@ a:hover {
 .panel-toolbar .count {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--faint);
+  color: var(--muted);
 }
 .panel-body {
   flex: 1;
@@ -1215,7 +1219,7 @@ select.field:focus {
 }
 .dim-note {
   font-size: 9.5px;
-  color: var(--faint);
+  color: var(--muted);
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1408,7 +1412,7 @@ select.field:focus {
 }
 .svg-axis-label {
   font-size: 10px;
-  fill: var(--faint);
+  fill: var(--muted);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1547,7 +1551,7 @@ select.field:focus {
   background: var(--elevated);
 }
 .feed-time {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 10.5px;
 }
 .feed-tag {
@@ -1950,7 +1954,7 @@ select.field:focus {
   top: 50%;
   transform: translateY(-50%);
   z-index: 2;
-  color: var(--faint);
+  color: var(--muted);
   font-size: 13px;
 }
 .pipe-suggestions {
@@ -2201,7 +2205,7 @@ select.field:focus {
 }
 
 .tear-gap-state {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 9.5px;
   letter-spacing: 0.08em;
 }
@@ -2297,7 +2301,7 @@ select.field:focus {
 
 .dev-index,
 .dev-state {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 9.5px;
 }
 
@@ -2480,7 +2484,16 @@ select.field:focus {
 }
 
 .trace-seq {
-  color: var(--faint);
+  /* The sequence number is how you refer to an event, not decoration -- --faint reads at
+     2.45:1 here, well under AA. --faint is for rules and separators, never text. */
+  color: var(--muted);
+}
+
+/* Hover and selection tint the row with --accent-soft, lifting the surface to ~#152237
+   where --muted falls to 4.41:1. Secondary text steps up with the emphasis. */
+.trace-event:hover .trace-seq,
+.trace-event.selected .trace-seq {
+  color: var(--ink-dim);
 }
 
 .trace-kind {
@@ -3923,7 +3936,7 @@ select.field:focus {
 .figure-rail a:hover { color: var(--ink); background: var(--panel-2); }
 .figure-rail a.active { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
 .figure-rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.figure-rail-count { color: var(--faint); font-variant-numeric: tabular-nums; }
+.figure-rail-count { color: var(--muted); font-variant-numeric: tabular-nums; }
 .figure-rail-foot { margin-top: var(--pad); font-size: calc(var(--font-size) - 2px); }
 
 .figure-scroll { overflow-y: auto; padding: var(--pad) var(--pad) 40vh; min-height: 0; }
@@ -3969,7 +3982,7 @@ select.field:focus {
 
 .figure-details { margin-top: var(--pad-sm); border-top: 1px solid var(--line); padding-top: var(--pad-sm); }
 .figure-notes { margin: var(--pad-sm) 0 0; padding-left: 1.1em; color: var(--gold); font-size: calc(var(--font-size) - 2px); }
-.figure-caption { margin: var(--pad-sm) 0 0; color: var(--faint); font-size: calc(var(--font-size) - 3px); }
+.figure-caption { margin: var(--pad-sm) 0 0; color: var(--muted); font-size: calc(var(--font-size) - 3px); }
 
 .figure-card--absent { border-style: dashed; }
 .figure-absent-reason { margin: 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
@@ -4073,6 +4086,8 @@ select.field:focus {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .library-empty, .library-error { padding: var(--pad-sm); color: var(--ink-dim); font-size: calc(var(--font-size) - 1px); }
+.library-save { display: flex; gap: var(--pad-sm); padding: var(--pad-sm); border-bottom: 1px solid var(--line); }
+.library-save .field { min-width: 0; flex: 1; }
 .library-error { color: var(--down); }
 
 /* ---- context chip ---- */
@@ -4084,7 +4099,7 @@ select.field:focus {
   color: var(--ink); font: inherit; cursor: pointer;
 }
 .context-chip:hover { border-color: var(--accent); color: var(--ink); }
-.context-sep { color: var(--faint); }
+.context-sep { color: var(--muted); }
 .context-symbol { color: var(--ink); }
 .context-pop {
   position: absolute; right: 0; top: calc(100% + 4px); z-index: 60;
