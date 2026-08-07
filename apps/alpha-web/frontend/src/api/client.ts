@@ -42,6 +42,8 @@ import type {
   ResearchProposalRequest,
   ResearchProposalResponse,
   ResearchReport,
+  FigureCatalogue,
+  FigureMetadata,
   RiskReport,
   RunDetail,
   RunList,
@@ -132,6 +134,12 @@ export const api = {
     if (end) params.set('end', end)
     return getImmutableJSON(`/api/runs/${id}/chart-bundle?${params.toString()}`)
   },
+  figures: (id: string): Promise<FigureCatalogue> => getJSON(`/api/runs/${id}/figures`),
+  figureMetadata: (id: string, figureId: string, fmt: 'svg' | 'png' = 'svg'): Promise<FigureMetadata> =>
+    getJSON(`/api/runs/${id}/figures/${figureId}?fmt=${fmt}`),
+  // Content-addressed: the key makes the URL immutable, so the browser caches it for good.
+  figureImageUrl: (id: string, figureId: string, key: string, fmt: 'svg' | 'png' = 'svg'): string =>
+    `/api/runs/${id}/figures/${figureId}/image?fmt=${fmt}&key=${key}`,
   equity: (id: string): Promise<EquitySeries> => getImmutableJSON(`/api/runs/${id}/equity`),
   trades: (id: string): Promise<TradeRow[]> => getImmutableJSON(`/api/runs/${id}/trades`),
   forecast: (id: string): Promise<ForecastSeries> => getImmutableJSON(`/api/runs/${id}/forecast`),

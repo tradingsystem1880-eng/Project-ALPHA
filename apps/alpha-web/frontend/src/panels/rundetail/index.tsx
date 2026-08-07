@@ -1,7 +1,11 @@
-// Run Detail v2 — the run story. One fetch of the manifest + parquet projections, then a
-// tabbed, kind-aware layout: validate runs get the full gauntlet story (Overview | Gates |
-// Walk-forward | Risk | Trades | Artifacts); optim / portfolio / propfirm / forecast runs get
-// their own layouts. Explanations render in the active voice (narrative/terse toggle).
+// Run Detail — the run story. One fetch of the manifest + parquet projections, then a
+// kind-aware layout.
+//
+// Report is the default surface for EVERY run kind. It is the server-rendered figure pack,
+// each figure carrying the question it answers and what this run's numbers say. The older
+// kind-specific views remain behind tabs for the manifest detail figures do not cover
+// (gate text, fold tables, artifact provenance) — but a plain backtest no longer falls
+// through to one flat unstructured page, which is what made results feel opaque.
 
 import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -24,6 +28,7 @@ import type {
 import { setSettings, useSettings } from '../../state/settings'
 import { PanelLinkControl } from '../../components/PanelLinkControl'
 import { Placeholder } from '../../components/Placeholder'
+import { FigureReport } from '../FigureReport'
 import { usePanelLinked } from '../../context/usePanelLinked'
 import { openStrategyLab } from '../actions'
 import { NativeTearSheetBody } from '../NativeTearSheet'
@@ -41,7 +46,17 @@ import { Risk } from './Risk'
 import { TradesTab } from './TradesTab'
 import { WalkForward } from './WalkForward'
 
-type TabId = 'overview' | 'gates' | 'walkforward' | 'risk' | 'trades' | 'tearsheet' | 'artifacts'
+type TabId =
+  | 'report'
+  | 'overview'
+  | 'gates'
+  | 'walkforward'
+  | 'risk'
+  | 'trades'
+  | 'tearsheet'
+  | 'artifacts'
+
+const REPORT_TAB: { id: TabId; label: string } = { id: 'report', label: 'Report' }
 
 const VALIDATE_TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -52,6 +67,12 @@ const VALIDATE_TABS: { id: TabId; label: string }[] = [
   { id: 'tearsheet', label: 'Tear Sheet' },
   { id: 'artifacts', label: 'Artifacts' },
 ]
+
+/** Every run kind gets Report; validate additionally keeps its manifest-detail tabs. */
+function tabsFor(kind: string, isValidate: boolean): { id: TabId; label: string }[] {
+  if (kind === 'runs' && isValidate) return [REPORT_TAB, ...VALIDATE_TABS]
+  return [REPORT_TAB, { id: 'artifacts', label: 'Artifacts' }]
+}
 
 export function RunDetail(props: IDockviewPanelProps) {
   const panelLink = usePanelLinked(props)
@@ -64,7 +85,7 @@ export function RunDetail(props: IDockviewPanelProps) {
   const [portfolioAnalytics, setPortfolioAnalytics] = useState<PortfolioAnalyticsProjection | null>(null)
   const [portfolioAnalyticsError, setPortfolioAnalyticsError] = useState<string | null>(null)
   const [portfolioAnalyticsLoading, setPortfolioAnalyticsLoading] = useState(false)
-  const [tab, setTab] = useState<TabId>('overview')
+  const [tab, setTab] = useState<TabId>('report')
   const { explain } = useSettings()
   const runScope = runScopeFromParams(props.params)
 
@@ -156,7 +177,19 @@ export function RunDetail(props: IDockviewPanelProps) {
   const kindLabel = command ?? (detail.kind === 'runs' ? (isValidate ? 'validate' : 'backtest') : detail.kind)
   const leak = asStr(m.leakage_warning)
 
+  const tabs = tabsFor(detail.kind, isValidate)
+
   const body = (() => {
+    if (tab === 'report') return <FigureReport runId={runId} />
+    if (tab === 'artifacts')
+      return (
+        <Artifacts
+          manifest={m as ValidateManifest}
+          kind={detail.kind}
+          runId={runId}
+          hasTearsheet={detail.has_tearsheet}
+        />
+      )
     switch (detail.kind) {
       case 'optim':
         return (
@@ -218,10 +251,6 @@ export function RunDetail(props: IDockviewPanelProps) {
             return <TradesTab trades={trades} runId={runId} />
           case 'tearsheet':
             return <NativeTearSheetBody detail={detail} equity={eq} trades={trades} />
-          case 'artifacts':
-            return (
-              <Artifacts manifest={vm} kind={detail.kind} runId={runId} hasTearsheet={detail.has_tearsheet} />
-            )
           default:
             return <Overview manifest={vm} eq={eq} trades={trades} onLaunch={onLaunch} />
         }
@@ -236,19 +265,20 @@ export function RunDetail(props: IDockviewPanelProps) {
         <PanelLinkControl controller={panelLink} />
         <span className="id mono">{runId}</span>
         <span className="chip kind">{kindLabel}</span>
-        {detail.kind === 'runs' && isValidate ? (
-          <nav className="rd-tabs">
-            {VALIDATE_TABS.map((t) => (
-              <button
-                key={t.id}
-                className={`rd-tab${tab === t.id ? ' active' : ''}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-        ) : null}
+        <nav className="rd-tabs" role="tablist" aria-label="Run views">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`rd-tab${tab === t.id ? ' active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
         <span className="spacer" />
         <button
           className="btn ghost"

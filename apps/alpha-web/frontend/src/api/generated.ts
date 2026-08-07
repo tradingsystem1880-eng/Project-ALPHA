@@ -1327,6 +1327,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/figures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Figures
+         * @description Every figure applicable to this run, with a specific reason for any that cannot draw.
+         */
+        get: operations["list_figures_api_runs__run_id__figures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/figures/{figure_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Figure Metadata
+         * @description A figure's text, legend and provenance -- everything except its bytes.
+         *
+         *     The page needs alt text and the teaching strings before the image arrives, and needs
+         *     them at all for a screen reader, since the SVG's text is embedded as glyph outlines.
+         */
+        get: operations["figure_metadata_api_runs__run_id__figures__figure_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/figures/{figure_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Figure Image
+         * @description The rendered image.
+         *
+         *     The cache key is a content hash over the run's artifact digests plus renderer
+         *     identity, so it doubles as a strong ETag: if the bytes could differ, the key differs.
+         *     A caller that pins ``?key=`` gets an immutable response; one that does not must
+         *     revalidate. A pinned key that no longer matches returns 409 with the current key, so a
+         *     stale page refetches instead of silently receiving different content at one URL.
+         */
+        get: operations["figure_image_api_runs__run_id__figures__figure_id__image_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/forecast": {
         parameters: {
             query?: never;
@@ -3586,6 +3655,100 @@ export interface components {
              * @enum {string}
              */
             state: "ready" | "queued" | "running" | "pass" | "warning" | "fail" | "stale";
+        };
+        /** FigureCatalogue */
+        FigureCatalogue: {
+            /** Items */
+            items: components["schemas"]["FigureCatalogueItem"][];
+            /** Kind */
+            kind: string | null;
+            /** Renderer Version */
+            renderer_version: number;
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * FigureCatalogueItem
+         * @description One catalogue entry as it applies to a specific run.
+         */
+        FigureCatalogueItem: {
+            /** Available */
+            available: boolean;
+            /** Figure Id */
+            figure_id: string;
+            /** Panel Count */
+            panel_count: number;
+            /** Section */
+            section: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+            /** Unavailable Reason */
+            unavailable_reason: string | null;
+        };
+        /**
+         * FigureMetadata
+         * @description A figure's text and structure, served without its bytes.
+         *
+         *     ``alt_text`` and the four teaching strings are the accessibility path for figures
+         *     whose SVG text is embedded as glyph outlines and therefore invisible to a screen
+         *     reader; the page renders them as real HTML beside the image.
+         */
+        FigureMetadata: {
+            /** Alt Text */
+            alt_text: string;
+            /** Cache Key */
+            cache_key: string;
+            /** Caption */
+            caption: string;
+            /** Caveat */
+            caveat: string;
+            /** Etag */
+            etag: string;
+            /** Figure Id */
+            figure_id: string;
+            /** Format */
+            format: string;
+            /** Height In */
+            height_in: number;
+            /** Image Url */
+            image_url: string;
+            /** Panels */
+            panels: components["schemas"]["FigurePanelMeta"][];
+            /** Plain Language Answer */
+            plain_language_answer: string;
+            /** Question */
+            question: string;
+            /** Renderer Version */
+            renderer_version: number;
+            /** Source Artifacts */
+            source_artifacts: string[];
+            /** Subtitle */
+            subtitle: string;
+            /** Title */
+            title: string;
+            /** Truncation Note */
+            truncation_note: string | null;
+            /** Uncertainty */
+            uncertainty: string;
+            /** Width In */
+            width_in: number;
+            /** X Label */
+            x_label: string;
+        };
+        /** FigurePanelMeta */
+        FigurePanelMeta: {
+            /** Legend */
+            legend: string[];
+            /** Note */
+            note: string | null;
+            /** Panel Id */
+            panel_id: string;
+            /** Y Label */
+            y_label: string;
+            /** Y Unit */
+            y_unit: string;
         };
         /** ForecastHistoryBar */
         ForecastHistoryBar: {
@@ -8982,6 +9145,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EquitySeries"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_figures_api_runs__run_id__figures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FigureCatalogue"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    figure_metadata_api_runs__run_id__figures__figure_id__get: {
+        parameters: {
+            query?: {
+                /** @description Image format. */
+                fmt?: "svg" | "png";
+            };
+            header?: never;
+            path: {
+                run_id: string;
+                figure_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FigureMetadata"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    figure_image_api_runs__run_id__figures__figure_id__image_get: {
+        parameters: {
+            query?: {
+                /** @description Image format. */
+                fmt?: "svg" | "png";
+                /** @description Expected cache key. */
+                key?: string | null;
+            };
+            header?: {
+                "If-None-Match"?: string | null;
+            };
+            path: {
+                run_id: string;
+                figure_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

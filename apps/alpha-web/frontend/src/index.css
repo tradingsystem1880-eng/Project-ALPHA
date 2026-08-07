@@ -3876,3 +3876,116 @@ select.field:focus {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ============================================================================
+   Workstation v4 — the figure report
+   Server-rendered figures, each with the text that makes it readable. Layout is
+   a sticky section rail beside a scrolling column: a run's evidence is long, and
+   hiding two thirds of it behind tabs is what made the old results page opaque.
+   ========================================================================== */
+
+.figure-report {
+  display: grid;
+  grid-template-columns: minmax(140px, 168px) minmax(0, 1fr);
+  gap: var(--pad);
+  height: 100%;
+  min-height: 0;
+}
+
+.figure-rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  padding: var(--pad) var(--pad-sm);
+  border-right: 1px solid var(--line);
+  height: 100%;
+  overflow-y: auto;
+}
+.figure-rail ul { list-style: none; margin: var(--pad-sm) 0 0; padding: 0; }
+.figure-rail li { margin: 0; }
+.figure-rail a {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--pad-sm);
+  padding: 4px var(--pad-sm);
+  border-left: 2px solid transparent;
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: calc(var(--font-size) - 1px);
+}
+.figure-rail a:hover { color: var(--ink); background: var(--panel-2); }
+.figure-rail a.active { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
+.figure-rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.figure-rail-count { color: var(--faint); font-variant-numeric: tabular-nums; }
+.figure-rail-foot { margin-top: var(--pad); font-size: calc(var(--font-size) - 2px); }
+
+.figure-scroll { overflow-y: auto; padding: var(--pad) var(--pad) 40vh; min-height: 0; }
+.figure-section { scroll-margin-top: var(--pad); }
+.figure-section > h2 {
+  margin: var(--pad) 0 var(--pad-sm);
+  font-size: calc(var(--font-size) + 3px);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.figure-card {
+  margin: 0 0 var(--pad);
+  padding: var(--pad);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+.figure-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--pad);
+  margin-bottom: var(--pad-sm);
+}
+.figure-head h3 { margin: 0; font-size: calc(var(--font-size) + 1px); color: var(--ink); }
+.figure-subtitle { margin: 2px 0 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
+.figure-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* The figure is vector: let it scale to the column rather than fixing a pixel size. */
+.figure-image { display: block; width: 100%; height: auto; }
+
+.figure-explain { margin-top: var(--pad-sm); display: grid; gap: 6px; }
+.figure-explain p { margin: 0; font-size: calc(var(--font-size) - 1px); line-height: 1.5; }
+.figure-explain .eyebrow { display: block; margin-bottom: 1px; }
+.figure-question { color: var(--ink-dim); }
+.figure-answer { color: var(--ink); }
+.figure-caveat { color: var(--muted); }
+.figure-truncation { color: var(--gold); font-size: calc(var(--font-size) - 2px); }
+
+.figure-details { margin-top: var(--pad-sm); border-top: 1px solid var(--line); padding-top: var(--pad-sm); }
+.figure-notes { margin: var(--pad-sm) 0 0; padding-left: 1.1em; color: var(--gold); font-size: calc(var(--font-size) - 2px); }
+.figure-caption { margin: var(--pad-sm) 0 0; color: var(--faint); font-size: calc(var(--font-size) - 3px); }
+
+.figure-card--absent { border-style: dashed; }
+.figure-absent-reason { margin: 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
+.figure-flag {
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  color: var(--muted);
+  font-size: calc(var(--font-size) - 3px);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.figure-flag--bad { color: var(--down); border-color: var(--down); }
+.figure-skeleton { width: 100%; background: var(--panel-2); border-radius: var(--r); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (max-width: 900px) {
+  .figure-report { grid-template-columns: minmax(0, 1fr); }
+  .figure-rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .figure-rail ul { display: flex; flex-wrap: wrap; gap: 2px; }
+  .figure-rail a { border-left: 0; border-bottom: 2px solid transparent; }
+  .figure-rail a.active { border-left: 0; border-bottom-color: var(--accent); }
+}
