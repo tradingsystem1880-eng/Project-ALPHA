@@ -587,8 +587,15 @@ def _draw_mark(axes: Axes, figure: Figure, theme: Theme, mark: Mark) -> None:
             raise DataError(f"no renderer for mark {type(mark).__name__}")
 
 
-def _finish_panel(axes: Axes, theme: Theme, panel: Panel, spec: FigureSpec, last: bool) -> None:
-    axes.set_ylabel(panel.y_label, fontsize=theme.base_font_pt - 0.5)
+def _finish_panel(
+    axes: Axes, theme: Theme, panel: Panel, spec: FigureSpec, last: bool, panel_count: int = 1
+) -> None:
+    size = theme.base_font_pt - (0.5 if panel_count < 4 else 1.5)
+    budget = 34 if panel_count < 4 else 22
+    label = (
+        panel.y_label if len(panel.y_label) <= budget else panel.y_label[: budget - 1] + "\u2026"
+    )
+    axes.set_ylabel(label, fontsize=size)
     if panel.y_scale != "linear":
         axes.set_yscale(panel.y_scale)
     if panel.y_limits is not None:
@@ -601,13 +608,13 @@ def _finish_panel(axes: Axes, theme: Theme, panel: Panel, spec: FigureSpec, last
         axes.axhline(0.0, color=theme.line, linewidth=0.8, zorder=1)
     if panel.note is not None:
         axes.text(
-            0.005,
-            0.94,
+            0.006,
+            0.04,
             panel.note,
             transform=axes.transAxes,
             fontsize=theme.base_font_pt - 1.5,
             color=theme.gold,
-            va="top",
+            va="bottom",
         )
     entries = panel.legend_entries
     if panel.legend and entries:
@@ -679,7 +686,14 @@ def render_figure(spec: FigureSpec, options: RenderOptions | None = None) -> byt
             )
             for mark in sorted(panel.marks, key=_zorder):
                 _draw_mark(axes, figure, theme, mark)
-            _finish_panel(axes, theme, panel, spec, last=index == spec.panel_count - 1)
+            _finish_panel(
+                axes,
+                theme,
+                panel,
+                spec,
+                last=index == spec.panel_count - 1,
+                panel_count=spec.panel_count,
+            )
             axes_list.append(axes)
         if shares:
             _apply_x_axis(axes_list, spec, theme)
@@ -753,9 +767,11 @@ def _draw_chrome(figure: Figure, theme: Theme, spec: FigureSpec, options: Render
             color=theme.faint,
             family="monospace",
         )
+    # Reserve a right gutter: an end-of-line value label is drawn outside the axes and
+    # would otherwise be clipped by the page edge -- exactly the label most worth reading.
     figure.subplots_adjust(
         left=left + 0.005,
-        right=0.985,
+        right=0.952,
         top=1 - header_in / height,
         bottom=footer_in / height,
     )
