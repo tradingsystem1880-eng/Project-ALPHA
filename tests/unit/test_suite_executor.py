@@ -12,6 +12,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -31,6 +32,7 @@ from alpha_cli._suite import (
 )
 from alpha_cli.control_store import ControlStore
 from alpha_core import DataError
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 
 def _setup(tmp_path: Path) -> tuple[ControlStore, str, str]:
@@ -45,8 +47,10 @@ def _setup(tmp_path: Path) -> tuple[ControlStore, str, str]:
         name="Suite",
         hypothesis="Momentum persists.",
         falsification_criterion="Reject on failed locked holdout.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
     )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = store.create_strategy_version(
         project_id,
         strategy_name="ts_momentum",

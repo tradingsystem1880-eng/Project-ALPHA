@@ -13,6 +13,47 @@ Paper acceptance scenario remain pending.
 
 ### Added
 
+- Research Scientist Gate 0 and deterministic Gate 1 foundation: authoritative spec, ADR-0019/0020,
+  risk/dependency decisions, repository-native Research Scientist/adversarial-reviewer skills,
+  additive schema-v2 research contracts and phase/execution/D2/attempt/decision histories,
+  deterministic capture and approval-ready draft materialization, a bounded local CLI D0 pilot,
+  tamper-checked dossier projection, and the first-party `alpha_research` package for equal-duration
+  research data, chronological D1/D2/D3 topology, causal double-bottom
+  detection, prospective power, confirmation outcomes, point-in-time event observations, overlap
+  purging, exact pre-event matching, cluster-bootstrap inference, a frozen Holm secondary family,
+  and deterministic Matplotlib charts with embedded teaching/lineage metadata. Fail-closed
+  acquisition validators, six bounded MCP tools, six matching strict REST/OpenAPI operations, and a
+  registered Research Cockpit are included. Closed cases also receive one deterministic content-
+  addressed terminal ResearchGatePacket whose empirical fields remain `NOT_TESTED` without typed
+  D1/D2 evidence. Fresh projects are research-governed at creation and immediately capture a case;
+  only pre-program migrated/imported projects are grandfathered. Evidence allocation is group-
+  atomic across chronologically ordered eligible date/session/dependency groups, using 60/20/20 by
+  default and never splitting one dependence group across zones. Deterministic dossiers export to
+  `data_dir/research/projects/<project_id>`. The Cockpit captures/reads/proposes, launches only an
+  already approved D0 pilot, reads status/report, and explains the thesis, competing explanations,
+  native-unit budget, owner boundary, and D2/D3 firewall. MCP/REST have no approval, decision, D2,
+  deep-research, Python, paper, or order authority. The acceptance fixture is synthetic 60-minute
+  proxy data only; source network/download workers, qualified real intraday data, case-list/source-
+  pack UI, production D1/D2 admission/approval/consumption, autonomous loops, complete empirical
+  evidence/chart workflow, verified owner-presence authentication, strategy/holdout evidence, and
+  paper/order authority remain hard-gated. Owner-only CLI actions currently rely on the trusted
+  local operator boundary; an actor label is not cryptographic proof of human presence.
+- Gate 1 authority hardening: project/case capture is atomic and retry-idempotent; migrated
+  grandfathering is migration-only; one SQLite writer lock spans the exact v1 backup snapshot,
+  additive schema work, and v2 version commit, while stale backups fail a logical
+  source-equivalence check; D0
+  is bound to the exact registered synthetic double-bottom fixture and one artifact-complete v3 run
+  with a content-derived identity plus a canonical hashed raw-measurement D0 acceptance artifact;
+  admission mechanically reruns the detector, null, four-observation boundary-embargo, and power
+  criteria instead of trusting manifest pass flags. Completed D0 reads repeat that recomputation and
+  bind the stored acceptance selector to the current manifest before recovery, status/dossier, or
+  packet projection. D0 launches now atomically reserve one of three lifetime slots and fixed budget
+  before compute; crashes consume reservations, terminal links are one-to-one, and budget ledgers
+  cannot double-debit linked attempts. Typed D1 evidence cannot enter through `pilot`, and research
+  runs cannot enter the generic corroborated-evidence ledger. Unsupported material choices cannot
+  become approval-ready. Successful D0 work returns one owner disposition action, evidence-free/D0-
+  only cases cannot claim `CONTRADICTED`, rejected exploration and pre-D2 revision have finite public
+  CLI paths, and generic REST jobs cannot invoke governed research owner actions.
 - Project-scoped QuantPad OAuth MCP registration plus ADR-0018 and operator guidance that routes
   symbol/schema/coverage discovery and small previews through MCP, bulk bars/ticks/L1/L2 through the
   official REST/Python API, and keeps all QuantPad output research-only pending a receipt-backed
@@ -80,7 +121,7 @@ Paper acceptance scenario remain pending.
 - Strict Pydantic response contracts for stable Workstation JSON endpoints, deterministic OpenAPI,
   and generated authoritative TypeScript API definitions.
 - Owned-source Python and frontend V8 coverage gates, generated-contract freshness checks, and
-  isolated build/import verification for all 11 wheels.
+  isolated build/import verification for all 12 wheels.
 
 ### Changed
 
@@ -149,6 +190,31 @@ Paper acceptance scenario remain pending.
 
 ### Fixed
 
+- 2026-08-07 independent Research Scientist audit (six read-only reviewers; 0 critical/high,
+  7 medium findings — all fixed): control-store steady-state opens are now write-free (a read-only
+  schema probe replaces per-open script execution, so reads never contend for the writer lock and a
+  lost governance row fails loud instead of silently regenerating from the caller-controlled
+  `created_at` date rule); double-bottom knowledge time covers the first trough's left pivot window
+  (latent look-ahead under delayed publication; the canonical D0 fixture's acceptance bytes are
+  unchanged); TESTED D2 gate evidence now requires a numeric `confirmation_claim` whose
+  classification is recomputed via `classify_confirmation` with every check boolean bound to its
+  numeric fact (producer attestations that disagree with the numbers fail loud; D1 and NOT_TESTED
+  evidence cannot carry a claim; INVALID requires a stated reason); a well-formed foreign D0
+  registered generation now fails with an explicit generation-mismatch error — never one implying
+  tampering — under a documented policy that any registered-constant change must bump the fixture
+  version; the MCP research launch uses the 120-second launch-class timeout instead of the 30-second
+  projection default (a mid-compute kill permanently consumes a lifetime launch slot); a successful
+  pilot whose completed-attempt store write fails is never recorded as a failed attempt (the
+  append-only ledger cannot be falsified; the resume/re-run recovery path is exercised end to end);
+  and web research routes return a typed 4xx instead of a 500 for option-shaped path values.
+  Hardening added with the fixes: cluster-bootstrap estimates below ten effective clusters carry an
+  explicit `low_cluster_count` flag, size-skewed dependency groups that would leave the final
+  holdout under 10% of observations fail loud, the complete 48-tool MCP surface and the exact
+  research tool subset are pinned in tests, Playwright research fixtures are typed against the
+  generated contract, content-identity digests and both deliberate canonical-JSON conventions are
+  golden-pinned, duplicated revise-reuse/bootstrap/D0-measurement logic is consolidated behind
+  single helpers with byte-identical behavior, and the D0 power seed is documented as
+  protocol-frozen (never settings-derived, preserving machine-independent acceptance verification).
 - Curated desks now scope run selection and artifact requests by capability, including portfolio and
   cross-sectional compatibility, forecast-only Kronos evidence, and canonical ML replay evidence.
   Incompatible runs display a typed state without probing unrelated risk or artifact endpoints.

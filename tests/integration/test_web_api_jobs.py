@@ -60,6 +60,66 @@ def test_launch_lists_and_gets(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail["finished_at"] is not None
 
 
+@pytest.mark.parametrize(
+    ("command", "args"),
+    [
+        ("research approve", "project-1 exploration --actor owner"),
+        ("research", "reject project-1 exploration --actor owner --reason no"),
+        ("", "research decide project-1 INCONCLUSIVE park --actor owner"),
+        ("research run", "deep project-1"),
+        ("", "research run confirm project-1"),
+    ],
+)
+def test_generic_job_route_rejects_governed_research_commands_before_launch(
+    command: str,
+    args: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    launched: list[list[str]] = []
+
+    def fake_launch(argv: list[str], *, data_dir: Path, run_type: str | None) -> _invoke.Job:
+        del data_dir
+        launched.append(argv)
+        return _invoke.Job(argv, run_type)
+
+    monkeypatch.setattr(_invoke, "launch", fake_launch)
+    response = TestClient(create_app()).post("/api/jobs", json={"command": command, "args": args})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "governed research commands are unavailable through the generic job API; "
+        "use the bounded research API or trusted-local CLI"
+    )
+    assert launched == []
+
+
+@pytest.mark.parametrize(
+    ("command", "args"),
+    [
+        ("research compare", "SPY"),
+        ("research", "compare SPY"),
+        ("", "research compare SPY"),
+    ],
+)
+def test_generic_job_route_retains_legacy_research_compare(
+    command: str,
+    args: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    launched: list[list[str]] = []
+
+    def fake_launch(argv: list[str], *, data_dir: Path, run_type: str | None) -> _invoke.Job:
+        del data_dir
+        launched.append(argv)
+        return _invoke.Job(argv, run_type)
+
+    monkeypatch.setattr(_invoke, "launch", fake_launch)
+    response = TestClient(create_app()).post("/api/jobs", json={"command": command, "args": args})
+
+    assert response.status_code == 200, response.text
+    assert launched == [["research", "compare", "SPY"]]
+
+
 def test_running_job_estimate_uses_only_comparable_successful_session_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

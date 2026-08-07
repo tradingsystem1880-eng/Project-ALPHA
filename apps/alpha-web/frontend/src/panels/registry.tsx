@@ -17,6 +17,7 @@ import { PaperMonitor } from './PaperMonitor'
 import { Pipeline } from './Pipeline'
 import { PriceChart } from './PriceChart'
 import { ProviderSystem } from './ProviderSystem'
+import { ResearchCockpit } from './ResearchCockpit'
 import { RiskMonitor } from './RiskMonitor'
 import { RunBrowser } from './RunBrowser'
 import { Screener } from './Screener'
@@ -48,6 +49,7 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RiskMonitor,
   Screener,
   ProviderSystem,
+  ResearchCockpit,
   Workspaces,
   AiConsole,
   Glossary,
@@ -81,6 +83,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'NativeTearSheet', title: 'Quant Tear Sheet', hint: 'native·artifact only' },
   { component: 'KronosStudio', title: 'Kronos Forecast Studio', hint: 'OHLCV paths·calibration' },
   { component: 'DevelopmentCenter', title: 'Development Center', hint: 'projects·stages' },
+  { component: 'ResearchCockpit', title: 'Research Cockpit', hint: 'thesis·protocol·D0 pilot' },
   { component: 'MlResearch', title: 'ML Research', hint: 'Qlib·OOS signals' },
   { component: 'MlDiagnostics', title: 'ML Signal Tear Sheet', hint: 'IC·folds·LightGBM provenance' },
   { component: 'AssetMemory', title: 'Asset Memory', hint: 'cited findings·negative results' },

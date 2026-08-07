@@ -32,6 +32,13 @@ governed by four specifications covering
 [cited evidence/agents](docs/superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md),
 and the [isolated Qlib worker](docs/superpowers/specs/2026-07-19-workstation-v3-qlib-worker-design.md).
 
+The [Research Scientist program](docs/superpowers/specs/2026-08-06-research-scientist-program-design.md)
+has shipped Gate 0 governance and the bounded Gate 1/D0 walking skeleton. It captures a raw idea,
+freezes source/contract lineage, runs deterministic synthetic checks, and can produce an honest
+early-terminal `ResearchGatePacketV1`. It does **not** yet acquire sources over the network, run
+empirical D1/D2, use qualified real intraday data, authenticate owner presence cryptographically,
+run research ML/autonomy, or promote research evidence into strategy/paper/order authority.
+
 ## Install
 
 Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/).
@@ -50,7 +57,7 @@ uv lock --check && uv sync --locked \
   && uv run pytest -q -m "not network" --cov --cov-report=term-missing \
   && uv run python scripts/generate_web_openapi.py --check \
   && uv build --all-packages
-# Then reinstall dist/*.whl with --no-deps and import-smoke all 11 packages (the exact CI assertion
+# Then reinstall dist/*.whl with --no-deps and import-smoke all 12 packages (the exact CI assertion
 # is in .github/workflows/ci.yml).
 
 cd apps/alpha-web/frontend
@@ -122,13 +129,23 @@ uv run alpha risk scenario --from-run <run_id>            # vol-scaling + tail-s
 uv run alpha research compare AAPL                        # rank every strategy on a symbol
 uv run alpha screener quote AAPL                          # finnhub (set ALPHA_FINNHUB_API_KEY)
 
-# 12. Start a governed strategy-development project and resolve a one-click suite
+# 12. Capture a raw idea before strategy development
+uv run alpha research capture \
+  "SPY may bounce after a causally confirmed double bottom in a four-trading-hour window" --json
+uv run alpha research status <project_id> --json
+
+# The complete trusted-local CLI inventory is visible here. Gate 1 can run only the registered
+# double-bottom `run pilot` on D0;
+# `run deep` and `run confirm` fail closed until the empirical evidence firewall ships.
+uv run alpha research --help
+
+# `project create` is an alternative entry point and automatically captures the required
+# Research Case in triage. It no longer creates a strategy-ready project.
 uv run alpha project create "AAPL mean reversion" \
   --hypothesis "Short-horizon dislocations revert after costs" \
   --falsification "Reject if locked holdout Sharpe is non-positive"
-uv run alpha suite actions --json
 
-# 13. Search exact cited evidence / export a bounded Codex brief
+# 13. Search exact cited evidence / export a bounded Codex brief for an eligible project
 uv run alpha evidence list --asset AAPL --json
 uv run alpha project agent-brief <project_id> --json
 
@@ -146,6 +163,33 @@ project/job/evidence state lives in the CLI-owned `data_dir/control/workstation.
 the run store. Paper sessions are intentionally
 nondeterministic operational records under `data_dir/paper/<uuid>/`, never research runs or
 validation evidence. Run any command with `--help` for all options.
+
+Research Case mutable state shares that SQLite authority. Deterministic Markdown dossiers default
+to `data_dir/research/projects/<project_id>/`; manual edits fail verification and are never parsed
+back as control input. Fresh projects are research-required and cannot create a strategy version
+without an approved confirmation contract plus the owner `advance_to_strategy` disposition.
+Pre-launch projects already present when schema v2 migrates are explicitly grandfathered for
+compatibility; existing post-launch records become research-required. Only the verified migration
+transaction can emit that grandfathered state, and its v1 backup must logically match the source.
+
+The Gate 1 CLI inventory is `capture`, `sources add|screen|freeze`, `draft`, `approve`, `reject`,
+`run pilot|deep|confirm`, `status`, `report`, `export`, `verify`, `pause`, `resume`, `cancel`, and
+`decide|revise`. Only the canonical `double_bottom` + `second_trough_confirmable` contract can run
+the Gate 1 D0 pilot; other ideas and neckline variants remain draftable but execution fails closed.
+`deep` and `confirm` are explicit fail-closed placeholders. An
+owner can use `decide` after D0 to close an early case only as `INCONCLUSIVE` or `INVALID` with
+`revise`, `park`, or `reject`; D0 cannot support either `CONTRADICTED` or advancement. A
+`CONTRADICTED` result requires lineage-bound typed non-synthetic evidence. `revise` reopens one
+immutable child only while D2 has never been authorized or viewed.
+
+The executable Gate 1 contract is an exact synthetic acceptance fixture
+(`alpha_synthetic_fixture` / `SYNTHETIC_SPY` / UTC / equal 60-minute bars / 240-minute pattern
+window). Literal SPY/ES or alternate endpoint drafts are marked unavailable and cannot be approved;
+they require the later qualified-data/operator gate. Completion requires a canonical hashed
+raw-measurement acceptance artifact; the control plane reruns the exact detector, null,
+four-observation topology-embargo, and power criteria and never trusts a manifest pass flag. A
+completed D0 run moves directly to the
+owner disposition because empirical D1 is not present.
 
 ## Caveats (read before trusting a result)
 
@@ -165,6 +209,9 @@ validation evidence. Run any command with `--help` for all options.
   sandbox with a restricted egress allowlist any host may be blocked; run where the network policy
   permits them. The pure parsers are unit-tested offline; the live `fetch` paths are
   `@pytest.mark.network` (run with `-m network`).
+- **Research owner-only CLI operations are a trusted-local authority boundary, not authentication.**
+  Approval, rejection, and disposition are absent from MCP, REST, and the Cockpit, but the local
+  CLI actor string is an audit record rather than cryptographic proof of physical owner presence.
 - **CASH accounts can't be levered or overspend.** With the default `--account-type CASH`, a
   vol-targeted notional that exceeds buying power (e.g. a low-volatility asset plus fees) has its
   orders rejected — the run **fails loud** with guidance rather than silently reporting flat equity.
@@ -224,11 +271,14 @@ probes only; futures research and live-capital routing are absent. See the
 
 ## Conversational agent (MCP server)
 
-`alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server with 42 bounded tools: the
-original 12 data/run/validation/discovery tools remain during deprecation and 30 typed v3 tools add
+`alpha_mcp` is a stdio [MCP](https://modelcontextprotocol.io) server with 48 bounded tools: the
+original 12 data/run/validation/discovery tools remain during deprecation, 30 typed v3 tools add
 project, version, experiment, stage, durable suite/job cancellation and reconciliation, evidence,
-chart/comparison, AgentBrief, and ML planning/launch resources. It cannot reveal a final holdout,
-place an order, run arbitrary Python, accept raw SQL, or expose filesystem paths. Agent-authored
+chart/comparison, AgentBrief, and ML planning/launch resources, and six Research Scientist tools
+capture/get/propose/launch an already-approved D0 pilot/read status/report. Research tools cannot
+approve or decide a case, consume D2 confirmation, start deep research, or create strategy,
+holdout, paper, or order authority. The wider MCP surface cannot reveal a final holdout, place an
+order, run arbitrary Python, accept raw SQL, or expose filesystem paths. Agent-authored
 evidence is forced to `draft` with agent provenance. Retained action `options` use a closed,
 bounded per-tool deprecated compatibility vocabulary rather than arbitrary CLI flags; managed
 model/tokenizer values reject filesystem-like paths. Each action tool **subprocesses the `alpha`
@@ -281,6 +331,11 @@ interface — Bloomberg/OpenBB-class, but $0.
 - **Development Center** — immutable setup, 14 exposed stage IDs (12 core lifecycle stages plus
   separate Kronos and ML tracks), resolved one-click suites,
   holdout/attempt governance, durable jobs, decision packets, Asset Memory, and AgentBrief export.
+- **Research Cockpit** — exact-idea capture, explicit thesis/mechanism/prediction and competing
+  explanations, owner-visible gates, native-unit budgets, a D0-only launch, immutable D2/D3
+  firewalls, and a teaching-oriented terminal packet for D0/early-terminal cases. Empirical packet
+  sections remain `NOT_TESTED` without typed D1/D2 evidence. The Cockpit cannot approve/decide a
+  case, run D1/D2, or claim that synthetic evidence is market evidence.
 - **Kronos + ML studios** — complete sampled K-lines, uncertainty/terminal distributions,
   calibration/provenance/warnings, plus the isolated Alpha158-style LightGBM/Qlib workflow and
   close-stamped predictions replayed synchronously across the frozen universe through ALPHA's
@@ -305,7 +360,8 @@ interface — Bloomberg/OpenBB-class, but $0.
 Built as a Vite/React/TypeScript SPA (Dockview + Lightweight Charts + uPlot + TanStack Table/Virtual +
 cmdk) over a thin FastAPI **JSON + SSE** backend. Stable, bounded JSON responses are strict Pydantic
 models with an explicit REST contract version; committed OpenAPI generates the frontend API
-definitions. Like the MCP server it's purely additive —
+definitions. Six bounded Research Case operations mirror the MCP capture/get/propose/approved-D0
+launch/status/report boundary. Like the MCP server it's purely additive —
 provider/system data subprocesses the matching `alpha info … --json` projections, research data is a
 manifest/artifact read, and paper monitoring uses the public operational journal seam; nothing
 imports an engine. The SPA
@@ -330,6 +386,12 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Not yet built (intentional)
 
+- Research source-network/download worker and lawful document-retention plane.
+- Qualified real intraday research adapter or any production empirical D1/D2 runner. The default
+  future split is 60/20/20 over indivisible chronological eligible date/session/dependency groups;
+  an alternative must be event-blind, owner-approved before D1, and retain D3 at 20% or more.
+- Verified owner-presence authentication, autonomous research continuation, and research ML/
+  self-improvement. Local owner CLI fields are not cryptographic identity.
 - Live or exchange-testnet order execution, paper venues beyond IBKR/local Sandbox, strategy futures,
   automatic rolls, and automated orphan recovery.
 - Kronos live-paper cache semantics (the four rule strategies are supported).
@@ -342,13 +404,13 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Quality gate
 
-The v3 offline release gate passed on 2026-07-19. It covers 12 import contracts, strict mypy,
-warnings as errors, a true 93.00% minimum owned-source Python line coverage threshold,
+The v3 offline release gate passed on 2026-07-19. The current gate covers 13 import contracts,
+strict mypy, warnings as errors, a true 93.00% minimum owned-source Python line coverage threshold,
 OpenAPI/generated TypeScript freshness, frontend V8 coverage, Playwright/axe at 1280×720,
-1440×900, and 1920×1080, deterministic artifact publication, isolated builds/imports for all 11
+1440×900, and 1920×1080, deterministic artifact publication, isolated builds/imports for all 12
 root wheels, and the separately locked Qlib worker. Historical hardening evidence is recorded in
 [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md);
-exact current v3 release evidence is recorded in the
+exact 2026-07-19 v3 release evidence is recorded in the
 [post-v2 audit](docs/audit/2026-07-19-post-v2-architecture-audit.md). The root-license
 decision (R-22), durable Binance readiness evidence, UTC-rollover sandbox soak (R-24),
 current-universe Tiingo qualification, and every real IBKR Paper acceptance scenario remain

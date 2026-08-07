@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
@@ -653,6 +653,25 @@ type SuiteActionValue = Literal[
 ]
 type EvidenceStatusValue = Literal["draft", "corroborated", "rejected", "superseded"]
 type AuthorKindValue = Literal["human", "agent"]
+type ResearchPhaseValue = Literal[
+    "captured",
+    "triage",
+    "exploration_review",
+    "pilot",
+    "deep_research",
+    "confirmation_review",
+    "sealed_confirmation",
+    "research_decision",
+    "closed",
+]
+type ResearchExecutionStateValue = Literal[
+    "idle", "queued", "running", "paused", "blocked", "failed"
+]
+type ResearchD2StateValue = Literal["sealed", "authorized", "consumed", "contaminated"]
+type ResearchD3StateValue = Literal["not_sealed", "sealed", "consumed", "contaminated"]
+type ResearchChartConstructionValue = Literal["spy_rth_60m_four_hour_window",]
+type ResearchEventAvailabilityValue = Literal["second_trough_confirmable"]
+type ResearchPrimaryOutcomeValue = Literal["four_trading_hour_return_25bp"]
 
 
 class ProjectCreateRequest(StrictModel):
@@ -1266,6 +1285,337 @@ class ResearchReport(StrictModel):
     symbol: str
     n_bars: int
     ranked: list[ResearchRow]
+
+
+class ResearchCaptureRequest(StrictModel):
+    idea: str = Field(min_length=1, max_length=8192, pattern=r"^[^\x00]+$")
+    name: str | None = Field(default=None, min_length=1, max_length=200, pattern=r"^[^\x00]+$")
+
+
+class ResearchMaterialAnswers(StrictModel):
+    chart_construction: ResearchChartConstructionValue
+    event_availability: ResearchEventAvailabilityValue
+    primary_outcome: ResearchPrimaryOutcomeValue
+
+
+class ResearchProposalRequest(StrictModel):
+    source_pack_id: str = Field(min_length=1, max_length=80)
+    answers: ResearchMaterialAnswers
+
+
+class ResearchLaunchRequest(StrictModel):
+    stage: Literal["pilot"]
+
+
+class ResearchReviewEvent(StrictModel):
+    contract_id: str
+    sequence: int
+    project_id: str
+    scope: Literal["exploration", "confirmation"]
+    decision: Literal["approve", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchContract(StrictModel):
+    contract_id: str
+    project_id: str
+    scope: Literal["exploration", "confirmation"]
+    parent_contract_id: str | None
+    payload: JsonObject
+    created_by: str
+    author_kind: AuthorKindValue
+    created_at: str
+    review_state: Literal["pending", "approved", "rejected"]
+    latest_review: ResearchReviewEvent | None
+
+
+class ResearchReviewSummary(StrictModel):
+    state: Literal["pending", "approved", "rejected"]
+    event: ResearchReviewEvent | None
+
+
+class ResearchDecisionEvent(StrictModel):
+    project_id: str
+    sequence: int
+    contract_id: str
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchMilestone(StrictModel):
+    phase: ResearchPhaseValue
+    contract_id: str
+    occurred_at: str
+    reason: str
+
+
+class ResearchD2Event(StrictModel):
+    contract_id: str
+    state: ResearchD2StateValue
+    boundary_hash: str
+    actor: str
+    occurred_at: str
+    reason: str
+
+
+class ResearchCase(StrictModel):
+    schema_version: Literal[1]
+    project_id: str
+    project_name: str
+    phase: ResearchPhaseValue
+    execution_state: ResearchExecutionStateValue
+    active_contract_id: str
+    active_contract: ResearchContract
+    exploration_contract_id: str
+    confirmation_contract_id: str | None
+    exploration_review: ResearchReviewSummary
+    confirmation_review: ResearchReviewSummary
+    research_decision: ResearchDecisionEvent | None
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    blocker: str | None
+    recovery: str | None
+    latest_finding: str | None
+    milestones: list[ResearchMilestone]
+    completed_milestones: list[ResearchMilestone]
+    remaining_milestones: list[ResearchPhaseValue]
+    elapsed_time_seconds: float = Field(ge=0)
+    elapsed_budget: JsonObject
+    remaining_budget: JsonObject
+    active_job_id: str | None
+    checkpoint: str | None
+    hashes: JsonObject
+    source_pack_id: str | None
+    attempt_count: int = Field(ge=0)
+    terminal_attempt_count: int = Field(ge=0)
+    unfinalized_launch_count: int = Field(ge=0)
+    remaining_launches: int = Field(ge=0)
+    latest_launch_reservation_id: str | None
+    latest_launch_number: int | None = Field(ge=1, le=3)
+    latest_attempt_id: str | None
+    latest_run_id: str | None
+    latest_run_fingerprint: str | None
+    d2_state: ResearchD2StateValue
+    d2_boundary_hash: str
+    d2_history: list[ResearchD2Event]
+    d3_state: ResearchD3StateValue
+
+
+class ResearchCaptureResponse(StrictModel):
+    project: ProjectSummary
+    contract: ResearchContract
+    case: ResearchCase
+
+
+class ResearchProposalResponse(StrictModel):
+    contract: ResearchContract
+    case: ResearchCase
+
+
+class ResearchAttempt(StrictModel):
+    attempt_id: str
+    project_id: str
+    contract_id: str
+    phase: ResearchPhaseValue
+    kind: str
+    status: AttemptStatusValue
+    config_fingerprint: str
+    budget_used: JsonObject
+    run_id: str | None
+    error: str | None
+    details: JsonObject
+    recorded_at: str
+    launch_reservation_id: str | None = None
+
+
+class ResearchLaunchResponse(StrictModel):
+    manifest: JsonObject
+    attempt: ResearchAttempt
+    case: ResearchCase
+
+
+class ResearchProgressReport(StrictModel):
+    report_schema: Literal["ResearchProgressReportV1"]
+    terminal: Literal[False]
+    case: ResearchCase
+    warning: str
+
+
+class ResearchGateAuthority(StrictModel):
+    evidence_claim: Literal["point-in-time-valid predictive association"]
+    strategy_validated: Literal[False]
+    paper_ready: Literal[False]
+    places_orders: Literal[False]
+    uses_final_strategy_holdout: Literal[False]
+
+
+class ResearchGateUncertainty(StrictModel):
+    lower: float
+    upper: float
+    level: float = Field(gt=0, lt=1)
+    method: str
+
+
+class ResearchGatePracticalMagnitude(StrictModel):
+    status: Literal["CLEARS_HURDLE", "BELOW_HURDLE", "INCONCLUSIVE", "NOT_TESTED"]
+    value: float | None
+    unit: str | None
+    interpretation: str
+
+
+class ResearchGatePrimaryResult(StrictModel):
+    status: Literal["TESTED", "NOT_TESTED"]
+    estimate: float | None
+    unit: str | None
+    sample_size: int | None = Field(default=None, ge=1)
+    effective_sample_size: float | None = Field(default=None, gt=0)
+    uncertainty: ResearchGateUncertainty | None
+    practical_magnitude: ResearchGatePracticalMagnitude
+
+
+class ResearchGateFinding(StrictModel):
+    status: Literal[
+        "PASSED",
+        "FAILED",
+        "STABLE",
+        "UNSTABLE",
+        "SUPPORTED",
+        "CONTRADICTED",
+        "INCONCLUSIVE",
+        "NOT_TESTED",
+        "OBSERVED",
+    ]
+    summary: str | None
+
+
+class ResearchGateConfounders(StrictModel):
+    resolved: list[str]
+    unresolved: list[str]
+
+
+class ResearchGateStability(StrictModel):
+    parameter: ResearchGateFinding
+    temporal: ResearchGateFinding
+    transportability: ResearchGateFinding
+
+
+class ResearchGateConfirmationChecks(StrictModel):
+    corrected_primary_test_passed: bool
+    interval_registered_direction: bool
+    economic_hurdle_cleared: bool
+    interval_wholly_against_direction: bool
+
+
+class ResearchGateConclusion(StrictModel):
+    project_name: str
+    thesis: str
+    thesis_answer: str
+    scientific_outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    recommended_disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    owner_decision_reason: str
+    evidence_basis: Literal["SEALED_D2", "EXPLORATORY_D1", "NO_TYPED_NON_SYNTHETIC_EVIDENCE"]
+    primary_estimate: float | None
+    uncertainty: ResearchGateUncertainty | None
+    effective_sample_size: float | None
+    practical_magnitude: ResearchGatePracticalMagnitude
+    strongest_caveat: str
+
+
+class ResearchGateGuidedEvidence(StrictModel):
+    primary_result: ResearchGatePrimaryResult
+    confirmation_classification: (
+        Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"] | None
+    )
+    confirmation_checks: ResearchGateConfirmationChecks | None
+    mechanism: ResearchGateFinding
+    strongest_support: ResearchGateFinding
+    strongest_contradiction: ResearchGateFinding
+    confounders: ResearchGateConfounders
+    stability: ResearchGateStability
+    multiplicity: ResearchGateFinding
+    power: ResearchGateFinding
+    negative_controls: ResearchGateFinding
+    untested_work: list[str]
+    what_would_change_conclusion: list[str]
+    teaching_note: str
+
+
+class ResearchGateAuditLedgers(StrictModel):
+    phase_events: list[JsonObject]
+    review_events: list[JsonObject]
+    execution_events: list[JsonObject]
+    d2_events: list[JsonObject]
+    decision_events: list[JsonObject]
+
+
+class ResearchGateLedgerCounts(StrictModel):
+    contracts: int = Field(ge=0)
+    source_packs: int = Field(ge=0)
+    sources: int = Field(ge=0)
+    attempts: int = Field(ge=0)
+    launch_reservations: int = Field(ge=0)
+    launch_attempt_links: int = Field(ge=0)
+    phase_events: int = Field(ge=0)
+    review_events: int = Field(ge=0)
+    execution_events: int = Field(ge=0)
+    d2_events: int = Field(ge=0)
+    decision_events: int = Field(ge=0)
+    artifact_links: int = Field(ge=0)
+
+
+class ResearchGateLedgerBounds(StrictModel):
+    maximum_rows_per_input_ledger: Literal[10_000]
+    truncated: Literal[False]
+    counts: ResearchGateLedgerCounts
+
+
+class ResearchGateTechnicalAppendix(StrictModel):
+    project: JsonObject
+    contract_lineage: list[JsonObject]
+    source_pack_ledger: list[JsonObject]
+    source_ledger: list[JsonObject]
+    variant_ledger: list[JsonObject]
+    attempt_ledger: list[JsonObject]
+    launch_reservation_ledger: list[JsonObject]
+    launch_attempt_link_ledger: list[JsonObject]
+    budget_ledger: list[JsonObject]
+    phase_review_d2_ledgers: ResearchGateAuditLedgers
+    immutable_artifact_links: list[JsonObject]
+    selected_evidence: JsonObject | None
+    ledger_bounds: ResearchGateLedgerBounds
+
+
+class ResearchGateLayers(StrictModel):
+    conclusion_90_seconds: ResearchGateConclusion
+    guided_evidence: ResearchGateGuidedEvidence
+    technical_appendix: ResearchGateTechnicalAppendix
+
+
+class ResearchGatePacket(StrictModel):
+    report_schema: Literal["ResearchGatePacketV1"]
+    schema_version: Literal[1]
+    terminal: Literal[True]
+    packet_id: str = Field(pattern=r"^rgp_[0-9a-f]{64}$")
+    packet_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    project_id: str
+    active_contract_id: str
+    scientific_outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    recommended_disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    authority: ResearchGateAuthority
+    layers: ResearchGateLayers
+
+
+type ResearchCaseReport = Annotated[
+    ResearchProgressReport | ResearchGatePacket,
+    Field(discriminator="report_schema"),
+]
 
 
 class OptionGreeks(StrictModel):

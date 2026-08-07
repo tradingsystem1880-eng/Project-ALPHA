@@ -1,7 +1,7 @@
-# Risk Register — Provider/Paper + Workstation v3
+# Risk Register — Provider/Paper + Workstation v3 + Research Scientist
 
 - **Opened:** 2026-07-19
-- **Track:** Post-v2 Recommended and owner-approved Workstation v3
+- **Track:** Post-v2, owner-approved Workstation v3, and Research Scientist program
 - **Risk owner:** Project ALPHA owner; implementation agents supply controls/evidence but cannot
   accept financial, legal, or distribution risk on the owner's behalf
 
@@ -34,6 +34,58 @@ evidence gate.
 Kronos live smoke, and Yahoo history passed locally; Stooq produced its documented anti-bot skip.
 This closes the standalone connectivity probe only. Durable readiness evidence, R-24 UTC rollover,
 Tiingo universe qualification, and all real IBKR scenarios remain open.
+
+**Research Scientist foundation checkpoint (2026-08-06):** Gate 0 authority and skills plus the
+deterministic Gate 1 foundation are implemented: schema-v2 research records/state machines,
+atomic retry-idempotent fresh-project capture, migration-only grandfathering with source-bound v1 backup,
+capture-to-approval-ready-draft CLI flow, canonical
+`data_dir/research/projects/<project_id>/` tamper-checked dossier projection, bounded local D0 pilot,
+research-only D0/data/topology/detector/power/confirmation/artifact primitives, six bounded MCP
+tools, six strict REST routes, and a registered Cockpit for capture/read/propose/approved-D0-launch/
+status/report, plus a content-addressed terminal packet that fails closed to `NOT_TESTED` without
+typed D1/D2 evidence. Gate 2 has request-boundary validation primitives only and performs no network
+request. MCP/REST/Cockpit cannot approve, reject, decide, consume D2, run deep research, or trade;
+the generic REST job route also blocks governed research commands. The D0 pilot is bound to the
+one approval-ready synthetic fingerprint (`alpha_synthetic_fixture` / `SYNTHETIC_SPY` / UTC /
+equal 60-minute bars / 240-minute pattern window), the registered causal double-bottom operator,
+and one artifact-complete v3 immutable run whose identifier is derived from the contract, fixture,
+and execution fingerprints. Its canonical hashed acceptance artifact contains raw measurements;
+the control plane mechanically reruns the detector, null, exact four-observation boundary-embargo,
+and power criteria and rejects approved implementation-fingerprint drift before compute. It cannot
+admit typed D1 evidence, claim `CONTRADICTED` without typed
+non-synthetic evidence, or enter the generic corroborated-evidence ledger. Successful D0 work moves
+directly to one owner-owned research-disposition action because production D1 is unavailable. No
+qualified real-market data, D1/D2 runner, source download worker, autonomous/ML loop, strategy
+evidence, verified owner-presence authentication, or execution authority exists. Local owner CLI
+actor fields are trusted-operator audit semantics, not cryptographic identity. R-50–R-57 remain
+open until their full closure evidence is green.
+
+**Research Scientist audit/hardening checkpoint (2026-08-07):** an independent six-reviewer
+read-only audit of the complete uncommitted program found 0 critical/high and 7 medium findings;
+all were fixed test-first before merge (PR #36). Material to this register: steady-state control
+store opens no longer execute schema scripts (reads cannot contend for the writer lock and a lost
+governance row fails loud instead of regenerating from the caller-controlled date rule — closes
+the R-57 backfill-resurrection vector); double-bottom knowledge time now covers the left pivot
+window (closes a latent R-53 look-ahead under delayed publication); TESTED D2 gate evidence
+requires a numeric `confirmation_claim` recomputed via `classify_confirmation` with each check
+boolean bound to its numeric fact (hardens the R-53/R-56 producer-attestation vector before D2
+ships); foreign D0 registered generations fail with an explicit generation-mismatch error under a
+documented fixture-version bump policy; the MCP research launch uses the 120-second launch-class
+timeout so an infrastructure default cannot burn an R-50 lifetime launch slot; a successful pilot
+can never be recorded as a failed attempt (append-only ledger honesty, with the resume/re-run
+recovery executed in tests); cluster-bootstrap estimates below ten effective clusters carry a
+typed `low_cluster_count` flag and size-skewed topologies below a 10% holdout observation share
+fail loud; and the complete 48-tool MCP surface, content-identity digests, and both deliberate
+canonical-JSON conventions are golden-pinned. Full offline Python and frontend gates re-verified
+green on the branch head. R-50–R-57 gate states are otherwise unchanged.
+
+The Gate 0 design review also covered the owner-supplied local inputs
+`/Users/hunternovotny/Desktop/Beast-Mode/docs/research/deep-research-report-1.md` and
+`/Users/hunternovotny/Desktop/Beast-Mode/docs/research/deep-research-report-2.md`. ALPHA retains
+their typed handoffs, adversarial critique, negative-knowledge ledger, append-only/versioned
+conflict/recovery, staged walking skeleton, and human-gate patterns. It rejects LangGraph/vector/
+graph/imported-runtime authority, generated-code execution, arbitrary thresholds or profit claims,
+and autonomous capital. The reports remain design inputs only, never empirical evidence.
 
 **Offline release evidence — passed 2026-07-19:** 1,136 offline Python tests passed with five
 deselected and 93.13% coverage; 39 dedicated bias guards passed; all 12 import contracts, strict
@@ -85,7 +137,7 @@ R-24's UTC-rollover acceptance.
 | R-31 | Qlib or worker-only dependencies enter the root/web/MCP runtime | Medium | High | Separate project/lock/process; import and lock deny tests; JSON/Parquet-only exchange | Root lock/import graph checks and independent worker gate | ML/build owners — **Verified offline 2026-07-19** |
 | R-32 | ML normalization, labels, folds, or predictions leak future data, including treating a complete daily OHLCV row as known at midnight or admitting a terminal target with no following open | Medium | High | Fold-local fit; effective purge/embargo minimum of one session for the open-to-open label horizon; `available_at = session_ts + 23h`; target must immediately follow origin and itself have a following aligned open; strict source-panel equality; no pickle | Feature/label future-poison, midnight and terminal-target rejection, zero-buffer boundary rejection, duplicate/non-finite/wrong-hash/fold-overlap rejection, and synchronized replay tests | ML/data/CLI owners — **Verified offline 2026-07-19** |
 | R-33 | The Workstation presents fabricated analytics, frontend-computed verdicts, or a marker/anchor that maps to the wrong execution event | Medium | High | Python-authored typed artifacts only; decision linkage uses the finalized global execution-sequence ID across decisions/orders/fills/indicators/annotations; duplicate/orphan references fail; one backend/frontend date window filters bars and every evidence series; legacy/missing states explicit; no fake frontier | Global-ID reconciliation with interleaved fill/decision events, duplicate/orphan rejection, API/renderer parity, range-filtered markers/annotations, old-run `trace_unavailable`, copy, and visual tests | Engine/artifact/web/frontend owners — **Verified offline 2026-07-19** |
-| R-34 | A caller uses an arbitrary durable job kind or a different launch surface to bypass reserved suite ownership or the one-heavyweight Kronos/Qlib limit | Medium | High | Reserve `suite:*` kinds; generic creation rejects them; one shared capacity class covers REST, MCP, direct Qlib/Kronos, and suite kinds; active-state check and insert share one `BEGIN IMMEDIATE` transaction | Reserved-kind, direct/direct concurrency, direct/suite concurrency, REST/MCP conflict, and terminal-release tests | CLI/control owner — **Verified offline 2026-07-19** |
+| R-34 | A caller uses an arbitrary durable job kind or a different launch surface to bypass reserved suite/research ownership or the one-heavyweight limit | Medium | High | Reserve `suite:*` and `research:*` kinds; generic creation rejects them; one shared capacity class covers REST, MCP, direct Qlib/Kronos, suite kinds, and future research jobs; active-state check and insert share one `BEGIN IMMEDIATE` transaction | Reserved-kind including research, direct/direct concurrency, direct/suite concurrency, REST/MCP conflict, and terminal-release tests | CLI/control owner — **Verified offline foundation 2026-08-06; production research workers gated** |
 | R-35 | A direct or suite heavyweight child ignores cancellation, runs without a renewable lease, is overwritten by a later success state, or is reconciled through an unsafe PID action | Medium | High | Persist idempotent cancellation requests; direct Workstation/MCP children use isolated process groups and an independent heartbeat/cancel lease capped at ten seconds; suites poll cancellation continuously and heartbeat each live step at five seconds; renewal/poll failure fails the journal; cancellation uses TERM→bounded grace→KILL/reap; direct lease stop/join precedes any subsequent caller terminal publication; stale reconciliation is logical only and exposes no raw PID API | Silent-child heartbeat, renewal/poll failure, in-flight direct and suite cancellation, process reap, no-later-terminal, capacity release, reload rehydration, stale/fresh reconciliation, and idempotence tests | CLI/web/MCP owners — **Verified offline 2026-07-19** |
 | R-36 | v2→v3 layout migration partially writes, drops an unknown panel, or destroys the only recoverable legacy layout | Medium | Medium | Complete alias table; reject unknown components atomically; preserve legacy keys; persist v3 only after Dockview accepts the whole migrated document | Real-shaped v2 fixture, unknown-component rejection, Dockview-failure, and legacy-preservation tests | Frontend owner — **Verified offline 2026-07-19** |
 | R-37 | Tear sheets, chart bundles, comparisons, or retained legacy MCP reads create unbounded memory/token payloads | Medium | Medium | Typed request caps, deterministic downsampling/windowing, pagination, endpoint-preserving series, and bounds metadata | Min/max rejection, original/returned/truncated assertions, stable sampling, and legacy-read cap tests | CLI/web/MCP owners — **Verified offline 2026-07-19** |
@@ -101,6 +153,14 @@ R-24's UTC-rollover acceptance.
 | R-47 | Mac sleep, DST, or a missed timer skips/duplicates a daily decision or trades after cutoff | Medium | High | Five-minute short launchd tick; UTC exchange calendar and correction window; immutable per-session outcome/crash marker; resume from an already-published exact snapshot; exact next-session expiry | Calendar/DST/weekend/wake tests, post-snapshot interruption recovery without refetch, and target-host sleep/wake observation | Operations owner — **Offline verified; target-host evidence pending** |
 | R-48 | Tiingo/QuantPad/IBKR secrets or full account identity reach logs, journal, API, browser, or repository | Low | High | Header-only vendor tokens; OAuth MCP where supported; redacted errors/metadata; keychain/Docker-secret operations; masked account alias; no browser vendor/broker clients | Distinctive-secret failure tests, repository/log/API scan, real gateway evidence scenario | Data/broker/web owners — **Offline controls verified; operational scan gate** |
 | R-49 | QuantPad preview/bulk data is scraped, over-retained, relabeled as canonical, or used as futures/L2 validation without sufficient contract/history evidence | Medium | High | MCP preview bounds; official API/SDK only; scratch-data label; no direct strategy/paper path; receipt-backed adapter and written retention permission required before promotion/archive | OAuth/tool smoke, schema/coverage samples, terms response, adapter quality/correction tests, dated-contract and 30-day-L2 limitation evidence | Data/owner — **External evidence gate** |
+| R-50 | A research agent silently changes the thesis, protocol, search family, budget, or owner decision after seeing results, or an actor string is mistaken for verified owner presence | Medium | High | Immutable exploration/confirmation contracts; one `next_action` and `responsibility`; bounded ask/act policy; only the exact canonical synthetic D0 fingerprint is approval-ready in Gate 1; owner review/expansion/disposition omitted from MCP/REST/Cockpit and blocked through generic REST jobs; each D0 launch atomically reserves its fixed budget and one of three slots before compute, crashes consume the append-only reservation, and one-to-one terminal links prevent double debit; successful D0 moves directly to one owner-owned disposition action while D1 is unavailable; trusted-local CLI records the actor but does not claim cryptographic identity; every attempt recorded; D2 one-shot state independent from phase | Transition/authority tests reject agent-kind approval, unavailable material choices, invalid phase skips, budget expansion, unregistered variants, post-result threshold changes, unreserved/direct fourth attempts, duplicate terminal links, crash-budget refunds, REST owner-command bypass, and D2 reuse; restart preserves exact scope; verified owner-presence authentication remains required before unattended/multi-user use | Research control owner — **Foundation and bounded REST/Cockpit tested; verified owner presence and complete Gate 6 open** |
+| R-51 | Scholarly search stores unauthorized full text, misses versions/retractions, or presents weak metadata as credible evidence | Medium | High | Approved metadata/direct-source interfaces; DOI/version/retraction/access state; query and exclusion ledger; open-access/user-provided full text only; content hashes and retention policy | Source fixtures for duplicate/version/retraction/correction/access states, paywall denial, tamper detection, and lawful export/restore | Research source + owner — **Gate 2 open** |
+| R-52 | Instructions in papers, webpages, repositories, or datasets alter agent authority or reach shell, credentials, or project instructions | Medium | High | Treat external content as untrusted data; bounded extraction; provenance labels; no generated-code execution; no source text in credential/tool-control contexts | Prompt-injection corpus proves source instructions cannot alter protocol, tools, files, secrets, holdout, paper, or order authority | Agent/security owners — **Gate 2 open** |
+| R-53 | Overlap, serial dependence, confounding, parameter search, chart selection, or ML leakage creates a false research edge | High | High | D0 synthetic validation bound to the exact canonical chart/outcome protocol, one registered operator, and one artifact-complete v3 immutable run with a content-derived identity plus canonical hashed raw-measurement acceptance; admission and every completed-D0 recovery/status/dossier/phase/packet read mechanically rerun detector, null, exact four-observation boundary-embargo, and power criteria, bind the stored acceptance selector to the current manifest, and reject implementation-fingerprint drift; typed D1/D2 evidence forbidden in pilot; default chronological 60/20/20 allocation over indivisible eligible date/session/dependency groups; any alternative event-blind and owner-approved before D1 with D3 at least 20%; D1 adaptive ledger; one-shot D2; D3 prohibited to research; prospective power before D2; frozen families; block-aware uncertainty; matched/negative/placebo controls; multiplicity controls; six protocol-selected headline charts | D0 contract-mutation, forged/downgraded/incomplete-run, post-admission artifact/manifest rewrite, stored-selector corruption, implementation-drift, and D1-smuggling denial; group-atomic topology/access and prospective-power tests; point-in-time exact matching, overlap purge, cluster bootstrap, Holm-family, deterministic-chart, synthetic planted/null/weekday-confounder, and future-poison tests; production D1/D2, broader FDR/Reality Check/SPA/DSR/CPCV/PBO, and fold-local ML tests remain | Research/validation owners — **Core D0/event-study/Holm primitives tested; empirical Gate 3 and ML Gate 5 open** |
+| R-54 | Research-only intraday bars or event-study output enter the canonical daily store, validation, holdout, paper readiness, or order path | Medium | High | ADR-0020 research-only dataset/type scope; explicit chart fingerprint and `available_at`; equal-duration collections reject mixed 240/150-minute observations; no daily snapshot or strategy/paper link; later intraday strategy requires a new ADR | Type/path denial, provider-authority, mixed-duration rejection, DST/early-close, pivot-availability, future-poison, and no-promotion/no-paper tests | Research data + architecture owners — **Synthetic boundary tested; real-data Gate 4 open** |
+| R-55 | An agent overfits its own benchmark, rewrites an active skill, or self-approves a prompt/skill improvement | Medium | High | Separate strategy and agent-improvement loops; frozen corpus/scorer; one mutable candidate; keep/reject log; candidate staging; owner approval; no active-skill writes from the evaluator | Benchmark contamination/sensitivity tests, active-skill write denial, scorer hash checks, failed-candidate retention, and owner-only activation | Agent-evaluation owner — **Gate 5 open** |
+| R-56 | A literature review, event-study association, Research Gate Packet, or attractive chart is mistaken for a validated, profitable, paper-ready strategy | High | High | Separate scientific outcome `SUPPORTED|CONTRADICTED|INCONCLUSIVE|INVALID` from owner disposition `advance_to_strategy|revise|park|reject`; evidence-free or D0-only packets can report only `INCONCLUSIVE` or `INVALID`, never empirical support or contradiction; research runs are quarantined from the generic corroborated-evidence ledger; permanent research-only/association labels; existing lifecycle still required; no expected-profit backlog score | Schema/copy tests reject validated/pass/paper/order fields, D0 contradiction and generic-evidence admission, Cockpit labels upstream status, and end-to-end acceptance stops before strategy/D3/holdout/paper | Product/research owner — **Gate 1 Cockpit boundary tested; complete Gate 6 open** |
+| R-57 | A fresh project or strategy version bypasses the Research Case while migration compatibility silently becomes a permanent escape hatch | Medium | High | Schema-v2 project research-governance marker; public project/case creation is one atomic retry-idempotent transaction; governed strategy versions require the approved confirmation contract and owner advance decision; only verified migration may emit pre-launch grandfathering; one SQLite writer lock spans the exact v1 backup snapshot, all additive DDL, and version commit; an existing backup must logically match that locked source | Fault injection at every capture write boundary, stale-backup, backdated-forgery, migration failure/retry, concurrent writer/migrator, default/create/version-link tests distinguish grandfathered records from fresh governed projects and deny unlinked strategy versions | Research/control owner — **Gate 1 foundation implemented; empirical advancement remains hard-gated** |
 
 ### 2026-08-03 Live UI Hardening Evidence
 
@@ -133,6 +193,10 @@ The following remain accepted only within the stated personal sandbox scope:
   canonical prices. IBKR Paper top-of-book simulation cannot establish live queue/fill quality.
 - QuantPad is historical research access, not a live feed. Its short L2 window and continuous-future
   presentation cannot establish long-horizon microstructure or dated-contract strategy validity.
+- Scholarly literature can establish precedent, mechanism, or method but cannot prove a current
+  executable edge; source availability, versions, retractions, and service terms remain external.
+- Research-only intraday event studies are association evidence and cannot inherit daily validation
+  or paper authority without the separate ADR-0020 promotion program.
 - The reviewed gateway digest, paper permissions, market-data subscriptions, and account operation
   remain owner prerequisites; a digest alone does not establish image trust or license suitability.
 
@@ -149,5 +213,7 @@ Review this register:
 - after the Binance network smoke and UTC-rollover soak;
 - after Tiingo universe qualification and each real IBKR equity/futures evidence run;
 - on any Nautilus/provider upgrade or new provider, including a QuantPad adapter;
+- at each Research Scientist delivery gate, source-client/service change, protocol/scorecard change,
+  or agent-skill activation;
 - before any distribution/license decision; and
 - immediately after any unexpected order, reconciliation warning, stale session, or corrupt journal.

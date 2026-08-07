@@ -14,6 +14,7 @@ from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS, PANEL_COLUM
 from alpha_cli.ml_input import _draft_spec, _folds, export_project_input
 from alpha_data.snapshot import create_snapshot, snapshot_manifest_hash
 from alpha_data.store import ParquetStore
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 
 def _project_snapshot(tmp_path: Path) -> tuple[str, str, list[str]]:
@@ -53,7 +54,9 @@ def _project_snapshot(tmp_path: Path) -> tuple[str, str, list[str]]:
         name="Cross-sectional starter",
         hypothesis="Relative winners persist one session.",
         falsification_criterion="Reject if locked OOS excess return is non-positive.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
     )
+    mark_project_as_migrated_legacy(control, str(project["project_id"]))
     version = control.create_strategy_version(
         str(project["project_id"]),
         strategy_name="qlib_alpha158_lgbm",

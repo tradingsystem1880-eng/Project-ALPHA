@@ -1,0 +1,128 @@
+"""Deterministic, research-only primitives for falsifiable strategy investigation.
+
+This package owns no network, persistence, credentials, execution, or dynamic-code surface. It
+imports only ``alpha_core`` internally; orchestration belongs to ``alpha_cli``.
+"""
+
+from __future__ import annotations
+
+from importlib.metadata import version
+
+from alpha_research.artifacts import (
+    ArtifactKind,
+    ChartEvidencePhase,
+    ChartWatermark,
+    ResearchArtifactRef,
+    ResearchChartData,
+    ResearchChartPoint,
+    ResearchChartSeries,
+)
+from alpha_research.boundary import (
+    ResearchChartFingerprintV1,
+    ResearchD2BoundaryV1,
+    ResearchEvidenceSharesV1,
+    ResearchEvidenceZoneBoundaryV1,
+)
+from alpha_research.confirmation import (
+    ClaimDirection,
+    ConfirmationEvidence,
+    ConfirmationOutcome,
+    ConfirmationStatus,
+    classify_confirmation,
+)
+from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
+from alpha_research.event_study import (
+    EventStudyObservation,
+    MatchedEventControlPair,
+    MatchedEventStudy,
+    PredictiveAssociationEstimate,
+    PreEventCovariate,
+    PurgedEventStudy,
+    evaluate_event_association,
+    evaluate_matched_association,
+    match_event_controls,
+    purge_overlapping_outcomes,
+)
+from alpha_research.gate_packet import (
+    ResearchDisposition,
+    ResearchGatePacket,
+    ResearchOutcome,
+    build_research_gate_packet,
+    confirmation_classification_from_evidence,
+)
+from alpha_research.multiple_testing import (
+    FrozenSecondaryFamily,
+    HolmAdjustedHypothesis,
+    SecondaryHypothesis,
+    holm_adjust_secondary_family,
+)
+from alpha_research.patterns import (
+    DoubleBottomEvent,
+    DoubleBottomSpec,
+    detect_double_bottom_events,
+)
+from alpha_research.power import (
+    ProspectivePowerResult,
+    required_observations_known_sigma,
+    simulate_prospective_power_known_sigma,
+)
+from alpha_research.rendering import render_research_line_chart
+from alpha_research.topology import (
+    EvidenceDependencyGroup,
+    EvidencePhase,
+    EvidenceWindow,
+    ResearchEvidenceTopology,
+)
+
+__version__ = version("alpha-research")
+__all__ = [
+    "ArtifactKind",
+    "ChartEvidencePhase",
+    "ChartWatermark",
+    "ClaimDirection",
+    "ConfirmationEvidence",
+    "ConfirmationOutcome",
+    "ConfirmationStatus",
+    "DoubleBottomEvent",
+    "DoubleBottomSpec",
+    "EqualDurationResearchBars",
+    "EventStudyObservation",
+    "EvidenceDependencyGroup",
+    "EvidencePhase",
+    "EvidenceWindow",
+    "FrozenSecondaryFamily",
+    "HolmAdjustedHypothesis",
+    "MatchedEventControlPair",
+    "MatchedEventStudy",
+    "PreEventCovariate",
+    "PredictiveAssociationEstimate",
+    "ProspectivePowerResult",
+    "PurgedEventStudy",
+    "ResearchArtifactRef",
+    "ResearchBar",
+    "ResearchChartData",
+    "ResearchChartFingerprintV1",
+    "ResearchChartPoint",
+    "ResearchChartSeries",
+    "ResearchD2BoundaryV1",
+    "ResearchDatasetRef",
+    "ResearchEvidenceSharesV1",
+    "ResearchEvidenceTopology",
+    "ResearchEvidenceZoneBoundaryV1",
+    "ResearchDisposition",
+    "ResearchGatePacket",
+    "ResearchOutcome",
+    "SecondaryHypothesis",
+    "classify_confirmation",
+    "build_research_gate_packet",
+    "confirmation_classification_from_evidence",
+    "detect_double_bottom_events",
+    "evaluate_event_association",
+    "evaluate_matched_association",
+    "holm_adjust_secondary_family",
+    "match_event_controls",
+    "purge_overlapping_outcomes",
+    "render_research_line_chart",
+    "required_observations_known_sigma",
+    "simulate_prospective_power_known_sigma",
+]

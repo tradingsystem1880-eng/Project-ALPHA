@@ -3999,7 +3999,7 @@
         "type": "object"
       },
       "LaunchRequest": {
-        "description": "Launch body: a command path (e.g. ``\"backtest run\"``) + its remaining args, or a bare\n``args`` string (empty ``command``) for the free-form console.",
+        "description": "Launch body: a command path (e.g. ``\"backtest run\"``) + its remaining args, or a bare\n``args`` string (empty ``command``) for the free-form console. Governed research commands are\nrejected here; only the legacy non-governance ``research compare`` command is admitted.",
         "properties": {
           "args": {
             "default": "",
@@ -8783,6 +8783,1738 @@
         ],
         "type": "string"
       },
+      "ResearchAttempt": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "budget_used": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "config_fingerprint": {
+            "title": "Config Fingerprint",
+            "type": "string"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "details": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "launch_reservation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Launch Reservation Id"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/ResearchPhaseValue"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttemptStatusValue"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "project_id",
+          "contract_id",
+          "phase",
+          "kind",
+          "status",
+          "config_fingerprint",
+          "budget_used",
+          "run_id",
+          "error",
+          "details",
+          "recorded_at"
+        ],
+        "title": "ResearchAttempt",
+        "type": "object"
+      },
+      "ResearchCaptureRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "idea": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "pattern": "^[^\\x00]+$",
+            "title": "Idea",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "pattern": "^[^\\x00]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "idea"
+        ],
+        "title": "ResearchCaptureRequest",
+        "type": "object"
+      },
+      "ResearchCaptureResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "case": {
+            "$ref": "#/components/schemas/ResearchCase"
+          },
+          "contract": {
+            "$ref": "#/components/schemas/ResearchContract"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectSummary"
+          }
+        },
+        "required": [
+          "project",
+          "contract",
+          "case"
+        ],
+        "title": "ResearchCaptureResponse",
+        "type": "object"
+      },
+      "ResearchCase": {
+        "additionalProperties": false,
+        "properties": {
+          "active_contract": {
+            "$ref": "#/components/schemas/ResearchContract"
+          },
+          "active_contract_id": {
+            "title": "Active Contract Id",
+            "type": "string"
+          },
+          "active_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Job Id"
+          },
+          "attempt_count": {
+            "minimum": 0.0,
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocker"
+          },
+          "checkpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint"
+          },
+          "completed_milestones": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchMilestone"
+            },
+            "title": "Completed Milestones",
+            "type": "array"
+          },
+          "confirmation_contract_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Contract Id"
+          },
+          "confirmation_review": {
+            "$ref": "#/components/schemas/ResearchReviewSummary"
+          },
+          "d2_boundary_hash": {
+            "title": "D2 Boundary Hash",
+            "type": "string"
+          },
+          "d2_history": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchD2Event"
+            },
+            "title": "D2 History",
+            "type": "array"
+          },
+          "d2_state": {
+            "$ref": "#/components/schemas/ResearchD2StateValue"
+          },
+          "d3_state": {
+            "$ref": "#/components/schemas/ResearchD3StateValue"
+          },
+          "elapsed_budget": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "elapsed_time_seconds": {
+            "minimum": 0.0,
+            "title": "Elapsed Time Seconds",
+            "type": "number"
+          },
+          "execution_state": {
+            "$ref": "#/components/schemas/ResearchExecutionStateValue"
+          },
+          "exploration_contract_id": {
+            "title": "Exploration Contract Id",
+            "type": "string"
+          },
+          "exploration_review": {
+            "$ref": "#/components/schemas/ResearchReviewSummary"
+          },
+          "hashes": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "latest_attempt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Attempt Id"
+          },
+          "latest_finding": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Finding"
+          },
+          "latest_launch_number": {
+            "anyOf": [
+              {
+                "maximum": 3.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Launch Number"
+          },
+          "latest_launch_reservation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Launch Reservation Id"
+          },
+          "latest_run_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run Fingerprint"
+          },
+          "latest_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run Id"
+          },
+          "milestones": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchMilestone"
+            },
+            "title": "Milestones",
+            "type": "array"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/ResearchPhaseValue"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "recovery": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery"
+          },
+          "remaining_budget": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "remaining_launches": {
+            "minimum": 0.0,
+            "title": "Remaining Launches",
+            "type": "integer"
+          },
+          "remaining_milestones": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchPhaseValue"
+            },
+            "title": "Remaining Milestones",
+            "type": "array"
+          },
+          "research_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchDecisionEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responsibility": {
+            "enum": [
+              "owner",
+              "codex"
+            ],
+            "title": "Responsibility",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Pack Id"
+          },
+          "terminal_attempt_count": {
+            "minimum": 0.0,
+            "title": "Terminal Attempt Count",
+            "type": "integer"
+          },
+          "unfinalized_launch_count": {
+            "minimum": 0.0,
+            "title": "Unfinalized Launch Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "project_id",
+          "project_name",
+          "phase",
+          "execution_state",
+          "active_contract_id",
+          "active_contract",
+          "exploration_contract_id",
+          "confirmation_contract_id",
+          "exploration_review",
+          "confirmation_review",
+          "research_decision",
+          "next_action",
+          "responsibility",
+          "blocker",
+          "recovery",
+          "latest_finding",
+          "milestones",
+          "completed_milestones",
+          "remaining_milestones",
+          "elapsed_time_seconds",
+          "elapsed_budget",
+          "remaining_budget",
+          "active_job_id",
+          "checkpoint",
+          "hashes",
+          "source_pack_id",
+          "attempt_count",
+          "terminal_attempt_count",
+          "unfinalized_launch_count",
+          "remaining_launches",
+          "latest_launch_reservation_id",
+          "latest_launch_number",
+          "latest_attempt_id",
+          "latest_run_id",
+          "latest_run_fingerprint",
+          "d2_state",
+          "d2_boundary_hash",
+          "d2_history",
+          "d3_state"
+        ],
+        "title": "ResearchCase",
+        "type": "object"
+      },
+      "ResearchCaseReport": {
+        "discriminator": {
+          "mapping": {
+            "ResearchGatePacketV1": "#/components/schemas/ResearchGatePacket",
+            "ResearchProgressReportV1": "#/components/schemas/ResearchProgressReport"
+          },
+          "propertyName": "report_schema"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ResearchProgressReport"
+          },
+          {
+            "$ref": "#/components/schemas/ResearchGatePacket"
+          }
+        ]
+      },
+      "ResearchChartConstructionValue": {
+        "const": "spy_rth_60m_four_hour_window",
+        "type": "string"
+      },
+      "ResearchContract": {
+        "additionalProperties": false,
+        "properties": {
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKindValue"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "latest_review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchReviewEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_contract_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Contract Id"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "review_state": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Review State",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "exploration",
+              "confirmation"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id",
+          "project_id",
+          "scope",
+          "parent_contract_id",
+          "payload",
+          "created_by",
+          "author_kind",
+          "created_at",
+          "review_state",
+          "latest_review"
+        ],
+        "title": "ResearchContract",
+        "type": "object"
+      },
+      "ResearchD2Event": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "boundary_hash": {
+            "title": "Boundary Hash",
+            "type": "string"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ResearchD2StateValue"
+          }
+        },
+        "required": [
+          "contract_id",
+          "state",
+          "boundary_hash",
+          "actor",
+          "occurred_at",
+          "reason"
+        ],
+        "title": "ResearchD2Event",
+        "type": "object"
+      },
+      "ResearchD2StateValue": {
+        "enum": [
+          "sealed",
+          "authorized",
+          "consumed",
+          "contaminated"
+        ],
+        "type": "string"
+      },
+      "ResearchD3StateValue": {
+        "enum": [
+          "not_sealed",
+          "sealed",
+          "consumed",
+          "contaminated"
+        ],
+        "type": "string"
+      },
+      "ResearchDecisionEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "actor_kind": {
+            "$ref": "#/components/schemas/AuthorKindValue"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "advance_to_strategy",
+              "revise",
+              "park",
+              "reject"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "SUPPORTED",
+              "CONTRADICTED",
+              "INCONCLUSIVE",
+              "INVALID"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_id",
+          "sequence",
+          "contract_id",
+          "outcome",
+          "disposition",
+          "actor",
+          "actor_kind",
+          "occurred_at",
+          "reason"
+        ],
+        "title": "ResearchDecisionEvent",
+        "type": "object"
+      },
+      "ResearchEventAvailabilityValue": {
+        "const": "second_trough_confirmable",
+        "type": "string"
+      },
+      "ResearchExecutionStateValue": {
+        "enum": [
+          "idle",
+          "queued",
+          "running",
+          "paused",
+          "blocked",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "ResearchGateAuditLedgers": {
+        "additionalProperties": false,
+        "properties": {
+          "d2_events": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "D2 Events",
+            "type": "array"
+          },
+          "decision_events": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Decision Events",
+            "type": "array"
+          },
+          "execution_events": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Execution Events",
+            "type": "array"
+          },
+          "phase_events": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Phase Events",
+            "type": "array"
+          },
+          "review_events": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Review Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "phase_events",
+          "review_events",
+          "execution_events",
+          "d2_events",
+          "decision_events"
+        ],
+        "title": "ResearchGateAuditLedgers",
+        "type": "object"
+      },
+      "ResearchGateAuthority": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_claim": {
+            "const": "point-in-time-valid predictive association",
+            "title": "Evidence Claim",
+            "type": "string"
+          },
+          "paper_ready": {
+            "const": false,
+            "title": "Paper Ready",
+            "type": "boolean"
+          },
+          "places_orders": {
+            "const": false,
+            "title": "Places Orders",
+            "type": "boolean"
+          },
+          "strategy_validated": {
+            "const": false,
+            "title": "Strategy Validated",
+            "type": "boolean"
+          },
+          "uses_final_strategy_holdout": {
+            "const": false,
+            "title": "Uses Final Strategy Holdout",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "evidence_claim",
+          "strategy_validated",
+          "paper_ready",
+          "places_orders",
+          "uses_final_strategy_holdout"
+        ],
+        "title": "ResearchGateAuthority",
+        "type": "object"
+      },
+      "ResearchGateConclusion": {
+        "additionalProperties": false,
+        "properties": {
+          "effective_sample_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Sample Size"
+          },
+          "evidence_basis": {
+            "enum": [
+              "SEALED_D2",
+              "EXPLORATORY_D1",
+              "NO_TYPED_NON_SYNTHETIC_EVIDENCE"
+            ],
+            "title": "Evidence Basis",
+            "type": "string"
+          },
+          "owner_decision_reason": {
+            "title": "Owner Decision Reason",
+            "type": "string"
+          },
+          "practical_magnitude": {
+            "$ref": "#/components/schemas/ResearchGatePracticalMagnitude"
+          },
+          "primary_estimate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Estimate"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "recommended_disposition": {
+            "enum": [
+              "advance_to_strategy",
+              "revise",
+              "park",
+              "reject"
+            ],
+            "title": "Recommended Disposition",
+            "type": "string"
+          },
+          "scientific_outcome": {
+            "enum": [
+              "SUPPORTED",
+              "CONTRADICTED",
+              "INCONCLUSIVE",
+              "INVALID"
+            ],
+            "title": "Scientific Outcome",
+            "type": "string"
+          },
+          "strongest_caveat": {
+            "title": "Strongest Caveat",
+            "type": "string"
+          },
+          "thesis": {
+            "title": "Thesis",
+            "type": "string"
+          },
+          "thesis_answer": {
+            "title": "Thesis Answer",
+            "type": "string"
+          },
+          "uncertainty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchGateUncertainty"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "project_name",
+          "thesis",
+          "thesis_answer",
+          "scientific_outcome",
+          "recommended_disposition",
+          "owner_decision_reason",
+          "evidence_basis",
+          "primary_estimate",
+          "uncertainty",
+          "effective_sample_size",
+          "practical_magnitude",
+          "strongest_caveat"
+        ],
+        "title": "ResearchGateConclusion",
+        "type": "object"
+      },
+      "ResearchGateConfirmationChecks": {
+        "additionalProperties": false,
+        "properties": {
+          "corrected_primary_test_passed": {
+            "title": "Corrected Primary Test Passed",
+            "type": "boolean"
+          },
+          "economic_hurdle_cleared": {
+            "title": "Economic Hurdle Cleared",
+            "type": "boolean"
+          },
+          "interval_registered_direction": {
+            "title": "Interval Registered Direction",
+            "type": "boolean"
+          },
+          "interval_wholly_against_direction": {
+            "title": "Interval Wholly Against Direction",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "corrected_primary_test_passed",
+          "interval_registered_direction",
+          "economic_hurdle_cleared",
+          "interval_wholly_against_direction"
+        ],
+        "title": "ResearchGateConfirmationChecks",
+        "type": "object"
+      },
+      "ResearchGateConfounders": {
+        "additionalProperties": false,
+        "properties": {
+          "resolved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Resolved",
+            "type": "array"
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resolved",
+          "unresolved"
+        ],
+        "title": "ResearchGateConfounders",
+        "type": "object"
+      },
+      "ResearchGateFinding": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "PASSED",
+              "FAILED",
+              "STABLE",
+              "UNSTABLE",
+              "SUPPORTED",
+              "CONTRADICTED",
+              "INCONCLUSIVE",
+              "NOT_TESTED",
+              "OBSERVED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "status",
+          "summary"
+        ],
+        "title": "ResearchGateFinding",
+        "type": "object"
+      },
+      "ResearchGateGuidedEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation_checks": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchGateConfirmationChecks"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmation_classification": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SUPPORTED",
+                  "CONTRADICTED",
+                  "INCONCLUSIVE",
+                  "INVALID"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Classification"
+          },
+          "confounders": {
+            "$ref": "#/components/schemas/ResearchGateConfounders"
+          },
+          "mechanism": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "multiplicity": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "negative_controls": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "power": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "primary_result": {
+            "$ref": "#/components/schemas/ResearchGatePrimaryResult"
+          },
+          "stability": {
+            "$ref": "#/components/schemas/ResearchGateStability"
+          },
+          "strongest_contradiction": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "strongest_support": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "teaching_note": {
+            "title": "Teaching Note",
+            "type": "string"
+          },
+          "untested_work": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Untested Work",
+            "type": "array"
+          },
+          "what_would_change_conclusion": {
+            "items": {
+              "type": "string"
+            },
+            "title": "What Would Change Conclusion",
+            "type": "array"
+          }
+        },
+        "required": [
+          "primary_result",
+          "confirmation_classification",
+          "confirmation_checks",
+          "mechanism",
+          "strongest_support",
+          "strongest_contradiction",
+          "confounders",
+          "stability",
+          "multiplicity",
+          "power",
+          "negative_controls",
+          "untested_work",
+          "what_would_change_conclusion",
+          "teaching_note"
+        ],
+        "title": "ResearchGateGuidedEvidence",
+        "type": "object"
+      },
+      "ResearchGateLayers": {
+        "additionalProperties": false,
+        "properties": {
+          "conclusion_90_seconds": {
+            "$ref": "#/components/schemas/ResearchGateConclusion"
+          },
+          "guided_evidence": {
+            "$ref": "#/components/schemas/ResearchGateGuidedEvidence"
+          },
+          "technical_appendix": {
+            "$ref": "#/components/schemas/ResearchGateTechnicalAppendix"
+          }
+        },
+        "required": [
+          "conclusion_90_seconds",
+          "guided_evidence",
+          "technical_appendix"
+        ],
+        "title": "ResearchGateLayers",
+        "type": "object"
+      },
+      "ResearchGateLedgerBounds": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/ResearchGateLedgerCounts"
+          },
+          "maximum_rows_per_input_ledger": {
+            "const": 10000,
+            "title": "Maximum Rows Per Input Ledger",
+            "type": "integer"
+          },
+          "truncated": {
+            "const": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "maximum_rows_per_input_ledger",
+          "truncated",
+          "counts"
+        ],
+        "title": "ResearchGateLedgerBounds",
+        "type": "object"
+      },
+      "ResearchGateLedgerCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_links": {
+            "minimum": 0.0,
+            "title": "Artifact Links",
+            "type": "integer"
+          },
+          "attempts": {
+            "minimum": 0.0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "contracts": {
+            "minimum": 0.0,
+            "title": "Contracts",
+            "type": "integer"
+          },
+          "d2_events": {
+            "minimum": 0.0,
+            "title": "D2 Events",
+            "type": "integer"
+          },
+          "decision_events": {
+            "minimum": 0.0,
+            "title": "Decision Events",
+            "type": "integer"
+          },
+          "execution_events": {
+            "minimum": 0.0,
+            "title": "Execution Events",
+            "type": "integer"
+          },
+          "launch_attempt_links": {
+            "minimum": 0.0,
+            "title": "Launch Attempt Links",
+            "type": "integer"
+          },
+          "launch_reservations": {
+            "minimum": 0.0,
+            "title": "Launch Reservations",
+            "type": "integer"
+          },
+          "phase_events": {
+            "minimum": 0.0,
+            "title": "Phase Events",
+            "type": "integer"
+          },
+          "review_events": {
+            "minimum": 0.0,
+            "title": "Review Events",
+            "type": "integer"
+          },
+          "source_packs": {
+            "minimum": 0.0,
+            "title": "Source Packs",
+            "type": "integer"
+          },
+          "sources": {
+            "minimum": 0.0,
+            "title": "Sources",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contracts",
+          "source_packs",
+          "sources",
+          "attempts",
+          "launch_reservations",
+          "launch_attempt_links",
+          "phase_events",
+          "review_events",
+          "execution_events",
+          "d2_events",
+          "decision_events",
+          "artifact_links"
+        ],
+        "title": "ResearchGateLedgerCounts",
+        "type": "object"
+      },
+      "ResearchGatePacket": {
+        "additionalProperties": false,
+        "properties": {
+          "active_contract_id": {
+            "title": "Active Contract Id",
+            "type": "string"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/ResearchGateAuthority"
+          },
+          "layers": {
+            "$ref": "#/components/schemas/ResearchGateLayers"
+          },
+          "packet_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Packet Hash",
+            "type": "string"
+          },
+          "packet_id": {
+            "pattern": "^rgp_[0-9a-f]{64}$",
+            "title": "Packet Id",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "recommended_disposition": {
+            "enum": [
+              "advance_to_strategy",
+              "revise",
+              "park",
+              "reject"
+            ],
+            "title": "Recommended Disposition",
+            "type": "string"
+          },
+          "report_schema": {
+            "const": "ResearchGatePacketV1",
+            "title": "Report Schema",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "scientific_outcome": {
+            "enum": [
+              "SUPPORTED",
+              "CONTRADICTED",
+              "INCONCLUSIVE",
+              "INVALID"
+            ],
+            "title": "Scientific Outcome",
+            "type": "string"
+          },
+          "terminal": {
+            "const": true,
+            "title": "Terminal",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "report_schema",
+          "schema_version",
+          "terminal",
+          "packet_id",
+          "packet_hash",
+          "project_id",
+          "active_contract_id",
+          "scientific_outcome",
+          "recommended_disposition",
+          "authority",
+          "layers"
+        ],
+        "title": "ResearchGatePacket",
+        "type": "object"
+      },
+      "ResearchGatePracticalMagnitude": {
+        "additionalProperties": false,
+        "properties": {
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "CLEARS_HURDLE",
+              "BELOW_HURDLE",
+              "INCONCLUSIVE",
+              "NOT_TESTED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "status",
+          "value",
+          "unit",
+          "interpretation"
+        ],
+        "title": "ResearchGatePracticalMagnitude",
+        "type": "object"
+      },
+      "ResearchGatePrimaryResult": {
+        "additionalProperties": false,
+        "properties": {
+          "effective_sample_size": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Sample Size"
+          },
+          "estimate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimate"
+          },
+          "practical_magnitude": {
+            "$ref": "#/components/schemas/ResearchGatePracticalMagnitude"
+          },
+          "sample_size": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Size"
+          },
+          "status": {
+            "enum": [
+              "TESTED",
+              "NOT_TESTED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "uncertainty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchGateUncertainty"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "status",
+          "estimate",
+          "unit",
+          "uncertainty",
+          "practical_magnitude"
+        ],
+        "title": "ResearchGatePrimaryResult",
+        "type": "object"
+      },
+      "ResearchGateStability": {
+        "additionalProperties": false,
+        "properties": {
+          "parameter": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "temporal": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          },
+          "transportability": {
+            "$ref": "#/components/schemas/ResearchGateFinding"
+          }
+        },
+        "required": [
+          "parameter",
+          "temporal",
+          "transportability"
+        ],
+        "title": "ResearchGateStability",
+        "type": "object"
+      },
+      "ResearchGateTechnicalAppendix": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Attempt Ledger",
+            "type": "array"
+          },
+          "budget_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Budget Ledger",
+            "type": "array"
+          },
+          "contract_lineage": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Contract Lineage",
+            "type": "array"
+          },
+          "immutable_artifact_links": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Immutable Artifact Links",
+            "type": "array"
+          },
+          "launch_attempt_link_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Launch Attempt Link Ledger",
+            "type": "array"
+          },
+          "launch_reservation_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Launch Reservation Ledger",
+            "type": "array"
+          },
+          "ledger_bounds": {
+            "$ref": "#/components/schemas/ResearchGateLedgerBounds"
+          },
+          "phase_review_d2_ledgers": {
+            "$ref": "#/components/schemas/ResearchGateAuditLedgers"
+          },
+          "project": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "selected_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Source Ledger",
+            "type": "array"
+          },
+          "source_pack_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Source Pack Ledger",
+            "type": "array"
+          },
+          "variant_ledger": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Variant Ledger",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project",
+          "contract_lineage",
+          "source_pack_ledger",
+          "source_ledger",
+          "variant_ledger",
+          "attempt_ledger",
+          "launch_reservation_ledger",
+          "launch_attempt_link_ledger",
+          "budget_ledger",
+          "phase_review_d2_ledgers",
+          "immutable_artifact_links",
+          "selected_evidence",
+          "ledger_bounds"
+        ],
+        "title": "ResearchGateTechnicalAppendix",
+        "type": "object"
+      },
+      "ResearchGateUncertainty": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Level",
+            "type": "number"
+          },
+          "lower": {
+            "title": "Lower",
+            "type": "number"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "upper": {
+            "title": "Upper",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "level",
+          "method"
+        ],
+        "title": "ResearchGateUncertainty",
+        "type": "object"
+      },
+      "ResearchLaunchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "stage": {
+            "const": "pilot",
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage"
+        ],
+        "title": "ResearchLaunchRequest",
+        "type": "object"
+      },
+      "ResearchLaunchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/ResearchAttempt"
+          },
+          "case": {
+            "$ref": "#/components/schemas/ResearchCase"
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/JsonObject"
+          }
+        },
+        "required": [
+          "manifest",
+          "attempt",
+          "case"
+        ],
+        "title": "ResearchLaunchResponse",
+        "type": "object"
+      },
+      "ResearchMaterialAnswers": {
+        "additionalProperties": false,
+        "properties": {
+          "chart_construction": {
+            "$ref": "#/components/schemas/ResearchChartConstructionValue"
+          },
+          "event_availability": {
+            "$ref": "#/components/schemas/ResearchEventAvailabilityValue"
+          },
+          "primary_outcome": {
+            "$ref": "#/components/schemas/ResearchPrimaryOutcomeValue"
+          }
+        },
+        "required": [
+          "chart_construction",
+          "event_availability",
+          "primary_outcome"
+        ],
+        "title": "ResearchMaterialAnswers",
+        "type": "object"
+      },
+      "ResearchMilestone": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/ResearchPhaseValue"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "contract_id",
+          "occurred_at",
+          "reason"
+        ],
+        "title": "ResearchMilestone",
+        "type": "object"
+      },
+      "ResearchPhaseValue": {
+        "enum": [
+          "captured",
+          "triage",
+          "exploration_review",
+          "pilot",
+          "deep_research",
+          "confirmation_review",
+          "sealed_confirmation",
+          "research_decision",
+          "closed"
+        ],
+        "type": "string"
+      },
+      "ResearchPrimaryOutcomeValue": {
+        "const": "four_trading_hour_return_25bp",
+        "type": "string"
+      },
+      "ResearchProgressReport": {
+        "additionalProperties": false,
+        "properties": {
+          "case": {
+            "$ref": "#/components/schemas/ResearchCase"
+          },
+          "report_schema": {
+            "const": "ResearchProgressReportV1",
+            "title": "Report Schema",
+            "type": "string"
+          },
+          "terminal": {
+            "const": false,
+            "title": "Terminal",
+            "type": "boolean"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_schema",
+          "terminal",
+          "case",
+          "warning"
+        ],
+        "title": "ResearchProgressReport",
+        "type": "object"
+      },
+      "ResearchProposalRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "$ref": "#/components/schemas/ResearchMaterialAnswers"
+          },
+          "source_pack_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Source Pack Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_pack_id",
+          "answers"
+        ],
+        "title": "ResearchProposalRequest",
+        "type": "object"
+      },
+      "ResearchProposalResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "case": {
+            "$ref": "#/components/schemas/ResearchCase"
+          },
+          "contract": {
+            "$ref": "#/components/schemas/ResearchContract"
+          }
+        },
+        "required": [
+          "contract",
+          "case"
+        ],
+        "title": "ResearchProposalResponse",
+        "type": "object"
+      },
       "ResearchReport": {
         "additionalProperties": false,
         "properties": {
@@ -8808,6 +10540,97 @@
           "ranked"
         ],
         "title": "ResearchReport",
+        "type": "object"
+      },
+      "ResearchReviewEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "actor_kind": {
+            "$ref": "#/components/schemas/AuthorKindValue"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "exploration",
+              "confirmation"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contract_id",
+          "sequence",
+          "project_id",
+          "scope",
+          "decision",
+          "actor",
+          "actor_kind",
+          "occurred_at",
+          "reason"
+        ],
+        "title": "ResearchReviewEvent",
+        "type": "object"
+      },
+      "ResearchReviewSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchReviewEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "event"
+        ],
+        "title": "ResearchReviewSummary",
         "type": "object"
       },
       "ResearchRow": {
@@ -11413,7 +13236,7 @@
         ]
       },
       "post": {
-        "description": "Launch ``alpha <command> <args>`` as a background job. Returns its id + initial status.",
+        "description": "Launch a background CLI job, excluding governed Research Case commands.",
         "operationId": "launch_job_api_jobs_post",
         "requestBody": {
           "content": {
@@ -13833,6 +15656,283 @@
         "summary": "Get Providers",
         "tags": [
           "control-plane"
+        ]
+      }
+    },
+    "/api/research/cases": {
+      "post": {
+        "description": "Capture exact idea wording and bounded triage; never approve or launch work.",
+        "operationId": "research_capture_api_research_cases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchCaptureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchCaptureResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Capture",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}": {
+      "get": {
+        "description": "Read one complete bounded Research Case summary.",
+        "operationId": "research_get_api_research_cases__project_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchCase"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Get",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/launch": {
+      "post": {
+        "description": "Run the deterministic D0 pilot after approval performed outside REST.",
+        "operationId": "research_launch_api_research_cases__project_id__launch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchLaunchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchLaunchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Launch",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/proposal": {
+      "post": {
+        "description": "Create an owner-reviewable contract; owner approval has no REST route.",
+        "operationId": "research_propose_api_research_cases__project_id__proposal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchProposalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Propose",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/report": {
+      "get": {
+        "description": "Read a progress report or the deterministic packet for an already-closed case.",
+        "operationId": "research_report_api_research_cases__project_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchCaseReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Report",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/status": {
+      "get": {
+        "description": "Read current phase, execution state, next action, budget, and firewall state.",
+        "operationId": "research_status_api_research_cases__project_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchCase"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Status",
+        "tags": [
+          "research"
         ]
       }
     },

@@ -1,4 +1,4 @@
-"""``/api/research/compare`` — the AI Research leaderboard (real ``alpha`` subprocess, offline)."""
+"""Bounded research REST projections over real offline ``alpha`` subprocesses."""
 
 from __future__ import annotations
 
@@ -7,8 +7,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_cli.control_store import ControlStore
+from alpha_core.config import AlphaSettings
+from alpha_research import build_research_gate_packet
+from alpha_web import _research
 from alpha_web.app import create_app
 from tests.fixtures.cli_fixtures import seed_store
+from tests.unit.test_research_gate_packet import _inputs_with_evidence
 
 
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -30,3 +35,201 @@ def test_compare_endpoint_single_strategy(tmp_path: Path, monkeypatch: pytest.Mo
 def test_compare_no_bars_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     resp = _client(tmp_path, monkeypatch).get("/api/research/compare", params={"symbol": "NOPE"})
     assert resp.status_code == 422
+
+
+def test_research_case_capture_propose_status_report_and_pilot_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured_response = client.post(
+        "/api/research/cases",
+        json={"idea": "S&P500 bounces after double bottoms on the 4h time frame"},
+    )
+    assert captured_response.status_code == 200, captured_response.text
+    captured = captured_response.json()
+    project_id = captured["project"]["project_id"]
+    assert captured["case"]["phase"] == "triage"
+    assert captured["case"]["responsibility"] == "owner"
+    assert len(captured["contract"]["payload"]["blocking_questions"]) == 3
+    assert captured["case"]["d2_state"] == "sealed"
+
+    store = ControlStore(AlphaSettings().data_dir)
+    source = store.create_research_source(
+        project_id,
+        title="Technical trading revisited",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition={"screened": True},
+    )
+    proposal_response = client.post(
+        f"/api/research/cases/{project_id}/proposal",
+        json={
+            "source_pack_id": pack["pack_id"],
+            "answers": {
+                "chart_construction": "spy_rth_60m_four_hour_window",
+                "event_availability": "second_trough_confirmable",
+                "primary_outcome": "four_trading_hour_return_25bp",
+            },
+        },
+    )
+    assert proposal_response.status_code == 200, proposal_response.text
+    proposal = proposal_response.json()
+    contract_id = proposal["contract"]["contract_id"]
+    assert proposal["case"]["phase"] == "exploration_review"
+    assert proposal["case"]["responsibility"] == "owner"
+
+    shown = client.get(f"/api/research/cases/{project_id}")
+    status = client.get(f"/api/research/cases/{project_id}/status")
+    report = client.get(f"/api/research/cases/{project_id}/report")
+    assert shown.status_code == status.status_code == report.status_code == 200
+    assert shown.json() == status.json()
+    assert shown.json()["active_contract_id"] == contract_id
+    assert report.json()["report_schema"] == "ResearchProgressReportV1"
+    assert report.json()["terminal"] is False
+    assert "ResearchGatePacket" in report.json()["warning"]
+
+    store.review_research_contract(
+        project_id,
+        contract_id,
+        scope="exploration",
+        decision="approve",
+        actor="owner",
+        actor_kind="human",
+        reason="exact exploration contract approved for the synthetic pilot",
+    )
+    store.transition_research_phase(
+        project_id,
+        to_phase="pilot",
+        contract_id=contract_id,
+        actor="owner",
+        reason="owner approved the exact exploration contract",
+        next_action="Codex runs the deterministic D0 synthetic pilot.",
+        responsibility="codex",
+    )
+    launched_response = client.post(
+        f"/api/research/cases/{project_id}/launch", json={"stage": "pilot"}
+    )
+    assert launched_response.status_code == 200, launched_response.text
+    launched = launched_response.json()
+    assert launched["manifest"]["evidence_zone"] == "D0"
+    assert launched["attempt"]["kind"] == "d0-synthetic-pilot"
+    assert launched["case"]["phase"] == "research_decision"
+    assert launched["case"]["responsibility"] == "owner"
+    assert launched["case"]["next_action"] == (
+        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
+        "in Gate 1."
+    )
+    assert launched["case"]["d2_state"] == "sealed"
+
+
+def test_research_rest_surface_cannot_approve_decide_reveal_or_confirm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases", json={"idea": "A generic synthetic research idea"}
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+
+    invalid_launch = client.post(
+        f"/api/research/cases/{project_id}/launch", json={"stage": "confirm"}
+    )
+    extra_authority = client.post(
+        "/api/research/cases",
+        json={"idea": "Another idea", "approve": True},
+    )
+    assert invalid_launch.status_code == 422
+    assert extra_authority.status_code == 422
+
+    openapi = client.get("/openapi.json")
+    assert openapi.status_code == 200
+    paths = set(openapi.json()["paths"])
+    forbidden_fragments = ("approve", "decide", "reveal", "python", "paper", "order")
+    research_case_paths = {path for path in paths if path.startswith("/api/research/cases")}
+    assert not any(
+        fragment in path for path in research_case_paths for fragment in forbidden_fragments
+    )
+
+
+def test_research_report_route_validates_terminal_gate_packet_union(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    packet_inputs, _ = _inputs_with_evidence()
+    packet = build_research_gate_packet(packet_inputs).to_dict()
+    monkeypatch.setattr(_research, "report", lambda *_args, **_kwargs: packet)
+
+    response = _client(tmp_path, monkeypatch).get("/api/research/cases/project-1/report")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["report_schema"] == "ResearchGatePacketV1"
+    assert body["terminal"] is True
+    assert body["authority"]["places_orders"] is False
+    assert body["layers"]["guided_evidence"]["confirmation_classification"] == "SUPPORTED"
+
+
+def test_research_proposal_requires_exact_material_answer_vocabulary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases", json={"idea": "A generic synthetic research idea"}
+    )
+    project_id = captured.json()["project"]["project_id"]
+
+    invalid = client.post(
+        f"/api/research/cases/{project_id}/proposal",
+        json={
+            "source_pack_id": "sp_deadbeef",
+            "answers": {
+                "chart_construction": "mixed_240m_150m_bars",
+                "event_availability": "second_trough_confirmable",
+                "primary_outcome": "four_trading_hour_return_25bp",
+                "alpha": "0.50",
+            },
+        },
+    )
+    assert invalid.status_code == 422
+
+    canonical = {
+        "chart_construction": "spy_rth_60m_four_hour_window",
+        "event_availability": "second_trough_confirmable",
+        "primary_outcome": "four_trading_hour_return_25bp",
+    }
+    for field, unavailable in (
+        ("chart_construction", "spy_extended_fixed_4h"),
+        ("chart_construction", "synthetic_only"),
+        ("event_availability", "neckline_breakout_confirmed"),
+        ("primary_outcome", "next_regular_session_return_50bp"),
+        ("primary_outcome", "owner_specified_economic_hurdle"),
+    ):
+        answers = {**canonical, field: unavailable}
+        unavailable_response = client.post(
+            f"/api/research/cases/{project_id}/proposal",
+            json={"source_pack_id": "sp_deadbeef", "answers": answers},
+        )
+        assert unavailable_response.status_code == 422
+
+
+def test_unknown_research_case_reads_are_404(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    project_id = "00000000-0000-4000-8000-000000000000"
+    assert client.get(f"/api/research/cases/{project_id}").status_code == 404
+    assert client.get(f"/api/research/cases/{project_id}/status").status_code == 404
+    assert client.get(f"/api/research/cases/{project_id}/report").status_code == 404
+
+
+def test_option_shaped_project_id_maps_to_a_typed_error_not_a_500(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``--help`` makes the CLI print help with exit 0; non-JSON output must not crash the route."""
+    resp = _client(tmp_path, monkeypatch).get("/api/research/cases/--help")
+    assert resp.status_code == 404
+    assert "did not return valid JSON" in resp.json()["detail"]

@@ -27,6 +27,11 @@ _SUITE_ACTIONS = frozenset(
     }
 )
 _AGENT_RUNNABLE_SUITE_ACTIONS = _SUITE_ACTIONS - {"holdout_reveal"}
+_RESEARCH_ANSWER_KEYS = frozenset({"chart_construction", "event_availability", "primary_outcome"})
+# The D0 pilot computes and publishes a run; a projection-class timeout would kill it
+# mid-compute and permanently consume one of the three lifetime launch reservations.
+# Matches the launch-class ceiling used by alpha_web/_research.py::launch.
+_RESEARCH_LAUNCH_TIMEOUT_S = 120.0
 
 
 def bound(name: str, value: int, maximum: int) -> int:
@@ -67,6 +72,75 @@ def _page(rows: list[dict[str, Any]], *, limit: int, start: int) -> dict[str, An
         "offset": start,
         "has_more": len(rows) > limit,
     }
+
+
+def research_capture(
+    idea: str,
+    *,
+    data_dir: Path,
+    name: str | None = None,
+) -> dict[str, Any]:
+    """Capture a raw idea; this cannot approve a contract or launch work."""
+    args = ["research", "capture", idea, "--json"]
+    if name is not None:
+        args += ["--name", name]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research capture")
+
+
+def research_get(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read one complete bounded Research Case summary."""
+    return _object(
+        _invoke.run_json(["research", "status", project_id, "--json"], data_dir=data_dir),
+        "research case",
+    )
+
+
+def research_propose(
+    project_id: str,
+    source_pack_id: str,
+    answers: Mapping[str, str],
+    *,
+    data_dir: Path,
+) -> dict[str, Any]:
+    """Materialize an owner-reviewable contract; approval remains unavailable to MCP."""
+    if set(answers) != _RESEARCH_ANSWER_KEYS or len(answers) != 3:
+        raise ValueError("research answers must resolve exactly the three material questions")
+    args = [
+        "research",
+        "draft",
+        project_id,
+        "--source-pack-id",
+        source_pack_id,
+    ]
+    for key in sorted(answers):
+        value = answers[key]
+        if not isinstance(value, str) or not value or len(value) > 128:
+            raise ValueError("research answer values must be non-empty and at most 128 characters")
+        args += ["--answer", f"{key}={value}"]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research proposal")
+
+
+def research_launch(project_id: str, stage: str, *, data_dir: Path) -> dict[str, Any]:
+    """Launch only the shipped D0 pilot; D1 and D2 workers are intentionally absent."""
+    if stage != "pilot":
+        raise ValueError("Gate-1 research launch stage must be pilot")
+    return _object(
+        _invoke.run_json(
+            ["research", "run", stage, project_id, "--json"],
+            data_dir=data_dir,
+            timeout_seconds=_RESEARCH_LAUNCH_TIMEOUT_S,
+        ),
+        "research launch",
+    )
+
+
+def research_report(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read the progress report or terminal packet projection without changing state."""
+    return _object(
+        _invoke.run_json(["research", "report", project_id, "--json"], data_dir=data_dir),
+        "research report",
+    )
 
 
 def list_projects(*, data_dir: Path, limit: int, start: int) -> dict[str, Any]:

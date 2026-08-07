@@ -24,6 +24,7 @@ from alpha_cli._native_tearsheet import native_tearsheet_frames
 from alpha_cli.artifact_contract import (
     ARTIFACT_CONTRACT_VERSION,
     MANIFEST_SCHEMA_VERSION,
+    RESEARCH_PILOT_REQUIRED_ARTIFACTS,
     verify_manifest_artifacts,
 )
 from alpha_cli.artifact_contract import (
@@ -153,6 +154,7 @@ _REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "folds.parquet",
         *_NATIVE_TEARSHEET_PARQUET,
     ),
+    "research_pilot": RESEARCH_PILOT_REQUIRED_ARTIFACTS,
 }
 
 # schema for an EMPTY trade log (no rows to infer dtypes from); non-empty infers from the rows

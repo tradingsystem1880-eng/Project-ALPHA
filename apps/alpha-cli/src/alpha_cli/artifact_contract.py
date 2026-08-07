@@ -17,6 +17,15 @@ from alpha_core import DataError
 
 MANIFEST_SCHEMA_VERSION: Final = 3
 ARTIFACT_CONTRACT_VERSION: Final = 3
+RESEARCH_PILOT_REQUIRED_ARTIFACTS: Final = (
+    "events.json",
+    "topology.json",
+    "power.json",
+    "chart-data.json",
+    "detector-validity.png",
+    "report.md",
+    "d0_acceptance.json",
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -113,6 +122,19 @@ def verify_manifest_artifacts(rdir: Path, manifest: Mapping[str, Any]) -> None:
             f"artifact set mismatch at {rdir}: declared {sorted(declared)}, "
             f"actual {sorted(actual_names)}"
         )
+    if manifest.get("command") == "research_pilot":
+        required = set(RESEARCH_PILOT_REQUIRED_ARTIFACTS)
+        if set(declared) != required:
+            raise DataError(
+                f"research_pilot artifact set mismatch at {rdir}: required {sorted(required)}, "
+                f"declared {sorted(declared)}"
+            )
+        for filename in sorted(required):
+            path = rdir / filename
+            if path.is_symlink() or not path.is_file():
+                raise DataError(
+                    f"research_pilot artifact {filename!r} must be a regular non-symlink file"
+                )
     for filename in sorted(actual_names):
         expected = declared.get(filename)
         if not isinstance(expected, dict):
@@ -133,6 +155,7 @@ def verify_manifest_artifacts(rdir: Path, manifest: Mapping[str, Any]) -> None:
 __all__ = [
     "ARTIFACT_CONTRACT_VERSION",
     "MANIFEST_SCHEMA_VERSION",
+    "RESEARCH_PILOT_REQUIRED_ARTIFACTS",
     "artifact_contract",
     "artifact_metadata",
     "sha256_file",

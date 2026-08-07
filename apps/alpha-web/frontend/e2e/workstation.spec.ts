@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import type { components } from '../src/api/generated'
 
 const DESKS = [
   { id: 'market', label: 'MARKET', activePanel: 'Market Chart' },
@@ -25,6 +26,205 @@ const SYSTEM_STATUS = {
   },
   nautilus: { installed_version: '1.228.0', pinned_version: '1.228.0', matches_pin: true },
   kronos_cache: { configured: false, exists: false, local_only: true, path: null },
+}
+
+const RESEARCH_RAW_IDEA = 'SPY may bounce after a point-in-time double bottom.'
+
+// Typed against the generated contract so ANY future ResearchCase drift fails the
+// frontend type gate instead of silently passing a stale mocked shape to e2e.
+const RESEARCH_CASE: components['schemas']['ResearchCase'] = {
+  schema_version: 1,
+  project_id: 'research-project-1',
+  project_name: 'SPY double bottom',
+  phase: 'triage',
+  execution_state: 'idle',
+  active_contract_id: 'research-contract-1',
+  active_contract: {
+    contract_id: 'research-contract-1',
+    project_id: 'research-project-1',
+    scope: 'exploration',
+    parent_contract_id: null,
+    payload: {
+      raw_idea: RESEARCH_RAW_IDEA,
+      approval_ready: false,
+      blocking_questions: [
+        'Which equal-duration chart construction is intended?',
+        'When does the event become knowable?',
+        'What is the primary economic endpoint?',
+      ],
+      thesis: {
+        mechanism: 'Revisited support may concentrate demand or reduce selling pressure.',
+        prediction: 'Point-in-time events have higher returns than matched controls.',
+        interpretation: 'Predictive association, not a causal effect.',
+        alternatives: ['day of week', 'volatility regime'],
+      },
+    },
+    created_by: 'codex',
+    author_kind: 'agent',
+    created_at: '2026-08-06T00:00:00Z',
+    review_state: 'pending',
+    latest_review: null,
+  },
+  exploration_contract_id: 'research-contract-1',
+  confirmation_contract_id: null,
+  exploration_review: { state: 'pending', event: null },
+  confirmation_review: { state: 'pending', event: null },
+  research_decision: null,
+  next_action: 'Owner answers the three material protocol questions.',
+  responsibility: 'owner',
+  blocker: null,
+  recovery: null,
+  latest_finding: null,
+  milestones: [],
+  completed_milestones: [],
+  remaining_milestones: ['pilot', 'deep_research', 'confirmation_review', 'sealed_confirmation', 'research_decision', 'closed'],
+  elapsed_time_seconds: 0,
+  elapsed_budget: { wall_seconds: 0, source_requests: 0 },
+  remaining_budget: { wall_seconds: 1_200, source_requests: 20 },
+  active_job_id: null,
+  checkpoint: null,
+  hashes: {},
+  source_pack_id: null,
+  attempt_count: 0,
+  terminal_attempt_count: 0,
+  unfinalized_launch_count: 0,
+  remaining_launches: 3,
+  latest_launch_reservation_id: null,
+  latest_launch_number: null,
+  latest_attempt_id: null,
+  latest_run_id: null,
+  latest_run_fingerprint: null,
+  d2_state: 'sealed',
+  d2_boundary_hash: 'a'.repeat(64),
+  d2_history: [],
+  d3_state: 'not_sealed',
+}
+
+const RESEARCH_CLOSED_CASE: components['schemas']['ResearchCase'] = {
+  ...RESEARCH_CASE,
+  phase: 'closed',
+  active_contract: { ...RESEARCH_CASE.active_contract, review_state: 'approved' },
+  exploration_review: { state: 'approved', event: null },
+  research_decision: {
+    project_id: RESEARCH_CASE.project_id,
+    sequence: 1,
+    contract_id: RESEARCH_CASE.active_contract_id,
+    outcome: 'INCONCLUSIVE',
+    disposition: 'park',
+    actor: 'owner',
+    actor_kind: 'human',
+    occurred_at: '2026-08-06T01:00:00Z',
+    reason: 'No typed non-synthetic evidence exists.',
+  },
+  next_action: 'Research Case is closed.',
+  remaining_milestones: [],
+}
+
+const RESEARCH_GATE_PACKET = {
+  report_schema: 'ResearchGatePacketV1',
+  schema_version: 1,
+  terminal: true,
+  packet_id: `rgp_${'b'.repeat(64)}`,
+  packet_hash: 'b'.repeat(64),
+  project_id: RESEARCH_CASE.project_id,
+  active_contract_id: RESEARCH_CASE.active_contract_id,
+  scientific_outcome: 'INCONCLUSIVE',
+  recommended_disposition: 'park',
+  authority: {
+    evidence_claim: 'point-in-time-valid predictive association',
+    strategy_validated: false,
+    paper_ready: false,
+    places_orders: false,
+    uses_final_strategy_holdout: false,
+  },
+  layers: {
+    conclusion_90_seconds: {
+      project_name: RESEARCH_CASE.project_name,
+      thesis: 'Point-in-time double bottoms predict a positive forward return.',
+      thesis_answer: 'The recorded outcome does not resolve the frozen claim.',
+      scientific_outcome: 'INCONCLUSIVE',
+      recommended_disposition: 'park',
+      owner_decision_reason: 'No typed non-synthetic evidence exists.',
+      evidence_basis: 'NO_TYPED_NON_SYNTHETIC_EVIDENCE',
+      primary_estimate: null,
+      uncertainty: null,
+      effective_sample_size: null,
+      practical_magnitude: {
+        status: 'NOT_TESTED',
+        value: null,
+        unit: null,
+        interpretation: 'No typed D1 or D2 empirical result is present.',
+      },
+      strongest_caveat: 'D0 is synthetic and cannot support a market claim.',
+    },
+    guided_evidence: {
+      primary_result: {
+        status: 'NOT_TESTED',
+        estimate: null,
+        unit: null,
+        sample_size: null,
+        effective_sample_size: null,
+        uncertainty: null,
+        practical_magnitude: {
+          status: 'NOT_TESTED',
+          value: null,
+          unit: null,
+          interpretation: 'No typed D1 or D2 empirical result is present.',
+        },
+      },
+      confirmation_classification: null,
+      confirmation_checks: null,
+      mechanism: { status: 'NOT_TESTED', summary: 'Proposed mechanism only.' },
+      strongest_support: { status: 'NOT_TESTED', summary: null },
+      strongest_contradiction: { status: 'NOT_TESTED', summary: null },
+      confounders: { resolved: [], unresolved: ['day of week', 'volatility regime'] },
+      stability: {
+        parameter: { status: 'NOT_TESTED', summary: null },
+        temporal: { status: 'NOT_TESTED', summary: null },
+        transportability: { status: 'NOT_TESTED', summary: null },
+      },
+      multiplicity: { status: 'NOT_TESTED', summary: null },
+      power: { status: 'NOT_TESTED', summary: null },
+      negative_controls: { status: 'NOT_TESTED', summary: null },
+      untested_work: ['No typed D1 or D2 empirical result is present.'],
+      what_would_change_conclusion: ['A preregistered future replication.'],
+      teaching_note: 'This packet summarizes recorded evidence; it is not strategy validation.',
+    },
+    technical_appendix: {
+      project: {},
+      contract_lineage: [],
+      source_pack_ledger: [],
+      source_ledger: [],
+      variant_ledger: [],
+      attempt_ledger: [],
+      budget_ledger: [],
+      phase_review_d2_ledgers: {
+        phase_events: [],
+        review_events: [],
+        execution_events: [],
+        d2_events: [],
+        decision_events: [],
+      },
+      immutable_artifact_links: [],
+      selected_evidence: null,
+      ledger_bounds: {
+        maximum_rows_per_input_ledger: 10_000,
+        truncated: false,
+        counts: {
+          contracts: 1,
+          source_packs: 0,
+          sources: 0,
+          attempts: 0,
+          phase_events: 1,
+          review_events: 1,
+          execution_events: 0,
+          d2_events: 0,
+          decision_events: 1,
+          artifact_links: 0,
+        },
+      },
+    },
+  },
 }
 
 const PROJECT_VIEWPORTS: Record<string, { width: number; height: number }> = {
@@ -385,6 +585,21 @@ interface MockOptions {
 
 function responseFor(route: Route, options: MockOptions): unknown {
   const url = new URL(route.request().url())
+  if (url.pathname === '/api/research/cases' && route.request().method() === 'POST') {
+    return {
+      project: { project_id: RESEARCH_CASE.project_id },
+      contract: RESEARCH_CASE.active_contract,
+      case: RESEARCH_CASE,
+    }
+  }
+  if (
+    url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}`
+    && route.request().method() === 'GET'
+  ) return RESEARCH_CLOSED_CASE
+  if (
+    url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/report`
+    && route.request().method() === 'GET'
+  ) return RESEARCH_GATE_PACKET
   if (options.mlDiagnostics && url.pathname === '/api/ml/experiments') {
     return { items: [ML_EXPERIMENT], limit: 50, offset: 0, has_more: false }
   }
@@ -586,6 +801,42 @@ test('desk control is keyboard operable', async ({ page }) => {
 
   await expect(deskControl).toHaveValue('development')
   await expect(page.getByText('Development Center', { exact: true }).first()).toBeVisible()
+})
+
+test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport Cockpit gate')
+  await preparePage(page)
+
+  await page.getByRole('button', { name: /Search/ }).click()
+  await page.getByRole('option', { name: /Research Cockpit/ }).click()
+
+  await expect(page.locator('.panel-toolbar .title').filter({ hasText: 'Research Cockpit' })).toBeVisible()
+  await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
+  await page.getByRole('button', { name: 'capture · no compute' }).click()
+
+  await expect(page.getByText('TRIAGE', { exact: true })).toBeVisible()
+  await expect(page.getByText('GATE 1 OPERATOR UNAVAILABLE', { exact: true })).toBeVisible()
+  await expect(page.getByText(/D2 SEALED: research confirmation remains governed/)).toBeVisible()
+  await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('Research Cockpit teaches the bounded terminal Gate Packet without upgrading evidence', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport terminal-packet gate')
+  await preparePage(page)
+
+  await page.getByRole('button', { name: /Search/ }).click()
+  await page.getByRole('option', { name: /Research Cockpit/ }).click()
+  await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
+  await page.getByRole('button', { name: 'open case' }).click()
+  await expect(page.getByText('CLOSED', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'progress report' }).click()
+
+  await expect(page.getByText('90-second Research Gate conclusion', { exact: true })).toBeVisible()
+  await expect(page.getByText('NO TYPED NON SYNTHETIC EVIDENCE', { exact: true })).toBeVisible()
+  await expect(page.getByText('NOT TESTED', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText(/strategy validated false · paper ready false · places orders false/)).toBeVisible()
+  await expectReleaseAccessibility(page)
 })
 
 test('running jobs expose exact runtime, bounded ETA, progress, and live output', async (

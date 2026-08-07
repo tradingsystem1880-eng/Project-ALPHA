@@ -1,25 +1,28 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_cli.control_store import ControlStore
 from alpha_web import _invoke
 from alpha_web.app import create_app
+from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 
-def _graph(client: TestClient) -> tuple[str, str]:
-    project = client.post(
-        "/api/projects",
-        json={
-            "name": "Suite project",
-            "hypothesis": "AAPL deviations revert.",
-            "falsification_criterion": "Reject on failed OOS evidence.",
-        },
-    ).json()
+def _graph(tmp_path: Path, client: TestClient) -> tuple[str, str]:
+    store = ControlStore(tmp_path)
+    project = store.create_project(
+        name="Suite project",
+        hypothesis="AAPL deviations revert.",
+        falsification_criterion="Reject on failed OOS evidence.",
+        at=datetime(2026, 7, 19, tzinfo=UTC),
+    )
     project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
     version = client.post(
         f"/api/projects/{project_id}/versions",
         json={
@@ -61,7 +64,7 @@ def test_suite_plan_and_launch_are_typed_and_allowlisted(
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     _invoke.JOBS.clear()
     client = TestClient(create_app())
-    project_id, experiment_id = _graph(client)
+    project_id, experiment_id = _graph(tmp_path, client)
 
     preview = client.get(
         f"/api/projects/{project_id}/experiments/{experiment_id}/suite/baseline/plan"
@@ -110,7 +113,7 @@ def test_suite_rest_rejects_free_form_and_requires_owner_holdout_confirmation(
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     client = TestClient(create_app())
-    project_id, experiment_id = _graph(client)
+    project_id, experiment_id = _graph(tmp_path, client)
     path = f"/api/projects/{project_id}/experiments/{experiment_id}/suite"
     assert client.get(f"{path}/shell/plan").status_code == 422
     unsafe = client.post(
