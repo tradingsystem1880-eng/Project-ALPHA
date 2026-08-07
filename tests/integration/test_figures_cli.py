@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -24,7 +25,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _alpha(*args: str, data_dir: Path) -> dict[str, object]:
+def _alpha(*args: str, data_dir: Path) -> dict[str, Any]:
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
     result = subprocess.run(
         [sys.executable, "-m", "alpha_cli.main", "figures", *args, "--json"],
@@ -35,7 +36,8 @@ def _alpha(*args: str, data_dir: Path) -> dict[str, object]:
         cwd=_REPO,
     )
     assert result.returncode == 0, result.stderr
-    return json.loads(result.stdout)
+    payload: dict[str, Any] = json.loads(result.stdout)
+    return payload
 
 
 @pytest.fixture
@@ -89,8 +91,8 @@ def test_a_figure_that_fails_at_render_time_does_not_cost_the_others(tmp_path: P
     shutil.copytree(_DATA / "runs" / _RUN, target / "runs" / _RUN)  # deliberately no snapshot
 
     payload = _alpha("render", _RUN, data_dir=target)
-    assert len(payload["figures"]) >= 10  # type: ignore[arg-type]
-    failures = {str(item["figure_id"]) for item in payload["failed"]}  # type: ignore[index,union-attr]
+    assert len(payload["figures"]) >= 10
+    failures = {str(item["figure_id"]) for item in payload["failed"]}
     assert "price_signal" in failures
     assert payload["failed"], "a render failure must be reported, never swallowed"
 
@@ -104,9 +106,9 @@ def test_the_cache_is_not_a_run_directory(workspace: Path) -> None:
 def test_a_second_render_is_served_from_cache(workspace: Path) -> None:
     first = _alpha("render", _RUN, "--figure", "rolling_risk", data_dir=workspace)
     second = _alpha("render", _RUN, "--figure", "rolling_risk", data_dir=workspace)
-    assert first["figures"][0]["cached"] is False  # type: ignore[index]
-    assert second["figures"][0]["cached"] is True  # type: ignore[index]
-    assert first["figures"][0]["cache_key"] == second["figures"][0]["cache_key"]  # type: ignore[index]
+    assert first["figures"][0]["cached"] is False
+    assert second["figures"][0]["cached"] is True
+    assert first["figures"][0]["cache_key"] == second["figures"][0]["cache_key"]
 
 
 def test_force_rerender_asserts_byte_identity(workspace: Path) -> None:
@@ -114,12 +116,12 @@ def test_force_rerender_asserts_byte_identity(workspace: Path) -> None:
     instead of silently overwriting a figure that no longer matches its own key."""
     _alpha("render", _RUN, "--figure", "qq_normal", data_dir=workspace)
     forced = _alpha("render", _RUN, "--figure", "qq_normal", "--force", data_dir=workspace)
-    assert forced["figures"][0]["cached"] is False  # type: ignore[index]
+    assert forced["figures"][0]["cached"] is False
 
 
 def test_a_sidecar_accompanies_every_rendered_figure(workspace: Path) -> None:
     payload = _alpha("render", _RUN, "--figure", "null_distribution", data_dir=workspace)
-    image = Path(str(payload["figures"][0]["path"]))  # type: ignore[index]
+    image = Path(str(payload["figures"][0]["path"]))
     sidecar = image.with_suffix(".json")
     assert sidecar.is_file()
     document = json.loads(sidecar.read_text())
@@ -132,7 +134,7 @@ def test_a_sidecar_accompanies_every_rendered_figure(workspace: Path) -> None:
 
 def test_availability_reports_a_specific_reason_rather_than_a_blank(workspace: Path) -> None:
     payload = _alpha("list", "--run", _RUN, data_dir=workspace)
-    items = {str(item["figure_id"]): item for item in payload["items"]}  # type: ignore[index,union-attr]
+    items = {str(item["figure_id"]): item for item in payload["items"]}
     assert items["trade_pnl"]["available"] is False
     assert items["trade_pnl"]["unavailable_reason"] == "artifact_empty:trades.parquet"
     assert items["equity_underwater"]["available"] is True
@@ -155,11 +157,17 @@ def test_the_catalogue_lists_every_figure_with_its_teaching_text() -> None:
         check=True,
         cwd=_REPO,
     )
-    catalogue = json.loads(result.stdout)
-    assert len(catalogue) >= 20
-    for item in catalogue:
+    envelope = json.loads(result.stdout)
+    # The envelope also publishes the key environment, so the web layer can derive cache
+    # keys locally instead of importing the renderer it is forbidden from importing.
+    for field in ("renderer_version", "matplotlib_version", "theme_id", "theme_digest"):
+        assert envelope[field]
+    figures = envelope["figures"]
+    assert len(figures) >= 20
+    for item in figures:
         for field in ("question", "uncertainty", "caveat", "summary"):
             assert item[field].strip(), f"{item['figure_id']} is missing {field}"
+        assert item["width_in"] > 0 and item["height_in"] > 0
 
 
 def test_figures_never_appear_as_a_launchable_command() -> None:

@@ -179,20 +179,60 @@ def _sidecar(spec: Any, definition: Any, key: str, fmt: str, size: Any) -> dict[
     }
 
 
+def _catalogue_envelope() -> dict[str, Any]:
+    import matplotlib
+
+    from alpha_research.figures import (
+        RENDERER_VERSION,
+        catalog_document,
+        default_size,
+        load_theme,
+    )
+
+    theme = load_theme()
+    figures = []
+    for item in catalog_document():
+        panel_count = item["panel_count"]
+        assert isinstance(panel_count, int)
+        size = default_size(panel_count)
+        figures.append(
+            {
+                **item,
+                "width_in": size.width_in,
+                "height_in": size.height_in,
+                "dpi": size.dpi,
+            }
+        )
+    return {
+        "renderer_version": RENDERER_VERSION,
+        "matplotlib_version": matplotlib.__version__,
+        "theme_id": theme.theme_id,
+        "theme_digest": theme.digest(),
+        "figures": figures,
+    }
+
+
 @figures_app.command("list")
 def list_figures(
     run: Annotated[str | None, typer.Option("--run", help="Annotate for one stored run.")] = None,
     as_json: _OPT_JSON = False,
 ) -> None:
-    """Show the figure catalogue, optionally with per-run availability."""
-    from alpha_research.figures import catalog_document
+    """Show the figure catalogue, optionally with per-run availability.
 
+    Without ``--run`` the projection also carries the *key environment* -- renderer and
+    matplotlib versions, the theme digest, and each figure's canvas size and inputs. The
+    Workstation caches that once and derives cache keys locally, so a cache hit costs a
+    stat instead of spawning a process. It is published here rather than imported because
+    the web layer is forbidden from importing the renderer at all.
+    """
     if run is None:
-        document = catalog_document()
         _echo(
-            document,
+            _catalogue_envelope(),
             as_json=as_json,
-            human="\n".join(f"{item['figure_id']:24s} {item['title']}" for item in document),
+            human="\n".join(
+                f"{item['figure_id']:24s} {item['title']}"
+                for item in _catalogue_envelope()["figures"]
+            ),
         )
         return
 

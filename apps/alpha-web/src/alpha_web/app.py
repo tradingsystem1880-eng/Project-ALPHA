@@ -28,6 +28,7 @@ from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import control as control_api
 from alpha_web.api import development as development_api
+from alpha_web.api import figures as figures_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import ml as ml_api
 from alpha_web.api import options as options_api
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(development_api.router)
     app.include_router(ml_api.router)
     app.include_router(candles_api.router)
+    app.include_router(figures_api.router)
     app.include_router(workspaces_api.router)
     app.include_router(options_api.router)
     app.include_router(paper_api.router)
