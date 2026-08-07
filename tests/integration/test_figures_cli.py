@@ -14,15 +14,12 @@ import pytest
 
 from alpha_cli.artifact_contract import verify_manifest_artifacts
 from alpha_cli.run_store import RUN_DIRS, read_manifest
+from tests import figure_runs
 
 _REPO = Path(__file__).resolve().parents[2]
 _DATA = _REPO / "data"
-_RUN = "0e68fb2f8ebfdaad"  # a stored v3 validate run
-
-pytestmark = pytest.mark.skipif(
-    not (_DATA / "runs" / _RUN / "manifest.json").is_file(),
-    reason="requires the stored sample run",
-)
+_STORED = "0e68fb2f8ebfdaad"  # a stored v3 validate run, when one is present
+_RUN = figure_runs.VALIDATE_RUN
 
 
 def _alpha(*args: str, data_dir: Path) -> dict[str, Any]:
@@ -42,18 +39,27 @@ def _alpha(*args: str, data_dir: Path) -> dict[str, Any]:
 
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:
-    """A data dir whose runs are a copy, so a failure cannot damage the real store."""
+    """A data dir containing one complete v3 validate run.
+
+    Built rather than copied. The corpus in ``data/`` is gitignored, so a fixture that
+    copies from it makes the whole file skip on CI -- which is exactly what happened, and
+    is how the renderer's coverage silently collapsed there while reading green locally.
+    When a stored run *is* present it is copied in alongside, with its snapshot, so
+    ``price_signal`` exercises its real path instead of its failure path.
+    """
     import shutil
 
     target = tmp_path / "data"
-    (target / "runs").mkdir(parents=True)
-    shutil.copytree(_DATA / "runs" / _RUN, target / "runs" / _RUN)
-    # price_signal reads bars back through the run's frozen snapshot, so the snapshot has
-    # to come along or that figure exercises its failure path instead of its real one.
-    snapshot = read_manifest(target / "runs" / _RUN).get("metadata", {}).get("snapshot_id")
-    source = _DATA / "snapshots" / str(snapshot)
-    if snapshot and source.is_dir():
-        shutil.copytree(source, target / "snapshots" / str(snapshot))
+    target.mkdir(parents=True)
+    figure_runs.validate_run(target)
+
+    stored = _DATA / "runs" / _STORED
+    if stored.is_dir():
+        shutil.copytree(stored, target / "runs" / _STORED)
+        snapshot = read_manifest(target / "runs" / _STORED).get("metadata", {}).get("snapshot_id")
+        source = _DATA / "snapshots" / str(snapshot)
+        if snapshot and source.is_dir():
+            shutil.copytree(source, target / "snapshots" / str(snapshot))
     return target
 
 
@@ -82,15 +88,19 @@ def test_rendering_never_mutates_the_immutable_run_directory(workspace: Path) ->
     verify_manifest_artifacts(rdir, read_manifest(rdir))
 
 
+@pytest.mark.skipif(
+    not (_DATA / "runs" / _STORED / "manifest.json").is_file(),
+    reason="needs a stored run whose snapshot can be withheld",
+)
 def test_a_figure_that_fails_at_render_time_does_not_cost_the_others(tmp_path: Path) -> None:
     """price_signal needs the snapshot; without it the other figures must still land."""
     import shutil
 
     target = tmp_path / "data"
     (target / "runs").mkdir(parents=True)
-    shutil.copytree(_DATA / "runs" / _RUN, target / "runs" / _RUN)  # deliberately no snapshot
+    shutil.copytree(_DATA / "runs" / _STORED, target / "runs" / _STORED)  # no snapshot
 
-    payload = _alpha("render", _RUN, data_dir=target)
+    payload = _alpha("render", _STORED, data_dir=target)
     assert len(payload["figures"]) >= 10
     failures = {str(item["figure_id"]) for item in payload["failed"]}
     assert "price_signal" in failures
@@ -133,11 +143,31 @@ def test_a_sidecar_accompanies_every_rendered_figure(workspace: Path) -> None:
 
 
 def test_availability_reports_a_specific_reason_rather_than_a_blank(workspace: Path) -> None:
+    import polars as pl
+
     payload = _alpha("list", "--run", _RUN, data_dir=workspace)
     items = {str(item["figure_id"]): item for item in payload["items"]}
+    assert items["trade_pnl"]["available"] is True
+    assert items["equity_underwater"]["available"] is True
+
+    # A backtest that never traded writes a well-formed trades.parquet with no rows. That
+    # is "nothing to draw", and it has to read as that rather than as a render error.
+    trades = workspace / "runs" / _RUN / "trades.parquet"
+    pl.read_parquet(trades).clear().write_parquet(trades)
+    items = {
+        str(item["figure_id"]): item
+        for item in _alpha("list", "--run", _RUN, data_dir=workspace)["items"]
+    }
     assert items["trade_pnl"]["available"] is False
     assert items["trade_pnl"]["unavailable_reason"] == "artifact_empty:trades.parquet"
-    assert items["equity_underwater"]["available"] is True
+
+    # An artifact that was never written reads differently from one that is merely empty.
+    (workspace / "runs" / _RUN / "nulls.parquet").unlink()
+    items = {
+        str(item["figure_id"]): item
+        for item in _alpha("list", "--run", _RUN, data_dir=workspace)["items"]
+    }
+    assert items["null_distribution"]["unavailable_reason"] == "artifact_missing:nulls.parquet"
 
 
 def test_clean_removes_figures_and_leaves_the_run_alone(workspace: Path) -> None:
