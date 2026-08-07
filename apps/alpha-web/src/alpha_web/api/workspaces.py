@@ -1,4 +1,4 @@
-"""``/api/workspaces`` — save / list / load / delete named Dockview layouts."""
+"""``/api/workspaces`` — save / list / load / delete named research contexts."""
 
 from __future__ import annotations
 
@@ -23,11 +23,16 @@ router = APIRouter(prefix="/api", tags=["workspaces"])
 
 
 class WorkspaceBody(BaseModel):
-    """A workspace to save: a display name, the linked context, and the Dockview layout."""
+    """A workspace to save: a display name and the research context it was saved from.
+
+    ``dockview`` is retired. A workspace used to be a window arrangement, and the shell that
+    produced those arrangements is gone -- but an old client may still post one, so the field
+    is accepted and stored verbatim rather than rejected.
+    """
 
     name: str
     linked_context: WorkspaceLinkedContext = WorkspaceLinkedContext()
-    dockview: dict[str, Any]
+    dockview: dict[str, Any] | None = None
 
 
 @router.get("/workspaces", response_model=list[WorkspaceMeta])

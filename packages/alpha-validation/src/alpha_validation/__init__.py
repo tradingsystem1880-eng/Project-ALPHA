@@ -39,10 +39,12 @@ from alpha_validation.forecast_eval import (
     summarize_scores,
 )
 from alpha_validation.metrics import (
+    DrawdownEpisode,
     FloatArray,
     FloatSeq,
     annualized_volatility,
     cagr,
+    drawdown_episodes,
     expected_shortfall,
     max_drawdown,
     sharpe_ratio,
@@ -93,6 +95,7 @@ __all__ = [
     "DataSnoopingResult",
     "DeflatedSharpeResult",
     "FIRM_PRESETS",
+    "DrawdownEpisode",
     "FloatArray",
     "FloatSeq",
     "FoldSummary",
@@ -124,6 +127,7 @@ __all__ = [
     "expected_shortfall",
     "garch_paths",
     "grade_verdict",
+    "drawdown_episodes",
     "max_drawdown",
     "n_cpcv_splits",
     "parametric_price_null",

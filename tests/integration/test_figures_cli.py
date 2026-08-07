@@ -1,0 +1,218 @@
+"""End-to-end `alpha figures`, including the invariant the whole design exists to protect."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from alpha_cli.artifact_contract import verify_manifest_artifacts
+from alpha_cli.run_store import RUN_DIRS, read_manifest
+from tests import figure_runs
+
+_REPO = Path(__file__).resolve().parents[2]
+_DATA = _REPO / "data"
+_STORED = "0e68fb2f8ebfdaad"  # a stored v3 validate run, when one is present
+_RUN = figure_runs.VALIDATE_RUN
+
+
+def _alpha(*args: str, data_dir: Path) -> dict[str, Any]:
+    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    result = subprocess.run(
+        [sys.executable, "-m", "alpha_cli.main", "figures", *args, "--json"],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+        cwd=_REPO,
+    )
+    assert result.returncode == 0, result.stderr
+    payload: dict[str, Any] = json.loads(result.stdout)
+    return payload
+
+
+@pytest.fixture
+def workspace(tmp_path: Path) -> Path:
+    """A data dir containing one complete v3 validate run.
+
+    Built rather than copied. The corpus in ``data/`` is gitignored, so a fixture that
+    copies from it makes the whole file skip on CI -- which is exactly what happened, and
+    is how the renderer's coverage silently collapsed there while reading green locally.
+    When a stored run *is* present it is copied in alongside, with its snapshot, so
+    ``price_signal`` exercises its real path instead of its failure path.
+    """
+    import shutil
+
+    target = tmp_path / "data"
+    target.mkdir(parents=True)
+    figure_runs.validate_run(target)
+
+    stored = _DATA / "runs" / _STORED
+    if stored.is_dir():
+        shutil.copytree(stored, target / "runs" / _STORED)
+        snapshot = read_manifest(target / "runs" / _STORED).get("metadata", {}).get("snapshot_id")
+        source = _DATA / "snapshots" / str(snapshot)
+        if snapshot and source.is_dir():
+            shutil.copytree(source, target / "snapshots" / str(snapshot))
+    return target
+
+
+def _fingerprint(directory: Path) -> dict[str, str]:
+    return {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(directory.iterdir())
+        if path.is_file()
+    }
+
+
+def test_rendering_never_mutates_the_immutable_run_directory(workspace: Path) -> None:
+    """The single most important test here.
+
+    Figures live in a derived cache precisely so ARTIFACT_CONTRACT_VERSION can stay at 3
+    and historical runs can still be drawn. If a render ever writes into a run directory,
+    the manifest's declared file set no longer matches disk and the run stops verifying.
+    """
+    rdir = workspace / "runs" / _RUN
+    before = _fingerprint(rdir)
+
+    _alpha("render", _RUN, data_dir=workspace)
+
+    after = _fingerprint(rdir)
+    assert after == before, "rendering altered the run directory"
+    verify_manifest_artifacts(rdir, read_manifest(rdir))
+
+
+@pytest.mark.skipif(
+    not (_DATA / "runs" / _STORED / "manifest.json").is_file(),
+    reason="needs a stored run whose snapshot can be withheld",
+)
+def test_a_figure_that_fails_at_render_time_does_not_cost_the_others(tmp_path: Path) -> None:
+    """price_signal needs the snapshot; without it the other figures must still land."""
+    import shutil
+
+    target = tmp_path / "data"
+    (target / "runs").mkdir(parents=True)
+    shutil.copytree(_DATA / "runs" / _STORED, target / "runs" / _STORED)  # no snapshot
+
+    payload = _alpha("render", _STORED, data_dir=target)
+    assert len(payload["figures"]) >= 10
+    failures = {str(item["figure_id"]) for item in payload["failed"]}
+    assert "price_signal" in failures
+    assert payload["failed"], "a render failure must be reported, never swallowed"
+
+
+def test_the_cache_is_not_a_run_directory(workspace: Path) -> None:
+    _alpha("render", _RUN, "--figure", "equity_underwater", data_dir=workspace)
+    assert "figures" not in RUN_DIRS
+    assert (workspace / "figures" / _RUN).is_dir()
+
+
+def test_a_second_render_is_served_from_cache(workspace: Path) -> None:
+    first = _alpha("render", _RUN, "--figure", "rolling_risk", data_dir=workspace)
+    second = _alpha("render", _RUN, "--figure", "rolling_risk", data_dir=workspace)
+    assert first["figures"][0]["cached"] is False
+    assert second["figures"][0]["cached"] is True
+    assert first["figures"][0]["cache_key"] == second["figures"][0]["cache_key"]
+
+
+def test_force_rerender_asserts_byte_identity(workspace: Path) -> None:
+    """`--force` is the determinism canary: a drifting renderer fails here, loudly,
+    instead of silently overwriting a figure that no longer matches its own key."""
+    _alpha("render", _RUN, "--figure", "qq_normal", data_dir=workspace)
+    forced = _alpha("render", _RUN, "--figure", "qq_normal", "--force", data_dir=workspace)
+    assert forced["figures"][0]["cached"] is False
+
+
+def test_a_sidecar_accompanies_every_rendered_figure(workspace: Path) -> None:
+    payload = _alpha("render", _RUN, "--figure", "null_distribution", data_dir=workspace)
+    image = Path(str(payload["figures"][0]["path"]))
+    sidecar = image.with_suffix(".json")
+    assert sidecar.is_file()
+    document = json.loads(sidecar.read_text())
+    # The four teaching strings are what the UI renders beside the image; without them a
+    # reader is left to guess what the chart is claiming.
+    for field in ("question", "plain_language_answer", "uncertainty", "caveat", "alt_text"):
+        assert document[field].strip()
+    assert document["panels"]
+
+
+def test_availability_reports_a_specific_reason_rather_than_a_blank(workspace: Path) -> None:
+    import polars as pl
+
+    payload = _alpha("list", "--run", _RUN, data_dir=workspace)
+    items = {str(item["figure_id"]): item for item in payload["items"]}
+    assert items["trade_pnl"]["available"] is True
+    assert items["equity_underwater"]["available"] is True
+
+    # A backtest that never traded writes a well-formed trades.parquet with no rows. That
+    # is "nothing to draw", and it has to read as that rather than as a render error.
+    trades = workspace / "runs" / _RUN / "trades.parquet"
+    pl.read_parquet(trades).clear().write_parquet(trades)
+    items = {
+        str(item["figure_id"]): item
+        for item in _alpha("list", "--run", _RUN, data_dir=workspace)["items"]
+    }
+    assert items["trade_pnl"]["available"] is False
+    assert items["trade_pnl"]["unavailable_reason"] == "artifact_empty:trades.parquet"
+
+    # An artifact that was never written reads differently from one that is merely empty.
+    (workspace / "runs" / _RUN / "nulls.parquet").unlink()
+    items = {
+        str(item["figure_id"]): item
+        for item in _alpha("list", "--run", _RUN, data_dir=workspace)["items"]
+    }
+    assert items["null_distribution"]["unavailable_reason"] == "artifact_missing:nulls.parquet"
+
+
+def test_clean_removes_figures_and_leaves_the_run_alone(workspace: Path) -> None:
+    _alpha("render", _RUN, "--figure", "equity_underwater", data_dir=workspace)
+    rdir = workspace / "runs" / _RUN
+    before = _fingerprint(rdir)
+    _alpha("clean", _RUN, data_dir=workspace)
+    assert not (workspace / "figures" / _RUN).exists()
+    assert _fingerprint(rdir) == before
+
+
+def test_the_catalogue_lists_every_figure_with_its_teaching_text() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "alpha_cli.main", "figures", "list", "--json"],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=_REPO,
+    )
+    envelope = json.loads(result.stdout)
+    # The envelope also publishes the key environment, so the web layer can derive cache
+    # keys locally instead of importing the renderer it is forbidden from importing.
+    for field in ("renderer_version", "matplotlib_version", "theme_id", "theme_digest"):
+        assert envelope[field]
+    figures = envelope["figures"]
+    assert len(figures) >= 20
+    for item in figures:
+        for field in ("question", "uncertainty", "caveat", "summary"):
+            assert item[field].strip(), f"{item['figure_id']} is missing {field}"
+        assert item["width_in"] > 0 and item["height_in"] > 0
+
+
+def test_figures_never_appear_as_a_launchable_command() -> None:
+    """`alpha info commands` drives the Workstation's new-run form.
+
+    `figures render` consumes a run that already exists and produces no run, so offering
+    it there would invite the user to launch something that cannot start.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "alpha_cli.main", "info", "commands", "--json"],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=_REPO,
+    )
+    ids = [str(entry["id"]) for entry in json.loads(result.stdout)]
+    assert ids, "the command catalogue is empty"
+    assert not [entry for entry in ids if entry.startswith("figures")]

@@ -1,13 +1,11 @@
 // Price — candlesticks for the linked symbol over the linked as-of window (PIT-adjusted). Typing a
 // symbol here rebroadcasts it to every linked panel.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
 import type { Candle, CandleProvenance, ChartBundle, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
-import { PanelLinkControl } from '../components/PanelLinkControl'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
 import { usePanelLinked } from '../context/usePanelLinked'
 import {
@@ -24,8 +22,9 @@ import {
   visibleEvidenceMarkers,
   type EvidenceLayer,
 } from './v3Models'
+import type { PanelHandleProps } from '../context/panelHandle'
 
-export function PriceChart(props: IDockviewPanelProps) {
+export function PriceChart(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const { linked, setLinked: setPanelLinked } = panelLink
   const [symbol, setSymbol] = useState(linked.symbol ?? '')
@@ -150,7 +149,6 @@ export function PriceChart(props: IDockviewPanelProps) {
     <div className="panel price-panel">
       <div className="panel-toolbar price-toolbar">
         <span className="title">Price</span>
-        <PanelLinkControl controller={panelLink} />
         <input
           className="field sym-input"
           value={symbol}
@@ -215,7 +213,7 @@ export function PriceChart(props: IDockviewPanelProps) {
           <div className="trace-unavailable">
             <strong>TRACE UNAVAILABLE</strong>
             <span>Legacy evidence is never reconstructed. Rerun this specification to emit a v3 causal trace.</span>
-            <button className="btn" onClick={() => openDevelopmentCenter(props.containerApi!)}>
+            <button className="btn" onClick={() => openDevelopmentCenter()}>
               Rerun for causal trace
             </button>
           </div>

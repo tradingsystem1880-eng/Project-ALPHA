@@ -1,5 +1,6 @@
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import type { PanelHandleProps } from './panelHandle'
 
 import {
   migratePanelBinding,
@@ -30,7 +31,7 @@ function record(value: unknown): Record<string, unknown> {
     : {}
 }
 
-export function usePanelLinked(props: IDockviewPanelProps): PanelLinkedController {
+export function usePanelLinked(props: PanelHandleProps): PanelLinkedController {
   const workspace = useLinkedWorkspace()
   const initialParams = record(props.params)
   const [binding, setBindingState] = useState(() =>

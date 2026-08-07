@@ -1,18 +1,17 @@
 // Risk — stress a run's realized returns under vol-scaling and tail-shock scenarios and see how
 // Sharpe / vol / drawdown / VaR / CVaR move. Follows the linked run (selected in the Run Browser).
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { RiskReport } from '../api/types'
-import { PanelLinkControl } from '../components/PanelLinkControl'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { fmtNum, fmtPct } from '../util/format'
 import { Placeholder } from '../components/Placeholder'
 import { matchesRunScope, runScopeFromParams, runScopeLabel } from './v3Models'
+import type { PanelHandleProps } from '../context/panelHandle'
 
-export function RiskMonitor(props: IDockviewPanelProps) {
+export function RiskMonitor(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const runId = panelLink.linked.runId ?? ''
   const [runInput, setRunInput] = useState(runId)
@@ -63,7 +62,6 @@ export function RiskMonitor(props: IDockviewPanelProps) {
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Risk · Scenarios</span>
-        <PanelLinkControl controller={panelLink} />
         <input
           className="field sym-input"
           style={{ width: 132 }}

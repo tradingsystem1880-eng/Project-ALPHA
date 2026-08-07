@@ -1,4 +1,3 @@
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -10,15 +9,15 @@ import type {
   ProjectDetail,
   RunDetail,
 } from '../api/types'
-import { FanChart } from '../components/charts/FanChart'
-import { OriginsChart } from '../components/charts/OriginsChart'
+import { FigureCard } from '../components/FigureCard'
 import { KronosKlineCanvas } from '../components/KronosKlineCanvas'
-import { PanelLinkControl } from '../components/PanelLinkControl'
 import { Placeholder } from '../components/Placeholder'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { asStr, fmtNum, fmtPct, shortId } from '../util/format'
 import { asObj, type Dict } from './rundetail/commonUtils'
 import { terminalReturns } from './v3Models'
+import type { FigureCatalogueItem } from '../api/types'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 function object(value: unknown): Dict {
   return asObj(value) ?? {}
@@ -152,13 +151,30 @@ function EvaluationMode({ detail }: { detail: RunDetail }) {
         <div><span className="eyebrow">coverage 50 / 80 / 90</span><span className="metric-val mono">{fmtPct(post.coverage50)} / {fmtPct(post.coverage80)} / {fmtPct(post.coverage90)}</span></div>
         <div><span className="eyebrow">direction hit rate</span><span className="metric-val mono">{fmtPct(post.hit_rate)}</span></div>
       </div>
-      {origins ? <OriginsChart origins={origins} height={310} /> : <Placeholder>rolling-evaluation artifact unavailable</Placeholder>}
+      {origins ? (
+        <FigureCard runId={detail.run_id} item={figureItem('forecast_skill', 'Forecast skill')} />
+      ) : (
+        <Placeholder>rolling-evaluation artifact unavailable</Placeholder>
+      )}
       <div className="kronos-warning"><strong>REPLAY VALIDATION</strong><span>Rolling skill is evidence, not authorization. Signal promotion still requires a linked project decision packet and canonical replay.</span></div>
     </div>
   )
 }
 
-export function KronosStudio(props: IDockviewPanelProps) {
+/** The two Kronos surfaces that are run artifacts are drawn by the figure renderer. */
+function figureItem(figureId: string, title: string): FigureCatalogueItem {
+  return {
+    figure_id: figureId,
+    title,
+    summary: title,
+    section: 'forecast',
+    panel_count: 2,
+    available: true,
+    unavailable_reason: null,
+  }
+}
+
+export function KronosStudio(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const linked = panelLink.linked
   const runId = linked.runId
@@ -212,7 +228,6 @@ export function KronosStudio(props: IDockviewPanelProps) {
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Kronos Forecast Studio</span>
-        <PanelLinkControl controller={panelLink} />
         <span className="chip kind">{command ?? 'NO RUN'}</span>
         {runId ? <span className="id mono">{shortId(runId)}</span> : null}
         <span className="spacer" />
@@ -230,7 +245,7 @@ export function KronosStudio(props: IDockviewPanelProps) {
               <Inspector manifest={manifest} visibleSamples={paths.samples.length} />
             </div>
             <div className="kronos-analysis-grid">
-              <section><div className="rd-head">Forecast cone · q05/q25/median/q75/q95</div><FanChart fc={forecast} paths={paths} height={230} /></section>
+              <section><FigureCard runId={runId} item={figureItem('forecast_fan', 'Outcome cone')} /></section>
               <section><div className="rd-head">Terminal return distribution · visible complete samples</div><TerminalDistribution paths={paths} originClose={originClose} /></section>
             </div>
             <details className="kronos-path-table">

@@ -19,11 +19,9 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.6",
     "cmdk": "^1.1.1",
-    "dockview-react": "^7.0.2",
     "lightweight-charts": "^5.2.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "uplot": "^1.6.32"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

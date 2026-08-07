@@ -1,23 +1,45 @@
-// Shared panel actions (kept out of registry.tsx to avoid a registry ↔ panel import cycle).
-
-import type { DockviewApi } from 'dockview-react'
+// Navigation intents a panel can raise, without knowing what the shell is.
+//
+// Panels used to reach into the docking container and add windows, which meant every panel
+// depended on the layout engine and on the ids other panels happened to use. They now state
+// what they want -- show this run, open the lab with this command -- and the shell decides
+// where that lands. Swapping the shell again would touch this file and nothing else.
 
 import { setLinked } from '../context/linked'
-import { shortId } from '../util/format'
 
-// Open (or focus, if already open) the Run Detail panel for a run id. The URL hash mirrors the
-// opened run (`#run=<id>`) so the address bar is always a shareable deep link; the shell parses
-// it at boot and on hashchange.
-export function openRunDetail(containerApi: DockviewApi, runId: string): void {
+export interface LabPrefill {
+  command: string
+  args: string
+}
+
+export interface Navigator {
+  showRun(runId: string): void
+  showStrategyLab(prefill?: LabPrefill): void
+  showProjects(): void
+}
+
+/** Until the shell registers, intents are no-ops rather than crashes. */
+let active: Navigator = {
+  showRun: () => undefined,
+  showStrategyLab: () => undefined,
+  showProjects: () => undefined,
+}
+
+let pendingPrefill: LabPrefill | null = null
+const prefillListeners = new Set<() => void>()
+
+export function registerNavigator(navigator: Navigator): void {
+  active = navigator
+}
+
+/**
+ * Show a run's report. The URL hash mirrors it (`#run=<id>`) so the address bar stays a
+ * shareable deep link, which the shell reads at boot and on hashchange.
+ */
+export function openRunDetail(runId: string): void {
   setLinked({ runId })
   window.location.hash = `run=${runId}`
-  const id = `run-detail-${runId}`
-  const existing = containerApi.getPanel(id)
-  if (existing) {
-    existing.api.setActive()
-    return
-  }
-  containerApi.addPanel({ id, component: 'RunDetail', title: shortId(runId), params: { runId } })
+  active.showRun(runId)
 }
 
 /** The run id in the current URL hash (`#run=<16 hex>`), if any. */
@@ -26,40 +48,40 @@ export function runIdFromHash(): string | null {
   return match ? match[1] : null
 }
 
-export interface LabPrefill {
-  command: string
-  args: string
+/**
+ * Open the Strategy Lab, optionally prefilled with a suggested command from the explanation
+ * engine's next-step actions.
+ *
+ * The prefill is parked here rather than pushed as a panel parameter: the lab may not be
+ * mounted yet when a suggestion is clicked from another screen, and dropping the suggestion
+ * silently would be worse than holding it for one read. A mounted lab picks it up through
+ * the subscription instead, since switching screens will not remount it.
+ */
+export function openStrategyLab(prefill?: LabPrefill): void {
+  if (prefill) pendingPrefill = prefill
+  active.showStrategyLab(prefill)
+  if (prefill) for (const listener of [...prefillListeners]) listener()
 }
 
-// Open the Strategy Lab, optionally prefilled with a suggested command (from the explanation
-// engine's next-step actions). The lab reads `params.prefill` on mount / param change.
-export function openStrategyLab(containerApi: DockviewApi, prefill?: LabPrefill): void {
-  const existing = containerApi.panels.find((p) => p.id.startsWith('StrategyLab-'))
-  if (existing) {
-    existing.api.setActive()
-    if (prefill) existing.api.updateParameters({ prefill })
-    return
+/** Consume a queued prefill exactly once. */
+export function takeLabPrefill(): LabPrefill | null {
+  const value = pendingPrefill
+  pendingPrefill = null
+  return value
+}
+
+/**
+ * Be told a prefill was queued. The listener is expected to call `takeLabPrefill`, so a
+ * mounted lab consumes it and an unmounted one still finds it waiting at mount.
+ */
+export function onLabPrefill(listener: () => void): () => void {
+  prefillListeners.add(listener)
+  return () => {
+    prefillListeners.delete(listener)
   }
-  containerApi.addPanel({
-    id: `StrategyLab-lab`,
-    component: 'StrategyLab',
-    title: 'Strategy Lab',
-    params: prefill ? { prefill } : {},
-  })
 }
 
 /** Open the governed lifecycle surface used to resolve and launch a legacy trace rerun. */
-export function openDevelopmentCenter(containerApi: DockviewApi): void {
-  const existing = containerApi.panels.find((panel) =>
-    panel.id.startsWith('DevelopmentCenter-') || panel.id.includes('-center'),
-  )
-  if (existing) {
-    existing.api.setActive()
-    return
-  }
-  containerApi.addPanel({
-    id: 'DevelopmentCenter-trace-rerun',
-    component: 'DevelopmentCenter',
-    title: 'Development Center',
-  })
+export function openDevelopmentCenter(): void {
+  active.showProjects()
 }

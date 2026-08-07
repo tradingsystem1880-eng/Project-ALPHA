@@ -2,7 +2,6 @@
 // optimize → portfolio → propfirm (forecast as a side lane), with per-stage run counts and,
 // for the selected run, the explanation engine's next-step actions prefilled into the Lab.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -15,6 +14,7 @@ import { useActivityField } from '../state/activity'
 import { shortId } from '../util/format'
 import { openRunDetail, openStrategyLab } from './actions'
 import { SuggestionList } from './rundetail/common'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 interface Stage {
   key: string
@@ -74,7 +74,7 @@ const STAGES: Stage[] = [
   },
 ]
 
-export function Pipeline(props: IDockviewPanelProps) {
+export function Pipeline(_props: PanelHandleProps) {
   const runsVersion = useActivityField('runsVersion')
   const linked = useLinked()
   const [items, setItems] = useState<RunListItem[] | null>(null)
@@ -148,7 +148,7 @@ export function Pipeline(props: IDockviewPanelProps) {
                 {latest ? (
                   <button
                     className="pipe-latest mono"
-                    onClick={() => openRunDetail(props.containerApi, latest.run_id)}
+                    onClick={() => openRunDetail(latest.run_id)}
                   >
                     {shortId(latest.run_id)}
                     {latest.verdict ? (
@@ -163,7 +163,7 @@ export function Pipeline(props: IDockviewPanelProps) {
                 <button
                   className="btn"
                   onClick={() =>
-                    openStrategyLab(props.containerApi, {
+                    openStrategyLab({
                       command: s.launch.command,
                       args: prefillArgs(s),
                     })
@@ -182,7 +182,7 @@ export function Pipeline(props: IDockviewPanelProps) {
             <div className="rd-head">Next steps for {shortId(linked.runId ?? '')}</div>
             <SuggestionList
               items={sugg}
-              onLaunch={(command, args) => openStrategyLab(props.containerApi, { command, args })}
+              onLaunch={(command, args) => openStrategyLab({ command, args })}
             />
           </div>
         ) : linked.runId ? null : (

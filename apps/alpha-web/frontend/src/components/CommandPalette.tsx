@@ -1,50 +1,36 @@
-// ⌘K command palette v2 — panels, actions, symbols, runs, and workspaces without the mouse.
-// Symbol + run pages lazy-load their lists on first open; selections write linked context or
-// open panels through the callbacks the shell provides.
+// ⌘K palette — screens, symbols, runs and view settings without the mouse.
+// Panels are no longer openable individually: every panel now lives on a screen laid out for
+// its job, so the palette navigates to screens rather than spawning windows.
 
 import { Command } from 'cmdk'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
-import type { RunListItem, WorkspaceMeta } from '../api/types'
+import type { RunListItem } from '../api/types'
 import { setLinked } from '../context/linked'
-import { WORKSPACE_PRESETS, type WorkspacePresetId } from '../layouts/presets'
-import { PANEL_MENU } from '../panels/registry'
+import { SCREENS, type ScreenId } from '../shell/screens'
 import { getSettings, setSettings } from '../state/settings'
 import { shortId } from '../util/format'
 
 interface Props {
   open: boolean
   onClose: () => void
-  onOpenPanel: (component: string, title: string) => void
+  onOpenScreen: (id: ScreenId) => void
   onOpenRun: (runId: string) => void
-  onLoadWorkspace: (slug: string) => void
-  onLoadPreset: (id: WorkspacePresetId) => void
-  onSaveWorkspace: () => void
 }
 
-type Page = 'root' | 'symbols' | 'runs' | 'workspaces'
+type Page = 'root' | 'symbols' | 'runs'
 
 const PLACEHOLDER: Record<Page, string> = {
-  root: 'Search panels & actions…',
+  root: 'Go to a screen, a run, or a symbol…',
   symbols: 'Set active symbol…',
   runs: 'Open run…',
-  workspaces: 'Load workspace…',
 }
 
-export function CommandPalette({
-  open,
-  onClose,
-  onOpenPanel,
-  onOpenRun,
-  onLoadWorkspace,
-  onLoadPreset,
-  onSaveWorkspace,
-}: Props) {
+export function CommandPalette({ open, onClose, onOpenScreen, onOpenRun }: Props) {
   const [page, setPage] = useState<Page>('root')
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [runs, setRuns] = useState<RunListItem[] | null>(null)
-  const [workspaces, setWorkspaces] = useState<WorkspaceMeta[] | null>(null)
 
   useEffect(() => {
     if (!open) setPage('root')
@@ -54,9 +40,7 @@ export function CommandPalette({
       api.symbols().then((s) => setSymbols(s.symbols)).catch(() => setSymbols([]))
     if (page === 'runs' && runs === null)
       api.runs('?limit=30').then((r) => setRuns(r.items)).catch(() => setRuns([]))
-    if (page === 'workspaces' && workspaces === null)
-      api.workspaces().then(setWorkspaces).catch(() => setWorkspaces([]))
-  }, [page, symbols, runs, workspaces])
+  }, [page, symbols, runs])
 
   if (!open) return null
 
@@ -116,46 +100,19 @@ export function CommandPalette({
                   >
                     Toggle explanations <span className="hint">narrative ↔ terse</span>
                   </Command.Item>
-                  <Command.Item
-                    value="save workspace"
-                    onSelect={() => {
-                      onSaveWorkspace()
-                      close()
-                    }}
-                  >
-                    Save workspace… <span className="hint">named layout</span>
-                  </Command.Item>
-                  <Command.Item value="load workspace" onSelect={() => setPage('workspaces')}>
-                    Load workspace… <span className="hint">saved layouts</span>
-                  </Command.Item>
                 </Command.Group>
-                <Command.Group heading="Curated desks">
-                  {WORKSPACE_PRESETS.map((preset) => (
+                <Command.Group heading="Go to">
+                  {SCREENS.map((item) => (
                     <Command.Item
-                      key={preset.id}
-                      value={`desk ${preset.name}`}
+                      key={item.id}
+                      value={`screen ${item.label} ${item.purpose}`}
                       onSelect={() => {
-                        onLoadPreset(preset.id)
+                        onOpenScreen(item.id)
                         close()
                       }}
                     >
-                      {preset.name}
-                      <span className="hint">curated layout</span>
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-                <Command.Group heading="Open panel">
-                  {PANEL_MENU.map((p) => (
-                    <Command.Item
-                      key={p.component}
-                      value={p.title}
-                      onSelect={() => {
-                        onOpenPanel(p.component, p.title)
-                        close()
-                      }}
-                    >
-                      {p.title}
-                      {p.hint ? <span className="hint">{p.hint}</span> : null}
+                      {item.label}
+                      <span className="hint">{item.purpose}</span>
                     </Command.Item>
                   ))}
                 </Command.Group>
@@ -200,22 +157,6 @@ export function CommandPalette({
               </Command.Group>
             ) : null}
 
-            {page === 'workspaces' ? (
-              <Command.Group heading="Saved workspaces">
-                {(workspaces ?? []).map((w) => (
-                  <Command.Item
-                    key={w.slug}
-                    value={w.name}
-                    onSelect={() => {
-                      onLoadWorkspace(w.slug)
-                      close()
-                    }}
-                  >
-                    {w.name}
-                  </Command.Item>
-                ))}
-              </Command.Group>
-            ) : null}
           </Command.List>
         </Command>
       </div>
