@@ -26,6 +26,12 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0018](0018-quantpad-external-research-data-boundary.md) | Split QuantPad discovery from bulk research-data access | Accepted | 2026-08-04 |
 | [0019](0019-governed-research-cases-before-strategy-development.md) | Govern finite research cases before strategy development | Accepted | 2026-08-06 |
 | [0020](0020-intraday-event-research-is-not-daily-validation-evidence.md) | Keep intraday event research outside daily validation and paper evidence | Accepted | 2026-08-06 |
+| [0021](0021-research-workstation-read-plane-and-command-center.md) | Research workstation read plane and the Research Command Center desk | Proposed | 2026-08-07 |
+| [0022](0022-codex-collaboration-surface.md) | Codex collaboration surface — context packets, protocol library, AI boundary | Proposed | 2026-08-07 |
+| [0023](0023-research-dataset-registration-and-quantpad-lane.md) | Research dataset registration and the QuantPad qualification lane | Proposed | 2026-08-07 |
+| [0024](0024-literature-acquisition-worker-and-claim-model.md) | Lawful literature acquisition worker and the claim-level evidence model | Proposed | 2026-08-07 |
+| [0025](0025-empirical-d1-research-runner-admission.md) | Empirical D1 research-runner admission | Proposed | 2026-08-07 |
+| [0026](0026-d2-confirmation-readiness-gate-promotion-override.md) | D2 confirmation authority, readiness gate, promotion packet, exploratory override | Proposed | 2026-08-07 |
 
 ## Conventions
 
