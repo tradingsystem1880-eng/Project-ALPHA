@@ -636,6 +636,13 @@ consume D2, reveal D3, run deep research, start paper, or construct an order.
 No later gate is complete because a document, prompt, UI scaffold, or happy-path demo exists. Each
 Gate risk closes only with the specified machine evidence.
 
+> **Extended by** `2026-08-07-research-first-workstation-design.md` (proposed ADR-0021..0026),
+> which phases the remaining gates: Gate 2 → phase R4; Gate 3 → phases R5/R6; Gate 4 → phase R5;
+> Gate 5 → optional phase R7 (outside that program's critical path); Gate 6 → phases R1/R2/R3/R6.
+> That spec also narrows, by ADR-0021 and for read-only projections only, this document's Gate-1
+> statement that the REST/Cockpit slice "cannot list all cases." This document remains
+> authoritative for Gate 0-1 mechanics, the D0 fixture, and the schema-v2 control plane.
+
 ## 13. Acceptance scenarios
 
 The completed program must prove:
