@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 from alpha_cli.research_analysis_plan import default_analysis_plan
+from alpha_cli.research_runtime import registered_d0_material_choices
 from alpha_core import DataError
 
 type ResearchContractDraft = dict[str, Any]
@@ -229,6 +230,22 @@ def _chart_fingerprint(choice: str | None) -> dict[str, object]:
     return {**common, **selected}
 
 
+def _gate1_reason(supported: bool, chart: str | None) -> str:
+    if supported and chart == "tiingo_daily_fallback":
+        return (
+            "The registered synthetic session-daily double-bottom D0 operator is available; "
+            "the empirical Gate-4 lane additionally requires a registered Tiingo-daily "
+            "research dataset bound at draft time."
+        )
+    if supported:
+        return "The canonical synthetic SPY-like 60-minute double-bottom D0 operator is available."
+    return (
+        "Gate 1 implements only the canonical synthetic SPY-like 60-minute "
+        "(240-minute/+25 bp) and registered Tiingo session-daily (next-session/+50 bp) "
+        "double-bottom, second-trough-confirmable D0 operators."
+    )
+
+
 def _primary_claim(choice: str | None) -> dict[str, object]:
     variants: dict[str, dict[str, object]] = {
         "four_trading_hour_return_25bp": {
@@ -264,13 +281,15 @@ def draft_exploration_contract(
     resolved = _clean_resolutions(resolutions)
     questions = _questions(exact_idea, resolved)
     availability = resolved.get("event_availability")
+    chart = resolved.get("chart_construction")
     outcome = resolved.get("primary_outcome")
     event_name = "double_bottom" if "double bottom" in exact_idea.casefold() else "owner_idea_event"
     gate1_supported = (
         event_name == "double_bottom"
-        and resolved.get("chart_construction") == "spy_rth_60m_four_hour_window"
         and availability == "second_trough_confirmable"
-        and outcome == "four_trading_hour_return_25bp"
+        and outcome is not None
+        and chart is not None
+        and (chart, outcome) in registered_d0_material_choices()
     )
     return {
         "schema": "ResearchContractV1",
@@ -282,12 +301,7 @@ def draft_exploration_contract(
         "blocking_questions": questions,
         "gate1_availability": {
             "state": "AVAILABLE" if gate1_supported else "UNAVAILABLE",
-            "reason": (
-                "The canonical synthetic SPY-like 60-minute double-bottom D0 operator is available."
-                if gate1_supported
-                else "Gate 1 implements only the canonical synthetic SPY-like 60-minute "
-                "double-bottom, second-trough-confirmable, 240-minute/+25 bp D0 operator."
-            ),
+            "reason": _gate1_reason(gate1_supported, chart),
         },
         "resolved_material_choices": dict(sorted(resolved.items())),
         "thesis": {

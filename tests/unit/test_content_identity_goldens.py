@@ -23,7 +23,12 @@ from __future__ import annotations
 import hashlib
 
 from alpha_cli.control_store import _canonical_json
-from alpha_cli.research_runtime import _d0_fixture_definition, _sha
+from alpha_cli.research_runtime import (
+    _GENERATION_60M,
+    _GENERATION_DAILY,
+    _d0_fixture_definition,
+    _sha,
+)
 from alpha_research._canonical import canonical_sha256
 from alpha_research.gate_packet import _canonical_json_bytes
 from alpha_research.multiple_testing import FrozenSecondaryFamily, SecondaryHypothesis
@@ -71,6 +76,9 @@ def test_frozen_family_contract_hash_is_pinned() -> None:
 
 
 def test_registered_d0_fixture_definition_hash_is_pinned() -> None:
-    assert _sha(_d0_fixture_definition()) == (
+    assert _sha(_d0_fixture_definition(_GENERATION_60M)) == (
         "c66c38520c10efb2405758dcf46d98a30c35cc35db68b99bfa936b2b95bb8cb4"
+    )
+    assert _sha(_d0_fixture_definition(_GENERATION_DAILY)) == (
+        "8f4a968acb17f90f03ff184f7fb58b2ebf8b61ecc4e6639c32cde895c3e4d978"
     )

@@ -1689,6 +1689,251 @@ def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
     assert unknown_audit.exit_code != 0
 
 
+def _register_daily_dataset(tmp_path: Path, symbol: str) -> str:
+    """Snapshot planted Tiingo-shaped daily bars and register them via the CLI."""
+    from datetime import UTC, datetime, timedelta
+
+    from alpha_data.snapshot import create_snapshot
+    from alpha_data.store import ParquetStore
+    from tests.unit.test_research_gate4_lane import _daily_frame, _daily_lows
+
+    lows = _daily_lows()
+    store = ParquetStore(tmp_path / "store")
+    store.write_bars(symbol, _daily_frame(lows))
+    snapshot_id = f"gate4-{symbol.lower()}"
+    create_snapshot(
+        store,
+        tmp_path / "snapshots",
+        snapshot_id,
+        [symbol],
+        source="tiingo",
+        adapter_version="1",
+        parser_version="1",
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    end_day = datetime(2020, 1, 6, tzinfo=UTC) + timedelta(days=len(lows) - 1)
+    registered = _invoke(
+        "data",
+        "register",
+        symbol,
+        "--kind",
+        "snapshot",
+        "--snapshot-id",
+        snapshot_id,
+        "--start",
+        "2020-01-06",
+        "--end",
+        end_day.date().isoformat(),
+        "--bar-minutes",
+        "1440",
+    )
+    return str(registered["ref_id"])
+
+
+def _daily_draft_args(project_id: str, pack_id: str) -> list[str]:
+    return [
+        "draft",
+        project_id,
+        "--source-pack-id",
+        pack_id,
+        "--answer",
+        "chart_construction=tiingo_daily_fallback",
+        "--answer",
+        "event_availability=second_trough_confirmable",
+        "--answer",
+        "primary_outcome=next_regular_session_return_50bp",
+    ]
+
+
+def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_research(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6a (ADR-0026): the Gate-4 daily lane freezes an empirical exploration boundary."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    ref_id = _register_daily_dataset(tmp_path, "SPY")
+    captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    drafted = _invoke(
+        *_daily_draft_args(project_id, str(pack["pack_id"])),
+        "--dataset",
+        ref_id,
+    )
+    payload = cast(dict[str, object], cast(dict[str, object], drafted["contract"])["payload"])
+    assert payload["approval_ready"] is True
+    assert payload["blocking_questions"] == []
+    hashes = cast(dict[str, object], payload["hashes"])
+    data_hash = hashes["data"]
+    assert isinstance(data_hash, str) and len(data_hash) == 64
+    protocol = cast(dict[str, object], payload["protocol"])
+    assert protocol["boundary_authority"] == {
+        "kind": "empirical_dataset",
+        "real_market_evidence": True,
+        "empirical_confirmation_authorized": True,
+    }
+    empirical = cast(dict[str, object], protocol["empirical_dataset"])
+    assert empirical["ref_id"] == ref_id
+    assert empirical["content_sha256"] == data_hash
+    assert empirical["instrument"] == "SPY"
+    assert empirical["provider"] == "tiingo"
+    assert cast(int, empirical["session_group_count"]) >= 100
+    topology = cast(dict[str, object], protocol["evidence_topology"])
+    d2 = cast(dict[str, object], topology["D2"])
+    assert d2["share"] == 0.2
+    boundary_hash = d2["boundary_hash"]
+    assert isinstance(boundary_hash, str) and len(boundary_hash) == 64
+    operator = cast(dict[str, object], protocol["d0_operator"])
+    fixture = cast(dict[str, object], operator["fixture"])
+    assert fixture["fixture_id"] == "spy_session_daily_double_bottom_v1"
+
+    frozen_id = str(cast(dict[str, object], drafted["contract"])["contract_id"])
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        frozen_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "The registered daily dataset and bounded plan suit empirical D1 exploration.",
+    )
+    pilot = _invoke("run", "pilot", project_id)
+    pilot_case = cast(dict[str, object], pilot["case"])
+    assert pilot_case["phase"] == "deep_research"
+    manifest = cast(dict[str, object], pilot["manifest"])
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["real_market_evidence"] is False  # the D0 pilot itself stays synthetic
+
+
+def test_empirical_daily_draft_fails_closed_on_missing_or_mismatched_datasets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack_id = str(
+        _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))["pack_id"]
+    )
+
+    no_dataset = runner.invoke(app, ["research", *_daily_draft_args(project_id, pack_id), "--json"])
+    assert no_dataset.exit_code != 0
+    assert "registered" in no_dataset.output and "dataset" in no_dataset.output
+
+    unknown_ref = runner.invoke(
+        app,
+        [
+            "research",
+            *_daily_draft_args(project_id, pack_id),
+            "--dataset",
+            "rd_" + "0" * 64,
+            "--json",
+        ],
+    )
+    assert unknown_ref.exit_code != 0
+
+    wrong_instrument_ref = _register_daily_dataset(tmp_path, "AAPL")
+    mismatched = runner.invoke(
+        app,
+        [
+            "research",
+            *_daily_draft_args(project_id, pack_id),
+            "--dataset",
+            wrong_instrument_ref,
+            "--json",
+        ],
+    )
+    assert mismatched.exit_code != 0
+    assert "instrument" in mismatched.output.casefold()
+
+    spy_ref = _register_daily_dataset(tmp_path, "SPY")
+    synthetic_with_dataset = runner.invoke(
+        app,
+        [
+            "research",
+            "draft",
+            project_id,
+            "--source-pack-id",
+            pack_id,
+            "--answer",
+            "chart_construction=spy_rth_60m_four_hour_window",
+            "--answer",
+            "event_availability=second_trough_confirmable",
+            "--answer",
+            "primary_outcome=four_trading_hour_return_25bp",
+            "--dataset",
+            spy_ref,
+            "--json",
+        ],
+    )
+    assert synthetic_with_dataset.exit_code != 0
+    assert "synthetic" in synthetic_with_dataset.output.casefold()
+
+
+def test_approval_payload_rejects_inconsistent_empirical_bindings() -> None:
+    """Provider and session-group integrity hold even for hand-built dataset bindings."""
+    from alpha_cli.research_intake import draft_exploration_contract
+    from alpha_cli.research_runtime import _GENERATION_60M, _bars
+
+    preview = draft_exploration_contract(
+        "SPY bounces after double bottoms on the daily chart",
+        resolutions={
+            "chart_construction": "tiingo_daily_fallback",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "next_regular_session_return_50bp",
+        },
+    )
+    hourly_bars = _bars(_GENERATION_60M, [100.0 + i for i in range(25)], "d0-planted", "e" * 64)
+    ref = {
+        "ref_id": "rd_" + "f" * 64,
+        "instrument": "SPY",
+        "provider": "yfinance",
+        "start_ts": "2020-01-01",
+        "end_ts": "2020-06-01",
+    }
+    with pytest.raises(DataError, match="provider"):
+        research_cmds._approval_payload(
+            preview,
+            source_pack_id="sp_" + "a" * 64,
+            empirical_dataset=research_cmds._EmpiricalDataset(ref=ref, bars=hourly_bars),
+        )
+    # 25 hourly bars share calendar dates: duplicate session groups must fail closed.
+    with pytest.raises(DataError, match="duplicate session groups"):
+        research_cmds._approval_payload(
+            preview,
+            source_pack_id="sp_" + "a" * 64,
+            empirical_dataset=research_cmds._EmpiricalDataset(
+                ref={**ref, "provider": "tiingo"}, bars=hourly_bars
+            ),
+        )
+    assert research_cmds._implementation_drifted(["not", "a", "mapping"]) is True
+
+
 def test_claim_lifecycle_drafts_screens_and_feeds_the_literature_dimension(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

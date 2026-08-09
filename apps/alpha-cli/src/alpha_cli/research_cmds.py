@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Final, NamedTuple, cast
 
 import typer
 
@@ -27,6 +27,7 @@ from alpha_cli.research_d1 import (
     D1_ANALYSES_ARTIFACT,
     D1_EVIDENCE_ARTIFACT,
     d1_execution_fingerprint,
+    load_registered_research_bars,
     registered_synthetic_d1_bars,
     run_deep_research,
 )
@@ -49,13 +50,18 @@ from alpha_cli.research_protocols import (
 )
 from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
+    registered_d0_material_choices,
     registered_d0_operator,
     run_synthetic_pilot,
     validate_d0_pilot_contract,
 )
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
-from alpha_research import ResearchChartFingerprintV1, ResearchD2BoundaryV1
+from alpha_research import (
+    EqualDurationResearchBars,
+    ResearchChartFingerprintV1,
+    ResearchD2BoundaryV1,
+)
 
 research_app = typer.Typer(help="Governed research cases, contracts, sources, and bounded runs.")
 sources_app = typer.Typer(help="Immutable research-source records and frozen source packs.")
@@ -205,6 +211,24 @@ def _implementation_hashes() -> dict[str, str | None]:
     }
 
 
+def _implementation_drifted(approved_hashes: object) -> bool:
+    """True when the approved implementation fingerprints no longer match the executable.
+
+    The ``data`` hash is deliberately excluded: it freezes a per-contract dataset binding
+    (``None`` on synthetic lanes, the registered dataset content hash on the empirical
+    lane) and is verified against the actually loaded dataset bytes, never against a
+    recomputed implementation fingerprint.
+    """
+
+    if not isinstance(approved_hashes, Mapping):
+        return True
+    current = _implementation_hashes()
+    return any(
+        approved_hashes.get(field) != current[field]
+        for field in ("code", "dependency_lock", "environment", "evaluator")
+    )
+
+
 def _require_resolved_material(value: object, label: str) -> None:
     """Reject approval-ready material fields that still contain sentinel placeholders."""
 
@@ -223,11 +247,33 @@ def _require_resolved_material(value: object, label: str) -> None:
         raise DataError(f"approval-ready {label} contains unresolved material semantics")
 
 
+# The material chart choices whose exploration boundary is an empirical dataset boundary
+# (ADR-0026). The D0 pilot fixture stays synthetic even on these lanes; only the frozen
+# D1/D2/D3 evidence boundary binds real registered data.
+_EMPIRICAL_CHART_CHOICES: Final = frozenset({"tiingo_daily_fallback"})
+
+
+class _EmpiricalDataset(NamedTuple):
+    """One registered research dataset resolved to its exact loaded research bars."""
+
+    ref: dict[str, object]
+    bars: EqualDurationResearchBars
+
+
+def _empirical_dataset(store: ControlStore, ref_id: str) -> _EmpiricalDataset:
+    """Load a registered ``rd_`` dataset fail-closed through the Gate-4 daily lane."""
+
+    ref = store.get_research_dataset(ref_id)
+    bars = load_registered_research_bars(AlphaSettings().data_dir, ref=ref)
+    return _EmpiricalDataset(ref=ref, bars=bars)
+
+
 def _approval_payload(
     draft: Mapping[str, object],
     *,
     source_pack_id: str,
     d2_relation_to_prior: str | None = None,
+    empirical_dataset: _EmpiricalDataset | None = None,
 ) -> dict[str, object]:
     result = dict(draft)
     primary_claim = result.get("primary_claim")
@@ -240,6 +286,23 @@ def _approval_payload(
     result["source_pack_id"] = source_pack_id
     result["budget"] = {"wall_seconds": 8_400, "source_requests": 40, "variants": 64}
     result["hashes"] = _implementation_hashes()
+    resolved_choices = result.get("resolved_material_choices")
+    chart_choice = (
+        resolved_choices.get("chart_construction")
+        if isinstance(resolved_choices, Mapping)
+        else None
+    )
+    empirical_lane = chart_choice in _EMPIRICAL_CHART_CHOICES
+    if empirical_dataset is not None and not empirical_lane:
+        raise DataError(
+            "a registered research dataset can bind only the Gate-4 tiingo_daily_fallback "
+            "lane; synthetic-boundary lanes must not carry one"
+        )
+    if empirical_lane and empirical_dataset is None and result.get("approval_ready") is True:
+        raise DataError(
+            "the Gate-4 tiingo_daily_fallback lane requires a registered research dataset "
+            "bound at draft time; pass --dataset rd_<sha256>"
+        )
     chart_value = result.get("chart_fingerprint")
     event_value = result.get("event_definition")
     if not isinstance(chart_value, dict) or not isinstance(event_value, dict):
@@ -282,17 +345,60 @@ def _approval_payload(
     if not isinstance(endpoint, str) or not endpoint or not isinstance(horizon, str | int):
         raise DataError("approval-ready primary claim requires an exact endpoint and horizon")
     event_formula = json.dumps(event_value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    eligible_groups = tuple(f"synthetic-acceptance-session-{index:03d}" for index in range(1, 11))
-    synthetic_dataset = _sha_json(
-        {
-            "schema": "AlphaSyntheticResearchAcceptanceDatasetV1",
-            "generator": "d0-synthetic-v1",
-            "chart_fingerprint": chart.to_dict(),
-            "eligible_groups": list(eligible_groups),
+    boundary_authority: dict[str, object] = {
+        "kind": "synthetic_acceptance_fixture",
+        "real_market_evidence": False,
+        "empirical_confirmation_authorized": False,
+    }
+    empirical_section: dict[str, object] | None = None
+    if empirical_dataset is not None:
+        ref, bars = empirical_dataset
+        ref_instrument = str(ref.get("instrument", ""))
+        ref_provider = str(ref.get("provider", ""))
+        if ref_instrument != chart.instrument:
+            raise DataError(
+                f"registered dataset instrument {ref_instrument!r} does not match the "
+                f"chart instrument {chart.instrument!r}"
+            )
+        if ref_provider != chart.provider:
+            raise DataError(
+                f"registered dataset provider {ref_provider!r} does not match the "
+                f"chart provider {chart.provider!r}"
+            )
+        eligible_groups = tuple(bar.start.date().isoformat() for bar in bars.bars)
+        if len(set(eligible_groups)) != len(eligible_groups):
+            raise DataError("registered daily dataset produced duplicate session groups")
+        dataset_fingerprint = bars.dataset.content_sha256
+        boundary_authority = {
+            "kind": "empirical_dataset",
+            "real_market_evidence": True,
+            "empirical_confirmation_authorized": True,
         }
-    )
+        hashes = cast(dict[str, object], result["hashes"])
+        hashes["data"] = dataset_fingerprint
+        empirical_section = {
+            "ref_id": str(ref.get("ref_id", "")),
+            "content_sha256": dataset_fingerprint,
+            "instrument": ref_instrument,
+            "provider": ref_provider,
+            "session_group_count": len(eligible_groups),
+            "start_ts": str(ref.get("start_ts", "")),
+            "end_ts": str(ref.get("end_ts", "")),
+        }
+    else:
+        eligible_groups = tuple(
+            f"synthetic-acceptance-session-{index:03d}" for index in range(1, 11)
+        )
+        dataset_fingerprint = _sha_json(
+            {
+                "schema": "AlphaSyntheticResearchAcceptanceDatasetV1",
+                "generator": "d0-synthetic-v1",
+                "chart_fingerprint": chart.to_dict(),
+                "eligible_groups": list(eligible_groups),
+            }
+        )
     boundary = ResearchD2BoundaryV1.from_eligible_groups(
-        dataset_fingerprint=synthetic_dataset,
+        dataset_fingerprint=dataset_fingerprint,
         eligible_groups=eligible_groups,
         chart_fingerprint=chart,
         event_formula=event_formula,
@@ -314,11 +420,7 @@ def _approval_payload(
         "event_definition": result.get("event_definition"),
         "primary_claims": [primary_claim],
         "primary_claim_count": 1,
-        "boundary_authority": {
-            "kind": "synthetic_acceptance_fixture",
-            "real_market_evidence": False,
-            "empirical_confirmation_authorized": False,
-        },
+        "boundary_authority": boundary_authority,
         "evidence_topology": {
             "boundary": boundary.to_dict(),
             "D0": {"purpose": "synthetic_validation", "share": 0.0},
@@ -336,14 +438,16 @@ def _approval_payload(
         },
     }
     protocol = cast(dict[str, object], result["protocol"])
+    if empirical_section is not None:
+        protocol["empirical_dataset"] = empirical_section
     resolved = result.get("resolved_material_choices")
     if (
         isinstance(resolved, Mapping)
         and result.get("approval_ready") is True
         and event_value.get("name") == "double_bottom"
         and event_value.get("availability") == "second_trough_confirmable"
-        and resolved.get("chart_construction") == "spy_rth_60m_four_hour_window"
-        and resolved.get("primary_outcome") == "four_trading_hour_return_25bp"
+        and (resolved.get("chart_construction"), resolved.get("primary_outcome"))
+        in registered_d0_material_choices()
     ):
         protocol["d0_operator"] = registered_d0_operator(result)
     return result
@@ -654,6 +758,9 @@ def draft(
     answers: list[str] = typer.Option(  # noqa: B008
         [], "--answer", help="material_question=value; repeatable"
     ),
+    dataset: str | None = typer.Option(
+        None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
+    ),
     created_by: str = typer.Option("codex"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
@@ -669,7 +776,10 @@ def draft(
         )
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
-        payload = _approval_payload(preview, source_pack_id=source_pack_id)
+        binding = _empirical_dataset(store, dataset) if dataset is not None else None
+        payload = _approval_payload(
+            preview, source_pack_id=source_pack_id, empirical_dataset=binding
+        )
         contract = store.create_research_contract(
             project_id,
             scope="exploration",
@@ -790,6 +900,9 @@ def revise(
     answers: list[str] = typer.Option(  # noqa: B008
         [], "--answer", help="material_question=value; repeatable"
     ),
+    dataset: str | None = typer.Option(
+        None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
+    ),
     actor: str = typer.Option(..., help="human owner requesting the bounded revision"),
     reason: str = typer.Option(...),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
@@ -808,10 +921,12 @@ def revise(
         )
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
+        binding = _empirical_dataset(store, dataset) if dataset is not None else None
         payload = _approval_payload(
             preview,
             source_pack_id=source_pack_id,
             d2_relation_to_prior="unopened_sealed_reuse",
+            empirical_dataset=binding,
         )
         active = case.get("active_contract")
         if (
@@ -953,10 +1068,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
             raise DataError(
                 "deep research requires the frozen analysis_plan on the approved contract"
             )
-        approved_hashes = payload.get("hashes")
-        if not isinstance(approved_hashes, Mapping) or _sha_json(approved_hashes) != _sha_json(
-            _implementation_hashes()
-        ):
+        if _implementation_drifted(payload.get("hashes")):
             raise DataError(
                 "approved research implementation fingerprints no longer match the executable "
                 "code, dependency lock, evaluator, or environment; create and approve a revised "
@@ -1271,11 +1383,7 @@ def run_research(
                 "synthetic pilot stopped after the initial attempt and two safe retries; owner "
                 "revision or disposition is required"
             )
-        approved_hashes = payload.get("hashes")
-        current_hashes = _implementation_hashes()
-        if not isinstance(approved_hashes, Mapping) or _sha_json(approved_hashes) != _sha_json(
-            current_hashes
-        ):
+        if _implementation_drifted(payload.get("hashes")):
             raise DataError(
                 "approved research implementation fingerprints no longer match the executable "
                 "code, dependency lock, evaluator, or environment; create and approve a revised "

@@ -118,6 +118,22 @@ def test_material_resolutions_make_the_contract_approval_ready_and_deterministic
             },
         ),
         (
+            RAW_IDEA,
+            {
+                "chart_construction": "tiingo_daily_fallback",
+                "event_availability": "second_trough_confirmable",
+                "primary_outcome": "four_trading_hour_return_25bp",
+            },
+        ),
+        (
+            RAW_IDEA,
+            {
+                "chart_construction": "tiingo_daily_fallback",
+                "event_availability": "neckline_breakout_confirmed",
+                "primary_outcome": "next_regular_session_return_50bp",
+            },
+        ),
+        (
             "A generic owner research event may predict returns",
             {
                 "chart_construction": "spy_rth_60m_four_hour_window",
@@ -136,6 +152,48 @@ def test_resolved_but_unimplemented_variants_are_explicitly_unavailable_drafts(
     assert draft["approval_ready"] is False
     assert draft["gate1_availability"]["state"] == "UNAVAILABLE"
     assert "Gate 1 implements only" in draft["gate1_availability"]["reason"]
+
+
+def test_daily_gate4_material_combo_is_an_available_approval_ready_draft() -> None:
+    """R6a (ADR-0026): the Gate-4 Tiingo-daily lane is a second supported Gate-1 combo."""
+    resolutions = {
+        "chart_construction": "tiingo_daily_fallback",
+        "event_availability": "second_trough_confirmable",
+        "primary_outcome": "next_regular_session_return_50bp",
+    }
+    draft = draft_exploration_contract(RAW_IDEA, resolutions=resolutions)
+
+    assert draft["blocking_questions"] == []
+    assert draft["approval_ready"] is True
+    assert draft["gate1_availability"]["state"] == "AVAILABLE"
+    reason = draft["gate1_availability"]["reason"]
+    assert "session-daily" in reason
+    assert "registered" in reason.casefold()
+    assert draft["chart_fingerprint"] == {
+        "provider": "tiingo",
+        "instrument": "SPY",
+        "venue": "US_EQUITIES",
+        "timezone": "America/New_York",
+        "session": "regular_session_daily",
+        "bar_duration_minutes": 1_440,
+        "anchor": "US_EQUITIES_SESSION_CLOSE",
+        "adjustment_basis": "point_in_time",
+        "timestamp_semantics": "bar_close_available",
+        "label": "registered Tiingo session-daily Gate-4 fallback bars",
+    }
+    assert draft["primary_claim"]["horizon"] == "next_regular_session"
+    assert draft["primary_claim"]["minimum_effect_return"] == 0.005
+    assert draft["analysis_plan"]["families"]
+    material = json.dumps(
+        {
+            "chart": draft["chart_fingerprint"],
+            "event": draft["event_definition"],
+            "claim": draft["primary_claim"],
+        },
+        sort_keys=True,
+    ).upper()
+    assert "REQUIRED" not in material
+    assert "UNRESOLVED" not in material
 
 
 def test_unknown_or_conflicting_material_resolution_fails_closed() -> None:

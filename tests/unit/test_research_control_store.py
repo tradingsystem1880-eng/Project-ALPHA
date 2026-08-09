@@ -20,6 +20,7 @@ from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import SCHEMA_VERSION, ControlStore
 from alpha_cli.research_intake import draft_exploration_contract
 from alpha_cli.research_runtime import (
+    _GENERATION_60M,
     _d0_acceptance_payload,
     _recomputed_d0_measurements,
     d0_execution_fingerprint,
@@ -652,7 +653,7 @@ def _write_research_run(
         operator_fingerprint = manifest["d0_operator_fingerprint"]
         assert isinstance(operator_fingerprint, str)
         assert dataset_hash is not None
-        measurements = _recomputed_d0_measurements()
+        measurements = _recomputed_d0_measurements(_GENERATION_60M)
         sidecars: dict[str, bytes] = {
             "events.json": b'[{"confirmation_index":8,"second_trough_index":6}]',
             "topology.json": b'{"schema_version":2}',
@@ -662,6 +663,7 @@ def _write_research_run(
             "report.md": b"# D0 synthetic acceptance\n",
             "d0_acceptance.json": json.dumps(
                 _d0_acceptance_payload(
+                    generation=_GENERATION_60M,
                     run_id=run_id,
                     project_id=PROJECT_ID,
                     contract_id=contract_id,
