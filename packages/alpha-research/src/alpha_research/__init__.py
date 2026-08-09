@@ -23,6 +23,12 @@ from alpha_research.boundary import (
     ResearchEvidenceSharesV1,
     ResearchEvidenceZoneBoundaryV1,
 )
+from alpha_research.conditional_returns import (
+    conditional_return_summary,
+    difference_in_means,
+    forward_returns,
+    quantile_breakdown,
+)
 from alpha_research.confirmation import (
     ClaimDirection,
     ConfirmationEvidence,
@@ -58,6 +64,8 @@ from alpha_research.gate_packet import (
     build_research_gate_packet,
     confirmation_classification_from_evidence,
 )
+from alpha_research.ic import rank_ic, rolling_rank_ic
+from alpha_research.leadlag import leadlag_profile, leakage_diagnostic
 from alpha_research.multiple_testing import (
     FrozenSecondaryFamily,
     HolmAdjustedHypothesis,
@@ -75,6 +83,11 @@ from alpha_research.power import (
     simulate_prospective_power_known_sigma,
 )
 from alpha_research.rendering import render_research_line_chart
+from alpha_research.stability import (
+    rolling_effect_size,
+    subsample_consistency,
+    temporal_split_effects,
+)
 from alpha_research.topology import (
     EvidenceDependencyGroup,
     EvidencePhase,
@@ -124,19 +137,30 @@ __all__ = [
     "autocorrelation",
     "build_research_gate_packet",
     "classify_confirmation",
+    "conditional_return_summary",
     "confirmation_classification_from_evidence",
     "coverage_summary",
     "detect_double_bottom_events",
+    "difference_in_means",
     "effective_sample_size",
     "evaluate_event_association",
     "evaluate_matched_association",
+    "forward_returns",
     "holm_adjust_secondary_family",
+    "leadlag_profile",
+    "leakage_diagnostic",
     "match_event_controls",
     "purge_overlapping_outcomes",
+    "quantile_breakdown",
+    "rank_ic",
     "render_research_line_chart",
     "required_observations_known_sigma",
     "return_distribution",
+    "rolling_effect_size",
+    "rolling_rank_ic",
     "seasonality_by_weekday",
     "simulate_prospective_power_known_sigma",
+    "subsample_consistency",
+    "temporal_split_effects",
     "volatility_regime_tags",
 ]
