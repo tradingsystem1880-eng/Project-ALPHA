@@ -21,6 +21,22 @@ export function HypothesisCardView({ card }: { card: HypothesisCard }) {
           </div>
         ))}
       </div>
+      {card.analysis_plan ? (
+        <div className="hypothesis-card-plan" aria-label="Frozen analysis plan">
+          <span className="eyebrow">
+            Analysis plan · {card.analysis_plan.family_count} registered families
+          </span>
+          {card.analysis_plan.families.map((entry) => (
+            <span
+              key={entry.family}
+              className="chip kind"
+              title={`multiplicity: ${entry.multiplicity.replaceAll('_', ' ')}`}
+            >
+              {entry.family.replaceAll('_', ' ')} · {entry.multiplicity.replaceAll('_', ' ')}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

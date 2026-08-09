@@ -22,6 +22,7 @@ describe('research scorecard drift guard: TS twin vs committed Python fixture', 
     expect(DRIFT_SCENARIOS.map((scenario) => scenario.name)).toEqual([
       'closed_inconclusive',
       'closed_supported',
+      'deep_live_d1_evidence',
       'fresh_triage_unresolved',
       'registered_audited_limiting',
       'screened_mixed_literature',

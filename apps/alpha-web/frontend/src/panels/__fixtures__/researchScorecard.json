@@ -248,6 +248,140 @@
     "expected": {
       "dimensions": [
         {
+          "basis": "14 of 14 hypothesis-card fields are complete.",
+          "dimension_id": "hypothesis_definition",
+          "label": "Hypothesis definition",
+          "state": "complete"
+        },
+        {
+          "basis": "No registered research datasets.",
+          "dimension_id": "data_quality",
+          "label": "Data quality",
+          "state": "not_tested"
+        },
+        {
+          "basis": "The recorded power finding is INCONCLUSIVE.",
+          "dimension_id": "sample_adequacy",
+          "label": "Sample adequacy",
+          "state": "weak"
+        },
+        {
+          "basis": "Exploratory result only; the sealed confirmation has not run.",
+          "dimension_id": "effect_existence",
+          "label": "Effect existence",
+          "state": "mixed"
+        },
+        {
+          "basis": "Recorded magnitude is inconclusive at the hurdle.",
+          "dimension_id": "effect_size",
+          "label": "Effect size",
+          "state": "marginal"
+        },
+        {
+          "basis": "The recorded temporal-stability finding is STABLE.",
+          "dimension_id": "temporal_stability",
+          "label": "Temporal stability",
+          "state": "strong"
+        },
+        {
+          "basis": "The recorded transportability finding is NOT_TESTED.",
+          "dimension_id": "cross_asset_stability",
+          "label": "Cross-asset stability",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No regime-decomposition evidence exists yet.",
+          "dimension_id": "regime_robustness",
+          "label": "Regime robustness",
+          "state": "not_tested"
+        },
+        {
+          "basis": "Registered negative controls passed.",
+          "dimension_id": "falsification",
+          "label": "Falsification",
+          "state": "passed"
+        },
+        {
+          "basis": "No mechanism evidence has been recorded.",
+          "dimension_id": "mechanism",
+          "label": "Mechanism",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No screened claim-level literature evidence.",
+          "dimension_id": "literature",
+          "label": "Literature",
+          "state": "insufficient"
+        },
+        {
+          "basis": "Registered multiplicity accounting passed.",
+          "dimension_id": "data_mining_risk",
+          "label": "Data-mining risk",
+          "state": "low"
+        }
+      ],
+      "recommendation": {
+        "reasons": [
+          "4 of 12 readiness dimensions are untested.",
+          "3 unresolved questions remain."
+        ],
+        "value": "MORE RESEARCH REQUIRED"
+      },
+      "scorecard_schema": "ResearchReadinessScorecardV1",
+      "unresolved_questions": {
+        "count": 3,
+        "items": [
+          "Unresolved confounder: trend and volatility state",
+          "mechanism analysis",
+          "cross-dataset transportability"
+        ]
+      }
+    },
+    "inputs": {
+      "attempt_count": 2,
+      "audit_blocking_count": 0,
+      "audit_limiting_count": 0,
+      "audited_dataset_count": 0,
+      "blocking_questions": [],
+      "confirmation_classification": null,
+      "confounders_resolved": [
+        "calendar and day of week"
+      ],
+      "confounders_unresolved": [
+        "trend and volatility state"
+      ],
+      "d2_state": "sealed",
+      "disposition": null,
+      "hypothesis_complete_fields": 14,
+      "hypothesis_partial_fields": 0,
+      "hypothesis_total_fields": 14,
+      "inputs_schema": "ResearchScorecardInputsV1",
+      "mechanism_status": "NOT_TESTED",
+      "multiplicity_status": "PASSED",
+      "negative_controls_status": "PASSED",
+      "outcome": null,
+      "phase": "deep_research",
+      "power_status": "INCONCLUSIVE",
+      "practical_magnitude_status": "INCONCLUSIVE",
+      "primary_result_status": "TESTED",
+      "registered_dataset_count": 0,
+      "screened_claim_count": 0,
+      "screened_contradicting_count": 0,
+      "screened_supporting_count": 0,
+      "stability_parameter_status": "NOT_TESTED",
+      "stability_temporal_status": "STABLE",
+      "stability_transportability_status": "NOT_TESTED",
+      "untested_work": [
+        "mechanism analysis",
+        "cross-dataset transportability"
+      ]
+    },
+    "name": "deep_live_d1_evidence"
+  },
+  {
+    "expected": {
+      "dimensions": [
+        {
           "basis": "6 of 14 hypothesis-card fields are complete.",
           "dimension_id": "hypothesis_definition",
           "label": "Hypothesis definition",

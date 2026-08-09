@@ -4049,6 +4049,7 @@ export interface components {
         };
         /** HypothesisCard */
         HypothesisCard: {
+            analysis_plan?: components["schemas"]["HypothesisCardPlan"] | null;
             /**
              * Card Schema
              * @constant
@@ -4080,6 +4081,20 @@ export interface components {
             status: "complete" | "partial" | "missing";
             /** Value */
             value: string | null;
+        };
+        /** HypothesisCardPlan */
+        HypothesisCardPlan: {
+            /** Families */
+            families: components["schemas"]["HypothesisCardPlanFamily"][];
+            /** Family Count */
+            family_count: number;
+        };
+        /** HypothesisCardPlanFamily */
+        HypothesisCardPlanFamily: {
+            /** Family */
+            family: string;
+            /** Multiplicity */
+            multiplicity: string;
         };
         /** JobDetail */
         JobDetail: {

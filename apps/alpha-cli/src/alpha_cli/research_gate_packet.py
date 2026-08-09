@@ -235,11 +235,23 @@ def research_hypothesis_card(payload: Mapping[str, object]) -> dict[str, object]
         ),
         _card_field("success_criteria", "Success criteria", success, partial=success_partial),
     ]
+    plan_families = _mapping(payload.get("analysis_plan")).get("families")
+    plan_rows = [
+        {
+            "family": str(_mapping(entry).get("family", "")),
+            "multiplicity": str(_mapping(entry).get("multiplicity", "")),
+        }
+        for entry in (plan_families if isinstance(plan_families, list) else [])
+        if _mapping(entry)
+    ]
     return {
         "card_schema": "HypothesisCardV1",
         "fields": fields,
         "complete_fields": sum(1 for field in fields if field["status"] == "complete"),
         "total_fields": len(fields),
+        "analysis_plan": (
+            {"family_count": len(plan_rows), "families": plan_rows} if plan_rows else None
+        ),
     }
 
 
@@ -277,12 +289,15 @@ def research_scorecard_inputs(
     packet: Mapping[str, object] | None = None,
     datasets: Sequence[Mapping[str, object]] = (),
     claims: Sequence[Mapping[str, object]] = (),
+    live_evidence: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Assemble the compact, TS-twinnable inputs for the readiness scorecard.
 
-    Everything comes from already-authoritative records (case summary, immutable contract
-    payload, and — for closed cases — the deterministic terminal gate packet). The
-    assembler never computes evidence; it only relays recorded statuses.
+    Everything comes from already-authoritative records: the case summary, the immutable
+    contract payload, the deterministic terminal gate packet for closed cases, or — for
+    open cases with admitted D1 evidence — the store-verified typed evidence of the
+    latest completed deep-research attempt (``live_evidence``). The assembler never
+    computes evidence; it only relays recorded statuses.
     """
     card = research_hypothesis_card(payload)
     fields = card["fields"]
@@ -292,6 +307,9 @@ def research_scorecard_inputs(
     decision = _mapping(summary.get("research_decision"))
 
     guided = _mapping(_mapping(_mapping(packet).get("layers")).get("guided_evidence"))
+    if packet is None and live_evidence is not None:
+        # The typed D1 evidence artifact shares the guided-evidence field vocabulary.
+        guided = _mapping(live_evidence)
     primary = _mapping(guided.get("primary_result"))
     stability = _mapping(guided.get("stability"))
     packet_confounders = _mapping(guided.get("confounders"))
@@ -301,7 +319,7 @@ def research_scorecard_inputs(
     confounders_resolved = _string_list(packet_confounders.get("resolved"))
     confounders_unresolved = (
         _string_list(packet_confounders.get("unresolved"))
-        if packet is not None
+        if guided
         else confounders_registered
     )
 
@@ -613,8 +631,16 @@ def research_scorecard_projection(
     case = store.research_case_summary(project_id) if summary is None else summary
     payload = _mapping(_mapping(case.get("active_contract")).get("payload"))
     packet: Mapping[str, object] | None = None
+    live_evidence: Mapping[str, object] | None = None
     if case.get("phase") == "closed":
         packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
+    elif str(case.get("phase")) in {
+        "deep_research",
+        "confirmation_review",
+        "sealed_confirmation",
+        "research_decision",
+    }:
+        live_evidence = _latest_live_d1_evidence(store.research_gate_packet_inputs(project_id))
     return derive_research_scorecard(
         research_scorecard_inputs(
             case,
@@ -622,6 +648,7 @@ def research_scorecard_projection(
             packet=packet,
             datasets=_case_datasets(store, payload),
             claims=store.list_source_claims(project_id),
+            live_evidence=live_evidence,
         )
     )
 
@@ -630,22 +657,8 @@ _SUPPORTING_FINDING_STATUSES = frozenset({"PASSED", "STABLE", "SUPPORTED"})
 _CONTRADICTING_FINDING_STATUSES = frozenset({"FAILED", "UNSTABLE", "CONTRADICTED"})
 
 
-def _packet_findings(packet: Mapping[str, object] | None) -> list[dict[str, object]]:
-    """Flatten the packet's guided evidence into typed findings for partitioning."""
-    layers = _mapping(_mapping(packet).get("layers"))
-    guided = _mapping(layers.get("guided_evidence"))
-    conclusion = _mapping(layers.get("conclusion_90_seconds"))
+def _named_findings(guided: Mapping[str, object]) -> list[dict[str, object]]:
     findings: list[dict[str, object]] = []
-    classification = guided.get("confirmation_classification")
-    if isinstance(classification, str) and classification:
-        answer = conclusion.get("thesis_answer")
-        findings.append(
-            {
-                "finding_id": "confirmation_classification",
-                "status": classification,
-                "summary": answer if isinstance(answer, str) else None,
-            }
-        )
     named: list[tuple[str, object]] = [
         ("mechanism", guided.get("mechanism")),
         ("strongest_support", guided.get("strongest_support")),
@@ -667,6 +680,67 @@ def _packet_findings(packet: Mapping[str, object] | None) -> list[dict[str, obje
                 "finding_id": finding_id,
                 "status": _finding_status(finding),
                 "summary": summary if isinstance(summary, str) else None,
+            }
+        )
+    return findings
+
+
+def _packet_findings(packet: Mapping[str, object] | None) -> list[dict[str, object]]:
+    """Flatten the packet's guided evidence into typed findings for partitioning."""
+    layers = _mapping(_mapping(packet).get("layers"))
+    guided = _mapping(layers.get("guided_evidence"))
+    conclusion = _mapping(layers.get("conclusion_90_seconds"))
+    findings: list[dict[str, object]] = []
+    classification = guided.get("confirmation_classification")
+    if isinstance(classification, str) and classification:
+        answer = conclusion.get("thesis_answer")
+        findings.append(
+            {
+                "finding_id": "confirmation_classification",
+                "status": classification,
+                "summary": answer if isinstance(answer, str) else None,
+            }
+        )
+    return [*findings, *_named_findings(guided)]
+
+
+def _latest_live_d1_evidence(inputs: Mapping[str, object]) -> Mapping[str, object] | None:
+    """The newest completed attempt's store-verified typed D1 evidence, if any."""
+    attempts = inputs.get("attempts")
+    if not isinstance(attempts, list):
+        return None
+    live: Mapping[str, object] | None = None
+    for attempt in attempts:
+        record = _mapping(attempt)
+        if record.get("status") != "completed":
+            continue
+        evidence = _mapping(_mapping(record.get("details")).get("gate_packet_evidence"))
+        if (
+            evidence.get("schema") == "ResearchGateEvidenceV1"
+            and evidence.get("evidence_zone") == "D1"
+        ):
+            live = evidence
+    return live
+
+
+def _live_findings(evidence: Mapping[str, object] | None) -> list[dict[str, object]]:
+    """Flatten live D1 evidence into typed findings; the strongest lines keep direction."""
+    guided = _mapping(evidence)
+    if not guided:
+        return []
+    findings = _named_findings(guided)
+    support = guided.get("strongest_support")
+    if isinstance(support, str) and support.strip():
+        findings.append(
+            {"finding_id": "strongest_support", "status": "SUPPORTED", "summary": support}
+        )
+    contradiction = guided.get("strongest_contradiction")
+    if isinstance(contradiction, str) and contradiction.strip():
+        findings.append(
+            {
+                "finding_id": "strongest_contradiction",
+                "status": "CONTRADICTED",
+                "summary": contradiction,
             }
         )
     return findings
@@ -743,12 +817,20 @@ def research_evidence_hub_projection(
     if summary.get("phase") == "closed":
         packet = build_research_gate_packet(inputs).to_dict()
 
+    live_evidence = None if packet is not None else _latest_live_d1_evidence(inputs)
     thesis = _mapping(payload.get("thesis"))
     card = research_hypothesis_card(payload)
     datasets = _case_datasets(store, payload)
     claims = store.list_source_claims(project_id)
     scorecard = derive_research_scorecard(
-        research_scorecard_inputs(summary, payload, packet=packet, datasets=datasets, claims=claims)
+        research_scorecard_inputs(
+            summary,
+            payload,
+            packet=packet,
+            datasets=datasets,
+            claims=claims,
+            live_evidence=live_evidence,
+        )
     )
     scorecard_dimensions = scorecard["dimensions"]
     if not isinstance(scorecard_dimensions, list):  # pragma: no cover - deriver invariant.
@@ -762,10 +844,12 @@ def research_evidence_hub_projection(
         {},
     )
     guided = _mapping(_mapping(_mapping(packet).get("layers")).get("guided_evidence"))
-    findings = _packet_findings(packet)
+    if packet is None and live_evidence is not None:
+        guided = _mapping(live_evidence)
+    findings = _packet_findings(packet) if packet is not None else _live_findings(live_evidence)
     packet_confounders = _mapping(guided.get("confounders"))
     registered_confounders = _string_list(payload.get("confounders"))
-    if packet is not None:
+    if guided:
         confounder_rows = [
             {"text": text, "status": "resolved"}
             for text in _string_list(packet_confounders.get("resolved"))
@@ -839,7 +923,15 @@ def research_evidence_hub_projection(
             "alternatives": _string_list(thesis.get("alternatives")),
             "confounders": confounder_rows,
         },
-        "exploration": {"charts": [], "watermark": "EXPLORATORY", "status": "NOT_TESTED"},
+        "exploration": {
+            "charts": [],
+            "watermark": "EXPLORATORY",
+            "status": (
+                "TESTED"
+                if str(_mapping(guided.get("primary_result")).get("status")) == "TESTED"
+                else "NOT_TESTED"
+            ),
+        },
         "experiments": {"attempts": _bounded_attempts(inputs.get("attempts"))},
         "evidence_for": {
             "findings": [
@@ -866,7 +958,7 @@ def research_evidence_hub_projection(
                 for finding in findings
                 if str(finding["finding_id"]).startswith("stability_")
             ],
-            "status": "NOT_TESTED" if packet is None else "RECORDED",
+            "status": "NOT_TESTED" if not guided else "RECORDED",
         },
         "decision": {
             "outcome": _optional_text(decision.get("outcome")),

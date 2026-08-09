@@ -1428,11 +1428,22 @@ class HypothesisCardField(StrictModel):
     status: Literal["complete", "partial", "missing"]
 
 
+class HypothesisCardPlanFamily(StrictModel):
+    family: str
+    multiplicity: str
+
+
+class HypothesisCardPlan(StrictModel):
+    family_count: int = Field(ge=1)
+    families: list[HypothesisCardPlanFamily]
+
+
 class HypothesisCard(StrictModel):
     card_schema: Literal["HypothesisCardV1"]
     fields: list[HypothesisCardField]
     complete_fields: int = Field(ge=0)
     total_fields: Literal[14]
+    analysis_plan: HypothesisCardPlan | None = None
 
 
 class ResearchScorecardDimension(StrictModel):

@@ -1937,6 +1937,32 @@ def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(
     recovered = _invoke("run", "deep", project_id)
     assert cast(dict[str, object], recovered["manifest"])["run_id"] == manifest["run_id"]
 
+    # The Evidence Hub and scorecard go live from the admitted D1 evidence — no terminal
+    # packet is required for an open case.
+    hub = _invoke("evidence-hub", project_id)
+    sections = cast(dict[str, object], hub["sections"])
+    exploration = cast(dict[str, object], sections["exploration"])
+    assert exploration["status"] == "TESTED"
+    robustness = cast(dict[str, object], sections["robustness"])
+    assert robustness["status"] == "RECORDED"
+    finding_ids = {
+        str(cast(dict[str, object], finding)["finding_id"])
+        for section in ("evidence_for", "evidence_against")
+        for finding in cast(list[object], cast(dict[str, object], sections[section])["findings"])
+    }
+    assert finding_ids  # live D1 findings are partitioned into for/against
+    status = _invoke("status", project_id)
+    dimensions = {
+        str(cast(dict[str, object], entry)["dimension_id"]): str(
+            cast(dict[str, object], entry)["state"]
+        )
+        for entry in cast(
+            list[object], cast(dict[str, object], status["scorecard"])["dimensions"]
+        )
+    }
+    assert dimensions["effect_existence"] == "mixed"  # exploratory only, honestly capped
+    assert dimensions["falsification"] != "not_tested"
+
 
 def test_run_deep_failures_checkpoint_and_exact_reexecution_resumes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

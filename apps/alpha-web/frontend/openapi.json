@@ -4108,6 +4108,16 @@
       "HypothesisCard": {
         "additionalProperties": false,
         "properties": {
+          "analysis_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HypothesisCardPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "card_schema": {
             "const": "HypothesisCardV1",
             "title": "Card Schema",
@@ -4195,6 +4205,48 @@
           "status"
         ],
         "title": "HypothesisCardField",
+        "type": "object"
+      },
+      "HypothesisCardPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "families": {
+            "items": {
+              "$ref": "#/components/schemas/HypothesisCardPlanFamily"
+            },
+            "title": "Families",
+            "type": "array"
+          },
+          "family_count": {
+            "minimum": 1.0,
+            "title": "Family Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "family_count",
+          "families"
+        ],
+        "title": "HypothesisCardPlan",
+        "type": "object"
+      },
+      "HypothesisCardPlanFamily": {
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "multiplicity": {
+            "title": "Multiplicity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "multiplicity"
+        ],
+        "title": "HypothesisCardPlanFamily",
         "type": "object"
       },
       "JobDetail": {

@@ -10,6 +10,7 @@ import type { ResearchEvidenceHub, ResearchEvidenceHubSections } from '../api/ty
 import { Placeholder } from '../components/Placeholder'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
+import { headlineBoard } from './researchHeadlineModel'
 import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
 
 type SectionId = keyof ResearchEvidenceHubSections
@@ -325,6 +326,17 @@ export function EvidenceHub(props: IDockviewPanelProps) {
         ) : null}
         {hub && !scorecardOpen ? (
           <>
+            <div className="scorecard-strip" aria-label="Headline evidence board">
+              {headlineBoard(hub.sections).map((category) => (
+                <span
+                  key={category.id}
+                  className={stateChipClass(category.status.toLowerCase().replaceAll(' ', '_'))}
+                  title={category.label}
+                >
+                  {category.label} · {category.status}
+                </span>
+              ))}
+            </div>
             <div className="evidence-hub-tabs" role="tablist" aria-label="Evidence sections">
               {SECTION_ORDER.map((section) => (
                 <button
