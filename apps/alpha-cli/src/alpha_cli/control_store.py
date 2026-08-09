@@ -261,8 +261,16 @@ _RESEARCH_EXECUTION_TRANSITIONS: Final[dict[str, frozenset[str]]] = {
     "blocked": frozenset({"queued", "failed", "idle"}),
     "failed": frozenset({"queued", "idle"}),
 }
+_RESEARCH_PACKET_KINDS: Final = frozenset(
+    {"asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"}
+)
+_RESEARCH_NOTE_KINDS: Final = frozenset(
+    {"critique", "confounder_review", "test_design", "completeness_review", "synthesis"}
+)
+_RESEARCH_NOTE_AUTHOR_KINDS: Final = frozenset({"owner", "agent"})
+_RESEARCH_PACKET_COLLECTION_LIMIT: Final = 50
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl)_[0-9a-f]{64}")
+_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn)_[0-9a-f]{64}")
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
@@ -684,6 +692,39 @@ CREATE TABLE IF NOT EXISTS research_contract_experiment_links (
     PRIMARY KEY (project_id, experiment_id),
     UNIQUE (project_id, contract_id, experiment_id)
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_context_packets (
+    packet_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    packet_kind TEXT NOT NULL CHECK (packet_kind IN (
+        'asset', 'research_case', 'experiment', 'chart', 'validation', 'strategy_promotion'
+    )),
+    protocol_id TEXT,
+    protocol_content_hash TEXT,
+    payload_json TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_case_notes (
+    note_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL,
+    note_kind TEXT NOT NULL CHECK (note_kind IN (
+        'critique', 'confounder_review', 'test_design', 'completeness_review', 'synthesis'
+    )),
+    body TEXT NOT NULL,
+    author TEXT NOT NULL,
+    author_kind TEXT NOT NULL CHECK (author_kind IN ('owner', 'agent')),
+    context_packet_id TEXT REFERENCES research_context_packets(packet_id),
+    created_at TEXT NOT NULL,
+    UNIQUE (project_id, sequence)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_context_packets_project
+    ON research_context_packets(project_id, created_at, packet_id);
+CREATE INDEX IF NOT EXISTS idx_research_case_notes_project
+    ON research_case_notes(project_id, sequence);
 
 CREATE INDEX IF NOT EXISTS idx_research_source_records_project
     ON research_source_records(project_id, created_at, source_id);
@@ -4402,6 +4443,439 @@ class ControlStore:
             }
             for row in ordered
         ]
+
+    def _bounded_project_rows(
+        self,
+        connection: sqlite3.Connection,
+        query: str,
+        params: Sequence[object],
+        *,
+        limit: int = _RESEARCH_PACKET_COLLECTION_LIMIT,
+    ) -> tuple[list[dict[str, object]], bool]:
+        rows = connection.execute(f"{query} LIMIT ?", [*params, limit + 1]).fetchall()  # noqa: S608
+        truncated = len(rows) > limit
+        return [dict(row) for row in rows[:limit]], truncated
+
+    def _packet_row_view(self, row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        record = dict(row)
+        payload = _decode_json(record.pop("payload_json"), "research context packet payload")
+        if not isinstance(payload, dict):
+            raise DataError("corrupt research context packet payload")
+        return {**record, "payload": payload}
+
+    def build_research_context_packet(
+        self,
+        project_id: str,
+        *,
+        kind: str,
+        created_by: str,
+        symbol: str | None = None,
+        protocol_id: str | None = None,
+        protocol_content_hash: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Assemble and append-only-record one content-addressed Codex context packet.
+
+        The payload is built from authoritative records inside one write transaction with
+        bounded collections and explicit truncation flags; ``cp_<sha256>`` is derived from
+        the canonical payload bytes, so identical inputs re-record idempotently and the UI
+        can display byte-identical context. Recording is visibility (spec §3.2).
+        """
+        clean_kind = _enum_value(kind, "research context packet kind", _RESEARCH_PACKET_KINDS)
+        clean_actor = _required_text(created_by, "research packet creator", max_length=200)
+        clean_protocol = _optional_text(protocol_id, "research packet protocol_id")
+        clean_protocol_hash = _optional_text(
+            protocol_content_hash, "research packet protocol_content_hash"
+        )
+        if clean_protocol_hash is not None and _SHA256_RE.fullmatch(clean_protocol_hash) is None:
+            raise DataError("research packet protocol_content_hash must be a sha256 hex digest")
+        if (clean_protocol is None) != (clean_protocol_hash is None):
+            raise DataError("research packet protocol id and content hash travel together")
+        clean_symbol = None
+        if clean_kind == "asset":
+            if symbol is None:
+                raise DataError("asset research packets require a symbol")
+            clean_symbol = _symbols([symbol])[0]
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            project = dict(self._require_project(connection, project_id))
+            pid = str(project["project_id"])
+            phase = self._latest_research_phase(connection, pid)
+            execution = self._latest_research_execution(connection, pid)
+            if phase is None or execution is None:
+                raise DataError(f"strategy project {pid!r} has no research case")
+            contract = self._require_research_contract(connection, pid, str(phase["contract_id"]))
+            contract_view = self._research_contract_view(connection, contract)
+            decision = connection.execute(
+                """SELECT * FROM research_decision_events WHERE project_id = ?
+                ORDER BY sequence DESC LIMIT 1""",
+                (pid,),
+            ).fetchone()
+            attempts, attempts_truncated = self._bounded_project_rows(
+                connection,
+                """SELECT attempt_id, contract_id, phase, kind, status, config_fingerprint,
+                    run_id, recorded_at
+                FROM research_attempt_records WHERE project_id = ?
+                ORDER BY recorded_at, attempt_id""",
+                (pid,),
+            )
+            sources, sources_truncated = self._bounded_project_rows(
+                connection,
+                """SELECT source_id, title, locator, provider, access_mode, created_at
+                FROM research_source_records WHERE project_id = ?
+                ORDER BY created_at, source_id""",
+                (pid,),
+            )
+            notes, notes_truncated = self._bounded_project_rows(
+                connection,
+                """SELECT note_id, note_kind, body, author, author_kind, context_packet_id,
+                    created_at
+                FROM research_case_notes WHERE project_id = ? ORDER BY sequence""",
+                (pid,),
+            )
+            payload_contract = contract_view["payload"]
+            if not isinstance(payload_contract, dict):
+                raise DataError("corrupt research contract payload")
+            kind_specific = self._packet_kind_specific(
+                connection,
+                kind=clean_kind,
+                symbol=clean_symbol,
+                contract_payload=payload_contract,
+                decision=None if decision is None else dict(decision),
+                attempts=attempts,
+            )
+            cursor_rows = connection.execute(
+                """SELECT
+                    (SELECT COALESCE(MAX(sequence), 0) FROM research_phase_events
+                        WHERE project_id = ?) AS phase,
+                    (SELECT COALESCE(MAX(sequence), 0) FROM research_execution_events
+                        WHERE project_id = ?) AS execution,
+                    (SELECT COUNT(*) FROM research_attempt_records
+                        WHERE project_id = ?) AS attempts,
+                    (SELECT COALESCE(MAX(sequence), 0) FROM research_decision_events
+                        WHERE project_id = ?) AS decisions""",
+                (pid, pid, pid, pid),
+            ).fetchone()
+            payload: dict[str, object] = {
+                "packet_schema": "ResearchContextPacketV1",
+                "packet_kind": clean_kind,
+                "project_id": pid,
+                "project_name": project["name"],
+                "hypothesis": project["hypothesis"],
+                "falsification_criterion": project["falsification_criterion"],
+                "phase": phase["phase"],
+                "execution_state": execution["state"],
+                "next_action": (
+                    execution["next_action"]
+                    if str(execution["occurred_at"]) > str(phase["occurred_at"])
+                    else phase["next_action"]
+                ),
+                "responsibility": (
+                    execution["responsibility"]
+                    if str(execution["occurred_at"]) > str(phase["occurred_at"])
+                    else phase["responsibility"]
+                ),
+                "active_contract_id": contract_view["contract_id"],
+                "contract_review_state": contract_view["review_state"],
+                "contract_payload": payload_contract,
+                "decision": None if decision is None else dict(decision),
+                "attempts": attempts,
+                "attempts_truncated": attempts_truncated,
+                "sources": sources,
+                "sources_truncated": sources_truncated,
+                "notes": notes,
+                "notes_truncated": notes_truncated,
+                "kind_specific": kind_specific,
+                "history_cursors": {
+                    "phase": int(cursor_rows["phase"]),
+                    "execution": int(cursor_rows["execution"]),
+                    "attempts": int(cursor_rows["attempts"]),
+                    "decisions": int(cursor_rows["decisions"]),
+                },
+                # Honest availability: planes that have not shipped are named, not faked.
+                "unavailable_context": {
+                    "dataset_refs": "registered research datasets arrive with the data plane",
+                    "source_claims": "claim-level literature arrives with the source plane",
+                },
+            }
+            packet_id = _content_id("cp", payload)
+            existing = connection.execute(
+                "SELECT * FROM research_context_packets WHERE packet_id = ?",
+                (packet_id,),
+            ).fetchone()
+            if existing is not None:
+                return self._packet_row_view(existing)
+            connection.execute(
+                """INSERT INTO research_context_packets (
+                    packet_id, project_id, packet_kind, protocol_id, protocol_content_hash,
+                    payload_json, created_by, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    packet_id,
+                    pid,
+                    clean_kind,
+                    clean_protocol,
+                    clean_protocol_hash,
+                    _canonical_json(payload, "research context packet payload"),
+                    clean_actor,
+                    timestamp,
+                ),
+            )
+        return {
+            "packet_id": packet_id,
+            "project_id": pid,
+            "packet_kind": clean_kind,
+            "protocol_id": clean_protocol,
+            "protocol_content_hash": clean_protocol_hash,
+            "payload": payload,
+            "created_by": clean_actor,
+            "created_at": timestamp,
+        }
+
+    def _packet_kind_specific(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        kind: str,
+        symbol: str | None,
+        contract_payload: Mapping[str, object],
+        decision: Mapping[str, object] | None,
+        attempts: list[dict[str, object]],
+    ) -> dict[str, object]:
+        if kind == "asset":
+            rows = connection.execute(
+                """SELECT evidence_id, revision, status, claim, timeframe, method,
+                    metric_name, metric_value, metric_unit, market_data_cutoff, knowledge_at,
+                    author_kind
+                FROM evidence_revisions WHERE assets_json LIKE ?
+                ORDER BY created_at DESC, evidence_id, revision DESC LIMIT ?""",
+                (f'%"{symbol}"%', _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
+            ).fetchall()
+            return {
+                "symbol": symbol,
+                "asset_evidence": [dict(row) for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]],
+                "asset_evidence_truncated": len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT,
+            }
+        if kind == "experiment":
+            return {"attempts": attempts}
+        if kind == "chart":
+            report_plan = contract_payload.get("report_plan")
+            return {"report_plan": report_plan if isinstance(report_plan, dict) else None}
+        if kind == "validation":
+            return {
+                "required_falsifiers": contract_payload.get("required_falsifiers", []),
+                "confounders": contract_payload.get("confounders", []),
+                "stop_rules": contract_payload.get("stop_rules", []),
+            }
+        if kind == "strategy_promotion":
+            return {"decision": decision}
+        # research_case: the open material questions are the packet's task surface.
+        return {"blocking_questions": contract_payload.get("blocking_questions", [])}
+
+    def get_research_context_packet(self, packet_id: str) -> dict[str, object]:
+        """Return one recorded packet byte-identically (recording is visibility)."""
+        clean = _require_content_id(packet_id, "research context packet_id", prefix="cp")
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM research_context_packets WHERE packet_id = ?", (clean,)
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research context packet {clean!r}")
+        return self._packet_row_view(row)
+
+    def list_research_context_packets(
+        self, project_id: str, *, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return this case's recorded packets, newest first."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT * FROM research_context_packets WHERE project_id = ?
+                ORDER BY created_at DESC, packet_id LIMIT ? OFFSET ?""",
+                (project_id, limit, offset),
+            ).fetchall()
+        return [self._packet_row_view(row) for row in rows]
+
+    def add_research_note(
+        self,
+        project_id: str,
+        *,
+        note_kind: str,
+        body: str,
+        author: str,
+        author_kind: str,
+        context_packet_id: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append one Codex/owner commentary note — structurally outside the evidence model."""
+        clean_kind = _enum_value(note_kind, "research note kind", _RESEARCH_NOTE_KINDS)
+        clean_body = _required_text(body, "research note body", max_length=20_000)
+        clean_author = _required_text(author, "research note author", max_length=200)
+        clean_author_kind = _enum_value(
+            author_kind, "research note author kind", _RESEARCH_NOTE_AUTHOR_KINDS
+        )
+        clean_packet = (
+            None
+            if context_packet_id is None
+            else _require_content_id(
+                context_packet_id, "research note context_packet_id", prefix="cp"
+            )
+        )
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            if clean_packet is not None:
+                packet = connection.execute(
+                    "SELECT project_id FROM research_context_packets WHERE packet_id = ?",
+                    (clean_packet,),
+                ).fetchone()
+                if packet is None or packet["project_id"] != project_id:
+                    raise DataError(f"unknown research context packet {clean_packet!r}")
+            sequence_row = connection.execute(
+                "SELECT COALESCE(MAX(sequence), 0) + 1 FROM research_case_notes "
+                "WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()
+            sequence = int(sequence_row[0])
+            note_identity = {
+                "schema_version": 1,
+                "project_id": project_id,
+                "sequence": sequence,
+                "note_kind": clean_kind,
+                "body": clean_body,
+                "author": clean_author,
+                "author_kind": clean_author_kind,
+                "context_packet_id": clean_packet,
+                "created_at": timestamp,
+            }
+            note_id = _content_id("rn", note_identity)
+            connection.execute(
+                """INSERT INTO research_case_notes (
+                    note_id, project_id, sequence, note_kind, body, author, author_kind,
+                    context_packet_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    note_id,
+                    project_id,
+                    sequence,
+                    clean_kind,
+                    clean_body,
+                    clean_author,
+                    clean_author_kind,
+                    clean_packet,
+                    timestamp,
+                ),
+            )
+        return {
+            "note_id": note_id,
+            "project_id": project_id,
+            "sequence": sequence,
+            "note_kind": clean_kind,
+            "body": clean_body,
+            "author": clean_author,
+            "author_kind": clean_author_kind,
+            "context_packet_id": clean_packet,
+            "created_at": timestamp,
+        }
+
+    def list_research_notes(
+        self, project_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return this case's commentary notes, newest first (never evidence)."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT * FROM research_case_notes WHERE project_id = ?
+                ORDER BY sequence DESC LIMIT ? OFFSET ?""",
+                (project_id, limit, offset),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def research_brief(
+        self,
+        project_id: str,
+        *,
+        created_by: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Build the "Resume with Codex" delta brief and record it as a packet.
+
+        The delta covers phase/execution/attempt/decision history appended since the
+        previous ``research_case`` packet for this project (the whole history on the
+        first brief), so an external Codex session resumes without re-reading everything.
+        """
+        clean_actor = _required_text(created_by, "research brief creator", max_length=200)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            previous = connection.execute(
+                """SELECT payload_json FROM research_context_packets
+                WHERE project_id = ? AND packet_kind = 'research_case'
+                ORDER BY created_at DESC, packet_id LIMIT 1""",
+                (project_id,),
+            ).fetchone()
+            cursors = {"phase": 0, "execution": 0, "attempts": 0, "decisions": 0}
+            if previous is not None:
+                payload = _decode_json(previous["payload_json"], "previous research packet")
+                if isinstance(payload, dict):
+                    recorded = payload.get("history_cursors")
+                    if isinstance(recorded, dict):
+                        for key in cursors:
+                            value = recorded.get(key)
+                            if isinstance(value, int) and not isinstance(value, bool):
+                                cursors[key] = value
+            phase_events = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT sequence, phase, contract_id, occurred_at, reason
+                    FROM research_phase_events WHERE project_id = ? AND sequence > ?
+                    ORDER BY sequence""",
+                    (project_id, cursors["phase"]),
+                ).fetchall()
+            ]
+            execution_events = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT sequence, state, occurred_at, reason, next_action
+                    FROM research_execution_events WHERE project_id = ? AND sequence > ?
+                    ORDER BY sequence""",
+                    (project_id, cursors["execution"]),
+                ).fetchall()
+            ]
+            attempt_rows = connection.execute(
+                """SELECT attempt_id, phase, kind, status, run_id, recorded_at
+                FROM research_attempt_records WHERE project_id = ?
+                ORDER BY recorded_at, attempt_id""",
+                (project_id,),
+            ).fetchall()
+            attempts = [dict(row) for row in attempt_rows[cursors["attempts"] :]]
+            decision_events = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT sequence, contract_id, outcome, disposition, occurred_at, reason
+                    FROM research_decision_events WHERE project_id = ? AND sequence > ?
+                    ORDER BY sequence""",
+                    (project_id, cursors["decisions"]),
+                ).fetchall()
+            ]
+        case = self.research_case_summary(project_id)
+        changes = {
+            "phase_events": phase_events,
+            "execution_events": execution_events,
+            "attempts": attempts,
+            "decisions": decision_events,
+        }
+        packet = self.build_research_context_packet(
+            project_id, kind="research_case", created_by=clean_actor, at=at
+        )
+        return {
+            "brief_schema": "ResearchBriefV1",
+            "case": case,
+            "changes": changes,
+            "next_action": case["next_action"],
+            "packet_id": packet["packet_id"],
+        }
 
     def research_gate_packet_inputs(
         self, project_id: str, *, ledger_limit: int = 10_000

@@ -114,6 +114,66 @@ def evidence_hub(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     )
 
 
+def context_packets(
+    project_id: str, *, data_dir: Path, limit: int = 50, offset: int = 0
+) -> dict[str, Any]:
+    """Read this case's recorded Codex context packets, newest first."""
+    return _object(
+        _run_json(
+            [
+                "research",
+                "context",
+                "list",
+                project_id,
+                "--limit",
+                str(limit),
+                "--offset",
+                str(offset),
+                "--json",
+            ],
+            data_dir=data_dir,
+        ),
+        "research context packets",
+    )
+
+
+def context_packet(packet_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read one recorded packet byte-identically (recording is visibility)."""
+    return _object(
+        _run_json(["research", "context", "show", packet_id, "--json"], data_dir=data_dir),
+        "research context packet",
+    )
+
+
+def notes(project_id: str, *, data_dir: Path, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+    """Read this case's commentary notes — displayed as commentary, never evidence."""
+    return _object(
+        _run_json(
+            [
+                "research",
+                "note",
+                "list",
+                project_id,
+                "--limit",
+                str(limit),
+                "--offset",
+                str(offset),
+                "--json",
+            ],
+            data_dir=data_dir,
+        ),
+        "research notes",
+    )
+
+
+def protocols(*, data_dir: Path) -> dict[str, Any]:
+    """Read the Git-owned protocol library index (drift fails loud in the CLI)."""
+    return _object(
+        _run_json(["research", "protocols", "list", "--json"], data_dir=data_dir),
+        "research protocols",
+    )
+
+
 def scorecard(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     """Read the readiness scorecard riding on the status projection."""
     row = _object(

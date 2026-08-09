@@ -10107,6 +10107,104 @@
         "const": "spy_rth_60m_four_hour_window",
         "type": "string"
       },
+      "ResearchContextPacket": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "packet_id": {
+            "pattern": "^cp_[0-9a-f]{64}$",
+            "title": "Packet Id",
+            "type": "string"
+          },
+          "packet_kind": {
+            "enum": [
+              "asset",
+              "research_case",
+              "experiment",
+              "chart",
+              "validation",
+              "strategy_promotion"
+            ],
+            "title": "Packet Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "protocol_content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol Content Hash"
+          },
+          "protocol_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol Id"
+          }
+        },
+        "required": [
+          "packet_id",
+          "project_id",
+          "packet_kind",
+          "protocol_id",
+          "protocol_content_hash",
+          "payload",
+          "created_by",
+          "created_at"
+        ],
+        "title": "ResearchContextPacket",
+        "type": "object"
+      },
+      "ResearchContextPacketPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchContextPacket"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "ResearchContextPacketPage",
+        "type": "object"
+      },
       "ResearchContract": {
         "additionalProperties": false,
         "properties": {
@@ -11355,6 +11453,107 @@
         "title": "ResearchMilestone",
         "type": "object"
       },
+      "ResearchNote": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "author_kind": {
+            "enum": [
+              "owner",
+              "agent"
+            ],
+            "title": "Author Kind",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "context_packet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Packet Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "note_id": {
+            "pattern": "^rn_[0-9a-f]{64}$",
+            "title": "Note Id",
+            "type": "string"
+          },
+          "note_kind": {
+            "enum": [
+              "critique",
+              "confounder_review",
+              "test_design",
+              "completeness_review",
+              "synthesis"
+            ],
+            "title": "Note Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "sequence": {
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "note_id",
+          "project_id",
+          "sequence",
+          "note_kind",
+          "body",
+          "author",
+          "author_kind",
+          "context_packet_id",
+          "created_at"
+        ],
+        "title": "ResearchNote",
+        "type": "object"
+      },
+      "ResearchNotePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchNote"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "ResearchNotePage",
+        "type": "object"
+      },
       "ResearchPhaseValue": {
         "enum": [
           "captured",
@@ -11471,6 +11670,76 @@
           "case"
         ],
         "title": "ResearchProposalResponse",
+        "type": "object"
+      },
+      "ResearchProtocolEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "output_contract": {
+            "title": "Output Contract",
+            "type": "string"
+          },
+          "packet_kind": {
+            "enum": [
+              "asset",
+              "research_case",
+              "experiment",
+              "chart",
+              "validation",
+              "strategy_promotion"
+            ],
+            "title": "Packet Kind",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "purpose",
+          "packet_kind",
+          "output_contract",
+          "file",
+          "sha256"
+        ],
+        "title": "ResearchProtocolEntry",
+        "type": "object"
+      },
+      "ResearchProtocolLibrary": {
+        "additionalProperties": false,
+        "properties": {
+          "protocols": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchProtocolEntry"
+            },
+            "title": "Protocols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "protocols"
+        ],
+        "title": "ResearchProtocolLibrary",
         "type": "object"
       },
       "ResearchReport": {
@@ -16882,6 +17151,72 @@
         ]
       }
     },
+    "/api/research/cases/{project_id}/context-packets": {
+      "get": {
+        "description": "Read this case's recorded Codex context packets \u2014 every byte Codex saw.",
+        "operationId": "research_context_packets_api_research_cases__project_id__context_packets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchContextPacketPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Context Packets",
+        "tags": [
+          "research"
+        ]
+      }
+    },
     "/api/research/cases/{project_id}/evidence-hub": {
       "get": {
         "description": "Read the eleven-section Evidence Hub projection for one case.",
@@ -16973,6 +17308,72 @@
           }
         },
         "summary": "Research Launch",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/notes": {
+      "get": {
+        "description": "Read the commentary stream \u2014 badged as Codex commentary, never evidence.",
+        "operationId": "research_notes_api_research_cases__project_id__notes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchNotePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Notes",
         "tags": [
           "research"
         ]
@@ -17208,6 +17609,71 @@
           }
         },
         "summary": "Research Compare",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/context-packets/{packet_id}": {
+      "get": {
+        "description": "Return one recorded packet byte-identically.",
+        "operationId": "research_context_packet_api_research_context_packets__packet_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "packet_id",
+            "required": true,
+            "schema": {
+              "title": "Packet Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchContextPacket"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Context Packet",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/protocols": {
+      "get": {
+        "description": "Read the Git-owned protocol library index.",
+        "operationId": "research_protocols_api_research_protocols_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchProtocolLibrary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Research Protocols",
         "tags": [
           "research"
         ]

@@ -1477,6 +1477,61 @@ class ResearchScorecard(StrictModel):
     recommendation: ResearchScorecardRecommendation
 
 
+class ResearchContextPacket(StrictModel):
+    packet_id: str = Field(pattern=r"^cp_[0-9a-f]{64}$")
+    project_id: str
+    packet_kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ]
+    protocol_id: str | None
+    protocol_content_hash: str | None
+    payload: JsonObject
+    created_by: str
+    created_at: str
+
+
+class ResearchContextPacketPage(StrictModel):
+    items: list[ResearchContextPacket]
+    limit: int
+    offset: int
+
+
+class ResearchNote(StrictModel):
+    note_id: str = Field(pattern=r"^rn_[0-9a-f]{64}$")
+    project_id: str
+    sequence: int = Field(ge=1)
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ]
+    body: str
+    author: str
+    author_kind: Literal["owner", "agent"]
+    context_packet_id: str | None
+    created_at: str
+
+
+class ResearchNotePage(StrictModel):
+    items: list[ResearchNote]
+    limit: int
+    offset: int
+
+
+class ResearchProtocolEntry(StrictModel):
+    id: str
+    title: str
+    purpose: str
+    packet_kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ]
+    output_contract: str
+    file: str
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ResearchProtocolLibrary(StrictModel):
+    protocols: list[ResearchProtocolEntry]
+
+
 class HubSource(StrictModel):
     source_id: str
     title: str

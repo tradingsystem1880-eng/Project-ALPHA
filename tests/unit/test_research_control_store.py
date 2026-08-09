@@ -3380,3 +3380,168 @@ def test_list_research_cases_is_bounded_newest_activity_first(tmp_path: Path) ->
         store.list_research_cases(limit=201)
     with pytest.raises(DataError, match="offset"):
         store.list_research_cases(offset=-1)
+
+
+def test_context_packet_build_is_content_addressed_append_only_and_deterministic(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+
+    first = store.build_research_context_packet(
+        project_id,
+        kind="research_case",
+        created_by="codex",
+        at=START + timedelta(minutes=5),
+    )
+    packet_id = str(first["packet_id"])
+    assert packet_id.startswith("cp_") and len(packet_id) == 3 + 64
+    assert first["packet_kind"] == "research_case"
+    assert first["protocol_id"] is None and first["protocol_content_hash"] is None
+    payload = first["payload"]
+    assert isinstance(payload, dict)
+    assert payload["packet_schema"] == "ResearchContextPacketV1"
+    assert payload["project_id"] == project_id
+    assert payload["packet_kind"] == "research_case"
+    # Bounded collections carry explicit truncation flags — no invisible context dumps.
+    assert payload["attempts_truncated"] is False
+    assert payload["sources_truncated"] is False
+    assert payload["notes_truncated"] is False
+    # Identical inputs produce the identical content-addressed packet (idempotent record).
+    replay = store.build_research_context_packet(
+        project_id,
+        kind="research_case",
+        created_by="codex",
+        at=START + timedelta(minutes=9),
+    )
+    assert replay["packet_id"] == packet_id
+    assert replay["payload"] == payload
+    assert len(store.list_research_context_packets(project_id)) == 1
+
+    # A different kind is a different packet; recording is visibility.
+    validation = store.build_research_context_packet(
+        project_id,
+        kind="validation",
+        created_by="codex",
+        protocol_id="research-critic",
+        protocol_content_hash="c" * 64,
+        at=START + timedelta(minutes=10),
+    )
+    assert validation["packet_id"] != packet_id
+    assert validation["protocol_id"] == "research-critic"
+    assert validation["protocol_content_hash"] == "c" * 64
+    listed = store.list_research_context_packets(project_id)
+    assert [row["packet_id"] for row in listed] == [validation["packet_id"], packet_id]
+    fetched = store.get_research_context_packet(str(validation["packet_id"]))
+    assert fetched == validation
+
+    with pytest.raises(DataError, match="packet kind"):
+        store.build_research_context_packet(project_id, kind="chat", created_by="codex")
+    with pytest.raises(DataError, match="symbol"):
+        store.build_research_context_packet(project_id, kind="asset", created_by="codex")
+    with pytest.raises(DataError, match="unknown research context packet"):
+        store.get_research_context_packet("cp_" + "0" * 64)
+
+
+def test_research_notes_are_append_only_and_structurally_outside_evidence(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    packet = store.build_research_context_packet(
+        project_id, kind="research_case", created_by="codex", at=START + timedelta(minutes=1)
+    )
+    before = json.dumps(
+        store.research_gate_packet_inputs(project_id), sort_keys=True, allow_nan=False
+    )
+
+    critique = store.add_research_note(
+        project_id,
+        note_kind="critique",
+        body="The volatility-regime confounder is not yet matched.",
+        author="codex",
+        author_kind="agent",
+        context_packet_id=str(packet["packet_id"]),
+        at=START + timedelta(minutes=2),
+    )
+    assert str(critique["note_id"]).startswith("rn_")
+    assert critique["author_kind"] == "agent"
+    assert critique["context_packet_id"] == packet["packet_id"]
+    synthesis = store.add_research_note(
+        project_id,
+        note_kind="synthesis",
+        body="Established: nothing. Speculative: everything pre-D1.",
+        author="owner",
+        author_kind="owner",
+        at=START + timedelta(minutes=3),
+    )
+    notes = store.list_research_notes(project_id)
+    assert [row["note_id"] for row in notes] == [synthesis["note_id"], critique["note_id"]]
+
+    # Structural evidence exclusion: the gate-packet inputs are byte-identical with notes.
+    after = json.dumps(
+        store.research_gate_packet_inputs(project_id), sort_keys=True, allow_nan=False
+    )
+    assert after == before
+
+    with pytest.raises(DataError, match="note kind"):
+        store.add_research_note(
+            project_id, note_kind="evidence", body="x", author="codex", author_kind="agent"
+        )
+    with pytest.raises(DataError, match="author kind"):
+        store.add_research_note(
+            project_id, note_kind="critique", body="x", author="codex", author_kind="human"
+        )
+    with pytest.raises(DataError, match="unknown research context packet"):
+        store.add_research_note(
+            project_id,
+            note_kind="critique",
+            body="x",
+            author="codex",
+            author_kind="agent",
+            context_packet_id="cp_" + "1" * 64,
+        )
+
+
+def test_research_brief_reports_only_deltas_since_the_previous_brief(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+
+    first = store.research_brief(project_id, created_by="codex", at=START + timedelta(minutes=4))
+    assert first["brief_schema"] == "ResearchBriefV1"
+    case = first["case"]
+    assert isinstance(case, dict) and case["project_id"] == project_id
+    changes = first["changes"]
+    assert isinstance(changes, dict)
+    # The first brief reports the complete history as new.
+    assert len(cast(list[object], changes["phase_events"])) == 2  # captured + triage
+    assert len(cast(list[object], changes["execution_events"])) == 1  # initial idle
+    assert changes["attempts"] == [] and changes["decisions"] == []
+    assert isinstance(first["packet_id"], str) and str(first["packet_id"]).startswith("cp_")
+
+    summary = store.research_case_summary(project_id)
+    store.transition_research_execution(
+        project_id,
+        to_state="blocked",
+        contract_id=str(summary["active_contract_id"]),
+        actor="owner",
+        reason="Owner paused triage pending data access.",
+        next_action="Restore data access before continuing triage.",
+        responsibility="owner",
+        blocker="Data access is unavailable.",
+        recovery="Restore data access.",
+        at=START + timedelta(minutes=6),
+    )
+    second = store.research_brief(project_id, created_by="codex", at=START + timedelta(minutes=7))
+    second_changes = second["changes"]
+    assert isinstance(second_changes, dict)
+    assert second_changes["phase_events"] == []
+    execution_events = cast(list[dict[str, object]], second_changes["execution_events"])
+    assert len(execution_events) == 1
+    assert execution_events[0]["state"] == "blocked"
+    assert second["packet_id"] != first["packet_id"]
+
+    third = store.research_brief(project_id, created_by="codex", at=START + timedelta(minutes=8))
+    third_changes = third["changes"]
+    assert isinstance(third_changes, dict)
+    assert all(third_changes[key] == [] for key in third_changes)

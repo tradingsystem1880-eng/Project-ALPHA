@@ -1,0 +1,122 @@
+{
+  "library_schema": "AlphaResearchProtocolsV1",
+  "protocols": [
+    {
+      "file": "new-idea-intake.md",
+      "id": "new-idea-intake",
+      "output_contract": "tentative claim, mechanism, alternatives, material questions",
+      "packet_kind": "research_case",
+      "purpose": "idea \u2192 research questions, no trading rules",
+      "sha256": "92b6df58f5c4453f69bcdb78a02196f018ffa5dbb9b9b3c7dfbabfed10eff27c",
+      "title": "New-Idea Intake"
+    },
+    {
+      "file": "hypothesis-formalisation.md",
+      "id": "hypothesis-formalisation",
+      "output_contract": "draft-ready material answers + card fields",
+      "packet_kind": "research_case",
+      "purpose": "idea \u2192 falsifiable quantitative hypothesis",
+      "sha256": "080bed6809d81abd49dcbb6c0c38b52658cc02ec4e74058937fcfc81fcd766df",
+      "title": "Hypothesis Formalisation"
+    },
+    {
+      "file": "data-discovery.md",
+      "id": "data-discovery",
+      "output_contract": "dataset candidates + gaps",
+      "packet_kind": "research_case",
+      "purpose": "which existing data answers the question; real gaps",
+      "sha256": "903ee64cd3474e4da31ff3f7fe0b9a550bec135bc182784d68d4b08e41560da0",
+      "title": "Data Discovery"
+    },
+    {
+      "file": "data-audit.md",
+      "id": "data-audit",
+      "output_contract": "audit plan -> run data-audit proposal",
+      "packet_kind": "asset",
+      "purpose": "validate required datasets before research",
+      "sha256": "259aa6b91582fad9e4c0ed76031860b3b5729b63ab69c0d48fe545dae00130b1",
+      "title": "Data Audit"
+    },
+    {
+      "file": "literature-review.md",
+      "id": "literature-review",
+      "output_contract": "source records + draft claims",
+      "packet_kind": "research_case",
+      "purpose": "find and organise published evidence",
+      "sha256": "3748dcf0cf69f54fc98cb62ec42ebb67d72f03f87e15706875a246bcca04377b",
+      "title": "Literature Review"
+    },
+    {
+      "file": "mechanism-analysis.md",
+      "id": "mechanism-analysis",
+      "output_contract": "mechanism note + confounder additions",
+      "packet_kind": "research_case",
+      "purpose": "mechanisms, persistence, confounders",
+      "sha256": "e831c1ba8e27ba59c81f63a0fc1bae545dd721970c7d24c8e8cee30ff6756318",
+      "title": "Mechanism Analysis"
+    },
+    {
+      "file": "exploratory-analysis.md",
+      "id": "exploratory-analysis",
+      "output_contract": "analysis-plan candidates (descriptive)",
+      "packet_kind": "research_case",
+      "purpose": "descriptive design without strategy fitting",
+      "sha256": "dc8d3b771bd57a5e5821c60370af451d5fbca94ad37abd3fea07fe724e2b76f2",
+      "title": "Exploratory Analysis Design"
+    },
+    {
+      "file": "falsification-design.md",
+      "id": "falsification-design",
+      "output_contract": "falsifier/negative-control proposals",
+      "packet_kind": "research_case",
+      "purpose": "tests designed to disprove",
+      "sha256": "2b7f1632996310b91b4e8a54e4f063c6956f618b4d1403e4ae2de33a6d28646f",
+      "title": "Falsification Design"
+    },
+    {
+      "file": "event-study-design.md",
+      "id": "event-study-design",
+      "output_contract": "registered event-study spec",
+      "packet_kind": "experiment",
+      "purpose": "causal, time-correct event analysis",
+      "sha256": "33bbd709d8ebb2c14c434a3cc2c71af68ca72ce0e50900135ca11514e23c6f3b",
+      "title": "Event-Study Design"
+    },
+    {
+      "file": "robustness-review.md",
+      "id": "robustness-review",
+      "output_contract": "sensitivity family proposals",
+      "packet_kind": "research_case",
+      "purpose": "sample/market/regime/definition survival",
+      "sha256": "2f3e75535562857a418744420172e52253756801c03a1ee6147987be5e2c13b2",
+      "title": "Robustness Review"
+    },
+    {
+      "file": "research-critic.md",
+      "id": "research-critic",
+      "output_contract": "critique note (adversarial-reviewer format)",
+      "packet_kind": "validation",
+      "purpose": "independently attack current evidence",
+      "sha256": "4fdc5d17692ffc14df504d19785bc6caf8dfc916a251285434762235bbcc4167",
+      "title": "Research Critic"
+    },
+    {
+      "file": "evidence-synthesis.md",
+      "id": "evidence-synthesis",
+      "output_contract": "synthesis note + packet-input review",
+      "packet_kind": "research_case",
+      "purpose": "established vs speculative",
+      "sha256": "0aadd3be49d48c4edc204a1098e750b375a6e239f82e02ad94a396595c544f0d",
+      "title": "Evidence Synthesis"
+    },
+    {
+      "file": "strategy-promotion-review.md",
+      "id": "strategy-promotion-review",
+      "output_contract": "promotion-readiness note vs checklist",
+      "packet_kind": "strategy_promotion",
+      "purpose": "is evidence strong enough to begin strategy work",
+      "sha256": "2163568598eb5669055cbe0b7f85b59318737471b226b4da31a3e1a2f1efa915",
+      "title": "Strategy-Promotion Review"
+    }
+  ]
+}

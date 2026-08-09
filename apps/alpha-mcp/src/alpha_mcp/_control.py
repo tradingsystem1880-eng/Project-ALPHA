@@ -143,6 +143,90 @@ def research_report(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     )
 
 
+def research_context_build(
+    project_id: str,
+    kind: str,
+    *,
+    data_dir: Path,
+    protocol_id: str | None = None,
+    symbol: str | None = None,
+) -> dict[str, Any]:
+    """Record one bounded, content-addressed context packet; recording is visibility."""
+    args = ["research", "context", "build", project_id, "--kind", kind, "--created-by", "codex"]
+    if protocol_id is not None:
+        args += ["--protocol", protocol_id]
+    if symbol is not None:
+        args += ["--symbol", symbol]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research context packet")
+
+
+def research_context_get(packet_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Return one recorded packet byte-identically."""
+    return _object(
+        _invoke.run_json(["research", "context", "show", packet_id, "--json"], data_dir=data_dir),
+        "research context packet",
+    )
+
+
+def research_note_add(
+    project_id: str,
+    note_kind: str,
+    body: str,
+    *,
+    data_dir: Path,
+    context_packet_id: str | None = None,
+) -> dict[str, Any]:
+    """Append agent commentary; MCP notes can never claim owner authorship."""
+    args = [
+        "research",
+        "note",
+        "add",
+        project_id,
+        "--kind",
+        note_kind,
+        "--body",
+        body,
+        "--author",
+        "codex",
+        "--author-kind",
+        "agent",
+    ]
+    if context_packet_id is not None:
+        args += ["--packet", context_packet_id]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research note")
+
+
+def research_brief(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Build the "Resume with Codex" delta brief (recorded as a packet)."""
+    return _object(
+        _invoke.run_json(
+            ["research", "brief", project_id, "--created-by", "codex", "--json"],
+            data_dir=data_dir,
+        ),
+        "research brief",
+    )
+
+
+def research_protocols_list(*, data_dir: Path) -> dict[str, Any]:
+    """List the Git-owned protocol library (index↔file drift fails loud)."""
+    return _object(
+        _invoke.run_json(["research", "protocols", "list", "--json"], data_dir=data_dir),
+        "research protocols",
+    )
+
+
+def research_protocol_get(protocol_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read one protocol entry plus its exact content."""
+    return _object(
+        _invoke.run_json(
+            ["research", "protocols", "show", protocol_id, "--json"], data_dir=data_dir
+        ),
+        "research protocol",
+    )
+
+
 def list_projects(*, data_dir: Path, limit: int, start: int) -> dict[str, Any]:
     limit = bound("limit", limit, 100)
     start = offset(start)

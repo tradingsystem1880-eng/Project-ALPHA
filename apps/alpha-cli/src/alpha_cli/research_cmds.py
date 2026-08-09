@@ -35,6 +35,10 @@ from alpha_cli.research_gate_packet import (
     research_scorecard_projection,
 )
 from alpha_cli.research_intake import draft_exploration_contract
+from alpha_cli.research_protocols import (
+    load_research_protocols,
+    read_research_protocol,
+)
 from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
     registered_d0_operator,
@@ -47,7 +51,13 @@ from alpha_research import ResearchChartFingerprintV1, ResearchD2BoundaryV1
 
 research_app = typer.Typer(help="Governed research cases, contracts, sources, and bounded runs.")
 sources_app = typer.Typer(help="Immutable research-source records and frozen source packs.")
+context_app = typer.Typer(help="Content-addressed Codex context packets; recording is visibility.")
+note_app = typer.Typer(help="Append-only Codex/owner commentary notes — never evidence.")
+protocols_app = typer.Typer(help="The Git-owned Codex research protocol library.")
 research_app.add_typer(sources_app, name="sources")
+research_app.add_typer(context_app, name="context")
+research_app.add_typer(note_app, name="note")
+research_app.add_typer(protocols_app, name="protocols")
 
 
 def _store() -> ControlStore:
@@ -1020,6 +1030,165 @@ def evidence_hub(
     sections = hub["sections"]
     section_names = ", ".join(sections) if isinstance(sections, dict) else ""
     _emit(hub, json_out=json_out, fallback=f"evidence hub sections: {section_names}")
+
+
+@context_app.command("build")
+def context_build(
+    project_id: str,
+    kind: str = typer.Option(..., "--kind", help="packet kind"),
+    symbol: str | None = typer.Option(None, "--symbol", help="required for asset packets"),
+    protocol: str | None = typer.Option(
+        None, "--protocol", help="pair a library protocol; its content hash is recorded"
+    ),
+    created_by: str = typer.Option("codex", "--created-by", help="recording actor"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Assemble and record one bounded, content-addressed Codex context packet."""
+    protocol_hash: str | None = None
+    if protocol is not None:
+        entry = read_research_protocol(protocol)
+        protocol_hash = str(entry["sha256"])
+    try:
+        packet = _store().build_research_context_packet(
+            project_id,
+            kind=kind,
+            created_by=created_by,
+            symbol=symbol,
+            protocol_id=protocol,
+            protocol_content_hash=protocol_hash,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(packet, json_out=json_out, fallback=f"recorded packet {packet['packet_id']}")
+
+
+@context_app.command("show")
+def context_show(
+    packet_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Return one recorded packet byte-identically."""
+    try:
+        packet = _store().get_research_context_packet(packet_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        packet,
+        json_out=json_out,
+        fallback=f"{packet['packet_id']} {packet['packet_kind']} {packet['created_at']}",
+    )
+
+
+@context_app.command("list")
+def context_list(
+    project_id: str,
+    limit: int = typer.Option(50, min=1, max=200, help="bounded page size"),
+    offset: int = typer.Option(0, min=0, help="page offset"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List this case's recorded packets, newest first."""
+    try:
+        rows = _store().list_research_context_packets(project_id, limit=limit, offset=offset)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"items": rows, "limit": limit, "offset": offset},
+        json_out=json_out,
+        fallback="\n".join(f"{row['packet_id']} {row['packet_kind']}" for row in rows)
+        or "no packets recorded",
+    )
+
+
+@note_app.command("add")
+def note_add(
+    project_id: str,
+    kind: str = typer.Option(..., "--kind", help="note kind"),
+    body: str = typer.Option(..., "--body", help="note body"),
+    author: str = typer.Option("codex", "--author", help="author name"),
+    author_kind: str = typer.Option("agent", "--author-kind", help="owner or agent"),
+    packet: str | None = typer.Option(None, "--packet", help="originating context packet"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Append one commentary note — structurally outside the evidence model."""
+    try:
+        note = _store().add_research_note(
+            project_id,
+            note_kind=kind,
+            body=body,
+            author=author,
+            author_kind=author_kind,
+            context_packet_id=packet,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(note, json_out=json_out, fallback=f"recorded note {note['note_id']}")
+
+
+@note_app.command("list")
+def note_list(
+    project_id: str,
+    limit: int = typer.Option(100, min=1, max=200, help="bounded page size"),
+    offset: int = typer.Option(0, min=0, help="page offset"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List this case's commentary notes, newest first (never evidence)."""
+    try:
+        rows = _store().list_research_notes(project_id, limit=limit, offset=offset)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"items": rows, "limit": limit, "offset": offset},
+        json_out=json_out,
+        fallback="\n".join(f"{row['note_id']} {row['note_kind']}" for row in rows)
+        or "no notes recorded",
+    )
+
+
+@protocols_app.command("list")
+def protocols_list(
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List the Git-owned protocol library; index↔file drift fails loud."""
+    try:
+        protocols = load_research_protocols()
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"protocols": protocols},
+        json_out=json_out,
+        fallback="\n".join(f"{entry['id']}: {entry['purpose']}" for entry in protocols),
+    )
+
+
+@protocols_app.command("show")
+def protocols_show(
+    protocol_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Show one protocol entry plus its exact content."""
+    try:
+        protocol = read_research_protocol(protocol_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(protocol, json_out=json_out, fallback=str(protocol["content"]))
+
+
+@research_app.command("brief")
+def brief(
+    project_id: str,
+    created_by: str = typer.Option("codex", "--created-by", help="recording actor"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Build the "Resume with Codex" delta brief and record it as a packet."""
+    try:
+        row = _store().research_brief(project_id, created_by=created_by)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=f"brief recorded as {row['packet_id']}; next: {row['next_action']}",
+    )
 
 
 @research_app.command("status")

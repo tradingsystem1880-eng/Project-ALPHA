@@ -578,6 +578,86 @@ def research_report(project_id: str) -> _types.ResearchReportOut:
 
 
 @mcp.tool()
+def build_research_context_packet(
+    project_id: str,
+    kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ],
+    protocol_id: str | None = None,
+    symbol: str | None = None,
+) -> _types.ResearchContextPacketOut:
+    """Assemble and record one bounded, content-addressed Codex context packet.
+
+    Recording is visibility: the owner can open the exact bytes of every packet ever built.
+    This draft-write records context only — it cannot approve, decide, or launch anything.
+    """
+    return cast(
+        _types.ResearchContextPacketOut,
+        _control.research_context_build(
+            project_id, kind, data_dir=_data_dir(), protocol_id=protocol_id, symbol=symbol
+        ),
+    )
+
+
+@mcp.tool()
+def get_research_context_packet(packet_id: str) -> _types.ResearchContextPacketOut:
+    """Return one recorded context packet byte-identically."""
+    return cast(
+        _types.ResearchContextPacketOut,
+        _control.research_context_get(packet_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def add_research_note(
+    project_id: str,
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ],
+    body: str,
+    context_packet_id: str | None = None,
+) -> _types.ResearchNoteOut:
+    """Append Codex commentary — structurally outside the evidence model, agent-authored only."""
+    return cast(
+        _types.ResearchNoteOut,
+        _control.research_note_add(
+            project_id,
+            note_kind,
+            body,
+            data_dir=_data_dir(),
+            context_packet_id=context_packet_id,
+        ),
+    )
+
+
+@mcp.tool()
+def get_research_brief(project_id: str) -> _types.ResearchBriefOut:
+    """Build the "Resume with Codex" delta brief: what changed since the previous brief."""
+    return cast(
+        _types.ResearchBriefOut,
+        _control.research_brief(project_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def list_research_protocols() -> _types.ResearchProtocolListOut:
+    """List the Git-owned research protocol library (content stays owner-reviewed in Git)."""
+    return cast(
+        _types.ResearchProtocolListOut,
+        _control.research_protocols_list(data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def get_research_protocol(protocol_id: str) -> _types.ResearchProtocolOut:
+    """Read one protocol entry plus its exact content."""
+    return cast(
+        _types.ResearchProtocolOut,
+        _control.research_protocol_get(protocol_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
 def create_strategy_project(
     name: str, hypothesis: str, falsification_criterion: str
 ) -> _types.ProjectSummaryOut:

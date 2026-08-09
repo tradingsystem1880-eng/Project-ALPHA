@@ -256,6 +256,57 @@ const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
   },
 }
 
+const RESEARCH_PROTOCOLS: components['schemas']['ResearchProtocolLibrary'] = {
+  protocols: [
+    {
+      id: 'new-idea-intake',
+      title: 'New-Idea Intake',
+      purpose: 'idea → research questions, no trading rules',
+      packet_kind: 'research_case',
+      output_contract: 'tentative claim, mechanism, alternatives, material questions',
+      file: 'new-idea-intake.md',
+      sha256: 'd'.repeat(64),
+    },
+    {
+      id: 'research-critic',
+      title: 'Research Critic',
+      purpose: 'independently attack current evidence',
+      packet_kind: 'validation',
+      output_contract: 'critique note (adversarial-reviewer format)',
+      file: 'research-critic.md',
+      sha256: 'e'.repeat(64),
+    },
+  ],
+}
+
+const RESEARCH_PACKET: components['schemas']['ResearchContextPacket'] = {
+  packet_id: `cp_${'f'.repeat(64)}`,
+  project_id: RESEARCH_CASE.project_id,
+  packet_kind: 'research_case',
+  protocol_id: 'new-idea-intake',
+  protocol_content_hash: 'd'.repeat(64),
+  payload: {
+    packet_schema: 'ResearchContextPacketV1',
+    packet_kind: 'research_case',
+    project_id: RESEARCH_CASE.project_id,
+    next_action: RESEARCH_CASE.next_action,
+  },
+  created_by: 'codex',
+  created_at: '2026-08-09T00:00:00Z',
+}
+
+const RESEARCH_NOTE: components['schemas']['ResearchNote'] = {
+  note_id: `rn_${'a'.repeat(64)}`,
+  project_id: RESEARCH_CASE.project_id,
+  sequence: 1,
+  note_kind: 'critique',
+  body: 'The volatility-regime confounder is not yet matched.',
+  author: 'codex',
+  author_kind: 'agent',
+  context_packet_id: RESEARCH_PACKET.packet_id,
+  created_at: '2026-08-09T00:05:00Z',
+}
+
 const RESEARCH_GATE_PACKET = {
   report_schema: 'ResearchGatePacketV1',
   schema_version: 1,
@@ -745,6 +796,16 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/scorecard`) {
     return RESEARCH_SCORECARD
   }
+  if (url.pathname === '/api/research/protocols') return RESEARCH_PROTOCOLS
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/context-packets`) {
+    return { items: [RESEARCH_PACKET], limit: 50, offset: 0 }
+  }
+  if (url.pathname === `/api/research/context-packets/${RESEARCH_PACKET.packet_id}`) {
+    return RESEARCH_PACKET
+  }
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/notes`) {
+    return { items: [RESEARCH_NOTE], limit: 100, offset: 0 }
+  }
   if (options.mlDiagnostics && url.pathname === '/api/ml/experiments') {
     return { items: [ML_EXPERIMENT], limit: 50, offset: 0, has_more: false }
   }
@@ -990,7 +1051,8 @@ test('Research Command Center desk drives the cockpit and evidence hub from the 
 
   await page.getByLabel('DESK').selectOption('research')
   await expect(page.getByText('Needs you (1)')).toBeVisible()
-  await expect(page.getByText('NO CASE SELECTED', { exact: true })).toBeVisible()
+  // Both the Evidence Hub and the Codex Bench start honestly empty.
+  await expect(page.getByText('NO CASE SELECTED', { exact: true })).toHaveCount(2)
 
   await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
@@ -1002,6 +1064,13 @@ test('Research Command Center desk drives the cockpit and evidence hub from the 
   // Evidence against renders with the same component and prominence as evidence for.
   await page.getByRole('tab', { name: 'Evidence against', exact: true }).click()
   await expect(page.getByText(/No typed findings of this direction exist yet/)).toBeVisible()
+
+  // The Codex Bench shows every recorded packet and fences commentary as never-evidence.
+  await expect(page.getByText('MCP-ATTACHED · NO CHAT · NO API KEY', { exact: true })).toBeVisible()
+  await expect(page.getByText(/RECORDING HAPPENS ON THE GOVERNED SEAMS/)).toBeVisible()
+  await expect(page.getByText('CODEX COMMENTARY — NOT EVIDENCE', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /cp_f+/ }).click()
+  await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
   await expectReleaseAccessibility(page)
 })
 

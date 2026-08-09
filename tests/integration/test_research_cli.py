@@ -1339,3 +1339,124 @@ def test_research_list_projects_bounded_backlog_rows_newest_activity_first(
 
     rejected = runner.invoke(app, ["research", "list", "--limit", "0", "--json"])
     assert rejected.exit_code != 0
+
+
+def test_context_packets_notes_protocols_and_brief_cli_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "SPY drifts upward into month-end rebalancing")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+
+    protocols = _invoke("protocols", "list")
+    entries = cast(list[dict[str, object]], protocols["protocols"])
+    assert len(entries) == 13
+    assert entries[0]["id"] == "new-idea-intake"
+    shown = _invoke("protocols", "show", "new-idea-intake")
+    assert isinstance(shown["content"], str) and "no trading rules" in str(shown["purpose"])
+
+    built = _invoke(
+        "context",
+        "build",
+        project_id,
+        "--kind",
+        "research_case",
+        "--protocol",
+        "new-idea-intake",
+    )
+    packet_id = str(built["packet_id"])
+    assert packet_id.startswith("cp_")
+    assert built["protocol_id"] == "new-idea-intake"
+    assert str(built["protocol_content_hash"]) == str(entries[0]["sha256"])
+    payload = cast(dict[str, object], built["payload"])
+    assert payload["packet_kind"] == "research_case"
+
+    listed = _invoke("context", "list", project_id)
+    assert [row["packet_id"] for row in cast(list[dict[str, object]], listed["items"])] == [
+        packet_id
+    ]
+    shown_packet = _invoke("context", "show", packet_id)
+    assert shown_packet["payload"] == payload
+
+    note = _invoke(
+        "note",
+        "add",
+        project_id,
+        "--kind",
+        "critique",
+        "--body",
+        "The volatility-regime confounder is not yet matched.",
+        "--author",
+        "codex",
+        "--author-kind",
+        "agent",
+        "--packet",
+        packet_id,
+    )
+    assert str(note["note_id"]).startswith("rn_")
+    notes = _invoke("note", "list", project_id)
+    assert [row["note_id"] for row in cast(list[dict[str, object]], notes["items"])] == [
+        note["note_id"]
+    ]
+
+    brief = _invoke("brief", project_id)
+    assert brief["brief_schema"] == "ResearchBriefV1"
+    assert str(brief["packet_id"]).startswith("cp_")
+    changes = cast(dict[str, object], brief["changes"])
+    assert set(changes) == {"phase_events", "execution_events", "attempts", "decisions"}
+
+
+def test_new_research_commands_report_human_fallbacks_and_fail_loud_on_unknown_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Gold rallies after triple witching expiries")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+
+    listing = runner.invoke(app, ["research", "list"])
+    assert listing.exit_code == 0 and project_id in listing.output
+    hub = runner.invoke(app, ["research", "evidence-hub", project_id])
+    assert hub.exit_code == 0 and "evidence hub sections" in hub.output
+    empty_context = runner.invoke(app, ["research", "context", "list", project_id])
+    assert empty_context.exit_code == 0 and "no packets recorded" in empty_context.output
+    empty_notes = runner.invoke(app, ["research", "note", "list", project_id])
+    assert empty_notes.exit_code == 0 and "no notes recorded" in empty_notes.output
+    protocols_text = runner.invoke(app, ["research", "protocols", "list"])
+    assert protocols_text.exit_code == 0 and "new-idea-intake" in protocols_text.output
+    protocol_text = runner.invoke(app, ["research", "protocols", "show", "research-critic"])
+    assert protocol_text.exit_code == 0 and "Research Critic" in protocol_text.output
+    built = runner.invoke(app, ["research", "context", "build", project_id, "--kind", "validation"])
+    assert built.exit_code == 0 and "recorded packet cp_" in built.output
+    noted = runner.invoke(
+        app,
+        [
+            "research",
+            "note",
+            "add",
+            project_id,
+            "--kind",
+            "synthesis",
+            "--body",
+            "Established: nothing yet.",
+        ],
+    )
+    assert noted.exit_code == 0 and "recorded note rn_" in noted.output
+    briefed = runner.invoke(app, ["research", "brief", project_id])
+    assert briefed.exit_code == 0 and "brief recorded as cp_" in briefed.output
+    shown = runner.invoke(app, ["research", "context", "list", project_id])
+    assert shown.exit_code == 0 and "validation" in shown.output
+
+    unknown = "00000000-0000-4000-8000-000000000000"
+    for args in (
+        ["research", "evidence-hub", unknown, "--json"],
+        ["research", "context", "build", unknown, "--kind", "research_case", "--json"],
+        ["research", "context", "show", "cp_" + "9" * 64, "--json"],
+        ["research", "context", "list", unknown, "--json"],
+        ["research", "note", "add", unknown, "--kind", "critique", "--body", "x", "--json"],
+        ["research", "note", "list", unknown, "--json"],
+        ["research", "protocols", "show", "unknown-protocol", "--json"],
+        ["research", "brief", unknown, "--json"],
+        ["research", "status", unknown, "--json"],
+    ):
+        rejected = runner.invoke(app, args)
+        assert rejected.exit_code != 0, args

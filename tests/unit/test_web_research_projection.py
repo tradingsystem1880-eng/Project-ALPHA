@@ -35,6 +35,12 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
     assert _research.report("project", data_dir=tmp_path) == {"ok": True}
     assert _research.list_cases(data_dir=tmp_path, limit=25, offset=5) == {"ok": True}
     assert _research.evidence_hub("project", data_dir=tmp_path) == {"ok": True}
+    assert _research.context_packets("project", data_dir=tmp_path, limit=20, offset=0) == {
+        "ok": True
+    }
+    assert _research.context_packet("cp_" + "0" * 64, data_dir=tmp_path) == {"ok": True}
+    assert _research.notes("project", data_dir=tmp_path, limit=30, offset=0) == {"ok": True}
+    assert _research.protocols(data_dir=tmp_path) == {"ok": True}
 
     assert calls == [
         (["research", "capture", "idea", "--json", "--name", "case"], tmp_path, 60.0),
@@ -66,6 +72,28 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
             60.0,
         ),
         (["research", "evidence-hub", "project", "--json"], tmp_path, 60.0),
+        (
+            [
+                "research",
+                "context",
+                "list",
+                "project",
+                "--limit",
+                "20",
+                "--offset",
+                "0",
+                "--json",
+            ],
+            tmp_path,
+            60.0,
+        ),
+        (["research", "context", "show", "cp_" + "0" * 64, "--json"], tmp_path, 60.0),
+        (
+            ["research", "note", "list", "project", "--limit", "30", "--offset", "0", "--json"],
+            tmp_path,
+            60.0,
+        ),
+        (["research", "protocols", "list", "--json"], tmp_path, 60.0),
     ]
 
 

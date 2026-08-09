@@ -116,6 +116,52 @@ class ResearchCaseOut(TypedDict):
     scorecard: NotRequired[JsonObject]
 
 
+class ResearchContextPacketOut(TypedDict):
+    packet_id: str
+    project_id: str
+    packet_kind: str
+    protocol_id: str | None
+    protocol_content_hash: str | None
+    payload: JsonObject
+    created_by: str
+    created_at: str
+
+
+class ResearchNoteOut(TypedDict):
+    note_id: str
+    project_id: str
+    sequence: int
+    note_kind: str
+    body: str
+    author: str
+    author_kind: str
+    context_packet_id: str | None
+    created_at: str
+
+
+class ResearchProtocolListOut(TypedDict):
+    protocols: list[JsonObject]
+
+
+class ResearchProtocolOut(TypedDict):
+    id: str
+    title: str
+    purpose: str
+    packet_kind: str
+    output_contract: str
+    file: str
+    sha256: str
+    content: str
+
+
+class ResearchBriefOut(TypedDict):
+    brief_schema: str
+    case: JsonObject
+    changes: JsonObject
+    next_action: str
+    packet_id: str
+
+
 class ResearchCaptureOut(TypedDict):
     project: ProjectSummaryOut
     contract: JsonObject

@@ -14,11 +14,15 @@ from alpha_web.api.models import (
     ResearchCase,
     ResearchCasePage,
     ResearchCaseReport,
+    ResearchContextPacket,
+    ResearchContextPacketPage,
     ResearchEvidenceHub,
     ResearchLaunchRequest,
     ResearchLaunchResponse,
+    ResearchNotePage,
     ResearchProposalRequest,
     ResearchProposalResponse,
+    ResearchProtocolLibrary,
     ResearchReport,
     ResearchScorecard,
 )
@@ -78,6 +82,58 @@ def research_scorecard(project_id: str) -> dict[str, Any]:
         return _research.scorecard(project_id, data_dir=data_dir())
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/context-packets",
+    response_model=ResearchContextPacketPage,
+)
+def research_context_packets(
+    project_id: str,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read this case's recorded Codex context packets — every byte Codex saw."""
+    try:
+        return _research.context_packets(
+            project_id, data_dir=data_dir(), limit=limit, offset=offset
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/context-packets/{packet_id}",
+    response_model=ResearchContextPacket,
+)
+def research_context_packet(packet_id: str) -> dict[str, Any]:
+    """Return one recorded packet byte-identically."""
+    try:
+        return _research.context_packet(packet_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/research/cases/{project_id}/notes", response_model=ResearchNotePage)
+def research_notes(
+    project_id: str,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read the commentary stream — badged as Codex commentary, never evidence."""
+    try:
+        return _research.notes(project_id, data_dir=data_dir(), limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/research/protocols", response_model=ResearchProtocolLibrary)
+def research_protocols() -> dict[str, Any]:
+    """Read the Git-owned protocol library index."""
+    try:
+        return _research.protocols(data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/research/cases/{project_id}", response_model=ResearchCase)

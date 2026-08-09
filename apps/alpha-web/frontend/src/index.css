@@ -3948,3 +3948,15 @@ select.field:focus {
 .evidence-hub-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
 .evidence-hub-tabs .kbd.active { border-color: var(--accent, #5b8dee); color: var(--accent, #5b8dee); }
 .evidence-hub-body { display: grid; gap: 10px; }
+
+/* ── Codex Bench (R2) ─────────────────────────────────────────────────────── */
+.codex-bench section { margin-bottom: 14px; display: grid; gap: 8px; }
+.codex-packet-json {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--line, #26304a);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11px;
+  margin: 0;
+}

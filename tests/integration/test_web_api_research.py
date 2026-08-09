@@ -311,3 +311,55 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         "/api/research/cases/{project_id}/scorecard",
     }
     assert read_only_paths <= set(research_routes)
+
+
+def test_codex_read_plane_serves_packets_notes_and_protocols(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases",
+        json={"idea": "SPY drifts upward into month-end rebalancing"},
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+
+    store = ControlStore(AlphaSettings().data_dir)
+    packet = store.build_research_context_packet(
+        project_id, kind="research_case", created_by="codex"
+    )
+    packet_id = str(packet["packet_id"])
+    store.add_research_note(
+        project_id,
+        note_kind="critique",
+        body="The volatility-regime confounder is not yet matched.",
+        author="codex",
+        author_kind="agent",
+        context_packet_id=packet_id,
+    )
+
+    packets = client.get(f"/api/research/cases/{project_id}/context-packets")
+    assert packets.status_code == 200, packets.text
+    packet_rows = packets.json()["items"]
+    assert [row["packet_id"] for row in packet_rows] == [packet_id]
+
+    fetched = client.get(f"/api/research/context-packets/{packet_id}")
+    assert fetched.status_code == 200, fetched.text
+    # Byte-identical visibility: the served payload equals the recorded payload.
+    assert fetched.json()["payload"] == packet["payload"]
+
+    notes = client.get(f"/api/research/cases/{project_id}/notes")
+    assert notes.status_code == 200, notes.text
+    note_rows = notes.json()["items"]
+    assert len(note_rows) == 1
+    assert note_rows[0]["author_kind"] == "agent"
+    assert note_rows[0]["context_packet_id"] == packet_id
+
+    protocols = client.get("/api/research/protocols")
+    assert protocols.status_code == 200, protocols.text
+    entries = protocols.json()["protocols"]
+    assert len(entries) == 13
+    assert entries[0]["id"] == "new-idea-intake"
+
+    assert client.get("/api/research/context-packets/cp_" + "9" * 64).status_code == 404
+    assert client.get("/api/research/cases/unknown/context-packets").status_code == 404

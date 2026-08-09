@@ -39,7 +39,11 @@ import type {
   ResearchCase,
   ResearchCasePage,
   ResearchCaseReport,
+  ResearchContextPacket,
+  ResearchContextPacketPage,
   ResearchEvidenceHub,
+  ResearchNotePage,
+  ResearchProtocolLibrary,
   ResearchScorecard,
   ResearchLaunchResponse,
   ResearchProposalRequest,
@@ -226,6 +230,25 @@ export const api = {
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/evidence-hub`),
   researchScorecard: (projectId: string): Promise<ResearchScorecard> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/scorecard`),
+  researchContextPackets: (
+    projectId: string,
+    query: { limit?: number; offset?: number } = {},
+  ): Promise<ResearchContextPacketPage> =>
+    getJSON(
+      `/api/research/cases/${encodeURIComponent(projectId)}/context-packets`
+        + `?limit=${query.limit ?? 50}&offset=${query.offset ?? 0}`,
+    ),
+  researchContextPacket: (packetId: string): Promise<ResearchContextPacket> =>
+    getJSON(`/api/research/context-packets/${encodeURIComponent(packetId)}`),
+  researchNotes: (
+    projectId: string,
+    query: { limit?: number; offset?: number } = {},
+  ): Promise<ResearchNotePage> =>
+    getJSON(
+      `/api/research/cases/${encodeURIComponent(projectId)}/notes`
+        + `?limit=${query.limit ?? 100}&offset=${query.offset ?? 0}`,
+    ),
+  researchProtocols: (): Promise<ResearchProtocolLibrary> => getJSON('/api/research/protocols'),
   projects: (limit = 50, offset = 0): Promise<ProjectPage> =>
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>

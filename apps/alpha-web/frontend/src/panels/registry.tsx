@@ -6,6 +6,7 @@ import type { FunctionComponent } from 'react'
 
 import { ActivityFeed } from './ActivityFeed'
 import { AiConsole } from './AiConsole'
+import { CodexBench } from './CodexBench'
 import { DataExplorer } from './DataExplorer'
 import { EvidenceHub } from './EvidenceHub'
 import { Glossary } from './Glossary'
@@ -54,6 +55,7 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   ResearchBacklog,
   ResearchCockpit,
   EvidenceHub,
+  CodexBench,
   Workspaces,
   AiConsole,
   Glossary,
@@ -90,6 +92,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'ResearchBacklog', title: 'Research Backlog', hint: 'every case·buckets' },
   { component: 'ResearchCockpit', title: 'Research Cockpit', hint: 'thesis·protocol·D0 pilot' },
   { component: 'EvidenceHub', title: 'Evidence Hub', hint: 'for·against·falsification' },
+  { component: 'CodexBench', title: 'Codex Bench', hint: 'packets·protocols·notes' },
   { component: 'MlResearch', title: 'ML Research', hint: 'Qlib·OOS signals' },
   { component: 'MlDiagnostics', title: 'ML Signal Tear Sheet', hint: 'IC·folds·LightGBM provenance' },
   { component: 'AssetMemory', title: 'Asset Memory', hint: 'cited findings·negative results' },

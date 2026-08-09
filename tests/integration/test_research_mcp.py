@@ -53,6 +53,12 @@ _EXPECTED_MCP_TOOLS = frozenset(
         "propfirm_run",
         "reconcile_development_jobs",
         "record_project_attempt",
+        "add_research_note",
+        "build_research_context_packet",
+        "get_research_brief",
+        "get_research_context_packet",
+        "get_research_protocol",
+        "list_research_protocols",
         "research_capture",
         "research_get",
         "research_launch",
@@ -68,14 +74,14 @@ _EXPECTED_MCP_TOOLS = frozenset(
 )
 
 
-def test_research_mcp_surface_is_exactly_six_tools_without_owner_authority(
+def test_research_mcp_surface_is_pinned_without_owner_authority(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     names = {tool.name for tool in anyio.run(server.mcp.list_tools)}
 
     assert names == _EXPECTED_MCP_TOOLS
-    assert len(names) == 48  # the documented bounded-surface claim
+    assert len(names) == 54  # ADR-0022 R2 budget: 48 + 6 Codex-seam tools
     assert {name for name in names if name.startswith("research_")} == {
         "research_capture",
         "research_get",
@@ -84,6 +90,10 @@ def test_research_mcp_surface_is_exactly_six_tools_without_owner_authority(
         "research_status",
         "research_report",
     }
+    # Forever-absent authority (ADR-0022): no approval, decision, or D2 verbs — ever.
+    forbidden_markers = ("approve", "decide", "decision", "reveal", "d2", "order", "paper")
+    for name in names:
+        assert not any(marker in name for marker in forbidden_markers), name
 
 
 def test_research_mcp_capture_propose_status_and_report_round_trip(
@@ -173,3 +183,40 @@ def test_research_launch_uses_a_launch_class_timeout(
     timeout_seconds = captured["timeout_seconds"]
     assert isinstance(timeout_seconds, float)
     assert timeout_seconds >= web_launch_timeout
+
+
+def test_codex_seam_tools_record_packets_notes_and_briefs_with_agent_authorship(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = server.research_capture("SPY drifts upward into month-end rebalancing")
+    project_id = captured["project"]["project_id"]
+
+    protocols = server.list_research_protocols()
+    assert len(protocols["protocols"]) == 13
+    intake = server.get_research_protocol("new-idea-intake")
+    assert intake["id"] == "new-idea-intake"
+    assert isinstance(intake["content"], str) and intake["content"]
+
+    packet = server.build_research_context_packet(
+        project_id, kind="research_case", protocol_id="new-idea-intake"
+    )
+    packet_id = str(packet["packet_id"])
+    assert packet_id.startswith("cp_")
+    assert packet["created_by"] == "codex"
+    assert packet["protocol_content_hash"] == intake["sha256"]
+
+    fetched = server.get_research_context_packet(packet_id)
+    assert fetched["payload"] == packet["payload"]  # byte-identical visibility
+
+    note = server.add_research_note(
+        project_id,
+        note_kind="critique",
+        body="The volatility-regime confounder is not yet matched.",
+    )
+    assert note["author_kind"] == "agent"  # MCP notes can never claim owner authorship
+
+    brief = server.get_research_brief(project_id)
+    assert brief["brief_schema"] == "ResearchBriefV1"
+    assert str(brief["packet_id"]).startswith("cp_")
+    assert brief["case"]["project_id"] == project_id

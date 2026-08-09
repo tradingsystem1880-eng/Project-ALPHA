@@ -1131,6 +1131,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/context-packets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Context Packets
+         * @description Read this case's recorded Codex context packets — every byte Codex saw.
+         */
+        get: operations["research_context_packets_api_research_cases__project_id__context_packets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/evidence-hub": {
         parameters: {
             query?: never;
@@ -1165,6 +1185,26 @@ export interface paths {
          * @description Run the deterministic D0 pilot after approval performed outside REST.
          */
         post: operations["research_launch_api_research_cases__project_id__launch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Notes
+         * @description Read the commentary stream — badged as Codex commentary, never evidence.
+         */
+        get: operations["research_notes_api_research_cases__project_id__notes_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1263,6 +1303,46 @@ export interface paths {
          * @description Backtest each strategy on ``symbol`` and rank by total return (slow — runs the engine).
          */
         get: operations["research_compare_api_research_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/context-packets/{packet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Context Packet
+         * @description Return one recorded packet byte-identically.
+         */
+        get: operations["research_context_packet_api_research_context_packets__packet_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/protocols": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Protocols
+         * @description Read the Git-owned protocol library index.
+         */
+        get: operations["research_protocols_api_research_protocols_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5945,6 +6025,36 @@ export interface components {
         };
         /** @constant */
         ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
+        /** ResearchContextPacket */
+        ResearchContextPacket: {
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Packet Id */
+            packet_id: string;
+            /**
+             * Packet Kind
+             * @enum {string}
+             */
+            packet_kind: "asset" | "research_case" | "experiment" | "chart" | "validation" | "strategy_promotion";
+            payload: components["schemas"]["JsonObject"];
+            /** Project Id */
+            project_id: string;
+            /** Protocol Content Hash */
+            protocol_content_hash: string | null;
+            /** Protocol Id */
+            protocol_id: string | null;
+        };
+        /** ResearchContextPacketPage */
+        ResearchContextPacketPage: {
+            /** Items */
+            items: components["schemas"]["ResearchContextPacket"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** ResearchContract */
         ResearchContract: {
             author_kind: components["schemas"]["AuthorKindValue"];
@@ -6357,6 +6467,42 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ResearchNote */
+        ResearchNote: {
+            /** Author */
+            author: string;
+            /**
+             * Author Kind
+             * @enum {string}
+             */
+            author_kind: "owner" | "agent";
+            /** Body */
+            body: string;
+            /** Context Packet Id */
+            context_packet_id: string | null;
+            /** Created At */
+            created_at: string;
+            /** Note Id */
+            note_id: string;
+            /**
+             * Note Kind
+             * @enum {string}
+             */
+            note_kind: "critique" | "confounder_review" | "test_design" | "completeness_review" | "synthesis";
+            /** Project Id */
+            project_id: string;
+            /** Sequence */
+            sequence: number;
+        };
+        /** ResearchNotePage */
+        ResearchNotePage: {
+            /** Items */
+            items: components["schemas"]["ResearchNote"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** @enum {string} */
         ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
         /** @constant */
@@ -6398,6 +6544,31 @@ export interface components {
         ResearchProposalResponse: {
             case: components["schemas"]["ResearchCase"];
             contract: components["schemas"]["ResearchContract"];
+        };
+        /** ResearchProtocolEntry */
+        ResearchProtocolEntry: {
+            /** File */
+            file: string;
+            /** Id */
+            id: string;
+            /** Output Contract */
+            output_contract: string;
+            /**
+             * Packet Kind
+             * @enum {string}
+             */
+            packet_kind: "asset" | "research_case" | "experiment" | "chart" | "validation" | "strategy_promotion";
+            /** Purpose */
+            purpose: string;
+            /** Sha256 */
+            sha256: string;
+            /** Title */
+            title: string;
+        };
+        /** ResearchProtocolLibrary */
+        ResearchProtocolLibrary: {
+            /** Protocols */
+            protocols: components["schemas"]["ResearchProtocolEntry"][];
         };
         /** ResearchReport */
         ResearchReport: {
@@ -9073,6 +9244,40 @@ export interface operations {
             };
         };
     };
+    research_context_packets_api_research_cases__project_id__context_packets_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchContextPacketPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     research_evidence_hub_api_research_cases__project_id__evidence_hub_get: {
         parameters: {
             query?: never;
@@ -9126,6 +9331,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchLaunchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_notes_api_research_cases__project_id__notes_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchNotePage"];
                 };
             };
             /** @description Validation Error */
@@ -9295,6 +9534,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_context_packet_api_research_context_packets__packet_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchContextPacket"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_protocols_api_research_protocols_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchProtocolLibrary"];
                 };
             };
         };
