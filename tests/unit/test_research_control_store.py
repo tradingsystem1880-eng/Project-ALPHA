@@ -2261,7 +2261,9 @@ def _approved_deep_case(store: ControlStore) -> tuple[str, dict[str, object]]:
     return contract_id, payload
 
 
-def _published_d1_run(store: ControlStore, contract_id: str, payload: dict[str, object]) -> dict:
+def _published_d1_run(
+    store: ControlStore, contract_id: str, payload: dict[str, object]
+) -> dict[str, object]:
     from datetime import UTC as _UTC
 
     from alpha_cli.research_d1 import research_bars_from_lows, run_deep_research
@@ -2293,7 +2295,7 @@ def _published_d1_run(store: ControlStore, contract_id: str, payload: dict[str, 
     )
 
 
-def _d1_evidence_ref(store: ControlStore, manifest: dict) -> dict[str, object]:
+def _d1_evidence_ref(store: ControlStore, manifest: dict[str, object]) -> dict[str, object]:
     artifacts = cast(dict[str, object], manifest["artifacts"])
     metadata = cast(dict[str, object], artifacts["research_gate_evidence.json"])
     return {"artifact": "research_gate_evidence.json", "content_sha256": metadata["sha256"]}
@@ -2321,7 +2323,7 @@ def test_d1_attempt_admission_reverifies_evidence_mechanically(tmp_path: Path) -
     )
     assert attempt["status"] == "completed"
     verified = store.verified_research_attempt(PROJECT_ID, str(attempt["attempt_id"]))
-    assert cast(dict, verified["manifest"])["evidence_zone"] == "D1"
+    assert cast("dict[str, object]", verified["manifest"])["evidence_zone"] == "D1"
 
     # Rewrite a finding status with a consistent manifest hash: the mechanical
     # recomputation from raw measurements must still fail closed.

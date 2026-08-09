@@ -1969,9 +1969,7 @@ def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(
         str(cast(dict[str, object], entry)["dimension_id"]): str(
             cast(dict[str, object], entry)["state"]
         )
-        for entry in cast(
-            list[object], cast(dict[str, object], status["scorecard"])["dimensions"]
-        )
+        for entry in cast(list[object], cast(dict[str, object], status["scorecard"])["dimensions"])
     }
     assert dimensions["effect_existence"] == "mixed"  # exploratory only, honestly capped
     assert dimensions["falsification"] != "not_tested"

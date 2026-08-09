@@ -318,9 +318,7 @@ def research_scorecard_inputs(
     confounders_registered = _string_list(payload.get("confounders"))
     confounders_resolved = _string_list(packet_confounders.get("resolved"))
     confounders_unresolved = (
-        _string_list(packet_confounders.get("unresolved"))
-        if guided
-        else confounders_registered
+        _string_list(packet_confounders.get("unresolved")) if guided else confounders_registered
     )
 
     attempt_count = summary.get("attempt_count")
