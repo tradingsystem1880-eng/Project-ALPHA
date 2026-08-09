@@ -54,10 +54,12 @@ sources_app = typer.Typer(help="Immutable research-source records and frozen sou
 context_app = typer.Typer(help="Content-addressed Codex context packets; recording is visibility.")
 note_app = typer.Typer(help="Append-only Codex/owner commentary notes — never evidence.")
 protocols_app = typer.Typer(help="The Git-owned Codex research protocol library.")
+data_app = typer.Typer(help="Fail-closed research dataset registration and descriptive audits.")
 research_app.add_typer(sources_app, name="sources")
 research_app.add_typer(context_app, name="context")
 research_app.add_typer(note_app, name="note")
 research_app.add_typer(protocols_app, name="protocols")
+research_app.add_typer(data_app, name="data")
 
 
 def _store() -> ControlStore:
@@ -1171,6 +1173,159 @@ def protocols_show(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(protocol, json_out=json_out, fallback=str(protocol["content"]))
+
+
+def _dataset_origin(
+    *,
+    kind: str,
+    symbol: str,
+    snapshot_id: str | None,
+    receipt: Path | None,
+) -> tuple[str, str, dict[str, object]]:
+    """Resolve (store kind, provider, origin) fail-closed from on-disk bytes."""
+    data_dir = AlphaSettings().data_dir
+    if kind == "snapshot":
+        if snapshot_id is None:
+            raise DataError("snapshot registration requires --snapshot-id")
+        manifest_path = data_dir / "snapshots" / snapshot_id / "manifest.json"
+        if not manifest_path.is_file():
+            raise DataError(f"unknown snapshot {snapshot_id!r}; nothing to register")
+        raw = manifest_path.read_bytes()
+        manifest = json.loads(raw)
+        symbols = manifest.get("symbols") if isinstance(manifest, dict) else None
+        if not isinstance(symbols, dict) or symbol not in symbols:
+            raise DataError(f"snapshot {snapshot_id!r} does not contain {symbol!r}")
+        provider = str(manifest.get("source", "unknown"))
+        return (
+            "snapshot",
+            provider,
+            {
+                "snapshot_id": snapshot_id,
+                "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+            },
+        )
+    if kind == "store-slice":
+        from alpha_data.store import ParquetStore
+
+        store = ParquetStore(data_dir / "store")
+        provenance = store.read_provenance(symbol)
+        path = store._provenance_path(symbol)  # noqa: SLF001 - CLI/store projection seam
+        if provenance is None or not path.is_file():
+            raise DataError(
+                f"stored bars for {symbol!r} have no pull provenance; fail-closed — "
+                "unreceipted data cannot be registered for research"
+            )
+        return (
+            "store_slice",
+            str(provenance.get("source", "unknown")),
+            {"provenance_sha256": hashlib.sha256(path.read_bytes()).hexdigest()},
+        )
+    if kind == "quantpad":
+        if receipt is None or not receipt.is_file():
+            raise DataError("quantpad registration requires --receipt pointing at a receipt file")
+        payload = json.loads(receipt.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise DataError("quantpad receipt must be a JSON object")
+        receipt_id = payload.get("receipt_id")
+        response_sha = payload.get("response_sha256")
+        if not isinstance(receipt_id, str) or not isinstance(response_sha, str):
+            raise DataError("quantpad receipt must carry receipt_id and response_sha256")
+        return (
+            "quantpad_receipt",
+            "quantpad",
+            {"receipt_id": receipt_id, "response_sha256": response_sha},
+        )
+    raise DataError(f"unsupported research dataset kind {kind!r}")
+
+
+@data_app.command("register")
+def data_register(
+    symbol: str,
+    kind: str = typer.Option(..., "--kind", help="snapshot | store-slice | quantpad"),
+    start: str = typer.Option(..., "--start", help="range start (ISO date)"),
+    end: str = typer.Option(..., "--end", help="range end (ISO date)"),
+    snapshot_id: str | None = typer.Option(None, "--snapshot-id", help="snapshot to bind"),
+    receipt: Path | None = typer.Option(  # noqa: B008
+        None, "--receipt", help="quantpad receipt file"
+    ),
+    bar_minutes: int | None = typer.Option(None, "--bar-minutes", help="intraday bar minutes"),
+    registered_by: str = typer.Option("owner", "--registered-by", help="registering actor"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Register a research dataset against its exact receipt/provenance bytes."""
+    try:
+        dataset_kind, provider, origin = _dataset_origin(
+            kind=kind, symbol=symbol.upper(), snapshot_id=snapshot_id, receipt=receipt
+        )
+        ref = _store().register_research_dataset(
+            dataset_kind=dataset_kind,
+            instrument=symbol,
+            provider=provider,
+            start_ts=start,
+            end_ts=end,
+            bar_duration_minutes=bar_minutes,
+            origin=origin,
+            registered_by=registered_by,
+        )
+    except (DataError, json.JSONDecodeError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(ref, json_out=json_out, fallback=f"registered research dataset {ref['ref_id']}")
+
+
+@data_app.command("list")
+def data_list(
+    symbol: str | None = typer.Option(None, "--symbol", help="filter by instrument"),
+    limit: int = typer.Option(100, min=1, max=200, help="bounded page size"),
+    offset: int = typer.Option(0, min=0, help="page offset"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List registered research datasets with their latest audit."""
+    try:
+        rows = _store().list_research_datasets(instrument=symbol, limit=limit, offset=offset)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"items": rows, "limit": limit, "offset": offset},
+        json_out=json_out,
+        fallback="\n".join(
+            f"{row['ref_id']} {row['instrument']} {row['dataset_kind']}" for row in rows
+        )
+        or "no registered research datasets",
+    )
+
+
+@data_app.command("audit")
+def data_audit(
+    project_id: str,
+    ref_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Run a bounded descriptive audit and record it against the dataset and case."""
+    from alpha_cli.research_data_audit import run_data_audit
+
+    store = _store()
+    try:
+        ref = store.get_research_dataset(ref_id)
+        # Bind the audit to a real research case before any computation happens.
+        store.research_case_summary(project_id)
+        result = run_data_audit(AlphaSettings().data_dir, project_id=project_id, ref=ref)
+        manifest = result["manifest"]
+        audit = store.record_research_dataset_audit(
+            ref_id,
+            project_id=project_id,
+            run_id=str(manifest["run_id"]),
+            summary=cast(Mapping[str, object], result["summary"]),
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"manifest": manifest, "audit": audit},
+        json_out=json_out,
+        fallback=(
+            f"audit run {manifest['run_id']}: {audit['summary']['blocking_count']} blocking, "  # type: ignore[index]
+            f"{audit['summary']['limiting_count']} limiting"  # type: ignore[index]
+        ),
+    )
 
 
 @research_app.command("brief")

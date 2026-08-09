@@ -53,6 +53,11 @@ _EXPECTED_MCP_TOOLS = frozenset(
         "propfirm_run",
         "reconcile_development_jobs",
         "record_project_attempt",
+        "get_data_inventory",
+        "get_data_quality",
+        "get_data_candles",
+        "list_snapshots",
+        "get_provider_registry",
         "add_research_note",
         "build_research_context_packet",
         "get_research_brief",
@@ -81,7 +86,8 @@ def test_research_mcp_surface_is_pinned_without_owner_authority(
     names = {tool.name for tool in anyio.run(server.mcp.list_tools)}
 
     assert names == _EXPECTED_MCP_TOOLS
-    assert len(names) == 54  # ADR-0022 R2 budget: 48 + 6 Codex-seam tools
+    # ADR-0022 budget: 48 + 6 Codex-seam tools (R2) + 5 data-inventory tools (R3).
+    assert len(names) == 59
     assert {name for name in names if name.startswith("research_")} == {
         "research_capture",
         "research_get",
@@ -220,3 +226,31 @@ def test_codex_seam_tools_record_packets_notes_and_briefs_with_agent_authorship(
     assert brief["brief_schema"] == "ResearchBriefV1"
     assert str(brief["packet_id"]).startswith("cp_")
     assert brief["case"]["project_id"] == project_id
+
+
+def test_data_inventory_tools_are_read_only_and_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.fixtures.cli_fixtures import seed_store
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=700)
+
+    inventory = server.get_data_inventory()
+    assert inventory["symbols"] == ["SPY"]
+
+    quality = server.get_data_quality("SPY")
+    assert quality["symbol"] == "SPY"
+
+    candles = server.get_data_candles("SPY", limit=100)
+    assert len(candles["bars"]) == 100
+    assert candles["truncated"] is True  # 700 stored bars, bounded to the last 100
+    with pytest.raises(ValueError, match="1..500"):
+        server.get_data_candles("SPY", limit=501)
+
+    snapshots = server.list_snapshots()
+    assert snapshots["snapshots"] == []
+
+    providers = server.get_provider_registry()
+    provider_ids = {row["id"] for row in providers["providers"]}
+    assert "quantpad" in provider_ids and "tiingo" in provider_ids

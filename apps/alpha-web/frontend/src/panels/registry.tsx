@@ -20,6 +20,7 @@ import { Pipeline } from './Pipeline'
 import { PriceChart } from './PriceChart'
 import { ProviderSystem } from './ProviderSystem'
 import { ResearchBacklog } from './ResearchBacklog'
+import { ResearchDataExplorer } from './ResearchDataExplorer'
 import { ResearchCockpit } from './ResearchCockpit'
 import { RiskMonitor } from './RiskMonitor'
 import { RunBrowser } from './RunBrowser'
@@ -54,6 +55,7 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   ProviderSystem,
   ResearchBacklog,
   ResearchCockpit,
+  ResearchDataExplorer,
   EvidenceHub,
   CodexBench,
   Workspaces,
@@ -92,6 +94,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'ResearchBacklog', title: 'Research Backlog', hint: 'every case·buckets' },
   { component: 'ResearchCockpit', title: 'Research Cockpit', hint: 'thesis·protocol·D0 pilot' },
   { component: 'EvidenceHub', title: 'Evidence Hub', hint: 'for·against·falsification' },
+  { component: 'ResearchDataExplorer', title: 'Research Data', hint: 'refs·receipts·audits' },
   { component: 'CodexBench', title: 'Codex Bench', hint: 'packets·protocols·notes' },
   { component: 'MlResearch', title: 'ML Research', hint: 'Qlib·OOS signals' },
   { component: 'MlDiagnostics', title: 'ML Signal Tear Sheet', hint: 'IC·folds·LightGBM provenance' },

@@ -90,6 +90,9 @@
     },
     "inputs": {
       "attempt_count": 2,
+      "audit_blocking_count": 0,
+      "audit_limiting_count": 0,
+      "audited_dataset_count": 0,
       "blocking_questions": [],
       "confirmation_classification": "INCONCLUSIVE",
       "confounders_resolved": [],
@@ -207,6 +210,9 @@
     },
     "inputs": {
       "attempt_count": 2,
+      "audit_blocking_count": 0,
+      "audit_limiting_count": 0,
+      "audited_dataset_count": 0,
       "blocking_questions": [],
       "confirmation_classification": "SUPPORTED",
       "confounders_resolved": [],
@@ -335,6 +341,9 @@
     },
     "inputs": {
       "attempt_count": 0,
+      "audit_blocking_count": 0,
+      "audit_limiting_count": 0,
+      "audited_dataset_count": 0,
       "blocking_questions": [
         "Which exact instrument and equal-duration chart defines the claim?",
         "When is the event knowable without future information?",
@@ -372,5 +381,147 @@
       "untested_work": []
     },
     "name": "fresh_triage_unresolved"
+  },
+  {
+    "expected": {
+      "dimensions": [
+        {
+          "basis": "6 of 14 hypothesis-card fields are complete.",
+          "dimension_id": "hypothesis_definition",
+          "label": "Hypothesis definition",
+          "state": "partial"
+        },
+        {
+          "basis": "1 limiting data-audit findings.",
+          "dimension_id": "data_quality",
+          "label": "Data quality",
+          "state": "weak"
+        },
+        {
+          "basis": "No power evidence has been recorded.",
+          "dimension_id": "sample_adequacy",
+          "label": "Sample adequacy",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No primary-result evidence has been recorded.",
+          "dimension_id": "effect_existence",
+          "label": "Effect existence",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No practical-magnitude evidence exists.",
+          "dimension_id": "effect_size",
+          "label": "Effect size",
+          "state": "not_tested"
+        },
+        {
+          "basis": "The recorded temporal-stability finding is NOT_TESTED.",
+          "dimension_id": "temporal_stability",
+          "label": "Temporal stability",
+          "state": "not_tested"
+        },
+        {
+          "basis": "The recorded transportability finding is NOT_TESTED.",
+          "dimension_id": "cross_asset_stability",
+          "label": "Cross-asset stability",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No regime-decomposition evidence exists yet.",
+          "dimension_id": "regime_robustness",
+          "label": "Regime robustness",
+          "state": "not_tested"
+        },
+        {
+          "basis": "The registered falsifiers have not run.",
+          "dimension_id": "falsification",
+          "label": "Falsification",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No mechanism evidence has been recorded.",
+          "dimension_id": "mechanism",
+          "label": "Mechanism",
+          "state": "not_tested"
+        },
+        {
+          "basis": "No screened claim-level literature evidence.",
+          "dimension_id": "literature",
+          "label": "Literature",
+          "state": "insufficient"
+        },
+        {
+          "basis": "All analysis families are contract-registered; unregistered attempts are impossible.",
+          "dimension_id": "data_mining_risk",
+          "label": "Data-mining risk",
+          "state": "low"
+        }
+      ],
+      "recommendation": {
+        "reasons": [
+          "8 of 12 readiness dimensions are untested.",
+          "9 unresolved questions remain."
+        ],
+        "value": "MORE RESEARCH REQUIRED"
+      },
+      "scorecard_schema": "ResearchReadinessScorecardV1",
+      "unresolved_questions": {
+        "count": 9,
+        "items": [
+          "Which exact instrument and equal-duration chart defines the claim?",
+          "When is the event knowable without future information?",
+          "What single horizon and minimum useful move defines a bounce?",
+          "Unresolved confounder: calendar and day of week",
+          "Unresolved confounder: trend, volatility, drawdown, gap, and volume state",
+          "Unresolved confounder: VIX and volatility term structure",
+          "Unresolved confounder: breadth, rates, macro events, and market regime",
+          "Unresolved confounder: session and chart construction",
+          "Unresolved confounder: related-index behavior"
+        ]
+      }
+    },
+    "inputs": {
+      "attempt_count": 0,
+      "audit_blocking_count": 0,
+      "audit_limiting_count": 1,
+      "audited_dataset_count": 1,
+      "blocking_questions": [
+        "Which exact instrument and equal-duration chart defines the claim?",
+        "When is the event knowable without future information?",
+        "What single horizon and minimum useful move defines a bounce?"
+      ],
+      "confirmation_classification": null,
+      "confounders_resolved": [],
+      "confounders_unresolved": [
+        "calendar and day of week",
+        "trend, volatility, drawdown, gap, and volume state",
+        "VIX and volatility term structure",
+        "breadth, rates, macro events, and market regime",
+        "session and chart construction",
+        "related-index behavior"
+      ],
+      "d2_state": "sealed",
+      "disposition": null,
+      "hypothesis_complete_fields": 6,
+      "hypothesis_partial_fields": 3,
+      "hypothesis_total_fields": 14,
+      "inputs_schema": "ResearchScorecardInputsV1",
+      "mechanism_status": "NOT_TESTED",
+      "multiplicity_status": "NOT_TESTED",
+      "negative_controls_status": "NOT_TESTED",
+      "outcome": null,
+      "phase": "triage",
+      "power_status": "NOT_TESTED",
+      "practical_magnitude_status": "NOT_TESTED",
+      "primary_result_status": "NOT_TESTED",
+      "registered_dataset_count": 2,
+      "screened_claim_count": 0,
+      "stability_parameter_status": "NOT_TESTED",
+      "stability_temporal_status": "NOT_TESTED",
+      "stability_transportability_status": "NOT_TESTED",
+      "untested_work": []
+    },
+    "name": "registered_audited_limiting"
   }
 ]

@@ -269,8 +269,16 @@ _RESEARCH_NOTE_KINDS: Final = frozenset(
 )
 _RESEARCH_NOTE_AUTHOR_KINDS: Final = frozenset({"owner", "agent"})
 _RESEARCH_PACKET_COLLECTION_LIMIT: Final = 50
+_RESEARCH_DATASET_KINDS: Final = frozenset({"store_slice", "snapshot", "quantpad_receipt"})
+# Fail-closed origin bindings (ADR-0023): a registration without its exact receipt or
+# provenance hash is refused — research data is either bound to bytes or not registered.
+_RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
+    "store_slice": ("provenance_sha256",),
+    "snapshot": ("snapshot_id", "manifest_sha256"),
+    "quantpad_receipt": ("receipt_id", "response_sha256"),
+}
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn)_[0-9a-f]{64}")
+_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd)_[0-9a-f]{64}")
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
@@ -725,6 +733,37 @@ CREATE INDEX IF NOT EXISTS idx_research_context_packets_project
     ON research_context_packets(project_id, created_at, packet_id);
 CREATE INDEX IF NOT EXISTS idx_research_case_notes_project
     ON research_case_notes(project_id, sequence);
+
+CREATE TABLE IF NOT EXISTS research_dataset_refs (
+    ref_id TEXT PRIMARY KEY,
+    dataset_kind TEXT NOT NULL CHECK (dataset_kind IN (
+        'store_slice', 'snapshot', 'quantpad_receipt'
+    )),
+    instrument TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    start_ts TEXT NOT NULL,
+    end_ts TEXT NOT NULL,
+    bar_duration_minutes INTEGER,
+    origin_json TEXT NOT NULL,
+    research_only INTEGER NOT NULL CHECK (research_only = 1),
+    registered_by TEXT NOT NULL,
+    registered_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_dataset_audits (
+    ref_id TEXT NOT NULL REFERENCES research_dataset_refs(ref_id),
+    sequence INTEGER NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    run_id TEXT NOT NULL,
+    summary_json TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (ref_id, sequence)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_dataset_refs_instrument
+    ON research_dataset_refs(instrument, registered_at, ref_id);
+CREATE INDEX IF NOT EXISTS idx_research_dataset_audits_project
+    ON research_dataset_audits(project_id, recorded_at);
 
 CREATE INDEX IF NOT EXISTS idx_research_source_records_project
     ON research_source_records(project_id, created_at, source_id);
@@ -4792,6 +4831,229 @@ class ControlStore:
                 (project_id, limit, offset),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def _dataset_ref_view(self, row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        record = dict(row)
+        origin = _decode_json(record.pop("origin_json"), "research dataset origin")
+        if not isinstance(origin, dict):
+            raise DataError("corrupt research dataset origin")
+        record["origin"] = origin
+        record["research_only"] = bool(record.get("research_only"))
+        return record
+
+    def register_research_dataset(
+        self,
+        *,
+        dataset_kind: str,
+        instrument: str,
+        provider: str,
+        start_ts: str,
+        end_ts: str,
+        bar_duration_minutes: int | None,
+        origin: Mapping[str, object],
+        registered_by: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Fail-closed research dataset registration: no receipt/provenance → no ref.
+
+        The ref is content-addressed (``rd_<sha256>``) over its complete identity, so an
+        identical registration is idempotent and a changed origin is a different dataset.
+        Every ref is ``research_only`` forever (ADR-0023): registration grants research
+        readability, never canonical authority.
+        """
+        clean_kind = _enum_value(dataset_kind, "research dataset kind", _RESEARCH_DATASET_KINDS)
+        clean_instrument = _symbols([instrument])[0]
+        clean_provider = _required_text(provider, "research dataset provider", max_length=100)
+        clean_start = _required_text(start_ts, "research dataset start_ts", max_length=64)
+        clean_end = _required_text(end_ts, "research dataset end_ts", max_length=64)
+        if bar_duration_minutes is not None and (
+            isinstance(bar_duration_minutes, bool)
+            or not isinstance(bar_duration_minutes, int)
+            or bar_duration_minutes < 1
+        ):
+            raise DataError("research dataset bar_duration_minutes must be a positive integer")
+        clean_origin = _json_object(origin, "research dataset origin")
+        for field in _RESEARCH_DATASET_ORIGIN_FIELDS[clean_kind]:
+            value = clean_origin.get(field)
+            if not isinstance(value, str) or not value:
+                raise DataError(
+                    f"research dataset origin for {clean_kind!r} requires {field} "
+                    "(fail-closed: unreceipted data cannot be registered)"
+                )
+            if field.endswith("sha256") and _SHA256_RE.fullmatch(value) is None:
+                raise DataError(f"research dataset origin {field} must be a sha256 hex digest")
+        clean_actor = _required_text(registered_by, "research dataset registrar", max_length=200)
+        identity = {
+            "schema_version": 1,
+            "dataset_kind": clean_kind,
+            "instrument": clean_instrument,
+            "provider": clean_provider,
+            "start_ts": clean_start,
+            "end_ts": clean_end,
+            "bar_duration_minutes": bar_duration_minutes,
+            "origin": clean_origin,
+        }
+        ref_id = _content_id("rd", identity)
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            existing = connection.execute(
+                "SELECT * FROM research_dataset_refs WHERE ref_id = ?", (ref_id,)
+            ).fetchone()
+            if existing is not None:
+                return self._dataset_ref_view(existing)
+            connection.execute(
+                """INSERT INTO research_dataset_refs (
+                    ref_id, dataset_kind, instrument, provider, start_ts, end_ts,
+                    bar_duration_minutes, origin_json, research_only, registered_by,
+                    registered_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)""",
+                (
+                    ref_id,
+                    clean_kind,
+                    clean_instrument,
+                    clean_provider,
+                    clean_start,
+                    clean_end,
+                    bar_duration_minutes,
+                    _canonical_json(clean_origin, "research dataset origin"),
+                    clean_actor,
+                    timestamp,
+                ),
+            )
+        return {
+            "ref_id": ref_id,
+            "dataset_kind": clean_kind,
+            "instrument": clean_instrument,
+            "provider": clean_provider,
+            "start_ts": clean_start,
+            "end_ts": clean_end,
+            "bar_duration_minutes": bar_duration_minutes,
+            "origin": clean_origin,
+            "research_only": True,
+            "registered_by": clean_actor,
+            "registered_at": timestamp,
+        }
+
+    def get_research_dataset(self, ref_id: str) -> dict[str, object]:
+        """Return one registered research dataset ref."""
+        clean = _require_content_id(ref_id, "research dataset ref_id", prefix="rd")
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM research_dataset_refs WHERE ref_id = ?", (clean,)
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research dataset {clean!r}")
+        return self._dataset_ref_view(row)
+
+    def list_research_datasets(
+        self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return registered refs (optionally per instrument) with their latest audit."""
+        limit, offset = _page(limit, offset)
+        clean_instrument = None if instrument is None else _symbols([instrument])[0]
+        with self._transaction(write=False) as connection:
+            if clean_instrument is None:
+                rows = connection.execute(
+                    """SELECT * FROM research_dataset_refs
+                    ORDER BY registered_at DESC, ref_id LIMIT ? OFFSET ?""",
+                    (limit, offset),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """SELECT * FROM research_dataset_refs WHERE instrument = ?
+                    ORDER BY registered_at DESC, ref_id LIMIT ? OFFSET ?""",
+                    (clean_instrument, limit, offset),
+                ).fetchall()
+            views: list[dict[str, object]] = []
+            for row in rows:
+                view = self._dataset_ref_view(row)
+                audit = connection.execute(
+                    """SELECT * FROM research_dataset_audits WHERE ref_id = ?
+                    ORDER BY sequence DESC LIMIT 1""",
+                    (row["ref_id"],),
+                ).fetchone()
+                view["latest_audit"] = None if audit is None else self._dataset_audit_view(audit)
+                views.append(view)
+        return views
+
+    def _dataset_audit_view(self, row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        record = dict(row)
+        summary = _decode_json(record.pop("summary_json"), "research dataset audit summary")
+        if not isinstance(summary, dict):
+            raise DataError("corrupt research dataset audit summary")
+        record["summary"] = summary
+        return record
+
+    def record_research_dataset_audit(
+        self,
+        ref_id: str,
+        *,
+        project_id: str,
+        run_id: str,
+        summary: Mapping[str, object],
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append one immutable data-audit result for a registered dataset."""
+        clean_ref = _require_content_id(ref_id, "research dataset ref_id", prefix="rd")
+        clean_run = _required_text(run_id, "research dataset audit run_id", max_length=64)
+        clean_summary = _json_object(summary, "research dataset audit summary")
+        if clean_summary.get("audit_schema") != "ResearchDataAuditV1":
+            raise DataError(
+                "research dataset audit summary must declare audit_schema ResearchDataAuditV1"
+            )
+        for field in ("blocking_count", "limiting_count"):
+            value = clean_summary.get(field)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise DataError(f"research dataset audit summary requires integer {field}")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            ref = connection.execute(
+                "SELECT ref_id FROM research_dataset_refs WHERE ref_id = ?", (clean_ref,)
+            ).fetchone()
+            if ref is None:
+                raise DataError(f"unknown research dataset {clean_ref!r}")
+            sequence_row = connection.execute(
+                "SELECT COALESCE(MAX(sequence), 0) + 1 FROM research_dataset_audits "
+                "WHERE ref_id = ?",
+                (clean_ref,),
+            ).fetchone()
+            sequence = int(sequence_row[0])
+            connection.execute(
+                """INSERT INTO research_dataset_audits (
+                    ref_id, sequence, project_id, run_id, summary_json, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    clean_ref,
+                    sequence,
+                    project_id,
+                    clean_run,
+                    _canonical_json(clean_summary, "research dataset audit summary"),
+                    timestamp,
+                ),
+            )
+        return {
+            "ref_id": clean_ref,
+            "sequence": sequence,
+            "project_id": project_id,
+            "run_id": clean_run,
+            "summary": clean_summary,
+            "recorded_at": timestamp,
+        }
+
+    def list_research_dataset_audits(
+        self, ref_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return one dataset's audit history, newest first."""
+        clean = _require_content_id(ref_id, "research dataset ref_id", prefix="rd")
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                """SELECT * FROM research_dataset_audits WHERE ref_id = ?
+                ORDER BY sequence DESC LIMIT ? OFFSET ?""",
+                (clean, limit, offset),
+            ).fetchall()
+        return [self._dataset_audit_view(row) for row in rows]
 
     def research_brief(
         self,

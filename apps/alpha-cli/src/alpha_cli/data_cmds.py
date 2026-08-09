@@ -389,6 +389,44 @@ def symbols(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
 
 
 @data_app.command()
+def snapshots(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List every immutable snapshot's manifest summary in deterministic id order."""
+    root = _snaps_root()
+    rows: list[dict[str, object]] = []
+    if root.is_dir():
+        for manifest_path in sorted(root.glob("*/manifest.json")):
+            raw = manifest_path.read_bytes()
+            try:
+                manifest = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise DataError(f"corrupt snapshot manifest at {manifest_path}") from exc
+            if not isinstance(manifest, dict):
+                raise DataError(f"corrupt snapshot manifest at {manifest_path}")
+            symbols_entry = manifest.get("symbols")
+            rows.append(
+                {
+                    "snapshot_id": manifest.get("snapshot_id"),
+                    "created_at": manifest.get("created_at"),
+                    "source": manifest.get("source"),
+                    "adapter_version": manifest.get("adapter_version"),
+                    "parser_version": manifest.get("parser_version"),
+                    "symbols": (sorted(symbols_entry) if isinstance(symbols_entry, dict) else []),
+                    "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+                }
+            )
+    if json_out:
+        typer.echo(json.dumps({"snapshots": rows}, sort_keys=True, allow_nan=False))
+        return
+    if not rows:
+        typer.echo("no snapshots")
+        return
+    for row in rows:
+        listed = row["symbols"]
+        names = ",".join(str(item) for item in listed) if isinstance(listed, list) else ""
+        typer.echo(f"{row['snapshot_id']} {row['source']} {names}")
+
+
+@data_app.command()
 def verify(snapshot_id: str) -> None:
     """Re-hash a snapshot and confirm it matches its manifest."""
     try:

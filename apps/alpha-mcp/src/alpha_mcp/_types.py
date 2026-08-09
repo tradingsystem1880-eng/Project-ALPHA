@@ -116,6 +116,26 @@ class ResearchCaseOut(TypedDict):
     scorecard: NotRequired[JsonObject]
 
 
+class DataInventoryOut(TypedDict):
+    symbols: list[str]
+
+
+class DataCandlesOut(TypedDict):
+    symbol: str
+    snapshot_id: str | None
+    provenance: JsonObject
+    bars: list[JsonObject]
+    truncated: bool
+
+
+class SnapshotListOut(TypedDict):
+    snapshots: list[JsonObject]
+
+
+class ProviderRegistryOut(TypedDict):
+    providers: list[JsonObject]
+
+
 class ResearchContextPacketOut(TypedDict):
     packet_id: str
     project_id: str

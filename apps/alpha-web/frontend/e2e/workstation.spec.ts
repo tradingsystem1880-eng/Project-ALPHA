@@ -797,6 +797,28 @@ function responseFor(route: Route, options: MockOptions): unknown {
     return RESEARCH_SCORECARD
   }
   if (url.pathname === '/api/research/protocols') return RESEARCH_PROTOCOLS
+  if (url.pathname === '/api/research/datasets') {
+    return {
+      items: [
+        {
+          ref_id: `rd_${'9'.repeat(64)}`,
+          dataset_kind: 'snapshot',
+          instrument: 'AAPL',
+          provider: 'tiingo',
+          start_ts: '2020-01-01',
+          end_ts: '2020-06-01',
+          bar_duration_minutes: null,
+          origin: { snapshot_id: 'snap1', manifest_sha256: '8'.repeat(64) },
+          research_only: true,
+          registered_by: 'owner',
+          registered_at: '2026-08-09T00:00:00Z',
+          latest_audit: { summary: { blocking_count: 0, limiting_count: 1 } },
+        },
+      ] satisfies components['schemas']['ResearchDatasetRefRow'][],
+      limit: 100,
+      offset: 0,
+    }
+  }
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/context-packets`) {
     return { items: [RESEARCH_PACKET], limit: 50, offset: 0 }
   }
@@ -1071,6 +1093,12 @@ test('Research Command Center desk drives the cockpit and evidence hub from the 
   await expect(page.getByText('CODEX COMMENTARY — NOT EVIDENCE', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /cp_f+/ }).click()
   await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
+
+  // The Research Data tab serves registered refs with audit badges and the forever badge.
+  await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
+  await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
+  await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
+  await expect(page.getByText(/snapshot snap1 · manifest/)).toBeVisible()
   await expectReleaseAccessibility(page)
 })
 

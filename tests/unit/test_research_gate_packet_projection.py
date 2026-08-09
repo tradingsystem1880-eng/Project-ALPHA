@@ -37,6 +37,12 @@ class _FakeStore:
         self.packet_reads += 1
         return self.inputs
 
+    def list_research_datasets(
+        self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        del instrument, limit, offset
+        return []
+
 
 def test_active_case_preserves_progress_report_and_does_not_read_terminal_inputs() -> None:
     summary: dict[str, object] = {
@@ -429,7 +435,7 @@ def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
     assert sections["data"] == {
         "registered_datasets": [],
         "status": "NOT_TESTED",
-        "note": "No registered research datasets; the data plane arrives in a later phase.",
+        "note": "No registered research datasets.",
     }
     assert sections["literature"]["claims"] == []
     assert sections["exploration"] == {
@@ -522,3 +528,117 @@ def test_scorecard_drift_fixture_pins_python_and_typescript_twins() -> None:
     for scenario in scenarios:
         derived = derive_research_scorecard(scenario["inputs"])
         assert derived == scenario["expected"], scenario["name"]
+
+
+def test_scorecard_data_quality_reflects_registered_datasets_and_audits() -> None:
+    from alpha_cli.research_gate_packet import derive_research_scorecard
+    from tests.unit.test_research_control_store import _payload
+
+    base_summary: dict[str, object] = {
+        "project_id": "project-1",
+        "phase": "deep_research",
+        "execution_state": "idle",
+        "next_action": "Continue.",
+        "research_decision": None,
+        "d2_state": "sealed",
+        "attempt_count": 1,
+    }
+    payload = _payload("sp_" + "0" * 64)
+
+    def scorecard_with(datasets: list[dict[str, object]]) -> dict[str, str]:
+        from alpha_cli.research_gate_packet import research_scorecard_inputs
+
+        inputs = research_scorecard_inputs(base_summary, payload, packet=None, datasets=datasets)
+        return _dimension_states(derive_research_scorecard(inputs))
+
+    def dataset(blocking: int | None, limiting: int | None) -> dict[str, object]:
+        latest = (
+            None
+            if blocking is None
+            else {"summary": {"blocking_count": blocking, "limiting_count": limiting}}
+        )
+        return {"ref_id": "rd_" + "1" * 64, "latest_audit": latest}
+
+    assert scorecard_with([])["data_quality"] == "not_tested"
+    assert scorecard_with([dataset(None, None)])["data_quality"] == "adequate"
+    assert scorecard_with([dataset(2, 0)])["data_quality"] == "blocked"
+    assert scorecard_with([dataset(0, 1)])["data_quality"] == "weak"
+    assert scorecard_with([dataset(0, 0)])["data_quality"] == "strong"
+
+
+def test_evidence_hub_data_section_lists_registered_datasets_without_touching_effect_dimensions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from typing import cast as _cast
+
+    from alpha_cli.control_store import ControlStore as _Store
+    from alpha_cli.research_gate_packet import research_evidence_hub_projection
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    result = CliRunner().invoke(
+        app, ["research", "capture", "AAPL drifts after gap days", "--json"]
+    )
+    assert result.exit_code == 0, result.output
+    project_id = str(json.loads(result.output)["project"]["project_id"])
+    store = _Store(tmp_path)
+    # Bind the active contract's fingerprint to a registrable instrument for this test.
+    summary = store.research_case_summary(project_id)
+    contract = _cast(dict[str, object], summary["active_contract"])
+    payload = dict(_cast(dict[str, object], contract["payload"]))
+    payload["chart_fingerprint"] = {
+        **_cast(dict[str, object], payload.get("chart_fingerprint", {}) or {}),
+        "instrument": "AAPL",
+    }
+    ref = store.register_research_dataset(
+        dataset_kind="store_slice",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-01-01",
+        end_ts="2020-06-01",
+        bar_duration_minutes=None,
+        origin={"provenance_sha256": "a" * 64},
+        registered_by="owner",
+    )
+    store.record_research_dataset_audit(
+        str(ref["ref_id"]),
+        project_id=project_id,
+        run_id="feedfacefeedface",
+        summary={
+            "audit_schema": "ResearchDataAuditV1",
+            "blocking_count": 0,
+            "limiting_count": 0,
+            "notes": [],
+        },
+    )
+
+    class _InstrumentStore:
+        def __getattr__(self, name: str) -> object:
+            return getattr(store, name)
+
+        def research_gate_packet_inputs(
+            self, project_id: str, *, ledger_limit: int = 10_000
+        ) -> dict[str, object]:
+            return store.research_gate_packet_inputs(project_id, ledger_limit=ledger_limit)
+
+        def list_research_datasets(
+            self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
+        ) -> list[dict[str, object]]:
+            return store.list_research_datasets(instrument=instrument, limit=limit, offset=offset)
+
+        def research_case_summary(self, pid: str) -> dict[str, object]:
+            row = store.research_case_summary(pid)
+            active = _cast(dict[str, object], row["active_contract"])
+            return {**row, "active_contract": {**active, "payload": payload}}
+
+    hub = research_evidence_hub_projection(_InstrumentStore(), project_id)
+    sections = _cast(dict[str, object], hub["sections"])
+    data_section = _cast(dict[str, object], sections["data"])
+    datasets = _cast(list[dict[str, object]], data_section["registered_datasets"])
+    assert [row["ref_id"] for row in datasets] == [ref["ref_id"]]
+    assert data_section["status"] == "STRONG"
+    # A clean data audit may never flip effect or falsification dimensions.
+    overview = _cast(dict[str, object], sections["overview"])
+    states = _dimension_states(_cast(dict[str, object], overview["scorecard"]))
+    assert states["data_quality"] == "strong"
+    assert states["effect_existence"] == "not_tested"
+    assert states["falsification"] == "not_tested"

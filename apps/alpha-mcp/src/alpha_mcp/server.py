@@ -658,6 +658,48 @@ def get_research_protocol(protocol_id: str) -> _types.ResearchProtocolOut:
 
 
 @mcp.tool()
+def get_data_inventory() -> _types.DataInventoryOut:
+    """List every stored symbol — the read-only starting point of data feasibility."""
+    return cast(_types.DataInventoryOut, _control.data_inventory(data_dir=_data_dir()))
+
+
+@mcp.tool()
+def get_data_quality(symbol: str) -> _types.JsonObject:
+    """Read one symbol's source, qualification, and promotion status (read-only)."""
+    return _control.data_quality(symbol, data_dir=_data_dir())
+
+
+@mcp.tool()
+def get_data_candles(
+    symbol: str,
+    start: str | None = None,
+    end: str | None = None,
+    limit: int = 100,
+) -> _types.DataCandlesOut:
+    """Bounded point-in-time candle preview (last ``limit`` bars, at most 500).
+
+    Reads through the same look-ahead firewall a backtest uses; ``end`` is a knowledge
+    cutoff. This preview mirrors the QuantPad discovery bound and is never a bulk feed.
+    """
+    return cast(
+        _types.DataCandlesOut,
+        _control.data_candles(symbol, data_dir=_data_dir(), start=start, end=end, limit=limit),
+    )
+
+
+@mcp.tool()
+def list_snapshots() -> _types.SnapshotListOut:
+    """List every immutable snapshot's manifest summary (id, source, symbols, hash)."""
+    return cast(_types.SnapshotListOut, _control.snapshots(data_dir=_data_dir()))
+
+
+@mcp.tool()
+def get_provider_registry() -> _types.ProviderRegistryOut:
+    """The redacted provider capability/limitation registry; never probes the network."""
+    return cast(_types.ProviderRegistryOut, _control.provider_registry(data_dir=_data_dir()))
+
+
+@mcp.tool()
 def create_strategy_project(
     name: str, hypothesis: str, falsification_criterion: str
 ) -> _types.ProjectSummaryOut:

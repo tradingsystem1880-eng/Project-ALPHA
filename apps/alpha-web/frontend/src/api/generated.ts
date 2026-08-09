@@ -1331,6 +1331,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Datasets
+         * @description Read registered research-only dataset refs with their latest audits.
+         */
+        get: operations["research_datasets_api_research_datasets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/protocols": {
         parameters: {
             query?: never;
@@ -6099,6 +6119,46 @@ export interface components {
         ResearchD2StateValue: "sealed" | "authorized" | "consumed" | "contaminated";
         /** @enum {string} */
         ResearchD3StateValue: "not_sealed" | "sealed" | "consumed" | "contaminated";
+        /** ResearchDatasetPage */
+        ResearchDatasetPage: {
+            /** Items */
+            items: components["schemas"]["ResearchDatasetRefRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** ResearchDatasetRefRow */
+        ResearchDatasetRefRow: {
+            /** Bar Duration Minutes */
+            bar_duration_minutes: number | null;
+            /**
+             * Dataset Kind
+             * @enum {string}
+             */
+            dataset_kind: "store_slice" | "snapshot" | "quantpad_receipt";
+            /** End Ts */
+            end_ts: string;
+            /** Instrument */
+            instrument: string;
+            latest_audit: components["schemas"]["JsonObject"] | null;
+            origin: components["schemas"]["JsonObject"];
+            /** Provider */
+            provider: string;
+            /** Ref Id */
+            ref_id: string;
+            /** Registered At */
+            registered_at: string;
+            /** Registered By */
+            registered_by: string;
+            /**
+             * Research Only
+             * @constant
+             */
+            research_only: true;
+            /** Start Ts */
+            start_ts: string;
+        };
         /** ResearchDecisionEvent */
         ResearchDecisionEvent: {
             /** Actor */
@@ -9556,6 +9616,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchContextPacket"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_datasets_api_research_datasets_get: {
+        parameters: {
+            query?: {
+                symbol?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchDatasetPage"];
                 };
             };
             /** @description Validation Error */

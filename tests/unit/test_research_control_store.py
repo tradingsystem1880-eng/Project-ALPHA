@@ -3545,3 +3545,207 @@ def test_research_brief_reports_only_deltas_since_the_previous_brief(tmp_path: P
     third_changes = third["changes"]
     assert isinstance(third_changes, dict)
     assert all(third_changes[key] == [] for key in third_changes)
+
+
+def test_research_dataset_registration_is_fail_closed_and_content_addressed(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    ref = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-08-28",
+        end_ts="2020-09-02",
+        bar_duration_minutes=None,
+        origin={"snapshot_id": "snap-a", "manifest_sha256": "a" * 64},
+        registered_by="owner",
+        at=START,
+    )
+    ref_id = str(ref["ref_id"])
+    assert ref_id.startswith("rd_") and len(ref_id) == 3 + 64
+    assert ref["research_only"] is True
+    assert ref["dataset_kind"] == "snapshot"
+    # Idempotent re-registration of identical bytes.
+    replay = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-08-28",
+        end_ts="2020-09-02",
+        bar_duration_minutes=None,
+        origin={"snapshot_id": "snap-a", "manifest_sha256": "a" * 64},
+        registered_by="owner",
+        at=START + timedelta(minutes=5),
+    )
+    assert replay["ref_id"] == ref_id
+    rows = store.list_research_datasets()
+    assert [row["ref_id"] for row in rows] == [ref_id]
+    assert rows[0]["latest_audit"] is None
+    assert store.get_research_dataset(ref_id)["origin"] == {
+        "snapshot_id": "snap-a",
+        "manifest_sha256": "a" * 64,
+    }
+    assert store.list_research_datasets(instrument="AAPL") == rows
+    assert store.list_research_datasets(instrument="SPY") == []
+
+    # Fail-closed origins: a registration without its exact binding is refused.
+    with pytest.raises(DataError, match="manifest_sha256"):
+        store.register_research_dataset(
+            dataset_kind="snapshot",
+            instrument="AAPL",
+            provider="fake",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=None,
+            origin={"snapshot_id": "snap-a"},
+            registered_by="owner",
+        )
+    with pytest.raises(DataError, match="provenance_sha256"):
+        store.register_research_dataset(
+            dataset_kind="store_slice",
+            instrument="AAPL",
+            provider="fake",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=None,
+            origin={},
+            registered_by="owner",
+        )
+    with pytest.raises(DataError, match="receipt"):
+        store.register_research_dataset(
+            dataset_kind="quantpad_receipt",
+            instrument="AAPL",
+            provider="quantpad",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=60,
+            origin={"response_sha256": "b" * 64},
+            registered_by="owner",
+        )
+    with pytest.raises(DataError, match="dataset kind"):
+        store.register_research_dataset(
+            dataset_kind="csv_upload",
+            instrument="AAPL",
+            provider="fake",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=None,
+            origin={},
+            registered_by="owner",
+        )
+
+
+def test_research_dataset_audits_bind_ref_project_and_run(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    ref = store.register_research_dataset(
+        dataset_kind="store_slice",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-08-28",
+        end_ts="2020-09-02",
+        bar_duration_minutes=None,
+        origin={"provenance_sha256": "c" * 64},
+        registered_by="owner",
+        at=START,
+    )
+    ref_id = str(ref["ref_id"])
+    audit = store.record_research_dataset_audit(
+        ref_id,
+        project_id=project_id,
+        run_id="deadbeefdeadbeef",
+        summary={
+            "audit_schema": "ResearchDataAuditV1",
+            "blocking_count": 0,
+            "limiting_count": 1,
+            "notes": ["One calendar gap over a holiday."],
+        },
+        at=START + timedelta(minutes=10),
+    )
+    assert audit["ref_id"] == ref_id and audit["project_id"] == project_id
+    listed = store.list_research_dataset_audits(ref_id)
+    assert [row["run_id"] for row in listed] == ["deadbeefdeadbeef"]
+    enriched = store.list_research_datasets()
+    latest = enriched[0]["latest_audit"]
+    assert isinstance(latest, dict)
+    assert latest["summary"]["limiting_count"] == 1
+
+    with pytest.raises(DataError, match="unknown research dataset"):
+        store.record_research_dataset_audit(
+            "rd_" + "0" * 64,
+            project_id=project_id,
+            run_id="deadbeefdeadbeef",
+            summary={
+                "audit_schema": "ResearchDataAuditV1",
+                "blocking_count": 0,
+                "limiting_count": 0,
+                "notes": [],
+            },
+        )
+    with pytest.raises(DataError, match="audit summary"):
+        store.record_research_dataset_audit(
+            ref_id,
+            project_id=project_id,
+            run_id="deadbeefdeadbeef",
+            summary={"blocking_count": 0},
+        )
+
+
+def test_data_audit_refuses_drifted_bytes_and_unsupported_kinds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The audit loader is fail-closed: registered hashes must still match the disk."""
+    from alpha_cli.research_data_audit import run_data_audit
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _captured_case(ControlStore(tmp_path), 0, at=START)
+
+    def _ref(kind: str, origin: dict[str, object]) -> dict[str, object]:
+        return {
+            "ref_id": "rd_" + "1" * 64,
+            "dataset_kind": kind,
+            "instrument": "AAPL",
+            "provider": "fake",
+            "start_ts": "2020-01-01",
+            "end_ts": "2020-06-01",
+            "bar_duration_minutes": None,
+            "origin": origin,
+        }
+
+    with pytest.raises(DataError, match="canonical project_id"):
+        run_data_audit(tmp_path, project_id="not-a-uuid", ref=_ref("snapshot", {}))
+    with pytest.raises(DataError, match="registered dataset ref"):
+        run_data_audit(tmp_path, project_id=project_id, ref={"ref_id": "nope"})
+    with pytest.raises(DataError, match="missing its manifest"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("snapshot", {"snapshot_id": "ghost", "manifest_sha256": "a" * 64}),
+        )
+    snapshot_dir = tmp_path / "snapshots" / "snap-x"
+    snapshot_dir.mkdir(parents=True)
+    (snapshot_dir / "manifest.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="no longer matches its registered manifest hash"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("snapshot", {"snapshot_id": "snap-x", "manifest_sha256": "a" * 64}),
+        )
+    with pytest.raises(DataError, match="no provenance sidecar"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("store_slice", {"provenance_sha256": "b" * 64}),
+        )
+    with pytest.raises(DataError, match="qualified-loading lane"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("quantpad_receipt", {"receipt_id": "c" * 32, "response_sha256": "d" * 64}),
+        )
+    with pytest.raises(DataError, match="end at or after"):
+        bad_range = _ref("snapshot", {"snapshot_id": "snap-x", "manifest_sha256": "a" * 64})
+        bad_range["start_ts"] = "2021-01-01"
+        bad_range["end_ts"] = "2020-01-01"
+        run_data_audit(tmp_path, project_id=project_id, ref=bad_range)

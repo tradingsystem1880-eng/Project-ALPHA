@@ -166,6 +166,17 @@ def notes(project_id: str, *, data_dir: Path, limit: int = 100, offset: int = 0)
     )
 
 
+def datasets(
+    *, data_dir: Path, symbol: str | None = None, limit: int = 100, offset: int = 0
+) -> dict[str, Any]:
+    """Read registered research dataset refs with their latest audit (ADR-0023)."""
+    args = ["research", "data", "list"]
+    if symbol is not None:
+        args += ["--symbol", symbol]
+    args += ["--limit", str(limit), "--offset", str(offset), "--json"]
+    return _object(_run_json(args, data_dir=data_dir), "research datasets")
+
+
 def protocols(*, data_dir: Path) -> dict[str, Any]:
     """Read the Git-owned protocol library index (drift fails loud in the CLI)."""
     return _object(

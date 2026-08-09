@@ -199,3 +199,56 @@ def test_verify_fails_loud_on_missing_snapshot(
     r = runner.invoke(app, ["data", "verify", "no-such-snapshot"])
     assert r.exit_code == 2
     assert "Traceback" not in r.output
+
+
+def test_snapshots_lists_manifest_summaries_deterministically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"fake": _FakeAdapter})
+    empty = runner.invoke(app, ["data", "snapshots", "--json"])
+    assert empty.exit_code == 0, empty.output
+    assert json.loads(empty.stdout) == {"snapshots": []}
+
+    pull = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-02",
+        ],
+    )
+    assert pull.exit_code == 0, pull.output
+    for snapshot_id in ("snap-b", "snap-a"):
+        created = runner.invoke(app, ["data", "snapshot", snapshot_id, "AAPL", "--source", "fake"])
+        assert created.exit_code == 0, created.output
+
+    listed = runner.invoke(app, ["data", "snapshots", "--json"])
+    assert listed.exit_code == 0, listed.output
+    payload = json.loads(listed.stdout)
+    rows = payload["snapshots"]
+    # Deterministic order: snapshot id ascending, independent of creation order.
+    assert [row["snapshot_id"] for row in rows] == ["snap-a", "snap-b"]
+    for row in rows:
+        assert set(row) == {
+            "snapshot_id",
+            "created_at",
+            "source",
+            "adapter_version",
+            "parser_version",
+            "symbols",
+            "manifest_sha256",
+        }
+        assert row["source"] == "fake"
+        assert row["symbols"] == ["AAPL"]
+        assert len(row["manifest_sha256"]) == 64
+
+    fallback = runner.invoke(app, ["data", "snapshots"])
+    assert fallback.exit_code == 0
+    assert "snap-a" in fallback.output and "snap-b" in fallback.output

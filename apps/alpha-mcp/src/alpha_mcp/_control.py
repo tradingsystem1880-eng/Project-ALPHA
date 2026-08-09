@@ -227,6 +227,58 @@ def research_protocol_get(protocol_id: str, *, data_dir: Path) -> dict[str, Any]
     )
 
 
+def data_inventory(*, data_dir: Path) -> dict[str, Any]:
+    """Every stored symbol — the starting point of data feasibility."""
+    return _object(_invoke.run_json(["data", "symbols", "--json"], data_dir=data_dir), "symbols")
+
+
+def data_quality(symbol: str, *, data_dir: Path) -> dict[str, Any]:
+    """One symbol's source/qualification/promotion status (read-only)."""
+    return _object(
+        _invoke.run_json(["data", "source-status", symbol, "--json"], data_dir=data_dir),
+        "source status",
+    )
+
+
+def data_candles(
+    symbol: str,
+    *,
+    data_dir: Path,
+    start: str | None = None,
+    end: str | None = None,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Bounded point-in-time candle preview (last ``limit`` bars, ≤500 like discovery)."""
+    limit = bound("limit", limit, 500)
+    args = ["data", "candles", symbol]
+    if start is not None:
+        args += ["--start", start]
+    if end is not None:
+        args += ["--end", end]
+    args += ["--json"]
+    payload = _object(_invoke.run_json(args, data_dir=data_dir), "candles")
+    bars = payload.get("bars")
+    if not isinstance(bars, list):
+        raise RuntimeError("alpha returned an invalid candles projection")
+    truncated = len(bars) > limit
+    return {**payload, "bars": bars[-limit:], "truncated": truncated}
+
+
+def snapshots(*, data_dir: Path) -> dict[str, Any]:
+    """Every immutable snapshot's manifest summary."""
+    return _object(
+        _invoke.run_json(["data", "snapshots", "--json"], data_dir=data_dir), "snapshots"
+    )
+
+
+def provider_registry(*, data_dir: Path) -> dict[str, Any]:
+    """The redacted provider capability/limitation registry (never probes the network)."""
+    rows = _objects(
+        _invoke.run_json(["info", "providers", "--json"], data_dir=data_dir), "providers"
+    )
+    return {"providers": rows}
+
+
 def list_projects(*, data_dir: Path, limit: int, start: int) -> dict[str, Any]:
     limit = bound("limit", limit, 100)
     start = offset(start)

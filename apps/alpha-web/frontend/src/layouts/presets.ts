@@ -70,6 +70,7 @@ export const WORKSPACE_PRESETS: WorkspacePreset[] = [
       { key: 'cockpit', component: 'ResearchCockpit', title: 'Research Cockpit' },
       { key: 'backlog', component: 'ResearchBacklog', title: 'Research Backlog', anchor: 'cockpit', direction: 'left', initialWidth: 300 },
       { key: 'codex', component: 'CodexBench', title: 'Codex Bench', anchor: 'cockpit', direction: 'right', initialWidth: 420 },
+      { key: 'data', component: 'ResearchDataExplorer', title: 'Research Data', anchor: 'codex', direction: 'within', inactive: true },
       { key: 'hub', component: 'EvidenceHub', title: 'Evidence Hub', anchor: 'cockpit', direction: 'below', initialHeight: 320 },
       { key: 'chart', component: 'PriceChart', title: 'Asset Chart', anchor: 'backlog', direction: 'within', inactive: true },
       { key: 'runs', component: 'RunBrowser', title: 'Runs', anchor: 'backlog', direction: 'within', inactive: true },

@@ -30,6 +30,9 @@ export interface ResearchScorecardInputs {
   hypothesis_partial_fields: number
   hypothesis_total_fields: number
   registered_dataset_count: number
+  audited_dataset_count?: number
+  audit_blocking_count?: number
+  audit_limiting_count?: number
   screened_claim_count: number
   blocking_questions: string[]
   confounders_resolved: string[]
@@ -88,6 +91,26 @@ export function deriveResearchScorecard(
   else if (complete + partial === 0) hypothesisState = 'missing'
 
   const datasetCount = inputs.registered_dataset_count
+  const auditedCount = inputs.audited_dataset_count ?? 0
+  const auditBlocking = inputs.audit_blocking_count ?? 0
+  const auditLimiting = inputs.audit_limiting_count ?? 0
+  let dataQualityState = 'not_tested'
+  let dataQualityBasis = 'No registered research datasets.'
+  if (datasetCount > 0) {
+    if (auditBlocking > 0) {
+      dataQualityState = 'blocked'
+      dataQualityBasis = `${auditBlocking} blocking data-audit findings.`
+    } else if (auditedCount === 0) {
+      dataQualityState = 'adequate'
+      dataQualityBasis = `${datasetCount} registered datasets; not yet audited.`
+    } else if (auditLimiting > 0) {
+      dataQualityState = 'weak'
+      dataQualityBasis = `${auditLimiting} limiting data-audit findings.`
+    } else {
+      dataQualityState = 'strong'
+      dataQualityBasis = 'Every registered dataset audited with no findings.'
+    }
+  }
   const claimCount = inputs.screened_claim_count
   const classification = inputs.confirmation_classification
   const magnitude = inputs.practical_magnitude_status
@@ -202,14 +225,7 @@ export function deriveResearchScorecard(
       hypothesisState,
       `${complete} of ${total} hypothesis-card fields are complete.`,
     ),
-    dimension(
-      'data_quality',
-      'Data quality',
-      datasetCount === 0 ? 'not_tested' : 'adequate',
-      datasetCount === 0
-        ? 'No registered research datasets.'
-        : `${datasetCount} registered datasets; quality profiling pending.`,
-    ),
+    dimension('data_quality', 'Data quality', dataQualityState, dataQualityBasis),
     dimension('sample_adequacy', 'Sample adequacy', sampleState, sampleBasis),
     dimension('effect_existence', 'Effect existence', effectExistence, effectBasis),
     dimension('effect_size', 'Effect size', effectSize, sizeBasis),

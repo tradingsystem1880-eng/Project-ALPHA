@@ -363,3 +363,31 @@ def test_codex_read_plane_serves_packets_notes_and_protocols(
 
     assert client.get("/api/research/context-packets/cp_" + "9" * 64).status_code == 404
     assert client.get("/api/research/cases/unknown/context-packets").status_code == 404
+
+
+def test_dataset_read_plane_serves_registered_refs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    store = ControlStore(AlphaSettings().data_dir)
+    ref = store.register_research_dataset(
+        dataset_kind="store_slice",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-01-01",
+        end_ts="2020-06-01",
+        bar_duration_minutes=None,
+        origin={"provenance_sha256": "a" * 64},
+        registered_by="owner",
+    )
+    listed = client.get("/api/research/datasets")
+    assert listed.status_code == 200, listed.text
+    payload = listed.json()
+    assert [row["ref_id"] for row in payload["items"]] == [ref["ref_id"]]
+    row = payload["items"][0]
+    assert row["research_only"] is True
+    assert row["latest_audit"] is None
+    filtered = client.get("/api/research/datasets", params={"symbol": "SPY"})
+    assert filtered.status_code == 200
+    assert filtered.json()["items"] == []
+    assert client.get("/api/research/datasets", params={"limit": 0}).status_code == 422

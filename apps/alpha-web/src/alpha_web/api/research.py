@@ -16,6 +16,7 @@ from alpha_web.api.models import (
     ResearchCaseReport,
     ResearchContextPacket,
     ResearchContextPacketPage,
+    ResearchDatasetPage,
     ResearchEvidenceHub,
     ResearchLaunchRequest,
     ResearchLaunchResponse,
@@ -125,6 +126,19 @@ def research_notes(
         return _research.notes(project_id, data_dir=data_dir(), limit=limit, offset=offset)
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/research/datasets", response_model=ResearchDatasetPage)
+def research_datasets(
+    symbol: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read registered research-only dataset refs with their latest audits."""
+    try:
+        return _research.datasets(data_dir=data_dir(), symbol=symbol, limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/research/protocols", response_model=ResearchProtocolLibrary)

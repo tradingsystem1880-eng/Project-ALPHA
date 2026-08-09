@@ -1516,6 +1516,27 @@ class ResearchNotePage(StrictModel):
     offset: int
 
 
+class ResearchDatasetRefRow(StrictModel):
+    ref_id: str = Field(pattern=r"^rd_[0-9a-f]{64}$")
+    dataset_kind: Literal["store_slice", "snapshot", "quantpad_receipt"]
+    instrument: str
+    provider: str
+    start_ts: str
+    end_ts: str
+    bar_duration_minutes: int | None
+    origin: JsonObject
+    research_only: Literal[True]
+    registered_by: str
+    registered_at: str
+    latest_audit: JsonObject | None
+
+
+class ResearchDatasetPage(StrictModel):
+    items: list[ResearchDatasetRefRow]
+    limit: int
+    offset: int
+
+
 class ResearchProtocolEntry(StrictModel):
     id: str
     title: str

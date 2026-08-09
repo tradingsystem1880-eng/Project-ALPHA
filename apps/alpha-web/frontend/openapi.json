@@ -10340,6 +10340,121 @@
         ],
         "type": "string"
       },
+      "ResearchDatasetPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchDatasetRefRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "ResearchDatasetPage",
+        "type": "object"
+      },
+      "ResearchDatasetRefRow": {
+        "additionalProperties": false,
+        "properties": {
+          "bar_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bar Duration Minutes"
+          },
+          "dataset_kind": {
+            "enum": [
+              "store_slice",
+              "snapshot",
+              "quantpad_receipt"
+            ],
+            "title": "Dataset Kind",
+            "type": "string"
+          },
+          "end_ts": {
+            "title": "End Ts",
+            "type": "string"
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": "string"
+          },
+          "latest_audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "origin": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "ref_id": {
+            "pattern": "^rd_[0-9a-f]{64}$",
+            "title": "Ref Id",
+            "type": "string"
+          },
+          "registered_at": {
+            "title": "Registered At",
+            "type": "string"
+          },
+          "registered_by": {
+            "title": "Registered By",
+            "type": "string"
+          },
+          "research_only": {
+            "const": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "start_ts": {
+            "title": "Start Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref_id",
+          "dataset_kind",
+          "instrument",
+          "provider",
+          "start_ts",
+          "end_ts",
+          "bar_duration_minutes",
+          "origin",
+          "research_only",
+          "registered_by",
+          "registered_at",
+          "latest_audit"
+        ],
+        "title": "ResearchDatasetRefRow",
+        "type": "object"
+      },
       "ResearchDecisionEvent": {
         "additionalProperties": false,
         "properties": {
@@ -17652,6 +17767,79 @@
           }
         },
         "summary": "Research Context Packet",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/datasets": {
+      "get": {
+        "description": "Read registered research-only dataset refs with their latest audits.",
+        "operationId": "research_datasets_api_research_datasets_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchDatasetPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Datasets",
         "tags": [
           "research"
         ]

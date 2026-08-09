@@ -1460,3 +1460,224 @@ def test_new_research_commands_report_human_fallbacks_and_fail_loud_on_unknown_i
     ):
         rejected = runner.invoke(app, args)
         assert rejected.exit_code != 0, args
+
+
+def _pull_and_snapshot_aapl(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.integration.test_data_cli import _FakeAdapter
+
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"fake": _FakeAdapter})
+    pull = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-02",
+        ],
+    )
+    assert pull.exit_code == 0, pull.output
+    snapped = runner.invoke(app, ["data", "snapshot", "snap1", "AAPL", "--source", "fake"])
+    assert snapped.exit_code == 0, snapped.output
+
+
+def test_research_dataset_register_list_and_audit_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _pull_and_snapshot_aapl(monkeypatch)
+    captured = _invoke("capture", "AAPL drifts after gap days")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+
+    registered = _invoke(
+        "data",
+        "register",
+        "AAPL",
+        "--kind",
+        "snapshot",
+        "--snapshot-id",
+        "snap1",
+        "--start",
+        "2020-08-28",
+        "--end",
+        "2020-09-02",
+    )
+    ref_id = str(registered["ref_id"])
+    assert ref_id.startswith("rd_")
+    assert registered["research_only"] is True
+    assert registered["provider"] == "fake"
+    origin = cast(dict[str, object], registered["origin"])
+    assert origin["snapshot_id"] == "snap1"
+    assert len(str(origin["manifest_sha256"])) == 64
+
+    slice_registered = _invoke(
+        "data",
+        "register",
+        "AAPL",
+        "--kind",
+        "store-slice",
+        "--start",
+        "2020-08-28",
+        "--end",
+        "2020-09-02",
+    )
+    assert str(slice_registered["ref_id"]).startswith("rd_")
+    assert "provenance_sha256" in cast(dict[str, object], slice_registered["origin"])
+
+    listed = _invoke("data", "list")
+    assert len(cast(list[object], listed["items"])) == 2
+    filtered = _invoke("data", "list", "--symbol", "AAPL")
+    assert len(cast(list[object], filtered["items"])) == 2
+
+    audited = _invoke("data", "audit", project_id, ref_id)
+    manifest = cast(dict[str, object], audited["manifest"])
+    assert manifest["command"] == "research_data_audit"
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["real_market_evidence"] is False
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    audit = cast(dict[str, object], audited["audit"])
+    summary = cast(dict[str, object], audit["summary"])
+    assert summary["audit_schema"] == "ResearchDataAuditV1"
+    # A four-bar dataset is honestly blocking: far below any usable sample.
+    assert cast(int, summary["blocking_count"]) >= 1
+    assert audit["project_id"] == project_id
+
+    enriched = _invoke("data", "list")
+    rows = cast(list[dict[str, object]], enriched["items"])
+    audited_row = next(row for row in rows if row["ref_id"] == ref_id)
+    assert audited_row["latest_audit"] is not None
+
+
+def test_research_dataset_registration_fails_closed_without_receipts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=50)  # bars without provenance
+
+    unknown_snapshot = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "SPY",
+            "--kind",
+            "snapshot",
+            "--snapshot-id",
+            "missing",
+            "--start",
+            "2020-01-01",
+            "--end",
+            "2020-06-01",
+            "--json",
+        ],
+    )
+    assert unknown_snapshot.exit_code != 0
+
+    no_provenance = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "SPY",
+            "--kind",
+            "store-slice",
+            "--start",
+            "2020-01-01",
+            "--end",
+            "2020-06-01",
+            "--json",
+        ],
+    )
+    assert no_provenance.exit_code != 0
+    assert "provenance" in no_provenance.output.casefold()
+
+
+def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(
+        json.dumps({"receipt_id": "a" * 32, "response_sha256": "b" * 64}), encoding="utf-8"
+    )
+    registered = _invoke(
+        "data",
+        "register",
+        "AAPL",
+        "--kind",
+        "quantpad",
+        "--receipt",
+        str(receipt_path),
+        "--start",
+        "2026-01-01",
+        "--end",
+        "2026-02-01",
+        "--bar-minutes",
+        "60",
+    )
+    assert registered["dataset_kind"] == "quantpad_receipt"
+    assert registered["provider"] == "quantpad"
+    assert registered["bar_duration_minutes"] == 60
+
+    missing_receipt = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "AAPL",
+            "--kind",
+            "quantpad",
+            "--start",
+            "2026-01-01",
+            "--end",
+            "2026-02-01",
+            "--json",
+        ],
+    )
+    assert missing_receipt.exit_code != 0
+    malformed = tmp_path / "bad-receipt.json"
+    malformed.write_text("[]", encoding="utf-8")
+    bad_receipt = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "AAPL",
+            "--kind",
+            "quantpad",
+            "--receipt",
+            str(malformed),
+            "--start",
+            "2026-01-01",
+            "--end",
+            "2026-02-01",
+            "--json",
+        ],
+    )
+    assert bad_receipt.exit_code != 0
+
+    corrupt = tmp_path / "snapshots" / "broken"
+    corrupt.mkdir(parents=True)
+    (corrupt / "manifest.json").write_text("{not json", encoding="utf-8")
+    listing = runner.invoke(app, ["data", "snapshots", "--json"])
+    assert listing.exit_code != 0
+    unknown_audit = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "audit",
+            "00000000-0000-4000-8000-000000000000",
+            "rd_" + "0" * 64,
+            "--json",
+        ],
+    )
+    assert unknown_audit.exit_code != 0

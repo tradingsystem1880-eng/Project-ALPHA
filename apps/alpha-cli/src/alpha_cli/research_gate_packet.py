@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 
 from alpha_core import DataError
@@ -16,6 +16,24 @@ class ResearchPacketStore(Protocol):
     def research_gate_packet_inputs(
         self, project_id: str, *, ledger_limit: int = 10_000
     ) -> dict[str, object]: ...
+
+    def list_research_datasets(
+        self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]: ...
+
+
+def _case_datasets(
+    store: ResearchPacketStore, payload: Mapping[str, object]
+) -> list[dict[str, object]]:
+    """Registered datasets bound to the contract's instrument (none while unresolved)."""
+    instrument = _mapping(payload.get("chart_fingerprint")).get("instrument")
+    if not isinstance(instrument, str) or not instrument:
+        return []
+    try:
+        return store.list_research_datasets(instrument=instrument)
+    except DataError:
+        # Synthetic fixture instruments are not registrable symbols; no datasets exist.
+        return []
 
 
 def _mapping(value: object) -> Mapping[str, object]:
@@ -248,7 +266,7 @@ def research_scorecard_inputs(
     payload: Mapping[str, object],
     *,
     packet: Mapping[str, object] | None = None,
-    registered_dataset_count: int = 0,
+    datasets: Sequence[Mapping[str, object]] = (),
     screened_claim_count: int = 0,
 ) -> dict[str, object]:
     """Assemble the compact, TS-twinnable inputs for the readiness scorecard.
@@ -288,7 +306,30 @@ def research_scorecard_inputs(
         "hypothesis_complete_fields": statuses.count("complete"),
         "hypothesis_partial_fields": statuses.count("partial"),
         "hypothesis_total_fields": len(statuses),
-        "registered_dataset_count": registered_dataset_count,
+        "registered_dataset_count": len(datasets),
+        "audited_dataset_count": sum(
+            1 for dataset in datasets if _mapping(dataset.get("latest_audit"))
+        ),
+        "audit_blocking_count": sum(
+            int(
+                _finite_number(
+                    _mapping(_mapping(dataset.get("latest_audit")).get("summary")).get(
+                        "blocking_count"
+                    )
+                )
+            )
+            for dataset in datasets
+        ),
+        "audit_limiting_count": sum(
+            int(
+                _finite_number(
+                    _mapping(_mapping(dataset.get("latest_audit")).get("summary")).get(
+                        "limiting_count"
+                    )
+                )
+            )
+            for dataset in datasets
+        ),
         "screened_claim_count": screened_claim_count,
         "blocking_questions": _question_texts(payload.get("blocking_questions")),
         "confounders_resolved": confounders_resolved,
@@ -340,6 +381,24 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
         hypothesis_state = "partial"
 
     dataset_count = int(_finite_number(inputs.get("registered_dataset_count")))
+    audited_count = int(_finite_number(inputs.get("audited_dataset_count")))
+    audit_blocking = int(_finite_number(inputs.get("audit_blocking_count")))
+    audit_limiting = int(_finite_number(inputs.get("audit_limiting_count")))
+    if dataset_count == 0:
+        data_quality_state = "not_tested"
+        data_quality_basis = "No registered research datasets."
+    elif audit_blocking > 0:
+        data_quality_state = "blocked"
+        data_quality_basis = f"{audit_blocking} blocking data-audit findings."
+    elif audited_count == 0:
+        data_quality_state = "adequate"
+        data_quality_basis = f"{dataset_count} registered datasets; not yet audited."
+    elif audit_limiting > 0:
+        data_quality_state = "weak"
+        data_quality_basis = f"{audit_limiting} limiting data-audit findings."
+    else:
+        data_quality_state = "strong"
+        data_quality_basis = "Every registered dataset audited with no findings."
     claim_count = int(_finite_number(inputs.get("screened_claim_count")))
     classification = _optional_text(inputs.get("confirmation_classification"))
     primary_status = str(inputs.get("primary_result_status", "NOT_TESTED"))
@@ -432,16 +491,7 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
             hypothesis_state,
             f"{complete} of {total} hypothesis-card fields are complete.",
         ),
-        _dimension(
-            "data_quality",
-            "Data quality",
-            "not_tested" if dataset_count == 0 else "adequate",
-            (
-                "No registered research datasets."
-                if dataset_count == 0
-                else f"{dataset_count} registered datasets; quality profiling pending."
-            ),
-        ),
+        _dimension("data_quality", "Data quality", data_quality_state, data_quality_basis),
         _dimension("sample_adequacy", "Sample adequacy", sample_state, sample_basis),
         _dimension("effect_existence", "Effect existence", effect_existence, effect_basis),
         _dimension("effect_size", "Effect size", effect_size, size_basis),
@@ -533,7 +583,11 @@ def research_scorecard_projection(
     packet: Mapping[str, object] | None = None
     if case.get("phase") == "closed":
         packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
-    return derive_research_scorecard(research_scorecard_inputs(case, payload, packet=packet))
+    return derive_research_scorecard(
+        research_scorecard_inputs(
+            case, payload, packet=packet, datasets=_case_datasets(store, payload)
+        )
+    )
 
 
 _SUPPORTING_FINDING_STATUSES = frozenset({"PASSED", "STABLE", "SUPPORTED"})
@@ -655,8 +709,20 @@ def research_evidence_hub_projection(
 
     thesis = _mapping(payload.get("thesis"))
     card = research_hypothesis_card(payload)
+    datasets = _case_datasets(store, payload)
     scorecard = derive_research_scorecard(
-        research_scorecard_inputs(summary, payload, packet=packet)
+        research_scorecard_inputs(summary, payload, packet=packet, datasets=datasets)
+    )
+    scorecard_dimensions = scorecard["dimensions"]
+    if not isinstance(scorecard_dimensions, list):  # pragma: no cover - deriver invariant.
+        raise DataError("research scorecard projection is corrupt")
+    data_quality = next(
+        (
+            _mapping(entry)
+            for entry in scorecard_dimensions
+            if _mapping(entry).get("dimension_id") == "data_quality"
+        ),
+        {},
     )
     guided = _mapping(_mapping(_mapping(packet).get("layers")).get("guided_evidence"))
     findings = _packet_findings(packet)
@@ -691,9 +757,20 @@ def research_evidence_hub_projection(
             "scorecard": scorecard,
         },
         "data": {
-            "registered_datasets": [],
-            "status": "NOT_TESTED",
-            "note": "No registered research datasets; the data plane arrives in a later phase.",
+            "registered_datasets": [
+                {
+                    "ref_id": str(dataset.get("ref_id", "")),
+                    "dataset_kind": str(dataset.get("dataset_kind", "")),
+                    "instrument": str(dataset.get("instrument", "")),
+                    "provider": str(dataset.get("provider", "")),
+                    "start_ts": str(dataset.get("start_ts", "")),
+                    "end_ts": str(dataset.get("end_ts", "")),
+                    "latest_audit": _mapping(dataset.get("latest_audit")).get("summary"),
+                }
+                for dataset in datasets
+            ],
+            "status": str(data_quality.get("state", "not_tested")).upper(),
+            "note": str(data_quality.get("basis", "No registered research datasets.")),
         },
         "literature": {
             "claims": [],

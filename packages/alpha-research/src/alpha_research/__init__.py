@@ -31,6 +31,14 @@ from alpha_research.confirmation import (
     classify_confirmation,
 )
 from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
+from alpha_research.descriptives import (
+    autocorrelation,
+    coverage_summary,
+    effective_sample_size,
+    return_distribution,
+    seasonality_by_weekday,
+    volatility_regime_tags,
+)
 from alpha_research.event_study import (
     EventStudyObservation,
     MatchedEventControlPair,
@@ -106,17 +114,20 @@ __all__ = [
     "ResearchChartSeries",
     "ResearchD2BoundaryV1",
     "ResearchDatasetRef",
+    "ResearchDisposition",
     "ResearchEvidenceSharesV1",
     "ResearchEvidenceTopology",
     "ResearchEvidenceZoneBoundaryV1",
-    "ResearchDisposition",
     "ResearchGatePacket",
     "ResearchOutcome",
     "SecondaryHypothesis",
-    "classify_confirmation",
+    "autocorrelation",
     "build_research_gate_packet",
+    "classify_confirmation",
     "confirmation_classification_from_evidence",
+    "coverage_summary",
     "detect_double_bottom_events",
+    "effective_sample_size",
     "evaluate_event_association",
     "evaluate_matched_association",
     "holm_adjust_secondary_family",
@@ -124,5 +135,8 @@ __all__ = [
     "purge_overlapping_outcomes",
     "render_research_line_chart",
     "required_observations_known_sigma",
+    "return_distribution",
+    "seasonality_by_weekday",
     "simulate_prospective_power_known_sigma",
+    "volatility_regime_tags",
 ]

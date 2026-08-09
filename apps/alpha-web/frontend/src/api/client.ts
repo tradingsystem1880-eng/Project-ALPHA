@@ -41,6 +41,7 @@ import type {
   ResearchCaseReport,
   ResearchContextPacket,
   ResearchContextPacketPage,
+  ResearchDatasetPage,
   ResearchEvidenceHub,
   ResearchNotePage,
   ResearchProtocolLibrary,
@@ -249,6 +250,16 @@ export const api = {
         + `?limit=${query.limit ?? 100}&offset=${query.offset ?? 0}`,
     ),
   researchProtocols: (): Promise<ResearchProtocolLibrary> => getJSON('/api/research/protocols'),
+  researchDatasets: (
+    query: { symbol?: string; limit?: number; offset?: number } = {},
+  ): Promise<ResearchDatasetPage> => {
+    const params = new URLSearchParams({
+      limit: String(query.limit ?? 100),
+      offset: String(query.offset ?? 0),
+    })
+    if (query.symbol) params.set('symbol', query.symbol)
+    return getJSON(`/api/research/datasets?${params.toString()}`)
+  },
   projects: (limit = 50, offset = 0): Promise<ProjectPage> =>
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>
