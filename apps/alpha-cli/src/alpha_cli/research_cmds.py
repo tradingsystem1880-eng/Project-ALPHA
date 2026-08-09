@@ -14,6 +14,7 @@ from typing import Any, cast
 
 import typer
 
+from alpha_cli import control_store as control_store_module
 from alpha_cli.control_store import (
     ControlStore,
     ResearchContractScope,
@@ -21,6 +22,13 @@ from alpha_cli.control_store import (
     ResearchOutcome,
     ResearchPhase,
     ResearchResponsibility,
+)
+from alpha_cli.research_d1 import (
+    D1_ANALYSES_ARTIFACT,
+    D1_EVIDENCE_ARTIFACT,
+    d1_execution_fingerprint,
+    registered_synthetic_d1_bars,
+    run_deep_research,
 )
 from alpha_cli.research_dossier import (
     DossierReceipt,
@@ -896,15 +904,307 @@ def reject(
     )
 
 
+def _d1_enabled() -> bool:
+    return bool(getattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", False))
+
+
+def _post_d0_route(
+    payload: Mapping[str, object],
+) -> tuple[ResearchPhase, str, ResearchResponsibility]:
+    """Where a completed D0 sends the case: deep_research once the ADR-0025 gate is open."""
+    if _d1_enabled() and isinstance(payload.get("analysis_plan"), Mapping):
+        return (
+            "deep_research",
+            "Launch `alpha research run deep` to execute the frozen analysis plan on D1.",
+            "codex",
+        )
+    return (
+        "research_decision",
+        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is "
+        "unavailable in Gate 1.",
+        "owner",
+    )
+
+
+_D1_NEXT_ACTION_AFTER = (
+    "Owner reviews the D1 evidence, then drafts a confirmation contract or records an "
+    "early decision."
+)
+
+
+def _run_deep(project_id: str, *, json_out: bool) -> None:
+    """Execute the frozen analysis plan as one governed, capacity-bound durable D1 job.
+
+    The executor is deterministic, so kill-and-resume is exact re-execution: an interrupted
+    launch republishes byte-identical artifacts under the same run identity and the attempt
+    is recorded on the retry.
+    """
+    if not _d1_enabled():
+        raise typer.BadParameter(
+            "Gate-2 unavailable: empirical D1 deep research is hard-disabled (ADR-0025)"
+        )
+    store = _store()
+    try:
+        payload, case = _case_payload(store, project_id)
+        if case["phase"] != "deep_research":
+            raise DataError("deep research requires the deep_research phase (complete D0 first)")
+        contract_id = str(case["active_contract_id"])
+        if not isinstance(payload.get("analysis_plan"), Mapping):
+            raise DataError(
+                "deep research requires the frozen analysis_plan on the approved contract"
+            )
+        approved_hashes = payload.get("hashes")
+        if not isinstance(approved_hashes, Mapping) or _sha_json(approved_hashes) != _sha_json(
+            _implementation_hashes()
+        ):
+            raise DataError(
+                "approved research implementation fingerprints no longer match the executable "
+                "code, dependency lock, evaluator, or environment; create and approve a revised "
+                "contract before deep research"
+            )
+        execution_state = str(case["execution_state"])
+        latest_attempt_id = case.get("latest_attempt_id")
+        if isinstance(latest_attempt_id, str) and isinstance(case.get("latest_run_id"), str):
+            recovered = store.verified_research_attempt(project_id, latest_attempt_id)
+            recovered_attempt = cast(dict[str, object], recovered["attempt"])
+            recovered_manifest = cast(dict[str, object], recovered["manifest"])
+            if (
+                recovered_attempt.get("status") == "completed"
+                and recovered_attempt.get("kind") == "d1-deep-research"
+                and recovered_attempt.get("phase") == "deep_research"
+                and recovered_attempt.get("contract_id") == contract_id
+                and recovered_manifest.get("evidence_zone") == "D1"
+            ):
+                if execution_state in {"queued", "running"}:
+                    store.transition_research_execution(
+                        project_id,
+                        to_state="idle",
+                        contract_id=contract_id,
+                        actor="system",
+                        reason="recovered the completed immutable D1 run after interruption",
+                        next_action=_D1_NEXT_ACTION_AFTER,
+                        responsibility="owner",
+                        checkpoint="d1:complete",
+                    )
+                recovered_case = store.research_case_summary(project_id)
+                _emit(
+                    {
+                        "manifest": recovered_manifest,
+                        "attempt": recovered_attempt,
+                        "case": recovered_case,
+                    },
+                    json_out=json_out,
+                    fallback=(
+                        f"recovered D1 run {recovered_manifest['run_id']}; owner review required"
+                    ),
+                )
+                return
+        attempt_number = (
+            store.count_research_attempts(project_id, contract_id, kind="d1-deep-research") + 1
+        )
+        if attempt_number > 3:
+            raise DataError(
+                "deep research stopped after the initial attempt and two safe retries; owner "
+                "revision or disposition is required"
+            )
+        protocol = payload.get("protocol")
+        boundary = None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
+        boundary_kind = None if not isinstance(boundary, Mapping) else boundary.get("kind")
+        if boundary_kind != "synthetic_acceptance_fixture":
+            raise DataError(
+                "Gate-4 empirical D1 requires a qualified registered research dataset lane; "
+                "only the registered synthetic boundary is executable"
+            )
+        bars = registered_synthetic_d1_bars()
+        if execution_state == "idle":
+            store.transition_research_execution(
+                project_id,
+                to_state="queued",
+                contract_id=contract_id,
+                actor="codex",
+                reason="the frozen analysis plan is queued for deep research",
+                next_action="Execute the registered analysis families on the D1 share.",
+                responsibility="codex",
+                checkpoint="d1:queued",
+            )
+        elif execution_state != "queued":
+            raise DataError("deep research must be idle or explicitly queued for resume")
+        job = store.create_research_job(
+            project_id,
+            contract_id=contract_id,
+            request={
+                "stage": "deep",
+                "contract_id": contract_id,
+                "attempt_number": attempt_number,
+            },
+        )
+        job_id = str(job["job_id"])
+        store.set_job_status(job_id, "running")
+        store.transition_research_execution(
+            project_id,
+            to_state="running",
+            contract_id=contract_id,
+            actor="system",
+            reason="the deep-research job started under governed heavyweight capacity",
+            next_action="Execute the registered analysis families on the D1 share.",
+            responsibility="codex",
+            active_job_id=job_id,
+            checkpoint=f"d1:running:{attempt_number}",
+        )
+
+        def on_checkpoint(checkpoint: str) -> None:
+            # Execution stays 'running'; per-family durable progress lives in the job
+            # heartbeat journal (the execution matrix forbids running -> running events).
+            if store.job_cancellation_requested(job_id):
+                raise DataError(f"deep research was cancelled at checkpoint {checkpoint}")
+            store.append_job_event(
+                job_id, event_type="heartbeat", payload={"checkpoint": checkpoint}
+            )
+
+        try:
+            manifest = run_deep_research(
+                AlphaSettings().data_dir,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract=payload,
+                bars=bars,
+                on_checkpoint=on_checkpoint,
+            )
+        except Exception as run_error:
+            cancelled = store.job_cancellation_requested(job_id)
+            retries_exhausted = attempt_number >= 3
+            error_text = (str(run_error).strip() or type(run_error).__name__)[:8192]
+            checkpoint_errors: list[str] = []
+            try:
+                store.record_research_attempt(
+                    project_id,
+                    contract_id,
+                    kind="d1-deep-research",
+                    status="failed",
+                    config_fingerprint=d1_execution_fingerprint(payload),
+                    budget_used={},
+                    details={
+                        "attempt_number": attempt_number,
+                        "evidence_zone": "D1",
+                        "finding": (
+                            "The D1 deep run failed; no empirical conclusion was produced."
+                        ),
+                    },
+                    error=error_text,
+                )
+            except Exception as terminal_error:
+                checkpoint_errors.append(f"terminal attempt: {terminal_error}")
+            try:
+                store.set_job_status(
+                    job_id,
+                    "cancelled" if cancelled else "failed",
+                    terminal_error=None if cancelled else error_text,
+                )
+            except Exception as job_error:
+                checkpoint_errors.append(f"job terminalization: {job_error}")
+            try:
+                store.transition_research_execution(
+                    project_id,
+                    to_state="blocked" if retries_exhausted else "failed",
+                    contract_id=contract_id,
+                    actor="system",
+                    reason="the D1 deep run stopped at a durable checkpoint",
+                    next_action=(
+                        "Owner revises, parks, or rejects the case; the safe retry limit is "
+                        "exhausted."
+                        if retries_exhausted
+                        else "Inspect the failure, resume the case, and re-run deep research."
+                    ),
+                    responsibility="owner" if retries_exhausted else "codex",
+                    checkpoint=f"d1:failed:{attempt_number}",
+                    blocker=error_text,
+                    recovery=(
+                        "Change the approved contract only through owner-directed revision."
+                        if retries_exhausted
+                        else "Re-execution is exact: the identical run republishes idempotently."
+                    ),
+                )
+            except Exception as execution_error:
+                checkpoint_errors.append(f"execution checkpoint: {execution_error}")
+            checkpoint_suffix = (
+                ""
+                if not checkpoint_errors
+                else "; checkpoint errors: " + "; ".join(checkpoint_errors)
+            )
+            raise DataError(
+                f"deep research failed and was checkpointed: {error_text}{checkpoint_suffix}"
+            ) from run_error
+        # The run is published and immutable. As with D0, a store write failure past this
+        # point must never fabricate a failed attempt.
+        run_id = str(manifest["run_id"])
+        run_dir = AlphaSettings().data_dir / "runs" / run_id
+        analyses = json.loads((run_dir / D1_ANALYSES_ARTIFACT).read_text(encoding="utf-8"))
+        variants_used = int(analyses["measurements"]["budget"]["variants_used"])
+        try:
+            attempt = store.record_research_attempt(
+                project_id,
+                contract_id,
+                kind="d1-deep-research",
+                status="completed",
+                config_fingerprint=str(manifest["execution_fingerprint"]),
+                budget_used={"variants": variants_used},
+                details={
+                    "attempt_number": attempt_number,
+                    "evidence_zone": "D1",
+                    "finding": (
+                        "The frozen analysis plan executed on the discovery share; findings "
+                        "were mechanically re-verified from raw measurements."
+                    ),
+                    "gate_packet_evidence_ref": {
+                        "artifact": D1_EVIDENCE_ARTIFACT,
+                        "content_sha256": _manifest_artifact_sha256(manifest, D1_EVIDENCE_ARTIFACT),
+                    },
+                },
+                run_id=run_id,
+            )
+        except Exception as record_error:
+            raise DataError(
+                f"the D1 deep run completed and published immutable run {run_id}, but "
+                "recording its completed attempt failed; no failed attempt was fabricated. "
+                "Inspect the control store, then re-run deep research: the identical run "
+                f"republishes idempotently: {record_error}"
+            ) from record_error
+        store.append_job_result(job_id, {"run_id": run_id})
+        store.set_job_status(job_id, "succeeded", result_run_id=run_id)
+        store.transition_research_execution(
+            project_id,
+            to_state="idle",
+            contract_id=contract_id,
+            actor="system",
+            reason="the D1 deep run completed and its immutable evidence was recorded",
+            next_action=_D1_NEXT_ACTION_AFTER,
+            responsibility="owner",
+            checkpoint="d1:complete",
+        )
+        case = store.research_case_summary(project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"manifest": manifest, "attempt": attempt, "case": case},
+        json_out=json_out,
+        fallback=f"D1 deep run {manifest['run_id']} completed; owner review required",
+    )
+
+
 @research_app.command("run")
 def run_research(
     stage: str,
     project_id: str,
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Run an allowed research stage; Gate 1 exposes only the deterministic D0 pilot."""
-    if stage in {"deep", "confirm"}:
-        raise typer.BadParameter(f"Gate-1 unavailable: {stage} research engine is not shipped")
+    """Run an allowed research stage: the deterministic D0 pilot or a governed D1 deep run."""
+    if stage == "confirm":
+        raise typer.BadParameter(
+            "Gate-3 unavailable: sealed confirmation is not shipped (ADR-0026)"
+        )
+    if stage == "deep":
+        _run_deep(project_id, json_out=json_out)
+        return
     if stage != "pilot":
         raise typer.BadParameter("research run stage must be pilot, deep, or confirm")
     store = _store()
@@ -931,6 +1231,7 @@ def run_research(
                 and recovered_attempt.get("contract_id") == contract_id
                 and recovered_manifest.get("evidence_zone") == "D0"
             ):
+                next_phase, next_action, responsibility = _post_d0_route(payload)
                 if execution_state == "queued":
                     store.transition_research_execution(
                         project_id,
@@ -938,24 +1239,18 @@ def run_research(
                         contract_id=contract_id,
                         actor="system",
                         reason="recovered the completed immutable D0 run after interruption",
-                        next_action=(
-                            "Owner records INCONCLUSIVE with revise, park, or reject; empirical "
-                            "D1 is unavailable in Gate 1."
-                        ),
-                        responsibility="owner",
+                        next_action=next_action,
+                        responsibility=responsibility,
                         checkpoint="d0:complete",
                     )
                 store.transition_research_phase(
                     project_id,
-                    to_phase="research_decision",
+                    to_phase=next_phase,
                     contract_id=contract_id,
                     actor="system",
                     reason="recovered the verified completed D0 attempt after interruption",
-                    next_action=(
-                        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 "
-                        "is unavailable in Gate 1."
-                    ),
-                    responsibility="owner",
+                    next_action=next_action,
+                    responsibility=responsibility,
                 )
                 recovered_case = store.research_case_summary(project_id)
                 _emit(
@@ -1129,30 +1424,25 @@ def run_research(
                 "the identical run republishes idempotently and the attempt is recorded on "
                 f"success: {record_error}"
             ) from record_error
+        next_phase, next_action, responsibility = _post_d0_route(payload)
         store.transition_research_execution(
             project_id,
             to_state="idle",
             contract_id=contract_id,
             actor="system",
             reason="the D0 pilot completed and its immutable run was recorded",
-            next_action=(
-                "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is "
-                "unavailable in Gate 1."
-            ),
-            responsibility="owner",
+            next_action=next_action,
+            responsibility=responsibility,
             checkpoint="d0:complete",
         )
         store.transition_research_phase(
             project_id,
-            to_phase="research_decision",
+            to_phase=next_phase,
             contract_id=contract_id,
             actor="codex",
             reason="D0 detector, null, topology, and power fixtures passed",
-            next_action=(
-                "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is "
-                "unavailable in Gate 1."
-            ),
-            responsibility="owner",
+            next_action=next_action,
+            responsibility=responsibility,
         )
         case = store.research_case_summary(project_id)
     except DataError as exc:

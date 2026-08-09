@@ -2197,6 +2197,205 @@ def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -
     assert review["decision"] == "approve"
 
 
+def _approved_deep_case(store: ControlStore) -> tuple[str, dict[str, object]]:
+    """Approve a plan-bearing exploration contract and advance it into deep_research."""
+    from alpha_cli.research_analysis_plan import default_analysis_plan
+
+    pack_id = _source_pack(store)
+    payload = _payload(pack_id)
+    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
+    )
+    contract_id = str(contract["contract_id"])
+    for minute, phase, responsibility in (
+        (4, "triage", "codex"),
+        (5, "exploration_review", "owner"),
+    ):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance the deep fixture to {phase}.",
+            next_action="Continue toward deep research.",
+            responsibility=responsibility,  # type: ignore[arg-type]
+            at=START + timedelta(minutes=minute),
+        )
+    store.review_research_contract(
+        PROJECT_ID,
+        contract_id,
+        scope="exploration",
+        decision="approve",
+        actor="owner",
+        actor_kind="human",
+        reason="The plan-bearing exploration contract is approvable.",
+        at=START + timedelta(minutes=6),
+    )
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="pilot",
+        contract_id=contract_id,
+        actor="codex",
+        reason="Exploration was approved.",
+        next_action="Run the bounded pilot.",
+        responsibility="codex",
+        at=START + timedelta(minutes=7),
+    )
+    _record_completed_d0(store, contract_id, payload, at=START + timedelta(minutes=8))
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="deep_research",
+        contract_id=contract_id,
+        actor="codex",
+        reason="D0 is complete and the analysis plan is frozen.",
+        next_action="Launch the registered deep-research plan.",
+        responsibility="codex",
+        at=START + timedelta(minutes=9),
+    )
+    return contract_id, payload
+
+
+def _published_d1_run(store: ControlStore, contract_id: str, payload: dict[str, object]) -> dict:
+    from datetime import UTC as _UTC
+
+    from alpha_cli.research_d1 import research_bars_from_lows, run_deep_research
+
+    motif = (105.0, 103.0, 100.0, 95.0, 99.0, 101.0, 100.0, 95.5, 99.0, 101.0)
+    lows: list[float] = []
+    for _week in range(8):
+        for day in range(7):
+            if day == 0:
+                lows.extend(motif)
+                level = motif[-1]
+                for hour in range(14):
+                    level = level + 1.5 if hour < 6 else level
+                    lows.append(level)
+            else:
+                lows.extend([100.0] * 24)
+    bars = research_bars_from_lows(
+        lows,
+        dataset_id="d1-store-fixture",
+        content_sha256="c" * 64,
+        start=datetime(2020, 1, 6, tzinfo=_UTC),
+    )
+    return run_deep_research(
+        store._data_dir,
+        project_id=PROJECT_ID,
+        contract_id=contract_id,
+        contract=payload,
+        bars=bars,
+    )
+
+
+def _d1_evidence_ref(store: ControlStore, manifest: dict) -> dict[str, object]:
+    artifacts = cast(dict[str, object], manifest["artifacts"])
+    metadata = cast(dict[str, object], artifacts["research_gate_evidence.json"])
+    return {"artifact": "research_gate_evidence.json", "content_sha256": metadata["sha256"]}
+
+
+def test_d1_attempt_admission_reverifies_evidence_mechanically(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, payload = _approved_deep_case(store)
+    manifest = _published_d1_run(store, contract_id, payload)
+    attempt = store.record_research_attempt(
+        PROJECT_ID,
+        contract_id,
+        kind="d1-deep-research",
+        status="completed",
+        config_fingerprint=str(manifest["execution_fingerprint"]),
+        budget_used={"variants": 6},
+        details={
+            "evidence_zone": "D1",
+            "finding": "The registered plan executed on the discovery share.",
+            "gate_packet_evidence_ref": _d1_evidence_ref(store, manifest),
+        },
+        run_id=str(manifest["run_id"]),
+        at=START + timedelta(minutes=10),
+    )
+    assert attempt["status"] == "completed"
+    verified = store.verified_research_attempt(PROJECT_ID, str(attempt["attempt_id"]))
+    assert cast(dict, verified["manifest"])["evidence_zone"] == "D1"
+
+    # Rewrite a finding status with a consistent manifest hash: the mechanical
+    # recomputation from raw measurements must still fail closed.
+    run_dir = store._data_dir / "runs" / str(manifest["run_id"])
+    evidence_path = run_dir / "research_gate_evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["negative_controls"] = {"status": "PASSED", "summary": "forged"}
+    forged = json.dumps(evidence, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    evidence_path.write_text(forged, encoding="utf-8")
+    manifest_path = run_dir / "manifest.json"
+    stored_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entry = stored_manifest["artifacts"]["research_gate_evidence.json"]
+    entry["sha256"] = hashlib.sha256(forged.encode("utf-8")).hexdigest()
+    entry["size_bytes"] = len(forged.encode("utf-8"))
+    manifest_path.write_text(
+        json.dumps(stored_manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    with pytest.raises(DataError, match="recomputation|manifest"):
+        store.verified_research_attempt(PROJECT_ID, str(attempt["attempt_id"]))
+
+
+def test_d1_attempts_pin_kind_and_require_typed_evidence(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, payload = _approved_deep_case(store)
+    manifest = _published_d1_run(store, contract_id, payload)
+    with pytest.raises(DataError, match="d1-deep-research"):
+        store.record_research_attempt(
+            PROJECT_ID,
+            contract_id,
+            kind="event-study",
+            status="completed",
+            config_fingerprint=str(manifest["execution_fingerprint"]),
+            budget_used={},
+            details={"evidence_zone": "D1"},
+            run_id=str(manifest["run_id"]),
+            at=START + timedelta(minutes=10),
+        )
+    with pytest.raises(DataError, match="typed gate evidence"):
+        store.record_research_attempt(
+            PROJECT_ID,
+            contract_id,
+            kind="d1-deep-research",
+            status="completed",
+            config_fingerprint=str(manifest["execution_fingerprint"]),
+            budget_used={},
+            details={"evidence_zone": "D1"},
+            run_id=str(manifest["run_id"]),
+            at=START + timedelta(minutes=10),
+        )
+
+
+def test_research_job_creation_is_governed_and_capacity_bound(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    with pytest.raises(DataError, match="governed internal executor"):
+        store.create_job(kind="research:event-study", request={"stage": "deep"})
+    contract_id, _payload_unused = _approved_deep_case(store)
+    job = store.create_research_job(
+        PROJECT_ID,
+        contract_id=contract_id,
+        request={"stage": "deep", "contract_id": contract_id},
+        at=START + timedelta(minutes=10),
+    )
+    assert job["kind"] == "research:event-study"
+    with pytest.raises(DataError, match="capacity"):
+        store.create_research_job(
+            PROJECT_ID,
+            contract_id=contract_id,
+            request={"stage": "deep", "second": True},
+            at=START + timedelta(minutes=11),
+        )
+
+
 def test_production_gate_hard_disables_unreleased_empirical_research(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

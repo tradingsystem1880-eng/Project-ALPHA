@@ -136,6 +136,46 @@ def research_bars_from_lows(
     return EqualDurationResearchBars(dataset, bars)
 
 
+# The registered synthetic D1 fixture: detectable planted motifs with a mean-zero
+# post-confirmation wobble. It exercises the complete pipeline WITHOUT manufacturing a
+# supporting result — synthetic D1 evidence must never look like a discovered edge.
+_D1_SYNTHETIC_MOTIF: Final = (105.0, 103.0, 100.0, 95.0, 99.0, 101.0, 100.0, 95.5, 99.0, 101.0)
+_D1_SYNTHETIC_WEEKS: Final = 8
+_D1_SYNTHETIC_START: Final = "2020-01-06T00:00:00+00:00"  # a Monday
+
+
+def registered_synthetic_d1_lows() -> list[float]:
+    lows: list[float] = []
+    for week in range(_D1_SYNTHETIC_WEEKS):
+        for day in range(7):
+            if day != 0:
+                lows.extend([100.0] * 24)
+                continue
+            lows.extend(_D1_SYNTHETIC_MOTIF)
+            base = _D1_SYNTHETIC_MOTIF[-1]
+            wobble = 0.3 if week % 2 else -0.3
+            for hour in range(14):
+                lows.append(base + (wobble if hour % 2 else 0.0))
+    return lows
+
+
+def registered_synthetic_d1_bars() -> EqualDurationResearchBars:
+    """The one registered synthetic D1 dataset (content-addressed, null by construction)."""
+    lows = registered_synthetic_d1_lows()
+    return research_bars_from_lows(
+        lows,
+        dataset_id="d1-synthetic-null",
+        content_sha256=_sha(
+            {
+                "schema": "AlphaSyntheticD1FixtureV1",
+                "start": _D1_SYNTHETIC_START,
+                "lows": lows,
+            }
+        ),
+        start=datetime.fromisoformat(_D1_SYNTHETIC_START),
+    )
+
+
 def _plan(contract: Mapping[str, object]) -> dict[str, Any]:
     plan = contract.get("analysis_plan")
     budget = contract.get("budget")
@@ -1184,6 +1224,8 @@ __all__ = [
     "D1_EVIDENCE_ARTIFACT",
     "d1_execution_fingerprint",
     "derive_d1_findings",
+    "registered_synthetic_d1_bars",
+    "registered_synthetic_d1_lows",
     "research_bars_from_lows",
     "run_deep_research",
     "validate_d1_evidence_artifacts",

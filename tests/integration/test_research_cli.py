@@ -604,13 +604,13 @@ def test_deep_and_confirmation_runs_remain_gated(
     assert isinstance(project, dict)
     project_id = str(project["project_id"])
 
-    for phase in ("deep", "confirm"):
+    for phase, gate in (("deep", "Gate-2 unavailable"), ("confirm", "Gate-3 unavailable")):
         result = runner.invoke(
             app,
             ["research", "run", phase, project_id, "--json"],
         )
         assert result.exit_code != 0
-        assert "Gate-1 unavailable" in result.output
+        assert gate in result.output
 
 
 def test_postlaunch_v1_project_attaches_to_research_through_public_cli(
@@ -1834,3 +1834,141 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     )
     assert rejected.exit_code != 0
     assert "not allowlisted" in rejected.output
+
+
+def _approved_deep_ready_project() -> str:
+    """Capture → sources → draft → approve → D0 pilot, landing in deep_research."""
+    captured = _invoke(
+        "capture",
+        "I notice the S&P500 bounces after double bottoms on the 4h time frame",
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    drafted = _invoke(
+        "draft",
+        project_id,
+        "--source-pack-id",
+        str(pack["pack_id"]),
+        "--answer",
+        "chart_construction=spy_rth_60m_four_hour_window",
+        "--answer",
+        "event_availability=second_trough_confirmable",
+        "--answer",
+        "primary_outcome=four_trading_hour_return_25bp",
+    )
+    frozen_id = str(cast(dict[str, object], drafted["contract"])["contract_id"])
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        frozen_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "The bounded protocol, plan, and source pack suit D0/D1 exploration.",
+    )
+    pilot = _invoke("run", "pilot", project_id)
+    pilot_case = cast(dict[str, object], pilot["case"])
+    assert pilot_case["phase"] == "deep_research"
+    assert "run deep" in str(pilot_case["next_action"])
+    return project_id
+
+
+def test_run_deep_stays_hard_disabled_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    blocked = runner.invoke(app, ["research", "run", "deep", "any-project", "--json"])
+    assert blocked.exit_code != 0
+    assert "Gate-2 unavailable" in blocked.output
+
+
+def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import alpha_cli.control_store as control_store_module
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
+    project_id = _approved_deep_ready_project()
+
+    deep = _invoke("run", "deep", project_id)
+    manifest = cast(dict[str, object], deep["manifest"])
+    attempt = cast(dict[str, object], deep["attempt"])
+    case = cast(dict[str, object], deep["case"])
+    assert manifest["command"] == "research_deep"
+    assert manifest["evidence_zone"] == "D1"
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["real_market_evidence"] is False
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    assert attempt["kind"] == "d1-deep-research"
+    assert attempt["status"] == "completed"
+    assert attempt["budget_used"] == {"variants": 6}
+    assert case["phase"] == "deep_research"
+    assert case["execution_state"] == "idle"
+    assert case["latest_run_id"] == manifest["run_id"]
+
+    store = ControlStore(tmp_path)
+    jobs = store.list_jobs()
+    research_jobs = [job for job in jobs if job["kind"] == "research:event-study"]
+    assert len(research_jobs) == 1
+    assert research_jobs[0]["status"] == "succeeded"
+    assert research_jobs[0]["result_run_id"] == manifest["run_id"]
+
+    # The synthetic registered fixture is null by construction: it must never look like a
+    # discovered edge.
+    evidence_path = tmp_path / "runs" / str(manifest["run_id"]) / "research_gate_evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    assert evidence["primary_result"]["practical_magnitude"]["status"] != "CLEARS_HURDLE"
+
+    recovered = _invoke("run", "deep", project_id)
+    assert cast(dict[str, object], recovered["manifest"])["run_id"] == manifest["run_id"]
+
+
+def test_run_deep_failures_checkpoint_and_exact_reexecution_resumes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import alpha_cli.control_store as control_store_module
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
+    project_id = _approved_deep_ready_project()
+
+    def _boom(*args: object, **kwargs: object) -> dict[str, object]:
+        raise DataError("simulated mid-plan crash")
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", _boom)
+    failed = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert failed.exit_code != 0
+    assert "checkpointed" in failed.output
+
+    store = ControlStore(tmp_path)
+    case = store.research_case_summary(project_id)
+    assert case["execution_state"] == "failed"
+    assert str(case["checkpoint"]).startswith("d1:failed:")
+    failed_jobs = [job for job in store.list_jobs() if job["kind"] == "research:event-study"]
+    assert failed_jobs and failed_jobs[0]["status"] == "failed"
+
+    monkeypatch.undo()
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
+    _invoke("resume", project_id)
+    resumed = _invoke("run", "deep", project_id)
+    manifest = cast(dict[str, object], resumed["manifest"])
+    attempt = cast(dict[str, object], resumed["attempt"])
+    assert manifest["evidence_zone"] == "D1"
+    assert attempt["status"] == "completed"
+    assert cast(dict[str, object], attempt["details"])["attempt_number"] == 2

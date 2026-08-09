@@ -302,11 +302,17 @@ _D0_LAUNCH_BUDGET: Final[dict[str, int]] = {
     "variants": 3,
 }
 _D0_MAX_LAUNCHES: Final = 3
+_D1_RESEARCH_KIND: Final = "d1-deep-research"
+_D1_MAX_LAUNCHES: Final = 3
 _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fdd91e")
 # Gate 1 deliberately ships only D0. Tests may exercise the future state machine, but no public
 # production path may admit empirical D1/D2 evidence until the qualified dataset authority and
 # isolated workers required by Gates 2-3 exist.
 _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED: Final = False
+# Gate 2 (ADR-0025): D1 deep-research attempt admission. Flipping this constant is the
+# FINAL commit of phase R5, after every acceptance scenario passes; confirmation approval
+# and every D2 transition stay behind _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED (R6).
+_D1_EMPIRICAL_RESEARCH_ENABLED: Final = False
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -2133,6 +2139,27 @@ class ControlStore:
         )
         return manifest
 
+    def _require_d1_verified_evidence(
+        self,
+        *,
+        run_id: str,
+        project_id: str,
+        contract_id: str,
+        contract_payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Reverify D1 typed evidence by exact mechanical recomputation (D0 pattern)."""
+
+        from alpha_cli.research_d1 import validate_d1_evidence_artifacts
+
+        run_dir, manifest = self._verified_run(run_id)
+        return validate_d1_evidence_artifacts(
+            run_dir,
+            manifest,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract_payload,
+        )
+
     @staticmethod
     def _require_d0_acceptance_reference(
         details: Mapping[str, object], manifest: Mapping[str, object]
@@ -2199,6 +2226,16 @@ class ControlStore:
             phase=cast(str, phase),
             config_fingerprint=cast(str, config_fingerprint),
         )
+        if phase == "deep_research" and attempt.get("status") == "completed":
+            details = attempt.get("details")
+            if not isinstance(details, Mapping) or "gate_packet_evidence_ref" not in details:
+                raise DataError("completed D1 attempt has no typed evidence reference")
+            self._require_d1_verified_evidence(
+                run_id=run_id,
+                project_id=project_id,
+                contract_id=cast(str, contract_id),
+                contract_payload=contract_payload,
+            )
         _, manifest = self._verified_run(run_id)
         return manifest
 
@@ -3980,6 +4017,17 @@ class ControlStore:
             raise DataError("control store failed to persist research launch reservation")
         return self._research_reservation_view(cast(sqlite3.Row, row))
 
+    def count_research_attempts(self, project_id: str, contract_id: str, *, kind: str) -> int:
+        """Count recorded attempts of one registered kind for a contract (retry ceilings)."""
+        clean_kind = _required_text(kind, "research attempt kind", max_length=100)
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                """SELECT COUNT(*) AS count FROM research_attempt_records
+                WHERE project_id = ? AND contract_id = ? AND kind = ?""",
+                (project_id, contract_id, clean_kind),
+            ).fetchone()
+        return int(cast(sqlite3.Row, row)["count"])
+
     def verified_research_attempt(
         self,
         project_id: str,
@@ -4069,8 +4117,14 @@ class ControlStore:
             phase = self._latest_research_phase(connection, project_id)
             if phase is None or phase["contract_id"] != contract_id:
                 raise DataError("research attempt must bind the active phase contract")
+            if phase["phase"] == "deep_research" and not (
+                _D1_EMPIRICAL_RESEARCH_ENABLED or _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
+            ):
+                raise DataError(
+                    "Gate-2/3 unavailable: empirical D1/D2 attempts remain hard-disabled"
+                )
             if (
-                phase["phase"] in {"deep_research", "sealed_confirmation"}
+                phase["phase"] == "sealed_confirmation"
                 and not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
             ):
                 raise DataError(
@@ -4100,6 +4154,15 @@ class ControlStore:
                     raise DataError("D0 pilot attempts must be completed or failed")
                 if clean_status == "completed" and clean_run is None:
                     raise DataError("completed D0 pilot requires an immutable run_id")
+            if phase_name == "deep_research":
+                if clean_kind != _D1_RESEARCH_KIND:
+                    raise DataError(
+                        "deep research accepts only the registered d1-deep-research kind"
+                    )
+                if clean_status not in {"completed", "failed"}:
+                    raise DataError("D1 deep-research attempts must be completed or failed")
+                if clean_status == "completed" and clean_run is None:
+                    raise DataError("completed D1 deep research requires an immutable run_id")
             reservation: sqlite3.Row | None = None
             reservation_link: sqlite3.Row | None = None
             if clean_reservation_id is not None:
@@ -4156,6 +4219,14 @@ class ControlStore:
             evidence_ref_present = "gate_packet_evidence_ref" in clean_details
             if phase_name == "pilot" and evidence_ref_present:
                 raise DataError("D0 pilot cannot carry typed D1 or D2 gate evidence")
+            if (
+                phase_name == "deep_research"
+                and clean_status == "completed"
+                and not evidence_ref_present
+            ):
+                raise DataError(
+                    "completed D1 deep research requires its typed gate evidence artifact"
+                )
             if evidence_ref_present:
                 if clean_run is None:
                     raise DataError("research gate evidence selector requires an immutable run_id")
@@ -4168,6 +4239,13 @@ class ControlStore:
                     raise DataError("research gate evidence zone does not match its contract phase")
                 if clean_details.get("evidence_zone") != expected_zone:
                     raise DataError("research attempt evidence_zone does not match its artifact")
+                if expected_zone == "D1":
+                    self._require_d1_verified_evidence(
+                        run_id=clean_run,
+                        project_id=project_id,
+                        contract_id=contract_id,
+                        contract_payload=payload,
+                    )
                 if expected_zone == "D2":
                     confirmation_classification_from_evidence(evidence)
             elif contract["scope"] == "confirmation" and clean_status == "completed":
@@ -7707,6 +7785,44 @@ class ControlStore:
             job_id=job_id,
             at=at,
             allow_reserved=False,
+        )
+
+    def create_research_job(
+        self,
+        project_id: str,
+        *,
+        contract_id: str,
+        request: Mapping[str, object],
+        job_id: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Create the governed ``research:event-study`` durable job for active D1 work.
+
+        The phase pre-check runs in its own read transaction; a lost race can only leave a
+        stray queued job that the execution-event binding check refuses to activate.
+        """
+        with self._transaction(write=False) as connection:
+            contract = self._require_research_contract(connection, project_id, contract_id)
+            review = self._latest_research_review(connection, contract_id)
+            phase = self._latest_research_phase(connection, project_id)
+            if (
+                contract["scope"] != "exploration"
+                or _research_review_state(review) != "approved"
+                or phase is None
+                or phase["phase"] != "deep_research"
+                or phase["contract_id"] != contract_id
+            ):
+                raise DataError(
+                    "research job creation requires the approved active deep_research contract"
+                )
+        return self._create_job(
+            kind="research:event-study",
+            request=request,
+            project_id=project_id,
+            experiment_id=None,
+            job_id=job_id,
+            at=at,
+            allow_reserved=True,
         )
 
     def create_suite_job(
