@@ -12,6 +12,7 @@ from alpha_research import (
     ConfirmationEvidence,
     ConfirmationStatus,
     classify_confirmation,
+    projected_confirmation_power,
     required_observations_known_sigma,
     simulate_prospective_power_known_sigma,
 )
@@ -169,3 +170,54 @@ def test_power_inputs_fail_loud() -> None:
 def test_additional_power_input_guards(call: Callable[[], object]) -> None:
     with pytest.raises(DataError):
         call()
+
+
+def test_projected_confirmation_power_inverts_the_discovery_interval() -> None:
+    """R6c (ADR-0026): one-shot D2 power projected from an admitted D1 estimate."""
+    report = projected_confirmation_power(
+        matched_estimate=0.014,
+        ci_lower=0.012,
+        ci_upper=0.016,
+        confidence=0.95,
+        sample_size=12,
+        projected_sample_size=4,
+        minimum_effect=0.005,
+    )
+    again = projected_confirmation_power(
+        matched_estimate=0.014,
+        ci_lower=0.012,
+        ci_upper=0.016,
+        confidence=0.95,
+        sample_size=12,
+        projected_sample_size=4,
+        minimum_effect=0.005,
+    )
+    assert report == again  # deterministic under the protocol-frozen seed
+    assert report.sample_size == 4
+    assert report.seed == 7
+    assert report.estimated_power >= 0.90
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"ci_lower": 0.014, "ci_upper": 0.014}, "non-degenerate"),
+        ({"confidence": 1.0}, "confidence"),
+        ({"sample_size": 1}, "sample_size"),
+        ({"matched_estimate": 0.004}, "greater than minimum_effect"),
+        ({"matched_estimate": float("nan")}, "finite"),
+    ],
+)
+def test_projected_confirmation_power_guards(override: dict[str, float], message: str) -> None:
+    arguments: dict[str, float | int] = {
+        "matched_estimate": 0.014,
+        "ci_lower": 0.012,
+        "ci_upper": 0.016,
+        "confidence": 0.95,
+        "sample_size": 12,
+        "projected_sample_size": 4,
+        "minimum_effect": 0.005,
+    }
+    arguments.update(override)
+    with pytest.raises(DataError, match=message):
+        projected_confirmation_power(**arguments)  # type: ignore[arg-type]

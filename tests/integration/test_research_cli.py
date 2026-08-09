@@ -1689,7 +1689,7 @@ def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
     assert unknown_audit.exit_code != 0
 
 
-def _register_daily_dataset(tmp_path: Path, symbol: str) -> str:
+def _register_daily_dataset(tmp_path: Path, symbol: str, lows: list[float] | None = None) -> str:
     """Snapshot planted Tiingo-shaped daily bars and register them via the CLI."""
     from datetime import UTC, datetime, timedelta
 
@@ -1697,7 +1697,8 @@ def _register_daily_dataset(tmp_path: Path, symbol: str) -> str:
     from alpha_data.store import ParquetStore
     from tests.unit.test_research_gate4_lane import _daily_frame, _daily_lows
 
-    lows = _daily_lows()
+    if lows is None:
+        lows = _daily_lows()
     store = ParquetStore(tmp_path / "store")
     store.write_bars(symbol, _daily_frame(lows))
     snapshot_id = f"gate4-{symbol.lower()}"
@@ -1832,9 +1833,27 @@ def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_res
     assert deep_case["phase"] == "deep_research"
 
 
-def _approved_empirical_daily_project(tmp_path: Path) -> tuple[str, str]:
+def _varied_daily_lows(blocks: int = 20) -> list[float]:
+    """Planted daily motifs with heterogeneous post-confirmation rises (non-degenerate CI)."""
+    from tests.unit.test_research_gate4_lane import _MOTIF
+
+    lows: list[float] = []
+    for block in range(blocks):
+        lows.extend(_MOTIF)
+        level = _MOTIF[-1]
+        rise = 1.2 + 0.15 * (block % 5)
+        for day in range(14):
+            level = level + rise if day < 4 else level
+            lows.append(level)
+        lows.extend([100.0] * 6)
+    return lows
+
+
+def _approved_empirical_daily_project(
+    tmp_path: Path, lows: list[float] | None = None
+) -> tuple[str, str]:
     """Register the daily SPY dataset and drive one empirical case into deep_research."""
-    ref_id = _register_daily_dataset(tmp_path, "SPY")
+    ref_id = _register_daily_dataset(tmp_path, "SPY", lows)
     captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
     project_id = str(cast(dict[str, object], captured["project"])["project_id"])
     source = _invoke(
@@ -1872,6 +1891,107 @@ def _approved_empirical_daily_project(tmp_path: Path) -> tuple[str, str]:
     pilot = _invoke("run", "pilot", project_id)
     assert cast(dict[str, object], pilot["case"])["phase"] == "deep_research"
     return project_id, data_hash
+
+
+def test_confirmation_drafting_freezes_the_one_shot_family_from_d1_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6c (ADR-0026): the confirmation contract is frozen mechanically from admitted D1."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, data_hash = _approved_empirical_daily_project(tmp_path, lows=_varied_daily_lows())
+    _invoke("run", "deep", project_id)
+
+    drafted = _invoke("draft-confirmation", project_id)
+    contract = cast(dict[str, object], drafted["contract"])
+    payload = cast(dict[str, object], contract["payload"])
+    assert contract["scope"] == "confirmation"
+    parent_id = str(contract["parent_contract_id"])
+    assert parent_id.startswith("rc_")
+    confirmation = cast(dict[str, object], payload["confirmation"])
+    assert confirmation["variant_count"] == 1
+    assert confirmation["multiplicity_count"] == 1
+    assert confirmation["familywise_alpha"] == 0.05
+    assert confirmation["target_power"] == 0.90
+    power_report = cast(dict[str, object], confirmation["power_report"])
+    assert 0.90 <= cast(float, power_report["achieved_power"]) <= 1.0
+    assert power_report["seed"] == 7
+    assert str(power_report["source_run_id"])
+    fingerprints = cast(dict[str, object], confirmation["fingerprints"])
+    assert isinstance(fingerprints.get("data"), str)
+    hashes = cast(dict[str, object], payload["hashes"])
+    assert hashes["data"] == data_hash
+    plan = cast(dict[str, object], payload["analysis_plan"])
+    families = cast(list[dict[str, object]], plan["families"])
+    assert [entry["family"] for entry in families] == ["event_study"]
+    assert families[0]["multiplicity"] == "primary"
+    case = cast(dict[str, object], drafted["case"])
+    assert case["phase"] == "confirmation_review"
+    assert case["d2_state"] == "sealed"
+
+    store = ControlStore(tmp_path)
+    parent = store.get_research_contract(parent_id)
+    parent_payload = cast(dict[str, object], parent["payload"])
+
+    def _boundary_hash(value: dict[str, object]) -> str:
+        protocol = cast(dict[str, object], value["protocol"])
+        topology = cast(dict[str, object], protocol["evidence_topology"])
+        return str(cast(dict[str, object], topology["D2"])["boundary_hash"])
+
+    assert _boundary_hash(payload) == _boundary_hash(parent_payload)
+
+    # Gate-3 stays hard-disabled until R6d: approval and the D2 runner both refuse.
+    rejected = runner.invoke(
+        app,
+        [
+            "research",
+            "approve",
+            "confirmation",
+            project_id,
+            str(contract["contract_id"]),
+            "--actor",
+            "owner",
+            "--reason",
+            "Confirm the exact one-shot family.",
+            "--json",
+        ],
+    )
+    assert rejected.exit_code != 0
+    assert "Gate-3 unavailable" in rejected.output
+    confirm = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert confirm.exit_code != 0
+    assert "Gate-3 unavailable" in confirm.output
+
+
+def test_confirmation_drafting_fails_closed_without_authority_or_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    synthetic_project = _approved_deep_ready_project()
+    blocked = runner.invoke(app, ["research", "draft-confirmation", synthetic_project, "--json"])
+    assert blocked.exit_code != 0
+    assert "cannot authorize D2" in blocked.output
+
+
+def test_confirmation_drafting_requires_a_completed_clearing_d1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, _ = _approved_empirical_daily_project(tmp_path, lows=_varied_daily_lows())
+    blocked = runner.invoke(app, ["research", "draft-confirmation", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "deep-research" in blocked.output  # "…requires a completed D1 deep-research attempt"
+
+
+def test_confirmation_drafting_fails_loud_on_degenerate_discovery_intervals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Perfectly uniform planted outcomes cannot fabricate confirmation certainty."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, _ = _approved_empirical_daily_project(tmp_path)  # uniform rises
+    _invoke("run", "deep", project_id)
+    blocked = runner.invoke(app, ["research", "draft-confirmation", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "non-degenerate" in blocked.output
 
 
 def test_empirical_deep_run_fails_closed_on_drifted_dataset_bytes(

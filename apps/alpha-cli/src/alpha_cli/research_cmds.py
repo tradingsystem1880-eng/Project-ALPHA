@@ -61,6 +61,7 @@ from alpha_research import (
     EqualDurationResearchBars,
     ResearchChartFingerprintV1,
     ResearchD2BoundaryV1,
+    projected_confirmation_power,
 )
 
 research_app = typer.Typer(help="Governed research cases, contracts, sources, and bounded runs.")
@@ -1017,6 +1018,192 @@ def revise(
         {"contract": contract, "case": row},
         json_out=json_out,
         fallback=f"reopened revised exploration contract {contract['contract_id']}",
+    )
+
+
+def _primary_plan_horizon(payload: Mapping[str, object]) -> int:
+    plan = payload.get("analysis_plan")
+    families = None if not isinstance(plan, Mapping) else plan.get("families")
+    if isinstance(families, list):
+        for entry in families:
+            if isinstance(entry, Mapping) and entry.get("multiplicity") == "primary":
+                grid = entry.get("grid")
+                horizons = None if not isinstance(grid, Mapping) else grid.get("horizon_bars")
+                if (
+                    isinstance(horizons, list)
+                    and horizons
+                    and isinstance(horizons[0], int)
+                    and not isinstance(horizons[0], bool)
+                ):
+                    return int(horizons[0])
+    raise DataError("the exploration analysis plan has no frozen primary horizon")
+
+
+def _admitted_d1_matched_cell(run_dir: Path) -> dict[str, object]:
+    analyses = json.loads((run_dir / D1_ANALYSES_ARTIFACT).read_text(encoding="utf-8"))
+    measurements = analyses.get("measurements")
+    families = None if not isinstance(measurements, Mapping) else measurements.get("families")
+    record = None if not isinstance(families, Mapping) else families.get("event_study")
+    cells = None if not isinstance(record, Mapping) else record.get("cells")
+    matched = None
+    if isinstance(cells, list) and cells and isinstance(cells[0], Mapping):
+        matched = cells[0].get("matched")
+    if not isinstance(matched, Mapping):
+        raise DataError("the admitted D1 run carries no matched primary measurement")
+    return dict(matched)
+
+
+@research_app.command("draft-confirmation")
+def draft_confirmation(
+    project_id: str,
+    created_by: str = typer.Option("codex"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Freeze the one-shot D2 confirmation contract mechanically from admitted D1 evidence."""
+
+    store = _store()
+    try:
+        payload, case = _case_payload(store, project_id)
+        if case["phase"] != "deep_research":
+            raise DataError("confirmation drafting requires the deep_research phase")
+        exploration_id = str(case["active_contract_id"])
+        protocol = payload.get("protocol")
+        authority = (
+            None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
+        )
+        if not isinstance(authority, Mapping) or authority.get("kind") != "empirical_dataset":
+            raise DataError("synthetic acceptance boundaries cannot authorize D2 confirmation")
+        latest_attempt_id = case.get("latest_attempt_id")
+        if not isinstance(latest_attempt_id, str) or not isinstance(case.get("latest_run_id"), str):
+            raise DataError("confirmation drafting requires a completed D1 deep-research attempt")
+        verified = store.verified_research_attempt(project_id, latest_attempt_id)
+        attempt = cast(dict[str, object], verified["attempt"])
+        manifest = cast(dict[str, object], verified["manifest"])
+        if (
+            attempt.get("status") != "completed"
+            or attempt.get("kind") != "d1-deep-research"
+            or attempt.get("contract_id") != exploration_id
+            or manifest.get("evidence_zone") != "D1"
+        ):
+            raise DataError("confirmation drafting requires a completed D1 deep-research attempt")
+        bars, boundary = _empirical_d1_bars(store, payload)
+        if manifest.get("dataset_hash") != bars.dataset.content_sha256:
+            raise DataError("the admitted D1 run does not bind the approval-frozen dataset")
+        run_id = str(manifest["run_id"])
+        run_dir = AlphaSettings().data_dir / "runs" / run_id
+        evidence = json.loads((run_dir / D1_EVIDENCE_ARTIFACT).read_text(encoding="utf-8"))
+        primary = evidence.get("primary_result")
+        magnitude = None if not isinstance(primary, Mapping) else primary.get("practical_magnitude")
+        magnitude_status = None if not isinstance(magnitude, Mapping) else magnitude.get("status")
+        if (
+            not isinstance(primary, Mapping)
+            or primary.get("status") != "TESTED"
+            or magnitude_status != "CLEARS_HURDLE"
+        ):
+            raise DataError(
+                "confirmation drafting requires an admitted D1 primary result that clears "
+                "the registered minimum effect"
+            )
+        matched = _admitted_d1_matched_cell(run_dir)
+        claim = payload.get("primary_claim")
+        direction = None if not isinstance(claim, Mapping) else claim.get("direction")
+        minimum = None if not isinstance(claim, Mapping) else claim.get("minimum_effect_return")
+        if direction not in {"positive", "negative"} or not isinstance(minimum, int | float):
+            raise DataError("confirmation drafting requires the frozen primary claim")
+        estimate = float(cast(float, matched["estimate"]))
+        ci_lower = float(cast(float, matched["ci_lower"]))
+        ci_upper = float(cast(float, matched["ci_upper"]))
+        if direction == "negative":
+            estimate, ci_lower, ci_upper = -estimate, -ci_upper, -ci_lower
+        matched_sample = int(cast(int, matched["sample_size"]))
+        projected = max(2, matched_sample * boundary.d2.group_count // boundary.d1.group_count)
+        power_result = projected_confirmation_power(
+            matched_estimate=estimate,
+            ci_lower=ci_lower,
+            ci_upper=ci_upper,
+            confidence=float(cast(float, matched["confidence"])),
+            sample_size=matched_sample,
+            projected_sample_size=projected,
+            minimum_effect=float(minimum),
+        )
+        if power_result.estimated_power < 0.90:
+            raise DataError(
+                f"projected one-shot confirmation power {power_result.estimated_power:.3f} "
+                "is below the 0.90 target; the case cannot advance to confirmation"
+            )
+        horizon = _primary_plan_horizon(payload)
+        confirmation_payload = dict(payload)
+        confirmation_payload["scope"] = "confirmation"
+        confirmation_payload["parent_contract_id"] = exploration_id
+        confirmation_payload["analysis_plan"] = {
+            "schema": "ResearchAnalysisPlanV1",
+            "families": [
+                {
+                    "family": "event_study",
+                    "multiplicity": "primary",
+                    "rationale": (
+                        "The one-shot D2 confirmation tests only the frozen primary "
+                        "event-study contrast against pre-event matched controls."
+                    ),
+                    "grid": {"horizon_bars": [horizon]},
+                }
+            ],
+        }
+        hashes = {**_implementation_hashes(), "data": bars.dataset.content_sha256}
+        confirmation_payload["hashes"] = hashes
+        confirmation_payload["confirmation"] = {
+            "variant_count": 1,
+            "multiplicity_count": 1,
+            "familywise_alpha": 0.05,
+            "target_power": 0.90,
+            "power_report": {
+                "achieved_power": power_result.estimated_power,
+                "projected_sample_size": power_result.sample_size,
+                "alternative_effect": estimate,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "confidence": float(cast(float, matched["confidence"])),
+                "minimum_effect": float(minimum),
+                "matched_sample_size": matched_sample,
+                "d1_group_count": boundary.d1.group_count,
+                "d2_group_count": boundary.d2.group_count,
+                "alpha": 0.05,
+                "simulations": power_result.simulations,
+                "seed": power_result.seed,
+                "rejection_threshold": power_result.rejection_threshold,
+                "monte_carlo_standard_error": power_result.monte_carlo_standard_error,
+                "source_run_id": run_id,
+            },
+            "fingerprints": {
+                field: value for field, value in hashes.items() if isinstance(value, str)
+            },
+        }
+        contract = store.create_research_contract(
+            project_id,
+            scope="confirmation",
+            parent_contract_id=exploration_id,
+            payload=confirmation_payload,
+            created_by=created_by,
+            author_kind="agent",
+        )
+        store.transition_research_phase(
+            project_id,
+            to_phase="confirmation_review",
+            contract_id=str(contract["contract_id"]),
+            actor=created_by,
+            reason="the one-shot confirmation contract is frozen from admitted D1 evidence",
+            next_action="Owner approves or rejects the exact one-shot D2 confirmation contract.",
+            responsibility="owner",
+        )
+        case_row = store.research_case_summary(project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"contract": contract, "case": case_row},
+        json_out=json_out,
+        fallback=(
+            f"confirmation contract {contract['contract_id']} awaits owner review (one-shot D2)"
+        ),
     )
 
 

@@ -79,6 +79,7 @@ from alpha_research.patterns import (
 )
 from alpha_research.power import (
     ProspectivePowerResult,
+    projected_confirmation_power,
     required_observations_known_sigma,
     simulate_prospective_power_known_sigma,
 )
@@ -152,6 +153,7 @@ __all__ = [
     "match_event_controls",
     "purge_overlapping_outcomes",
     "quantile_breakdown",
+    "projected_confirmation_power",
     "rank_ic",
     "render_research_line_chart",
     "required_observations_known_sigma",
