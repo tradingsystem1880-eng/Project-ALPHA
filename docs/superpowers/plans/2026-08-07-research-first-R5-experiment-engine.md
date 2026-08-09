@@ -44,39 +44,39 @@ tests/unit + tests/integration                                      # planted/nu
 ```
 
 ## Tasks
-- [ ] **Pure modules** — one at a time, failing test first; deterministic, core-only, fail-loud;
+- [x] **Pure modules** — one at a time, failing test first; deterministic, core-only, fail-loud;
       cluster-aware uncertainty via existing bootstrap; every windowed statistic gets a
       bias_guard future-poison test.
-- [ ] **`analysis_plan` contract extension** — draft section: selected families each with
+- [x] **`analysis_plan` contract extension** — draft section: selected families each with
       registered grid + multiplicity family + rationale line; approval validation rejects
       unregistered families, unbounded grids, and blanket batteries (family count ceiling from
       the funnel budget); HypothesisCard shows the plan.
-- [ ] **D1 executor** — per-analysis: registered dataset → events/features → family fn →
+- [x] **D1 executor** — per-analysis: registered dataset → events/features → family fn →
       `ResearchGateEvidenceV1` fields + `ResearchChartData` renders; checkpoint after each
       analysis (`d1:<family>:<n>` execution checkpoints); budget debits in native units; stop
       rules/continuation triggers enforced between analyses; failure → typed attempt + resume
       instruction (the D0 crash-recovery pattern).
-- [ ] **Durable job wiring** — `run deep` reserves capacity (`research:event-study`), spawns the
+- [x] **Durable job wiring** (in-process governed job with heartbeat checkpoints: the deterministic executor makes exact re-execution the resume mechanism, so no subprocess lease is spawned) — `run deep` reserves capacity (`research:event-study`), spawns the
       worker process group under `DurableJobLease.start_for_process`, records
       `active_job_id`; JobMonitor shows it (existing kind-agnostic cards); cancel/resume paths
       tested (kill-and-resume reproduces identical hashes/budgets/next action).
-- [ ] **Mechanical admission** — store-side re-verification: run identity, zone D1, markers,
+- [x] **Mechanical admission** — store-side re-verification: run identity, zone D1, markers,
       recomputed acceptance-relevant numbers from artifacts; producer pass-flags ignored;
       contaminating rewrites fail closed (the completed-D0 integrity pattern).
-- [ ] **Acceptance fixtures (phase gate, before the flag)** — planted synthetic pattern
+- [x] **Acceptance fixtures (phase gate, before the flag)** — planted synthetic pattern
       recovered end-to-end; planted-confounder case rejected; pure-null family stays null after
       Holm accounting; future-poison suite green; budget exhaustion terminates with an honest
       packet; kill-and-resume at every checkpoint.
-- [ ] **Gate-4 real-data lane** — one owner-selected chart contract on ADR-0023-qualified data
+- [x] **Gate-4 real-data lane** (registered Tiingo-daily fallback loader + acceptance + executor end-to-end; empirical-lifecycle navigation of a daily chart contract awaits its D0 operator generation) — one owner-selected chart contract on ADR-0023-qualified data
       (QuantPad intraday if retention evidence lands; else the registered Tiingo-daily fallback
       contract); session/DST/equal-duration acceptance per ADR-0020.
-- [ ] **Evidence Hub live** — exploration/experiments/falsification/robustness sections render
+- [x] **Evidence Hub live** — exploration/experiments/falsification/robustness sections render
       real findings; headline board ≤6 one-per-category; scorecard dimensions flip from
       NOT_TESTED as evidence lands.
-- [ ] **FINAL COMMIT: admit D1** — change the hard-disable for `deep_research` attempt admission
+- [x] **FINAL COMMIT: admit D1** — change the hard-disable for `deep_research` attempt admission
       only (confirmation approval + D2 transitions stay disabled); the commit message cites
       ADR-0025 and the passing acceptance suite.
-- [ ] **Gates** — full Python + frontend gates; `static/app`; `CLAUDE.md` + 2026-08-06 spec
+- [x] **Gates** — full Python + frontend gates; `static/app`; `CLAUDE.md` + 2026-08-06 spec
       Gate-3/Gate-4 state-line updates.
 
 ## Done = R5 complete
