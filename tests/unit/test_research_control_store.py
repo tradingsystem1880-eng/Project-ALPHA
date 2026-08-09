@@ -2101,6 +2101,102 @@ def test_approval_recomputes_canonical_d2_boundary_semantics(tmp_path: Path, mut
         )
 
 
+@pytest.mark.parametrize("mutation", ["unregistered_family", "over_budget_grid", "not_object"])
+def test_approval_validates_a_declared_analysis_plan(tmp_path: Path, mutation: str) -> None:
+    """A frozen analysis_plan is validated at approval; invalid plans fail closed."""
+    from alpha_cli.research_analysis_plan import default_analysis_plan
+
+    store = ControlStore(tmp_path)
+    _project(store)
+    payload = _payload(_source_pack(store))
+    plan = default_analysis_plan(horizon_bars=4)
+    if mutation == "unregistered_family":
+        families = cast(list[dict[str, object]], plan["families"])
+        families[0] = {**families[0], "family": "kitchen_sink_scan"}
+        payload["analysis_plan"] = plan
+    elif mutation == "over_budget_grid":
+        families = cast(list[dict[str, object]], plan["families"])
+        families[0] = {
+            **families[0],
+            "grid": {"horizon_bars": list(range(1, 13)), "window": list(range(1, 13))},
+        }
+        payload["analysis_plan"] = plan
+    else:
+        payload["analysis_plan"] = "run everything"
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
+    )
+    contract_id = str(contract["contract_id"])
+    for minute, phase in ((4, "triage"), (5, "exploration_review")):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance to {phase}.",
+            next_action="Validate the frozen analysis plan.",
+            responsibility="owner" if phase == "exploration_review" else "codex",
+            at=START + timedelta(minutes=minute),
+        )
+    with pytest.raises(DataError, match="unregistered|budget|analysis_plan"):
+        store.review_research_contract(
+            PROJECT_ID,
+            contract_id,
+            scope="exploration",
+            decision="approve",
+            actor="owner",
+            actor_kind="human",
+            reason="An invalid analysis plan must fail closed.",
+        )
+
+
+def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -> None:
+    from alpha_cli.research_analysis_plan import default_analysis_plan
+
+    store = ControlStore(tmp_path)
+    _project(store)
+    payload = _payload(_source_pack(store))
+    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    protocol = cast(dict[str, object], payload["protocol"])
+    protocol["d0_operator"] = registered_d0_operator(payload)
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
+    )
+    contract_id = str(contract["contract_id"])
+    for minute, phase in ((4, "triage"), (5, "exploration_review")):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance to {phase}.",
+            next_action="Approve the plan-bearing contract.",
+            responsibility="owner" if phase == "exploration_review" else "codex",
+            at=START + timedelta(minutes=minute),
+        )
+    review = store.review_research_contract(
+        PROJECT_ID,
+        contract_id,
+        scope="exploration",
+        decision="approve",
+        actor="owner",
+        actor_kind="human",
+        reason="The registered default analysis plan is approvable.",
+        at=START + timedelta(minutes=6),
+    )
+    assert review["decision"] == "approve"
+
+
 def test_production_gate_hard_disables_unreleased_empirical_research(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

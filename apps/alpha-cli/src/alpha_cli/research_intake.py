@@ -11,6 +11,7 @@ import re
 from collections.abc import Mapping
 from typing import Any, Final
 
+from alpha_cli.research_analysis_plan import default_analysis_plan
 from alpha_core import DataError
 
 type ResearchContractDraft = dict[str, Any]
@@ -291,6 +292,13 @@ def draft_exploration_contract(
             "overlapping_outcomes": "purge",
         },
         "primary_claim": _primary_claim(outcome),
+        "analysis_plan": (
+            default_analysis_plan(
+                horizon_bars=4 if outcome == "four_trading_hour_return_25bp" else 1
+            )
+            if outcome is not None
+            else {"status": "UNRESOLVED"}
+        ),
         "required_falsifiers": [
             "pseudo-pattern control",
             "shuffled-event control",

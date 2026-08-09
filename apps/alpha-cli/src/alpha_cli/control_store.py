@@ -1567,7 +1567,18 @@ class ControlStore:
         ).fetchone()
         if pack is None:
             raise DataError("research contract source pack is not linked to its project")
-        _budget_values(payload.get("budget"), require_minimum=True)
+        budget = _budget_values(payload.get("budget"), require_minimum=True)
+        analysis_plan = payload.get("analysis_plan")
+        if analysis_plan is not None:
+            from alpha_cli.research_analysis_plan import validate_analysis_plan
+
+            if not isinstance(analysis_plan, Mapping):
+                raise DataError("research contract analysis_plan must be a JSON object")
+            variants = budget["variants"]
+            validate_analysis_plan(
+                analysis_plan,
+                max_grid_cells=int(variants) if int(variants) == variants else 0,
+            )
         hashes = payload.get("hashes")
         if not isinstance(hashes, dict):
             raise DataError("research contract approval requires a hashes object")
