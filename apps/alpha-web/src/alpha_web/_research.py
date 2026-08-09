@@ -95,6 +95,37 @@ def status(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     )
 
 
+def list_cases(*, data_dir: Path, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+    """Read the bounded research-case backlog page (ADR-0021 read plane)."""
+    return _object(
+        _run_json(
+            ["research", "list", "--limit", str(limit), "--offset", str(offset), "--json"],
+            data_dir=data_dir,
+        ),
+        "research case list",
+    )
+
+
+def evidence_hub(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read the eleven-section Evidence Hub projection for one case."""
+    return _object(
+        _run_json(["research", "evidence-hub", project_id, "--json"], data_dir=data_dir),
+        "research evidence hub",
+    )
+
+
+def scorecard(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read the readiness scorecard riding on the status projection."""
+    row = _object(
+        _run_json(["research", "status", project_id, "--json"], data_dir=data_dir),
+        "research status",
+    )
+    value = row.get("scorecard")
+    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+        raise RuntimeError("alpha returned an invalid research scorecard projection")
+    return cast(dict[str, Any], value)
+
+
 def report(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     """Read progress or project a terminal packet from already-recorded authority state."""
     return _object(

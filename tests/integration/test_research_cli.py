@@ -1261,3 +1261,81 @@ def test_legacy_compare_subset_and_missing_data_behavior_remain_compatible(
 
     missing = runner.invoke(app, ["research", "compare", "NOPE", "--json"])
     assert missing.exit_code != 0
+
+
+def test_research_list_projects_bounded_backlog_rows_newest_activity_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    first = _invoke("capture", "Gold rallies after triple witching expiries", "--name", "Gold")
+    second = _invoke("capture", "SPY drifts upward into month-end rebalancing", "--name", "SPY")
+    first_case = cast(dict[str, object], first["case"])
+    second_case = cast(dict[str, object], second["case"])
+    first_id = str(cast(dict[str, object], first["project"])["project_id"])
+    second_id = str(cast(dict[str, object], second["project"])["project_id"])
+    assert first_case["phase"] == "triage" and second_case["phase"] == "triage"
+
+    page = _invoke("list")
+    assert set(page) == {"items", "limit", "offset", "has_more"}
+    assert page["limit"] == 50 and page["offset"] == 0 and page["has_more"] is False
+    items = page["items"]
+    assert isinstance(items, list) and len(items) == 2
+    row = cast(dict[str, object], items[0])
+    assert set(row) == {
+        "case_id",
+        "title",
+        "original_idea",
+        "phase",
+        "execution_state",
+        "outcome",
+        "disposition",
+        "next_action",
+        "responsibility",
+        "latest_finding",
+        "blocker",
+        "recovery_action",
+        "completed_milestones",
+        "total_milestones",
+        "owner_pinned",
+        "priority",
+        "budget",
+        "updated_at",
+    }
+    # Newest research activity first: the second capture leads.
+    assert [cast(dict[str, object], item)["case_id"] for item in items] == [second_id, first_id]
+    assert row["title"] == "SPY"
+    assert row["original_idea"] == "SPY drifts upward into month-end rebalancing"
+    assert row["phase"] == "triage"
+    assert row["execution_state"] == "idle"
+    assert row["outcome"] is None and row["disposition"] is None
+    assert row["responsibility"] == "owner"
+    assert (
+        row["recovery_action"]
+        == "Answer the single bounded question batch; Codex handles technical defaults."
+    )
+    assert row["completed_milestones"] == 2  # captured + triage phase events
+    assert row["total_milestones"] == 9  # the nine research phases
+    # The advisory priority rubric is not yet scored; the projection says so honestly.
+    assert row["owner_pinned"] is False
+    assert row["priority"] == {
+        "falsifiability": 0,
+        "data_readiness": 0,
+        "novelty": 0,
+        "information_gain_per_cost": 0,
+    }
+    budget = cast(dict[str, object], row["budget"])
+    assert set(budget) == {"approved_units", "consumed_units", "unit"}
+    assert budget["unit"] == "minutes"
+    assert isinstance(row["updated_at"], str) and row["updated_at"]
+
+    bounded = _invoke("list", "--limit", "1")
+    assert bounded["has_more"] is True
+    assert len(cast(list[object], bounded["items"])) == 1
+    offset_page = _invoke("list", "--limit", "1", "--offset", "1")
+    assert [
+        cast(dict[str, object], item)["case_id"]
+        for item in cast(list[object], offset_page["items"])
+    ] == [first_id]
+
+    rejected = runner.invoke(app, ["research", "list", "--limit", "0", "--json"])
+    assert rejected.exit_code != 0

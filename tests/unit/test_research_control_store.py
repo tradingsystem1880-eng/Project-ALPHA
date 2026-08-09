@@ -3302,3 +3302,79 @@ def test_revise_reopens_with_new_d2_boundary_without_erasing_consumed_history(
             next_action="Do not reopen.",
             at=START + timedelta(minutes=18),
         )
+
+
+def _captured_case(store: ControlStore, index: int, *, at: datetime) -> str:
+    """Capture one distinct research case and return its project id."""
+
+    result = store.capture_research_case(
+        name=f"Backlog case {index}",
+        hypothesis=f"Observation {index} may precede positive four-hour returns.",
+        falsification_criterion="Reject when registered controls do not support the claim.",
+        draft_payload=draft_exploration_contract(
+            f"Observation {index} may precede positive four-hour returns."
+        ),
+        created_by="codex",
+        next_action="Owner answers the material question batch.",
+        responsibility="owner",
+        blocker="The chart, event time, and outcome are unresolved.",
+        recovery="Answer the bounded question batch.",
+        at=at,
+    )
+    case = result["case"]
+    assert isinstance(case, dict)
+    return str(case["project_id"])
+
+
+def test_list_research_cases_is_bounded_newest_activity_first(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_ids = [
+        _captured_case(store, index, at=START + timedelta(minutes=index)) for index in range(3)
+    ]
+    # A strategy-only project without a research case never appears in the backlog.
+    store.create_project(
+        name="Strategy-only project",
+        hypothesis="Not a research case.",
+        falsification_criterion="Not applicable.",
+        project_id=LEGACY_PROJECT_ID,
+        at=START + timedelta(minutes=30),
+    )
+
+    rows = store.list_research_cases()
+    assert [row["case"]["project_id"] for row in rows] == list(reversed(project_ids))
+    for row in rows:
+        assert set(row) == {"case", "updated_at"}
+        case = row["case"]
+        assert isinstance(case, dict)
+        # The per-case shape is byte-identical to the canonical single-case summary.
+        assert case == store.research_case_summary(str(case["project_id"]))
+        assert isinstance(row["updated_at"], str) and row["updated_at"]
+
+    # Later research activity (an execution transition) moves that case to the front.
+    oldest = project_ids[0]
+    summary = store.research_case_summary(oldest)
+    store.transition_research_execution(
+        oldest,
+        to_state="blocked",
+        contract_id=str(summary["active_contract_id"]),
+        actor="owner",
+        reason="Owner paused triage pending data access.",
+        next_action="Restore data access before continuing triage.",
+        responsibility="owner",
+        blocker="Data access is unavailable.",
+        recovery="Restore data access.",
+        at=START + timedelta(hours=1),
+    )
+    reordered = store.list_research_cases()
+    assert str(reordered[0]["case"]["project_id"]) == oldest
+
+    # Bounded paging with the documented research limit.
+    assert store.list_research_cases(limit=1) == reordered[:1]
+    assert store.list_research_cases(limit=1, offset=1) == reordered[1:2]
+    assert store.list_research_cases(limit=1, offset=99) == []
+    with pytest.raises(DataError, match="limit"):
+        store.list_research_cases(limit=0)
+    with pytest.raises(DataError, match="limit"):
+        store.list_research_cases(limit=201)
+    with pytest.raises(DataError, match="offset"):
+        store.list_research_cases(offset=-1)

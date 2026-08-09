@@ -6,7 +6,7 @@ bounded, named output schemas instead of an opaque ``dict[str, Any]`` contract.
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 type JsonObject = dict[str, Any]
 type BoundedJsonValue = (
@@ -111,6 +111,9 @@ class ResearchCaseOut(TypedDict):
     d2_boundary_hash: str
     d2_history: list[JsonObject]
     d3_state: str
+    # Additive status-read projections; capture/proposal/launch case payloads omit them.
+    hypothesis_card: NotRequired[JsonObject]
+    scorecard: NotRequired[JsonObject]
 
 
 class ResearchCaptureOut(TypedDict):

@@ -1094,7 +1094,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Research Cases
+         * @description Read the bounded backlog page, newest research activity first (ADR-0021).
+         */
+        get: operations["research_cases_api_research_cases_get"];
         put?: never;
         /**
          * Research Capture
@@ -1119,6 +1123,26 @@ export interface paths {
          * @description Read one complete bounded Research Case summary.
          */
         get: operations["research_get_api_research_cases__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/evidence-hub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Evidence Hub
+         * @description Read the eleven-section Evidence Hub projection for one case.
+         */
+        get: operations["research_evidence_hub_api_research_cases__project_id__evidence_hub_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1179,6 +1203,26 @@ export interface paths {
          * @description Read a progress report or the deterministic packet for an already-closed case.
          */
         get: operations["research_report_api_research_cases__project_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Scorecard
+         * @description Read the readiness scorecard: enumerated states, never a numeric aggregate.
+         */
+        get: operations["research_scorecard_api_research_cases__project_id__scorecard_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3747,6 +3791,196 @@ export interface components {
             /** Start Date */
             start_date?: string | null;
         };
+        /** HubAttempt */
+        HubAttempt: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Config Fingerprint */
+            config_fingerprint: string;
+            /** Kind */
+            kind: string;
+            /** Phase */
+            phase: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Run Id */
+            run_id: string | null;
+            /** Status */
+            status: string;
+        };
+        /** HubConfounder */
+        HubConfounder: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "resolved" | "unresolved";
+            /** Text */
+            text: string;
+        };
+        /** HubData */
+        HubData: {
+            /** Note */
+            note: string;
+            /** Registered Datasets */
+            registered_datasets: components["schemas"]["JsonObject"][];
+            /** Status */
+            status: string;
+        };
+        /** HubDecision */
+        HubDecision: {
+            d2_state: components["schemas"]["ResearchD2StateValue"];
+            d3_state: components["schemas"]["ResearchD3StateValue"];
+            /** Disposition */
+            disposition: ("advance_to_strategy" | "revise" | "park" | "reject") | null;
+            /** Outcome */
+            outcome: ("SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID") | null;
+            /** Packet Hash */
+            packet_hash: string | null;
+            /** Packet Id */
+            packet_id: string | null;
+        };
+        /** HubExperiments */
+        HubExperiments: {
+            /** Attempts */
+            attempts: components["schemas"]["HubAttempt"][];
+        };
+        /** HubExploration */
+        HubExploration: {
+            /** Charts */
+            charts: components["schemas"]["JsonObject"][];
+            /** Status */
+            status: string;
+            /**
+             * Watermark
+             * @constant
+             */
+            watermark: "EXPLORATORY";
+        };
+        /** HubFalsification */
+        HubFalsification: {
+            /** Falsifiers */
+            falsifiers: components["schemas"]["HubFalsifier"][];
+            /** Stop Rules */
+            stop_rules: string[];
+        };
+        /** HubFalsifier */
+        HubFalsifier: {
+            /** Result */
+            result: string;
+            /** Text */
+            text: string;
+        };
+        /** HubFinding */
+        HubFinding: {
+            /** Finding Id */
+            finding_id: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
+        };
+        /** HubFindings */
+        HubFindings: {
+            /** Findings */
+            findings: components["schemas"]["HubFinding"][];
+        };
+        /** HubLiterature */
+        HubLiterature: {
+            /** Claims */
+            claims: components["schemas"]["JsonObject"][];
+            /** Sources */
+            sources: components["schemas"]["HubSource"][];
+            /** Status */
+            status: string;
+        };
+        /** HubMechanism */
+        HubMechanism: {
+            /** Alternatives */
+            alternatives: string[];
+            /** Confounders */
+            confounders: components["schemas"]["HubConfounder"][];
+            /** Interpretation */
+            interpretation: string | null;
+            /** Mechanism */
+            mechanism: string | null;
+        };
+        /** HubOverview */
+        HubOverview: {
+            execution_state: components["schemas"]["ResearchExecutionStateValue"];
+            hypothesis_card: components["schemas"]["HypothesisCard"];
+            /** Latest Finding */
+            latest_finding: string | null;
+            /** Next Action */
+            next_action: string;
+            /** Original Idea */
+            original_idea: string;
+            /** Outstanding Questions */
+            outstanding_questions: string[];
+            phase: components["schemas"]["ResearchPhaseValue"];
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            scorecard: components["schemas"]["ResearchScorecard"];
+        };
+        /** HubRobustness */
+        HubRobustness: {
+            /** Findings */
+            findings: components["schemas"]["HubFinding"][];
+            /** Status */
+            status: string;
+        };
+        /** HubSource */
+        HubSource: {
+            /** Access Mode */
+            access_mode: string;
+            /** Locator */
+            locator: string;
+            /** Provider */
+            provider: string;
+            /** Screening */
+            screening: string | null;
+            /** Source Id */
+            source_id: string;
+            /** Title */
+            title: string;
+        };
+        /** HypothesisCard */
+        HypothesisCard: {
+            /**
+             * Card Schema
+             * @constant
+             */
+            card_schema: "HypothesisCardV1";
+            /** Complete Fields */
+            complete_fields: number;
+            /** Fields */
+            fields: components["schemas"]["HypothesisCardField"][];
+            /**
+             * Total Fields
+             * @constant
+             */
+            total_fields: 14;
+        };
+        /** HypothesisCardField */
+        HypothesisCardField: {
+            /**
+             * Field Id
+             * @enum {string}
+             */
+            field_id: "research_question" | "phenomenon" | "population" | "condition_event" | "dependent_variable" | "horizon" | "expected_direction" | "economic_mechanism" | "null_hypothesis" | "alternative_hypothesis" | "baseline" | "confounders" | "falsification_criteria" | "success_criteria";
+            /** Label */
+            label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "partial" | "missing";
+            /** Value */
+            value: string | null;
+        };
         /** JobDetail */
         JobDetail: {
             /** Command */
@@ -5554,6 +5788,18 @@ export interface components {
             run_id: string | null;
             status: components["schemas"]["AttemptStatusValue"];
         };
+        /** ResearchBudgetProjection */
+        ResearchBudgetProjection: {
+            /** Approved Units */
+            approved_units: number;
+            /** Consumed Units */
+            consumed_units: number;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "minutes" | "compute_units";
+        };
         /** ResearchCaptureRequest */
         ResearchCaptureRequest: {
             /** Idea */
@@ -5599,6 +5845,7 @@ export interface components {
             exploration_contract_id: string;
             exploration_review: components["schemas"]["ResearchReviewSummary"];
             hashes: components["schemas"]["JsonObject"];
+            hypothesis_card?: components["schemas"]["HypothesisCard"] | null;
             /** Latest Attempt Id */
             latest_attempt_id: string | null;
             /** Latest Finding */
@@ -5638,6 +5885,7 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+            scorecard?: components["schemas"]["ResearchScorecard"] | null;
             /** Source Pack Id */
             source_pack_id: string | null;
             /** Terminal Attempt Count */
@@ -5645,7 +5893,56 @@ export interface components {
             /** Unfinalized Launch Count */
             unfinalized_launch_count: number;
         };
+        /** ResearchCasePage */
+        ResearchCasePage: {
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["ResearchCaseSummaryRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         ResearchCaseReport: components["schemas"]["ResearchProgressReport"] | components["schemas"]["ResearchGatePacket"];
+        /** ResearchCaseSummaryRow */
+        ResearchCaseSummaryRow: {
+            /** Blocker */
+            blocker: string | null;
+            budget: components["schemas"]["ResearchBudgetProjection"];
+            /** Case Id */
+            case_id: string;
+            /** Completed Milestones */
+            completed_milestones: number;
+            /** Disposition */
+            disposition: ("advance_to_strategy" | "revise" | "park" | "reject") | null;
+            execution_state: components["schemas"]["ResearchExecutionStateValue"];
+            /** Latest Finding */
+            latest_finding: string | null;
+            /** Next Action */
+            next_action: string;
+            /** Original Idea */
+            original_idea: string;
+            /** Outcome */
+            outcome: ("SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID") | null;
+            /** Owner Pinned */
+            owner_pinned: boolean;
+            phase: components["schemas"]["ResearchPhaseValue"];
+            priority: components["schemas"]["ResearchPriority"];
+            /** Recovery Action */
+            recovery_action: string | null;
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            /** Title */
+            title: string;
+            /** Total Milestones */
+            total_milestones: number;
+            /** Updated At */
+            updated_at: string;
+        };
         /** @constant */
         ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
         /** ResearchContract */
@@ -5720,6 +6017,31 @@ export interface components {
         };
         /** @constant */
         ResearchEventAvailabilityValue: "second_trough_confirmable";
+        /** ResearchEvidenceHub */
+        ResearchEvidenceHub: {
+            /**
+             * Hub Schema
+             * @constant
+             */
+            hub_schema: "ResearchEvidenceHubV1";
+            /** Project Id */
+            project_id: string;
+            sections: components["schemas"]["ResearchEvidenceHubSections"];
+        };
+        /** ResearchEvidenceHubSections */
+        ResearchEvidenceHubSections: {
+            data: components["schemas"]["HubData"];
+            decision: components["schemas"]["HubDecision"];
+            evidence_against: components["schemas"]["HubFindings"];
+            evidence_for: components["schemas"]["HubFindings"];
+            experiments: components["schemas"]["HubExperiments"];
+            exploration: components["schemas"]["HubExploration"];
+            falsification: components["schemas"]["HubFalsification"];
+            literature: components["schemas"]["HubLiterature"];
+            mechanism: components["schemas"]["HubMechanism"];
+            overview: components["schemas"]["HubOverview"];
+            robustness: components["schemas"]["HubRobustness"];
+        };
         /** @enum {string} */
         ResearchExecutionStateValue: "idle" | "queued" | "running" | "paused" | "blocked" | "failed";
         /** ResearchGateAuditLedgers */
@@ -6039,6 +6361,17 @@ export interface components {
         ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
         /** @constant */
         ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp";
+        /** ResearchPriority */
+        ResearchPriority: {
+            /** Data Readiness */
+            data_readiness: number;
+            /** Falsifiability */
+            falsifiability: number;
+            /** Information Gain Per Cost */
+            information_gain_per_cost: number;
+            /** Novelty */
+            novelty: number;
+        };
         /** ResearchProgressReport */
         ResearchProgressReport: {
             case: components["schemas"]["ResearchCase"];
@@ -6122,6 +6455,49 @@ export interface components {
             strategy: string;
             /** Total Return */
             total_return: number | null;
+        };
+        /** ResearchScorecard */
+        ResearchScorecard: {
+            /** Dimensions */
+            dimensions: components["schemas"]["ResearchScorecardDimension"][];
+            recommendation: components["schemas"]["ResearchScorecardRecommendation"];
+            /**
+             * Scorecard Schema
+             * @constant
+             */
+            scorecard_schema: "ResearchReadinessScorecardV1";
+            unresolved_questions: components["schemas"]["ResearchScorecardQuestions"];
+        };
+        /** ResearchScorecardDimension */
+        ResearchScorecardDimension: {
+            /** Basis */
+            basis: string;
+            /**
+             * Dimension Id
+             * @enum {string}
+             */
+            dimension_id: "hypothesis_definition" | "data_quality" | "sample_adequacy" | "effect_existence" | "effect_size" | "temporal_stability" | "cross_asset_stability" | "regime_robustness" | "falsification" | "mechanism" | "literature" | "data_mining_risk";
+            /** Label */
+            label: string;
+            /** State */
+            state: string;
+        };
+        /** ResearchScorecardQuestions */
+        ResearchScorecardQuestions: {
+            /** Count */
+            count: number;
+            /** Items */
+            items: string[];
+        };
+        /** ResearchScorecardRecommendation */
+        ResearchScorecardRecommendation: {
+            /** Reasons */
+            reasons: string[];
+            /**
+             * Value
+             * @enum {string}
+             */
+            value: "READY FOR STRATEGY RESEARCH" | "MORE RESEARCH REQUIRED" | "REFORMULATE HYPOTHESIS" | "EVIDENCE DOES NOT SUPPORT CONTINUATION";
         };
         /** RiskProvenance */
         RiskProvenance: {
@@ -8601,6 +8977,38 @@ export interface operations {
             };
         };
     };
+    research_cases_api_research_cases_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchCasePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     research_capture_api_research_cases_post: {
         parameters: {
             query?: never;
@@ -8652,6 +9060,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchCase"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_evidence_hub_api_research_cases__project_id__evidence_hub_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchEvidenceHub"];
                 };
             };
             /** @description Validation Error */
@@ -8753,6 +9192,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchCaseReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_scorecard_api_research_cases__project_id__scorecard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchScorecard"];
                 };
             };
             /** @description Validation Error */

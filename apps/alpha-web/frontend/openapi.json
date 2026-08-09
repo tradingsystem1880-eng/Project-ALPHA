@@ -3579,6 +3579,624 @@
         "title": "HoldoutState",
         "type": "object"
       },
+      "HubAttempt": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "config_fingerprint": {
+            "title": "Config Fingerprint",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "phase",
+          "kind",
+          "status",
+          "config_fingerprint",
+          "run_id",
+          "recorded_at"
+        ],
+        "title": "HubAttempt",
+        "type": "object"
+      },
+      "HubConfounder": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "resolved",
+              "unresolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "status"
+        ],
+        "title": "HubConfounder",
+        "type": "object"
+      },
+      "HubData": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "registered_datasets": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Registered Datasets",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "registered_datasets",
+          "status",
+          "note"
+        ],
+        "title": "HubData",
+        "type": "object"
+      },
+      "HubDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "d2_state": {
+            "$ref": "#/components/schemas/ResearchD2StateValue"
+          },
+          "d3_state": {
+            "$ref": "#/components/schemas/ResearchD3StateValue"
+          },
+          "disposition": {
+            "anyOf": [
+              {
+                "enum": [
+                  "advance_to_strategy",
+                  "revise",
+                  "park",
+                  "reject"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disposition"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SUPPORTED",
+                  "CONTRADICTED",
+                  "INCONCLUSIVE",
+                  "INVALID"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "packet_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Hash"
+          },
+          "packet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Id"
+          }
+        },
+        "required": [
+          "outcome",
+          "disposition",
+          "d2_state",
+          "d3_state",
+          "packet_id",
+          "packet_hash"
+        ],
+        "title": "HubDecision",
+        "type": "object"
+      },
+      "HubExperiments": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/HubAttempt"
+            },
+            "title": "Attempts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attempts"
+        ],
+        "title": "HubExperiments",
+        "type": "object"
+      },
+      "HubExploration": {
+        "additionalProperties": false,
+        "properties": {
+          "charts": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Charts",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "watermark": {
+            "const": "EXPLORATORY",
+            "title": "Watermark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "charts",
+          "watermark",
+          "status"
+        ],
+        "title": "HubExploration",
+        "type": "object"
+      },
+      "HubFalsification": {
+        "additionalProperties": false,
+        "properties": {
+          "falsifiers": {
+            "items": {
+              "$ref": "#/components/schemas/HubFalsifier"
+            },
+            "title": "Falsifiers",
+            "type": "array"
+          },
+          "stop_rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Stop Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "falsifiers",
+          "stop_rules"
+        ],
+        "title": "HubFalsification",
+        "type": "object"
+      },
+      "HubFalsifier": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "result"
+        ],
+        "title": "HubFalsifier",
+        "type": "object"
+      },
+      "HubFinding": {
+        "additionalProperties": false,
+        "properties": {
+          "finding_id": {
+            "title": "Finding Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "finding_id",
+          "status",
+          "summary"
+        ],
+        "title": "HubFinding",
+        "type": "object"
+      },
+      "HubFindings": {
+        "additionalProperties": false,
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/HubFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "findings"
+        ],
+        "title": "HubFindings",
+        "type": "object"
+      },
+      "HubLiterature": {
+        "additionalProperties": false,
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/HubSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "claims",
+          "sources",
+          "status"
+        ],
+        "title": "HubLiterature",
+        "type": "object"
+      },
+      "HubMechanism": {
+        "additionalProperties": false,
+        "properties": {
+          "alternatives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "confounders": {
+            "items": {
+              "$ref": "#/components/schemas/HubConfounder"
+            },
+            "title": "Confounders",
+            "type": "array"
+          },
+          "interpretation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretation"
+          },
+          "mechanism": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanism"
+          }
+        },
+        "required": [
+          "mechanism",
+          "interpretation",
+          "alternatives",
+          "confounders"
+        ],
+        "title": "HubMechanism",
+        "type": "object"
+      },
+      "HubOverview": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_state": {
+            "$ref": "#/components/schemas/ResearchExecutionStateValue"
+          },
+          "hypothesis_card": {
+            "$ref": "#/components/schemas/HypothesisCard"
+          },
+          "latest_finding": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Finding"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "original_idea": {
+            "title": "Original Idea",
+            "type": "string"
+          },
+          "outstanding_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Outstanding Questions",
+            "type": "array"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/ResearchPhaseValue"
+          },
+          "responsibility": {
+            "enum": [
+              "owner",
+              "codex"
+            ],
+            "title": "Responsibility",
+            "type": "string"
+          },
+          "scorecard": {
+            "$ref": "#/components/schemas/ResearchScorecard"
+          }
+        },
+        "required": [
+          "original_idea",
+          "phase",
+          "execution_state",
+          "next_action",
+          "responsibility",
+          "latest_finding",
+          "outstanding_questions",
+          "hypothesis_card",
+          "scorecard"
+        ],
+        "title": "HubOverview",
+        "type": "object"
+      },
+      "HubRobustness": {
+        "additionalProperties": false,
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/HubFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "findings",
+          "status"
+        ],
+        "title": "HubRobustness",
+        "type": "object"
+      },
+      "HubSource": {
+        "additionalProperties": false,
+        "properties": {
+          "access_mode": {
+            "title": "Access Mode",
+            "type": "string"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "screening": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screening"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "title",
+          "locator",
+          "provider",
+          "access_mode",
+          "screening"
+        ],
+        "title": "HubSource",
+        "type": "object"
+      },
+      "HypothesisCard": {
+        "additionalProperties": false,
+        "properties": {
+          "card_schema": {
+            "const": "HypothesisCardV1",
+            "title": "Card Schema",
+            "type": "string"
+          },
+          "complete_fields": {
+            "minimum": 0.0,
+            "title": "Complete Fields",
+            "type": "integer"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/HypothesisCardField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "total_fields": {
+            "const": 14,
+            "title": "Total Fields",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "card_schema",
+          "fields",
+          "complete_fields",
+          "total_fields"
+        ],
+        "title": "HypothesisCard",
+        "type": "object"
+      },
+      "HypothesisCardField": {
+        "additionalProperties": false,
+        "properties": {
+          "field_id": {
+            "enum": [
+              "research_question",
+              "phenomenon",
+              "population",
+              "condition_event",
+              "dependent_variable",
+              "horizon",
+              "expected_direction",
+              "economic_mechanism",
+              "null_hypothesis",
+              "alternative_hypothesis",
+              "baseline",
+              "confounders",
+              "falsification_criteria",
+              "success_criteria"
+            ],
+            "title": "Field Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "partial",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field_id",
+          "label",
+          "value",
+          "status"
+        ],
+        "title": "HypothesisCardField",
+        "type": "object"
+      },
       "JobDetail": {
         "additionalProperties": false,
         "properties": {
@@ -8873,6 +9491,36 @@
         "title": "ResearchAttempt",
         "type": "object"
       },
+      "ResearchBudgetProjection": {
+        "additionalProperties": false,
+        "properties": {
+          "approved_units": {
+            "minimum": 0.0,
+            "title": "Approved Units",
+            "type": "number"
+          },
+          "consumed_units": {
+            "minimum": 0.0,
+            "title": "Consumed Units",
+            "type": "number"
+          },
+          "unit": {
+            "enum": [
+              "minutes",
+              "compute_units"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approved_units",
+          "consumed_units",
+          "unit"
+        ],
+        "title": "ResearchBudgetProjection",
+        "type": "object"
+      },
       "ResearchCaptureRequest": {
         "additionalProperties": false,
         "properties": {
@@ -9032,6 +9680,16 @@
           "hashes": {
             "$ref": "#/components/schemas/JsonObject"
           },
+          "hypothesis_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HypothesisCard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "latest_attempt_id": {
             "anyOf": [
               {
@@ -9171,6 +9829,16 @@
             "title": "Schema Version",
             "type": "integer"
           },
+          "scorecard": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "source_pack_id": {
             "anyOf": [
               {
@@ -9238,6 +9906,38 @@
         "title": "ResearchCase",
         "type": "object"
       },
+      "ResearchCasePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchCaseSummaryRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "ResearchCasePage",
+        "type": "object"
+      },
       "ResearchCaseReport": {
         "discriminator": {
           "mapping": {
@@ -9254,6 +9954,154 @@
             "$ref": "#/components/schemas/ResearchGatePacket"
           }
         ]
+      },
+      "ResearchCaseSummaryRow": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocker"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/ResearchBudgetProjection"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "completed_milestones": {
+            "minimum": 0.0,
+            "title": "Completed Milestones",
+            "type": "integer"
+          },
+          "disposition": {
+            "anyOf": [
+              {
+                "enum": [
+                  "advance_to_strategy",
+                  "revise",
+                  "park",
+                  "reject"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disposition"
+          },
+          "execution_state": {
+            "$ref": "#/components/schemas/ResearchExecutionStateValue"
+          },
+          "latest_finding": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Finding"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "original_idea": {
+            "title": "Original Idea",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SUPPORTED",
+                  "CONTRADICTED",
+                  "INCONCLUSIVE",
+                  "INVALID"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "owner_pinned": {
+            "title": "Owner Pinned",
+            "type": "boolean"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/ResearchPhaseValue"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ResearchPriority"
+          },
+          "recovery_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Action"
+          },
+          "responsibility": {
+            "enum": [
+              "owner",
+              "codex"
+            ],
+            "title": "Responsibility",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_milestones": {
+            "minimum": 0.0,
+            "title": "Total Milestones",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id",
+          "title",
+          "original_idea",
+          "phase",
+          "execution_state",
+          "outcome",
+          "disposition",
+          "next_action",
+          "responsibility",
+          "latest_finding",
+          "blocker",
+          "recovery_action",
+          "completed_milestones",
+          "total_milestones",
+          "owner_pinned",
+          "priority",
+          "budget",
+          "updated_at"
+        ],
+        "title": "ResearchCaseSummaryRow",
+        "type": "object"
       },
       "ResearchChartConstructionValue": {
         "const": "spy_rth_60m_four_hour_window",
@@ -9462,6 +10310,83 @@
       "ResearchEventAvailabilityValue": {
         "const": "second_trough_confirmable",
         "type": "string"
+      },
+      "ResearchEvidenceHub": {
+        "additionalProperties": false,
+        "properties": {
+          "hub_schema": {
+            "const": "ResearchEvidenceHubV1",
+            "title": "Hub Schema",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "sections": {
+            "$ref": "#/components/schemas/ResearchEvidenceHubSections"
+          }
+        },
+        "required": [
+          "hub_schema",
+          "project_id",
+          "sections"
+        ],
+        "title": "ResearchEvidenceHub",
+        "type": "object"
+      },
+      "ResearchEvidenceHubSections": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HubData"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/HubDecision"
+          },
+          "evidence_against": {
+            "$ref": "#/components/schemas/HubFindings"
+          },
+          "evidence_for": {
+            "$ref": "#/components/schemas/HubFindings"
+          },
+          "experiments": {
+            "$ref": "#/components/schemas/HubExperiments"
+          },
+          "exploration": {
+            "$ref": "#/components/schemas/HubExploration"
+          },
+          "falsification": {
+            "$ref": "#/components/schemas/HubFalsification"
+          },
+          "literature": {
+            "$ref": "#/components/schemas/HubLiterature"
+          },
+          "mechanism": {
+            "$ref": "#/components/schemas/HubMechanism"
+          },
+          "overview": {
+            "$ref": "#/components/schemas/HubOverview"
+          },
+          "robustness": {
+            "$ref": "#/components/schemas/HubRobustness"
+          }
+        },
+        "required": [
+          "overview",
+          "data",
+          "literature",
+          "mechanism",
+          "exploration",
+          "experiments",
+          "evidence_for",
+          "evidence_against",
+          "falsification",
+          "robustness",
+          "decision"
+        ],
+        "title": "ResearchEvidenceHubSections",
+        "type": "object"
       },
       "ResearchExecutionStateValue": {
         "enum": [
@@ -10448,6 +11373,39 @@
         "const": "four_trading_hour_return_25bp",
         "type": "string"
       },
+      "ResearchPriority": {
+        "additionalProperties": false,
+        "properties": {
+          "data_readiness": {
+            "minimum": 0.0,
+            "title": "Data Readiness",
+            "type": "number"
+          },
+          "falsifiability": {
+            "minimum": 0.0,
+            "title": "Falsifiability",
+            "type": "number"
+          },
+          "information_gain_per_cost": {
+            "minimum": 0.0,
+            "title": "Information Gain Per Cost",
+            "type": "number"
+          },
+          "novelty": {
+            "minimum": 0.0,
+            "title": "Novelty",
+            "type": "number"
+          }
+        },
+        "required": [
+          "falsifiability",
+          "data_readiness",
+          "novelty",
+          "information_gain_per_cost"
+        ],
+        "title": "ResearchPriority",
+        "type": "object"
+      },
       "ResearchProgressReport": {
         "additionalProperties": false,
         "properties": {
@@ -10691,6 +11649,131 @@
           "error"
         ],
         "title": "ResearchRow",
+        "type": "object"
+      },
+      "ResearchScorecard": {
+        "additionalProperties": false,
+        "properties": {
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchScorecardDimension"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "recommendation": {
+            "$ref": "#/components/schemas/ResearchScorecardRecommendation"
+          },
+          "scorecard_schema": {
+            "const": "ResearchReadinessScorecardV1",
+            "title": "Scorecard Schema",
+            "type": "string"
+          },
+          "unresolved_questions": {
+            "$ref": "#/components/schemas/ResearchScorecardQuestions"
+          }
+        },
+        "required": [
+          "scorecard_schema",
+          "dimensions",
+          "unresolved_questions",
+          "recommendation"
+        ],
+        "title": "ResearchScorecard",
+        "type": "object"
+      },
+      "ResearchScorecardDimension": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "dimension_id": {
+            "enum": [
+              "hypothesis_definition",
+              "data_quality",
+              "sample_adequacy",
+              "effect_existence",
+              "effect_size",
+              "temporal_stability",
+              "cross_asset_stability",
+              "regime_robustness",
+              "falsification",
+              "mechanism",
+              "literature",
+              "data_mining_risk"
+            ],
+            "title": "Dimension Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dimension_id",
+          "label",
+          "state",
+          "basis"
+        ],
+        "title": "ResearchScorecardDimension",
+        "type": "object"
+      },
+      "ResearchScorecardQuestions": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "title": "ResearchScorecardQuestions",
+        "type": "object"
+      },
+      "ResearchScorecardRecommendation": {
+        "additionalProperties": false,
+        "properties": {
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "value": {
+            "enum": [
+              "READY FOR STRATEGY RESEARCH",
+              "MORE RESEARCH REQUIRED",
+              "REFORMULATE HYPOTHESIS",
+              "EVIDENCE DOES NOT SUPPORT CONTINUATION"
+            ],
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "reasons"
+        ],
+        "title": "ResearchScorecardRecommendation",
         "type": "object"
       },
       "RiskProvenance": {
@@ -15660,6 +16743,61 @@
       }
     },
     "/api/research/cases": {
+      "get": {
+        "description": "Read the bounded backlog page, newest research activity first (ADR-0021).",
+        "operationId": "research_cases_api_research_cases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchCasePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Cases",
+        "tags": [
+          "research"
+        ]
+      },
       "post": {
         "description": "Capture exact idea wording and bounded triage; never approve or launch work.",
         "operationId": "research_capture_api_research_cases_post",
@@ -15739,6 +16877,49 @@
           }
         },
         "summary": "Research Get",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/evidence-hub": {
+      "get": {
+        "description": "Read the eleven-section Evidence Hub projection for one case.",
+        "operationId": "research_evidence_hub_api_research_cases__project_id__evidence_hub_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchEvidenceHub"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Evidence Hub",
         "tags": [
           "research"
         ]
@@ -15888,6 +17069,49 @@
           }
         },
         "summary": "Research Report",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/scorecard": {
+      "get": {
+        "description": "Read the readiness scorecard: enumerated states, never a numeric aggregate.",
+        "operationId": "research_scorecard_api_research_cases__project_id__scorecard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchScorecard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Scorecard",
         "tags": [
           "research"
         ]

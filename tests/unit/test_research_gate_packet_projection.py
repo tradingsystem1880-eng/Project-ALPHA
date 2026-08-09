@@ -128,3 +128,375 @@ def test_projection_walks_the_public_control_store_packet_seam(
     guided = cast(dict[str, object], layers["guided_evidence"])
     assert cast(dict[str, object], guided["primary_result"])["status"] == "TESTED"
     assert guided["confirmation_classification"] == "INCONCLUSIVE"
+
+
+def _card_by_field(card: dict[str, object]) -> dict[str, dict[str, object]]:
+    fields = card["fields"]
+    assert isinstance(fields, list)
+    by_id: dict[str, dict[str, object]] = {}
+    for entry in fields:
+        assert isinstance(entry, dict)
+        assert set(entry) == {"field_id", "label", "value", "status"}
+        by_id[str(entry["field_id"])] = entry
+    return by_id
+
+
+def test_hypothesis_card_renders_resolved_draft_complete() -> None:
+    from alpha_cli.research_gate_packet import research_hypothesis_card
+    from alpha_cli.research_intake import draft_exploration_contract
+
+    payload = draft_exploration_contract(
+        "SPY bounces after double bottoms on the 4h chart",
+        resolutions={
+            "chart_construction": "spy_rth_60m_four_hour_window",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "four_trading_hour_return_25bp",
+        },
+    )
+    card = research_hypothesis_card(payload)
+    assert card["card_schema"] == "HypothesisCardV1"
+    assert card["total_fields"] == 14
+    by_id = _card_by_field(card)
+    assert list(by_id) == [
+        "research_question",
+        "phenomenon",
+        "population",
+        "condition_event",
+        "dependent_variable",
+        "horizon",
+        "expected_direction",
+        "economic_mechanism",
+        "null_hypothesis",
+        "alternative_hypothesis",
+        "baseline",
+        "confounders",
+        "falsification_criteria",
+        "success_criteria",
+    ]
+    assert all(entry["status"] == "complete" for entry in by_id.values()), by_id
+    assert card["complete_fields"] == 14
+    assert (
+        by_id["population"]["value"]
+        == "SYNTHETIC_SPY · SYNTHETIC · synthetic_equal_duration · 60m bars"
+    )
+    assert by_id["condition_event"]["value"] == "double_bottom (second_trough_confirmable)"
+    assert by_id["dependent_variable"]["value"] == "event_minus_matched_control_arithmetic_return"
+    assert by_id["horizon"]["value"] == "240 trading minutes"
+    assert by_id["expected_direction"]["value"] == "positive"
+    assert by_id["baseline"]["value"] == "Matched pre-event controls (registered)"
+    null_value = str(by_id["null_hypothesis"]["value"])
+    assert "0.05" in null_value and "forward_arithmetic_return" in null_value
+    success_value = str(by_id["success_criteria"]["value"])
+    assert "0.05" in success_value and "0.9" in success_value and "0.0025" in success_value
+
+
+def test_hypothesis_card_reports_unresolved_material_fields_honestly() -> None:
+    from alpha_cli.research_gate_packet import research_hypothesis_card
+    from alpha_cli.research_intake import draft_exploration_contract
+
+    payload = draft_exploration_contract("SPY bounces after double bottoms on the 4h chart")
+    card = research_hypothesis_card(payload)
+    by_id = _card_by_field(card)
+    assert by_id["population"]["status"] == "missing"
+    assert by_id["condition_event"]["status"] == "partial"  # availability is UNRESOLVED
+    assert by_id["dependent_variable"]["status"] == "missing"
+    assert by_id["horizon"]["status"] == "missing"
+    assert by_id["expected_direction"]["status"] == "missing"
+    assert by_id["baseline"]["status"] == "missing"
+    assert by_id["success_criteria"]["status"] == "partial"  # policy frozen, effect unresolved
+    assert by_id["confounders"]["status"] == "complete"
+    assert by_id["falsification_criteria"]["status"] == "complete"
+    complete = card["complete_fields"]
+    assert isinstance(complete, int) and complete < 14
+
+
+def test_hypothesis_card_tolerates_the_canonical_d0_contract_fixture() -> None:
+    from alpha_cli.research_gate_packet import research_hypothesis_card
+    from tests.unit.test_research_control_store import _payload
+
+    card = research_hypothesis_card(_payload("sp_" + "0" * 64))
+    by_id = _card_by_field(card)
+    assert by_id["dependent_variable"]["status"] == "complete"
+    assert by_id["expected_direction"]["status"] == "complete"
+    assert by_id["research_question"]["status"] == "missing"
+    assert by_id["phenomenon"]["status"] == "missing"
+    assert by_id["confounders"]["status"] == "missing"
+
+
+def test_status_json_gains_the_additive_hypothesis_card(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from alpha_cli.research_intake import draft_exploration_contract
+
+    payload = draft_exploration_contract("SPY bounces after double bottoms on the 4h chart")
+    summary: dict[str, object] = {
+        "project_id": "project-1",
+        "phase": "triage",
+        "execution_state": "idle",
+        "next_action": "Owner answers the material question batch.",
+        "active_contract": {"contract_id": "rc_" + "0" * 64, "payload": payload},
+    }
+    store = _FakeStore(summary, _inputs())
+    monkeypatch.setattr(research_cmds, "_store", lambda: store)
+    result = CliRunner().invoke(app, ["research", "status", "project-1", "--json"])
+    assert result.exit_code == 0, result.output
+    row = json.loads(result.output)
+    assert row["phase"] == "triage"
+    card = row["hypothesis_card"]
+    assert card["card_schema"] == "HypothesisCardV1"
+    assert len(card["fields"]) == 14
+
+
+_SCORECARD_DIMENSIONS = [
+    "hypothesis_definition",
+    "data_quality",
+    "sample_adequacy",
+    "effect_existence",
+    "effect_size",
+    "temporal_stability",
+    "cross_asset_stability",
+    "regime_robustness",
+    "falsification",
+    "mechanism",
+    "literature",
+    "data_mining_risk",
+]
+
+
+def _dimension_states(scorecard: dict[str, object]) -> dict[str, str]:
+    dimensions = scorecard["dimensions"]
+    assert isinstance(dimensions, list)
+    states: dict[str, str] = {}
+    for entry in dimensions:
+        assert isinstance(entry, dict)
+        assert set(entry) == {"dimension_id", "label", "state", "basis"}
+        assert isinstance(entry["basis"], str) and entry["basis"]
+        states[str(entry["dimension_id"])] = str(entry["state"])
+    return states
+
+
+def test_scorecard_is_honest_for_a_fresh_unresolved_case() -> None:
+    from alpha_cli.research_gate_packet import (
+        derive_research_scorecard,
+        research_scorecard_inputs,
+    )
+    from alpha_cli.research_intake import draft_exploration_contract
+
+    payload = draft_exploration_contract("SPY bounces after double bottoms on the 4h chart")
+    summary: dict[str, object] = {
+        "project_id": "project-1",
+        "phase": "triage",
+        "execution_state": "idle",
+        "next_action": "Owner answers the material question batch.",
+        "research_decision": None,
+        "d2_state": "sealed",
+        "attempt_count": 0,
+    }
+    inputs = research_scorecard_inputs(summary, payload, packet=None)
+    assert inputs["inputs_schema"] == "ResearchScorecardInputsV1"
+    scorecard = derive_research_scorecard(inputs)
+    assert scorecard["scorecard_schema"] == "ResearchReadinessScorecardV1"
+    states = _dimension_states(scorecard)
+    assert list(states) == _SCORECARD_DIMENSIONS
+    assert states["hypothesis_definition"] == "partial"
+    assert states["data_quality"] == "not_tested"
+    assert states["sample_adequacy"] == "not_tested"
+    assert states["effect_existence"] == "not_tested"
+    assert states["effect_size"] == "not_tested"
+    assert states["temporal_stability"] == "not_tested"
+    assert states["cross_asset_stability"] == "not_tested"
+    assert states["regime_robustness"] == "not_tested"
+    assert states["falsification"] == "not_tested"
+    assert states["mechanism"] == "not_tested"
+    assert states["literature"] == "insufficient"
+    assert states["data_mining_risk"] == "low"
+    unresolved = scorecard["unresolved_questions"]
+    assert isinstance(unresolved, dict)
+    items = unresolved["items"]
+    assert isinstance(items, list)
+    assert unresolved["count"] == len(items)
+    assert unresolved["count"] == 3 + 6  # 3 material questions + 6 unresolved confounders
+    recommendation = scorecard["recommendation"]
+    assert isinstance(recommendation, dict)
+    assert recommendation["value"] == "MORE RESEARCH REQUIRED"
+    reasons = recommendation["reasons"]
+    assert isinstance(reasons, list) and reasons
+    # No numeric aggregate anywhere: enumerated states and transparent reasons only.
+    assert "score" not in scorecard and "confidence" not in scorecard
+
+
+@pytest.mark.parametrize(
+    ("outcome", "disposition", "expected"),
+    [
+        ("SUPPORTED", "advance_to_strategy", "READY FOR STRATEGY RESEARCH"),
+        ("INCONCLUSIVE", "park", "MORE RESEARCH REQUIRED"),
+        ("CONTRADICTED", "reject", "EVIDENCE DOES NOT SUPPORT CONTINUATION"),
+        ("INVALID", "revise", "REFORMULATE HYPOTHESIS"),
+    ],
+)
+def test_scorecard_recommendation_follows_the_recorded_outcome(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+    disposition: str,
+    expected: str,
+) -> None:
+    from alpha_cli.research_gate_packet import research_scorecard_projection
+
+    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store, outcome=outcome, disposition=disposition)
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="closed",
+        contract_id=confirmation_id,
+        actor="codex",
+        reason="Owner decision recorded; close the case.",
+        next_action="The case is closed.",
+        responsibility="owner",
+        at=START + timedelta(minutes=16),
+    )
+    scorecard = research_scorecard_projection(store, PROJECT_ID)
+    states = _dimension_states(scorecard)
+    assert list(states) == _SCORECARD_DIMENSIONS
+    recommendation = scorecard["recommendation"]
+    assert isinstance(recommendation, dict)
+    assert recommendation["value"] == expected
+    if outcome == "SUPPORTED":
+        assert states["effect_existence"] == "supported"
+    if outcome == "CONTRADICTED":
+        assert states["effect_existence"] == "unsupported"
+
+
+def test_status_json_gains_the_additive_scorecard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    result = CliRunner().invoke(
+        app,
+        ["research", "capture", "SPY drifts into month-end rebalancing", "--json"],
+    )
+    assert result.exit_code == 0, result.output
+    project_id = str(json.loads(result.output)["project"]["project_id"])
+    status_result = CliRunner().invoke(app, ["research", "status", project_id, "--json"])
+    assert status_result.exit_code == 0, status_result.output
+    row = json.loads(status_result.output)
+    scorecard = row["scorecard"]
+    assert scorecard["scorecard_schema"] == "ResearchReadinessScorecardV1"
+    assert len(scorecard["dimensions"]) == 12
+    assert row["hypothesis_card"]["card_schema"] == "HypothesisCardV1"
+
+
+_HUB_SECTIONS = [
+    "overview",
+    "data",
+    "literature",
+    "mechanism",
+    "exploration",
+    "experiments",
+    "evidence_for",
+    "evidence_against",
+    "falsification",
+    "robustness",
+    "decision",
+]
+
+
+def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = CliRunner().invoke(
+        app,
+        ["research", "capture", "SPY drifts into month-end rebalancing", "--json"],
+    )
+    assert captured.exit_code == 0, captured.output
+    project_id = str(json.loads(captured.output)["project"]["project_id"])
+    result = CliRunner().invoke(app, ["research", "evidence-hub", project_id, "--json"])
+    assert result.exit_code == 0, result.output
+    hub = json.loads(result.output)
+    assert hub["hub_schema"] == "ResearchEvidenceHubV1"
+    assert hub["project_id"] == project_id
+    sections = hub["sections"]
+    # CLI JSON is emitted with sorted keys; section ordering is the panel's concern.
+    assert set(sections) == set(_HUB_SECTIONS)
+    overview = sections["overview"]
+    assert overview["original_idea"] == "SPY drifts into month-end rebalancing"
+    assert overview["phase"] == "triage"
+    assert overview["hypothesis_card"]["card_schema"] == "HypothesisCardV1"
+    assert overview["scorecard"]["scorecard_schema"] == "ResearchReadinessScorecardV1"
+    assert sections["data"] == {
+        "registered_datasets": [],
+        "status": "NOT_TESTED",
+        "note": "No registered research datasets; the data plane arrives in a later phase.",
+    }
+    assert sections["literature"]["claims"] == []
+    assert sections["exploration"] == {
+        "charts": [],
+        "watermark": "EXPLORATORY",
+        "status": "NOT_TESTED",
+    }
+    assert sections["experiments"]["attempts"] == []
+    # Evidence for and against are structurally identical and equally empty pre-D1.
+    assert sections["evidence_for"] == {"findings": []}
+    assert sections["evidence_against"] == {"findings": []}
+    falsification = sections["falsification"]
+    assert len(falsification["falsifiers"]) == 5
+    assert all(entry["result"] == "NOT_TESTED" for entry in falsification["falsifiers"])
+    assert len(falsification["stop_rules"]) == 6
+    assert sections["robustness"] == {"findings": [], "status": "NOT_TESTED"}
+    decision = sections["decision"]
+    assert decision["outcome"] is None and decision["disposition"] is None
+    assert decision["d2_state"] == "sealed"
+    assert decision["packet_id"] is None and decision["packet_hash"] is None
+
+
+def test_evidence_hub_partitions_closed_case_findings_for_and_against(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli.research_gate_packet import research_evidence_hub_projection
+
+    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(
+        store, outcome="SUPPORTED", disposition="advance_to_strategy"
+    )
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="closed",
+        contract_id=confirmation_id,
+        actor="codex",
+        reason="Owner decision recorded; close the case.",
+        next_action="Enter strategy development through the governed link.",
+        responsibility="owner",
+        at=START + timedelta(minutes=16),
+    )
+    hub = research_evidence_hub_projection(store, PROJECT_ID)
+    sections = cast(dict[str, object], hub["sections"])
+    supporting = cast(dict[str, object], sections["evidence_for"])["findings"]
+    assert isinstance(supporting, list) and supporting
+    for finding in cast(list[dict[str, object]], supporting):
+        assert set(finding) == {"finding_id", "status", "summary"}
+        assert finding["status"] in {"PASSED", "STABLE", "SUPPORTED"}
+    against = cast(dict[str, object], sections["evidence_against"])["findings"]
+    assert isinstance(against, list)
+    for finding in cast(list[dict[str, object]], against):
+        assert finding["status"] in {"FAILED", "UNSTABLE", "CONTRADICTED"}
+    decision = cast(dict[str, object], sections["decision"])
+    assert decision["outcome"] == "SUPPORTED"
+    assert str(decision["packet_id"]).startswith("rgp_")
+    experiments = cast(dict[str, object], sections["experiments"])
+    attempts = experiments["attempts"]
+    assert isinstance(attempts, list) and attempts
+    for attempt in cast(list[dict[str, object]], attempts):
+        assert set(attempt) == {
+            "attempt_id",
+            "phase",
+            "kind",
+            "status",
+            "config_fingerprint",
+            "run_id",
+            "recorded_at",
+        }

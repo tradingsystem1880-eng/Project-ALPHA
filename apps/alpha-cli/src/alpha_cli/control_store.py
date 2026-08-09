@@ -4369,6 +4369,40 @@ class ControlStore:
             "d3_state": d3_state,
         }
 
+    def list_research_cases(self, *, limit: int = 50, offset: int = 0) -> list[dict[str, object]]:
+        """Return bounded research-case rows ordered by latest research activity.
+
+        Each row is ``{"case": <research_case_summary>, "updated_at": <ISO timestamp>}``.
+        The nested summary is byte-identical to :meth:`research_case_summary` so the
+        dossier's embedded-summary hash never drifts; ``updated_at`` rides alongside it
+        because the summary itself is hash-pinned and cannot gain keys.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+            raise DataError("research case list limit must be in 1..200")
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise DataError("research case list offset must be non-negative")
+        with self._transaction(write=False) as connection:
+            ordered = connection.execute(
+                """SELECT project_id, MAX(ts) AS updated_at FROM (
+                    SELECT project_id, occurred_at AS ts FROM research_phase_events
+                    UNION ALL
+                    SELECT project_id, occurred_at AS ts FROM research_execution_events
+                    UNION ALL
+                    SELECT project_id, recorded_at AS ts FROM research_attempt_records
+                    UNION ALL
+                    SELECT project_id, reserved_at AS ts FROM research_launch_reservations
+                ) GROUP BY project_id ORDER BY updated_at DESC, project_id
+                LIMIT ? OFFSET ?""",
+                (limit, offset),
+            ).fetchall()
+        return [
+            {
+                "case": self.research_case_summary(str(row["project_id"])),
+                "updated_at": str(row["updated_at"]),
+            }
+            for row in ordered
+        ]
+
     def research_gate_packet_inputs(
         self, project_id: str, *, ledger_limit: int = 10_000
     ) -> dict[str, object]:

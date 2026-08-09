@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _research
 from alpha_web.api._common import data_dir
@@ -12,12 +12,15 @@ from alpha_web.api.models import (
     ResearchCaptureRequest,
     ResearchCaptureResponse,
     ResearchCase,
+    ResearchCasePage,
     ResearchCaseReport,
+    ResearchEvidenceHub,
     ResearchLaunchRequest,
     ResearchLaunchResponse,
     ResearchProposalRequest,
     ResearchProposalResponse,
     ResearchReport,
+    ResearchScorecard,
 )
 
 router = APIRouter(prefix="/api", tags=["research"])
@@ -39,6 +42,42 @@ def research_capture(body: ResearchCaptureRequest) -> dict[str, Any]:
         return _research.capture(data_dir=data_dir(), idea=body.idea, name=body.name)
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/research/cases", response_model=ResearchCasePage)
+def research_cases(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read the bounded backlog page, newest research activity first (ADR-0021)."""
+    try:
+        return _research.list_cases(data_dir=data_dir(), limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/evidence-hub",
+    response_model=ResearchEvidenceHub,
+)
+def research_evidence_hub(project_id: str) -> dict[str, Any]:
+    """Read the eleven-section Evidence Hub projection for one case."""
+    try:
+        return _research.evidence_hub(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/scorecard",
+    response_model=ResearchScorecard,
+)
+def research_scorecard(project_id: str) -> dict[str, Any]:
+    """Read the readiness scorecard: enumerated states, never a numeric aggregate."""
+    try:
+        return _research.scorecard(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/research/cases/{project_id}", response_model=ResearchCase)

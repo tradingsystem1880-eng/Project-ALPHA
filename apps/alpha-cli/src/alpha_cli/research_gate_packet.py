@@ -1,9 +1,12 @@
-"""CLI-owned ResearchGatePacket projection over public control-store reads."""
+"""CLI-owned research projections (gate packet, backlog rows) over public store reads."""
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from typing import Protocol
 
+from alpha_core import DataError
 from alpha_research import build_research_gate_packet
 
 
@@ -13,6 +16,776 @@ class ResearchPacketStore(Protocol):
     def research_gate_packet_inputs(
         self, project_id: str, *, ledger_limit: int = 10_000
     ) -> dict[str, object]: ...
+
+
+def _mapping(value: object) -> Mapping[str, object]:
+    if isinstance(value, Mapping) and all(isinstance(key, str) for key in value):
+        return value
+    return {}
+
+
+def _optional_text(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _finite_number(value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return 0.0
+    return float(value)
+
+
+def _budget_minutes(case: Mapping[str, object]) -> dict[str, object]:
+    """Project the wall-clock budget in minutes; other native units are never summed in."""
+    elapsed_seconds = _finite_number(_mapping(case.get("elapsed_budget")).get("wall_seconds"))
+    remaining_seconds = _finite_number(_mapping(case.get("remaining_budget")).get("wall_seconds"))
+    return {
+        "approved_units": (elapsed_seconds + remaining_seconds) / 60.0,
+        "consumed_units": elapsed_seconds / 60.0,
+        "unit": "minutes",
+    }
+
+
+# Mirror of ``research_cmds._require_resolved_material``: text carrying one of these markers
+# is a live placeholder, so the card reports the field as partial, never as complete.
+_UNRESOLVED_MARKERS = ("unresolved", "placeholder", "selection_required", "provider_required")
+
+
+def _has_unresolved_marker(value: str) -> bool:
+    lowered = value.casefold()
+    return any(marker in lowered for marker in _UNRESOLVED_MARKERS)
+
+
+def _card_field(
+    field_id: str, label: str, value: str | None, *, partial: bool = False
+) -> dict[str, object]:
+    if value is None or not value.strip():
+        return {"field_id": field_id, "label": label, "value": None, "status": "missing"}
+    status = "partial" if partial or _has_unresolved_marker(value) else "complete"
+    return {"field_id": field_id, "label": label, "value": value, "status": status}
+
+
+def _text_of(value: object) -> str | None:
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def research_hypothesis_card(payload: Mapping[str, object]) -> dict[str, object]:
+    """Render the immutable contract in the formal hypothesis vocabulary (spec §5.1).
+
+    Pure projection: per-field ``complete | partial | missing`` honesty, no inference of
+    empirical results, and no mutation of the hash-pinned contract payload.
+    """
+    thesis = _mapping(payload.get("thesis"))
+    fingerprint = _mapping(payload.get("chart_fingerprint"))
+    event = _mapping(payload.get("event_definition"))
+    claim = _mapping(payload.get("primary_claim"))
+    policy = _mapping(payload.get("statistical_policy"))
+    raw_idea = _text_of(payload.get("raw_idea"))
+    mechanism = _text_of(thesis.get("mechanism"))
+    prediction = _text_of(thesis.get("prediction"))
+    interpretation = _text_of(thesis.get("interpretation"))
+
+    population_parts = [
+        _text_of(fingerprint.get("instrument")),
+        _text_of(fingerprint.get("venue")),
+        _text_of(fingerprint.get("session")),
+    ]
+    duration = fingerprint.get("bar_duration_minutes")
+    if isinstance(duration, int | float) and not isinstance(duration, bool):
+        population_parts.append(f"{duration:g}m bars")
+    else:
+        population_parts.append(None)
+    present_parts = [part for part in population_parts if part is not None]
+    population = " · ".join(present_parts) if present_parts else None
+    population_partial = bool(present_parts) and len(present_parts) < len(population_parts)
+
+    event_name = _text_of(event.get("name"))
+    availability = _text_of(event.get("availability"))
+    if event_name is not None and availability is not None:
+        condition: str | None = f"{event_name} ({availability})"
+        condition_partial = False
+    else:
+        condition = event_name
+        condition_partial = event_name is not None
+
+    endpoint = _text_of(claim.get("endpoint"))
+    estimand = _text_of(claim.get("estimand")) or endpoint
+    horizon_minutes = claim.get("horizon_trading_minutes")
+    if isinstance(horizon_minutes, int | float) and not isinstance(horizon_minutes, bool):
+        horizon: str | None = f"{horizon_minutes:g} trading minutes"
+    else:
+        horizon = _text_of(claim.get("horizon"))
+    direction = _text_of(claim.get("direction"))
+
+    alpha = policy.get("familywise_alpha")
+    alpha_value = alpha if isinstance(alpha, int | float) and not isinstance(alpha, bool) else None
+    power = policy.get("prospective_power")
+    power_value = power if isinstance(power, int | float) and not isinstance(power, bool) else None
+    effect = claim.get("minimum_effect_return")
+    effect_value = (
+        effect if isinstance(effect, int | float) and not isinstance(effect, bool) else None
+    )
+
+    if alpha_value is not None and endpoint is not None:
+        null_hypothesis: str | None = (
+            f"No association between the registered event and {endpoint} at familywise "
+            f"α={alpha_value:g} after the registered controls."
+        )
+        null_partial = False
+    elif alpha_value is not None:
+        null_hypothesis = (
+            f"No association at familywise α={alpha_value:g} after the registered controls."
+        )
+        null_partial = True
+    else:
+        null_hypothesis = None
+        null_partial = False
+
+    baseline = (
+        "Matched pre-event controls (registered)"
+        if estimand is not None and "matched_control" in estimand
+        else None
+    )
+
+    confounders_raw = payload.get("confounders")
+    confounders = (
+        [item for item in confounders_raw if isinstance(item, str) and item.strip()]
+        if isinstance(confounders_raw, list)
+        else []
+    )
+    falsifiers_raw = payload.get("required_falsifiers")
+    falsifiers = (
+        [item for item in falsifiers_raw if isinstance(item, str) and item.strip()]
+        if isinstance(falsifiers_raw, list)
+        else []
+    )
+    stop_rules_raw = payload.get("stop_rules")
+    stop_rule_count = len(stop_rules_raw) if isinstance(stop_rules_raw, list) else 0
+
+    success_parts: list[str] = []
+    if alpha_value is not None:
+        success_parts.append(f"familywise α={alpha_value:g}")
+    if power_value is not None:
+        success_parts.append(f"prospective power ≥{power_value:g}")
+    if effect_value is not None:
+        success_parts.append(f"minimum effect {effect_value:g}")
+    success = " · ".join(success_parts) if success_parts else None
+    success_partial = 0 < len(success_parts) < 3
+
+    fields = [
+        _card_field("research_question", "Research question", prediction),
+        _card_field(
+            "phenomenon", "Phenomenon", raw_idea, partial=raw_idea is not None and mechanism is None
+        ),
+        _card_field("population", "Population / universe", population, partial=population_partial),
+        _card_field("condition_event", "Condition / event", condition, partial=condition_partial),
+        _card_field("dependent_variable", "Dependent variable", estimand),
+        _card_field("horizon", "Horizon", horizon),
+        _card_field("expected_direction", "Expected direction", direction),
+        _card_field(
+            "economic_mechanism",
+            "Economic mechanism",
+            mechanism,
+            partial=mechanism is not None and interpretation is None,
+        ),
+        _card_field("null_hypothesis", "Null hypothesis", null_hypothesis, partial=null_partial),
+        _card_field("alternative_hypothesis", "Alternative hypothesis", prediction),
+        _card_field("baseline", "Baseline", baseline),
+        _card_field(
+            "confounders",
+            "Confounders",
+            "; ".join(confounders) if confounders else None,
+            partial=0 < len(confounders) < 6,
+        ),
+        _card_field(
+            "falsification_criteria",
+            "Falsification criteria",
+            (
+                f"{len(falsifiers)} required falsifiers · {stop_rule_count} stop rules"
+                if falsifiers
+                else None
+            ),
+            partial=0 < len(falsifiers) < 5,
+        ),
+        _card_field("success_criteria", "Success criteria", success, partial=success_partial),
+    ]
+    return {
+        "card_schema": "HypothesisCardV1",
+        "fields": fields,
+        "complete_fields": sum(1 for field in fields if field["status"] == "complete"),
+        "total_fields": len(fields),
+    }
+
+
+def _finding_status(value: object) -> str:
+    finding = _mapping(value)
+    status = finding.get("status")
+    return status if isinstance(status, str) and status else "NOT_TESTED"
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item.strip()]
+
+
+def _question_texts(value: object) -> list[str]:
+    """Blocking questions are structured objects; project their question text."""
+    if not isinstance(value, list):
+        return []
+    texts: list[str] = []
+    for item in value:
+        if isinstance(item, str) and item.strip():
+            texts.append(item)
+            continue
+        question = _mapping(item).get("question")
+        if isinstance(question, str) and question.strip():
+            texts.append(question)
+    return texts
+
+
+def research_scorecard_inputs(
+    summary: Mapping[str, object],
+    payload: Mapping[str, object],
+    *,
+    packet: Mapping[str, object] | None = None,
+    registered_dataset_count: int = 0,
+    screened_claim_count: int = 0,
+) -> dict[str, object]:
+    """Assemble the compact, TS-twinnable inputs for the readiness scorecard.
+
+    Everything comes from already-authoritative records (case summary, immutable contract
+    payload, and — for closed cases — the deterministic terminal gate packet). The
+    assembler never computes evidence; it only relays recorded statuses.
+    """
+    card = research_hypothesis_card(payload)
+    fields = card["fields"]
+    if not isinstance(fields, list):  # pragma: no cover - card invariant above.
+        raise DataError("hypothesis card projection is corrupt")
+    statuses = [str(_mapping(field).get("status")) for field in fields]
+    decision = _mapping(summary.get("research_decision"))
+
+    guided = _mapping(_mapping(_mapping(packet).get("layers")).get("guided_evidence"))
+    primary = _mapping(guided.get("primary_result"))
+    stability = _mapping(guided.get("stability"))
+    packet_confounders = _mapping(guided.get("confounders"))
+    classification = guided.get("confirmation_classification")
+
+    confounders_registered = _string_list(payload.get("confounders"))
+    confounders_resolved = _string_list(packet_confounders.get("resolved"))
+    confounders_unresolved = (
+        _string_list(packet_confounders.get("unresolved"))
+        if packet is not None
+        else confounders_registered
+    )
+
+    attempt_count = summary.get("attempt_count")
+    return {
+        "inputs_schema": "ResearchScorecardInputsV1",
+        "phase": str(summary.get("phase", "")),
+        "outcome": _optional_text(decision.get("outcome")),
+        "disposition": _optional_text(decision.get("disposition")),
+        "d2_state": str(summary.get("d2_state", "")),
+        "hypothesis_complete_fields": statuses.count("complete"),
+        "hypothesis_partial_fields": statuses.count("partial"),
+        "hypothesis_total_fields": len(statuses),
+        "registered_dataset_count": registered_dataset_count,
+        "screened_claim_count": screened_claim_count,
+        "blocking_questions": _question_texts(payload.get("blocking_questions")),
+        "confounders_resolved": confounders_resolved,
+        "confounders_unresolved": confounders_unresolved,
+        "untested_work": _string_list(guided.get("untested_work")),
+        "attempt_count": (
+            attempt_count
+            if isinstance(attempt_count, int) and not isinstance(attempt_count, bool)
+            else 0
+        ),
+        "primary_result_status": (
+            str(primary.get("status")) if isinstance(primary.get("status"), str) else "NOT_TESTED"
+        ),
+        "practical_magnitude_status": (
+            str(_mapping(primary.get("practical_magnitude")).get("status", "NOT_TESTED"))
+        ),
+        "confirmation_classification": (
+            classification if isinstance(classification, str) and classification else None
+        ),
+        "power_status": _finding_status(guided.get("power")),
+        "negative_controls_status": _finding_status(guided.get("negative_controls")),
+        "multiplicity_status": _finding_status(guided.get("multiplicity")),
+        "mechanism_status": _finding_status(guided.get("mechanism")),
+        "stability_parameter_status": _finding_status(stability.get("parameter")),
+        "stability_temporal_status": _finding_status(stability.get("temporal")),
+        "stability_transportability_status": _finding_status(stability.get("transportability")),
+    }
+
+
+def _dimension(dimension_id: str, label: str, state: str, basis: str) -> dict[str, object]:
+    return {"dimension_id": dimension_id, "label": label, "state": state, "basis": basis}
+
+
+def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]:
+    """Derive the 13-row readiness scorecard (spec §10.2) from recorded statuses only.
+
+    Enumerated states, transparent bases, and a rule-derived recommendation — never a
+    numeric aggregate or a single confidence score. ``researchScorecardModel.ts`` is the
+    drift-guarded TypeScript twin of this function; change both together.
+    """
+    complete = int(_finite_number(inputs.get("hypothesis_complete_fields")))
+    partial = int(_finite_number(inputs.get("hypothesis_partial_fields")))
+    total = int(_finite_number(inputs.get("hypothesis_total_fields"))) or 14
+    if complete == total:
+        hypothesis_state = "complete"
+    elif complete + partial == 0:
+        hypothesis_state = "missing"
+    else:
+        hypothesis_state = "partial"
+
+    dataset_count = int(_finite_number(inputs.get("registered_dataset_count")))
+    claim_count = int(_finite_number(inputs.get("screened_claim_count")))
+    classification = _optional_text(inputs.get("confirmation_classification"))
+    primary_status = str(inputs.get("primary_result_status", "NOT_TESTED"))
+    magnitude = str(inputs.get("practical_magnitude_status", "NOT_TESTED"))
+    power = str(inputs.get("power_status", "NOT_TESTED"))
+    negative_controls = str(inputs.get("negative_controls_status", "NOT_TESTED"))
+    multiplicity = str(inputs.get("multiplicity_status", "NOT_TESTED"))
+    mechanism = str(inputs.get("mechanism_status", "NOT_TESTED"))
+    temporal = str(inputs.get("stability_temporal_status", "NOT_TESTED"))
+    transport = str(inputs.get("stability_transportability_status", "NOT_TESTED"))
+
+    if classification == "SUPPORTED":
+        effect_existence = "supported"
+        effect_basis = "Sealed confirmation supported the registered claim."
+    elif classification == "CONTRADICTED":
+        effect_existence = "unsupported"
+        effect_basis = "Sealed confirmation contradicted the registered claim."
+    elif classification in {"INCONCLUSIVE", "INVALID"}:
+        effect_existence = "mixed"
+        effect_basis = f"Sealed confirmation classified the claim {classification}."
+    elif primary_status == "TESTED":
+        effect_existence = "mixed"
+        effect_basis = "Exploratory result only; the sealed confirmation has not run."
+    else:
+        effect_existence = "not_tested"
+        effect_basis = "No primary-result evidence has been recorded."
+
+    if magnitude == "CLEARS_HURDLE":
+        effect_size, size_basis = "meaningful", "Recorded magnitude clears the registered hurdle."
+    elif magnitude == "BELOW_HURDLE":
+        effect_size, size_basis = "negligible", "Recorded magnitude is below the registered hurdle."
+    elif magnitude == "INCONCLUSIVE":
+        effect_size, size_basis = "marginal", "Recorded magnitude is inconclusive at the hurdle."
+    else:
+        effect_size, size_basis = "not_tested", "No practical-magnitude evidence exists."
+
+    def _stability(state: str) -> str:
+        if state == "STABLE":
+            return "strong"
+        if state == "NOT_TESTED":
+            return "not_tested"
+        return "weak" if state == "UNSTABLE" else "mixed"
+
+    if power == "PASSED":
+        sample_state, sample_basis = "adequate", "The registered power gate passed."
+    elif power == "NOT_TESTED":
+        sample_state, sample_basis = "not_tested", "No power evidence has been recorded."
+    else:
+        sample_state, sample_basis = "weak", f"The recorded power finding is {power}."
+
+    if negative_controls == "PASSED":
+        falsification_state, falsification_basis = "passed", "Registered negative controls passed."
+    elif negative_controls == "FAILED":
+        falsification_state, falsification_basis = "failed", "Registered negative controls failed."
+    elif negative_controls == "NOT_TESTED":
+        falsification_state = "not_tested"
+        falsification_basis = "The registered falsifiers have not run."
+    else:
+        falsification_state = "mixed"
+        falsification_basis = f"The negative-control finding is {negative_controls}."
+
+    if mechanism in {"SUPPORTED", "PASSED", "OBSERVED"}:
+        mechanism_state, mechanism_basis = (
+            "plausible",
+            "The recorded mechanism finding supports it.",
+        )
+    elif mechanism in {"CONTRADICTED", "FAILED"}:
+        mechanism_state, mechanism_basis = "unsupported", "The recorded mechanism finding fails."
+    elif mechanism == "NOT_TESTED":
+        mechanism_state, mechanism_basis = "not_tested", "No mechanism evidence has been recorded."
+    else:
+        mechanism_state, mechanism_basis = "unclear", f"The mechanism finding is {mechanism}."
+
+    if multiplicity == "PASSED":
+        mining_state, mining_basis = "low", "Registered multiplicity accounting passed."
+    elif multiplicity == "FAILED":
+        mining_state, mining_basis = "high", "Registered multiplicity accounting failed."
+    elif multiplicity == "NOT_TESTED":
+        mining_state = "low"
+        mining_basis = (
+            "All analysis families are contract-registered; unregistered attempts are impossible."
+        )
+    else:
+        mining_state, mining_basis = "medium", f"The multiplicity finding is {multiplicity}."
+
+    dimensions = [
+        _dimension(
+            "hypothesis_definition",
+            "Hypothesis definition",
+            hypothesis_state,
+            f"{complete} of {total} hypothesis-card fields are complete.",
+        ),
+        _dimension(
+            "data_quality",
+            "Data quality",
+            "not_tested" if dataset_count == 0 else "adequate",
+            (
+                "No registered research datasets."
+                if dataset_count == 0
+                else f"{dataset_count} registered datasets; quality profiling pending."
+            ),
+        ),
+        _dimension("sample_adequacy", "Sample adequacy", sample_state, sample_basis),
+        _dimension("effect_existence", "Effect existence", effect_existence, effect_basis),
+        _dimension("effect_size", "Effect size", effect_size, size_basis),
+        _dimension(
+            "temporal_stability",
+            "Temporal stability",
+            _stability(temporal),
+            f"The recorded temporal-stability finding is {temporal}.",
+        ),
+        _dimension(
+            "cross_asset_stability",
+            "Cross-asset stability",
+            "strong"
+            if transport == "STABLE"
+            else ("not_tested" if transport == "NOT_TESTED" else "mixed"),
+            f"The recorded transportability finding is {transport}.",
+        ),
+        _dimension(
+            "regime_robustness",
+            "Regime robustness",
+            "not_tested",
+            "No regime-decomposition evidence exists yet.",
+        ),
+        _dimension("falsification", "Falsification", falsification_state, falsification_basis),
+        _dimension("mechanism", "Mechanism", mechanism_state, mechanism_basis),
+        _dimension(
+            "literature",
+            "Literature",
+            "insufficient" if claim_count == 0 else "mixed",
+            (
+                "No screened claim-level literature evidence."
+                if claim_count == 0
+                else f"{claim_count} screened claims; directional aggregation pending."
+            ),
+        ),
+        _dimension("data_mining_risk", "Data-mining risk", mining_state, mining_basis),
+    ]
+
+    unresolved_items = [
+        *_string_list(inputs.get("blocking_questions")),
+        *[
+            f"Unresolved confounder: {item}"
+            for item in _string_list(inputs.get("confounders_unresolved"))
+        ],
+        *_string_list(inputs.get("untested_work")),
+    ]
+
+    outcome = _optional_text(inputs.get("outcome"))
+    if outcome == "CONTRADICTED":
+        recommendation = "EVIDENCE DOES NOT SUPPORT CONTINUATION"
+        reasons = ["Sealed confirmation contradicted the registered claim."]
+    elif outcome == "INVALID":
+        recommendation = "REFORMULATE HYPOTHESIS"
+        reasons = ["The confirmation run was invalid under the registered protocol."]
+    elif outcome == "SUPPORTED":
+        recommendation = "READY FOR STRATEGY RESEARCH"
+        reasons = [
+            "Sealed confirmation supported the registered claim at the frozen alpha and "
+            "minimum effect."
+        ]
+    elif hypothesis_state == "missing":
+        recommendation = "REFORMULATE HYPOTHESIS"
+        reasons = ["The hypothesis card has no complete or partial fields."]
+    else:
+        untested = sum(1 for entry in dimensions if entry["state"] == "not_tested")
+        recommendation = "MORE RESEARCH REQUIRED"
+        reasons = [
+            f"{untested} of {len(dimensions)} readiness dimensions are untested.",
+            f"{len(unresolved_items)} unresolved questions remain.",
+        ]
+
+    return {
+        "scorecard_schema": "ResearchReadinessScorecardV1",
+        "dimensions": dimensions,
+        "unresolved_questions": {"count": len(unresolved_items), "items": unresolved_items},
+        "recommendation": {"value": recommendation, "reasons": reasons},
+    }
+
+
+def research_scorecard_projection(
+    store: ResearchPacketStore,
+    project_id: str,
+    *,
+    summary: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Project the readiness scorecard for one case from public store reads only."""
+    case = store.research_case_summary(project_id) if summary is None else summary
+    payload = _mapping(_mapping(case.get("active_contract")).get("payload"))
+    packet: Mapping[str, object] | None = None
+    if case.get("phase") == "closed":
+        packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
+    return derive_research_scorecard(research_scorecard_inputs(case, payload, packet=packet))
+
+
+_SUPPORTING_FINDING_STATUSES = frozenset({"PASSED", "STABLE", "SUPPORTED"})
+_CONTRADICTING_FINDING_STATUSES = frozenset({"FAILED", "UNSTABLE", "CONTRADICTED"})
+
+
+def _packet_findings(packet: Mapping[str, object] | None) -> list[dict[str, object]]:
+    """Flatten the packet's guided evidence into typed findings for partitioning."""
+    layers = _mapping(_mapping(packet).get("layers"))
+    guided = _mapping(layers.get("guided_evidence"))
+    conclusion = _mapping(layers.get("conclusion_90_seconds"))
+    findings: list[dict[str, object]] = []
+    classification = guided.get("confirmation_classification")
+    if isinstance(classification, str) and classification:
+        answer = conclusion.get("thesis_answer")
+        findings.append(
+            {
+                "finding_id": "confirmation_classification",
+                "status": classification,
+                "summary": answer if isinstance(answer, str) else None,
+            }
+        )
+    named: list[tuple[str, object]] = [
+        ("mechanism", guided.get("mechanism")),
+        ("strongest_support", guided.get("strongest_support")),
+        ("strongest_contradiction", guided.get("strongest_contradiction")),
+        ("multiplicity", guided.get("multiplicity")),
+        ("power", guided.get("power")),
+        ("negative_controls", guided.get("negative_controls")),
+    ]
+    stability = _mapping(guided.get("stability"))
+    for axis in ("parameter", "temporal", "transportability"):
+        named.append((f"stability_{axis}", stability.get(axis)))
+    for finding_id, value in named:
+        finding = _mapping(value)
+        if not finding:
+            continue
+        summary = finding.get("summary")
+        findings.append(
+            {
+                "finding_id": finding_id,
+                "status": _finding_status(finding),
+                "summary": summary if isinstance(summary, str) else None,
+            }
+        )
+    return findings
+
+
+def _bounded_sources(rows: object) -> list[dict[str, object]]:
+    """Project bounded source records; screening state comes from recorded metadata."""
+    if not isinstance(rows, list):
+        return []
+    projected: list[dict[str, object]] = []
+    for row in rows:
+        record = _mapping(row)
+        if not record:
+            continue
+        metadata_raw = record.get("metadata_json")
+        screening: str | None = None
+        if isinstance(metadata_raw, str):
+            try:
+                metadata = json.loads(metadata_raw)
+            except ValueError:
+                metadata = None
+            if isinstance(metadata, dict):
+                value = metadata.get("screening")
+                screening = value if isinstance(value, str) else None
+        projected.append(
+            {
+                "source_id": str(record.get("source_id", "")),
+                "title": str(record.get("title", "")),
+                "locator": str(record.get("locator", "")),
+                "provider": str(record.get("provider", "")),
+                "access_mode": str(record.get("access_mode", "")),
+                "screening": screening,
+            }
+        )
+    return projected
+
+
+def _bounded_attempts(rows: object) -> list[dict[str, object]]:
+    if not isinstance(rows, list):
+        return []
+    projected: list[dict[str, object]] = []
+    for row in rows:
+        record = _mapping(row)
+        if not record:
+            continue
+        run_id = record.get("run_id")
+        projected.append(
+            {
+                "attempt_id": str(record.get("attempt_id", "")),
+                "phase": str(record.get("phase", "")),
+                "kind": str(record.get("kind", "")),
+                "status": str(record.get("status", "")),
+                "config_fingerprint": str(record.get("config_fingerprint", "")),
+                "run_id": run_id if isinstance(run_id, str) else None,
+                "recorded_at": str(record.get("recorded_at", "")),
+            }
+        )
+    return projected
+
+
+def research_evidence_hub_projection(
+    store: ResearchPacketStore, project_id: str
+) -> dict[str, object]:
+    """Aggregate the eleven Evidence Hub sections (spec §6.2) from public store reads.
+
+    One workflow surface, not eleven dashboards: sections fill as phases progress and
+    render honest ``NOT_TESTED`` states before then. Evidence for and evidence against
+    are structurally identical so the panel cannot bias their prominence.
+    """
+    summary = store.research_case_summary(project_id)
+    payload = _mapping(_mapping(summary.get("active_contract")).get("payload"))
+    inputs = store.research_gate_packet_inputs(project_id)
+    packet: Mapping[str, object] | None = None
+    if summary.get("phase") == "closed":
+        packet = build_research_gate_packet(inputs).to_dict()
+
+    thesis = _mapping(payload.get("thesis"))
+    card = research_hypothesis_card(payload)
+    scorecard = derive_research_scorecard(
+        research_scorecard_inputs(summary, payload, packet=packet)
+    )
+    guided = _mapping(_mapping(_mapping(packet).get("layers")).get("guided_evidence"))
+    findings = _packet_findings(packet)
+    packet_confounders = _mapping(guided.get("confounders"))
+    registered_confounders = _string_list(payload.get("confounders"))
+    if packet is not None:
+        confounder_rows = [
+            {"text": text, "status": "resolved"}
+            for text in _string_list(packet_confounders.get("resolved"))
+        ] + [
+            {"text": text, "status": "unresolved"}
+            for text in _string_list(packet_confounders.get("unresolved"))
+        ]
+    else:
+        confounder_rows = [
+            {"text": text, "status": "unresolved"} for text in registered_confounders
+        ]
+    decision = _mapping(summary.get("research_decision"))
+    mechanism = thesis.get("mechanism")
+    interpretation = thesis.get("interpretation")
+
+    sections: dict[str, object] = {
+        "overview": {
+            "original_idea": str(payload.get("raw_idea", "") or ""),
+            "phase": str(summary.get("phase", "")),
+            "execution_state": str(summary.get("execution_state", "")),
+            "next_action": str(summary.get("next_action", "")),
+            "responsibility": str(summary.get("responsibility", "")),
+            "latest_finding": _optional_text(summary.get("latest_finding")),
+            "outstanding_questions": _question_texts(payload.get("blocking_questions")),
+            "hypothesis_card": card,
+            "scorecard": scorecard,
+        },
+        "data": {
+            "registered_datasets": [],
+            "status": "NOT_TESTED",
+            "note": "No registered research datasets; the data plane arrives in a later phase.",
+        },
+        "literature": {
+            "claims": [],
+            "sources": _bounded_sources(inputs.get("sources")),
+            "status": "INSUFFICIENT",
+        },
+        "mechanism": {
+            "mechanism": mechanism if isinstance(mechanism, str) else None,
+            "interpretation": interpretation if isinstance(interpretation, str) else None,
+            "alternatives": _string_list(thesis.get("alternatives")),
+            "confounders": confounder_rows,
+        },
+        "exploration": {"charts": [], "watermark": "EXPLORATORY", "status": "NOT_TESTED"},
+        "experiments": {"attempts": _bounded_attempts(inputs.get("attempts"))},
+        "evidence_for": {
+            "findings": [
+                finding for finding in findings if finding["status"] in _SUPPORTING_FINDING_STATUSES
+            ]
+        },
+        "evidence_against": {
+            "findings": [
+                finding
+                for finding in findings
+                if finding["status"] in _CONTRADICTING_FINDING_STATUSES
+            ]
+        },
+        "falsification": {
+            "falsifiers": [
+                {"text": text, "result": "NOT_TESTED"}
+                for text in _string_list(payload.get("required_falsifiers"))
+            ],
+            "stop_rules": _string_list(payload.get("stop_rules")),
+        },
+        "robustness": {
+            "findings": [
+                finding
+                for finding in findings
+                if str(finding["finding_id"]).startswith("stability_")
+            ],
+            "status": "NOT_TESTED" if packet is None else "RECORDED",
+        },
+        "decision": {
+            "outcome": _optional_text(decision.get("outcome")),
+            "disposition": _optional_text(decision.get("disposition")),
+            "d2_state": str(summary.get("d2_state", "")),
+            "d3_state": str(summary.get("d3_state", "")),
+            "packet_id": None if packet is None else str(packet.get("packet_id")),
+            "packet_hash": None if packet is None else str(packet.get("packet_hash")),
+        },
+    }
+    return {
+        "hub_schema": "ResearchEvidenceHubV1",
+        "project_id": str(summary.get("project_id", project_id)),
+        "sections": sections,
+    }
+
+
+def research_backlog_row(case: Mapping[str, object], updated_at: str) -> dict[str, object]:
+    """Project one bounded backlog row from the canonical research case summary."""
+    payload = _mapping(_mapping(case.get("active_contract")).get("payload"))
+    decision = _mapping(case.get("research_decision"))
+    completed = case.get("completed_milestones")
+    remaining = case.get("remaining_milestones")
+    if not isinstance(completed, list) or not isinstance(remaining, list):
+        raise DataError("research case summary has corrupt milestone projections")
+    return {
+        "case_id": str(case.get("project_id", "")),
+        "title": str(case.get("project_name", "")),
+        "original_idea": str(payload.get("raw_idea", "") or ""),
+        "phase": str(case.get("phase", "")),
+        "execution_state": str(case.get("execution_state", "")),
+        "outcome": _optional_text(decision.get("outcome")),
+        "disposition": _optional_text(decision.get("disposition")),
+        "next_action": str(case.get("next_action", "")),
+        "responsibility": str(case.get("responsibility", "")),
+        "latest_finding": _optional_text(case.get("latest_finding")),
+        "blocker": _optional_text(case.get("blocker")),
+        "recovery_action": _optional_text(case.get("recovery")),
+        "completed_milestones": len(completed),
+        "total_milestones": len(completed) + len(remaining),
+        # No pinning store and no scored advisory rubric exist yet; the projection reports
+        # neutral values instead of inventing priority numbers (spec §2.2: never profit-based).
+        "owner_pinned": False,
+        "priority": {
+            "falsifiability": 0,
+            "data_readiness": 0,
+            "novelty": 0,
+            "information_gain_per_cost": 0,
+        },
+        "budget": _budget_minutes(case),
+        "updated_at": updated_at,
+    }
 
 
 def research_report_projection(store: ResearchPacketStore, project_id: str) -> dict[str, object]:
@@ -28,4 +801,13 @@ def research_report_projection(store: ResearchPacketStore, project_id: str) -> d
     return build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
 
 
-__all__ = ["ResearchPacketStore", "research_report_projection"]
+__all__ = [
+    "ResearchPacketStore",
+    "derive_research_scorecard",
+    "research_backlog_row",
+    "research_evidence_hub_projection",
+    "research_hypothesis_card",
+    "research_report_projection",
+    "research_scorecard_inputs",
+    "research_scorecard_projection",
+]

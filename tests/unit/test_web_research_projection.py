@@ -33,6 +33,8 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
     assert _research.launch("project", data_dir=tmp_path, stage="pilot") == {"ok": True}
     assert _research.status("project", data_dir=tmp_path) == {"ok": True}
     assert _research.report("project", data_dir=tmp_path) == {"ok": True}
+    assert _research.list_cases(data_dir=tmp_path, limit=25, offset=5) == {"ok": True}
+    assert _research.evidence_hub("project", data_dir=tmp_path) == {"ok": True}
 
     assert calls == [
         (["research", "capture", "idea", "--json", "--name", "case"], tmp_path, 60.0),
@@ -58,7 +60,43 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
         (["research", "run", "pilot", "project", "--json"], tmp_path, 120.0),
         (["research", "status", "project", "--json"], tmp_path, 60.0),
         (["research", "report", "project", "--json"], tmp_path, 60.0),
+        (
+            ["research", "list", "--limit", "25", "--offset", "5", "--json"],
+            tmp_path,
+            60.0,
+        ),
+        (["research", "evidence-hub", "project", "--json"], tmp_path, 60.0),
     ]
+
+
+def test_scorecard_projection_extracts_the_status_scorecard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run_json(args: list[str], *, data_dir: Path, timeout_seconds: float = 60.0) -> object:
+        del data_dir, timeout_seconds
+        calls.append(args)
+        return {
+            "phase": "triage",
+            "scorecard": {"scorecard_schema": "ResearchReadinessScorecardV1"},
+        }
+
+    monkeypatch.setattr(_research, "_run_json", fake_run_json)
+    assert _research.scorecard("project", data_dir=tmp_path) == {
+        "scorecard_schema": "ResearchReadinessScorecardV1"
+    }
+    assert calls == [["research", "status", "project", "--json"]]
+
+    def missing_scorecard(
+        args: list[str], *, data_dir: Path, timeout_seconds: float = 60.0
+    ) -> object:
+        del args, data_dir, timeout_seconds
+        return {"phase": "triage"}
+
+    monkeypatch.setattr(_research, "_run_json", missing_scorecard)
+    with pytest.raises(RuntimeError, match="invalid research scorecard projection"):
+        _research.scorecard("project", data_dir=tmp_path)
 
 
 def test_research_projection_rejects_unavailable_stages_and_answer_axes(tmp_path: Path) -> None:

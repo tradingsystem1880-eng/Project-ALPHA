@@ -27,7 +27,13 @@ from alpha_cli.research_dossier import (
     export_research_dossier,
     verify_research_dossier,
 )
-from alpha_cli.research_gate_packet import research_report_projection
+from alpha_cli.research_gate_packet import (
+    research_backlog_row,
+    research_evidence_hub_projection,
+    research_hypothesis_card,
+    research_report_projection,
+    research_scorecard_projection,
+)
 from alpha_cli.research_intake import draft_exploration_contract
 from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
@@ -975,6 +981,47 @@ def run_research(
     )
 
 
+@research_app.command("list")
+def list_cases(
+    limit: int = typer.Option(50, min=1, max=100, help="bounded page size"),
+    offset: int = typer.Option(0, min=0, help="page offset"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List bounded research-case backlog rows, newest research activity first."""
+    try:
+        rows = _store().list_research_cases(limit=limit + 1, offset=offset)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    items = [
+        research_backlog_row(cast(Mapping[str, object], row["case"]), str(row["updated_at"]))
+        for row in rows[:limit]
+    ]
+    _emit(
+        {"items": items, "limit": limit, "offset": offset, "has_more": len(rows) > limit},
+        json_out=json_out,
+        fallback="\n".join(
+            f"{item['case_id']} {item['phase']}/{item['execution_state']} {item['title']}"
+            for item in items
+        )
+        or "no research cases",
+    )
+
+
+@research_app.command("evidence-hub")
+def evidence_hub(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Project the eleven-section Evidence Hub with honest NOT_TESTED empty states."""
+    try:
+        hub = research_evidence_hub_projection(_store(), project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    sections = hub["sections"]
+    section_names = ", ".join(sections) if isinstance(sections, dict) else ""
+    _emit(hub, json_out=json_out, fallback=f"evidence hub sections: {section_names}")
+
+
 @research_app.command("status")
 def status(
     project_id: str,
@@ -985,8 +1032,14 @@ def status(
         row = _store().research_case_summary(project_id)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
+    active = row.get("active_contract")
+    payload = active.get("payload") if isinstance(active, dict) else None
+    card = research_hypothesis_card(payload if isinstance(payload, dict) else {})
+    scorecard = research_scorecard_projection(_store(), project_id, summary=row)
     _emit(
-        row,
+        # Additive card/scorecard keys only: the summary itself stays byte-identical
+        # because the dossier embeds and hashes it.
+        {**row, "hypothesis_card": card, "scorecard": scorecard},
         json_out=json_out,
         fallback=f"{row['phase']} / {row['execution_state']}: {row['next_action']}",
     )
