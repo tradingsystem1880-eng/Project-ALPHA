@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -156,3 +157,153 @@ def test_d1_executor_runs_end_to_end_on_the_daily_fallback_lane(tmp_path: Path) 
     primary = evidence["primary_result"]
     assert primary["status"] == "TESTED"
     assert int(primary["sample_size"]) >= 10  # ~12 planted events reach the discovery share
+
+
+def _empirical_contract(ref: Mapping[str, object], bars: Any) -> dict[str, Any]:
+    """The real R6a approval payload: an empirical daily exploration contract."""
+    from alpha_cli.research_cmds import _approval_payload, _EmpiricalDataset
+    from alpha_cli.research_intake import draft_exploration_contract
+
+    preview = draft_exploration_contract(
+        "SPY bounces after double bottoms on the daily chart",
+        resolutions={
+            "chart_construction": "tiingo_daily_fallback",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "next_regular_session_return_50bp",
+        },
+    )
+    return _approval_payload(
+        preview,
+        source_pack_id="sp_" + "b" * 64,
+        empirical_dataset=_EmpiricalDataset(ref=dict(ref), bars=bars),
+    )
+
+
+def _sealed_boundary(contract: Mapping[str, object]) -> Any:
+    from alpha_research import ResearchD2BoundaryV1
+
+    protocol = contract["protocol"]
+    assert isinstance(protocol, dict)
+    topology = protocol["evidence_topology"]
+    assert isinstance(topology, dict)
+    boundary_value = topology["boundary"]
+    assert isinstance(boundary_value, dict)
+    return ResearchD2BoundaryV1.from_dict(boundary_value)
+
+
+def test_deep_run_verifies_the_sealed_empirical_boundary_end_to_end(tmp_path: Path) -> None:
+    """R6b (ADR-0026): the empirical lane runs against its own sealed group boundary."""
+    lows = _daily_lows()
+    ref = _registered_daily_ref(tmp_path, lows)
+    bars = load_registered_research_bars(tmp_path, ref=ref)
+    contract = _empirical_contract(ref, bars)
+    boundary = _sealed_boundary(contract)
+    manifest = run_deep_research(
+        tmp_path,
+        project_id=PROJECT_ID,
+        contract_id=CONTRACT_ID,
+        contract=contract,
+        bars=bars,
+        boundary=boundary,
+    )
+    assert manifest["real_market_evidence"] is True
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    hashes = contract["hashes"]
+    assert isinstance(hashes, dict)
+    assert manifest["dataset_hash"] == bars.dataset.content_sha256 == hashes["data"]
+    evidence = json.loads(
+        (tmp_path / "runs" / str(manifest["run_id"]) / "research_gate_evidence.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert evidence["primary_result"]["status"] == "TESTED"
+
+
+def test_deep_run_rejects_misaligned_or_foreign_boundaries(tmp_path: Path) -> None:
+    from alpha_research import ResearchD2BoundaryV1, ResearchEvidenceSharesV1
+
+    lows = _daily_lows()
+    ref = _registered_daily_ref(tmp_path, lows)
+    bars = load_registered_research_bars(tmp_path, ref=ref)
+    contract = _empirical_contract(ref, bars)
+    real = _sealed_boundary(contract)
+    groups = [bar.start.date().isoformat() for bar in bars.bars]
+
+    def _variant(**overrides: Any) -> Any:
+        arguments: dict[str, Any] = {
+            "dataset_fingerprint": real.dataset_fingerprint,
+            "eligible_groups": groups,
+            "chart_fingerprint": real.chart_fingerprint,
+            "event_formula": real.event_formula,
+            "event_availability_timestamp": real.event_availability_timestamp,
+            "primary_endpoint": real.primary_endpoint,
+            "primary_horizon": real.primary_horizon,
+            "outcome_overlap_embargo_groups": real.outcome_overlap_embargo_groups,
+        }
+        arguments.update(overrides)
+        return ResearchD2BoundaryV1.from_eligible_groups(**arguments)
+
+    for boundary, message in (
+        (_variant(dataset_fingerprint="f" * 64), "dataset fingerprint"),
+        (_variant(eligible_groups=list(reversed(groups))), "eligible groups"),
+        (
+            _variant(
+                shares=ResearchEvidenceSharesV1(
+                    d0_percent=0, d1_percent=61, d2_percent=19, d3_percent=20
+                )
+            ),
+            "does not align",
+        ),
+    ):
+        with pytest.raises(DataError, match=message):
+            run_deep_research(
+                tmp_path,
+                project_id=PROJECT_ID,
+                contract_id=CONTRACT_ID,
+                contract=contract,
+                bars=bars,
+                boundary=boundary,
+            )
+
+
+@pytest.mark.bias_guard
+def test_daily_deep_run_never_reads_confirmation_or_holdout_sessions(tmp_path: Path) -> None:
+    """Rewriting D2/D3 session-daily bars must not change any empirical D1 measurement."""
+    lows = _daily_lows()
+    clean_dir = tmp_path / "clean"
+    clean_dir.mkdir()
+    ref = _registered_daily_ref(clean_dir, lows)
+    bars = load_registered_research_bars(clean_dir, ref=ref)
+    contract = _empirical_contract(ref, bars)
+    manifest = run_deep_research(
+        clean_dir,
+        project_id=PROJECT_ID,
+        contract_id=CONTRACT_ID,
+        contract=contract,
+        bars=bars,
+        boundary=_sealed_boundary(contract),
+    )
+    clean_analyses = (
+        clean_dir / "runs" / str(manifest["run_id"]) / "d1_analyses.json"
+    ).read_bytes()
+    stop = json.loads(clean_analyses)["measurements"]["topology"]["discovery_stop"]
+
+    poisoned_dir = tmp_path / "poisoned"
+    poisoned_dir.mkdir()
+    poisoned_lows = [*lows[:stop], *([5_000.0] * (len(lows) - stop))]
+    poisoned_ref = _registered_daily_ref(poisoned_dir, poisoned_lows)
+    poisoned_bars = load_registered_research_bars(poisoned_dir, ref=poisoned_ref)
+    poisoned_contract = _empirical_contract(poisoned_ref, poisoned_bars)
+    poisoned_manifest = run_deep_research(
+        poisoned_dir,
+        project_id=PROJECT_ID,
+        contract_id=CONTRACT_ID,
+        contract=poisoned_contract,
+        bars=poisoned_bars,
+        boundary=_sealed_boundary(poisoned_contract),
+    )
+    poisoned_analyses = (
+        poisoned_dir / "runs" / str(poisoned_manifest["run_id"]) / "d1_analyses.json"
+    ).read_bytes()
+    assert poisoned_analyses == clean_analyses

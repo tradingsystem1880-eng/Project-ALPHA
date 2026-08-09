@@ -40,6 +40,7 @@ from alpha_research import (
     ResearchChartData,
     ResearchChartPoint,
     ResearchChartSeries,
+    ResearchD2BoundaryV1,
     ResearchDatasetRef,
     ResearchEvidenceTopology,
     SecondaryHypothesis,
@@ -1034,9 +1035,15 @@ def run_deep_research(
     contract_id: str,
     contract: Mapping[str, object],
     bars: EqualDurationResearchBars,
+    boundary: ResearchD2BoundaryV1 | None = None,
     on_checkpoint: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
-    """Execute the frozen analysis plan on the discovery share and publish one immutable run."""
+    """Execute the frozen analysis plan on the discovery share and publish one immutable run.
+
+    When the sealed ``boundary`` is supplied (the empirical lane), the loaded dataset, its
+    session groups, and the executable discovery cut are verified against the approval-time
+    commitment before any family runs.
+    """
     if _PROJECT_ID_RE.fullmatch(project_id) is None:
         raise DataError("D1 execution requires a canonical project_id")
     if _CONTRACT_ID_RE.fullmatch(contract_id) is None:
@@ -1049,6 +1056,16 @@ def run_deep_research(
     dataset_hash = bars.dataset.content_sha256
     if _SHA256_RE.fullmatch(dataset_hash) is None:
         raise DataError("D1 execution requires a content-addressed dataset hash")
+    if boundary is not None:
+        if boundary.dataset_fingerprint != dataset_hash:
+            raise DataError(
+                "sealed boundary dataset fingerprint does not match the loaded research dataset"
+            )
+        groups = [bar.start.date().isoformat() for bar in bars.bars]
+        if not boundary.verify_eligible_groups(groups):
+            raise DataError(
+                "loaded session groups do not reproduce the sealed boundary's eligible groups"
+            )
 
     horizons = [
         int(value)
@@ -1058,6 +1075,13 @@ def run_deep_research(
     ]
     embargo = max(horizons) if horizons else 1
     data = _D1Data(bars, spec, embargo)
+    if boundary is not None and (
+        data.discovery_stop != boundary.d1.stop_index
+        or data.topology.confirmation.stop != boundary.d2.stop_index
+    ):
+        raise DataError(
+            "the executable discovery share does not align with the sealed boundary's D1 zone"
+        )
 
     families: dict[str, object] = {}
     skipped: list[dict[str, object]] = []

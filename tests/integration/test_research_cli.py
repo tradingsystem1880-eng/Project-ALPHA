@@ -1817,6 +1817,81 @@ def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_res
     assert manifest["watermark"] == "EXPLORATORY"
     assert manifest["real_market_evidence"] is False  # the D0 pilot itself stays synthetic
 
+    # R6b (ADR-0026): the governed deep run executes on the registered daily dataset.
+    deep = _invoke("run", "deep", project_id)
+    deep_manifest = cast(dict[str, object], deep["manifest"])
+    assert deep_manifest["evidence_zone"] == "D1"
+    assert deep_manifest["real_market_evidence"] is True
+    assert deep_manifest["watermark"] == "EXPLORATORY"
+    assert deep_manifest["eligible_for_holdout_or_execution"] is False
+    assert deep_manifest["dataset_hash"] == data_hash  # the approval-frozen dataset bytes
+    deep_attempt = cast(dict[str, object], deep["attempt"])
+    assert deep_attempt["status"] == "completed"
+    assert deep_attempt["kind"] == "d1-deep-research"
+    deep_case = cast(dict[str, object], deep["case"])
+    assert deep_case["phase"] == "deep_research"
+
+
+def _approved_empirical_daily_project(tmp_path: Path) -> tuple[str, str]:
+    """Register the daily SPY dataset and drive one empirical case into deep_research."""
+    ref_id = _register_daily_dataset(tmp_path, "SPY")
+    captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    drafted = _invoke(
+        *_daily_draft_args(project_id, str(pack["pack_id"])),
+        "--dataset",
+        ref_id,
+    )
+    contract = cast(dict[str, object], drafted["contract"])
+    payload = cast(dict[str, object], contract["payload"])
+    data_hash = str(cast(dict[str, object], payload["hashes"])["data"])
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        str(contract["contract_id"]),
+        "--actor",
+        "owner",
+        "--reason",
+        "The registered daily dataset and bounded plan suit empirical D1 exploration.",
+    )
+    pilot = _invoke("run", "pilot", project_id)
+    assert cast(dict[str, object], pilot["case"])["phase"] == "deep_research"
+    return project_id, data_hash
+
+
+def test_empirical_deep_run_fails_closed_on_drifted_dataset_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A registered dataset that no longer reproduces the frozen data hash cannot run."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, _ = _approved_empirical_daily_project(tmp_path)
+
+    from alpha_cli.research_d1 import registered_synthetic_d1_bars
+
+    monkeypatch.setattr(
+        research_cmds,
+        "load_registered_research_bars",
+        lambda *args, **kwargs: registered_synthetic_d1_bars(),
+    )
+    blocked = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "approval-frozen data hash" in blocked.output
+
 
 def test_empirical_daily_draft_fails_closed_on_missing_or_mismatched_datasets(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -1909,7 +1984,7 @@ def test_approval_payload_rejects_inconsistent_empirical_bindings() -> None:
         },
     )
     hourly_bars = _bars(_GENERATION_60M, [100.0 + i for i in range(25)], "d0-planted", "e" * 64)
-    ref = {
+    ref: dict[str, object] = {
         "ref_id": "rd_" + "f" * 64,
         "instrument": "SPY",
         "provider": "yfinance",

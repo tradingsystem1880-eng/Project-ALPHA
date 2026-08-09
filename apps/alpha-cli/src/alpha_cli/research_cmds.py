@@ -268,6 +268,41 @@ def _empirical_dataset(store: ControlStore, ref_id: str) -> _EmpiricalDataset:
     return _EmpiricalDataset(ref=ref, bars=bars)
 
 
+def _empirical_d1_bars(
+    store: ControlStore, payload: Mapping[str, object]
+) -> tuple[EqualDurationResearchBars, ResearchD2BoundaryV1]:
+    """Reload the approval-frozen dataset and sealed boundary, fail-closed on any drift.
+
+    The frozen ``hashes.data`` and the protocol's ``empirical_dataset.content_sha256`` must
+    both reproduce the content hash of the dataset as loaded RIGHT NOW; the sealed boundary
+    is reconstructed from its self-verifying serialization so the executor can prove the
+    discovery cut against the approval-time group commitment.
+    """
+
+    protocol = payload.get("protocol")
+    section = None if not isinstance(protocol, Mapping) else protocol.get("empirical_dataset")
+    if not isinstance(section, Mapping):
+        raise DataError("the empirical boundary contract carries no frozen dataset binding")
+    binding = _empirical_dataset(store, str(section.get("ref_id", "")))
+    loaded_sha = binding.bars.dataset.content_sha256
+    hashes = payload.get("hashes")
+    frozen = None if not isinstance(hashes, Mapping) else hashes.get("data")
+    if frozen != loaded_sha or section.get("content_sha256") != loaded_sha:
+        raise DataError(
+            "registered dataset bytes no longer reproduce the approval-frozen data hash; "
+            "empirical deep research cannot run on drifted data"
+        )
+    topology_value = (
+        None if not isinstance(protocol, Mapping) else protocol.get("evidence_topology")
+    )
+    boundary_value = (
+        None if not isinstance(topology_value, Mapping) else topology_value.get("boundary")
+    )
+    if not isinstance(boundary_value, Mapping):
+        raise DataError("the empirical contract carries no sealed evidence boundary")
+    return binding.bars, ResearchD2BoundaryV1.from_dict(boundary_value)
+
+
 def _approval_payload(
     draft: Mapping[str, object],
     *,
@@ -1120,14 +1155,17 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 "revision or disposition is required"
             )
         protocol = payload.get("protocol")
-        boundary = None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
-        boundary_kind = None if not isinstance(boundary, Mapping) else boundary.get("kind")
-        if boundary_kind != "synthetic_acceptance_fixture":
-            raise DataError(
-                "Gate-4 empirical D1 requires a qualified registered research dataset lane; "
-                "only the registered synthetic boundary is executable"
-            )
-        bars = registered_synthetic_d1_bars()
+        authority = (
+            None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
+        )
+        boundary_kind = None if not isinstance(authority, Mapping) else authority.get("kind")
+        sealed_boundary: ResearchD2BoundaryV1 | None = None
+        if boundary_kind == "synthetic_acceptance_fixture":
+            bars = registered_synthetic_d1_bars()
+        elif boundary_kind == "empirical_dataset":
+            bars, sealed_boundary = _empirical_d1_bars(store, payload)
+        else:
+            raise DataError("deep research requires a registered boundary authority kind")
         if execution_state == "idle":
             store.transition_research_execution(
                 project_id,
@@ -1180,6 +1218,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 contract_id=contract_id,
                 contract=payload,
                 bars=bars,
+                boundary=sealed_boundary,
                 on_checkpoint=on_checkpoint,
             )
         except Exception as run_error:

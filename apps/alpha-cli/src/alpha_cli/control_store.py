@@ -2052,6 +2052,32 @@ class ControlStore:
             ).hexdigest()[:16]
             if run_id != expected_run_id:
                 raise DataError("research D0 run_id does not match its content-derived identity")
+        if phase == "deep_research":
+            manifest_dataset_hash = manifest.get("dataset_hash")
+            if (
+                not isinstance(manifest_dataset_hash, str)
+                or _SHA256_RE.fullmatch(manifest_dataset_hash) is None
+            ):
+                raise DataError("research D1 run has no content-addressed dataset hash")
+            # An empirical contract froze its dataset bytes at approval (hashes.data); the
+            # run must claim exactly those bytes. Synthetic lanes carry data=None and are
+            # bound through the content-derived run identity below instead.
+            frozen_data = hashes.get("data")
+            if frozen_data is not None:
+                expected["dataset_hash"] = frozen_data
+            run_identity = {
+                "command": expected_command,
+                "project_id": project_id,
+                "research_contract_id": contract_id,
+                "contract_hash": contract_hash,
+                "dataset_hash": manifest_dataset_hash,
+                "execution_fingerprint": config_fingerprint,
+            }
+            expected_run_id = hashlib.sha256(
+                _canonical_json(run_identity, "research D1 run identity").encode("utf-8")
+            ).hexdigest()[:16]
+            if run_id != expected_run_id:
+                raise DataError("research D1 run_id does not match its content-derived identity")
         mismatches = [field for field, value in expected.items() if manifest.get(field) != value]
         if mismatches:
             raise DataError("research run authority mismatch: " + ", ".join(sorted(mismatches)))
