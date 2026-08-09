@@ -194,3 +194,14 @@ occurs:
 - the Workstation binds beyond loopback or becomes multi-user/hosted;
 - ALPHA is prepared for publication or distribution; or
 - the owner chooses a root project license.
+
+## Literature acquisition worker (`workers/literature`, ADR-0024)
+
+The isolated literature worker introduces **zero third-party runtime dependencies**: it is
+Python-stdlib-only (urllib, json, hashlib, xml.etree with DOCTYPE/ENTITY markup refused).
+Its dev group pins the same ruff/mypy/pytest tools already reviewed for the Qlib worker.
+`workers/literature/uv.lock` is the exact resolution input for that optional process. Network
+access is limited to the ADR-0024 approved metadata services (OpenAlex, Crossref, Unpaywall,
+arXiv) and open-access/owner-provided documents; every stored object carries an
+`UNTRUSTED_SOURCE` receipt and grants no license or redistribution right beyond the source's
+own terms.

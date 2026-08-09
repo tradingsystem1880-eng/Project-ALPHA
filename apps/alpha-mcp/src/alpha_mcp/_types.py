@@ -116,6 +116,32 @@ class ResearchCaseOut(TypedDict):
     scorecard: NotRequired[JsonObject]
 
 
+class SourceSearchOut(TypedDict):
+    items: list[JsonObject]
+    limit: int
+    offset: int
+
+
+class SourceClaimOut(TypedDict):
+    claim_id: str
+    revision: int
+    project_id: str
+    source_id: str
+    contract_id: str
+    claim_text: str
+    direction: str
+    strength: str
+    method_summary: str
+    sample_summary: str
+    markets: list[str]
+    limitations: str
+    status: str
+    author: str
+    author_kind: str
+    screened_by: str | None
+    created_at: str
+
+
 class DataInventoryOut(TypedDict):
     symbols: list[str]
 

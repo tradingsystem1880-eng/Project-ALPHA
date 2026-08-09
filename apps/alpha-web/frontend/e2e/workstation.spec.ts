@@ -223,7 +223,32 @@ const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
       status: 'NOT_TESTED',
       note: 'No registered research datasets; the data plane arrives in a later phase.',
     },
-    literature: { claims: [], sources: [], status: 'INSUFFICIENT' },
+    literature: {
+      claims: [
+        {
+          claim_id: `sc_${'b'.repeat(64)}`,
+          direction: 'supports',
+          strength: 'moderate',
+          status: 'screened',
+          claim_text: 'Month-end index drift is positive pre-2010.',
+          source_id: `rs_${'c'.repeat(64)}`,
+          author_kind: 'agent',
+          limitations: 'Post-publication decay is not addressed.',
+        },
+        {
+          claim_id: `sc_${'d'.repeat(64)}`,
+          direction: 'contradicts',
+          strength: 'weak',
+          status: 'draft',
+          claim_text: 'The effect vanished after decimalization.',
+          source_id: `rs_${'c'.repeat(64)}`,
+          author_kind: 'agent',
+          limitations: 'Single-market sample.',
+        },
+      ],
+      sources: [],
+      status: 'SUPPORTING',
+    },
     mechanism: {
       mechanism: 'Revisited support may concentrate demand or reduce selling pressure.',
       interpretation: 'Predictive association, not a causal effect.',
@@ -1080,6 +1105,10 @@ test('Research Command Center desk drives the cockpit and evidence hub from the 
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
 
   await expect(page.getByRole('tab', { name: 'Evidence for', exact: true })).toBeVisible()
+  // Literature claims render screened vs draft distinctly, claims map before bibliography.
+  await page.getByRole('tab', { name: 'Literature', exact: true }).click()
+  await expect(page.getByText('SCREENED', { exact: true })).toBeVisible()
+  await expect(page.getByText('DRAFT — UNSCREENED', { exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Falsification', exact: true }).click()
   await expect(page.getByText('Shuffled-label control shows no effect')).toBeVisible()
   await expect(page.getByText('NOT_TESTED', { exact: true }).first()).toBeVisible()

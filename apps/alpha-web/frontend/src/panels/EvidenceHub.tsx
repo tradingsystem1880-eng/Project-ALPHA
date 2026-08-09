@@ -95,14 +95,35 @@ function SectionBody({
       )
     case 'literature': {
       const literature = sections.literature
+      const claims = literature.claims as Array<Record<string, unknown>>
       return (
         <>
-          {literature.claims.length === 0 ? (
-            <Placeholder big="NO SCREENED CLAIMS">
-              Claim-level literature evidence arrives with the source plane; screened sources
-              are listed below in the meantime.
+          {claims.length === 0 ? (
+            <Placeholder big="NO CLAIMS RECORDED">
+              Claim-level literature evidence is drafted by Codex and elevated only by owner
+              screening; screened sources are listed below in the meantime.
             </Placeholder>
-          ) : null}
+          ) : (
+            <div className="research-findings" aria-label="Claims map">
+              {claims.map((claim) => {
+                const claimId = String(claim['claim_id'] ?? '')
+                const status = String(claim['status'] ?? 'draft')
+                return (
+                  <div key={claimId}>
+                    <span className="eyebrow">
+                      {String(claim['direction'] ?? '')} · {String(claim['strength'] ?? '')} ·{' '}
+                      {String(claim['author_kind'] ?? '')}
+                    </span>
+                    <span className={status === 'screened' ? 'chip pass' : 'chip'}>
+                      {status === 'screened' ? 'SCREENED' : 'DRAFT — UNSCREENED'}
+                    </span>
+                    <p>{String(claim['claim_text'] ?? '')}</p>
+                    <p className="muted">{String(claim['limitations'] ?? '')}</p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           {literature.sources.length ? (
             <div className="research-findings">
               {literature.sources.map((source) => (

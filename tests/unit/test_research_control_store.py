@@ -3749,3 +3749,197 @@ def test_data_audit_refuses_drifted_bytes_and_unsupported_kinds(
         bad_range["start_ts"] = "2021-01-01"
         bad_range["end_ts"] = "2020-01-01"
         run_data_audit(tmp_path, project_id=project_id, ref=bad_range)
+
+
+def test_source_records_gain_typed_doi_year_authors_columns(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    source = store.create_research_source(
+        PROJECT_ID,
+        title="Technical patterns and subsequent returns",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/EXAMPLE",
+        year=2019,
+        authors=["A. Author", "B. Author"],
+        at=START,
+    )
+    # The DOI normalizes to lowercase; authors round-trip as a typed list.
+    assert source["doi"] == "10.0000/example"
+    assert source["year"] == 2019
+    assert source["authors"] == ["A. Author", "B. Author"]
+    fetched = store.get_research_source(str(source["source_id"]))
+    assert fetched["doi"] == "10.0000/example"
+    assert fetched["year"] == 2019
+    assert fetched["authors"] == ["A. Author", "B. Author"]
+
+    with pytest.raises(DataError, match="year"):
+        store.create_research_source(
+            PROJECT_ID,
+            title="Bad year",
+            locator="doi:10.0000/bad",
+            provider="crossref",
+            access_mode="metadata_only",
+            year=99,
+        )
+    with pytest.raises(DataError, match="authors"):
+        store.create_research_source(
+            PROJECT_ID,
+            title="Bad authors",
+            locator="doi:10.0000/bad2",
+            provider="crossref",
+            access_mode="metadata_only",
+            authors=["", "ok"],
+        )
+
+
+def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    summary = store.research_case_summary(project_id)
+    contract_id = str(summary["active_contract_id"])
+    source = store.create_research_source(
+        project_id,
+        title="Technical patterns and subsequent returns",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/example",
+        year=2019,
+        at=START + timedelta(minutes=1),
+    )
+    source_id = str(source["source_id"])
+
+    claim = store.draft_source_claim(
+        project_id,
+        source_id=source_id,
+        contract_id=contract_id,
+        claim_text="Double-bottom patterns show small positive drift pre-2005 that decays.",
+        direction="supports",
+        strength="weak",
+        method_summary="Event study over daily US equities with matched controls.",
+        sample_summary="1962-2004, ~2,000 events.",
+        markets=["US_EQUITY"],
+        limitations="Pre-decimalization microstructure; publication-era decay likely.",
+        author="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=2),
+    )
+    claim_id = str(claim["claim_id"])
+    assert claim_id.startswith("sc_")
+    assert claim["status"] == "draft"
+    assert claim["revision"] == 1
+
+    # Screening appends a new revision; the draft row survives unchanged (append-only).
+    screened = store.screen_source_claim(
+        project_id,
+        claim_id=claim_id,
+        actor="owner",
+        at=START + timedelta(minutes=3),
+    )
+    assert screened["status"] == "screened"
+    assert screened["revision"] == 2
+    assert screened["screened_by"] == "owner"
+    rows = store.list_source_claims(project_id)
+    assert [(row["claim_id"], row["revision"], row["status"]) for row in rows] == [
+        (claim_id, 2, "screened"),
+    ]
+    history = store.list_source_claims(project_id, include_history=True)
+    assert [(row["revision"], row["status"]) for row in history if row["claim_id"] == claim_id] == [
+        (2, "screened"),
+        (1, "draft"),
+    ]
+
+    with pytest.raises(DataError, match="already screened"):
+        store.screen_source_claim(project_id, claim_id=claim_id, actor="owner")
+    with pytest.raises(DataError, match="claim direction"):
+        store.draft_source_claim(
+            project_id,
+            source_id=source_id,
+            contract_id=contract_id,
+            claim_text="x",
+            direction="proves",
+            strength="weak",
+            method_summary="m",
+            sample_summary="s",
+            markets=[],
+            limitations="l",
+            author="codex",
+            author_kind="agent",
+        )
+    with pytest.raises(DataError, match="unknown research source"):
+        store.draft_source_claim(
+            project_id,
+            source_id="rs_" + "0" * 64,
+            contract_id=contract_id,
+            claim_text="x",
+            direction="supports",
+            strength="weak",
+            method_summary="m",
+            sample_summary="s",
+            markets=[],
+            limitations="l",
+            author="codex",
+            author_kind="agent",
+        )
+
+
+def test_source_search_is_bounded_and_local_only(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    for index, title in enumerate(
+        ("Momentum everywhere", "Double bottoms revisited", "Double tops and bottoms")
+    ):
+        store.create_research_source(
+            PROJECT_ID,
+            title=title,
+            locator=f"doi:10.0000/s{index}",
+            provider="crossref",
+            access_mode="metadata_only",
+            doi=f"10.0000/s{index}",
+            at=START + timedelta(minutes=index),
+        )
+    hits = store.search_research_sources("double bottom")
+    assert [row["title"] for row in hits] == [
+        "Double bottoms revisited",
+        "Double tops and bottoms",
+    ]
+    by_doi = store.search_research_sources("10.0000/s0")
+    assert [row["title"] for row in by_doi] == ["Momentum everywhere"]
+    assert store.search_research_sources("nonexistent topic") == []
+    with pytest.raises(DataError, match="query"):
+        store.search_research_sources("")
+
+
+def test_source_record_columns_heal_on_a_pre_r4_store(tmp_path: Path) -> None:
+    """A schema-v2 store predating the typed columns gains them idempotently on open."""
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        for column in ("doi", "year", "authors_json"):
+            connection.execute(f"ALTER TABLE research_source_records DROP COLUMN {column}")
+        connection.commit()
+        present = {
+            str(row[1]) for row in connection.execute("PRAGMA table_info(research_source_records)")
+        }
+        assert "doi" not in present
+    finally:
+        connection.close()
+
+    healed = ControlStore(tmp_path)
+    source = healed.create_research_source(
+        PROJECT_ID,
+        title="Post-heal typed source",
+        locator="doi:10.0000/healed",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/healed",
+        year=2020,
+        authors=["A. Author"],
+        at=START,
+    )
+    assert source["doi"] == "10.0000/healed"
+    assert healed.get_research_source(str(source["source_id"]))["year"] == 2020

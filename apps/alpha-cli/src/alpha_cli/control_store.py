@@ -278,7 +278,17 @@ _RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
     "quantpad_receipt": ("receipt_id", "response_sha256"),
 }
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd)_[0-9a-f]{64}")
+_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc)_[0-9a-f]{64}")
+_SOURCE_CLAIM_DIRECTIONS: Final = frozenset({"supports", "contradicts", "contextualizes", "method"})
+_SOURCE_CLAIM_STRENGTHS: Final = frozenset({"weak", "moderate", "strong"})
+# Columns added to research_source_records after schema v2 shipped (ADR-0024).  The heal
+# probe reads PRAGMA table_info (read-only) and only a store actually missing them takes
+# the writer lock for the idempotent ALTERs.
+_SOURCE_RECORD_ADDITIVE_COLUMNS: Final = (
+    ("doi", "TEXT"),
+    ("year", "INTEGER"),
+    ("authors_json", "TEXT"),
+)
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
@@ -541,8 +551,37 @@ CREATE TABLE IF NOT EXISTS research_source_records (
         CHECK (access_mode IN ('metadata_only', 'open_access', 'owner_provided')),
     content_hash TEXT,
     metadata_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    doi TEXT,
+    year INTEGER,
+    authors_json TEXT
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_source_claims (
+    claim_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    source_id TEXT NOT NULL REFERENCES research_source_records(source_id),
+    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    claim_text TEXT NOT NULL,
+    direction TEXT NOT NULL CHECK (direction IN (
+        'supports', 'contradicts', 'contextualizes', 'method'
+    )),
+    strength TEXT NOT NULL CHECK (strength IN ('weak', 'moderate', 'strong')),
+    method_summary TEXT NOT NULL,
+    sample_summary TEXT NOT NULL,
+    markets_json TEXT NOT NULL,
+    limitations TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('draft', 'screened')),
+    author TEXT NOT NULL,
+    author_kind TEXT NOT NULL CHECK (author_kind IN ('owner', 'agent')),
+    screened_by TEXT,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (claim_id, revision)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_source_claims_project
+    ON research_source_claims(project_id, created_at, claim_id);
 
 CREATE TABLE IF NOT EXISTS research_source_packs (
     pack_id TEXT PRIMARY KEY,
@@ -1075,6 +1114,16 @@ def _apply_schema_v2(
         raise
 
 
+def _missing_source_record_columns(connection: sqlite3.Connection) -> tuple[str, ...]:
+    present = {
+        str(row[1]) for row in connection.execute("PRAGMA table_info(research_source_records)")
+    }
+    if not present:
+        # The table itself is missing; the object-level heal recreates it with all columns.
+        return ()
+    return tuple(name for name, _ in _SOURCE_RECORD_ADDITIVE_COLUMNS if name not in present)
+
+
 def _missing_schema_objects(connection: sqlite3.Connection) -> bool:
     present = {
         str(row[0])
@@ -1093,13 +1142,18 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
     governance backfill, which runs exactly once at migration or fresh creation.
     """
 
-    if not _missing_schema_objects(connection):
+    if not _missing_schema_objects(connection) and not _missing_source_record_columns(connection):
         return
     connection.execute("BEGIN IMMEDIATE")
     try:
         if _missing_schema_objects(connection):
             _execute_static_sql_script(connection, _SCHEMA)
             _execute_static_sql_script(connection, _SCHEMA_V2)
+        for name, column_type in _SOURCE_RECORD_ADDITIVE_COLUMNS:
+            if name in _missing_source_record_columns(connection):
+                connection.execute(
+                    f"ALTER TABLE research_source_records ADD COLUMN {name} {column_type}"
+                )
         connection.commit()
     except sqlite3.Error:
         if connection.in_transaction:
@@ -1365,6 +1419,14 @@ class ControlStore:
     def _research_source_view(row: sqlite3.Row) -> dict[str, object]:
         result = dict(row)
         result["metadata"] = _decode_json(result.pop("metadata_json"), "research source metadata")
+        authors_raw = result.pop("authors_json", None)
+        if authors_raw is None:
+            result["authors"] = []
+        else:
+            authors = _decode_json(authors_raw, "research source authors")
+            if not isinstance(authors, list) or any(not isinstance(item, str) for item in authors):
+                raise DataError("corrupt research source authors")
+            result["authors"] = authors
         return result
 
     @staticmethod
@@ -2614,6 +2676,9 @@ class ControlStore:
         access_mode: str,
         metadata: Mapping[str, object] | None = None,
         content_hash: str | None = None,
+        doi: str | None = None,
+        year: int | None = None,
+        authors: Sequence[str] | None = None,
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Create or reuse one immutable, content-addressed literature/source record."""
@@ -2628,6 +2693,21 @@ class ControlStore:
         if clean_hash is not None and _SHA256_RE.fullmatch(clean_hash) is None:
             raise DataError("research source content_hash must be a lowercase SHA-256 digest")
         clean_metadata = _json_object(metadata or {}, "research source metadata")
+        clean_doi = (
+            None
+            if doi is None
+            else _required_text(doi, "research source doi", max_length=200).lower()
+        )
+        if year is not None and (
+            isinstance(year, bool) or not isinstance(year, int) or not 1800 <= year <= 2100
+        ):
+            raise DataError("research source year must be a plausible integer year")
+        clean_authors: list[str] | None = None
+        if authors is not None:
+            clean_authors = [
+                _required_text(author, "research source authors entry", max_length=200)
+                for author in authors
+            ]
         identity = {
             "schema_version": 1,
             "project_id": _canonical_uuid(project_id, "project_id"),
@@ -2638,6 +2718,13 @@ class ControlStore:
             "content_hash": clean_hash,
             "metadata": clean_metadata,
         }
+        # Typed descriptors join the identity only when supplied so pre-R4 ids stay stable.
+        if clean_doi is not None:
+            identity["doi"] = clean_doi
+        if year is not None:
+            identity["year"] = year
+        if clean_authors is not None:
+            identity["authors"] = clean_authors
         source_id = _content_id("rs", identity)
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
@@ -2649,8 +2736,8 @@ class ControlStore:
                 connection.execute(
                     """INSERT INTO research_source_records (
                         source_id, project_id, title, locator, provider, access_mode,
-                        content_hash, metadata_json, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        content_hash, metadata_json, created_at, doi, year, authors_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         source_id,
                         project_id,
@@ -2661,6 +2748,13 @@ class ControlStore:
                         clean_hash,
                         _canonical_json(clean_metadata, "research source metadata"),
                         timestamp,
+                        clean_doi,
+                        year,
+                        (
+                            None
+                            if clean_authors is None
+                            else _canonical_json(clean_authors, "research source authors")
+                        ),
                     ),
                 )
                 existing = connection.execute(
@@ -2680,6 +2774,237 @@ class ControlStore:
         if row is None:
             raise DataError(f"unknown research source {sid!r}")
         return self._research_source_view(row)
+
+    @staticmethod
+    def _source_claim_view(row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        result = dict(row)
+        markets = _decode_json(result.pop("markets_json"), "research claim markets")
+        if not isinstance(markets, list) or any(not isinstance(item, str) for item in markets):
+            raise DataError("corrupt research claim markets")
+        result["markets"] = markets
+        return result
+
+    def draft_source_claim(
+        self,
+        project_id: str,
+        *,
+        source_id: str,
+        contract_id: str,
+        claim_text: str,
+        direction: str,
+        strength: str,
+        method_summary: str,
+        sample_summary: str,
+        markets: Sequence[str],
+        limitations: str,
+        author: str,
+        author_kind: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Draft one claim-level literature statement (spec §7.2, ADR-0024).
+
+        A published paper is never auto-trusted: drafts carry their author kind, and only
+        the owner's screening appends a ``screened`` revision. Rows are append-only.
+        """
+        clean_source = _require_content_id(source_id, "research source_id", prefix="rs")
+        clean_contract = _require_content_id(contract_id, "research contract_id", prefix="rc")
+        clean_direction = _enum_value(
+            direction, "research claim direction", _SOURCE_CLAIM_DIRECTIONS
+        )
+        clean_strength = _enum_value(strength, "research claim strength", _SOURCE_CLAIM_STRENGTHS)
+        clean_text = _required_text(claim_text, "research claim text", max_length=4_000)
+        clean_method = _required_text(method_summary, "research claim method", max_length=4_000)
+        clean_sample = _required_text(sample_summary, "research claim sample", max_length=4_000)
+        clean_limits = _required_text(limitations, "research claim limitations", max_length=4_000)
+        clean_markets = [
+            _required_text(market, "research claim markets entry", max_length=64)
+            for market in markets
+        ]
+        clean_author = _required_text(author, "research claim author", max_length=200)
+        clean_author_kind = _enum_value(
+            author_kind, "research claim author kind", _RESEARCH_NOTE_AUTHOR_KINDS
+        )
+        timestamp = _at(at)
+        identity = {
+            "schema_version": 1,
+            "project_id": _canonical_uuid(project_id, "project_id"),
+            "source_id": clean_source,
+            "contract_id": clean_contract,
+            "claim_text": clean_text,
+            "direction": clean_direction,
+        }
+        claim_id = _content_id("sc", identity)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            source = connection.execute(
+                "SELECT project_id FROM research_source_records WHERE source_id = ?",
+                (clean_source,),
+            ).fetchone()
+            if source is None or source["project_id"] != identity["project_id"]:
+                raise DataError(f"unknown research source {clean_source!r} for this project")
+            self._require_research_contract(connection, project_id, clean_contract)
+            existing = connection.execute(
+                "SELECT * FROM research_source_claims WHERE claim_id = ? ORDER BY revision DESC "
+                "LIMIT 1",
+                (claim_id,),
+            ).fetchone()
+            if existing is not None:
+                return self._source_claim_view(existing)
+            connection.execute(
+                """INSERT INTO research_source_claims (
+                    claim_id, revision, project_id, source_id, contract_id, claim_text,
+                    direction, strength, method_summary, sample_summary, markets_json,
+                    limitations, status, author, author_kind, screened_by, created_at
+                ) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, NULL, ?)""",
+                (
+                    claim_id,
+                    identity["project_id"],
+                    clean_source,
+                    clean_contract,
+                    clean_text,
+                    clean_direction,
+                    clean_strength,
+                    clean_method,
+                    clean_sample,
+                    _canonical_json(clean_markets, "research claim markets"),
+                    clean_limits,
+                    clean_author,
+                    clean_author_kind,
+                    timestamp,
+                ),
+            )
+        return {
+            "claim_id": claim_id,
+            "revision": 1,
+            "project_id": identity["project_id"],
+            "source_id": clean_source,
+            "contract_id": clean_contract,
+            "claim_text": clean_text,
+            "direction": clean_direction,
+            "strength": clean_strength,
+            "method_summary": clean_method,
+            "sample_summary": clean_sample,
+            "markets": clean_markets,
+            "limitations": clean_limits,
+            "status": "draft",
+            "author": clean_author,
+            "author_kind": clean_author_kind,
+            "screened_by": None,
+            "created_at": timestamp,
+        }
+
+    def screen_source_claim(
+        self,
+        project_id: str,
+        *,
+        claim_id: str,
+        actor: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append the owner's ``screened`` revision; the draft row survives unchanged."""
+        clean_claim = _require_content_id(claim_id, "research claim_id", prefix="sc")
+        clean_actor = _required_text(actor, "research claim screener", max_length=200)
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            latest = connection.execute(
+                "SELECT * FROM research_source_claims WHERE claim_id = ? AND project_id = ? "
+                "ORDER BY revision DESC LIMIT 1",
+                (clean_claim, project_id),
+            ).fetchone()
+            if latest is None:
+                raise DataError(f"unknown research claim {clean_claim!r}")
+            if latest["status"] == "screened":
+                raise DataError(f"research claim {clean_claim!r} is already screened")
+            revision = int(latest["revision"]) + 1
+            connection.execute(
+                """INSERT INTO research_source_claims (
+                    claim_id, revision, project_id, source_id, contract_id, claim_text,
+                    direction, strength, method_summary, sample_summary, markets_json,
+                    limitations, status, author, author_kind, screened_by, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'screened', ?, ?, ?, ?)""",
+                (
+                    clean_claim,
+                    revision,
+                    latest["project_id"],
+                    latest["source_id"],
+                    latest["contract_id"],
+                    latest["claim_text"],
+                    latest["direction"],
+                    latest["strength"],
+                    latest["method_summary"],
+                    latest["sample_summary"],
+                    latest["markets_json"],
+                    latest["limitations"],
+                    latest["author"],
+                    latest["author_kind"],
+                    clean_actor,
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM research_source_claims WHERE claim_id = ? AND revision = ?",
+                (clean_claim, revision),
+            ).fetchone()
+        if row is None:  # pragma: no cover - written in this transaction.
+            raise DataError("control store failed to persist research claim screening")
+        return self._source_claim_view(row)
+
+    def list_source_claims(
+        self,
+        project_id: str,
+        *,
+        include_history: bool = False,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[dict[str, object]]:
+        """Return claims (latest revision per claim unless history is requested)."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            if include_history:
+                rows = connection.execute(
+                    """SELECT * FROM research_source_claims WHERE project_id = ?
+                    ORDER BY created_at DESC, claim_id, revision DESC LIMIT ? OFFSET ?""",
+                    (project_id, limit, offset),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """SELECT claims.* FROM research_source_claims AS claims
+                    JOIN (
+                        SELECT claim_id, MAX(revision) AS revision
+                        FROM research_source_claims WHERE project_id = ? GROUP BY claim_id
+                    ) AS latest
+                        ON latest.claim_id = claims.claim_id
+                        AND latest.revision = claims.revision
+                    ORDER BY claims.created_at DESC, claims.claim_id LIMIT ? OFFSET ?""",
+                    (project_id, limit, offset),
+                ).fetchall()
+        return [self._source_claim_view(row) for row in rows]
+
+    def search_research_sources(
+        self, query: str, *, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Local-records-only search over titles, locators, and DOIs (never the network)."""
+        clean_query = _required_text(query, "research source search query", max_length=200)
+        limit, offset = _page(limit, offset)
+        tokens = clean_query.casefold().split()
+        if not tokens or len(tokens) > 8:
+            raise DataError("research source search query must contain 1..8 terms")
+        # Every token must appear in the concatenated title/locator/DOI text (AND search).
+        clause = " AND ".join(
+            "(lower(title) || ' ' || lower(locator) || ' ' || lower(COALESCE(doi, ''))) LIKE ?"
+            for _ in tokens
+        )
+        params: list[object] = [f"%{token}%" for token in tokens]
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                f"""SELECT * FROM research_source_records
+                WHERE {clause}
+                ORDER BY created_at, source_id LIMIT ? OFFSET ?""",  # noqa: S608
+                [*params, limit, offset],
+            ).fetchall()
+        return [self._research_source_view(row) for row in rows]
 
     def create_research_source_pack(
         self,

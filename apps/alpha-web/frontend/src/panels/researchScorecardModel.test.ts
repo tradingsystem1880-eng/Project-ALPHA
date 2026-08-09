@@ -24,6 +24,7 @@ describe('research scorecard drift guard: TS twin vs committed Python fixture', 
       'closed_supported',
       'fresh_triage_unresolved',
       'registered_audited_limiting',
+      'screened_mixed_literature',
     ])
   })
 

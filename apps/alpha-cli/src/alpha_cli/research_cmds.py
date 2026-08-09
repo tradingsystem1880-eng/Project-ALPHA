@@ -55,6 +55,8 @@ context_app = typer.Typer(help="Content-addressed Codex context packets; recordi
 note_app = typer.Typer(help="Append-only Codex/owner commentary notes — never evidence.")
 protocols_app = typer.Typer(help="The Git-owned Codex research protocol library.")
 data_app = typer.Typer(help="Fail-closed research dataset registration and descriptive audits.")
+claim_app = typer.Typer(help="Claim-level literature evidence; only owner screening elevates.")
+sources_app.add_typer(claim_app, name="claim")
 research_app.add_typer(sources_app, name="sources")
 research_app.add_typer(context_app, name="context")
 research_app.add_typer(note_app, name="note")
@@ -416,6 +418,11 @@ def sources_add(
     access_mode: str = typer.Option(..., help="metadata_only|open_access|owner_provided"),
     metadata_json: str = typer.Option("{}"),
     content_hash: str | None = typer.Option(None),
+    doi: str | None = typer.Option(None, "--doi", help="typed DOI (normalized lowercase)"),
+    year: int | None = typer.Option(None, "--year", help="publication year"),
+    author: list[str] = typer.Option(  # noqa: B008
+        [], "--author", help="repeatable typed author entries"
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Record permitted metadata or lawfully retained bytes by immutable receipt."""
@@ -428,10 +435,174 @@ def sources_add(
             access_mode=access_mode,
             metadata=_object(metadata_json, "--metadata-json"),
             content_hash=content_hash,
+            doi=doi,
+            year=year,
+            authors=author or None,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"research source {row['source_id']}")
+
+
+@sources_app.command("search")
+def sources_search(
+    query: str,
+    limit: int = typer.Option(50, min=1, max=200, help="bounded page size"),
+    offset: int = typer.Option(0, min=0, help="page offset"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Search local source records by title/locator/DOI terms; never the network."""
+    try:
+        rows = _store().search_research_sources(query, limit=limit, offset=offset)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"items": rows, "limit": limit, "offset": offset},
+        json_out=json_out,
+        fallback="\n".join(f"{row['source_id']} {row['title']}" for row in rows)
+        or "no matching sources",
+    )
+
+
+@claim_app.command("add")
+def claim_add(
+    project_id: str,
+    source_id: str = typer.Option(..., "--source-id", help="the source this claim reads"),
+    contract_id: str = typer.Option(
+        ..., "--contract-id", help="the hypothesis version this claim bears on"
+    ),
+    text: str = typer.Option(..., "--text", help="the claim statement"),
+    direction: str = typer.Option(
+        ..., "--direction", help="supports|contradicts|contextualizes|method"
+    ),
+    strength: str = typer.Option(..., "--strength", help="weak|moderate|strong"),
+    method: str = typer.Option(..., "--method", help="how the source tested it"),
+    sample: str = typer.Option(..., "--sample", help="the source's sample/period"),
+    market: list[str] = typer.Option(  # noqa: B008
+        [], "--market", help="repeatable market labels"
+    ),
+    limitations: str = typer.Option(..., "--limitations", help="known limitations"),
+    author: str = typer.Option("codex", "--author", help="drafting actor"),
+    author_kind: str = typer.Option("agent", "--author-kind", help="owner or agent"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Draft one claim-level literature statement; a paper is never auto-trusted."""
+    try:
+        claim = _store().draft_source_claim(
+            project_id,
+            source_id=source_id,
+            contract_id=contract_id,
+            claim_text=text,
+            direction=direction,
+            strength=strength,
+            method_summary=method,
+            sample_summary=sample,
+            markets=market,
+            limitations=limitations,
+            author=author,
+            author_kind=author_kind,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(claim, json_out=json_out, fallback=f"drafted claim {claim['claim_id']}")
+
+
+@claim_app.command("screen")
+def claim_screen(
+    project_id: str,
+    claim_id: str,
+    actor: str = typer.Option(..., "--actor", help="owner actor performing screening"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Owner screening appends the screened revision (trusted-local authority)."""
+    try:
+        claim = _store().screen_source_claim(project_id, claim_id=claim_id, actor=actor)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(claim, json_out=json_out, fallback=f"screened claim {claim['claim_id']}")
+
+
+@claim_app.command("list")
+def claim_list(
+    project_id: str,
+    include_history: bool = typer.Option(False, "--history", help="include all revisions"),
+    limit: int = typer.Option(200, min=1, max=200, help="bounded page size"),
+    offset: int = typer.Option(0, min=0, help="page offset"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List claims (latest revision per claim unless --history)."""
+    try:
+        rows = _store().list_source_claims(
+            project_id, include_history=include_history, limit=limit, offset=offset
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"items": rows, "limit": limit, "offset": offset},
+        json_out=json_out,
+        fallback="\n".join(
+            f"{row['claim_id']} {row['direction']}/{row['strength']} {row['status']}"
+            for row in rows
+        )
+        or "no claims recorded",
+    )
+
+
+@sources_app.command("fetch")
+def sources_fetch(
+    url: str,
+    objects_dir: Path | None = typer.Option(  # noqa: B008
+        None, "--objects-dir", help="content-addressed object store (default under data_dir)"
+    ),
+    allow_host: list[str] = typer.Option(  # noqa: B008
+        [], "--allow-host", help="explicit host allowlist entries (repeatable)"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Owner-invoked driver for the isolated literature worker (the ONE network surface).
+
+    Every URL, redirect, and response is validated inside the worker via the fail-closed
+    acquisition primitives; the stored object is content-addressed and labelled
+    UNTRUSTED_SOURCE. The worker never sees credentials or shell context.
+    """
+    import subprocess
+
+    worker_dir = Path(__file__).resolve().parents[4] / "workers" / "literature"
+    if not (worker_dir / "pyproject.toml").is_file():
+        raise typer.BadParameter(
+            f"literature worker missing at {worker_dir}; it is repository content and is "
+            "unavailable outside a checked-out working tree"
+        )
+    target_dir = (
+        AlphaSettings().data_dir / "research" / "objects" if objects_dir is None else objects_dir
+    )
+    argv = [
+        "uv",
+        "run",
+        "--project",
+        str(worker_dir),
+        "literature-worker",
+        "fetch",
+        "--url",
+        url,
+        "--objects-dir",
+        str(target_dir),
+    ]
+    for host in allow_host:
+        argv += ["--allow-host", host]
+    completed = subprocess.run(  # noqa: S603 - closed argv, no shell
+        argv, capture_output=True, text=True, timeout=180, check=False
+    )
+    if completed.returncode != 0:
+        raise typer.BadParameter(
+            completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
+        )
+    result = _object(completed.stdout, "literature worker output")
+    _emit(
+        result,
+        json_out=json_out,
+        fallback=f"stored {result.get('sha256')} ({result.get('trust_label')})",
+    )
 
 
 @sources_app.command("screen")

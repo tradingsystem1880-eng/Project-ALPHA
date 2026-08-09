@@ -58,6 +58,9 @@ _EXPECTED_MCP_TOOLS = frozenset(
         "get_data_candles",
         "list_snapshots",
         "get_provider_registry",
+        "search_research_sources",
+        "get_research_source",
+        "draft_source_claim",
         "add_research_note",
         "build_research_context_packet",
         "get_research_brief",
@@ -86,8 +89,8 @@ def test_research_mcp_surface_is_pinned_without_owner_authority(
     names = {tool.name for tool in anyio.run(server.mcp.list_tools)}
 
     assert names == _EXPECTED_MCP_TOOLS
-    # ADR-0022 budget: 48 + 6 Codex-seam tools (R2) + 5 data-inventory tools (R3).
-    assert len(names) == 59
+    # ADR-0022 budget: 48 + 6 Codex-seam (R2) + 5 data-inventory (R3) + 3 source-plane (R4).
+    assert len(names) == 62
     assert {name for name in names if name.startswith("research_")} == {
         "research_capture",
         "research_get",
@@ -254,3 +257,47 @@ def test_data_inventory_tools_are_read_only_and_bounded(
     providers = server.get_provider_registry()
     provider_ids = {row["id"] for row in providers["providers"]}
     assert "quantpad" in provider_ids and "tiingo" in provider_ids
+
+
+def test_source_plane_tools_search_read_and_draft_but_never_screen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = server.research_capture("SPY drifts upward into month-end rebalancing")
+    project_id = captured["project"]["project_id"]
+    contract_id = captured["case"]["active_contract_id"]
+
+    store = ControlStore(AlphaSettings().data_dir)
+    source = store.create_research_source(
+        project_id,
+        title="Calendar effects in index returns",
+        locator="doi:10.0000/calendar",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/calendar",
+        year=2015,
+    )
+    source_id = str(source["source_id"])
+
+    found = server.search_research_sources("calendar effects")
+    assert [row["source_id"] for row in found["items"]] == [source_id]
+
+    fetched = server.get_research_source(source_id)
+    assert fetched["doi"] == "10.0000/calendar"
+
+    drafted = server.draft_source_claim(
+        project_id,
+        source_id=source_id,
+        contract_id=contract_id,
+        claim_text="Month-end drift exists pre-2010.",
+        direction="supports",
+        strength="moderate",
+        method_summary="Calendar regression.",
+        sample_summary="US 1970-2010.",
+        markets=["US_EQUITY"],
+        limitations="Decay unaddressed.",
+    )
+    assert drafted["status"] == "draft"
+    assert drafted["author_kind"] == "agent"  # MCP can never claim owner authorship
+    # And there is no screening tool: elevation stays trusted-local owner CLI.
+    assert not hasattr(server, "screen_source_claim")

@@ -21,6 +21,15 @@ class ResearchPacketStore(Protocol):
         self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
     ) -> list[dict[str, object]]: ...
 
+    def list_source_claims(
+        self,
+        project_id: str,
+        *,
+        include_history: bool = False,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[dict[str, object]]: ...
+
 
 def _case_datasets(
     store: ResearchPacketStore, payload: Mapping[str, object]
@@ -267,7 +276,7 @@ def research_scorecard_inputs(
     *,
     packet: Mapping[str, object] | None = None,
     datasets: Sequence[Mapping[str, object]] = (),
-    screened_claim_count: int = 0,
+    claims: Sequence[Mapping[str, object]] = (),
 ) -> dict[str, object]:
     """Assemble the compact, TS-twinnable inputs for the readiness scorecard.
 
@@ -330,7 +339,17 @@ def research_scorecard_inputs(
             )
             for dataset in datasets
         ),
-        "screened_claim_count": screened_claim_count,
+        "screened_claim_count": sum(1 for claim in claims if claim.get("status") == "screened"),
+        "screened_supporting_count": sum(
+            1
+            for claim in claims
+            if claim.get("status") == "screened" and claim.get("direction") == "supports"
+        ),
+        "screened_contradicting_count": sum(
+            1
+            for claim in claims
+            if claim.get("status") == "screened" and claim.get("direction") == "contradicts"
+        ),
         "blocking_questions": _question_texts(payload.get("blocking_questions")),
         "confounders_resolved": confounders_resolved,
         "confounders_unresolved": confounders_unresolved,
@@ -400,6 +419,28 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
         data_quality_state = "strong"
         data_quality_basis = "Every registered dataset audited with no findings."
     claim_count = int(_finite_number(inputs.get("screened_claim_count")))
+    supporting_claims = int(_finite_number(inputs.get("screened_supporting_count")))
+    contradicting_claims = int(_finite_number(inputs.get("screened_contradicting_count")))
+    if claim_count == 0:
+        literature_state = "insufficient"
+        literature_basis = "No screened claim-level literature evidence."
+    elif supporting_claims > 0 and contradicting_claims > 0:
+        literature_state = "mixed"
+        literature_basis = (
+            f"{supporting_claims} supporting vs {contradicting_claims} contradicting "
+            "screened claims."
+        )
+    elif contradicting_claims > 0:
+        literature_state = "contradictory"
+        literature_basis = f"{contradicting_claims} contradicting screened claims."
+    elif supporting_claims > 0:
+        literature_state = "supporting"
+        literature_basis = f"{supporting_claims} supporting screened claims."
+    else:
+        literature_state = "insufficient"
+        literature_basis = (
+            f"{claim_count} screened claims are contextual/method only; no directional evidence."
+        )
     classification = _optional_text(inputs.get("confirmation_classification"))
     primary_status = str(inputs.get("primary_result_status", "NOT_TESTED"))
     magnitude = str(inputs.get("practical_magnitude_status", "NOT_TESTED"))
@@ -517,16 +558,7 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
         ),
         _dimension("falsification", "Falsification", falsification_state, falsification_basis),
         _dimension("mechanism", "Mechanism", mechanism_state, mechanism_basis),
-        _dimension(
-            "literature",
-            "Literature",
-            "insufficient" if claim_count == 0 else "mixed",
-            (
-                "No screened claim-level literature evidence."
-                if claim_count == 0
-                else f"{claim_count} screened claims; directional aggregation pending."
-            ),
-        ),
+        _dimension("literature", "Literature", literature_state, literature_basis),
         _dimension("data_mining_risk", "Data-mining risk", mining_state, mining_basis),
     ]
 
@@ -585,7 +617,11 @@ def research_scorecard_projection(
         packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
     return derive_research_scorecard(
         research_scorecard_inputs(
-            case, payload, packet=packet, datasets=_case_datasets(store, payload)
+            case,
+            payload,
+            packet=packet,
+            datasets=_case_datasets(store, payload),
+            claims=store.list_source_claims(project_id),
         )
     )
 
@@ -710,8 +746,9 @@ def research_evidence_hub_projection(
     thesis = _mapping(payload.get("thesis"))
     card = research_hypothesis_card(payload)
     datasets = _case_datasets(store, payload)
+    claims = store.list_source_claims(project_id)
     scorecard = derive_research_scorecard(
-        research_scorecard_inputs(summary, payload, packet=packet, datasets=datasets)
+        research_scorecard_inputs(summary, payload, packet=packet, datasets=datasets, claims=claims)
     )
     scorecard_dimensions = scorecard["dimensions"]
     if not isinstance(scorecard_dimensions, list):  # pragma: no cover - deriver invariant.
@@ -773,9 +810,28 @@ def research_evidence_hub_projection(
             "note": str(data_quality.get("basis", "No registered research datasets.")),
         },
         "literature": {
-            "claims": [],
+            "claims": [
+                {
+                    "claim_id": str(claim.get("claim_id", "")),
+                    "direction": str(claim.get("direction", "")),
+                    "strength": str(claim.get("strength", "")),
+                    "status": str(claim.get("status", "")),
+                    "claim_text": str(claim.get("claim_text", "")),
+                    "source_id": str(claim.get("source_id", "")),
+                    "author_kind": str(claim.get("author_kind", "")),
+                    "limitations": str(claim.get("limitations", "")),
+                }
+                for claim in claims
+            ],
             "sources": _bounded_sources(inputs.get("sources")),
-            "status": "INSUFFICIENT",
+            "status": next(
+                (
+                    str(_mapping(entry).get("state", "insufficient")).upper()
+                    for entry in scorecard_dimensions
+                    if _mapping(entry).get("dimension_id") == "literature"
+                ),
+                "INSUFFICIENT",
+            ),
         },
         "mechanism": {
             "mechanism": mechanism if isinstance(mechanism, str) else None,

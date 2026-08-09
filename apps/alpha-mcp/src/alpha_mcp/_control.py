@@ -227,6 +227,74 @@ def research_protocol_get(protocol_id: str, *, data_dir: Path) -> dict[str, Any]
     )
 
 
+def research_sources_search(query: str, *, data_dir: Path, limit: int = 50) -> dict[str, Any]:
+    """Local-records-only source search; the network stays behind the isolated worker."""
+    limit = bound("limit", limit, 200)
+    return _object(
+        _invoke.run_json(
+            ["research", "sources", "search", query, "--limit", str(limit), "--json"],
+            data_dir=data_dir,
+        ),
+        "research source search",
+    )
+
+
+def research_source_get(source_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read one immutable source record (the ``sources screen`` read projection)."""
+    return _object(
+        _invoke.run_json(["research", "sources", "screen", source_id, "--json"], data_dir=data_dir),
+        "research source",
+    )
+
+
+def source_claim_draft(
+    project_id: str,
+    *,
+    data_dir: Path,
+    source_id: str,
+    contract_id: str,
+    claim_text: str,
+    direction: str,
+    strength: str,
+    method_summary: str,
+    sample_summary: str,
+    markets: Sequence[str],
+    limitations: str,
+) -> dict[str, Any]:
+    """Draft one claim; MCP claims are always agent-authored and never screened here."""
+    args = [
+        "research",
+        "sources",
+        "claim",
+        "add",
+        project_id,
+        "--source-id",
+        source_id,
+        "--contract-id",
+        contract_id,
+        "--text",
+        claim_text,
+        "--direction",
+        direction,
+        "--strength",
+        strength,
+        "--method",
+        method_summary,
+        "--sample",
+        sample_summary,
+        "--limitations",
+        limitations,
+        "--author",
+        "codex",
+        "--author-kind",
+        "agent",
+    ]
+    for market in markets:
+        args += ["--market", market]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research source claim")
+
+
 def data_inventory(*, data_dir: Path) -> dict[str, Any]:
     """Every stored symbol — the starting point of data feasibility."""
     return _object(_invoke.run_json(["data", "symbols", "--json"], data_dir=data_dir), "symbols")

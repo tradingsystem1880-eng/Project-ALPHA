@@ -658,6 +658,57 @@ def get_research_protocol(protocol_id: str) -> _types.ResearchProtocolOut:
 
 
 @mcp.tool()
+def search_research_sources(query: str, limit: int = 50) -> _types.SourceSearchOut:
+    """Search LOCAL source records by title/locator/DOI terms; never the network."""
+    return cast(
+        _types.SourceSearchOut,
+        _control.research_sources_search(query, data_dir=_data_dir(), limit=limit),
+    )
+
+
+@mcp.tool()
+def get_research_source(source_id: str) -> _types.JsonObject:
+    """Read one immutable source record with its typed DOI/year/author descriptors."""
+    return _control.research_source_get(source_id, data_dir=_data_dir())
+
+
+@mcp.tool()
+def draft_source_claim(
+    project_id: str,
+    source_id: str,
+    contract_id: str,
+    claim_text: str,
+    direction: Literal["supports", "contradicts", "contextualizes", "method"],
+    strength: Literal["weak", "moderate", "strong"],
+    method_summary: str,
+    sample_summary: str,
+    markets: list[str],
+    limitations: str,
+) -> _types.SourceClaimOut:
+    """Draft one claim-level literature statement (always agent-authored).
+
+    A published paper is never auto-trusted: only the owner's trusted-local CLI screening
+    elevates a draft, and the scorecard's literature dimension counts screened claims only.
+    """
+    return cast(
+        _types.SourceClaimOut,
+        _control.source_claim_draft(
+            project_id,
+            data_dir=_data_dir(),
+            source_id=source_id,
+            contract_id=contract_id,
+            claim_text=claim_text,
+            direction=direction,
+            strength=strength,
+            method_summary=method_summary,
+            sample_summary=sample_summary,
+            markets=markets,
+            limitations=limitations,
+        ),
+    )
+
+
+@mcp.tool()
 def get_data_inventory() -> _types.DataInventoryOut:
     """List every stored symbol — the read-only starting point of data feasibility."""
     return cast(_types.DataInventoryOut, _control.data_inventory(data_dir=_data_dir()))

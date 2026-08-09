@@ -34,6 +34,8 @@ export interface ResearchScorecardInputs {
   audit_blocking_count?: number
   audit_limiting_count?: number
   screened_claim_count: number
+  screened_supporting_count?: number
+  screened_contradicting_count?: number
   blocking_questions: string[]
   confounders_resolved: string[]
   confounders_unresolved: string[]
@@ -112,6 +114,28 @@ export function deriveResearchScorecard(
     }
   }
   const claimCount = inputs.screened_claim_count
+  const supportingClaims = inputs.screened_supporting_count ?? 0
+  const contradictingClaims = inputs.screened_contradicting_count ?? 0
+  let literatureState = 'insufficient'
+  let literatureBasis = 'No screened claim-level literature evidence.'
+  if (claimCount > 0) {
+    if (supportingClaims > 0 && contradictingClaims > 0) {
+      literatureState = 'mixed'
+      literatureBasis =
+        `${supportingClaims} supporting vs ${contradictingClaims} contradicting `
+        + 'screened claims.'
+    } else if (contradictingClaims > 0) {
+      literatureState = 'contradictory'
+      literatureBasis = `${contradictingClaims} contradicting screened claims.`
+    } else if (supportingClaims > 0) {
+      literatureState = 'supporting'
+      literatureBasis = `${supportingClaims} supporting screened claims.`
+    } else {
+      literatureState = 'insufficient'
+      literatureBasis =
+        `${claimCount} screened claims are contextual/method only; no directional evidence.`
+    }
+  }
   const classification = inputs.confirmation_classification
   const magnitude = inputs.practical_magnitude_status
   const power = inputs.power_status
@@ -249,14 +273,7 @@ export function deriveResearchScorecard(
     ),
     dimension('falsification', 'Falsification', falsificationState, falsificationBasis),
     dimension('mechanism', 'Mechanism', mechanismState, mechanismBasis),
-    dimension(
-      'literature',
-      'Literature',
-      claimCount === 0 ? 'insufficient' : 'mixed',
-      claimCount === 0
-        ? 'No screened claim-level literature evidence.'
-        : `${claimCount} screened claims; directional aggregation pending.`,
-    ),
+    dimension('literature', 'Literature', literatureState, literatureBasis),
     dimension('data_mining_risk', 'Data-mining risk', miningState, miningBasis),
   ]
 

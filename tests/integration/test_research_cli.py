@@ -1681,3 +1681,156 @@ def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
         ],
     )
     assert unknown_audit.exit_code != 0
+
+
+def test_claim_lifecycle_drafts_screens_and_feeds_the_literature_dimension(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "SPY drifts upward into month-end rebalancing")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    contract_id = str(cast(dict[str, object], captured["case"])["active_contract_id"])
+
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Calendar effects in index returns",
+        "--locator",
+        "doi:10.0000/calendar",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+        "--doi",
+        "10.0000/Calendar",
+        "--year",
+        "2015",
+        "--author",
+        "A. Author",
+        "--author",
+        "B. Author",
+    )
+    source_id = str(source["source_id"])
+    assert source["doi"] == "10.0000/calendar"
+    assert source["authors"] == ["A. Author", "B. Author"]
+
+    found = _invoke("sources", "search", "calendar effects")
+    assert [row["source_id"] for row in cast(list[dict[str, object]], found["items"])] == [
+        source_id
+    ]
+
+    drafted = _invoke(
+        "sources",
+        "claim",
+        "add",
+        project_id,
+        "--source-id",
+        source_id,
+        "--contract-id",
+        contract_id,
+        "--text",
+        "Month-end index drift is positive and statistically detectable pre-2010.",
+        "--direction",
+        "supports",
+        "--strength",
+        "moderate",
+        "--method",
+        "Calendar-day regression with Newey-West errors.",
+        "--sample",
+        "US index returns 1970-2010.",
+        "--market",
+        "US_EQUITY",
+        "--limitations",
+        "Post-publication decay is not addressed.",
+    )
+    claim_id = str(drafted["claim_id"])
+    assert claim_id.startswith("sc_")
+    assert drafted["status"] == "draft"
+    assert drafted["author_kind"] == "agent"
+
+    # A draft claim never moves the scorecard's literature dimension.
+    status_before = _invoke("status", project_id)
+    scorecard_before = cast(dict[str, object], status_before["scorecard"])
+    literature_before = next(
+        cast(dict[str, object], row)
+        for row in cast(list[object], scorecard_before["dimensions"])
+        if cast(dict[str, object], row)["dimension_id"] == "literature"
+    )
+    assert literature_before["state"] == "insufficient"
+
+    screened = _invoke("sources", "claim", "screen", project_id, claim_id, "--actor", "owner")
+    assert screened["status"] == "screened"
+    listed = _invoke("sources", "claim", "list", project_id)
+    rows = cast(list[dict[str, object]], listed["items"])
+    assert [(row["claim_id"], row["status"]) for row in rows] == [(claim_id, "screened")]
+
+    status_after = _invoke("status", project_id)
+    scorecard_after = cast(dict[str, object], status_after["scorecard"])
+    literature_after = next(
+        cast(dict[str, object], row)
+        for row in cast(list[object], scorecard_after["dimensions"])
+        if cast(dict[str, object], row)["dimension_id"] == "literature"
+    )
+    assert literature_after["state"] == "supporting"
+
+    hub = _invoke("evidence-hub", project_id)
+    literature_section = cast(
+        dict[str, object], cast(dict[str, object], hub["sections"])["literature"]
+    )
+    hub_claims = cast(list[dict[str, object]], literature_section["claims"])
+    assert [row["claim_id"] for row in hub_claims] == [claim_id]
+    assert hub_claims[0]["status"] == "screened"
+
+
+def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured_argv: list[list[str]] = []
+
+    class _Completed:
+        returncode = 0
+        stdout = json.dumps(
+            {
+                "final_url": "https://arxiv.org/pdf/1234v1",
+                "media_type": "application/pdf",
+                "byte_count": 10,
+                "sha256": "a" * 64,
+                "trust_label": "UNTRUSTED_SOURCE",
+                "object_path": "/objects/aa",
+                "receipt_path": "/objects/aa.receipt.json",
+            }
+        )
+        stderr = ""
+
+    def fake_run(argv: list[str], **kwargs: object) -> _Completed:
+        del kwargs
+        captured_argv.append(argv)
+        return _Completed()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    fetched = _invoke("sources", "fetch", "https://arxiv.org/pdf/1234v1")
+    assert fetched["trust_label"] == "UNTRUSTED_SOURCE"
+    assert len(captured_argv) == 1
+    argv = captured_argv[0]
+    assert argv[:4] == ["uv", "run", "--project", argv[3]]
+    assert argv[3].endswith("workers/literature")
+    assert argv[4:7] == ["literature-worker", "fetch", "--url"]
+    assert argv[7] == "https://arxiv.org/pdf/1234v1"
+    assert "--objects-dir" in argv
+
+    class _Failed(_Completed):
+        returncode = 1
+        stdout = ""
+        stderr = json.dumps({"error": "research source hostname is not allowlisted"})
+
+    monkeypatch.setattr(subprocess, "run", lambda argv, **kwargs: _Failed())
+    rejected = runner.invoke(
+        app, ["research", "sources", "fetch", "https://evil.example.com/x", "--json"]
+    )
+    assert rejected.exit_code != 0
+    assert "not allowlisted" in rejected.output

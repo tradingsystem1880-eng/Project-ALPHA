@@ -43,6 +43,17 @@ class _FakeStore:
         del instrument, limit, offset
         return []
 
+    def list_source_claims(
+        self,
+        project_id: str,
+        *,
+        include_history: bool = False,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[dict[str, object]]:
+        del project_id, include_history, limit, offset
+        return []
+
 
 def test_active_case_preserves_progress_report_and_does_not_read_terminal_inputs() -> None:
     summary: dict[str, object] = {
@@ -624,6 +635,18 @@ def test_evidence_hub_data_section_lists_registered_datasets_without_touching_ef
             self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
         ) -> list[dict[str, object]]:
             return store.list_research_datasets(instrument=instrument, limit=limit, offset=offset)
+
+        def list_source_claims(
+            self,
+            project_id: str,
+            *,
+            include_history: bool = False,
+            limit: int = 200,
+            offset: int = 0,
+        ) -> list[dict[str, object]]:
+            return store.list_source_claims(
+                project_id, include_history=include_history, limit=limit, offset=offset
+            )
 
         def research_case_summary(self, pid: str) -> dict[str, object]:
             row = store.research_case_summary(pid)
