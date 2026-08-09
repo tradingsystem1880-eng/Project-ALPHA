@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import type { components } from '../src/api/generated'
 
 const DESKS = [
+  { id: 'research', label: 'RESEARCH', activePanel: 'Research Cockpit' },
   { id: 'market', label: 'MARKET', activePanel: 'Market Chart' },
   { id: 'development', label: 'DEVELOP', activePanel: 'Development Center' },
   { id: 'kronos', label: 'KRONOS', activePanel: 'Kronos Forecast Studio' },
@@ -118,6 +119,141 @@ const RESEARCH_CLOSED_CASE: components['schemas']['ResearchCase'] = {
   },
   next_action: 'Research Case is closed.',
   remaining_milestones: [],
+}
+
+const RESEARCH_CASE_ROW: components['schemas']['ResearchCaseSummaryRow'] = {
+  case_id: RESEARCH_CASE.project_id,
+  title: RESEARCH_CASE.project_name,
+  original_idea: RESEARCH_RAW_IDEA,
+  phase: 'triage',
+  execution_state: 'idle',
+  outcome: null,
+  disposition: null,
+  next_action: RESEARCH_CASE.next_action,
+  responsibility: 'owner',
+  latest_finding: null,
+  blocker: null,
+  recovery_action: null,
+  completed_milestones: 2,
+  total_milestones: 9,
+  owner_pinned: false,
+  priority: { falsifiability: 0, data_readiness: 0, novelty: 0, information_gain_per_cost: 0 },
+  budget: { approved_units: 20, consumed_units: 0, unit: 'minutes' },
+  updated_at: '2026-08-06T00:00:00Z',
+}
+
+const RESEARCH_CASE_PAGE: components['schemas']['ResearchCasePage'] = {
+  items: [RESEARCH_CASE_ROW],
+  limit: 50,
+  offset: 0,
+  has_more: false,
+}
+
+const HYPOTHESIS_CARD_FIELDS: ReadonlyArray<
+  [components['schemas']['HypothesisCardField']['field_id'], string]
+> = [
+  ['research_question', 'Research question'],
+  ['phenomenon', 'Phenomenon'],
+  ['population', 'Population / universe'],
+  ['condition_event', 'Condition / event'],
+  ['dependent_variable', 'Dependent variable'],
+  ['horizon', 'Horizon'],
+  ['expected_direction', 'Expected direction'],
+  ['economic_mechanism', 'Economic mechanism'],
+  ['null_hypothesis', 'Null hypothesis'],
+  ['alternative_hypothesis', 'Alternative hypothesis'],
+  ['baseline', 'Baseline'],
+  ['confounders', 'Confounders'],
+  ['falsification_criteria', 'Falsification criteria'],
+  ['success_criteria', 'Success criteria'],
+]
+
+const RESEARCH_HYPOTHESIS_CARD: components['schemas']['HypothesisCard'] = {
+  card_schema: 'HypothesisCardV1',
+  fields: HYPOTHESIS_CARD_FIELDS.map(([fieldId, label]) => ({
+    field_id: fieldId,
+    label,
+    value: fieldId === 'research_question' ? RESEARCH_RAW_IDEA : null,
+    status: fieldId === 'research_question' ? 'complete' : 'missing',
+  })),
+  complete_fields: 1,
+  total_fields: 14,
+}
+
+const RESEARCH_SCORECARD: components['schemas']['ResearchScorecard'] = {
+  scorecard_schema: 'ResearchReadinessScorecardV1',
+  dimensions: [
+    { dimension_id: 'hypothesis_definition', label: 'Hypothesis definition', state: 'partial', basis: '1 of 14 hypothesis-card fields are complete.' },
+    { dimension_id: 'data_quality', label: 'Data quality', state: 'not_tested', basis: 'No registered research datasets.' },
+    { dimension_id: 'sample_adequacy', label: 'Sample adequacy', state: 'not_tested', basis: 'No power evidence has been recorded.' },
+    { dimension_id: 'effect_existence', label: 'Effect existence', state: 'not_tested', basis: 'No primary-result evidence has been recorded.' },
+    { dimension_id: 'effect_size', label: 'Effect size', state: 'not_tested', basis: 'No practical-magnitude evidence exists.' },
+    { dimension_id: 'temporal_stability', label: 'Temporal stability', state: 'not_tested', basis: 'The recorded temporal-stability finding is NOT_TESTED.' },
+    { dimension_id: 'cross_asset_stability', label: 'Cross-asset stability', state: 'not_tested', basis: 'The recorded transportability finding is NOT_TESTED.' },
+    { dimension_id: 'regime_robustness', label: 'Regime robustness', state: 'not_tested', basis: 'No regime-decomposition evidence exists yet.' },
+    { dimension_id: 'falsification', label: 'Falsification', state: 'not_tested', basis: 'The registered falsifiers have not run.' },
+    { dimension_id: 'mechanism', label: 'Mechanism', state: 'not_tested', basis: 'No mechanism evidence has been recorded.' },
+    { dimension_id: 'literature', label: 'Literature', state: 'insufficient', basis: 'No screened claim-level literature evidence.' },
+    { dimension_id: 'data_mining_risk', label: 'Data-mining risk', state: 'low', basis: 'All analysis families are contract-registered; unregistered attempts are impossible.' },
+  ],
+  unresolved_questions: { count: 3, items: RESEARCH_CASE.active_contract.payload.blocking_questions as string[] },
+  recommendation: {
+    value: 'MORE RESEARCH REQUIRED',
+    reasons: ['10 of 12 readiness dimensions are untested.', '3 unresolved questions remain.'],
+  },
+}
+
+const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
+  hub_schema: 'ResearchEvidenceHubV1',
+  project_id: RESEARCH_CASE.project_id,
+  sections: {
+    overview: {
+      original_idea: RESEARCH_RAW_IDEA,
+      phase: 'triage',
+      execution_state: 'idle',
+      next_action: RESEARCH_CASE.next_action,
+      responsibility: 'owner',
+      latest_finding: null,
+      outstanding_questions: RESEARCH_CASE.active_contract.payload.blocking_questions as string[],
+      hypothesis_card: RESEARCH_HYPOTHESIS_CARD,
+      scorecard: RESEARCH_SCORECARD,
+    },
+    data: {
+      registered_datasets: [],
+      status: 'NOT_TESTED',
+      note: 'No registered research datasets; the data plane arrives in a later phase.',
+    },
+    literature: { claims: [], sources: [], status: 'INSUFFICIENT' },
+    mechanism: {
+      mechanism: 'Revisited support may concentrate demand or reduce selling pressure.',
+      interpretation: 'Predictive association, not a causal effect.',
+      alternatives: ['day of week', 'volatility regime'],
+      confounders: [
+        { text: 'Day-of-week seasonality', status: 'unresolved' },
+        { text: 'Volatility regime', status: 'unresolved' },
+      ],
+    },
+    exploration: { charts: [], watermark: 'EXPLORATORY', status: 'NOT_TESTED' },
+    experiments: { attempts: [] },
+    evidence_for: { findings: [] },
+    evidence_against: { findings: [] },
+    falsification: {
+      falsifiers: [
+        { text: 'Shuffled-label control shows no effect', result: 'NOT_TESTED' },
+        { text: 'Randomised-price null shows no effect', result: 'NOT_TESTED' },
+      ],
+      stop_rules: ['Stop when the budget is exhausted.'],
+    },
+    robustness: { findings: [], status: 'NOT_TESTED' },
+    decision: {
+      outcome: null,
+      disposition: null,
+      d2_state: 'sealed',
+      d3_state: 'not_sealed',
+      packet_id: null,
+      packet_hash: null,
+    },
+  },
 }
 
 const RESEARCH_GATE_PACKET = {
@@ -600,6 +736,15 @@ function responseFor(route: Route, options: MockOptions): unknown {
     url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/report`
     && route.request().method() === 'GET'
   ) return RESEARCH_GATE_PACKET
+  if (url.pathname === '/api/research/cases' && route.request().method() === 'GET') {
+    return RESEARCH_CASE_PAGE
+  }
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/evidence-hub`) {
+    return RESEARCH_EVIDENCE_HUB
+  }
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/scorecard`) {
+    return RESEARCH_SCORECARD
+  }
   if (options.mlDiagnostics && url.pathname === '/api/ml/experiments') {
     return { items: [ML_EXPERIMENT], limit: 50, offset: 0, has_more: false }
   }
@@ -814,7 +959,7 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
   await page.getByRole('button', { name: 'capture · no compute' }).click()
 
-  await expect(page.getByText('TRIAGE', { exact: true })).toBeVisible()
+  await expect(page.getByText('TRIAGE', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('GATE 1 OPERATOR UNAVAILABLE', { exact: true })).toBeVisible()
   await expect(page.getByText(/D2 SEALED: research confirmation remains governed/)).toBeVisible()
   await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
@@ -829,13 +974,63 @@ test('Research Cockpit teaches the bounded terminal Gate Packet without upgradin
   await page.getByRole('option', { name: /Research Cockpit/ }).click()
   await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
   await page.getByRole('button', { name: 'open case' }).click()
-  await expect(page.getByText('CLOSED', { exact: true })).toBeVisible()
+  await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
   await page.getByRole('button', { name: 'progress report' }).click()
 
   await expect(page.getByText('90-second Research Gate conclusion', { exact: true })).toBeVisible()
   await expect(page.getByText('NO TYPED NON SYNTHETIC EVIDENCE', { exact: true })).toBeVisible()
   await expect(page.getByText('NOT TESTED', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/strategy validated false · paper ready false · places orders false/)).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('Research Command Center desk drives the cockpit and evidence hub from the backlog', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport command-center gate')
+  await preparePage(page)
+
+  await page.getByLabel('DESK').selectOption('research')
+  await expect(page.getByText('Needs you (1)')).toBeVisible()
+  await expect(page.getByText('NO CASE SELECTED', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
+  await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
+
+  await expect(page.getByRole('tab', { name: 'Evidence for', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Falsification', exact: true }).click()
+  await expect(page.getByText('Shuffled-label control shows no effect')).toBeVisible()
+  await expect(page.getByText('NOT_TESTED', { exact: true }).first()).toBeVisible()
+  // Evidence against renders with the same component and prominence as evidence for.
+  await page.getByRole('tab', { name: 'Evidence against', exact: true }).click()
+  await expect(page.getByText(/No typed findings of this direction exist yet/)).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('New Idea opens natural-language capture with zero trading-rule inputs', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport new-idea gate')
+  await preparePage(page)
+
+  await page.getByRole('button', { name: 'New Idea' }).click()
+  await expect(page.getByLabel('DESK')).toHaveValue('research')
+  const capture = page.getByLabel('Raw research idea')
+  await expect(capture).toBeVisible()
+  await expect(capture).toBeFocused()
+
+  // Spec §2.4: the capture flow is one natural-language textarea plus an optional name
+  // (and the explicit case-ID lookup) — no entry-rule, stop, target, indicator,
+  // parameter, or optimisation input of any kind.
+  const controls = page.locator(
+    '.research-intake-grid input, .research-intake-grid textarea, .research-intake-grid select',
+  )
+  await expect(controls).toHaveCount(3)
+  const descriptors = await controls.evaluateAll((nodes) =>
+    nodes.map(
+      (node) =>
+        `${node.getAttribute('aria-label') ?? ''} ${node.getAttribute('placeholder') ?? ''}`,
+    ),
+  )
+  for (const descriptor of descriptors) {
+    expect(descriptor).not.toMatch(/entry|stop|target|indicator|param|optimi|rule|size|leverage/i)
+  }
   await expectReleaseAccessibility(page)
 })
 

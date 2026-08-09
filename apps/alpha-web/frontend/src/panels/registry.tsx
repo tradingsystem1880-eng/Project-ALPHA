@@ -7,6 +7,7 @@ import type { FunctionComponent } from 'react'
 import { ActivityFeed } from './ActivityFeed'
 import { AiConsole } from './AiConsole'
 import { DataExplorer } from './DataExplorer'
+import { EvidenceHub } from './EvidenceHub'
 import { Glossary } from './Glossary'
 import { JobMonitor } from './JobMonitor'
 import { KronosStudio } from './KronosStudio'
@@ -17,6 +18,7 @@ import { PaperMonitor } from './PaperMonitor'
 import { Pipeline } from './Pipeline'
 import { PriceChart } from './PriceChart'
 import { ProviderSystem } from './ProviderSystem'
+import { ResearchBacklog } from './ResearchBacklog'
 import { ResearchCockpit } from './ResearchCockpit'
 import { RiskMonitor } from './RiskMonitor'
 import { RunBrowser } from './RunBrowser'
@@ -49,7 +51,9 @@ const RAW_PANELS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   RiskMonitor,
   Screener,
   ProviderSystem,
+  ResearchBacklog,
   ResearchCockpit,
+  EvidenceHub,
   Workspaces,
   AiConsole,
   Glossary,
@@ -83,7 +87,9 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { component: 'NativeTearSheet', title: 'Quant Tear Sheet', hint: 'native·artifact only' },
   { component: 'KronosStudio', title: 'Kronos Forecast Studio', hint: 'OHLCV paths·calibration' },
   { component: 'DevelopmentCenter', title: 'Development Center', hint: 'projects·stages' },
+  { component: 'ResearchBacklog', title: 'Research Backlog', hint: 'every case·buckets' },
   { component: 'ResearchCockpit', title: 'Research Cockpit', hint: 'thesis·protocol·D0 pilot' },
+  { component: 'EvidenceHub', title: 'Evidence Hub', hint: 'for·against·falsification' },
   { component: 'MlResearch', title: 'ML Research', hint: 'Qlib·OOS signals' },
   { component: 'MlDiagnostics', title: 'ML Signal Tear Sheet', hint: 'IC·folds·LightGBM provenance' },
   { component: 'AssetMemory', title: 'Asset Memory', hint: 'cited findings·negative results' },

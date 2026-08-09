@@ -15,6 +15,7 @@ import { api } from './api/client'
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
 import { restoreLinked, setLinked, useLinked, type LinkGroup } from './context/linked'
+import { requestNewIdea } from './context/newIdea'
 import {
   buildDeskLayout,
   buildWorkspaceLayout,
@@ -284,6 +285,15 @@ export function App() {
     setActivePreset(id)
   }, [])
 
+  // New Idea: open the research desk's capture form. Natural-language only — the flow
+  // asks for no entry rules, stops, targets, indicators, or parameters (spec §2.4).
+  const newIdea = useCallback(() => {
+    if (activePreset !== 'research') loadPreset('research')
+    const dv = dockRef.current
+    dv?.panels.find((panel) => panel.id.includes('-cockpit'))?.api.setActive()
+    window.setTimeout(requestNewIdea, 50)
+  }, [activePreset, loadPreset])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -308,6 +318,13 @@ export function App() {
           <span className="sub">WORKSTATION</span>
         </div>
         <DeskControl value={activePreset} onChange={loadPreset} />
+        <button
+          className="kbd new-idea"
+          title="Capture a raw research observation in your own words — no trading rules asked"
+          onClick={newIdea}
+        >
+          ＋ New Idea
+        </button>
         <div className="linked">
           <LinkGroupControl />
           <SymControl />
@@ -346,6 +363,7 @@ export function App() {
         onLoadWorkspace={loadWorkspace}
         onLoadPreset={loadPreset}
         onSaveWorkspace={() => openPanel('Workspaces', 'Workspaces')}
+        onNewIdea={newIdea}
       />
     </div>
   )

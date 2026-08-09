@@ -3876,3 +3876,75 @@ select.field:focus {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ── Research Command Center (R1) ─────────────────────────────────────────── */
+
+.research-backlog .backlog-bucket { margin-bottom: 14px; }
+.research-backlog .backlog-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.research-backlog .backlog-row {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #26304a);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.research-backlog .backlog-row:hover { border-color: var(--accent, #5b8dee); }
+.research-backlog .backlog-row.selected { border-color: var(--accent, #5b8dee); background: rgba(91, 141, 238, 0.08); }
+.research-backlog .backlog-title { font-weight: 600; }
+.research-backlog .backlog-meta { font-size: 11px; opacity: 0.75; }
+.research-backlog .backlog-next { font-size: 12px; }
+.research-backlog .backlog-progress { font-size: 11px; }
+
+.research-case-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line, #26304a);
+  border-radius: 6px;
+  background: var(--panel, #10131c);
+}
+.research-case-header-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.research-case-header .research-case-next { font-size: 12px; opacity: 0.85; }
+
+.scorecard-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.scorecard-strip .chip { font-size: 10px; }
+
+.scorecard-detail { display: grid; gap: 10px; }
+.scorecard-table { display: grid; gap: 6px; }
+.scorecard-row {
+  display: grid;
+  grid-template-columns: 180px auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border: 1px solid var(--line, #26304a);
+  border-radius: 6px;
+}
+.scorecard-row p { margin: 0; font-size: 12px; opacity: 0.85; }
+
+.hypothesis-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.hypothesis-card-field {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #26304a);
+  border-radius: 6px;
+}
+.hypothesis-card-field p { margin: 0; font-size: 12px; }
+
+.evidence-hub-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.evidence-hub-tabs .kbd.active { border-color: var(--accent, #5b8dee); color: var(--accent, #5b8dee); }
+.evidence-hub-body { display: grid; gap: 10px; }

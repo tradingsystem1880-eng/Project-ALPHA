@@ -3341,7 +3341,9 @@ def test_list_research_cases_is_bounded_newest_activity_first(tmp_path: Path) ->
     )
 
     rows = store.list_research_cases()
-    assert [row["case"]["project_id"] for row in rows] == list(reversed(project_ids))
+    assert [cast(dict[str, object], row["case"])["project_id"] for row in rows] == list(
+        reversed(project_ids)
+    )
     for row in rows:
         assert set(row) == {"case", "updated_at"}
         case = row["case"]
@@ -3366,7 +3368,7 @@ def test_list_research_cases_is_bounded_newest_activity_first(tmp_path: Path) ->
         at=START + timedelta(hours=1),
     )
     reordered = store.list_research_cases()
-    assert str(reordered[0]["case"]["project_id"]) == oldest
+    assert str(cast(dict[str, object], reordered[0]["case"])["project_id"]) == oldest
 
     # Bounded paging with the documented research limit.
     assert store.list_research_cases(limit=1) == reordered[:1]

@@ -500,3 +500,25 @@ def test_evidence_hub_partitions_closed_case_findings_for_and_against(
             "run_id",
             "recorded_at",
         }
+
+
+def test_scorecard_drift_fixture_pins_python_and_typescript_twins() -> None:
+    """The committed fixture is asserted byte-equal by BOTH pytest and vitest.
+
+    researchScorecardModel.ts derives the same expected scorecards from the same inputs
+    in `apps/alpha-web/frontend/src/panels/__fixtures__/researchScorecard.json`; a change
+    to either implementation without regenerating the fixture fails one of the suites.
+    """
+    from alpha_cli.research_gate_packet import derive_research_scorecard
+
+    fixture_path = (
+        Path(__file__).parents[2]
+        / "apps/alpha-web/frontend/src/panels/__fixtures__/researchScorecard.json"
+    )
+    scenarios = json.loads(fixture_path.read_text(encoding="utf-8"))
+    assert isinstance(scenarios, list) and len(scenarios) >= 3
+    names = [scenario["name"] for scenario in scenarios]
+    assert names == sorted(names) and len(set(names)) == len(names)
+    for scenario in scenarios:
+        derived = derive_research_scorecard(scenario["inputs"])
+        assert derived == scenario["expected"], scenario["name"]

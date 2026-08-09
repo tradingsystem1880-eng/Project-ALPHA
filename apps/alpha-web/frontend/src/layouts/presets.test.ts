@@ -76,8 +76,9 @@ function fakeDock() {
 }
 
 describe('v3 workspace presets', () => {
-  it('ships the six named desks with Market Desk as the default', () => {
+  it('ships the seven named desks, research-first, with Market Desk as the default', () => {
     expect(WORKSPACE_PRESETS.map((preset) => preset.id)).toEqual([
+      'research',
       'market',
       'development',
       'kronos',
@@ -85,7 +86,10 @@ describe('v3 workspace presets', () => {
       'portfolio',
       'operations',
     ])
-    expect(WORKSPACE_PRESETS[0]?.name).toBe('Market Desk')
+    expect(WORKSPACE_PRESETS[0]?.name).toBe('Research Command Center')
+    // The stored-layout fallback (buildDeskLayout) still opens the Market Desk until the
+    // R6 default-workflow inversion consciously flips it.
+    expect(WORKSPACE_PRESETS.find((preset) => preset.id === 'market')?.name).toBe('Market Desk')
   })
 
   it.each(WORKSPACE_PRESETS)('builds $name with unique deterministic panels', (preset) => {

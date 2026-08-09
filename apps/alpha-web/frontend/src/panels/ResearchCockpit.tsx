@@ -1,5 +1,5 @@
 import type { IDockviewPanelProps } from 'dockview-react'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from '../api/client'
 import type {
@@ -9,6 +9,8 @@ import type {
   ResearchMaterialAnswers,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import { onNewIdea } from '../context/newIdea'
+import { usePanelLinked } from '../context/usePanelLinked'
 import {
   researchBudgetRows,
   researchContractView,
@@ -17,6 +19,7 @@ import {
   researchPilotEligibility,
   researchProposalAvailable,
 } from './researchCockpitModel'
+import { HypothesisCardView, ScorecardStrip } from './researchViews'
 
 type ChartConstruction = ResearchMaterialAnswers['chart_construction']
 type EventAvailability = ResearchMaterialAnswers['event_availability']
@@ -159,6 +162,23 @@ function ApprovalBoundary({ researchCase }: { researchCase: ResearchCase }) {
         alpha research approve exploration {researchCase.project_id}{' '}
         {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
       </code>
+    </div>
+  )
+}
+
+function CaseHeader({ researchCase }: { researchCase: ResearchCase }) {
+  return (
+    <div className="research-case-header" aria-label="Case status header">
+      <div className="research-case-header-row">
+        <strong>{researchCase.project_name}</strong>
+        <span className="mono">{researchPhaseLabel(researchCase.phase).toUpperCase()}</span>
+        <span className="mono">{researchCase.execution_state.toUpperCase()}</span>
+        <span className={researchCase.responsibility === 'owner' ? 'chip fail' : 'chip kind'}>
+          {researchCase.responsibility === 'owner' ? 'NEEDS YOU' : 'CODEX'}
+        </span>
+        <span className="research-case-next">{researchCase.next_action}</span>
+      </div>
+      {researchCase.scorecard ? <ScorecardStrip scorecard={researchCase.scorecard} /> : null}
     </div>
   )
 }
@@ -307,6 +327,8 @@ function CaseSummary({
 
 export function ResearchCockpit(props: IDockviewPanelProps) {
   const initialProjectId = typeof props.params?.projectId === 'string' ? props.params.projectId : ''
+  const panelLink = usePanelLinked(props)
+  const ideaRef = useRef<HTMLTextAreaElement | null>(null)
   const [researchCase, setResearchCase] = useState<ResearchCase | null>(null)
   const [report, setReport] = useState<ResearchCaseReport | null>(null)
   const [lookupId, setLookupId] = useState(initialProjectId)
@@ -353,6 +375,25 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
     // The Dockview parameter is immutable for this panel instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProjectId])
+
+  // The Research Backlog drives this panel through linked context (spec §2.2).
+  const linkedProjectId = panelLink.linked.projectId
+  useEffect(() => {
+    if (linkedProjectId && linkedProjectId !== researchCase?.project_id) {
+      void loadCase(linkedProjectId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedProjectId])
+
+  // The shell's New Idea action focuses the capture form; it never creates anything.
+  useEffect(
+    () =>
+      onNewIdea(() => {
+        ideaRef.current?.focus()
+        ideaRef.current?.scrollIntoView({ block: 'center' })
+      }),
+    [],
+  )
 
   async function capture(event: FormEvent): Promise<void> {
     event.preventDefault()
@@ -445,6 +486,7 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
             <span className="eyebrow">Capture a raw observation in your exact words</span>
             <textarea
               className="field"
+              ref={ideaRef}
               value={idea}
               maxLength={8192}
               onChange={(event) => setIdea(event.target.value)}
@@ -479,7 +521,7 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
                 {busy === 'load' ? 'loading…' : 'open case'}
               </button>
             </div>
-            <span className="muted">There is no list-all route in Gate 1; load only an explicit case ID.</span>
+            <span className="muted">Or select a case in the Research Backlog — it drives this cockpit.</span>
           </form>
         </div>
 
@@ -487,6 +529,7 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
 
         {researchCase ? (
           <>
+            <CaseHeader researchCase={researchCase} />
             <CaseSummary
               researchCase={researchCase}
               report={report}
@@ -495,6 +538,9 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
               onReport={() => void loadReport()}
               onPilot={() => void launchPilot()}
             />
+            {researchCase.hypothesis_card ? (
+              <HypothesisCardView card={researchCase.hypothesis_card} />
+            ) : null}
 
             {researchProposalAvailable(researchCase.phase) ? (
               <form className="research-proposal" onSubmit={(event) => void propose(event)}>
