@@ -118,11 +118,10 @@ def test_research_case_capture_propose_status_report_and_pilot_round_trip(
     launched = launched_response.json()
     assert launched["manifest"]["evidence_zone"] == "D0"
     assert launched["attempt"]["kind"] == "d0-synthetic-pilot"
-    assert launched["case"]["phase"] == "research_decision"
-    assert launched["case"]["responsibility"] == "owner"
+    assert launched["case"]["phase"] == "deep_research"
+    assert launched["case"]["responsibility"] == "codex"
     assert launched["case"]["next_action"] == (
-        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
-        "in Gate 1."
+        "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert launched["case"]["d2_state"] == "sealed"
 

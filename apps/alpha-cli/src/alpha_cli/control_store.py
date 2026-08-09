@@ -309,10 +309,12 @@ _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fd
 # production path may admit empirical D1/D2 evidence until the qualified dataset authority and
 # isolated workers required by Gates 2-3 exist.
 _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED: Final = False
-# Gate 2 (ADR-0025): D1 deep-research attempt admission. Flipping this constant is the
-# FINAL commit of phase R5, after every acceptance scenario passes; confirmation approval
-# and every D2 transition stay behind _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED (R6).
-_D1_EMPIRICAL_RESEARCH_ENABLED: Final = False
+# Gate 2 (ADR-0025): D1 deep-research attempt admission is OPEN. Flipped as the final
+# commit of phase R5 after the acceptance suite passed (planted-pattern recovery,
+# planted-confounder rejection, null-stays-null after Holm, future-poison immunity,
+# mechanical re-verification, kill-and-resume). Confirmation approval and every D2
+# transition stay behind _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED until R6 (ADR-0026).
+_D1_EMPIRICAL_RESEARCH_ENABLED: Final = True
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (

@@ -139,12 +139,11 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     assert isinstance(pilot_case, dict)
     assert manifest["evidence_zone"] == "D0"
     assert manifest["real_market_evidence"] is False
-    assert pilot_case["phase"] == "research_decision"
+    assert pilot_case["phase"] == "deep_research"
     assert pilot_case["execution_state"] == "idle"
-    assert pilot_case["responsibility"] == "owner"
+    assert pilot_case["responsibility"] == "codex"
     assert pilot_case["next_action"] == (
-        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
-        "in Gate 1."
+        "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert pilot_case["attempt_count"] == 1
     assert pilot_case["terminal_attempt_count"] == 1
@@ -168,8 +167,13 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     assert pilot_case["latest_run_fingerprint"] == manifest["execution_fingerprint"]
     assert "not real-market evidence" in str(pilot_case["latest_finding"])
     assert pilot_case["elapsed_time_seconds"] >= 0
-    assert pilot_case["completed_milestones"][-1]["phase"] == "research_decision"
-    assert pilot_case["remaining_milestones"] == ["closed"]
+    assert pilot_case["completed_milestones"][-1]["phase"] == "deep_research"
+    assert pilot_case["remaining_milestones"] == [
+        "confirmation_review",
+        "sealed_confirmation",
+        "research_decision",
+        "closed",
+    ]
 
     contradicted = runner.invoke(
         app,
@@ -190,7 +194,7 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     )
     assert contradicted.exit_code != 0
     after_rejected_claim = _invoke("status", project_id)
-    assert after_rejected_claim["phase"] == "research_decision"
+    assert after_rejected_claim["phase"] == "deep_research"
     assert after_rejected_claim["research_decision"] is None
 
     closed = _invoke(
@@ -267,7 +271,7 @@ def test_interrupted_pilot_recovery_rejects_post_admission_d0_rewrite(
         self: ControlStore, *args: object, **kwargs: object
     ) -> dict[str, object]:
         nonlocal interrupted
-        if kwargs.get("to_phase") == "research_decision" and not interrupted:
+        if kwargs.get("to_phase") in {"research_decision", "deep_research"} and not interrupted:
             interrupted = True
             raise RuntimeError("simulated process interruption after D0 admission")
         return original_transition(self, *args, **kwargs)  # type: ignore[arg-type]
@@ -604,7 +608,10 @@ def test_deep_and_confirmation_runs_remain_gated(
     assert isinstance(project, dict)
     project_id = str(project["project_id"])
 
-    for phase, gate in (("deep", "Gate-2 unavailable"), ("confirm", "Gate-3 unavailable")):
+    for phase, gate in (
+        ("deep", "deep_research phase"),
+        ("confirm", "Gate-3 unavailable"),
+    ):
         result = runner.invoke(
             app,
             ["research", "run", phase, project_id, "--json"],
@@ -1031,7 +1038,7 @@ def test_store_failure_after_successful_pilot_never_fabricates_a_failed_attempt(
     assert recovered_manifest["run_id"] == manifest["run_id"]
     assert recovered_case["attempt_count"] == 2
     assert recovered_case["terminal_attempt_count"] == 1
-    assert recovered_case["phase"] == "research_decision"
+    assert recovered_case["phase"] == "deep_research"
     assert recovered_case["remaining_launches"] == 1
 
 
@@ -1220,11 +1227,10 @@ def test_completed_pilot_is_adopted_after_crash_without_duplicate_attempt(
 
     recovered = _invoke("run", "pilot", project_id)
     recovered_case = cast(dict[str, object], recovered["case"])
-    assert recovered_case["phase"] == "research_decision"
-    assert recovered_case["responsibility"] == "owner"
+    assert recovered_case["phase"] == "deep_research"
+    assert recovered_case["responsibility"] == "codex"
     assert recovered_case["next_action"] == (
-        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
-        "in Gate 1."
+        "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert recovered_case["attempt_count"] == 1
     assert recovered_case["latest_run_id"] == run_id
@@ -1887,22 +1893,29 @@ def _approved_deep_ready_project() -> str:
     return project_id
 
 
-def test_run_deep_stays_hard_disabled_by_default(
+def test_run_deep_is_open_by_default_but_stays_phase_governed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """ADR-0025 opened D1 admission; every other governance rail still applies."""
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    blocked = runner.invoke(app, ["research", "run", "deep", "any-project", "--json"])
+    captured = _invoke("capture", "A generic idea that has not completed D0")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    blocked = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
     assert blocked.exit_code != 0
-    assert "Gate-2 unavailable" in blocked.output
+    assert "deep_research phase" in blocked.output
+
+    import alpha_cli.control_store as control_store_module
+
+    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", False)
+    gated = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert gated.exit_code != 0
+    assert "Gate-2 unavailable" in gated.output
 
 
 def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import alpha_cli.control_store as control_store_module
-
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
     project_id = _approved_deep_ready_project()
 
     deep = _invoke("run", "deep", project_id)
@@ -1967,10 +1980,7 @@ def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(
 def test_run_deep_failures_checkpoint_and_exact_reexecution_resumes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import alpha_cli.control_store as control_store_module
-
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
     project_id = _approved_deep_ready_project()
 
     def _boom(*args: object, **kwargs: object) -> dict[str, object]:
@@ -1990,7 +2000,6 @@ def test_run_deep_failures_checkpoint_and_exact_reexecution_resumes(
 
     monkeypatch.undo()
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
     _invoke("resume", project_id)
     resumed = _invoke("run", "deep", project_id)
     manifest = cast(dict[str, object], resumed["manifest"])

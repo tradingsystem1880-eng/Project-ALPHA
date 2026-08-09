@@ -2399,6 +2399,8 @@ def test_research_job_creation_is_governed_and_capacity_bound(tmp_path: Path) ->
 def test_production_gate_hard_disables_unreleased_empirical_research(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """ADR-0025 opened D1 admission; D2/confirmation authority stays hard-disabled."""
+    assert control_store_module._D1_EMPIRICAL_RESEARCH_ENABLED is True
     monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False)
     store = ControlStore(tmp_path)
     _project(store)
@@ -2415,11 +2417,13 @@ def test_production_gate_hard_disables_unreleased_empirical_research(
         contract_id=contract_id,
         actor="codex",
         reason="D0 is complete.",
-        next_action="Stop because D1 is not shipped.",
+        next_action="Launch the registered deep-research plan.",
         responsibility="codex",
         at=START + timedelta(minutes=8),
     )
-    with pytest.raises(DataError, match="empirical D1/D2 attempts remain hard-disabled"):
+    # D1 admission is open, so the request proceeds past the gate — and fails on the
+    # registered-kind rule instead, proving governance did not widen with the flip.
+    with pytest.raises(DataError, match="d1-deep-research"):
         store.record_research_attempt(
             PROJECT_ID,
             contract_id,
@@ -2427,7 +2431,21 @@ def test_production_gate_hard_disables_unreleased_empirical_research(
             status="completed",
             config_fingerprint="a" * 64,
             budget_used={"wall_seconds": 1},
+            details={"evidence_zone": "D1"},
         )
+    # With ADR-0025 explicitly rolled back, the hard gate still holds.
+    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", False)
+    with pytest.raises(DataError, match="empirical D1/D2 attempts remain hard-disabled"):
+        store.record_research_attempt(
+            PROJECT_ID,
+            contract_id,
+            kind="d1-deep-research",
+            status="completed",
+            config_fingerprint="a" * 64,
+            budget_used={"wall_seconds": 1},
+            details={"evidence_zone": "D1"},
+        )
+    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
     with pytest.raises(DataError, match="D2 access remains hard-disabled"):
         store.transition_research_d2_state(
             PROJECT_ID,
