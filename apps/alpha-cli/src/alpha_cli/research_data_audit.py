@@ -53,14 +53,17 @@ def _publish_json(path: Path, payload: object) -> None:
     )
 
 
-def _parse_bound(value: object, label: str) -> datetime:
+def _parse_bound(value: object, label: str, *, end_of_day: bool) -> datetime:
     if not isinstance(value, str) or not value:
         raise DataError(f"research data audit requires a {label} timestamp")
     try:
         parsed = date.fromisoformat(value[:10])
     except ValueError as exc:
         raise DataError(f"research data audit {label} must be an ISO date") from exc
-    return datetime.combine(parsed, time(23, 59, 59), tzinfo=UTC)
+    # The start bound opens its calendar day (a midnight-stamped daily bar on the start
+    # date belongs to the range); the end bound is an inclusive as-of day cutoff.
+    bound_time = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+    return datetime.combine(parsed, bound_time, tzinfo=UTC)
 
 
 def _verified_root(data_dir: Path, ref: Mapping[str, object]) -> Path:
@@ -102,6 +105,23 @@ def _verified_root(data_dir: Path, ref: Mapping[str, object]) -> Path:
     )
 
 
+def load_registered_dataset_frame(data_dir: Path, *, ref: Mapping[str, object]) -> Any:
+    """Load a registered dataset's exact PIT slice after fail-closed origin verification."""
+    ref_id = str(ref.get("ref_id", ""))
+    if not ref_id.startswith("rd_"):
+        raise DataError("registered dataset loading requires a research dataset ref")
+    instrument = str(ref.get("instrument", ""))
+    start_at = _parse_bound(ref.get("start_ts"), "start_ts", end_of_day=False)
+    end_at = _parse_bound(ref.get("end_ts"), "end_ts", end_of_day=True)
+    if end_at < start_at:
+        raise DataError("registered dataset range must end at or after its start")
+    root = _verified_root(Path(data_dir), ref)
+    store = ParquetStore(root)
+    reader = PointInTimeReader(store, {instrument: store.read_actions(instrument)})
+    frame = reader.as_of(instrument, end_at)
+    return frame.filter(frame["ts"] >= start_at)
+
+
 def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]) -> dict[str, Any]:
     """Audit one registered dataset and publish the immutable EXPLORATORY run."""
     if _PROJECT_ID.fullmatch(project_id) is None:
@@ -110,15 +130,7 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
     if not ref_id.startswith("rd_"):
         raise DataError("research data audit requires a registered dataset ref")
     instrument = str(ref.get("instrument", ""))
-    start_at = _parse_bound(ref.get("start_ts"), "start_ts")
-    end_at = _parse_bound(ref.get("end_ts"), "end_ts")
-    if end_at < start_at:
-        raise DataError("research data audit range must end at or after its start")
-    root = _verified_root(Path(data_dir), ref)
-    store = ParquetStore(root)
-    reader = PointInTimeReader(store, {instrument: store.read_actions(instrument)})
-    frame = reader.as_of(instrument, end_at)
-    frame = frame.filter(frame["ts"] >= start_at)
+    frame = load_registered_dataset_frame(Path(data_dir), ref=ref)
     if frame.height == 0:
         raise DataError(
             f"registered dataset {ref_id!r} holds no bars for {instrument!r} in its range"
@@ -259,4 +271,4 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
     return {"manifest": _artifacts.read_manifest(run_dir), "summary": summary}
 
 
-__all__ = ["run_data_audit"]
+__all__ = ["load_registered_dataset_frame", "run_data_audit"]

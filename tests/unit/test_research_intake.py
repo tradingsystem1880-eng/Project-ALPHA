@@ -32,6 +32,7 @@ def test_four_hour_double_bottom_intake_preserves_words_and_blocks_on_three_mate
         "spy_extended_fixed_4h",
         "es_fixed_4h",
         "spy_rth_60m_four_hour_window",
+        "tiingo_daily_fallback",
     ]
     assert draft["evidence_topology"]["allocations"] == {"D1": 0.6, "D2": 0.2, "D3": 0.2}
     assert draft["evidence_topology"]["D2"]["state"] == "SEALED"

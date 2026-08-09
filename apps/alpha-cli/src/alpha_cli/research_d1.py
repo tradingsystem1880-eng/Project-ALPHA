@@ -136,6 +136,95 @@ def research_bars_from_lows(
     return EqualDurationResearchBars(dataset, bars)
 
 
+_DAILY_BAR_MINUTES: Final = 1_440
+
+
+def load_registered_research_bars(
+    data_dir: Path, *, ref: Mapping[str, object]
+) -> EqualDurationResearchBars:
+    """Load a registered dataset as research bars — the Gate-4 Tiingo-daily fallback lane.
+
+    ADR-0020 acceptance: only the fixed session-daily (1440-minute) representation is
+    loadable; duplicates, disorder, incoherent OHLC, or a non-daily registration fail
+    loud. Qualified intraday loading (the QuantPad lane) requires approved retention and
+    licensing evidence and is explicitly unavailable here (ADR-0023).
+    """
+    if ref.get("dataset_kind") == "quantpad_receipt":
+        raise DataError(
+            "qualified intraday research loading requires approved QuantPad retention and "
+            "licensing evidence (ADR-0023); only the registered Tiingo-daily fallback lane "
+            "is loadable"
+        )
+    duration = ref.get("bar_duration_minutes")
+    if duration is not None and duration != _DAILY_BAR_MINUTES:
+        raise DataError(
+            "only the registered Tiingo-daily fallback lane is loadable; this dataset "
+            f"registers {duration!r}-minute bars"
+        )
+    from alpha_cli.research_data_audit import load_registered_dataset_frame
+
+    frame = load_registered_dataset_frame(Path(data_dir), ref=ref)
+    if frame.height == 0:
+        raise DataError("registered research dataset holds no bars in its range")
+    ref_id = str(ref.get("ref_id"))
+    instrument = str(ref.get("instrument", ""))
+    rows = frame.to_dicts()
+    previous_ts: datetime | None = None
+    bars: list[ResearchBar] = []
+    for row in rows:
+        ts = row["ts"]
+        if not isinstance(ts, datetime):
+            raise DataError("registered research dataset bars must carry datetime timestamps")
+        if previous_ts is not None and ts <= previous_ts:
+            raise DataError(
+                "registered research dataset bars must be strictly ordered without duplicates"
+            )
+        previous_ts = ts
+        end = ts + timedelta(minutes=_DAILY_BAR_MINUTES)
+        bars.append(
+            ResearchBar(
+                dataset_id=ref_id,
+                start=ts,
+                end=end,
+                available_at=end,
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=float(row["volume"]),
+            )
+        )
+    content_sha = _sha(
+        {
+            "schema": "AlphaResearchDailyBarsV1",
+            "instrument": instrument,
+            "rows": [
+                {
+                    "ts": bar.start.isoformat(),
+                    "open": bar.open,
+                    "high": bar.high,
+                    "low": bar.low,
+                    "close": bar.close,
+                    "volume": bar.volume,
+                }
+                for bar in bars
+            ],
+        }
+    )
+    dataset = ResearchDatasetRef(
+        dataset_id=ref_id,
+        provider=str(ref.get("provider", "")) or "unknown",
+        provider_symbol=instrument,
+        symbol=instrument,
+        venue="RESEARCH_DAILY",
+        timeframe="1d",
+        timezone="UTC",
+        session="regular_session_daily",
+        content_sha256=content_sha,
+    )
+    return EqualDurationResearchBars(dataset, tuple(bars))
+
+
 # The registered synthetic D1 fixture: detectable planted motifs with a mean-zero
 # post-confirmation wobble. It exercises the complete pipeline WITHOUT manufacturing a
 # supporting result — synthetic D1 evidence must never look like a discovered edge.
@@ -360,11 +449,13 @@ class _D1Data:
             outcome_end_at=settle.end,
             outcome_available_at=settle.available_at,
             outcome=outcome,
-            cluster_id=anchor.end.date().isoformat(),
+            # The bar START owns the session day: a bar closing exactly at midnight (the
+            # last hourly bar, or a whole daily session) must not be relabelled tomorrow.
+            cluster_id=anchor.start.date().isoformat(),
             covariates=(
                 PreEventCovariate(
                     name="weekday",
-                    value=anchor.end.weekday(),
+                    value=anchor.start.weekday(),
                     observed_at=anchor.start,
                     available_at=anchor.start,
                 ),
@@ -1224,6 +1315,7 @@ __all__ = [
     "D1_EVIDENCE_ARTIFACT",
     "d1_execution_fingerprint",
     "derive_d1_findings",
+    "load_registered_research_bars",
     "registered_synthetic_d1_bars",
     "registered_synthetic_d1_lows",
     "research_bars_from_lows",

@@ -24,6 +24,7 @@ _CHART_CHOICES: Final = frozenset(
         "es_fixed_4h",
         "spy_rth_60m_four_hour_window",
         "synthetic_only",
+        "tiingo_daily_fallback",
     }
 )
 _EVENT_CHOICES: Final = frozenset({"second_trough_confirmable", "neckline_breakout_confirmed"})
@@ -95,12 +96,26 @@ def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, objec
                     "labelled a literal four-hour chart.",
                 ),
             ]
+            choices.append(
+                _choice(
+                    "tiingo_daily_fallback",
+                    "Registered Tiingo-daily fallback bars",
+                    "Uses canonical session-daily Tiingo bars (the Gate-4 fallback lane); the "
+                    "claim is reframed on a daily horizon and D0 remains synthetic-only.",
+                )
+            )
         else:
             choices = [
                 _choice(
                     "synthetic_only",
                     "Synthetic validation only",
                     "Exercises detector and statistics without making a real-market claim.",
+                ),
+                _choice(
+                    "tiingo_daily_fallback",
+                    "Registered Tiingo-daily fallback bars",
+                    "Uses canonical session-daily Tiingo bars (the Gate-4 fallback lane); the "
+                    "claim is reframed on a daily horizon and D0 remains synthetic-only.",
                 ),
             ]
         result.append(
@@ -199,6 +214,15 @@ def _chart_fingerprint(choice: str | None) -> dict[str, object]:
             "bar_duration_minutes": 60,
             "anchor": "SYNTHETIC_EPOCH",
             "label": "synthetic validation bars",
+        },
+        "tiingo_daily_fallback": {
+            "provider": "tiingo",
+            "instrument": "SPY",
+            "venue": "US_EQUITIES",
+            "session": "regular_session_daily",
+            "bar_duration_minutes": 1_440,
+            "anchor": "US_EQUITIES_SESSION_CLOSE",
+            "label": "registered Tiingo session-daily Gate-4 fallback bars",
         },
     }
     selected = variants.get(choice or "", {"status": "UNRESOLVED"})
