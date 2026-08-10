@@ -363,7 +363,14 @@ def test_scorecard_recommendation_follows_the_recorded_outcome(
     monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
     store = ControlStore(tmp_path)
     _project(store)
-    _, confirmation_id = _approved_contracts(store, outcome=outcome, disposition=disposition)
+    # INVALID can never come from consumed evidence (the mechanical classifier has no
+    # INVALID path); it exists only through the contaminated-D2 disposition rule.
+    _, confirmation_id = _approved_contracts(
+        store,
+        outcome=outcome,
+        disposition=disposition,
+        d2_state="contaminated" if outcome == "INVALID" else "consumed",
+    )
     store.transition_research_phase(
         PROJECT_ID,
         to_phase="closed",

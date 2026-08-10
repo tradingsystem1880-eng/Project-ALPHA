@@ -10,6 +10,7 @@ from typing import cast
 import pytest
 from typer.testing import CliRunner
 
+from alpha_cli import control_store as control_store_module
 from alpha_cli import research_cmds
 from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import ControlStore
@@ -610,7 +611,7 @@ def test_deep_and_confirmation_runs_remain_gated(
 
     for phase, gate in (
         ("deep", "deep_research phase"),
-        ("confirm", "Gate-3 unavailable"),
+        ("confirm", "sealed_confirmation phase"),
     ):
         result = runner.invoke(
             app,
@@ -1939,7 +1940,23 @@ def test_confirmation_drafting_freezes_the_one_shot_family_from_d1_evidence(
 
     assert _boundary_hash(payload) == _boundary_hash(parent_payload)
 
-    # Gate-3 stays hard-disabled until R6d: approval and the D2 runner both refuse.
+
+def _confirmation_ready_project(tmp_path: Path) -> tuple[str, str, str]:
+    """Drive one empirical case through D1 and freeze its confirmation contract."""
+    project_id, data_hash = _approved_empirical_daily_project(tmp_path, lows=_varied_daily_lows())
+    _invoke("run", "deep", project_id)
+    drafted = _invoke("draft-confirmation", project_id)
+    contract_id = str(cast(dict[str, object], drafted["contract"])["contract_id"])
+    return project_id, contract_id, data_hash
+
+
+def test_confirmation_approval_and_run_refuse_while_gate3_flag_is_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One flag is the production hard-disable: every D2 authority refuses when it is off."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
+    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False)
     rejected = runner.invoke(
         app,
         [
@@ -1947,7 +1964,7 @@ def test_confirmation_drafting_freezes_the_one_shot_family_from_d1_evidence(
             "approve",
             "confirmation",
             project_id,
-            str(contract["contract_id"]),
+            contract_id,
             "--actor",
             "owner",
             "--reason",
@@ -1960,6 +1977,220 @@ def test_confirmation_drafting_freezes_the_one_shot_family_from_d1_evidence(
     confirm = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
     assert confirm.exit_code != 0
     assert "Gate-3 unavailable" in confirm.output
+
+
+def test_one_shot_confirmation_consumes_d2_and_routes_to_owner_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6d (ADR-0026): approve -> sealed_confirmation -> one governed one-shot D2 run."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, data_hash = _confirmation_ready_project(tmp_path)
+    approved = _approve_confirmation(project_id, contract_id)
+    approved_case = cast(dict[str, object], approved["case"])
+    assert approved_case["phase"] == "sealed_confirmation"
+    assert approved_case["d2_state"] == "authorized"
+
+    confirm = _invoke("run", "confirm", project_id)
+    manifest = cast(dict[str, object], confirm["manifest"])
+    assert manifest["command"] == "research_confirm"
+    assert manifest["evidence_zone"] == "D2"
+    assert manifest["watermark"] == "REGISTERED CONFIRMATORY"
+    assert manifest["real_market_evidence"] is True
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    assert manifest["dataset_hash"] == data_hash
+    attempt = cast(dict[str, object], confirm["attempt"])
+    assert attempt["kind"] == "sealed-confirmation"
+    assert attempt["status"] == "completed"
+    case = cast(dict[str, object], confirm["case"])
+    assert case["phase"] == "research_decision"
+    assert case["d2_state"] == "consumed"
+    assert case["execution_state"] == "idle"
+
+    run_id = str(manifest["run_id"])
+    evidence = json.loads(
+        (tmp_path / "runs" / run_id / "research_gate_evidence.json").read_text(encoding="utf-8")
+    )
+    assert evidence["confirmation_classification"] == "SUPPORTED"
+
+    # The sealed share is spent: a second invocation recovers the same immutable run and
+    # records no new attempt, execution, or data read.
+    second = _invoke("run", "confirm", project_id)
+    assert cast(dict[str, object], second["manifest"])["run_id"] == run_id
+    assert cast(dict[str, object], second["attempt"])["attempt_id"] == attempt["attempt_id"]
+
+    # The owner decision is bound to the mechanical classification.
+    contradicted = runner.invoke(
+        app,
+        [
+            "research",
+            "decide",
+            project_id,
+            "--outcome",
+            "CONTRADICTED",
+            "--disposition",
+            "reject",
+            "--actor",
+            "owner",
+            "--reason",
+            "An owner claim against the mechanical classification must fail.",
+            "--json",
+        ],
+    )
+    assert contradicted.exit_code != 0
+    assert "mechanical D2 classification" in contradicted.output
+    decided = _invoke(
+        "decide",
+        project_id,
+        "--outcome",
+        "SUPPORTED",
+        "--disposition",
+        "advance_to_strategy",
+        "--actor",
+        "owner",
+        "--reason",
+        "The mechanically confirmed effect advances to strategy work.",
+    )
+    assert cast(dict[str, object], decided["decision"])["outcome"] == "SUPPORTED"
+
+
+def _approve_confirmation(project_id: str, contract_id: str) -> dict[str, object]:
+    return _invoke(
+        "approve",
+        "confirmation",
+        project_id,
+        contract_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "Confirm the exact one-shot family.",
+    )
+
+
+def test_confirmation_contaminates_d2_on_sealed_dataset_integrity_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pre-flight integrity failure spends the sealed share: INVALID is the only exit."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+    parquets = sorted((tmp_path / "snapshots" / "gate4-spy").rglob("*.parquet"))
+    assert parquets
+    for parquet in parquets:
+        parquet.write_bytes(parquet.read_bytes() + b"tampered")
+
+    blocked = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "contaminated" in blocked.output
+    case = _invoke("status", project_id)
+    assert case["d2_state"] == "contaminated"
+    assert case["phase"] == "research_decision"
+
+    # The spent share can never be re-run, and no attempt or run was recorded.
+    rerun = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert rerun.exit_code != 0
+    assert "contaminated" in rerun.output
+    assert case["attempt_count"] == 2  # D0 pilot + D1 deep only
+
+    # SUPPORTED and advance are unreachable from a contaminated share.
+    advance = runner.invoke(
+        app,
+        [
+            "research",
+            "decide",
+            project_id,
+            "--outcome",
+            "SUPPORTED",
+            "--disposition",
+            "advance_to_strategy",
+            "--actor",
+            "owner",
+            "--reason",
+            "A contaminated share cannot support the claim.",
+            "--json",
+        ],
+    )
+    assert advance.exit_code != 0
+    assert "INVALID" in advance.output
+    closed = _invoke(
+        "decide",
+        project_id,
+        "--outcome",
+        "INVALID",
+        "--disposition",
+        "park",
+        "--actor",
+        "owner",
+        "--reason",
+        "The sealed confirmation dataset failed integrity before the one-shot read.",
+    )
+    closed_case = cast(dict[str, object], closed["case"])
+    assert closed_case["phase"] == "closed"
+    assert closed_case["d2_state"] == "contaminated"
+
+
+def test_confirmation_crash_checkpoints_and_recovers_with_exact_reexecution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A runtime crash checkpoints honestly and never contaminates the sealed share."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, data_hash = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+
+    from alpha_cli.research_d2 import run_confirmation as real_run_confirmation
+
+    def crash(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise DataError("simulated executor crash")
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", crash)
+    failed = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert failed.exit_code != 0
+    assert "checkpointed" in failed.output
+    case = _invoke("status", project_id)
+    assert case["execution_state"] == "failed"
+    assert case["checkpoint"] == "d2:failed:1"
+    assert case["d2_state"] == "authorized"
+    assert case["phase"] == "sealed_confirmation"
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", real_run_confirmation)
+    resumed = _invoke("resume", project_id)
+    assert resumed["execution_state"] == "queued"
+    confirm = _invoke("run", "confirm", project_id)
+    manifest = cast(dict[str, object], confirm["manifest"])
+    assert manifest["dataset_hash"] == data_hash
+    attempt = cast(dict[str, object], confirm["attempt"])
+    assert attempt["status"] == "completed"
+    recovered_case = cast(dict[str, object], confirm["case"])
+    assert recovered_case["phase"] == "research_decision"
+    assert recovered_case["d2_state"] == "consumed"
+    assert recovered_case["checkpoint"] == "d2:complete"
+
+
+def test_confirmation_retries_exhaust_to_blocked_without_touching_the_share(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+
+    def crash(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise DataError("simulated executor crash")
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", crash)
+    for attempt_number in range(1, 4):
+        failed = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+        assert failed.exit_code != 0
+        case = _invoke("status", project_id)
+        assert case["checkpoint"] == f"d2:failed:{attempt_number}"
+        assert case["execution_state"] == ("blocked" if attempt_number == 3 else "failed")
+        assert case["d2_state"] == "authorized"
+        if attempt_number < 3:
+            assert _invoke("resume", project_id)["execution_state"] == "queued"
+
+    # The initial attempt plus two safe retries are spent: the cap holds even after resume.
+    assert _invoke("resume", project_id)["execution_state"] == "queued"
+    capped = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert capped.exit_code != 0
+    assert "revision" in capped.output
 
 
 def test_confirmation_drafting_fails_closed_without_authority_or_evidence(

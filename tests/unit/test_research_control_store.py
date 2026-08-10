@@ -18,6 +18,8 @@ import alpha_cli.control_store as control_store_module
 from alpha_cli import _artifacts
 from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import SCHEMA_VERSION, ControlStore
+from alpha_cli.research_d2 import _claim as _d2_claim
+from alpha_cli.research_d2 import derive_d2_findings
 from alpha_cli.research_intake import draft_exploration_contract
 from alpha_cli.research_runtime import (
     _GENERATION_60M,
@@ -33,6 +35,8 @@ from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legac
 PROJECT_ID = "9e4908b1-a9cd-4c13-a47e-740d92175680"
 LEGACY_PROJECT_ID = "bf09e202-a02a-45c5-904e-1dbda4bf298e"
 START = datetime(2026, 8, 6, 9, 0, tzinfo=UTC)
+# The approval-frozen confirmation dataset bytes every fabricated D2 run must claim.
+_CONFIRMATION_DATA_SHA = hashlib.sha256(b"confirmation-dataset-bytes").hexdigest()
 
 
 @pytest.fixture(autouse=True)
@@ -211,7 +215,7 @@ def _payload(
             "code": "git:a1b2c3d4e5f60718",
             "environment": "uv-lock:1234abcd5678ef90",
             "evaluator": "event-study-v1.0.0",
-            "data": "sha256:1234abcd5678ef901234abcd5678ef90" if confirmation else None,
+            "data": _CONFIRMATION_DATA_SHA if confirmation else None,
         },
     }
     if confirmation:
@@ -359,20 +363,13 @@ def _approved_contracts(
         at=START + timedelta(minutes=13),
     )
     if record_confirmation_evidence and d2_state == "consumed":
-        gate_evidence = _confirmation_evidence(outcome)
-        gate_evidence_bytes = json.dumps(
-            gate_evidence,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
         run_id = _write_research_run(
             store._data_dir,
-            run_id=hashlib.sha256(confirmation_id.encode()).hexdigest()[:16],
+            run_id="ignored-content-derived-id",
             contract_id=confirmation_id,
             payload=confirmation_payload,
             evidence_zone="D2",
-            gate_evidence=gate_evidence,
+            d2_outcome=outcome,
         )
         store.record_research_attempt(
             PROJECT_ID,
@@ -384,10 +381,7 @@ def _approved_contracts(
             details={
                 "evidence_zone": "D2",
                 "real_market_evidence": True,
-                "gate_packet_evidence_ref": {
-                    "artifact": "research_gate_evidence.json",
-                    "content_sha256": hashlib.sha256(gate_evidence_bytes).hexdigest(),
-                },
+                "gate_packet_evidence_ref": _d2_evidence_ref(store._data_dir, run_id),
             },
             run_id=run_id,
             at=START + timedelta(minutes=13, seconds=30),
@@ -418,112 +412,14 @@ def _approved_contracts(
     return exploration_id, confirmation_id
 
 
-def _confirmation_evidence(outcome: str) -> dict[str, object]:
-    claim: dict[str, object] | None = {
-        "direction": "positive",
-        "minimum_effect": 0.0005,
-        "adjusted_p_value": 0.01,
-        "alpha": 0.05,
+def _d2_evidence_ref(data_dir: Path, run_id: str) -> dict[str, object]:
+    manifest = _artifacts.read_manifest(data_dir / "runs" / run_id)
+    artifacts = cast(dict[str, object], manifest["artifacts"])
+    metadata = cast(dict[str, object], artifacts["research_gate_evidence.json"])
+    return {
+        "artifact": "research_gate_evidence.json",
+        "content_sha256": metadata["sha256"],
     }
-    if outcome == "SUPPORTED":
-        primary: dict[str, object] = {
-            "status": "TESTED",
-            "estimate": 0.003,
-            "unit": "return",
-            "sample_size": 60,
-            "effective_sample_size": 45.0,
-            "uncertainty": {
-                "lower": 0.001,
-                "upper": 0.005,
-                "level": 0.95,
-                "method": "cluster bootstrap",
-            },
-            "practical_magnitude": {
-                "status": "CLEARS_HURDLE",
-                "value": 0.003,
-                "unit": "return",
-                "interpretation": "The interval clears the registered hurdle.",
-            },
-        }
-        checks = {
-            "corrected_primary_test_passed": True,
-            "interval_registered_direction": True,
-            "economic_hurdle_cleared": True,
-            "interval_wholly_against_direction": False,
-        }
-    elif outcome == "CONTRADICTED":
-        primary = {
-            "status": "TESTED",
-            "estimate": -0.003,
-            "unit": "return",
-            "sample_size": 60,
-            "effective_sample_size": 45.0,
-            "uncertainty": {
-                "lower": -0.005,
-                "upper": -0.001,
-                "level": 0.95,
-                "method": "cluster bootstrap",
-            },
-            "practical_magnitude": {
-                "status": "BELOW_HURDLE",
-                "value": -0.003,
-                "unit": "return",
-                "interpretation": "The interval lies against the registered direction.",
-            },
-        }
-        checks = {
-            "corrected_primary_test_passed": False,
-            "interval_registered_direction": False,
-            "economic_hurdle_cleared": False,
-            "interval_wholly_against_direction": True,
-        }
-        claim = dict(claim or {}, adjusted_p_value=0.6)
-    elif outcome == "INVALID":
-        primary = {"status": "NOT_TESTED"}
-        checks = {
-            "corrected_primary_test_passed": False,
-            "interval_registered_direction": False,
-            "economic_hurdle_cleared": False,
-            "interval_wholly_against_direction": False,
-        }
-        claim = None
-    else:
-        primary = {
-            "status": "TESTED",
-            "estimate": 0.001,
-            "unit": "return",
-            "sample_size": 60,
-            "effective_sample_size": 45.0,
-            "uncertainty": {
-                "lower": -0.001,
-                "upper": 0.003,
-                "level": 0.95,
-                "method": "cluster bootstrap",
-            },
-            "practical_magnitude": {
-                "status": "INCONCLUSIVE",
-                "value": 0.001,
-                "unit": "return",
-                "interpretation": "The interval does not clear the registered hurdle.",
-            },
-        }
-        checks = {
-            "corrected_primary_test_passed": False,
-            "interval_registered_direction": False,
-            "economic_hurdle_cleared": False,
-            "interval_wholly_against_direction": False,
-        }
-        claim = dict(claim or {}, adjusted_p_value=0.2)
-    evidence: dict[str, object] = {
-        "schema": "ResearchGateEvidenceV1",
-        "evidence_zone": "D2",
-        "primary_result": primary,
-        "confirmation_classification": outcome,
-        "confirmation_checks": checks,
-    }
-    if claim is not None:
-        evidence["confirmation_claim"] = claim
-    return evidence
 
 
 def _approved_pilot(store: ControlStore) -> tuple[str, dict[str, object]]:
@@ -575,6 +471,57 @@ def _approved_pilot(store: ControlStore) -> tuple[str, dict[str, object]]:
     return contract_id, payload
 
 
+def _d2_run_id(payload: dict[str, object], contract_id: str) -> str:
+    """The content-derived sealed-confirmation run identity the store recomputes."""
+    contract_hash = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    hashes = payload["hashes"]
+    assert isinstance(hashes, dict)
+    run_identity = {
+        "command": "research_confirm",
+        "project_id": PROJECT_ID,
+        "research_contract_id": contract_id,
+        "contract_hash": contract_hash,
+        "dataset_hash": str(hashes["data"]),
+        "execution_fingerprint": "a" * 64,
+    }
+    return hashlib.sha256(
+        json.dumps(run_identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:16]
+
+
+def _d2_matched_measurements(outcome: str) -> dict[str, object]:
+    """Raw matched measurements that mechanically classify to the requested outcome."""
+    numbers = {
+        "SUPPORTED": {"estimate": 0.004, "ci_lower": 0.003, "ci_upper": 0.005, "p_value": 0.01},
+        "CONTRADICTED": {
+            "estimate": -0.003,
+            "ci_lower": -0.005,
+            "ci_upper": -0.001,
+            "p_value": 0.6,
+        },
+        "INCONCLUSIVE": {
+            "estimate": 0.001,
+            "ci_lower": -0.001,
+            "ci_upper": 0.003,
+            "p_value": 0.2,
+        },
+    }[outcome]
+    return {
+        "counts": {"events": 60, "controls": 240},
+        "matched": {
+            **numbers,
+            "confidence": 0.95,
+            "sample_size": 60,
+            "effective_event_count": 45,
+            "low_cluster_count": False,
+        },
+        "matched_pairs": 60,
+        "unadjusted": None,
+    }
+
+
 def _write_research_run(
     data_dir: Path,
     *,
@@ -584,6 +531,7 @@ def _write_research_run(
     override: tuple[str, object] | None = None,
     evidence_zone: str = "D0",
     gate_evidence: dict[str, object] | None = None,
+    d2_outcome: str | None = None,
 ) -> str:
     contract_hash = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -610,6 +558,9 @@ def _write_research_run(
         run_id = hashlib.sha256(
             json.dumps(run_identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:16]
+    if evidence_zone == "D2":
+        dataset_hash = str(hashes["data"])
+        run_id = _d2_run_id(payload, contract_id)
     manifest: dict[str, object] = {
         "run_id": run_id,
         "run_identity_version": 3,
@@ -639,6 +590,13 @@ def _write_research_run(
         manifest["d0_operator"] = operator
         manifest["d0_operator_fingerprint"] = operator["fingerprint"]
         manifest["d0_acceptance_artifact"] = "d0_acceptance.json"
+    if evidence_zone == "D2":
+        assert dataset_hash is not None
+        manifest["dataset_hash"] = dataset_hash
+        manifest["watermark"] = "REGISTERED CONFIRMATORY"
+        manifest["real_market_evidence"] = True
+        manifest["d2_evidence_artifact"] = "research_gate_evidence.json"
+        manifest["d2_analyses_artifact"] = "d2_analyses.json"
     if override is not None:
         field, value = override
         if field.startswith("research_fingerprints."):
@@ -684,6 +642,31 @@ def _write_research_run(
                 target.write_bytes(body)
 
             _artifacts.publish_artifact(rdir / filename, write_sidecar)
+    if d2_outcome is not None:
+        assert gate_evidence is None
+        measurements = _d2_matched_measurements(d2_outcome)
+        analyses_bytes = json.dumps(
+            {"schema": "ResearchD2AnalysesV1", "schema_version": 1, "measurements": measurements},
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+
+        def write_analyses(target: Path) -> None:
+            target.write_bytes(analyses_bytes)
+
+        _artifacts.publish_artifact(rdir / "d2_analyses.json", write_analyses)
+        gate_evidence = dict(
+            derive_d2_findings(measurements, claim=_d2_claim(payload)),
+            artifact_links=[
+                {
+                    "run_id": run_id,
+                    "artifact_id": "d2_analyses.json",
+                    "content_sha256": hashlib.sha256(analyses_bytes).hexdigest(),
+                    "media_type": "application/json",
+                }
+            ],
+        )
     if gate_evidence is not None:
         content = json.dumps(
             gate_evidence,
@@ -1752,20 +1735,13 @@ def test_phase_confirmation_and_d2_state_machines_are_distinct(tmp_path: Path) -
         reason="The exact sealed confirmation job started.",
         at=START + timedelta(minutes=13),
     )
-    gate_evidence = _confirmation_evidence("SUPPORTED")
-    gate_evidence_bytes = json.dumps(
-        gate_evidence,
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")
     run_id = _write_research_run(
         tmp_path,
-        run_id="e500000000000005",
+        run_id="ignored-content-derived-id",
         contract_id=confirmation_id,
         payload=confirmation_payload,
         evidence_zone="D2",
-        gate_evidence=gate_evidence,
+        d2_outcome="SUPPORTED",
     )
     store.record_research_attempt(
         PROJECT_ID,
@@ -1777,10 +1753,7 @@ def test_phase_confirmation_and_d2_state_machines_are_distinct(tmp_path: Path) -
         details={
             "evidence_zone": "D2",
             "real_market_evidence": True,
-            "gate_packet_evidence_ref": {
-                "artifact": "research_gate_evidence.json",
-                "content_sha256": hashlib.sha256(gate_evidence_bytes).hexdigest(),
-            },
+            "gate_packet_evidence_ref": _d2_evidence_ref(tmp_path, run_id),
         },
         run_id=run_id,
         at=START + timedelta(minutes=13, seconds=30),
@@ -3060,15 +3033,16 @@ def test_confirmation_attempt_rejects_inline_or_missing_evidence_artifacts(
     )
     contract = store.get_research_contract(confirmation_id)
     payload = cast(dict[str, object], contract["payload"])
-    evidence = _confirmation_evidence("SUPPORTED")
+    # One immutable D2 run with NO published evidence artifacts serves both rejections:
+    # the inline check fires before any run read, and the selector then finds nothing.
     run_id = _write_research_run(
         tmp_path,
-        run_id="c300000000000003",
+        run_id="ignored-content-derived-id",
         contract_id=confirmation_id,
         payload=payload,
         evidence_zone="D2",
-        gate_evidence=evidence,
     )
+    inline_evidence = {"schema": "ResearchGateEvidenceV1", "evidence_zone": "D2"}
     with pytest.raises(DataError, match="inline gate_packet_evidence"):
         store.record_research_attempt(
             PROJECT_ID,
@@ -3077,18 +3051,11 @@ def test_confirmation_attempt_rejects_inline_or_missing_evidence_artifacts(
             status="completed",
             config_fingerprint="a" * 64,
             budget_used={"wall_seconds": 1, "source_requests": 0, "variants": 1},
-            details={"evidence_zone": "D2", "gate_packet_evidence": evidence},
+            details={"evidence_zone": "D2", "gate_packet_evidence": inline_evidence},
             run_id=run_id,
             at=START + timedelta(minutes=14),
         )
 
-    missing_run_id = _write_research_run(
-        tmp_path,
-        run_id="d400000000000004",
-        contract_id=confirmation_id,
-        payload=payload,
-        evidence_zone="D2",
-    )
     with pytest.raises(DataError, match="declared immutable artifact"):
         store.record_research_attempt(
             PROJECT_ID,
@@ -3104,7 +3071,7 @@ def test_confirmation_attempt_rejects_inline_or_missing_evidence_artifacts(
                     "content_sha256": "f" * 64,
                 },
             },
-            run_id=missing_run_id,
+            run_id=run_id,
             at=START + timedelta(minutes=14),
         )
 
@@ -3113,7 +3080,9 @@ def test_confirmation_decision_reverifies_evidence_artifact_bytes(tmp_path: Path
     store = ControlStore(tmp_path)
     _project(store)
     _, confirmation_id = _approved_contracts(store, record_decision=False)
-    run_id = hashlib.sha256(confirmation_id.encode()).hexdigest()[:16]
+    contract = store.get_research_contract(confirmation_id)
+    payload = cast(dict[str, object], contract["payload"])
+    run_id = _d2_run_id(payload, confirmation_id)
     evidence_path = tmp_path / "runs" / run_id / "research_gate_evidence.json"
     evidence_path.write_text("{}", encoding="utf-8")
 

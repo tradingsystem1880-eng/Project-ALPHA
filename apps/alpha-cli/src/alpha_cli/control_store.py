@@ -304,11 +304,16 @@ _D0_LAUNCH_BUDGET: Final[dict[str, int]] = {
 _D0_MAX_LAUNCHES: Final = 3
 _D1_RESEARCH_KIND: Final = "d1-deep-research"
 _D1_MAX_LAUNCHES: Final = 3
+_D2_RESEARCH_KIND: Final = "sealed-confirmation"
 _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fdd91e")
-# Gate 1 deliberately ships only D0. Tests may exercise the future state machine, but no public
-# production path may admit empirical D1/D2 evidence until the qualified dataset authority and
-# isolated workers required by Gates 2-3 exist.
-_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED: Final = False
+# Gate 3 (ADR-0026): confirmation approval, sealed_confirmation attempts, and the D2
+# consume/contaminate transitions are OPEN. Flipped as the final commit of phase R6d after
+# the one-shot executor acceptance suite passed (planted-claim confirmation, honest
+# empty-share INCONCLUSIVE, final-holdout future-poison immunity, mechanical
+# re-verification at every admission and read, contamination-on-integrity-failure, and
+# exact kill-and-resume recovery). D2 stays one-shot: authorization is owner-review-only
+# and a consumed or contaminated share can never be re-read for authority.
+_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED: Final = True
 # Gate 2 (ADR-0025): D1 deep-research attempt admission is OPEN. Flipped as the final
 # commit of phase R5 after the acceptance suite passed (planted-pattern recovery,
 # planted-confounder rejection, null-stays-null after Holm, future-poison immunity,
@@ -2078,6 +2083,31 @@ class ControlStore:
             ).hexdigest()[:16]
             if run_id != expected_run_id:
                 raise DataError("research D1 run_id does not match its content-derived identity")
+        if phase == "sealed_confirmation":
+            manifest_dataset_hash = manifest.get("dataset_hash")
+            if (
+                not isinstance(manifest_dataset_hash, str)
+                or _SHA256_RE.fullmatch(manifest_dataset_hash) is None
+            ):
+                raise DataError("research D2 run has no content-addressed dataset hash")
+            # Confirmation approval requires a frozen dataset hash (hashes.data); the sealed
+            # one-shot run must claim exactly those approval-frozen bytes.
+            expected["dataset_hash"] = hashes.get("data")
+            expected["watermark"] = "REGISTERED CONFIRMATORY"
+            expected["real_market_evidence"] = True
+            run_identity = {
+                "command": expected_command,
+                "project_id": project_id,
+                "research_contract_id": contract_id,
+                "contract_hash": contract_hash,
+                "dataset_hash": manifest_dataset_hash,
+                "execution_fingerprint": config_fingerprint,
+            }
+            expected_run_id = hashlib.sha256(
+                _canonical_json(run_identity, "research D2 run identity").encode("utf-8")
+            ).hexdigest()[:16]
+            if run_id != expected_run_id:
+                raise DataError("research D2 run_id does not match its content-derived identity")
         mismatches = [field for field, value in expected.items() if manifest.get(field) != value]
         if mismatches:
             raise DataError("research run authority mismatch: " + ", ".join(sorted(mismatches)))
@@ -2188,6 +2218,27 @@ class ControlStore:
             contract=contract_payload,
         )
 
+    def _require_d2_verified_evidence(
+        self,
+        *,
+        run_id: str,
+        project_id: str,
+        contract_id: str,
+        contract_payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Reverify D2 typed evidence by exact mechanical recomputation (D0/D1 pattern)."""
+
+        from alpha_cli.research_d2 import validate_d2_evidence_artifacts
+
+        run_dir, manifest = self._verified_run(run_id)
+        return validate_d2_evidence_artifacts(
+            run_dir,
+            manifest,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract_payload,
+        )
+
     @staticmethod
     def _require_d0_acceptance_reference(
         details: Mapping[str, object], manifest: Mapping[str, object]
@@ -2264,6 +2315,16 @@ class ControlStore:
                 contract_id=cast(str, contract_id),
                 contract_payload=contract_payload,
             )
+        if phase == "sealed_confirmation" and attempt.get("status") == "completed":
+            details = attempt.get("details")
+            if not isinstance(details, Mapping) or "gate_packet_evidence_ref" not in details:
+                raise DataError("completed D2 attempt has no typed evidence reference")
+            self._require_d2_verified_evidence(
+                run_id=run_id,
+                project_id=project_id,
+                contract_id=cast(str, contract_id),
+                contract_payload=contract_payload,
+            )
         _, manifest = self._verified_run(run_id)
         return manifest
 
@@ -2306,6 +2367,12 @@ class ControlStore:
                 config_fingerprint=str(row["config_fingerprint"]),
             )
             evidence = self._read_research_gate_evidence(str(row["run_id"]), details)
+            self._require_d2_verified_evidence(
+                run_id=str(row["run_id"]),
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_payload=contract_payload,
+            )
             classification = confirmation_classification_from_evidence(evidence)
             classified.append(classification)
         if len(classified) != 1:
@@ -4191,6 +4258,15 @@ class ControlStore:
                     raise DataError("D1 deep-research attempts must be completed or failed")
                 if clean_status == "completed" and clean_run is None:
                     raise DataError("completed D1 deep research requires an immutable run_id")
+            if phase_name == "sealed_confirmation":
+                if clean_kind != _D2_RESEARCH_KIND:
+                    raise DataError(
+                        "sealed confirmation accepts only the registered sealed-confirmation kind"
+                    )
+                if clean_status not in {"completed", "failed"}:
+                    raise DataError("D2 sealed-confirmation attempts must be completed or failed")
+                if clean_status == "completed" and clean_run is None:
+                    raise DataError("completed sealed confirmation requires an immutable run_id")
             reservation: sqlite3.Row | None = None
             reservation_link: sqlite3.Row | None = None
             if clean_reservation_id is not None:
@@ -4276,6 +4352,12 @@ class ControlStore:
                     )
                 if expected_zone == "D2":
                     confirmation_classification_from_evidence(evidence)
+                    self._require_d2_verified_evidence(
+                        run_id=clean_run,
+                        project_id=project_id,
+                        contract_id=contract_id,
+                        contract_payload=payload,
+                    )
             elif contract["scope"] == "confirmation" and clean_status == "completed":
                 raise DataError(
                     "completed confirmation requires a declared immutable artifact for typed D2 "
@@ -7824,7 +7906,7 @@ class ControlStore:
         job_id: str | None = None,
         at: datetime | None = None,
     ) -> dict[str, object]:
-        """Create the governed ``research:event-study`` durable job for active D1 work.
+        """Create the governed ``research:event-study`` durable job for active D1/D2 work.
 
         The phase pre-check runs in its own read transaction; a lost race can only leave a
         stray queued job that the execution-event binding check refuses to activate.
@@ -7833,15 +7915,19 @@ class ControlStore:
             contract = self._require_research_contract(connection, project_id, contract_id)
             review = self._latest_research_review(connection, contract_id)
             phase = self._latest_research_phase(connection, project_id)
+            expected_phase = (
+                "deep_research" if contract["scope"] == "exploration" else "sealed_confirmation"
+            )
             if (
-                contract["scope"] != "exploration"
+                contract["scope"] not in {"exploration", "confirmation"}
                 or _research_review_state(review) != "approved"
                 or phase is None
-                or phase["phase"] != "deep_research"
+                or phase["phase"] != expected_phase
                 or phase["contract_id"] != contract_id
             ):
                 raise DataError(
-                    "research job creation requires the approved active deep_research contract"
+                    "research job creation requires the approved active deep_research or "
+                    "sealed_confirmation contract"
                 )
         return self._create_job(
             kind="research:event-study",

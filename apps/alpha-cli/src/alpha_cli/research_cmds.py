@@ -31,6 +31,11 @@ from alpha_cli.research_d1 import (
     registered_synthetic_d1_bars,
     run_deep_research,
 )
+from alpha_cli.research_d2 import (
+    D2_EVIDENCE_ARTIFACT,
+    d2_execution_fingerprint,
+    run_confirmation,
+)
 from alpha_cli.research_dossier import (
     DossierReceipt,
     export_research_dossier,
@@ -1529,17 +1534,378 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
     )
 
 
+def _d2_enabled() -> bool:
+    return bool(getattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False))
+
+
+_D2_NEXT_ACTION_AFTER = "Owner accepts, rejects, or revises the research conclusion."
+_D2_NEXT_ACTION_DURING = "Execute the frozen primary exactly once on the sealed D2 share."
+
+
+def _contaminated_d2_failure(
+    store: ControlStore, project_id: str, contract_id: str, *, cause: str
+) -> DataError:
+    """Contaminate D2 fail-closed and route the case to its only remaining exit.
+
+    A pre-flight integrity failure (drifted implementation, unreproducible dataset bytes,
+    or a broken sealed boundary) means the authorized one-shot can never run as approved:
+    the case must exit through an owner INVALID disposition, never a silent retry, so the
+    phase advances to research_decision where only INVALID dispositions are accepted.
+    """
+    try:
+        store.transition_research_d2_state(
+            project_id,
+            contract_id,
+            to_state="contaminated",
+            actor="system",
+            reason=cause,
+        )
+        store.transition_research_phase(
+            project_id,
+            to_phase="research_decision",
+            contract_id=contract_id,
+            actor="system",
+            reason=f"D2 was contaminated before execution: {cause}",
+            next_action="Owner records INVALID with revise, park, or reject.",
+            responsibility="owner",
+        )
+    except DataError as transition_error:
+        return DataError(f"{cause}; recording the D2 contamination failed: {transition_error}")
+    return DataError(
+        f"{cause}; D2 is contaminated and the owner must record an INVALID decision "
+        "(revise, park, or reject)"
+    )
+
+
+def _run_confirm(project_id: str, *, json_out: bool) -> None:
+    """Execute the approved one-shot D2 confirmation as one governed durable job.
+
+    The executor is deterministic, so kill-and-resume is exact re-execution of the same
+    frozen computation — never a second statistical shot at the sealed share. A completed
+    run is recovered (consume D2, route to the owner decision) instead of re-executed.
+    """
+    if not _d2_enabled():
+        raise typer.BadParameter(
+            "Gate-3 unavailable: sealed one-shot confirmation is hard-disabled (ADR-0026)"
+        )
+    store = _store()
+    try:
+        payload, case = _case_payload(store, project_id)
+        phase = str(case["phase"])
+        if phase not in {"sealed_confirmation", "research_decision"}:
+            raise DataError(
+                "one-shot confirmation requires the sealed_confirmation phase (owner "
+                "approval of the exact confirmation contract seals it)"
+            )
+        contract_id = str(case["active_contract_id"])
+        execution_state = str(case["execution_state"])
+        latest_attempt_id = case.get("latest_attempt_id")
+        if isinstance(latest_attempt_id, str) and isinstance(case.get("latest_run_id"), str):
+            recovered = store.verified_research_attempt(project_id, latest_attempt_id)
+            recovered_attempt = cast(dict[str, object], recovered["attempt"])
+            recovered_manifest = cast(dict[str, object], recovered["manifest"])
+            if (
+                recovered_attempt.get("status") == "completed"
+                and recovered_attempt.get("kind") == "sealed-confirmation"
+                and recovered_attempt.get("phase") == "sealed_confirmation"
+                and recovered_attempt.get("contract_id") == contract_id
+                and recovered_manifest.get("evidence_zone") == "D2"
+            ):
+                # Finish the interrupted tail exactly once: consume -> owner decision ->
+                # idle. Each step is skipped when the crash already got past it.
+                if case.get("d2_state") == "authorized":
+                    store.transition_research_d2_state(
+                        project_id,
+                        contract_id,
+                        to_state="consumed",
+                        actor="system",
+                        reason="recovered the completed immutable one-shot confirmation",
+                    )
+                if phase == "sealed_confirmation":
+                    store.transition_research_phase(
+                        project_id,
+                        to_phase="research_decision",
+                        contract_id=contract_id,
+                        actor="system",
+                        reason=(
+                            "the one-shot D2 confirmation completed with mechanically "
+                            "verified evidence"
+                        ),
+                        next_action=_D2_NEXT_ACTION_AFTER,
+                        responsibility="owner",
+                    )
+                if execution_state in {"queued", "running"}:
+                    store.transition_research_execution(
+                        project_id,
+                        to_state="idle",
+                        contract_id=contract_id,
+                        actor="system",
+                        reason="recovered the completed immutable D2 run after interruption",
+                        next_action=_D2_NEXT_ACTION_AFTER,
+                        responsibility="owner",
+                        checkpoint="d2:complete",
+                    )
+                recovered_case = store.research_case_summary(project_id)
+                _emit(
+                    {
+                        "manifest": recovered_manifest,
+                        "attempt": recovered_attempt,
+                        "case": recovered_case,
+                    },
+                    json_out=json_out,
+                    fallback=(
+                        f"recovered D2 confirmation run {recovered_manifest['run_id']}; "
+                        "owner decision required"
+                    ),
+                )
+                return
+        if phase != "sealed_confirmation":
+            raise DataError(
+                "the one-shot confirmation is already consumed or contaminated; the owner "
+                "records the research decision"
+            )
+        if _implementation_drifted(payload.get("hashes")):
+            raise _contaminated_d2_failure(
+                store,
+                project_id,
+                contract_id,
+                cause=(
+                    "approved confirmation implementation fingerprints no longer match the "
+                    "executable code, dependency lock, evaluator, or environment"
+                ),
+            )
+        attempt_number = (
+            store.count_research_attempts(project_id, contract_id, kind="sealed-confirmation") + 1
+        )
+        if attempt_number > 3:
+            raise DataError(
+                "one-shot confirmation stopped after the initial attempt and two safe "
+                "retries; owner revision or disposition is required"
+            )
+        protocol = payload.get("protocol")
+        authority = (
+            None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
+        )
+        boundary_kind = None if not isinstance(authority, Mapping) else authority.get("kind")
+        if boundary_kind != "empirical_dataset":
+            raise DataError(
+                "one-shot confirmation requires the empirical_dataset boundary authority; "
+                "synthetic acceptance boundaries cannot authorize D2 confirmation"
+            )
+        try:
+            bars, sealed_boundary = _empirical_d1_bars(store, payload)
+        except DataError as integrity_error:
+            raise _contaminated_d2_failure(
+                store,
+                project_id,
+                contract_id,
+                cause=f"the sealed confirmation dataset failed integrity: {integrity_error}",
+            ) from integrity_error
+        if execution_state == "idle":
+            store.transition_research_execution(
+                project_id,
+                to_state="queued",
+                contract_id=contract_id,
+                actor="codex",
+                reason="the approved one-shot confirmation is queued",
+                next_action=_D2_NEXT_ACTION_DURING,
+                responsibility="codex",
+                checkpoint="d2:queued",
+            )
+        elif execution_state != "queued":
+            raise DataError("one-shot confirmation must be idle or explicitly queued for resume")
+        job = store.create_research_job(
+            project_id,
+            contract_id=contract_id,
+            request={
+                "stage": "confirm",
+                "contract_id": contract_id,
+                "attempt_number": attempt_number,
+            },
+        )
+        job_id = str(job["job_id"])
+        store.set_job_status(job_id, "running")
+        store.transition_research_execution(
+            project_id,
+            to_state="running",
+            contract_id=contract_id,
+            actor="system",
+            reason="the one-shot confirmation job started under governed heavyweight capacity",
+            next_action=_D2_NEXT_ACTION_DURING,
+            responsibility="codex",
+            active_job_id=job_id,
+            checkpoint=f"d2:running:{attempt_number}",
+        )
+
+        def on_checkpoint(checkpoint: str) -> None:
+            # Execution stays 'running'; per-step durable progress lives in the job
+            # heartbeat journal (the execution matrix forbids running -> running events).
+            if store.job_cancellation_requested(job_id):
+                raise DataError(f"one-shot confirmation was cancelled at checkpoint {checkpoint}")
+            store.append_job_event(
+                job_id, event_type="heartbeat", payload={"checkpoint": checkpoint}
+            )
+
+        try:
+            manifest = run_confirmation(
+                AlphaSettings().data_dir,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract=payload,
+                bars=bars,
+                boundary=sealed_boundary,
+                on_checkpoint=on_checkpoint,
+            )
+        except Exception as run_error:
+            cancelled = store.job_cancellation_requested(job_id)
+            retries_exhausted = attempt_number >= 3
+            error_text = (str(run_error).strip() or type(run_error).__name__)[:8192]
+            checkpoint_errors: list[str] = []
+            try:
+                store.record_research_attempt(
+                    project_id,
+                    contract_id,
+                    kind="sealed-confirmation",
+                    status="failed",
+                    config_fingerprint=d2_execution_fingerprint(payload),
+                    budget_used={},
+                    details={
+                        "attempt_number": attempt_number,
+                        "evidence_zone": "D2",
+                        "finding": (
+                            "The one-shot D2 run failed; no confirmatory conclusion was "
+                            "produced and the sealed share granted no authority."
+                        ),
+                    },
+                    error=error_text,
+                )
+            except Exception as terminal_error:
+                checkpoint_errors.append(f"terminal attempt: {terminal_error}")
+            try:
+                store.set_job_status(
+                    job_id,
+                    "cancelled" if cancelled else "failed",
+                    terminal_error=None if cancelled else error_text,
+                )
+            except Exception as job_error:
+                checkpoint_errors.append(f"job terminalization: {job_error}")
+            try:
+                store.transition_research_execution(
+                    project_id,
+                    to_state="blocked" if retries_exhausted else "failed",
+                    contract_id=contract_id,
+                    actor="system",
+                    reason="the one-shot D2 run stopped at a durable checkpoint",
+                    next_action=(
+                        "Owner revises, parks, or rejects the case; the safe retry limit "
+                        "is exhausted."
+                        if retries_exhausted
+                        else "Inspect the failure, resume the case, and re-run confirmation."
+                    ),
+                    responsibility="owner" if retries_exhausted else "codex",
+                    checkpoint=f"d2:failed:{attempt_number}",
+                    blocker=error_text,
+                    recovery=(
+                        "Change the approved contract only through owner-directed revision."
+                        if retries_exhausted
+                        else "Re-execution is exact: the identical run republishes idempotently."
+                    ),
+                )
+            except Exception as execution_error:
+                checkpoint_errors.append(f"execution checkpoint: {execution_error}")
+            checkpoint_suffix = (
+                ""
+                if not checkpoint_errors
+                else "; checkpoint errors: " + "; ".join(checkpoint_errors)
+            )
+            raise DataError(
+                f"one-shot confirmation failed and was checkpointed: "
+                f"{error_text}{checkpoint_suffix}"
+            ) from run_error
+        # The run is published and immutable. As with D0/D1, a store write failure past
+        # this point must never fabricate a failed attempt.
+        run_id = str(manifest["run_id"])
+        try:
+            attempt = store.record_research_attempt(
+                project_id,
+                contract_id,
+                kind="sealed-confirmation",
+                status="completed",
+                config_fingerprint=str(manifest["execution_fingerprint"]),
+                budget_used={"variants": 1},
+                details={
+                    "attempt_number": attempt_number,
+                    "evidence_zone": "D2",
+                    "real_market_evidence": True,
+                    "finding": (
+                        "The frozen primary executed exactly once on the sealed "
+                        "confirmation share; the classification was mechanically "
+                        "re-verified from raw measurements."
+                    ),
+                    "gate_packet_evidence_ref": {
+                        "artifact": D2_EVIDENCE_ARTIFACT,
+                        "content_sha256": _manifest_artifact_sha256(manifest, D2_EVIDENCE_ARTIFACT),
+                    },
+                },
+                run_id=run_id,
+            )
+        except Exception as record_error:
+            raise DataError(
+                f"the one-shot confirmation completed and published immutable run {run_id}, "
+                "but recording its completed attempt failed; no failed attempt was "
+                "fabricated. Inspect the control store, then re-run confirmation: the "
+                f"identical run republishes idempotently: {record_error}"
+            ) from record_error
+        store.transition_research_d2_state(
+            project_id,
+            contract_id,
+            to_state="consumed",
+            actor="system",
+            reason="the sealed confirmation share was read exactly once by the frozen primary",
+        )
+        store.transition_research_phase(
+            project_id,
+            to_phase="research_decision",
+            contract_id=contract_id,
+            actor="system",
+            reason="the one-shot D2 confirmation completed with mechanically verified evidence",
+            next_action=_D2_NEXT_ACTION_AFTER,
+            responsibility="owner",
+        )
+        store.append_job_result(job_id, {"run_id": run_id})
+        store.set_job_status(job_id, "succeeded", result_run_id=run_id)
+        store.transition_research_execution(
+            project_id,
+            to_state="idle",
+            contract_id=contract_id,
+            actor="system",
+            reason="the one-shot confirmation completed and its immutable evidence was recorded",
+            next_action=_D2_NEXT_ACTION_AFTER,
+            responsibility="owner",
+            checkpoint="d2:complete",
+        )
+        case = store.research_case_summary(project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {"manifest": manifest, "attempt": attempt, "case": case},
+        json_out=json_out,
+        fallback=(
+            f"one-shot D2 confirmation run {manifest['run_id']} completed; owner decision required"
+        ),
+    )
+
+
 @research_app.command("run")
 def run_research(
     stage: str,
     project_id: str,
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Run an allowed research stage: the deterministic D0 pilot or a governed D1 deep run."""
+    """Run an allowed research stage: D0 pilot, governed D1 deep run, or one-shot D2."""
     if stage == "confirm":
-        raise typer.BadParameter(
-            "Gate-3 unavailable: sealed confirmation is not shipped (ADR-0026)"
-        )
+        _run_confirm(project_id, json_out=json_out)
+        return
     if stage == "deep":
         _run_deep(project_id, json_out=json_out)
         return
