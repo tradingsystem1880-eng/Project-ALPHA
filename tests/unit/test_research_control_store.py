@@ -29,7 +29,11 @@ from alpha_cli.research_runtime import (
     registered_d0_operator,
 )
 from alpha_core import DataError
-from alpha_research import ResearchChartFingerprintV1, ResearchD2BoundaryV1
+from alpha_research import (
+    ResearchChartFingerprintV1,
+    ResearchD2BoundaryV1,
+    build_research_gate_packet,
+)
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 PROJECT_ID = "9e4908b1-a9cd-4c13-a47e-740d92175680"
@@ -2672,6 +2676,161 @@ def test_contaminated_confirmation_can_close_only_as_invalid(tmp_path: Path) -> 
         at=START + timedelta(minutes=15),
     )
     assert decision["outcome"] == "INVALID"
+
+
+def _promotion_packets(store: ControlStore) -> list[dict[str, object]]:
+    return [
+        packet
+        for packet in store.list_research_context_packets(PROJECT_ID)
+        if packet["packet_kind"] == "strategy_promotion"
+    ]
+
+
+def _close_decided_case(store: ControlStore, confirmation_id: str) -> None:
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="closed",
+        contract_id=confirmation_id,
+        actor="owner",
+        reason="owner recorded the terminal research disposition",
+        next_action="Research case is closed; any revision starts a new contract lineage.",
+        responsibility="owner",
+        at=START + timedelta(minutes=16),
+    )
+
+
+def test_advance_decision_records_lossless_promotion_packet_atomically(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store)
+    assert _promotion_packets(store) == []  # decision alone is not yet the terminal state
+    _close_decided_case(store, confirmation_id)
+
+    packets = _promotion_packets(store)
+    assert len(packets) == 1
+    payload = packets[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["packet_schema"] == "StrategyPromotionPacketV1"
+
+    decision = payload["decision"]
+    assert isinstance(decision, dict)
+    assert decision["contract_id"] == confirmation_id
+    assert decision["outcome"] == "SUPPORTED"
+    assert decision["disposition"] == "advance_to_strategy"
+
+    # The reference binds the exact deterministic terminal gate packet, byte for byte.
+    terminal = build_research_gate_packet(store.research_gate_packet_inputs(PROJECT_ID)).to_dict()
+    assert payload["gate_packet_reference"] == {
+        "packet_id": terminal["packet_id"],
+        "packet_hash": terminal["packet_hash"],
+    }
+
+    card = payload["hypothesis_card"]
+    assert isinstance(card, dict)
+    assert card["card_schema"] == "HypothesisCardV1"
+    for section in (
+        "registered_datasets",
+        "screened_source_claims",
+        "confounder_ledger",
+        "falsification",
+        "stability_findings",
+        "known_failure_conditions",
+        "assumptions_limitations",
+        "headline_chart_references",
+        "negative_attempt_summary",
+        "open_questions",
+    ):
+        assert section in payload
+
+    charts = payload["headline_chart_references"]
+    assert isinstance(charts, list)
+    expected_chart_sha = hashlib.sha256(b'{"watermark":"EXPLORATORY"}').hexdigest()
+    assert any(
+        chart["artifact"] == "chart-data.json" and chart["content_sha256"] == expected_chart_sha
+        for chart in charts
+        if isinstance(chart, dict)
+    )
+
+    summary = payload["negative_attempt_summary"]
+    assert isinstance(summary, dict)
+    assert summary["total_attempts"] == 2  # the completed D0 pilot plus the sealed D2 attempt
+    assert summary["by_status"] == {"completed": 2}
+    assert summary["non_completed_attempt_ids"] == []
+
+    fetched = store.get_research_context_packet(str(packets[0]["packet_id"]))
+    assert fetched["payload"] == payload
+
+
+def test_non_advance_decisions_record_no_promotion_packet(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store, outcome="INCONCLUSIVE", disposition="park")
+    _close_decided_case(store, confirmation_id)
+
+    assert _promotion_packets(store) == []
+
+
+def test_promotion_packet_is_idempotent_across_decision_replay(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store)
+
+    # Crash-between-decide-and-close recovery: the decision replay returns the stored row
+    # without a packet, and exactly one close records exactly one promotion dossier.
+    replay = store.record_research_decision(
+        PROJECT_ID,
+        confirmation_id,
+        outcome="SUPPORTED",
+        disposition="advance_to_strategy",
+        actor="owner",
+        actor_kind="human",
+        reason="The owner accepts the mechanical frozen-confirmation classification.",
+        at=START + timedelta(minutes=20),
+    )
+    assert replay["outcome"] == "SUPPORTED"
+    assert _promotion_packets(store) == []
+
+    _close_decided_case(store, confirmation_id)
+    first = _promotion_packets(store)
+    assert len(first) == 1
+    with pytest.raises(DataError, match="invalid research phase transition"):
+        _close_decided_case(store, confirmation_id)
+    packets = _promotion_packets(store)
+    assert len(packets) == 1
+    assert packets[0]["packet_id"] == first[0]["packet_id"]
+
+
+def test_agent_brief_embeds_promotion_reference_and_survives_as_of(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store)
+    _close_decided_case(store, confirmation_id)
+    store.create_strategy_version(
+        PROJECT_ID,
+        strategy_name="double_bottom",
+        source_fingerprint="git:3333333",
+        definition={"detector": "causal-double-bottom-v1"},
+        parameter_space={"tolerance": [0.005, 0.01]},
+        research_contract_id=confirmation_id,
+        at=START + timedelta(minutes=17),
+    )
+
+    context = store.get_agent_brief_context(PROJECT_ID)
+    promotion = context["research_promotion"]
+    assert isinstance(promotion, dict)
+    assert promotion["contract_id"] == confirmation_id
+    assert str(promotion["packet_id"]).startswith("cp_")
+    terminal = build_research_gate_packet(store.research_gate_packet_inputs(PROJECT_ID)).to_dict()
+    assert promotion["gate_packet_id"] == terminal["packet_id"]
+    assert promotion["gate_packet_hash"] == terminal["packet_hash"]
+
+    # Point-in-time reads never inherit a later strategy selection or its promotion packet.
+    before = store.get_agent_brief_context(
+        PROJECT_ID, as_of=START + timedelta(minutes=16, seconds=30)
+    )
+    assert before["research_promotion"] is None
+    after = store.get_agent_brief_context(PROJECT_ID, as_of=START + timedelta(minutes=17))
+    assert after["research_promotion"] == promotion
 
 
 def test_research_attempt_accepts_only_exact_contract_bound_run(tmp_path: Path) -> None:

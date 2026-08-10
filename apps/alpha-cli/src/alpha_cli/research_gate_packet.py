@@ -255,6 +255,95 @@ def research_hypothesis_card(payload: Mapping[str, object]) -> dict[str, object]
     }
 
 
+def _json_list(value: object) -> list[object]:
+    return list(value) if isinstance(value, list) else []
+
+
+def build_strategy_promotion_payload(
+    *,
+    project: Mapping[str, object],
+    decision: Mapping[str, object],
+    contract_payload: Mapping[str, object],
+    gate_packet: Mapping[str, object],
+    datasets: Sequence[Mapping[str, object]],
+    datasets_truncated: bool,
+    claims: Sequence[Mapping[str, object]],
+    claims_truncated: bool,
+    chart_references: Sequence[Mapping[str, object]],
+) -> dict[str, object]:
+    """Assemble the lossless spec-§11 promotion dossier from authoritative records only.
+
+    Pure projection over the just-recorded owner decision, the deterministic terminal
+    gate packet, the immutable contract payload, and the store's registered dataset,
+    screened-claim, and verified chart-artifact rows. Nothing is computed or inferred;
+    negative attempts stay visible and honest empty sections stay empty.
+    """
+    packet_id = gate_packet.get("packet_id")
+    packet_hash = gate_packet.get("packet_hash")
+    if not isinstance(packet_id, str) or not isinstance(packet_hash, str):
+        raise DataError("strategy promotion requires the terminal gate packet identity")
+    layers = _mapping(gate_packet.get("layers"))
+    guided = _mapping(layers.get("guided_evidence"))
+    conclusion = _mapping(layers.get("conclusion_90_seconds"))
+    appendix = _mapping(layers.get("technical_appendix"))
+    attempt_ledger = appendix.get("attempt_ledger")
+    attempts = [
+        _mapping(attempt)
+        for attempt in (attempt_ledger if isinstance(attempt_ledger, list) else [])
+    ]
+    by_status: dict[str, int] = {}
+    non_completed: list[str] = []
+    for attempt in attempts:
+        status = str(attempt.get("status", ""))
+        by_status[status] = by_status.get(status, 0) + 1
+        if status not in {"completed", "passed"}:
+            non_completed.append(str(attempt.get("attempt_id", "")))
+    confounders = _mapping(guided.get("confounders"))
+    stability = dict(_mapping(guided.get("stability")))
+    negative_controls = dict(_mapping(guided.get("negative_controls")))
+    multiplicity = dict(_mapping(guided.get("multiplicity")))
+    authority = dict(_mapping(gate_packet.get("authority")))
+    return {
+        "packet_schema": "StrategyPromotionPacketV1",
+        "project_id": str(project.get("project_id", "")),
+        "project_name": project.get("name"),
+        "decision": dict(decision),
+        "hypothesis_card": research_hypothesis_card(contract_payload),
+        "gate_packet_reference": {"packet_id": packet_id, "packet_hash": packet_hash},
+        "registered_datasets": [dict(dataset) for dataset in datasets],
+        "registered_datasets_truncated": datasets_truncated,
+        "screened_source_claims": [dict(claim) for claim in claims],
+        "screened_source_claims_truncated": claims_truncated,
+        "confounder_ledger": {
+            "registered": _string_list(contract_payload.get("confounders")),
+            "resolved": _string_list(confounders.get("resolved")),
+            "unresolved": _string_list(confounders.get("unresolved")),
+        },
+        "falsification": {
+            "required_falsifiers": _json_list(contract_payload.get("required_falsifiers")),
+            "stop_rules": _json_list(contract_payload.get("stop_rules")),
+            "negative_controls": negative_controls or None,
+            "multiplicity": multiplicity or None,
+        },
+        "stability_findings": stability or None,
+        "known_failure_conditions": _string_list(guided.get("what_would_change_conclusion")),
+        "assumptions_limitations": {
+            "strongest_caveat": _optional_text(conclusion.get("strongest_caveat")),
+            "authority": authority or None,
+        },
+        "headline_chart_references": [dict(reference) for reference in chart_references],
+        "negative_attempt_summary": {
+            "total_attempts": len(attempts),
+            "by_status": {status: by_status[status] for status in sorted(by_status)},
+            "non_completed_attempt_ids": non_completed,
+        },
+        "open_questions": {
+            "blocking_questions": _question_texts(contract_payload.get("blocking_questions")),
+            "untested_work": _string_list(guided.get("untested_work")),
+        },
+    }
+
+
 def _finding_status(value: object) -> str:
     finding = _mapping(value)
     status = finding.get("status")

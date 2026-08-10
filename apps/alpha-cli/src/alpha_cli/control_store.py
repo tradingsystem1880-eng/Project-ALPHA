@@ -3752,13 +3752,14 @@ class ControlStore:
                         contract_id=contract_id,
                         contract_payload=confirmation_payload,
                     )
-            elif clean_phase == "closed":
-                decision = connection.execute(
-                    """SELECT 1 FROM research_decision_events
+            closing_decision: sqlite3.Row | None = None
+            if clean_phase == "closed":
+                closing_decision = connection.execute(
+                    """SELECT * FROM research_decision_events
                     WHERE project_id = ? AND contract_id = ?""",
                     (project_id, contract_id),
                 ).fetchone()
-                if decision is None:
+                if closing_decision is None:
                     raise DataError("research case cannot close without an owner research decision")
 
             row = self._append_research_phase_event(
@@ -3774,6 +3775,21 @@ class ControlStore:
                 recovery=clean_recovery,
                 at=timestamp,
             )
+            if (
+                closing_decision is not None
+                and closing_decision["disposition"] == "advance_to_strategy"
+            ):
+                # The terminal gate packet exists only once the case closes, so the lossless
+                # spec-§11 promotion dossier commits atomically with the closing phase event —
+                # an advance_to_strategy case cannot close without its research inheritance.
+                self._record_strategy_promotion_packet(
+                    connection,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    decision=dict(closing_decision),
+                    actor=str(closing_decision["actor"]),
+                    timestamp=timestamp,
+                )
         return dict(row)
 
     def transition_research_execution(
@@ -5243,7 +5259,20 @@ class ControlStore:
                 "stop_rules": contract_payload.get("stop_rules", []),
             }
         if kind == "strategy_promotion":
-            return {"decision": decision}
+            promotion_packet_id: str | None = None
+            if decision is not None:
+                decision_project = decision.get("project_id")
+                decision_contract = decision.get("contract_id")
+                if isinstance(decision_project, str) and isinstance(decision_contract, str):
+                    reference = self._promotion_reference(
+                        connection,
+                        project_id=decision_project,
+                        contract_id=decision_contract,
+                        cutoff=None,
+                    )
+                    if reference is not None:
+                        promotion_packet_id = cast(str, reference["packet_id"])
+            return {"decision": decision, "promotion_packet_id": promotion_packet_id}
         # research_case: the open material questions are the packet's task surface.
         return {"blocking_questions": contract_payload.get("blocking_questions", [])}
 
@@ -5679,134 +5708,144 @@ class ControlStore:
         self, project_id: str, *, ledger_limit: int = 10_000
     ) -> dict[str, object]:
         """Return canonical public inputs for a deterministic ResearchGatePacket renderer."""
+        with self._transaction(write=False) as connection:
+            return self._gate_packet_inputs(connection, project_id, ledger_limit=ledger_limit)
+
+    def _gate_packet_inputs(
+        self, connection: sqlite3.Connection, project_id: str, *, ledger_limit: int
+    ) -> dict[str, object]:
+        """Assemble the packet inputs on an existing connection (decision-transaction safe)."""
         if (
             isinstance(ledger_limit, bool)
             or not isinstance(ledger_limit, int)
             or not 1 <= ledger_limit <= 100_000
         ):
             raise DataError("research gate packet ledger_limit must be in 1..100000")
-        with self._transaction(write=False) as connection:
-            project = dict(self._require_project(connection, project_id))
-            phase = self._latest_research_phase(connection, project_id)
-            if phase is None:
-                raise DataError(f"strategy project {project_id!r} has no research case")
-            active = self._require_research_contract(
-                connection, project_id, str(phase["contract_id"])
-            )
-            exploration_id = (
-                str(active["parent_contract_id"])
-                if active["scope"] == "confirmation"
-                else str(active["contract_id"])
-            )
-            lineage_ids = [exploration_id]
-            if active["scope"] == "confirmation":
-                lineage_ids.append(str(active["contract_id"]))
-            placeholders = ",".join("?" for _ in lineage_ids)
+        project_row = self._require_project(connection, project_id)
+        # Only the immutable research identity feeds packet content: mutable strategy-plane
+        # fields (status, current version/experiment, updated_at) would silently change the
+        # terminal packet identity after promotion, breaking recorded id/hash references.
+        project: dict[str, object] = {
+            "project_id": project_row["project_id"],
+            "name": project_row["name"],
+            "hypothesis": project_row["hypothesis"],
+            "falsification_criterion": project_row["falsification_criterion"],
+            "created_at": project_row["created_at"],
+        }
+        phase = self._latest_research_phase(connection, project_id)
+        if phase is None:
+            raise DataError(f"strategy project {project_id!r} has no research case")
+        active = self._require_research_contract(connection, project_id, str(phase["contract_id"]))
+        exploration_id = (
+            str(active["parent_contract_id"])
+            if active["scope"] == "confirmation"
+            else str(active["contract_id"])
+        )
+        lineage_ids = [exploration_id]
+        if active["scope"] == "confirmation":
+            lineage_ids.append(str(active["contract_id"]))
+        placeholders = ",".join("?" for _ in lineage_ids)
 
-            contract_rows = [
-                self._require_research_contract(connection, project_id, contract_id)
-                for contract_id in lineage_ids
-            ]
-            contracts = [self._research_contract_view(connection, row) for row in contract_rows]
-            pack_ids: set[str] = set()
-            for contract in contracts:
-                payload = contract["payload"]
-                if isinstance(payload, dict) and isinstance(payload.get("source_pack_id"), str):
-                    pack_ids.add(str(payload["source_pack_id"]))
-            pack_rows: list[sqlite3.Row] = []
-            source_ids: set[str] = set()
-            for pack_id in sorted(pack_ids):
-                pack = connection.execute(
-                    """SELECT * FROM research_source_packs
-                    WHERE project_id = ? AND pack_id = ?""",
-                    (project_id, pack_id),
-                ).fetchone()
-                if pack is None:
-                    raise DataError("active research contract references a missing source pack")
-                pack_rows.append(cast(sqlite3.Row, pack))
-                ids = _decode_json(pack["source_ids_json"], "research source pack ids")
-                if not isinstance(ids, list) or not all(isinstance(item, str) for item in ids):
-                    raise DataError("corrupt research source pack ids")
-                source_ids.update(cast(list[str], ids))
-            source_rows: list[sqlite3.Row] = []
-            for source_id in sorted(source_ids):
-                source = connection.execute(
-                    """SELECT * FROM research_source_records
-                    WHERE project_id = ? AND source_id = ?""",
-                    (project_id, source_id),
-                ).fetchone()
-                if source is None:
-                    raise DataError("active research source pack references a missing source")
-                source_rows.append(cast(sqlite3.Row, source))
+        contract_rows = [
+            self._require_research_contract(connection, project_id, contract_id)
+            for contract_id in lineage_ids
+        ]
+        contracts = [self._research_contract_view(connection, row) for row in contract_rows]
+        pack_ids: set[str] = set()
+        for contract in contracts:
+            payload = contract["payload"]
+            if isinstance(payload, dict) and isinstance(payload.get("source_pack_id"), str):
+                pack_ids.add(str(payload["source_pack_id"]))
+        pack_rows: list[sqlite3.Row] = []
+        source_ids: set[str] = set()
+        for pack_id in sorted(pack_ids):
+            pack = connection.execute(
+                """SELECT * FROM research_source_packs
+                WHERE project_id = ? AND pack_id = ?""",
+                (project_id, pack_id),
+            ).fetchone()
+            if pack is None:
+                raise DataError("active research contract references a missing source pack")
+            pack_rows.append(cast(sqlite3.Row, pack))
+            ids = _decode_json(pack["source_ids_json"], "research source pack ids")
+            if not isinstance(ids, list) or not all(isinstance(item, str) for item in ids):
+                raise DataError("corrupt research source pack ids")
+            source_ids.update(cast(list[str], ids))
+        source_rows: list[sqlite3.Row] = []
+        for source_id in sorted(source_ids):
+            source = connection.execute(
+                """SELECT * FROM research_source_records
+                WHERE project_id = ? AND source_id = ?""",
+                (project_id, source_id),
+            ).fetchone()
+            if source is None:
+                raise DataError("active research source pack references a missing source")
+            source_rows.append(cast(sqlite3.Row, source))
 
-            def bounded_rows(
-                query: str, parameters: Sequence[object], label: str
-            ) -> list[sqlite3.Row]:
-                rows = connection.execute(
-                    f"{query} LIMIT ?",  # noqa: S608 - static queries plus a bound limit.
-                    [*parameters, ledger_limit + 1],
-                ).fetchall()
-                if len(rows) > ledger_limit:
-                    raise DataError(
-                        f"research gate packet {label} exceeds ledger_limit={ledger_limit}"
-                    )
-                return [cast(sqlite3.Row, row) for row in rows]
+        def bounded_rows(query: str, parameters: Sequence[object], label: str) -> list[sqlite3.Row]:
+            rows = connection.execute(
+                f"{query} LIMIT ?",  # noqa: S608 - static queries plus a bound limit.
+                [*parameters, ledger_limit + 1],
+            ).fetchall()
+            if len(rows) > ledger_limit:
+                raise DataError(f"research gate packet {label} exceeds ledger_limit={ledger_limit}")
+            return [cast(sqlite3.Row, row) for row in rows]
 
-            attempts = bounded_rows(
-                f"""SELECT a.*, l.reservation_id AS launch_reservation_id
-                FROM research_attempt_records AS a
-                LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
-                WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
-                ORDER BY a.recorded_at, a.attempt_id""",  # noqa: S608
-                [project_id, *lineage_ids],
-                "attempt ledger",
-            )
-            launch_reservations = bounded_rows(
-                f"""SELECT * FROM research_launch_reservations
-                WHERE project_id = ? AND contract_id IN ({placeholders})
-                ORDER BY reserved_at, reservation_id""",  # noqa: S608
-                [project_id, *lineage_ids],
-                "launch reservation ledger",
-            )
-            launch_attempt_links = bounded_rows(
-                f"""SELECT l.* FROM research_launch_attempt_links AS l
-                JOIN research_launch_reservations AS r
-                    ON r.reservation_id = l.reservation_id
-                WHERE r.project_id = ? AND r.contract_id IN ({placeholders})
-                ORDER BY l.linked_at, l.reservation_id""",  # noqa: S608
-                [project_id, *lineage_ids],
-                "launch terminal-link ledger",
-            )
-            phase_events = bounded_rows(
-                """SELECT * FROM research_phase_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "phase ledger",
-            )
-            review_events = bounded_rows(
-                """SELECT * FROM research_contract_review_events
-                WHERE project_id = ? ORDER BY occurred_at, contract_id, sequence""",
-                [project_id],
-                "review ledger",
-            )
-            execution_events = bounded_rows(
-                """SELECT * FROM research_execution_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "execution ledger",
-            )
-            d2_events = bounded_rows(
-                """SELECT * FROM research_d2_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "D2 ledger",
-            )
-            decision_events = bounded_rows(
-                """SELECT * FROM research_decision_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "decision ledger",
-            )
+        attempts = bounded_rows(
+            f"""SELECT a.*, l.reservation_id AS launch_reservation_id
+            FROM research_attempt_records AS a
+            LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
+            WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
+            ORDER BY a.recorded_at, a.attempt_id""",  # noqa: S608
+            [project_id, *lineage_ids],
+            "attempt ledger",
+        )
+        launch_reservations = bounded_rows(
+            f"""SELECT * FROM research_launch_reservations
+            WHERE project_id = ? AND contract_id IN ({placeholders})
+            ORDER BY reserved_at, reservation_id""",  # noqa: S608
+            [project_id, *lineage_ids],
+            "launch reservation ledger",
+        )
+        launch_attempt_links = bounded_rows(
+            f"""SELECT l.* FROM research_launch_attempt_links AS l
+            JOIN research_launch_reservations AS r
+                ON r.reservation_id = l.reservation_id
+            WHERE r.project_id = ? AND r.contract_id IN ({placeholders})
+            ORDER BY l.linked_at, l.reservation_id""",  # noqa: S608
+            [project_id, *lineage_ids],
+            "launch terminal-link ledger",
+        )
+        phase_events = bounded_rows(
+            """SELECT * FROM research_phase_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "phase ledger",
+        )
+        review_events = bounded_rows(
+            """SELECT * FROM research_contract_review_events
+            WHERE project_id = ? ORDER BY occurred_at, contract_id, sequence""",
+            [project_id],
+            "review ledger",
+        )
+        execution_events = bounded_rows(
+            """SELECT * FROM research_execution_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "execution ledger",
+        )
+        d2_events = bounded_rows(
+            """SELECT * FROM research_d2_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "D2 ledger",
+        )
+        decision_events = bounded_rows(
+            """SELECT * FROM research_decision_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "decision ledger",
+        )
 
         contract_payloads: dict[str, dict[str, object]] = {}
         for contract in contracts:
@@ -5862,6 +5901,200 @@ class ControlStore:
             "d2_events": [dict(row) for row in d2_events],
             "decision_events": [dict(row) for row in decision_events],
         }
+
+    def _contract_datasets(
+        self, connection: sqlite3.Connection, contract_payload: Mapping[str, object]
+    ) -> tuple[list[dict[str, object]], bool]:
+        """Registered dataset refs for the contract's instrument, on this connection."""
+        fingerprint = contract_payload.get("chart_fingerprint")
+        instrument = fingerprint.get("instrument") if isinstance(fingerprint, Mapping) else None
+        if not isinstance(instrument, str) or not instrument:
+            return [], False
+        try:
+            clean_instrument = _symbols([instrument])[0]
+        except DataError:
+            # Synthetic fixture instruments are not registrable symbols; no datasets exist.
+            return [], False
+        rows = connection.execute(
+            """SELECT * FROM research_dataset_refs WHERE instrument = ?
+            ORDER BY registered_at DESC, ref_id LIMIT ?""",
+            (clean_instrument, _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
+        ).fetchall()
+        views: list[dict[str, object]] = []
+        for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]:
+            view = self._dataset_ref_view(row)
+            audit = connection.execute(
+                """SELECT * FROM research_dataset_audits WHERE ref_id = ?
+                ORDER BY sequence DESC LIMIT 1""",
+                (row["ref_id"],),
+            ).fetchone()
+            view["latest_audit"] = None if audit is None else self._dataset_audit_view(audit)
+            views.append(view)
+        return views, len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT
+
+    def _screened_claims(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> tuple[list[dict[str, object]], bool]:
+        """Latest-revision screened literature claims for one case, on this connection."""
+        rows = connection.execute(
+            """SELECT claims.* FROM research_source_claims AS claims
+            JOIN (
+                SELECT claim_id, MAX(revision) AS revision
+                FROM research_source_claims WHERE project_id = ? GROUP BY claim_id
+            ) AS latest
+                ON latest.claim_id = claims.claim_id
+                AND latest.revision = claims.revision
+            WHERE claims.status = 'screened'
+            ORDER BY claims.created_at, claims.claim_id LIMIT ?""",
+            (project_id, _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
+        ).fetchall()
+        views = [self._source_claim_view(row) for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]]
+        return views, len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT
+
+    def _verified_chart_references(
+        self, attempts: Sequence[Mapping[str, object]]
+    ) -> list[dict[str, object]]:
+        """Exact content-addressed chart-data references from verified immutable runs."""
+        references: list[dict[str, object]] = []
+        seen: set[str] = set()
+        for attempt in attempts:
+            run_id = attempt.get("run_id")
+            if not isinstance(run_id, str) or run_id in seen:
+                continue
+            seen.add(run_id)
+            _, manifest = self._verified_run(run_id)
+            artifacts = manifest.get("artifacts")
+            metadata = artifacts.get("chart-data.json") if isinstance(artifacts, Mapping) else None
+            sha256 = metadata.get("sha256") if isinstance(metadata, Mapping) else None
+            if not isinstance(sha256, str):
+                continue
+            details = attempt.get("details")
+            zone = details.get("evidence_zone") if isinstance(details, Mapping) else None
+            references.append(
+                {
+                    "run_id": run_id,
+                    "artifact": "chart-data.json",
+                    "content_sha256": sha256,
+                    "evidence_zone": zone if isinstance(zone, str) else None,
+                }
+            )
+        return references
+
+    def _record_strategy_promotion_packet(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        decision: Mapping[str, object],
+        actor: str,
+        timestamp: str,
+    ) -> str:
+        """Record the lossless spec-§11 promotion dossier inside the decision transaction.
+
+        The dossier binds the deterministic terminal gate packet (id + hash) computed from
+        the exact post-decision ledgers on this connection, so an ``advance_to_strategy``
+        decision and its complete research inheritance commit or roll back together.
+        """
+        from alpha_cli.research_gate_packet import build_strategy_promotion_payload
+        from alpha_research import build_research_gate_packet
+
+        inputs = self._gate_packet_inputs(connection, project_id, ledger_limit=10_000)
+        gate_packet = build_research_gate_packet(inputs).to_dict()
+        contracts = inputs.get("contracts")
+        contract_payload: dict[str, object] | None = None
+        for contract in contracts if isinstance(contracts, list) else []:
+            if isinstance(contract, dict) and contract.get("contract_id") == contract_id:
+                payload = contract.get("payload")
+                if isinstance(payload, dict):
+                    contract_payload = payload
+        if contract_payload is None:
+            raise DataError("strategy promotion requires the decided contract payload")
+        datasets, datasets_truncated = self._contract_datasets(connection, contract_payload)
+        claims, claims_truncated = self._screened_claims(connection, project_id)
+        attempts = inputs.get("attempts")
+        chart_references = self._verified_chart_references(
+            [attempt for attempt in attempts if isinstance(attempt, Mapping)]
+            if isinstance(attempts, list)
+            else []
+        )
+        project = inputs.get("project")
+        payload_out = build_strategy_promotion_payload(
+            project=project if isinstance(project, Mapping) else {},
+            decision=decision,
+            contract_payload=contract_payload,
+            gate_packet=gate_packet,
+            datasets=datasets,
+            datasets_truncated=datasets_truncated,
+            claims=claims,
+            claims_truncated=claims_truncated,
+            chart_references=chart_references,
+        )
+        packet_id = _content_id("cp", payload_out)
+        existing = connection.execute(
+            "SELECT packet_id FROM research_context_packets WHERE packet_id = ?",
+            (packet_id,),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                """INSERT INTO research_context_packets (
+                    packet_id, project_id, packet_kind, protocol_id, protocol_content_hash,
+                    payload_json, created_by, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    packet_id,
+                    project_id,
+                    "strategy_promotion",
+                    None,
+                    None,
+                    _canonical_json(payload_out, "strategy promotion packet payload"),
+                    actor,
+                    timestamp,
+                ),
+            )
+        return packet_id
+
+    def _promotion_reference(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        cutoff: str | None,
+    ) -> dict[str, object] | None:
+        """Resolve the recorded promotion dossier for one linked contract at the cutoff."""
+        params: list[object] = [project_id]
+        time_filter = ""
+        if cutoff is not None:
+            time_filter = " AND created_at <= ?"
+            params.append(cutoff)
+        rows = connection.execute(
+            """SELECT packet_id, payload_json, created_at FROM research_context_packets
+            WHERE project_id = ? AND packet_kind = 'strategy_promotion'"""
+            + time_filter
+            + " ORDER BY created_at, packet_id",
+            params,
+        ).fetchall()
+        for row in rows:
+            payload = _decode_json(row["payload_json"], "strategy promotion packet payload")
+            if not isinstance(payload, dict):
+                raise DataError("corrupt strategy promotion packet payload")
+            if payload.get("packet_schema") != "StrategyPromotionPacketV1":
+                # Codex-built review packets share the kind but are not the dossier.
+                continue
+            decision = payload.get("decision")
+            if not isinstance(decision, Mapping) or decision.get("contract_id") != contract_id:
+                continue
+            reference = payload.get("gate_packet_reference")
+            gate = reference if isinstance(reference, Mapping) else {}
+            return {
+                "packet_id": str(row["packet_id"]),
+                "contract_id": contract_id,
+                "gate_packet_id": gate.get("packet_id"),
+                "gate_packet_hash": gate.get("packet_hash"),
+                "recorded_at": str(row["created_at"]),
+            }
+        return None
 
     def get_agent_brief_context(
         self,
@@ -5933,6 +6166,7 @@ class ControlStore:
             if experiment_id is not None and experiment_row is None:
                 raise DataError("corrupt control store: selected experiment is missing")
             version_view = None if version_row is None else self._version_view(version_row)
+            research_promotion: dict[str, object] | None = None
             if version_view is not None and version_id is not None:
                 version_link_params: list[object] = [project_id, version_id]
                 time_filter = ""
@@ -5947,6 +6181,12 @@ class ControlStore:
                 ).fetchone()
                 if research_link is not None:
                     version_view["research_contract_id"] = research_link["contract_id"]
+                    research_promotion = self._promotion_reference(
+                        connection,
+                        project_id=project_id,
+                        contract_id=str(research_link["contract_id"]),
+                        cutoff=cutoff,
+                    )
             experiment_view = (
                 None if experiment_row is None else self._experiment_view(experiment_row)
             )
@@ -6088,6 +6328,7 @@ class ControlStore:
             "holdout_events": holdout_events,
             "scope_history_complete": scope_history_complete,
             "evidence": evidence,
+            "research_promotion": research_promotion,
         }
 
     @staticmethod
