@@ -43,6 +43,7 @@ from alpha_cli.research_dossier import (
 )
 from alpha_cli.research_gate_packet import (
     research_backlog_row,
+    research_decision_view_projection,
     research_evidence_hub_projection,
     research_hypothesis_card,
     research_report_projection,
@@ -2527,6 +2528,28 @@ def status(
         {**row, "hypothesis_card": card, "scorecard": scorecard},
         json_out=json_out,
         fallback=f"{row['phase']} / {row['execution_state']}: {row['next_action']}",
+    )
+
+
+@research_app.command("decision-view")
+def decision_view(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Assemble the owner decision view: checklist, full scorecard, packet, and history."""
+    try:
+        view = research_decision_view_projection(_store(), project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    scorecard = cast(dict[str, object], view["scorecard"])
+    recommendation = cast(dict[str, object], scorecard["recommendation"])
+    _emit(
+        view,
+        json_out=json_out,
+        fallback=(
+            f"decision view for {project_id}: {view['phase']} / d2 {view['d2_state']} — "
+            f"{recommendation['value']}"
+        ),
     )
 
 

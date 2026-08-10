@@ -3125,6 +3125,18 @@ class ControlStore:
                 ).fetchall()
         return [self._source_claim_view(row) for row in rows]
 
+    def list_research_decisions(self, project_id: str) -> list[dict[str, object]]:
+        """Return the append-only owner decision history for one case, oldest first."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT sequence, contract_id, outcome, disposition, actor, actor_kind,
+                    occurred_at, reason
+                FROM research_decision_events WHERE project_id = ? ORDER BY sequence""",
+                (project_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def search_research_sources(
         self, query: str, *, limit: int = 50, offset: int = 0
     ) -> list[dict[str, object]]:

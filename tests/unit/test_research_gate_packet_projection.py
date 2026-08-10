@@ -672,3 +672,295 @@ def test_evidence_hub_data_section_lists_registered_datasets_without_touching_ef
     assert states["data_quality"] == "strong"
     assert states["effect_existence"] == "not_tested"
     assert states["falsification"] == "not_tested"
+
+
+_CHECKLIST_QUESTION_IDS = [
+    "effect_exists",
+    "practical_magnitude",
+    "temporal_stability",
+    "sample_breadth",
+    "transportability",
+    "regime_dependence",
+    "parameter_neighborhood",
+    "falsification",
+    "data_artifact",
+    "leakage",
+    "mechanism",
+    "economic_hurdle",
+    "observation_count",
+    "residual_uncertainty",
+]
+
+
+def _checklist_rows(checklist: dict[str, object]) -> dict[str, dict[str, object]]:
+    questions = checklist["questions"]
+    assert isinstance(questions, list)
+    rows: dict[str, dict[str, object]] = {}
+    for index, entry in enumerate(questions):
+        assert isinstance(entry, dict)
+        assert set(entry) == {"question_id", "number", "question", "binding", "status", "answer"}
+        assert entry["number"] == index + 1
+        assert isinstance(entry["question"], str) and entry["question"].endswith("?")
+        assert isinstance(entry["binding"], str) and entry["binding"]
+        assert isinstance(entry["answer"], str) and entry["answer"]
+        rows[str(entry["question_id"])] = entry
+    return rows
+
+
+def test_checklist_binds_all_fourteen_questions_for_a_fresh_case() -> None:
+    from alpha_cli.research_gate_packet import (
+        derive_research_checklist,
+        research_scorecard_inputs,
+    )
+    from alpha_cli.research_intake import draft_exploration_contract
+
+    payload = draft_exploration_contract("SPY bounces after double bottoms on the 4h chart")
+    summary: dict[str, object] = {
+        "project_id": "project-1",
+        "phase": "triage",
+        "execution_state": "idle",
+        "next_action": "Owner answers the material question batch.",
+        "research_decision": None,
+        "d2_state": "sealed",
+        "attempt_count": 0,
+    }
+    checklist = derive_research_checklist(research_scorecard_inputs(summary, payload, packet=None))
+    assert checklist["checklist_schema"] == "ResearchEdgeChecklistV1"
+    rows = _checklist_rows(checklist)
+    assert list(rows) == _CHECKLIST_QUESTION_IDS
+    # Spec 10.1: every question is answered by a typed finding or explicitly NOT_TESTED.
+    for question_id in _CHECKLIST_QUESTION_IDS:
+        if question_id == "residual_uncertainty":
+            continue
+        assert rows[question_id]["status"] == "NOT_TESTED", question_id
+    # The uncertainty ledger always exists, so the last question is always answered.
+    uncertainty = rows["residual_uncertainty"]
+    assert uncertainty["status"] == "TESTED"
+    assert "unresolved" in str(uncertainty["answer"])
+    # No numeric aggregate anywhere.
+    assert set(checklist) == {"checklist_schema", "questions"}
+
+
+def test_checklist_relays_recorded_finding_statuses_and_confirmation() -> None:
+    from alpha_cli.research_gate_packet import derive_research_checklist
+
+    inputs: dict[str, object] = {
+        "inputs_schema": "ResearchScorecardInputsV1",
+        "phase": "research_decision",
+        "outcome": None,
+        "disposition": None,
+        "d2_state": "consumed",
+        "hypothesis_complete_fields": 14,
+        "hypothesis_partial_fields": 0,
+        "hypothesis_total_fields": 14,
+        "registered_dataset_count": 1,
+        "audited_dataset_count": 1,
+        "audit_blocking_count": 0,
+        "audit_limiting_count": 2,
+        "screened_claim_count": 3,
+        "screened_supporting_count": 2,
+        "screened_contradicting_count": 1,
+        "blocking_questions": [],
+        "confounders_resolved": ["weekday seasonality"],
+        "confounders_unresolved": ["volatility regime"],
+        "untested_work": ["mechanism analysis"],
+        "attempt_count": 3,
+        "primary_result_status": "TESTED",
+        "practical_magnitude_status": "CLEARS_HURDLE",
+        "confirmation_classification": "SUPPORTED",
+        "power_status": "PASSED",
+        "negative_controls_status": "PASSED",
+        "multiplicity_status": "PASSED",
+        "mechanism_status": "NOT_TESTED",
+        "stability_parameter_status": "STABLE",
+        "stability_temporal_status": "STABLE",
+        "stability_transportability_status": "NOT_TESTED",
+    }
+    rows = _checklist_rows(derive_research_checklist(inputs))
+    assert rows["effect_exists"]["status"] == "SUPPORTED"
+    assert "Sealed confirmation" in str(rows["effect_exists"]["answer"])
+    assert rows["practical_magnitude"]["status"] == "CLEARS_HURDLE"
+    assert rows["temporal_stability"]["status"] == "STABLE"
+    assert rows["sample_breadth"]["status"] == "PASSED"
+    assert rows["transportability"]["status"] == "NOT_TESTED"
+    assert rows["regime_dependence"]["status"] == "NOT_TESTED"
+    assert rows["parameter_neighborhood"]["status"] == "STABLE"
+    assert rows["falsification"]["status"] == "PASSED"
+    # Audits ran with limiting findings only: the data-artifact answer is inconclusive.
+    assert rows["data_artifact"]["status"] == "INCONCLUSIVE"
+    assert "2 limiting" in str(rows["data_artifact"]["answer"])
+    assert rows["leakage"]["status"] == "PASSED"
+    assert rows["mechanism"]["status"] == "NOT_TESTED"
+    assert "2 supporting" in str(rows["mechanism"]["answer"])
+    # The economic hurdle is the last rung and has no evidence class yet: always honest.
+    assert rows["economic_hurdle"]["status"] == "NOT_TESTED"
+    assert rows["observation_count"]["status"] == "PASSED"
+    assert rows["residual_uncertainty"]["status"] == "TESTED"
+    assert "1 unresolved" in str(rows["residual_uncertainty"]["answer"])
+
+
+def test_checklist_reports_blocking_audit_findings_and_missing_audits() -> None:
+    from alpha_cli.research_gate_packet import derive_research_checklist
+
+    base: dict[str, object] = {
+        "inputs_schema": "ResearchScorecardInputsV1",
+        "phase": "deep_research",
+        "outcome": None,
+        "disposition": None,
+        "d2_state": "sealed",
+        "hypothesis_complete_fields": 14,
+        "hypothesis_partial_fields": 0,
+        "hypothesis_total_fields": 14,
+        "registered_dataset_count": 1,
+        "audited_dataset_count": 0,
+        "audit_blocking_count": 0,
+        "audit_limiting_count": 0,
+        "screened_claim_count": 0,
+        "screened_supporting_count": 0,
+        "screened_contradicting_count": 0,
+        "blocking_questions": [],
+        "confounders_resolved": [],
+        "confounders_unresolved": [],
+        "untested_work": [],
+        "attempt_count": 1,
+        "primary_result_status": "NOT_TESTED",
+        "practical_magnitude_status": "NOT_TESTED",
+        "confirmation_classification": None,
+        "power_status": "NOT_TESTED",
+        "negative_controls_status": "NOT_TESTED",
+        "multiplicity_status": "NOT_TESTED",
+        "mechanism_status": "NOT_TESTED",
+        "stability_parameter_status": "NOT_TESTED",
+        "stability_temporal_status": "NOT_TESTED",
+        "stability_transportability_status": "NOT_TESTED",
+    }
+    unaudited = _checklist_rows(derive_research_checklist(base))
+    assert unaudited["data_artifact"]["status"] == "NOT_TESTED"
+    blocked = _checklist_rows(
+        derive_research_checklist({**base, "audited_dataset_count": 1, "audit_blocking_count": 2})
+    )
+    assert blocked["data_artifact"]["status"] == "FAILED"
+    assert "2 blocking" in str(blocked["data_artifact"]["answer"])
+    clean = _checklist_rows(derive_research_checklist({**base, "audited_dataset_count": 1}))
+    assert clean["data_artifact"]["status"] == "PASSED"
+    exploratory = _checklist_rows(
+        derive_research_checklist({**base, "primary_result_status": "TESTED"})
+    )
+    assert exploratory["effect_exists"]["status"] == "TESTED"
+    assert "sealed confirmation has not run" in str(exploratory["effect_exists"]["answer"])
+
+
+def test_checklist_drift_fixture_pins_python_and_typescript_twins() -> None:
+    """The committed checklist fixture is asserted byte-equal by BOTH pytest and vitest.
+
+    researchChecklistModel.ts derives the same expected checklists from the same inputs
+    in `apps/alpha-web/frontend/src/panels/__fixtures__/researchChecklist.json`; a change
+    to either implementation without regenerating the fixture fails one of the suites.
+    """
+    from alpha_cli.research_gate_packet import derive_research_checklist
+
+    fixture_path = (
+        Path(__file__).parents[2]
+        / "apps/alpha-web/frontend/src/panels/__fixtures__/researchChecklist.json"
+    )
+    scenarios = json.loads(fixture_path.read_text(encoding="utf-8"))
+    assert isinstance(scenarios, list) and len(scenarios) >= 3
+    names = [scenario["name"] for scenario in scenarios]
+    assert names == sorted(names) and len(set(names)) == len(names)
+    for scenario in scenarios:
+        derived = derive_research_checklist(scenario["inputs"])
+        assert derived == scenario["expected"], scenario["name"]
+
+
+def test_decision_view_assembles_checklist_scorecard_packet_and_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli.research_gate_packet import research_decision_view_projection
+
+    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(
+        store, outcome="SUPPORTED", disposition="advance_to_strategy"
+    )
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="closed",
+        contract_id=confirmation_id,
+        actor="codex",
+        reason="Owner decision recorded; close the case.",
+        next_action="Enter strategy development through the governed link.",
+        responsibility="owner",
+        at=START + timedelta(minutes=16),
+    )
+    view = research_decision_view_projection(store, PROJECT_ID)
+    assert view["view_schema"] == "ResearchDecisionViewV1"
+    assert view["project_id"] == PROJECT_ID
+    assert view["phase"] == "closed"
+    assert view["d2_state"] == "consumed"
+    checklist = view["checklist"]
+    assert isinstance(checklist, dict)
+    rows = _checklist_rows(checklist)
+    assert list(rows) == _CHECKLIST_QUESTION_IDS
+    assert rows["effect_exists"]["status"] == "SUPPORTED"
+    scorecard = view["scorecard"]
+    assert isinstance(scorecard, dict)
+    assert scorecard["scorecard_schema"] == "ResearchReadinessScorecardV1"
+    recommendation = cast(dict[str, object], scorecard["recommendation"])
+    assert recommendation["value"] == "READY FOR STRATEGY RESEARCH"
+    packet = view["gate_packet"]
+    assert isinstance(packet, dict)
+    assert packet["report_schema"] == "ResearchGatePacketV1"
+    history = view["decision_history"]
+    assert isinstance(history, list) and len(history) == 1
+    event = cast(dict[str, object], history[0])
+    assert event["outcome"] == "SUPPORTED"
+    assert event["disposition"] == "advance_to_strategy"
+    assert event["actor_kind"] == "human"
+    assert isinstance(event["reason"], str) and event["reason"]
+
+
+def test_decision_view_keeps_open_cases_live_without_a_terminal_packet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli.research_gate_packet import research_decision_view_projection
+
+    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
+    store = ControlStore(tmp_path)
+    _project(store)
+    _approved_contracts(
+        store,
+        record_confirmation_evidence=False,
+        record_decision=False,
+        d2_state="authorized",
+        transition_to_decision=False,
+    )
+    view = research_decision_view_projection(store, PROJECT_ID)
+    assert view["phase"] == "sealed_confirmation"
+    assert view["gate_packet"] is None
+    assert view["decision_history"] == []
+    rows = _checklist_rows(cast(dict[str, object], view["checklist"]))
+    assert rows["economic_hurdle"]["status"] == "NOT_TESTED"
+
+
+def test_alpha_research_decision_view_emits_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = CliRunner().invoke(
+        app,
+        ["research", "capture", "SPY drifts into month-end rebalancing", "--json"],
+    )
+    assert captured.exit_code == 0, captured.output
+    project_id = str(json.loads(captured.output)["project"]["project_id"])
+    result = CliRunner().invoke(app, ["research", "decision-view", project_id, "--json"])
+    assert result.exit_code == 0, result.output
+    view = json.loads(result.output)
+    assert view["view_schema"] == "ResearchDecisionViewV1"
+    assert view["project_id"] == project_id
+    assert view["gate_packet"] is None
+    assert view["decision_history"] == []
+    assert len(view["checklist"]["questions"]) == 14
+    assert len(view["scorecard"]["dimensions"]) == 12
+    missing = CliRunner().invoke(app, ["research", "decision-view", "not-a-case", "--json"])
+    assert missing.exit_code != 0

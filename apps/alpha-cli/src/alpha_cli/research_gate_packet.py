@@ -619,6 +619,259 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
     }
 
 
+_LIVE_EVIDENCE_PHASES = frozenset(
+    {"deep_research", "confirmation_review", "sealed_confirmation", "research_decision"}
+)
+
+
+def _question(
+    question_id: str, number: int, question: str, binding: str, status: str, answer: str
+) -> dict[str, object]:
+    return {
+        "question_id": question_id,
+        "number": number,
+        "question": question,
+        "binding": binding,
+        "status": status,
+        "answer": answer,
+    }
+
+
+def derive_research_checklist(inputs: Mapping[str, object]) -> dict[str, object]:
+    """Derive the 14-question edge-validation checklist (spec §10.1) from recorded statuses.
+
+    Every question is answered by a typed finding status or an explicit ``NOT_TESTED`` —
+    never a numeric aggregate or a confidence score. ``researchChecklistModel.ts`` is the
+    drift-guarded TypeScript twin of this function; change both together.
+    """
+    classification = _optional_text(inputs.get("confirmation_classification"))
+    primary_status = str(inputs.get("primary_result_status", "NOT_TESTED"))
+    magnitude = str(inputs.get("practical_magnitude_status", "NOT_TESTED"))
+    power = str(inputs.get("power_status", "NOT_TESTED"))
+    negative_controls = str(inputs.get("negative_controls_status", "NOT_TESTED"))
+    mechanism = str(inputs.get("mechanism_status", "NOT_TESTED"))
+    parameter = str(inputs.get("stability_parameter_status", "NOT_TESTED"))
+    temporal = str(inputs.get("stability_temporal_status", "NOT_TESTED"))
+    transport = str(inputs.get("stability_transportability_status", "NOT_TESTED"))
+    dataset_count = int(_finite_number(inputs.get("registered_dataset_count")))
+    audited_count = int(_finite_number(inputs.get("audited_dataset_count")))
+    audit_blocking = int(_finite_number(inputs.get("audit_blocking_count")))
+    audit_limiting = int(_finite_number(inputs.get("audit_limiting_count")))
+    supporting_claims = int(_finite_number(inputs.get("screened_supporting_count")))
+    contradicting_claims = int(_finite_number(inputs.get("screened_contradicting_count")))
+
+    if classification is not None:
+        effect_status = classification
+        effect_answer = f"Sealed confirmation classified the registered claim {classification}."
+    elif primary_status == "TESTED":
+        effect_status = "TESTED"
+        effect_answer = "An exploratory primary result exists; the sealed confirmation has not run."
+    else:
+        effect_status = "NOT_TESTED"
+        effect_answer = "No primary-result evidence has been recorded."
+
+    magnitude_answers = {
+        "CLEARS_HURDLE": "The recorded magnitude clears the registered minimum effect.",
+        "BELOW_HURDLE": "The recorded magnitude is below the registered minimum effect.",
+        "NOT_TESTED": "No practical-magnitude evidence exists.",
+    }
+    if power == "PASSED":
+        breadth_answer = (
+            "The effective event clusters support the interval beyond one small sample."
+        )
+    elif power == "NOT_TESTED":
+        breadth_answer = "No effective-sample evidence has been recorded."
+    else:
+        breadth_answer = f"The recorded power finding is {power}."
+    falsification_answers = {
+        "PASSED": "Registered negative controls passed.",
+        "FAILED": "Registered negative controls failed.",
+        "NOT_TESTED": "The registered falsifiers have not run.",
+    }
+    if dataset_count == 0 or audited_count == 0:
+        artifact_status, artifact_answer = "NOT_TESTED", "No registered dataset has been audited."
+    elif audit_blocking > 0:
+        artifact_status = "FAILED"
+        artifact_answer = f"{audit_blocking} blocking data-audit findings."
+    elif audit_limiting > 0:
+        artifact_status = "INCONCLUSIVE"
+        artifact_answer = f"{audit_limiting} limiting data-audit findings."
+    else:
+        artifact_status = "PASSED"
+        artifact_answer = "Every registered dataset audited with no findings."
+    leakage_answers = {
+        "PASSED": "The registered control battery, including the lead-lag leakage screen, passed.",
+        "FAILED": "A registered control failed; review the lead-lag leakage screen.",
+        "NOT_TESTED": (
+            "The lead-lag leakage screen has not run; look-ahead stays structurally "
+            "guarded by the point-in-time firewall."
+        ),
+    }
+    if power == "PASSED":
+        count_answer = "The effective clusters clear the ten-cluster reliability floor."
+    elif power == "INCONCLUSIVE":
+        count_answer = "The effective clusters sit below the ten-cluster reliability floor."
+    elif power == "NOT_TESTED":
+        count_answer = "No power evidence has been recorded."
+    else:
+        count_answer = f"The recorded power finding is {power}."
+    unresolved_count = len(_string_list(inputs.get("blocking_questions"))) + len(
+        _string_list(inputs.get("confounders_unresolved"))
+    )
+    untested_count = len(_string_list(inputs.get("untested_work")))
+
+    questions = [
+        _question(
+            "effect_exists",
+            1,
+            "Does the effect exist?",
+            "primary result",
+            effect_status,
+            effect_answer,
+        ),
+        _question(
+            "practical_magnitude",
+            2,
+            "Is it large enough to matter?",
+            "practical magnitude vs registered minimum effect",
+            magnitude,
+            magnitude_answers.get(magnitude, f"The recorded magnitude finding is {magnitude}."),
+        ),
+        _question(
+            "temporal_stability",
+            3,
+            "Is it stable through time?",
+            "temporal stability",
+            temporal,
+            f"The recorded temporal-stability finding is {temporal}.",
+        ),
+        _question(
+            "sample_breadth",
+            4,
+            "Does it exist beyond one small sample?",
+            "effective sample and registered subsamples",
+            power,
+            breadth_answer,
+        ),
+        _question(
+            "transportability",
+            5,
+            "Does it exist across relevant assets, or only one?",
+            "cross-asset transportability",
+            transport,
+            f"The recorded transportability finding is {transport}.",
+        ),
+        _question(
+            "regime_dependence",
+            6,
+            "Is it regime-dependent?",
+            "regime decomposition",
+            "NOT_TESTED",
+            "No regime-decomposition evidence exists yet.",
+        ),
+        _question(
+            "parameter_neighborhood",
+            7,
+            "Does it survive alternative definitions?",
+            "parameter neighborhood",
+            parameter,
+            f"The recorded parameter-neighborhood finding is {parameter}.",
+        ),
+        _question(
+            "falsification",
+            8,
+            "Does it survive falsification tests?",
+            "placebo, negative controls, and registered nulls",
+            negative_controls,
+            falsification_answers.get(
+                negative_controls, f"The negative-control finding is {negative_controls}."
+            ),
+        ),
+        _question(
+            "data_artifact",
+            9,
+            "Is it likely a data artifact?",
+            "data-quality audit findings",
+            artifact_status,
+            artifact_answer,
+        ),
+        _question(
+            "leakage",
+            10,
+            "Is it likely look-ahead or leakage?",
+            "future-poison and lead-lag diagnostics",
+            negative_controls,
+            leakage_answers.get(
+                negative_controls, f"The registered control battery is {negative_controls}."
+            ),
+        ),
+        _question(
+            "mechanism",
+            11,
+            "Is there a plausible mechanism?",
+            "mechanism finding and screened claims",
+            mechanism,
+            (
+                f"The recorded mechanism finding is {mechanism}; {supporting_claims} supporting "
+                f"and {contradicting_claims} contradicting screened claims."
+            ),
+        ),
+        _question(
+            "economic_hurdle",
+            12,
+            "Could the magnitude survive realistic costs?",
+            "economic-hurdle check (last rung)",
+            "NOT_TESTED",
+            "No economic-hurdle evidence exists; cost realism is the last rung before "
+            "strategy work.",
+        ),
+        _question(
+            "observation_count",
+            13,
+            "Do we have enough observations?",
+            "power and the low-cluster floor",
+            power,
+            count_answer,
+        ),
+        _question(
+            "residual_uncertainty",
+            14,
+            "How much uncertainty remains?",
+            "intervals and untested work",
+            "TESTED",
+            (
+                f"{unresolved_count} unresolved questions and {untested_count} untested "
+                "workstreams remain."
+            ),
+        ),
+    ]
+    return {"checklist_schema": "ResearchEdgeChecklistV1", "questions": questions}
+
+
+def _case_scorecard_inputs(
+    store: ResearchPacketStore,
+    project_id: str,
+    case: Mapping[str, object],
+) -> tuple[dict[str, object], Mapping[str, object] | None]:
+    """Assemble scorecard/checklist inputs and the terminal packet (closed cases only)."""
+    payload = _mapping(_mapping(case.get("active_contract")).get("payload"))
+    packet: Mapping[str, object] | None = None
+    live_evidence: Mapping[str, object] | None = None
+    if case.get("phase") == "closed":
+        packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
+    elif str(case.get("phase")) in _LIVE_EVIDENCE_PHASES:
+        live_evidence = _latest_live_d1_evidence(store.research_gate_packet_inputs(project_id))
+    inputs = research_scorecard_inputs(
+        case,
+        payload,
+        packet=packet,
+        datasets=_case_datasets(store, payload),
+        claims=store.list_source_claims(project_id),
+        live_evidence=live_evidence,
+    )
+    return inputs, packet
+
+
 def research_scorecard_projection(
     store: ResearchPacketStore,
     project_id: str,
@@ -627,28 +880,36 @@ def research_scorecard_projection(
 ) -> dict[str, object]:
     """Project the readiness scorecard for one case from public store reads only."""
     case = store.research_case_summary(project_id) if summary is None else summary
-    payload = _mapping(_mapping(case.get("active_contract")).get("payload"))
-    packet: Mapping[str, object] | None = None
-    live_evidence: Mapping[str, object] | None = None
-    if case.get("phase") == "closed":
-        packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
-    elif str(case.get("phase")) in {
-        "deep_research",
-        "confirmation_review",
-        "sealed_confirmation",
-        "research_decision",
-    }:
-        live_evidence = _latest_live_d1_evidence(store.research_gate_packet_inputs(project_id))
-    return derive_research_scorecard(
-        research_scorecard_inputs(
-            case,
-            payload,
-            packet=packet,
-            datasets=_case_datasets(store, payload),
-            claims=store.list_source_claims(project_id),
-            live_evidence=live_evidence,
-        )
-    )
+    inputs, _packet = _case_scorecard_inputs(store, project_id, case)
+    return derive_research_scorecard(inputs)
+
+
+class ResearchDecisionViewStore(ResearchPacketStore, Protocol):
+    def list_research_decisions(self, project_id: str) -> list[dict[str, object]]: ...
+
+
+def research_decision_view_projection(
+    store: ResearchDecisionViewStore, project_id: str
+) -> dict[str, object]:
+    """Assemble the owner decision view: checklist, full scorecard, packet, and history.
+
+    Read-only over public store seams. The gate packet appears only for closed cases —
+    open cases stay live from admitted evidence; the append-only decision history is
+    relayed verbatim.
+    """
+    case = store.research_case_summary(project_id)
+    inputs, packet = _case_scorecard_inputs(store, project_id, case)
+    return {
+        "view_schema": "ResearchDecisionViewV1",
+        "project_id": str(case.get("project_id", project_id)),
+        "phase": str(case.get("phase", "")),
+        "d2_state": str(case.get("d2_state", "")),
+        "next_action": str(case.get("next_action", "")),
+        "checklist": derive_research_checklist(inputs),
+        "scorecard": derive_research_scorecard(inputs),
+        "gate_packet": None if packet is None else dict(packet),
+        "decision_history": store.list_research_decisions(project_id),
+    }
 
 
 _SUPPORTING_FINDING_STATUSES = frozenset({"PASSED", "STABLE", "SUPPORTED"})
@@ -1025,9 +1286,12 @@ def research_report_projection(store: ResearchPacketStore, project_id: str) -> d
 
 
 __all__ = [
+    "ResearchDecisionViewStore",
     "ResearchPacketStore",
+    "derive_research_checklist",
     "derive_research_scorecard",
     "research_backlog_row",
+    "research_decision_view_projection",
     "research_evidence_hub_projection",
     "research_hypothesis_card",
     "research_report_projection",

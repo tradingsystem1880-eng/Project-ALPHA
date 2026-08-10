@@ -354,14 +354,17 @@ def _approved_contracts(
         responsibility="codex",
         at=START + timedelta(minutes=12),
     )
-    store.transition_research_d2_state(
-        PROJECT_ID,
-        confirmation_id,
-        to_state=d2_state,  # type: ignore[arg-type]
-        actor="system",
-        reason=f"The sealed confirmation boundary became {d2_state}.",
-        at=START + timedelta(minutes=13),
-    )
+    if d2_state != "authorized":
+        # Owner confirmation approval already authorized D2; only the terminal
+        # consume/contaminate transitions go through the API.
+        store.transition_research_d2_state(
+            PROJECT_ID,
+            confirmation_id,
+            to_state=d2_state,  # type: ignore[arg-type]
+            actor="system",
+            reason=f"The sealed confirmation boundary became {d2_state}.",
+            at=START + timedelta(minutes=13),
+        )
     if record_confirmation_evidence and d2_state == "consumed":
         run_id = _write_research_run(
             store._data_dir,
@@ -4229,3 +4232,34 @@ def test_source_record_columns_heal_on_a_pre_r4_store(tmp_path: Path) -> None:
     )
     assert source["doi"] == "10.0000/healed"
     assert healed.get_research_source(str(source["source_id"]))["year"] == 2020
+
+
+def test_list_research_decisions_returns_append_only_history(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    assert store.list_research_decisions(PROJECT_ID) == []
+    _, confirmation_id = _approved_contracts(store, outcome="INCONCLUSIVE", disposition="park")
+    history = store.list_research_decisions(PROJECT_ID)
+    assert len(history) == 1
+    event = history[0]
+    assert event["contract_id"] == confirmation_id
+    assert event["outcome"] == "INCONCLUSIVE"
+    assert event["disposition"] == "park"
+    assert event["actor"] == "owner"
+    assert event["actor_kind"] == "human"
+    assert isinstance(event["sequence"], int)
+    assert isinstance(event["occurred_at"], str) and event["occurred_at"]
+    assert isinstance(event["reason"], str) and event["reason"]
+    # The reader is bounded to recorded decision columns; no payloads ride along.
+    assert set(event) == {
+        "sequence",
+        "contract_id",
+        "outcome",
+        "disposition",
+        "actor",
+        "actor_kind",
+        "occurred_at",
+        "reason",
+    }
+    with pytest.raises(DataError, match="unknown"):
+        store.list_research_decisions("00000000-0000-4000-8000-00000000ffff")
