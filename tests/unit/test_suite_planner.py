@@ -520,3 +520,103 @@ def test_interrupted_holdout_evaluation_resumes_only_the_same_reserved_job(
     assert result["status"] == "succeeded"
     audit = cast(list[dict[str, object]], store.get_project(project_id)["holdout_audit"])
     assert [row["event"] for row in audit] == ["sealed", "revealed"]
+
+
+def _governed_overridden_experiment(tmp_path: Path) -> tuple[ControlStore, str, str]:
+    """A research-governed project whose gate the owner overrode (spec §15, ADR-0026)."""
+    snapshot_dir = tmp_path / "snapshots" / "frozen-2026q2"
+    snapshot_dir.mkdir(parents=True)
+    (snapshot_dir / "manifest.json").write_text(
+        json.dumps({"snapshot_id": "frozen-2026q2", "symbols": {}}, sort_keys=True),
+        encoding="utf-8",
+    )
+    store = ControlStore(tmp_path)
+    project = store.create_project(
+        name="SPY exploratory probe",
+        hypothesis="Large close deviations revert.",
+        falsification_criterion="Reject when locked OOS Sharpe is non-positive.",
+        at=datetime(2026, 8, 6, 9, 0, tzinfo=UTC),
+    )
+    project_id = str(project["project_id"])
+    store.record_research_gate_override(
+        project_id,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+    )
+    version = store.create_strategy_version(
+        project_id,
+        strategy_name="mean_reversion",
+        source_fingerprint="git:abc123",
+        definition={"window": 20, "entry_z": 2.0, "account_type": "CASH"},
+        parameter_space={"window": [10, 20, 40], "entry_z": [1.5, 2.0]},
+    )
+    experiment = store.create_experiment_spec(
+        project_id,
+        strategy_version_id=str(version["version_id"]),
+        snapshot_id="frozen-2026q2",
+        universe=["SPY", "AAPL"],
+        split_policy={"train": 504, "test": 63, "embargo": 5},
+        costs={"fee_bps": 1.0, "slippage_bps": 2.0},
+        seeds={"master": 7},
+        stage_config={"tier1_paths": 100, "tier2_paths": 8, "n_resamples": 200},
+    )
+    experiment_id = str(experiment["experiment_id"])
+    store.seal_holdout(
+        project_id,
+        experiment_id,
+        actor="owner",
+        reason="reserve final test window before research",
+        start_date="2026-04-01",
+        end_date="2026-06-30",
+    )
+    return store, project_id, experiment_id
+
+
+def test_overridden_gate_injects_the_watermark_flag_into_run_producing_steps(
+    tmp_path: Path,
+) -> None:
+    store, project_id, experiment_id = _governed_overridden_experiment(tmp_path)
+    run_actions = (
+        "baseline",
+        "inner_oos",
+        "three_null_families",
+        "optimize_grid",
+        "portfolio_cross_asset",
+        "holdout_reveal",
+    )
+    for action in run_actions:
+        plan = build_suite_plan(
+            store,
+            project_id,
+            experiment_id,
+            cast(SuiteAction, action),
+            data_dir=tmp_path,
+        )
+        assert plan.governance["research_gate"] == {
+            "state": "overridden",
+            "watermark": "EXPLORATORY / RESEARCH GATE NOT COMPLETED",
+        }, action
+        run_steps = [
+            step for step in plan.steps if step.argv[0] in {"backtest", "validate", "optim"}
+        ]
+        assert run_steps, action
+        for step in run_steps:
+            assert "--research-gate-override" in step.argv, (action, step.label)
+            assert "--research-gate-override" in step.preview, (action, step.label)
+
+
+def test_unoverridden_gates_never_inject_the_watermark_flag(tmp_path: Path) -> None:
+    # Grandfathered (not_required) projects and every non-overridden state stay unmarked.
+    store, project_id, experiment_id = _experiment(tmp_path)
+    for action in ("baseline", "three_null_families", "holdout_reveal"):
+        plan = build_suite_plan(
+            store,
+            project_id,
+            experiment_id,
+            cast(SuiteAction, action),
+            data_dir=tmp_path,
+        )
+        assert "research_gate" not in plan.governance, action
+        for step in plan.steps:
+            assert "--research-gate-override" not in step.argv, (action, step.label)
+            assert "--research-gate-override" not in step.preview, (action, step.label)

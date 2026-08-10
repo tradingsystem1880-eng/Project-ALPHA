@@ -25,6 +25,7 @@ from typing import Final, Literal, cast
 
 from alpha_cli._schemas import specs_for
 from alpha_cli.control_store import AttemptStatus, ControlStore, StageState
+from alpha_cli.run_store import RESEARCH_GATE_OVERRIDE_WATERMARK
 from alpha_core import DataError
 
 type SuiteAction = Literal[
@@ -311,6 +312,7 @@ def _common(
     snapshot: str,
     costs: Mapping[str, object],
     definition: Mapping[str, object],
+    gate_overridden: bool = False,
 ) -> list[str]:
     args = [symbol, "--strategy", strategy, "--snapshot", snapshot]
     for name, flag, default in (
@@ -320,6 +322,10 @@ def _common(
         args.extend([flag, _float_text(_number(costs.get(name, default), name, minimum=0.0))])
     args.extend(_definition_options(definition))
     args.extend(_strategy_options(strategy, definition))
+    if gate_overridden:
+        # spec §15 / ADR-0026: every strategy run launched under an owner research-gate
+        # override is permanently watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED.
+        args.append("--research-gate-override")
     return args
 
 
@@ -423,6 +429,7 @@ def _grid_steps(
     config: Mapping[str, object],
     research_cutoff: str,
     cutoff_marker: str,
+    gate_overridden: bool = False,
 ) -> tuple[SuiteStep, int]:
     schema = specs_for(strategy)
     allowed = set(schema) | {name for name, _ in _STANDARD_DEFINITION_OPTIONS}
@@ -455,6 +462,7 @@ def _grid_steps(
             snapshot=snapshot,
             costs=costs,
             definition=definition,
+            gate_overridden=gate_overridden,
         ),
         *axes,
         *_split_options(split),
@@ -599,12 +607,16 @@ def build_suite_plan(
             research_cutoff = (holdout_start - timedelta(days=1)).isoformat()
             cutoff_marker = f"<sealed-pre-holdout:{sealed_spec['spec_hash']}>"
 
+    # spec §15 / ADR-0026: an owner override is the only unlinked path through a governed gate;
+    # every strategy run launched under it carries the permanent EXPLORATORY watermark.
+    gate_overridden = project.get("research_gate_state") == "overridden"
     common = _common(
         symbol=primary,
         strategy=strategy,
         snapshot=snapshot,
         costs=costs,
         definition=definition,
+        gate_overridden=gate_overridden,
     )
     cutoff_value = research_cutoff or "<sealed-research-cutoff-required>"
     public_cutoff = cutoff_marker or "<sealed-research-cutoff-required>"
@@ -618,6 +630,11 @@ def build_suite_plan(
         "holdout_visible_to_optimization": False,
         "command_construction": "allowlisted",
     }
+    if gate_overridden:
+        governance["research_gate"] = {
+            "state": "overridden",
+            "watermark": RESEARCH_GATE_OVERRIDE_WATERMARK,
+        }
     if action in _PRE_REVEAL_RESEARCH_ACTIONS:
         governance.update(
             {
@@ -735,6 +752,7 @@ def build_suite_plan(
             config=config,
             research_cutoff=cutoff_value,
             cutoff_marker=public_cutoff,
+            gate_overridden=gate_overridden,
         )
         steps.append(step)
         workload = _workload(action, commands=1, canonical_runs=1, grid_configurations=combinations)
@@ -767,6 +785,7 @@ def build_suite_plan(
             str(_seed(seeds)),
             "--as-of",
             cutoff_value,
+            *(["--research-gate-override"] if gate_overridden else []),
         ]
         weighting = config.get("portfolio_weighting", "equal")
         if weighting not in {"equal", "inverse_vol"}:
