@@ -1,6 +1,45 @@
 {
   "components": {
     "schemas": {
+      "ActiveResearchGateOverride": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_id",
+          "sequence",
+          "actor",
+          "reason",
+          "recorded_at",
+          "project_name"
+        ],
+        "title": "ActiveResearchGateOverride",
+        "type": "object"
+      },
       "AgentBrief": {
         "additionalProperties": false,
         "properties": {
@@ -9057,6 +9096,16 @@
             "title": "Project Id",
             "type": "string"
           },
+          "research_gate_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchGateOverride"
+            },
+            "title": "Research Gate Overrides",
+            "type": "array"
+          },
+          "research_gate_state": {
+            "$ref": "#/components/schemas/ResearchGateStateValue"
+          },
           "stage_run_links": {
             "items": {
               "$ref": "#/components/schemas/StageRunLink"
@@ -9099,6 +9148,7 @@
           "current_experiment_id",
           "created_at",
           "updated_at",
+          "research_gate_state",
           "versions",
           "experiments",
           "stage_states",
@@ -9107,7 +9157,8 @@
           "holdouts",
           "holdout_audit",
           "decision_packets",
-          "truncated"
+          "truncated",
+          "research_gate_overrides"
         ],
         "title": "ProjectDetail",
         "type": "object"
@@ -9198,6 +9249,9 @@
             "title": "Project Id",
             "type": "string"
           },
+          "research_gate_state": {
+            "$ref": "#/components/schemas/ResearchGateStateValue"
+          },
           "status": {
             "$ref": "#/components/schemas/ProjectStatusValue"
           },
@@ -9215,7 +9269,8 @@
           "current_version_id",
           "current_experiment_id",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "research_gate_state"
         ],
         "title": "ProjectSummary",
         "type": "object"
@@ -9243,6 +9298,10 @@
             "title": "Holdouts",
             "type": "boolean"
           },
+          "research_gate_overrides": {
+            "title": "Research Gate Overrides",
+            "type": "boolean"
+          },
           "stage_run_links": {
             "title": "Stage Run Links",
             "type": "boolean"
@@ -9264,7 +9323,8 @@
           "attempts",
           "holdouts",
           "holdout_audit",
-          "decision_packets"
+          "decision_packets",
+          "research_gate_overrides"
         ],
         "title": "ProjectTruncation",
         "type": "object"
@@ -11369,6 +11429,40 @@
         "title": "ResearchGateLedgerCounts",
         "type": "object"
       },
+      "ResearchGateOverride": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_id",
+          "sequence",
+          "actor",
+          "reason",
+          "recorded_at"
+        ],
+        "title": "ResearchGateOverride",
+        "type": "object"
+      },
       "ResearchGatePacket": {
         "additionalProperties": false,
         "properties": {
@@ -11598,6 +11692,15 @@
         ],
         "title": "ResearchGateStability",
         "type": "object"
+      },
+      "ResearchGateStateValue": {
+        "enum": [
+          "not_required",
+          "open",
+          "passed",
+          "overridden"
+        ],
+        "type": "string"
       },
       "ResearchGateTechnicalAppendix": {
         "additionalProperties": false,
@@ -17425,6 +17528,67 @@
         ]
       }
     },
+    "/api/research-gate-overrides": {
+      "get": {
+        "description": "Override events on projects whose research gate is currently overridden (read-only).",
+        "operationId": "list_active_research_gate_overrides_api_research_gate_overrides_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ActiveResearchGateOverride"
+                  },
+                  "title": "Response List Active Research Gate Overrides Api Research Gate Overrides Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Active Research Gate Overrides",
+        "tags": [
+          "development"
+        ]
+      }
+    },
     "/api/research/cases": {
       "get": {
         "description": "Read the bounded backlog page, newest research activity first (ADR-0021).",
@@ -21788,6 +21952,68 @@
           }
         },
         "summary": "V3 Get Strategy Version",
+        "tags": [
+          "workstation-v3",
+          "development"
+        ]
+      }
+    },
+    "/api/v3/research-gate-overrides": {
+      "get": {
+        "description": "Override events on projects whose research gate is currently overridden (read-only).\n\nVersioned Workstation-v3 alias of `/api/research-gate-overrides`.",
+        "operationId": "v3_list_active_research_gate_overrides_api_v3_research_gate_overrides_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ActiveResearchGateOverride"
+                  },
+                  "title": "Response V3 List Active Research Gate Overrides Api V3 Research Gate Overrides Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "V3 List Active Research Gate Overrides",
         "tags": [
           "workstation-v3",
           "development"

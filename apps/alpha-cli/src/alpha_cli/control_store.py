@@ -2712,6 +2712,7 @@ class ControlStore:
                     raise DataError("research capture retry conflicts with persisted triage state")
             # A repeated capture after later progress resolves to the existing case without
             # manufacturing a duplicate project or resetting its phase.
+            project_row["research_gate_state"] = self._research_gate_state(connection, pid)
 
         contract_view = self.get_research_contract(contract_id)
         return {

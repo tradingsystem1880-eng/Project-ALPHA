@@ -130,6 +130,7 @@ def show(
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "research_gate_overrides",
     ):
         values = cast(list[dict[str, object]], row[key])
         truncated[key] = len(values) > lineage_limit
@@ -302,6 +303,57 @@ def agent_brief(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"agent brief for {row['project_id']}")
+
+
+@project_app.command("override-research-gate")
+def override_research_gate(
+    project_id: str,
+    actor: str = typer.Option(..., help="owner identity recorded on the override event"),
+    reason: str = typer.Option(..., help="why exploratory work may precede research completion"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Record an append-only owner research-gate override (trusted-local authority).
+
+    Overridden projects carry research_gate_state="overridden" and every run launched
+    under them is watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED — the override
+    makes premature strategy work visible, never validated.
+    """
+    try:
+        row = _store().record_research_gate_override(project_id, actor=actor, reason=reason)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=(
+            f"research gate override {row['sequence']} recorded for {row['project_id']} "
+            "(runs stay watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED)"
+        ),
+    )
+
+
+@project_app.command("research-gate-overrides")
+def research_gate_overrides(
+    limit: int = typer.Option(100, min=1, max=500),
+    offset: int = typer.Option(0, min=0),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List override events on projects whose research gate is currently overridden."""
+    try:
+        rows = _store().list_active_research_gate_overrides(limit=limit, offset=offset)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        _emit(rows, json_out=True, fallback="")
+        return
+    if not rows:
+        typer.echo("no active research gate overrides")
+        return
+    for row in rows:
+        typer.echo(
+            f"{row['project_id']} #{row['sequence']} {row['actor']} "
+            f"{row['recorded_at']} {row['project_name']}"
+        )
 
 
 @project_app.command("version")

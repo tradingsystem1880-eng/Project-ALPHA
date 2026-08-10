@@ -1087,6 +1087,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research-gate-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Active Research Gate Overrides
+         * @description Override events on projects whose research gate is currently overridden (read-only).
+         */
+        get: operations["list_active_research_gate_overrides_api_research_gate_overrides_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases": {
         parameters: {
             query?: never;
@@ -2681,6 +2701,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v3/research-gate-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 List Active Research Gate Overrides
+         * @description Override events on projects whose research gate is currently overridden (read-only).
+         *
+         *     Versioned Workstation-v3 alias of `/api/research-gate-overrides`.
+         */
+        get: operations["v3_list_active_research_gate_overrides_api_v3_research_gate_overrides_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v3/runs/compare": {
         parameters: {
             query?: never;
@@ -2900,6 +2942,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActiveResearchGateOverride */
+        ActiveResearchGateOverride: {
+            /** Actor */
+            actor: string;
+            /** Project Id */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /** Reason */
+            reason: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Sequence */
+            sequence: number;
+        };
         /** AgentBrief */
         AgentBrief: {
             allowed_scope: components["schemas"]["AgentScope"];
@@ -5777,6 +5834,9 @@ export interface components {
             name: string;
             /** Project Id */
             project_id: string;
+            /** Research Gate Overrides */
+            research_gate_overrides: components["schemas"]["ResearchGateOverride"][];
+            research_gate_state: components["schemas"]["ResearchGateStateValue"];
             /** Stage Run Links */
             stage_run_links: components["schemas"]["StageRunLink"][];
             /** Stage States */
@@ -5817,6 +5877,7 @@ export interface components {
             name: string;
             /** Project Id */
             project_id: string;
+            research_gate_state: components["schemas"]["ResearchGateStateValue"];
             status: components["schemas"]["ProjectStatusValue"];
             /** Updated At */
             updated_at: string;
@@ -5833,6 +5894,8 @@ export interface components {
             holdout_audit: boolean;
             /** Holdouts */
             holdouts: boolean;
+            /** Research Gate Overrides */
+            research_gate_overrides: boolean;
             /** Stage Run Links */
             stage_run_links: boolean;
             /** Stage States */
@@ -6491,6 +6554,19 @@ export interface components {
             /** Sources */
             sources: number;
         };
+        /** ResearchGateOverride */
+        ResearchGateOverride: {
+            /** Actor */
+            actor: string;
+            /** Project Id */
+            project_id: string;
+            /** Reason */
+            reason: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Sequence */
+            sequence: number;
+        };
         /** ResearchGatePacket */
         ResearchGatePacket: {
             /** Active Contract Id */
@@ -6567,6 +6643,8 @@ export interface components {
             temporal: components["schemas"]["ResearchGateFinding"];
             transportability: components["schemas"]["ResearchGateFinding"];
         };
+        /** @enum {string} */
+        ResearchGateStateValue: "not_required" | "open" | "passed" | "overridden";
         /** ResearchGateTechnicalAppendix */
         ResearchGateTechnicalAppendix: {
             /** Attempt Ledger */
@@ -9327,6 +9405,38 @@ export interface operations {
             };
         };
     };
+    list_active_research_gate_overrides_api_research_gate_overrides_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveResearchGateOverride"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     research_cases_api_research_cases_get: {
         parameters: {
             query?: {
@@ -11913,6 +12023,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyVersion"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    v3_list_active_research_gate_overrides_api_v3_research_gate_overrides_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveResearchGateOverride"][];
                 };
             };
             /** @description Validation Error */

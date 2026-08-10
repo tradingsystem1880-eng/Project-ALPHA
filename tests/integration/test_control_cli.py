@@ -655,6 +655,109 @@ def test_project_stage_attempt_and_job_cli_projections(
     assert "CLI operations" in plain_projects.output
 
 
+def test_override_research_gate_cli_records_and_projects_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    created = runner.invoke(
+        app,
+        [
+            "project",
+            "create",
+            "SPY exploratory probe",
+            "--hypothesis",
+            "Confirmed double bottoms precede positive forward returns.",
+            "--falsification",
+            "Reject when matched-control effects are non-positive.",
+            "--json",
+        ],
+    )
+    assert created.exit_code == 0, created.output
+    project_id = str(json.loads(created.output)["project_id"])
+
+    shown = runner.invoke(app, ["project", "show", project_id, "--json"])
+    assert shown.exit_code == 0, shown.output
+    before = json.loads(shown.output)
+    assert before["research_gate_state"] == "open"
+    assert before["research_gate_overrides"] == []
+
+    version_args = [
+        "project",
+        "version",
+        project_id,
+        "--strategy",
+        "mean_reversion",
+        "--source-fingerprint",
+        "git:abc1234",
+        "--json",
+    ]
+    blocked = runner.invoke(app, version_args)
+    assert blocked.exit_code != 0
+    assert "research_contract_id" in blocked.output
+
+    overridden = runner.invoke(
+        app,
+        [
+            "project",
+            "override-research-gate",
+            project_id,
+            "--actor",
+            "owner",
+            "--reason",
+            "Owner accepts exploratory-only engine work before research completes.",
+            "--json",
+        ],
+    )
+    assert overridden.exit_code == 0, overridden.output
+    event = json.loads(overridden.output)
+    assert event["sequence"] == 1
+    assert event["actor"] == "owner"
+
+    listed = runner.invoke(app, ["project", "list", "--json"])
+    assert listed.exit_code == 0, listed.output
+    states = {row["project_id"]: row["research_gate_state"] for row in json.loads(listed.output)}
+    assert states[project_id] == "overridden"
+
+    after = json.loads(runner.invoke(app, ["project", "show", project_id, "--json"]).output)
+    assert after["research_gate_state"] == "overridden"
+    assert [row["sequence"] for row in after["research_gate_overrides"]] == [1]
+
+    unlinked = runner.invoke(app, version_args)
+    assert unlinked.exit_code == 0, unlinked.output
+    assert json.loads(unlinked.output)["version_id"].startswith("sv_")
+
+    active = runner.invoke(app, ["project", "research-gate-overrides", "--json"])
+    assert active.exit_code == 0, active.output
+    rows = json.loads(active.output)
+    assert [(row["project_id"], row["sequence"]) for row in rows] == [(project_id, 1)]
+    assert rows[0]["project_name"] == "SPY exploratory probe"
+
+    # A grandfathered project has no gate; the CLI surfaces the store's typed refusal.
+    legacy_store = ControlStore(tmp_path)
+    legacy = legacy_store.create_project(
+        name="Grandfathered project",
+        hypothesis="Large deviations revert.",
+        falsification_criterion="Reject on non-positive locked OOS Sharpe.",
+        at=parse_timestamp("2026-07-19T09:00:00Z"),
+    )
+    legacy_id = str(legacy["project_id"])
+    mark_project_as_migrated_legacy(legacy_store, legacy_id)
+    refused = runner.invoke(
+        app,
+        [
+            "project",
+            "override-research-gate",
+            legacy_id,
+            "--actor",
+            "owner",
+            "--reason",
+            "A grandfathered project has nothing to override.",
+        ],
+    )
+    assert refused.exit_code != 0
+    assert "no research gate" in refused.output
+
+
 def test_empty_plain_control_lists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     projects = runner.invoke(app, ["project", "list"])

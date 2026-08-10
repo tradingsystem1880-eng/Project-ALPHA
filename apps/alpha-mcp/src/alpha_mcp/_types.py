@@ -14,6 +14,7 @@ type BoundedJsonValue = (
 )
 type LegacyRunManifestOut = dict[str, BoundedJsonValue]
 type ProjectStatus = Literal["active", "accepted", "rejected", "archived"]
+type ResearchGateState = Literal["not_required", "open", "passed", "overridden"]
 type StageState = Literal[
     "not_started", "ready", "queued", "running", "pass", "warning", "fail", "stale"
 ]
@@ -61,6 +62,15 @@ class ProjectSummaryOut(TypedDict):
     current_experiment_id: str | None
     created_at: str
     updated_at: str
+    research_gate_state: ResearchGateState
+
+
+class ResearchGateOverrideOut(TypedDict):
+    project_id: str
+    sequence: int
+    actor: str
+    reason: str
+    recorded_at: str
 
 
 class ProjectPageOut(TypedDict):
@@ -367,6 +377,7 @@ class ProjectTruncationOut(TypedDict):
     holdouts: bool
     holdout_audit: bool
     decision_packets: bool
+    research_gate_overrides: bool
 
 
 class ProjectDetailOut(ProjectSummaryOut):
@@ -379,6 +390,7 @@ class ProjectDetailOut(ProjectSummaryOut):
     holdout_audit: list[HoldoutAuditEventOut]
     decision_packets: list[DecisionPacketOut]
     truncated: ProjectTruncationOut
+    research_gate_overrides: list[ResearchGateOverrideOut]
 
 
 class SuiteStepOut(TypedDict):

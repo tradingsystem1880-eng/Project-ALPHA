@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from alpha_web import _development, _invoke
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
+    ActiveResearchGateOverride,
     AgentBrief,
     AttemptCreateRequest,
     AttemptRecord,
@@ -64,6 +65,20 @@ def list_projects(
     """Newest projects first, with an explicit bounded continuation flag."""
     try:
         return _development.list_projects(data_dir=data_dir(), limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise _bad_request(exc) from exc
+
+
+@router.get("/research-gate-overrides", response_model=list[ActiveResearchGateOverride])
+def list_active_research_gate_overrides(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[dict[str, object]]:
+    """Override events on projects whose research gate is currently overridden (read-only)."""
+    try:
+        return _development.active_research_gate_overrides(
+            data_dir=data_dir(), limit=limit, offset=offset
+        )
     except RuntimeError as exc:
         raise _bad_request(exc) from exc
 

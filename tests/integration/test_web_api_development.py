@@ -200,6 +200,7 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
         "holdouts": False,
         "holdout_audit": False,
         "decision_packets": False,
+        "research_gate_overrides": False,
     }
     assert body["decision_packets"] == []
 
@@ -445,3 +446,52 @@ def test_control_api_rejects_unbounded_and_arbitrary_payloads(
     assert response.status_code == 422
     paths = create_app().openapi()["paths"]
     assert not any("reveal" in path or "command" in path for path in paths if "projects" in path)
+
+
+def test_research_gate_state_and_active_overrides_projection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    project = _project(client, name="Gate state probe")
+    project_id = str(project["project_id"])
+    assert project["research_gate_state"] == "open"
+
+    listed = client.get("/api/projects")
+    assert listed.status_code == 200, listed.text
+    items = cast(list[dict[str, object]], listed.json()["items"])
+    assert (
+        next(item["research_gate_state"] for item in items if item["project_id"] == project_id)
+        == "open"
+    )
+
+    detail = client.get(f"/api/projects/{project_id}")
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body["research_gate_state"] == "open"
+    assert body["research_gate_overrides"] == []
+    assert body["truncated"]["research_gate_overrides"] is False
+
+    # The override itself is owner-only trusted-local CLI authority; REST only reads it.
+    ControlStore(tmp_path).record_research_gate_override(
+        project_id,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+    )
+
+    after = client.get(f"/api/projects/{project_id}").json()
+    assert after["research_gate_state"] == "overridden"
+    overrides = cast(list[dict[str, object]], after["research_gate_overrides"])
+    assert [(row["sequence"], row["actor"]) for row in overrides] == [(1, "owner")]
+
+    active = client.get("/api/research-gate-overrides")
+    assert active.status_code == 200, active.text
+    rows = cast(list[dict[str, object]], active.json())
+    assert [(row["project_id"], row["sequence"]) for row in rows] == [(project_id, 1)]
+    assert rows[0]["project_name"] == "Gate state probe"
+
+    # No mutation verb exists for the override surface.
+    assert client.post("/api/research-gate-overrides", json={}).status_code == 405
+
+    legacy = _legacy_project(tmp_path, name="Grandfathered momentum")
+    legacy_detail = client.get(f"/api/projects/{legacy['project_id']}").json()
+    assert legacy_detail["research_gate_state"] == "not_required"

@@ -607,6 +607,7 @@ type JsonObject = dict[str, JsonValue]
 
 
 type ProjectStatusValue = Literal["active", "accepted", "rejected", "archived"]
+type ResearchGateStateValue = Literal["not_required", "open", "passed", "overridden"]
 type DevelopmentStageValue = Literal[
     "hypothesis",
     "data",
@@ -690,6 +691,19 @@ class ProjectSummary(StrictModel):
     current_experiment_id: str | None
     created_at: str
     updated_at: str
+    research_gate_state: ResearchGateStateValue
+
+
+class ResearchGateOverride(StrictModel):
+    project_id: str
+    sequence: int
+    actor: str
+    reason: str
+    recorded_at: str
+
+
+class ActiveResearchGateOverride(ResearchGateOverride):
+    project_name: str
 
 
 class ProjectPage(StrictModel):
@@ -876,6 +890,7 @@ class ProjectTruncation(StrictModel):
     holdouts: bool
     holdout_audit: bool
     decision_packets: bool
+    research_gate_overrides: bool
 
 
 class ProjectDetail(ProjectSummary):
@@ -888,6 +903,7 @@ class ProjectDetail(ProjectSummary):
     holdout_audit: list[HoldoutAuditEvent]
     decision_packets: list[DecisionPacket]
     truncated: ProjectTruncation
+    research_gate_overrides: list[ResearchGateOverride]
 
 
 class ControlJobCreateRequest(StrictModel):

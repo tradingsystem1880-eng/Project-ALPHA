@@ -395,6 +395,7 @@ def get_project(project_id: str, *, data_dir: Path, lineage_limit: int) -> dict[
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "research_gate_overrides",
     ):
         values = _objects(row.get(key), f"project {key}")
         truncated[key] = bool(upstream_truncated.get(key, False)) or len(values) > lineage_limit
