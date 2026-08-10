@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from typing import Literal
 
 import pytest
 
@@ -16,7 +17,7 @@ from alpha_research.market_state import (
 )
 
 
-def _contract(*, calendar: str = "equity") -> MarketStateContractV1:
+def _contract(*, calendar: Literal["equity", "crypto_24_7"] = "equity") -> MarketStateContractV1:
     return MarketStateContractV1(
         universe=("SPY", "QQQ", "IWM"),
         benchmark="SPY",

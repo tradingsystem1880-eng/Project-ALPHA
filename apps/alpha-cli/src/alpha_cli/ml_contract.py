@@ -482,12 +482,14 @@ def _validate_recipe_objects(request: dict[str, Any]) -> None:
         )
 
     model = _require_exact_keys(request["model"], {"name", "parameters"}, "model")
-    expected_model = "lightgbm" if request["schema_version"] == 1 else "rank_ensemble_v1"
-    if model["name"] != expected_model or not isinstance(model["parameters"], dict):
-        raise MLContractError(
-            f"schema v{request['schema_version']} model must be {expected_model} "
-            "with a parameters object"
-        )
+    if request["schema_version"] == 1 and (
+        model["name"] != "lightgbm" or not isinstance(model["parameters"], dict)
+    ):
+        raise MLContractError("starter model must be lightgbm with a parameters object")
+    if request["schema_version"] == 2 and (
+        model["name"] != "rank_ensemble_v1" or not isinstance(model["parameters"], dict)
+    ):
+        raise MLContractError("schema v2 model must be rank_ensemble_v1 with a parameters object")
     unknown_parameters = sorted(set(model["parameters"]) - set(_MODEL_PARAMETER_RULES))
     if unknown_parameters:
         raise MLContractError(f"unsupported LightGBM parameters: {unknown_parameters}")

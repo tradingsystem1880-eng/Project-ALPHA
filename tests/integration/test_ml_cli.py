@@ -42,7 +42,7 @@ def _write_inputs(
             )
     panel = tmp_path / "panel-source.parquet"
     pl.DataFrame(rows).select(PANEL_COLUMNS).write_parquet(panel)
-    spec = {
+    spec: dict[str, object] = {
         "schema_version": 2 if rank_ensemble else 1,
         "snapshot_hash": "a" * 64,
         "universe": symbols,

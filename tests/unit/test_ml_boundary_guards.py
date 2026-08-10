@@ -302,7 +302,7 @@ RequestMutation = Callable[[dict[str, Any]], None]
     ("mutation", "message"),
     [
         (lambda request: request.update({"unexpected": True}), "fields mismatch"),
-        (lambda request: request.update({"schema_version": 2}), "unsupported request"),
+        (lambda request: request.update({"schema_version": 3}), "unsupported request"),
         (lambda request: request.update({"snapshot_hash": "BAD"}), "SHA-256"),
         (lambda request: request.update({"seed": True}), "seed must be an integer"),
         (lambda request: request.update({"universe": "S00"}), "array of symbols"),
