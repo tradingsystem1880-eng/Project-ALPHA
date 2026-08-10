@@ -478,7 +478,7 @@ def _fold_model(
             "coefficient_l2": float(np.linalg.norm(coefficients)),
             "nonzero_coefficients": int(np.count_nonzero(coefficients)),
         }
-    diagnostic = {
+    diagnostic: dict[str, Any] = {
         "fold": int(fold["fold"]),
         "fit_count": 2 if ridge_diagnostic is not None else 1,
         "train_rows": len(train_x),
@@ -506,6 +506,10 @@ def _fold_model(
     }
     if ridge_diagnostic is not None:
         diagnostic["ridge"] = ridge_diagnostic
+        diagnostic["feature_importance"] = [
+            {"feature": name, "gain": gain, "split_count": split_count}
+            for name, gain, split_count in importance
+        ]
     return predictions, diagnostic, importance, ensemble_diagnostics
 
 

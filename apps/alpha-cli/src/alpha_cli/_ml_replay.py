@@ -189,9 +189,11 @@ def run_ml_replay(
     if signals.is_empty():
         raise DataError("validated worker result contains no test predictions to replay")
     costs = validated.request.request["costs"]
+    replay_bars = _bars(validated)
+    replay_targets = _targets(signals)
     replay = run_weight_replay(
-        _bars(validated),
-        _targets(signals),
+        replay_bars,
+        replay_targets,
         starting_cash=starting_cash,
         fee_bps=float(costs["fee_bps"]),
         slippage_bps=float(costs["slippage_bps"]),
@@ -231,6 +233,58 @@ def run_ml_replay(
     _artifacts.publish_artifact(rdir / "ml_signals.parquet", signals.write_parquet)
     _artifacts.publish_artifact(rdir / "ml_periods.parquet", _period_frame(replay).write_parquet)
     _artifacts.publish_artifact(rdir / "folds.parquet", _fold_frame(validated).write_parquet)
+    ensemble = validated.ensemble_diagnostics
+    if ensemble is not None:
+        _artifacts.publish_artifact(rdir / "ensemble_diagnostics.parquet", ensemble.write_parquet)
+        cost_rows: list[dict[str, float]] = []
+        for multiplier in (0.0, 0.5, 1.0, 2.0):
+            scenario = run_weight_replay(
+                replay_bars,
+                replay_targets,
+                starting_cash=starting_cash,
+                fee_bps=float(costs["fee_bps"]) * multiplier,
+                slippage_bps=float(costs["slippage_bps"]) * multiplier,
+            )
+            cost_rows.append(
+                {
+                    "cost_multiplier": multiplier,
+                    "fee_bps": float(costs["fee_bps"]) * multiplier,
+                    "slippage_bps": float(costs["slippage_bps"]) * multiplier,
+                    "final_equity": scenario.backtest.final_equity,
+                    "total_return": scenario.backtest.final_equity / starting_cash - 1.0,
+                    "mean_turnover": float(
+                        np.mean([period.turnover for period in scenario.periods])
+                    ),
+                }
+            )
+        _artifacts.publish_artifact(
+            rdir / "ml_cost_sensitivity.parquet",
+            pl.DataFrame(cost_rows).write_parquet,
+        )
+        diagnostics = validated.result.get("diagnostics")
+        folds = diagnostics.get("folds") if isinstance(diagnostics, dict) else None
+        feature_rows: list[dict[str, object]] = []
+        if isinstance(folds, list):
+            for fold in folds:
+                if not isinstance(fold, dict) or not isinstance(
+                    fold.get("feature_importance"), list
+                ):
+                    continue
+                for feature in fold["feature_importance"]:
+                    if isinstance(feature, dict):
+                        feature_rows.append(
+                            {
+                                "fold": fold.get("fold"),
+                                "feature": feature.get("feature"),
+                                "gain": feature.get("gain"),
+                                "split_count": feature.get("split_count"),
+                            }
+                        )
+        if feature_rows:
+            _artifacts.publish_artifact(
+                rdir / "ml_feature_stability.parquet",
+                pl.DataFrame(feature_rows).sort(["feature", "fold"]).write_parquet,
+            )
 
     reconciliation = replay.reconciled_order_fills()
     manifest: dict[str, Any] = {
@@ -266,6 +320,11 @@ def run_ml_replay(
             "worker_result_sha256": result_sha,
             "predictions_sha256": predictions_sha,
             "panel_sha256": request["panel"]["sha256"],
+            "ensemble_diagnostics_sha256": (
+                sha256_file(exchange_dir / "ensemble_diagnostics.parquet")
+                if ensemble is not None
+                else None
+            ),
         },
         "validation": {
             "status": "warning",

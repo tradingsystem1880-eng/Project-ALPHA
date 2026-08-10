@@ -515,6 +515,22 @@ class KronosCalibratedAssessmentV1:
     calibration_fit_sha256: str
 
 
+@dataclass(frozen=True, slots=True)
+class ForecastCalibratedOriginEvaluationV1:
+    """One OOS origin scored with a calibration fit frozen on earlier validation data."""
+
+    origin_id: str
+    state_key: str
+    market_state_eligible: bool
+    raw_crps: float
+    calibrated_crps: float
+    raw_pinball: float
+    calibrated_pinball: float
+    raw_covered: bool
+    calibrated_covered: bool
+    assessment: KronosCalibratedAssessmentV1
+
+
 def assess_kronos_calibrated_candidate(
     fit: ForecastCalibrationFitV1,
     *,
@@ -570,13 +586,70 @@ def assess_kronos_calibrated_candidate(
     )
 
 
+def evaluate_frozen_calibration(
+    fit: ForecastCalibrationFitV1,
+    origins: Sequence[ForecastCalibrationOriginV1],
+    *,
+    market_state_eligibility: Mapping[str, bool],
+) -> tuple[ForecastCalibratedOriginEvaluationV1, ...]:
+    """Score later origins without changing the validation-fitted blend or conformal radius."""
+    validation_ids = set(fit.validation_origin_ids)
+    results: list[ForecastCalibratedOriginEvaluationV1] = []
+    for origin in origins:
+        if origin.origin_id in validation_ids:
+            raise DataError("OOS calibration origins overlap the frozen validation fit")
+        if origin.origin_id not in market_state_eligibility:
+            raise DataError(f"market-state eligibility is missing for origin {origin.origin_id!r}")
+        raw = _blend(origin, fit.selected_model_weight)
+        calibrated = _calibrate_samples(
+            raw,
+            coverage_level=fit.contract.coverage_level,
+            conformal_radius=fit.conformal_radius,
+        )
+        observed = origin.observed_end_return
+        eligible = market_state_eligibility[origin.origin_id]
+        if not isinstance(eligible, bool):
+            raise DataError("market-state eligibility values must be boolean")
+        results.append(
+            ForecastCalibratedOriginEvaluationV1(
+                origin_id=origin.origin_id,
+                state_key=origin.state_key,
+                market_state_eligible=eligible,
+                raw_crps=crps_sample(raw, observed),
+                calibrated_crps=crps_sample(calibrated, observed),
+                raw_pinball=(pinball_loss(raw, observed, 0.25) + pinball_loss(raw, observed, 0.75))
+                / 2.0,
+                calibrated_pinball=(
+                    pinball_loss(calibrated, observed, 0.25)
+                    + pinball_loss(calibrated, observed, 0.75)
+                )
+                / 2.0,
+                raw_covered=central_coverage(raw, observed, fit.contract.coverage_level),
+                calibrated_covered=central_coverage(
+                    calibrated, observed, fit.contract.coverage_level
+                ),
+                assessment=assess_kronos_calibrated_candidate(
+                    fit,
+                    model_end_returns=origin.model_end_returns,
+                    random_walk_end_returns=origin.random_walk_end_returns,
+                    market_state_eligible=eligible,
+                ),
+            )
+        )
+    if not results:
+        raise DataError("frozen calibration evaluation requires at least one OOS origin")
+    return tuple(results)
+
+
 __all__ = [
     "ForecastCalibrationContractV1",
+    "ForecastCalibratedOriginEvaluationV1",
     "ForecastCalibrationFitV1",
     "ForecastCalibrationMetricsV1",
     "ForecastCalibrationOriginV1",
     "ForecastStateDiagnosticV1",
     "KronosCalibratedAssessmentV1",
     "assess_kronos_calibrated_candidate",
+    "evaluate_frozen_calibration",
     "fit_rolling_conformal_blend",
 ]

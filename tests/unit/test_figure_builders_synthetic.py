@@ -267,6 +267,120 @@ class TestResearch:
         assert spec.plain_language_answer == "Two preregistered events were observed."  # type: ignore[attr-defined]
 
 
+class TestAdvancedModeling:
+    def test_governed_forecast_figures_render(self, tmp_path: Path) -> None:
+        rdir = _run_dir(tmp_path, "forecast_eval")
+        stamps = _stamps(6)
+        pl.DataFrame(
+            {
+                "state_key": ["calm", "stress"],
+                "sample_count": [8, 2],
+                "minimum_samples": [3, 3],
+                "used_pooled_fallback": [False, True],
+                "evaluated_count": [8, 10],
+                "raw_crps": [0.04, 0.05],
+                "calibrated_crps": [0.03, 0.045],
+                "candidate_rate": [0.5, 0.3],
+            }
+        ).write_parquet(rdir / "state_performance.parquet")
+        pl.DataFrame(
+            {
+                "split": ["validation", "oos"],
+                "nominal_coverage": [0.8, 0.8],
+                "evaluated_origins": [8, 6],
+                "raw_crps": [0.04, 0.05],
+                "calibrated_crps": [0.03, 0.04],
+                "raw_pinball": [0.02, 0.03],
+                "calibrated_pinball": [0.018, 0.025],
+                "raw_coverage": [0.6, 0.5],
+                "calibrated_coverage": [0.75, 2 / 3],
+            }
+        ).write_parquet(rdir / "calibration_reliability.parquet")
+        pl.DataFrame(
+            {
+                "origin_ts": stamps,
+                "candidate": ["kronos_calibrated", None, None, "kronos_calibrated", None, None],
+                "signal": [1, None, None, -1, None, None],
+                "blocker_codes": [
+                    [],
+                    ["MARKET_STATE_UNAVAILABLE"],
+                    ["CALIBRATED_EDGE_BELOW_FLOOR"],
+                    [],
+                    ["CALIBRATED_UNCERTAINTY_TOO_WIDE"],
+                    ["CALIBRATED_EDGE_BELOW_FLOOR"],
+                ],
+                "interval_width": [0.1] * 6,
+            }
+        ).write_parquet(rdir / "calibrated_origins.parquet")
+
+        assert (
+            "lowered CRPS"
+            in _build(  # type: ignore[attr-defined]
+                rdir, "state_conditioned_performance", tmp_path
+            ).plain_language_answer
+        )
+        assert (
+            "OOS calibrated CRPS"
+            in _build(  # type: ignore[attr-defined]
+                rdir, "calibrated_reliability", tmp_path
+            ).plain_language_answer
+        )
+        assert (
+            "emitted at 2"
+            in _build(  # type: ignore[attr-defined]
+                rdir, "forecast_abstention", tmp_path
+            ).plain_language_answer
+        )
+
+    def test_ml_diagnostic_figures_render(self, tmp_path: Path) -> None:
+        rdir = _run_dir(tmp_path, "ml_replay")
+        stamps = _stamps(8)
+        pl.DataFrame(
+            {
+                "fold": [0] * 8,
+                "target_ts": stamps,
+                "symbol": [f"S{index}" for index in range(8)],
+                "lightgbm_rank": [index / 7 for index in range(8)],
+                "ridge_rank": [abs(3 - index) / 7 for index in range(8)],
+                "disagreement": [abs(index - abs(3 - index)) / 7 for index in range(8)],
+            }
+        ).write_parquet(rdir / "ensemble_diagnostics.parquet")
+        pl.DataFrame(
+            {
+                "fold": [0, 1, 2] * 3,
+                "feature": ["A"] * 3 + ["B"] * 3 + ["C"] * 3,
+                "gain": [8.0, 7.0, 9.0, 4.0, 3.0, 5.0, 1.0, 2.0, 1.5],
+                "split_count": [3] * 9,
+            }
+        ).write_parquet(rdir / "ml_feature_stability.parquet")
+        pl.DataFrame(
+            {
+                "cost_multiplier": [0.0, 0.5, 1.0, 2.0],
+                "total_return": [0.08, 0.06, 0.04, 0.0],
+                "mean_turnover": [0.3] * 4,
+            }
+        ).write_parquet(rdir / "ml_cost_sensitivity.parquet")
+
+        assert (
+            "rank disagreement"
+            in _build(  # type: ignore[attr-defined]
+                rdir, "ensemble_disagreement", tmp_path
+            ).plain_language_answer
+        )
+        assert (
+            "highest mean-gain"
+            in _build(  # type: ignore[attr-defined]
+                rdir, "feature_stability", tmp_path
+            ).plain_language_answer
+        )
+        assert (
+            "declared costs"
+            in _build(  # type: ignore[attr-defined]
+                rdir, "ml_cost_sensitivity", tmp_path
+            ).plain_language_answer
+        )
+
+
 def test_a_wiped_out_passive_index_fails_loud_rather_than_dividing_by_zero(
     tmp_path: Path,
 ) -> None:
@@ -318,6 +432,12 @@ def test_every_synthetic_builder_is_one_the_catalogue_declares() -> None:
         "forecast_fan",
         "forecast_skill",
         "forecast_calibration",
+        "state_conditioned_performance",
+        "calibrated_reliability",
+        "forecast_abstention",
+        "ensemble_disagreement",
+        "feature_stability",
+        "ml_cost_sensitivity",
         "research_discovery_trace",
     }
     assert exercised <= declared

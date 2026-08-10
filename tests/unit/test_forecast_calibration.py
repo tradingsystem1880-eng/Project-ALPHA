@@ -10,6 +10,7 @@ from alpha_validation.forecast_calibration import (
     ForecastCalibrationFitV1,
     ForecastCalibrationOriginV1,
     assess_kronos_calibrated_candidate,
+    evaluate_frozen_calibration,
     fit_rolling_conformal_blend,
 )
 
@@ -101,6 +102,33 @@ def test_candidate_requires_coverage_uncertainty_edge_and_available_state() -> N
     )
     assert no_edge.ready is False
     assert "CALIBRATED_EDGE_BELOW_FLOOR" in no_edge.blocker_codes
+
+
+def test_frozen_fit_scores_only_disjoint_oos_origins() -> None:
+    fit = fit_rolling_conformal_blend(_contract(), _origins())
+    oos = ForecastCalibrationOriginV1(
+        origin_id="oos-01",
+        model_end_returns=(0.04, 0.05, 0.06),
+        random_walk_end_returns=(-0.01, 0.0, 0.01),
+        observed_end_return=0.045,
+        state_key="calm",
+    )
+
+    (evaluated,) = evaluate_frozen_calibration(
+        fit, (oos,), market_state_eligibility={"oos-01": True}
+    )
+
+    assert evaluated.origin_id == "oos-01"
+    assert evaluated.raw_crps >= 0.0
+    assert evaluated.calibrated_crps >= 0.0
+    assert evaluated.assessment.calibration_fit_sha256 == fit.fit_sha256
+
+    with pytest.raises(DataError, match="overlap"):
+        evaluate_frozen_calibration(
+            fit,
+            (_origins()[0],),
+            market_state_eligibility={_origins()[0].origin_id: True},
+        )
 
 
 @pytest.mark.parametrize(

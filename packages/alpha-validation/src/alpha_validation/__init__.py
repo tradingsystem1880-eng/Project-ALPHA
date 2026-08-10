@@ -28,6 +28,7 @@ from alpha_validation.dsr import (
     probabilistic_sharpe_ratio,
 )
 from alpha_validation.forecast_calibration import (
+    ForecastCalibratedOriginEvaluationV1,
     ForecastCalibrationContractV1,
     ForecastCalibrationFitV1,
     ForecastCalibrationMetricsV1,
@@ -35,6 +36,7 @@ from alpha_validation.forecast_calibration import (
     ForecastStateDiagnosticV1,
     KronosCalibratedAssessmentV1,
     assess_kronos_calibrated_candidate,
+    evaluate_frozen_calibration,
     fit_rolling_conformal_blend,
 )
 from alpha_validation.forecast_eval import (
@@ -110,6 +112,7 @@ __all__ = [
     "FloatSeq",
     "FoldSummary",
     "ForecastEvalSummary",
+    "ForecastCalibratedOriginEvaluationV1",
     "ForecastCalibrationContractV1",
     "ForecastCalibrationFitV1",
     "ForecastCalibrationMetricsV1",
@@ -142,6 +145,7 @@ __all__ = [
     "deflated_sharpe",
     "expected_max_sharpe",
     "expected_shortfall",
+    "evaluate_frozen_calibration",
     "fit_rolling_conformal_blend",
     "garch_paths",
     "grade_verdict",

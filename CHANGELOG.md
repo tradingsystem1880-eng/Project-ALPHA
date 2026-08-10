@@ -23,6 +23,16 @@ Paper acceptance scenario remain pending.
   calibrated-Kronos, and Qlib rank-ensemble candidates.
 - A server-rendered research discovery trace that reads immutable D1 chart-data artifacts and
   presents both the causal trace and its evidence table in the integrated Workstation.
+- Causal, content-addressed `MarketStateV1` contracts and artifacts for separately aligned equity
+  and 24/7 crypto universes, with frozen windows, thresholds, benchmark, and sparse-state fallback.
+- Governed Kronos rolling-origin conformal calibration with a preregistered random-walk blend,
+  validation-frozen fit, raw/calibrated proper scores and coverage, state-conditioned diagnostics,
+  and fail-closed `kronos_calibrated` candidate assessments that retain research-only authority.
+- Additive Qlib contract v2 and `rank_ensemble_v1`: unchanged v1 LightGBM plus pinned Qlib ridge,
+  equal-weight percentile-rank combination, member/disagreement artifacts, deterministic replay,
+  feature stability, and fixed cost-sensitivity diagnostics.
+- Six server-rendered advanced-modeling figures for market-state performance, calibration
+  reliability, abstention, ensemble disagreement, feature stability, and cost sensitivity.
 
 ### Changed
 

@@ -449,6 +449,99 @@ FIGURES: Final[tuple[FigureDefinition, ...]] = (
         order=220,
     ),
     FigureDefinition(
+        figure_id="state_conditioned_performance",
+        title="State-conditioned forecast performance",
+        summary="Raw and calibrated OOS forecast loss by frozen market state.",
+        question="Does calibration help across states, or only in one regime?",
+        uncertainty="Sparse states use the preregistered pooled fallback and are marked as such.",
+        caveat="Market state is descriptive conditioning, not proof that the state caused skill.",
+        section="forecast",
+        run_commands=("forecast_eval",),
+        required_artifacts=("state_performance.parquet",),
+        panel_count=2,
+        order=221,
+    ),
+    FigureDefinition(
+        figure_id="calibrated_reliability",
+        title="Frozen calibration reliability",
+        summary="Raw versus calibrated CRPS and interval coverage on validation and OOS origins.",
+        question="Did the validation-frozen calibration remain reliable out of sample?",
+        uncertainty="Coverage is estimated from a finite and serially dependent origin sample.",
+        caveat="A delivered calibration capability is not evidence of profitable forecast skill.",
+        section="forecast",
+        run_commands=("forecast_eval",),
+        required_artifacts=("calibration_reliability.parquet",),
+        panel_count=2,
+        order=222,
+    ),
+    FigureDefinition(
+        figure_id="forecast_abstention",
+        title="Calibrated candidate abstention",
+        summary=(
+            "Candidate emissions and abstentions under frozen uncertainty, edge, and state rules."
+        ),
+        question="How often did the governed candidate decline to express a signal, and why?",
+        uncertainty=(
+            "Abstention frequency depends on the frozen state sample and calibration window."
+        ),
+        caveat="Candidate emissions have research authority only and no paper or order authority.",
+        section="forecast",
+        run_commands=("forecast_eval",),
+        required_artifacts=("calibrated_origins.parquet",),
+        panel_count=2,
+        order=223,
+    ),
+    FigureDefinition(
+        figure_id="ensemble_disagreement",
+        title="Rank-ensemble disagreement",
+        summary="LightGBM and ridge percentile ranks with their cross-sectional disagreement.",
+        question="Are the two ensemble members corroborating each other or cancelling out?",
+        uncertainty=(
+            "Disagreement diagnoses model diversity; it does not establish either member is right."
+        ),
+        caveat=(
+            "Scores are OOS diagnostics until canonical replay and the full research gates pass."
+        ),
+        section="ml",
+        run_commands=("ml_replay",),
+        required_artifacts=("ensemble_diagnostics.parquet",),
+        panel_count=2,
+        order=224,
+    ),
+    FigureDefinition(
+        figure_id="feature_stability",
+        title="Feature stability across folds",
+        summary="Per-fold LightGBM gain for the most influential Alpha158 features.",
+        question=(
+            "Does the model rely on the same features across refits, or chase unstable proxies?"
+        ),
+        uncertainty="Gain importance is model-specific and does not imply a causal contribution.",
+        caveat=(
+            "Only train-fold fitted importance is shown; no OOS outcome selects the displayed "
+            "features."
+        ),
+        section="ml",
+        run_commands=("ml_replay",),
+        required_artifacts=("ml_feature_stability.parquet",),
+        panel_count=1,
+        order=225,
+    ),
+    FigureDefinition(
+        figure_id="ml_cost_sensitivity",
+        title="ML replay cost sensitivity",
+        summary="Canonical replay return under fixed multiples of the declared transaction costs.",
+        question="How quickly does the apparent edge disappear as realistic costs increase?",
+        uncertainty=(
+            "The scenarios scale declared fees and slippage; they do not model market impact."
+        ),
+        caveat="Cost robustness is necessary but cannot by itself authorize promotion.",
+        section="ml",
+        run_commands=("ml_replay",),
+        required_artifacts=("ml_cost_sensitivity.parquet",),
+        panel_count=2,
+        order=226,
+    ),
+    FigureDefinition(
         figure_id="research_discovery_trace",
         title="Discovery trace and evidence table",
         summary=(
