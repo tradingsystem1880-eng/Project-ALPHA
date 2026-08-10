@@ -197,6 +197,14 @@ def scorecard(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     return cast(dict[str, Any], value)
 
 
+def decision_view(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read the owner decision view: checklist, full scorecard, packet, and history."""
+    return _object(
+        _run_json(["research", "decision-view", project_id, "--json"], data_dir=data_dir),
+        "research decision view",
+    )
+
+
 def report(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     """Read progress or project a terminal packet from already-recorded authority state."""
     return _object(

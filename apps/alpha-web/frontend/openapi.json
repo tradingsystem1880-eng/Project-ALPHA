@@ -10159,6 +10159,47 @@
         "const": "spy_rth_60m_four_hour_window",
         "type": "string"
       },
+      "ResearchChecklistQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "binding": {
+            "title": "Binding",
+            "type": "string"
+          },
+          "number": {
+            "maximum": 14.0,
+            "minimum": 1.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "number",
+          "question",
+          "binding",
+          "status",
+          "answer"
+        ],
+        "title": "ResearchChecklistQuestion",
+        "type": "object"
+      },
       "ResearchContextPacket": {
         "additionalProperties": false,
         "properties": {
@@ -10570,6 +10611,153 @@
           "reason"
         ],
         "title": "ResearchDecisionEvent",
+        "type": "object"
+      },
+      "ResearchDecisionHistoryEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "actor_kind": {
+            "$ref": "#/components/schemas/AuthorKindValue"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "advance_to_strategy",
+              "revise",
+              "park",
+              "reject"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "SUPPORTED",
+              "CONTRADICTED",
+              "INCONCLUSIVE",
+              "INVALID"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sequence",
+          "contract_id",
+          "outcome",
+          "disposition",
+          "actor",
+          "actor_kind",
+          "occurred_at",
+          "reason"
+        ],
+        "title": "ResearchDecisionHistoryEvent",
+        "type": "object"
+      },
+      "ResearchDecisionView": {
+        "additionalProperties": false,
+        "properties": {
+          "checklist": {
+            "$ref": "#/components/schemas/ResearchEdgeChecklist"
+          },
+          "d2_state": {
+            "title": "D2 State",
+            "type": "string"
+          },
+          "decision_history": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchDecisionHistoryEvent"
+            },
+            "title": "Decision History",
+            "type": "array"
+          },
+          "gate_packet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchGatePacket"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "scorecard": {
+            "$ref": "#/components/schemas/ResearchScorecard"
+          },
+          "view_schema": {
+            "const": "ResearchDecisionViewV1",
+            "title": "View Schema",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view_schema",
+          "project_id",
+          "phase",
+          "d2_state",
+          "next_action",
+          "checklist",
+          "scorecard",
+          "gate_packet",
+          "decision_history"
+        ],
+        "title": "ResearchDecisionView",
+        "type": "object"
+      },
+      "ResearchEdgeChecklist": {
+        "additionalProperties": false,
+        "properties": {
+          "checklist_schema": {
+            "const": "ResearchEdgeChecklistV1",
+            "title": "Checklist Schema",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchChecklistQuestion"
+            },
+            "maxItems": 14,
+            "minItems": 14,
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "checklist_schema",
+          "questions"
+        ],
+        "title": "ResearchEdgeChecklist",
         "type": "object"
       },
       "ResearchEventAvailabilityValue": {
@@ -17379,6 +17567,49 @@
           }
         },
         "summary": "Research Context Packets",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/decision-view": {
+      "get": {
+        "description": "Read the owner decision view: checklist, full scorecard, packet, and history.",
+        "operationId": "research_decision_view_api_research_cases__project_id__decision_view_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchDecisionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Research Decision View",
         "tags": [
           "research"
         ]

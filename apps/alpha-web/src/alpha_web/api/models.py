@@ -1940,6 +1940,43 @@ type ResearchCaseReport = Annotated[
 ]
 
 
+class ResearchChecklistQuestion(StrictModel):
+    question_id: str
+    number: int = Field(ge=1, le=14)
+    question: str
+    binding: str
+    status: str
+    answer: str
+
+
+class ResearchEdgeChecklist(StrictModel):
+    checklist_schema: Literal["ResearchEdgeChecklistV1"]
+    questions: list[ResearchChecklistQuestion] = Field(min_length=14, max_length=14)
+
+
+class ResearchDecisionHistoryEvent(StrictModel):
+    sequence: int
+    contract_id: str
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchDecisionView(StrictModel):
+    view_schema: Literal["ResearchDecisionViewV1"]
+    project_id: str
+    phase: str
+    d2_state: str
+    next_action: str
+    checklist: ResearchEdgeChecklist
+    scorecard: ResearchScorecard
+    gate_packet: ResearchGatePacket | None
+    decision_history: list[ResearchDecisionHistoryEvent]
+
+
 class OptionGreeks(StrictModel):
     spot: float
     strike: float

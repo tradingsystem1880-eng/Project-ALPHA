@@ -308,8 +308,40 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
     read_only_paths = {
         "/api/research/cases/{project_id}/evidence-hub",
         "/api/research/cases/{project_id}/scorecard",
+        "/api/research/cases/{project_id}/decision-view",
     }
     assert read_only_paths <= set(research_routes)
+
+
+def test_research_decision_view_read_plane(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases",
+        json={"idea": "SPY drifts upward into month-end rebalancing", "name": "Month-end"},
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+
+    response = client.get(f"/api/research/cases/{project_id}/decision-view")
+    assert response.status_code == 200, response.text
+    view = response.json()
+    assert view["view_schema"] == "ResearchDecisionViewV1"
+    assert view["project_id"] == project_id
+    assert view["phase"] == "triage"
+    # A fresh case has no terminal packet and no recorded owner decisions.
+    assert view["gate_packet"] is None
+    assert view["decision_history"] == []
+    questions = view["checklist"]["questions"]
+    assert len(questions) == 14
+    assert [entry["number"] for entry in questions] == list(range(1, 15))
+    statuses = {entry["question_id"]: entry["status"] for entry in questions}
+    assert statuses["effect_exists"] == "NOT_TESTED"
+    assert statuses["economic_hurdle"] == "NOT_TESTED"
+    assert statuses["residual_uncertainty"] == "TESTED"
+    assert len(view["scorecard"]["dimensions"]) == 12
+    assert view["scorecard"]["recommendation"]["value"] == "MORE RESEARCH REQUIRED"
+
+    assert client.get("/api/research/cases/unknown-project/decision-view").status_code == 404
 
 
 def test_codex_read_plane_serves_packets_notes_and_protocols(

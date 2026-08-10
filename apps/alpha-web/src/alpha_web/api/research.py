@@ -17,6 +17,7 @@ from alpha_web.api.models import (
     ResearchContextPacket,
     ResearchContextPacketPage,
     ResearchDatasetPage,
+    ResearchDecisionView,
     ResearchEvidenceHub,
     ResearchLaunchRequest,
     ResearchLaunchResponse,
@@ -81,6 +82,18 @@ def research_scorecard(project_id: str) -> dict[str, Any]:
     """Read the readiness scorecard: enumerated states, never a numeric aggregate."""
     try:
         return _research.scorecard(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/decision-view",
+    response_model=ResearchDecisionView,
+)
+def research_decision_view(project_id: str) -> dict[str, Any]:
+    """Read the owner decision view: checklist, full scorecard, packet, and history."""
+    try:
+        return _research.decision_view(project_id, data_dir=data_dir())
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
