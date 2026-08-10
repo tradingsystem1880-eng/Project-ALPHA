@@ -6877,6 +6877,21 @@ class ControlStore:
                     "invalid experiment market-state universe: must equal the experiment universe"
                 )
             clean_stage["market_state"] = market_state.to_dict()
+        calibration_value = clean_stage.get("kronos_calibration")
+        if calibration_value is not None:
+            from alpha_validation import ForecastCalibrationContractV1
+
+            if market_state_value is None:
+                raise DataError("kronos_calibration requires a frozen market_state contract")
+            if not isinstance(calibration_value, Mapping):
+                raise DataError(
+                    "invalid experiment kronos_calibration contract: expected an object"
+                )
+            try:
+                calibration = ForecastCalibrationContractV1.from_dict(calibration_value)
+            except DataError as exc:
+                raise DataError(f"invalid experiment kronos_calibration contract: {exc}") from exc
+            clean_stage["kronos_calibration"] = calibration.to_dict()
         clean_contract_id = (
             None
             if research_contract_id is None
