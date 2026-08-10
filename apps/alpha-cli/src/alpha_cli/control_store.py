@@ -735,6 +735,15 @@ CREATE TABLE IF NOT EXISTS research_decision_events (
     UNIQUE (project_id, contract_id)
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS research_gate_override_events (
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL,
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, sequence)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS research_contract_strategy_links (
     project_id TEXT NOT NULL REFERENCES projects(project_id),
     version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
@@ -2719,7 +2728,119 @@ class ControlStore:
                 "SELECT * FROM projects ORDER BY updated_at DESC, project_id LIMIT ? OFFSET ?",
                 (limit, offset),
             ).fetchall()
-        return [dict(row) for row in rows]
+            views = []
+            for row in rows:
+                view = dict(row)
+                view["research_gate_state"] = self._research_gate_state(
+                    connection, str(row["project_id"])
+                )
+                views.append(view)
+        return views
+
+    def _research_gate_state(self, connection: sqlite3.Connection, project_id: str) -> str:
+        """Derive the spec-§15 anti-premature-backtesting gate state for one project.
+
+        `passed` deliberately supersedes `overridden`: once an owner advance_to_strategy
+        decision exists, earlier overrides are historical ledger entries, not live authority.
+        """
+        governance = connection.execute(
+            """SELECT research_required FROM project_research_governance
+            WHERE project_id = ?""",
+            (project_id,),
+        ).fetchone()
+        if governance is None:
+            raise DataError("strategy project has no research-governance record")
+        governed = int(governance["research_required"]) == 1 or (
+            self._latest_research_phase(connection, project_id) is not None
+        )
+        if not governed:
+            return "not_required"
+        advanced = connection.execute(
+            """SELECT 1 FROM research_decision_events
+            WHERE project_id = ? AND disposition = 'advance_to_strategy' LIMIT 1""",
+            (project_id,),
+        ).fetchone()
+        if advanced is not None:
+            return "passed"
+        override = connection.execute(
+            "SELECT 1 FROM research_gate_override_events WHERE project_id = ? LIMIT 1",
+            (project_id,),
+        ).fetchone()
+        if override is not None:
+            return "overridden"
+        return "open"
+
+    def research_gate_state(self, project_id: str) -> str:
+        """Return {not_required, open, passed, overridden} for one project (spec §15)."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            return self._research_gate_state(connection, project_id)
+
+    def record_research_gate_override(
+        self,
+        project_id: str,
+        *,
+        actor: str,
+        reason: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append one owner research-gate override event (never a mutable boolean)."""
+        clean_actor = _required_text(actor, "research gate override actor", max_length=100)
+        clean_reason = _required_text(reason, "research gate override reason")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            state = self._research_gate_state(connection, project_id)
+            if state == "not_required":
+                raise DataError("grandfathered project has no research gate to override")
+            if state == "passed":
+                raise DataError("research gate already passed; an override cannot apply")
+            latest = connection.execute(
+                """SELECT COALESCE(MAX(sequence), 0) AS sequence
+                FROM research_gate_override_events WHERE project_id = ?""",
+                (project_id,),
+            ).fetchone()
+            sequence = int(latest["sequence"]) + 1
+            connection.execute(
+                """INSERT INTO research_gate_override_events (
+                    project_id, sequence, actor, reason, recorded_at
+                ) VALUES (?, ?, ?, ?, ?)""",
+                (project_id, sequence, clean_actor, clean_reason, timestamp),
+            )
+        return {
+            "project_id": project_id,
+            "sequence": sequence,
+            "actor": clean_actor,
+            "reason": clean_reason,
+            "recorded_at": timestamp,
+        }
+
+    def list_active_research_gate_overrides(
+        self, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return override events for projects whose gate is currently overridden.
+
+        Overrides on projects that later pass research drop out of this projection but
+        remain in the per-project append-only ledger.
+        """
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                """SELECT o.project_id, o.sequence, o.actor, o.reason, o.recorded_at,
+                    p.name AS project_name
+                FROM research_gate_override_events o
+                JOIN projects p ON p.project_id = o.project_id
+                ORDER BY o.recorded_at DESC, o.project_id, o.sequence DESC""",
+            ).fetchall()
+            states: dict[str, str] = {}
+            active = []
+            for row in rows:
+                pid = str(row["project_id"])
+                if pid not in states:
+                    states[pid] = self._research_gate_state(connection, pid)
+                if states[pid] == "overridden":
+                    active.append(dict(row))
+        return active[offset : offset + limit]
 
     def get_project(self, project_id: str) -> dict[str, object]:
         """Return a complete bounded projection of one project's control-plane lineage."""
@@ -2766,6 +2887,12 @@ class ControlStore:
                 WHERE project_id = ? ORDER BY created_at, packet_id""",
                 (project_id,),
             ).fetchall()
+            gate_state = self._research_gate_state(connection, project_id)
+            gate_overrides = connection.execute(
+                """SELECT * FROM research_gate_override_events
+                WHERE project_id = ? ORDER BY sequence""",
+                (project_id,),
+            ).fetchall()
             version_views = []
             for row in versions:
                 view = self._version_view(row)
@@ -2807,6 +2934,8 @@ class ControlStore:
         project["holdouts"] = [dict(row) for row in holdouts]
         project["holdout_audit"] = [dict(row) for row in audit]
         project["decision_packets"] = [self._decision_packet_view(row) for row in decisions]
+        project["research_gate_state"] = gate_state
+        project["research_gate_overrides"] = [dict(row) for row in gate_overrides]
         return project
 
     def create_research_source(
@@ -6612,17 +6741,11 @@ class ControlStore:
         parameter_space_json = _canonical_json(clean_space, "parameter space")
         with self._transaction(write=True) as connection:
             project = self._require_project(connection, project_id)
-            governance = connection.execute(
-                """SELECT research_required FROM project_research_governance
-                WHERE project_id = ?""",
-                (project_id,),
-            ).fetchone()
-            if governance is None:
-                raise DataError("strategy project has no research-governance record")
-            research_case = self._latest_research_phase(connection, project_id)
-            if (
-                int(governance["research_required"]) == 1 or research_case is not None
-            ) and clean_contract_id is None:
+            gate_state = self._research_gate_state(connection, project_id)
+            # An explicit owner override (spec §15) is the only unlinked path through a
+            # governed gate; runs under it stay watermarked EXPLORATORY, and a later pass
+            # re-locks the gate so promoted work must carry its research linkage.
+            if clean_contract_id is None and gate_state not in ("not_required", "overridden"):
                 raise DataError(
                     "research-governed project strategy versions require research_contract_id"
                 )

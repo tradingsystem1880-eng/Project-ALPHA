@@ -814,7 +814,12 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.close()
 
     assert SCHEMA_VERSION == 2
-    assert ControlStore(tmp_path).list_projects() == [post_launch, expected]
+    # The governance backfill drives the derived gate state: pre-launch rows are
+    # grandfathered while post-launch v1 rows stay research-governed and open.
+    assert ControlStore(tmp_path).list_projects() == [
+        {**post_launch, "research_gate_state": "open"},
+        {**expected, "research_gate_state": "not_required"},
+    ]
     migrated = sqlite3.connect(database)
     governance = {
         str(row[0]): (int(row[1]), str(row[2]))
@@ -2831,6 +2836,161 @@ def test_agent_brief_embeds_promotion_reference_and_survives_as_of(tmp_path: Pat
     assert before["research_promotion"] is None
     after = store.get_agent_brief_context(PROJECT_ID, as_of=START + timedelta(minutes=17))
     assert after["research_promotion"] == promotion
+
+
+def _legacy_project(store: ControlStore) -> None:
+    store.create_project(
+        name="Pre-program momentum project",
+        hypothesis="A grandfathered strategy project predating the research program.",
+        falsification_criterion="Reject when the legacy edge stops clearing costs.",
+        project_id=LEGACY_PROJECT_ID,
+        at=datetime(2026, 8, 5, 23, 59, tzinfo=UTC),
+    )
+    mark_project_as_migrated_legacy(store, LEGACY_PROJECT_ID)
+
+
+def test_research_gate_state_derivation_covers_all_states(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _legacy_project(store)
+    assert store.research_gate_state(LEGACY_PROJECT_ID) == "not_required"
+
+    _project(store)
+    assert store.research_gate_state(PROJECT_ID) == "open"
+
+    store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+        at=START + timedelta(minutes=1),
+    )
+    assert store.research_gate_state(PROJECT_ID) == "overridden"
+
+    # A completed research pass supersedes any earlier override.
+    _approved_contracts(store)
+    assert store.research_gate_state(PROJECT_ID) == "passed"
+
+    states = {row["project_id"]: row["research_gate_state"] for row in store.list_projects()}
+    assert states[PROJECT_ID] == "passed"
+    assert states[LEGACY_PROJECT_ID] == "not_required"
+    assert store.get_project(PROJECT_ID)["research_gate_state"] == "passed"
+    assert store.get_project(LEGACY_PROJECT_ID)["research_gate_state"] == "not_required"
+
+    with pytest.raises(DataError, match="unknown strategy project"):
+        store.research_gate_state("11111111-2222-4333-8444-555555555555")
+
+
+def test_research_gate_override_is_append_only_and_fails_closed(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _legacy_project(store)
+    with pytest.raises(DataError, match="no research gate"):
+        store.record_research_gate_override(
+            LEGACY_PROJECT_ID,
+            actor="owner",
+            reason="A grandfathered project has nothing to override.",
+        )
+
+    _project(store)
+    first = store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+        at=START + timedelta(minutes=1),
+    )
+    second = store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Re-affirmed after the adversarial review of the open case.",
+        at=START + timedelta(minutes=2),
+    )
+    assert (first["sequence"], second["sequence"]) == (1, 2)
+
+    overrides = store.get_project(PROJECT_ID)["research_gate_overrides"]
+    assert isinstance(overrides, list)
+    assert [row["sequence"] for row in overrides] == [1, 2]
+    assert overrides[0]["actor"] == "owner"
+    assert overrides[0]["reason"] == (
+        "Owner accepts exploratory-only engine work before research completes."
+    )
+    assert overrides[1]["recorded_at"] == "2026-08-06T09:02:00.000000Z"
+
+    active = store.list_active_research_gate_overrides()
+    assert [(row["project_id"], row["sequence"]) for row in active] == [
+        (PROJECT_ID, 2),
+        (PROJECT_ID, 1),
+    ]
+    assert active[0]["project_name"] == "SPY four-hour double bottom"
+
+    with pytest.raises(DataError, match="reason"):
+        store.record_research_gate_override(PROJECT_ID, actor="owner", reason="   ")
+
+    # A passed gate can no longer be overridden, and its overrides go inactive.
+    _approved_contracts(store)
+    with pytest.raises(DataError, match="already passed"):
+        store.record_research_gate_override(
+            PROJECT_ID,
+            actor="owner",
+            reason="An override after the pass would only muddy the ledger.",
+        )
+    assert store.list_active_research_gate_overrides() == []
+    assert [
+        row["sequence"] for row in store.get_project(PROJECT_ID)["research_gate_overrides"]
+    ] == [1, 2]
+
+
+def test_overridden_gate_permits_unlinked_strategy_version(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    with pytest.raises(DataError, match="research_contract_id"):
+        store.create_strategy_version(
+            PROJECT_ID,
+            strategy_name="premature_probe",
+            source_fingerprint="git:blocked-before-override",
+            definition={},
+            parameter_space={},
+            at=START + timedelta(minutes=1),
+        )
+
+    store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+        at=START + timedelta(minutes=1),
+    )
+    version = store.create_strategy_version(
+        PROJECT_ID,
+        strategy_name="exploratory_probe",
+        source_fingerprint="git:override-watermarked",
+        definition={"detector": "exploratory-probe-v1"},
+        parameter_space={"lookback": [20, 60]},
+        at=START + timedelta(minutes=2),
+    )
+    version_id = str(version["version_id"])
+    assert version_id.startswith("sv_")
+    # The overridden path never forges research linkage.
+    assert "research_contract_id" not in version
+    spec = store.create_experiment_spec(
+        PROJECT_ID,
+        strategy_version_id=version_id,
+        snapshot_id="snap-override",
+        universe=["SPY"],
+        split_policy={"train": 504, "test": 63},
+        costs={"fee_bps": 1.0},
+        seeds={"root": 7},
+        at=START + timedelta(minutes=2, seconds=30),
+    )
+    assert str(spec["experiment_id"]).startswith("ex_")
+
+    # Once research passes, unlinked versions re-lock: linkage becomes mandatory.
+    _approved_contracts(store)
+    with pytest.raises(DataError, match="research_contract_id"):
+        store.create_strategy_version(
+            PROJECT_ID,
+            strategy_name="post_pass_unlinked",
+            source_fingerprint="git:must-link-after-pass",
+            definition={},
+            parameter_space={},
+            at=START + timedelta(minutes=30),
+        )
 
 
 def test_research_attempt_accepts_only_exact_contract_bound_run(tmp_path: Path) -> None:
