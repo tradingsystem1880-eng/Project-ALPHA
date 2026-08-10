@@ -1,6 +1,6 @@
 # ADR-0023: Research dataset registration and the QuantPad qualification lane
 
-**Status:** Proposed
+**Status:** Accepted (implemented 2026-08-09/10; accepted 2026-08-10)
 **Date:** 2026-08-07
 **Deciders:** Project ALPHA owner and AI build agents
 

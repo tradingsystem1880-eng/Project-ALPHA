@@ -1,6 +1,6 @@
 # ADR-0024: Lawful literature acquisition worker and the claim-level evidence model
 
-**Status:** Proposed
+**Status:** Accepted (implemented 2026-08-09/10; accepted 2026-08-10)
 **Date:** 2026-08-07
 **Deciders:** Project ALPHA owner and AI build agents
 
