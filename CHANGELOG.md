@@ -13,6 +13,9 @@ Paper acceptance scenario remain pending.
 
 ### Added
 
+- A repository-local development-skill suite covering Karpathy-style surgical work, incremental
+  implementation, behavior-preserving simplification, five-axis code/PR review, and fresh
+  verification before completion claims, with mandatory task routing in `CLAUDE.md`.
 - Research Scientist Gate 0 and deterministic Gate 1 foundation: authoritative spec, ADR-0019/0020,
   risk/dependency decisions, repository-native Research Scientist/adversarial-reviewer skills,
   additive schema-v2 research contracts and phase/execution/D2/attempt/decision histories,

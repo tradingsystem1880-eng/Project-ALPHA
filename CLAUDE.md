@@ -20,6 +20,11 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Research: `research/00-SYNTHESIS.md` (+ `research/01..07-*.md`)
 - Repository research skills: `.agents/skills/alpha-research-scientist/`
   + `.agents/skills/alpha-adversarial-reviewer/`
+- Repository development skills: `.agents/skills/karpathy-guidelines/`
+  + `.agents/skills/incremental-implementation/`
+  + `.agents/skills/code-simplification/`
+  + `.agents/skills/code-review-and-quality/`
+  + `.agents/skills/verification-before-completion/`
 - Phase plans: `docs/superpowers/plans/2026-*.md`
 - Python 3.12, `uv` virtual workspace (root is not a package). Members: `packages/*`, `apps/*`.
 
@@ -32,6 +37,11 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Contracts live in root `pyproject.toml` `[tool.importlinter]` (13 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
+- **Engineering workflow discipline.** Before writing, reviewing, or refactoring code, load
+  `karpathy-guidelines`. Also load `incremental-implementation` for multi-file work,
+  `code-simplification` for behavior-preserving refactors, `code-review-and-quality` before merge,
+  and `verification-before-completion` before claiming work is complete, fixed, or passing. This
+  manual takes precedence if any general skill conflicts with a Project ALPHA invariant.
 - **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `docs:`).
 - **No look-ahead, ever.** Strategies/backtests read data ONLY via the point-in-time accessor `as_of`. Every data/strategy unit gets a `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
 - **Execution convention:** decide on close of bar `t`, fill at open of `t+1`. Mechanism: `feed.to_execution_feed` emits an open-priced `QuoteTick` (at `bar.ts`) + a close-stamped (+23h) decision `Bar`; venue runs `bar_execution=False` so only quotes fill.
