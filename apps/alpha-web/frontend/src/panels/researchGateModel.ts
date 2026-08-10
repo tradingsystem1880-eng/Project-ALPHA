@@ -12,3 +12,26 @@ export function researchGateWatermark(run: WatermarkedRun | null | undefined): s
   const value = run?.research_gate_watermark
   return typeof value === 'string' && value.length > 0 ? value : null
 }
+
+// R6h (spec §15): `open` is the only state that locks strategy-creation and optimisation
+// affordances in the SPA. `not_required` (grandfathered), `passed`, and `overridden`
+// (owner-recorded, permanently watermarked) never lock, and a missing state — a
+// non-research context with no linked project — is never treated as a gate.
+export type ResearchGateState = 'not_required' | 'open' | 'passed' | 'overridden'
+
+export interface StrategyGateLock {
+  reason: string
+}
+
+export function strategyGateLock(
+  state: ResearchGateState | null | undefined,
+): StrategyGateLock | null {
+  if (state !== 'open') return null
+  return {
+    reason:
+      'This project’s research gate is open: strategy creation and optimisation stay '
+      + 'disabled until the owner closes the research case with an advance_to_strategy '
+      + 'decision — or records a trusted-local CLI override, which permanently watermarks '
+      + 'every run.',
+  }
+}

@@ -16,6 +16,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
 import { restoreLinked, setLinked, useLinked, type LinkGroup } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
+import { onResearchCase } from './context/researchCase'
 import {
   buildDeskLayout,
   buildWorkspaceLayout,
@@ -293,6 +294,18 @@ export function App() {
     dv?.panels.find((panel) => panel.id.includes('-cockpit'))?.api.setActive()
     window.setTimeout(requestNewIdea, 50)
   }, [activePreset, loadPreset])
+
+  // R6h (spec §15): a gated strategy surface's "open research case" link lands the owner on
+  // the case that is holding the gate — link the project, then focus the research desk.
+  useEffect(
+    () =>
+      onResearchCase((projectId) => {
+        setLinked({ projectId })
+        if (activePreset !== 'research') loadPreset('research')
+        dockRef.current?.panels.find((panel) => panel.id.includes('-cockpit'))?.api.setActive()
+      }),
+    [activePreset, loadPreset],
+  )
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

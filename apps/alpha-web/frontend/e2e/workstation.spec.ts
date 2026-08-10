@@ -896,12 +896,64 @@ const ACTIVE_GATE_OVERRIDE: components['schemas']['ActiveResearchGateOverride'] 
   recorded_at: '2026-08-10T00:00:00Z',
 }
 
+// R6h (spec §15): an `open` research-required gate disables strategy-creation and
+// optimisation affordances on the Develop desk with the reason and a link to the case;
+// grandfathered (`not_required`) projects and non-research contexts stay fully enabled.
+const GATED_PROJECT = {
+  project_id: RESEARCH_CASE.project_id,
+  name: 'Post-earnings drift case',
+  hypothesis: 'Large surprises drift for ten sessions.',
+  falsification_criterion: 'No drift after matched controls.',
+  status: 'active',
+  current_version_id: null,
+  current_experiment_id: null,
+  created_at: '2026-08-09T00:00:00Z',
+  updated_at: '2026-08-09T00:00:00Z',
+  research_gate_state: 'open',
+} satisfies components['schemas']['ProjectSummary']
+
+const UNGATED_PROJECT = {
+  ...GATED_PROJECT,
+  project_id: 'project-grandfathered-2',
+  name: 'Grandfathered momentum book',
+  research_gate_state: 'not_required',
+} satisfies components['schemas']['ProjectSummary']
+
+function projectDetail(
+  summary: components['schemas']['ProjectSummary'],
+): components['schemas']['ProjectDetail'] {
+  return {
+    ...summary,
+    versions: [],
+    experiments: [],
+    stage_states: [],
+    stage_run_links: [],
+    attempts: [],
+    holdouts: [],
+    holdout_audit: [],
+    decision_packets: [],
+    research_gate_overrides: [],
+    truncated: {
+      versions: false,
+      experiments: false,
+      stage_states: false,
+      stage_run_links: false,
+      attempts: false,
+      holdouts: false,
+      holdout_audit: false,
+      decision_packets: false,
+      research_gate_overrides: false,
+    },
+  }
+}
+
 interface MockOptions {
   chartBundle?: unknown
   trades?: unknown[]
   mlDiagnostics?: boolean
   jobs?: unknown[]
   researchGateOverride?: boolean
+  researchGateLock?: boolean
 }
 
 function responseFor(route: Route, options: MockOptions): unknown {
@@ -1067,6 +1119,15 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (url.pathname === '/api/screener/news') {
     return { symbol: url.searchParams.get('symbol') ?? 'AAPL', items: [] }
+  }
+  if (options.researchGateLock && url.pathname === '/api/projects') {
+    return { items: [GATED_PROJECT, UNGATED_PROJECT], limit: 50, offset: 0, has_more: false }
+  }
+  if (options.researchGateLock && url.pathname === `/api/projects/${GATED_PROJECT.project_id}`) {
+    return projectDetail(GATED_PROJECT)
+  }
+  if (options.researchGateLock && url.pathname === `/api/projects/${UNGATED_PROJECT.project_id}`) {
+    return projectDetail(UNGATED_PROJECT)
   }
   if (url.pathname === '/api/projects') return EMPTY_PAGE
   if (url.pathname === '/api/development/jobs') return EMPTY_PAGE
@@ -1510,6 +1571,41 @@ test('research-gate override watermark reaches run browser, run story, tear shee
   await page.locator('tbody tr').filter({ hasText: 'SPY, TLT' }).click()
   await expect(page.getByText(RESEARCH_GATE_WATERMARK)).toHaveCount(3)
   await expectReleaseAccessibility(page)
+})
+
+test('open research gates lock strategy affordances on Develop and link to the case', async (
+  { page },
+  testInfo,
+) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
+  await preparePage(page, { researchGateLock: true })
+  await page.getByLabel('DESK').selectOption('development')
+
+  // Gated state — Development Center auto-selects the open research-required project and all
+  // three surfaces (Development Center, Strategy Lab, Pipeline) carry the reason banner.
+  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(3)
+  await page.getByLabel('Clean source fingerprint').fill('git:0000000')
+  await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeDisabled()
+  const preps = page.getByRole('button', { name: '▶ prep' })
+  await expect(preps.first()).toBeEnabled() // 1 · Data — pulling history is not strategy work
+  await expect(preps.nth(1)).toBeDisabled() // 2 · Backtest
+  await expect(preps.nth(3)).toBeDisabled() // 4 · Optimize
+  await expectReleaseAccessibility(page)
+
+  // The case link lands on the Research desk with the holding case in focus.
+  await page.getByRole('button', { name: /Open research case/ }).first().click()
+  await expect(page.getByLabel('DESK')).toHaveValue('research')
+  await expect(page.getByText('Research Cockpit', { exact: true }).first()).toBeVisible()
+
+  // Non-research context — the grandfathered project re-enables every affordance.
+  await page.getByLabel('DESK').selectOption('development')
+  await page.getByLabel('Strategy project').selectOption(UNGATED_PROJECT.project_id)
+  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
+  await page.getByLabel('Clean source fingerprint').fill('git:0000000')
+  await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeEnabled()
+  await expect(preps.nth(1)).toBeEnabled()
 })
 
 test('cold shell and cached desk switch meet workstation latency budgets', async (

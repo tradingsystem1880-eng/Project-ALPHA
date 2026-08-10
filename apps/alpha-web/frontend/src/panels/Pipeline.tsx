@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { RunListItem } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
 import { useLinked } from '../context/linked'
 import { suggestionsFor } from '../explain/dispatch'
 import type { Suggestion } from '../explain/types'
@@ -15,6 +16,7 @@ import { useActivityField } from '../state/activity'
 import { shortId } from '../util/format'
 import { openRunDetail, openStrategyLab } from './actions'
 import { SuggestionList } from './rundetail/common'
+import { useLinkedProjectGate } from './useLinkedProjectGate'
 
 interface Stage {
   key: string
@@ -79,6 +81,10 @@ export function Pipeline(props: IDockviewPanelProps) {
   const linked = useLinked()
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [sugg, setSugg] = useState<Suggestion[] | null>(null)
+  // R6h (spec §15): an open research-required gate on the linked project disables every
+  // strategy/optimisation prep affordance (the Data stage stays available — pulling
+  // point-in-time history is research work, not strategy creation).
+  const gate = useLinkedProjectGate()
 
   useEffect(() => {
     let live = true
@@ -134,6 +140,13 @@ export function Pipeline(props: IDockviewPanelProps) {
         </span>
       </div>
       <div className="panel-body panel-pad">
+        {gate.lock && gate.projectId ? (
+          <ResearchGateLockNotice
+            lock={gate.lock}
+            projectId={gate.projectId}
+            projectName={gate.projectName}
+          />
+        ) : null}
         <div className="pipeline">
           {STAGES.map((s, i) => {
             const latest = latestFor(s)
@@ -162,6 +175,8 @@ export function Pipeline(props: IDockviewPanelProps) {
                 ) : null}
                 <button
                   className="btn"
+                  disabled={Boolean(gate.lock) && s.key !== 'data'}
+                  title={gate.lock && s.key !== 'data' ? gate.lock.reason : undefined}
                   onClick={() =>
                     openStrategyLab(props.containerApi, {
                       command: s.launch.command,

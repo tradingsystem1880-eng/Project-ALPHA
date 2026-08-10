@@ -12,9 +12,11 @@ import type {
   SuitePlan,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
 import { setLinked, useLinked } from '../context/linked'
 import { fmtPct, shortId } from '../util/format'
 import { isActiveControlJob, refreshDurableJobs } from './durableJobs'
+import { strategyGateLock } from './researchGateModel'
 import { projectStageRows } from './v3Models'
 
 function ContextLine() {
@@ -92,7 +94,7 @@ function parseObject(value: string, label: string): Record<string, unknown> {
   return parsed as Record<string, unknown>
 }
 
-function ImmutableSetup({ project, onUpdated }: { project: ProjectDetail; onUpdated: () => Promise<void> }) {
+function ImmutableSetup({ project, onUpdated, locked }: { project: ProjectDetail; onUpdated: () => Promise<void>; locked: boolean }) {
   const [strategy, setStrategy] = useState('ts_momentum')
   const [source, setSource] = useState('')
   const [definition, setDefinition] = useState('{"lookback":252,"skip":21,"vol_window":63,"target_vol":0.15,"rebalance_every":21,"max_leverage":1,"account_type":"CASH"}')
@@ -156,7 +158,7 @@ function ImmutableSetup({ project, onUpdated }: { project: ProjectDetail; onUpda
             <label><span className="eyebrow">Clean source fingerprint</span><input className="field mono" placeholder="git:<commit>" value={source} onChange={(event) => setSource(event.target.value)} /></label>
             <label className="span-two"><span className="eyebrow">Resolved definition JSON</span><textarea className="field mono" value={definition} onChange={(event) => setDefinition(event.target.value)} /></label>
             <label className="span-two"><span className="eyebrow">Declared parameter space JSON</span><textarea className="field mono" value={parameterSpace} onChange={(event) => setParameterSpace(event.target.value)} /></label>
-            <button className="btn primary span-two" disabled={busy || !source.trim() || !strategy.trim()} onClick={createVersion}>Create immutable version</button>
+            <button className="btn primary span-two" disabled={locked || busy || !source.trim() || !strategy.trim()} title={locked ? 'Research gate open — close the research case first' : undefined} onClick={createVersion}>Create immutable version</button>
           </div>
         </section>
         <section>
@@ -168,7 +170,7 @@ function ImmutableSetup({ project, onUpdated }: { project: ProjectDetail; onUpda
             <label><span className="eyebrow">Costs JSON</span><textarea className="field mono" value={costs} onChange={(event) => setCosts(event.target.value)} /></label>
             <label><span className="eyebrow">Semantic seeds JSON</span><textarea className="field mono" value={seeds} onChange={(event) => setSeeds(event.target.value)} /></label>
             <label><span className="eyebrow">Stage configuration JSON</span><textarea className="field mono" value={stageConfig} onChange={(event) => setStageConfig(event.target.value)} /></label>
-            <button className="btn primary span-two" disabled={busy || !project.current_version_id || !snapshot.trim() || !universe.trim()} onClick={createExperiment}>Freeze experiment specification</button>
+            <button className="btn primary span-two" disabled={locked || busy || !project.current_version_id || !snapshot.trim() || !universe.trim()} title={locked ? 'Research gate open — close the research case first' : undefined} onClick={createExperiment}>Freeze experiment specification</button>
           </div>
         </section>
       </div>
@@ -331,6 +333,9 @@ export function DevelopmentCenter() {
   }, [jobRefresh, selectedId])
 
   const stages = useMemo(() => projectStageRows(detail), [detail])
+  // R6h (spec §15): an open research-required gate disables every strategy-creation and
+  // optimisation affordance below; the notice carries the reason and the case link.
+  const gateLock = strategyGateLock(detail?.research_gate_state)
   const projectJobs = jobs.filter((job) => !selectedId || job.project_id === selectedId)
   const selectedPlan = plans[selectedAction]
   const experimentId = detail?.current_experiment_id ?? null
@@ -371,7 +376,7 @@ export function DevelopmentCenter() {
   }
 
   async function launchSelected() {
-    if (!detail?.current_experiment_id || !selectedPlan?.ready) return
+    if (gateLock || !detail?.current_experiment_id || !selectedPlan?.ready) return
     setLaunching(true)
     setError(null)
     try {
@@ -477,12 +482,13 @@ export function DevelopmentCenter() {
         {!selectedId ? <Placeholder big="NO PROJECT">Create or select a project to inspect immutable strategy-development lineage.</Placeholder> : !detail ? <div className="skeleton" style={{ height: 300 }} /> : (
           <>
             <ExperimentSummary project={detail} />
+            {gateLock ? <ResearchGateLockNotice lock={gateLock} projectId={detail.project_id} projectName={detail.name} /> : null}
             <div className="agent-brief-bar">
               <div><span className="eyebrow">Typed AgentBrief</span><span>Current hypothesis, allowed scope, cited evidence, stage state, warnings, and required tests.</span></div>
               {briefStatus ? <span className="mono pos">{briefStatus}</span> : null}
               <button className="btn primary" disabled={briefBusy} onClick={prepareCodexTask}>{briefBusy ? 'Preparing…' : 'Prepare Codex task'}</button>
             </div>
-            <ImmutableSetup project={detail} onUpdated={reloadDetail} />
+            <ImmutableSetup project={detail} onUpdated={reloadDetail} locked={Boolean(gateLock)} />
             <div className="development-grid">
               <section>
                 <div className="rd-head">Lifecycle stages</div>
@@ -511,7 +517,7 @@ export function DevelopmentCenter() {
                   {STAGE_ACTIONS.map((action) => {
                     const plan = plans[action.id]
                     const title = plan?.ready ? `Preview ${plan.steps.length} allowlisted command${plan.steps.length === 1 ? '' : 's'}` : plan?.blockers.join('; ') || planErrors[action.id] || 'No current immutable experiment'
-                    return <button className={`btn ${selectedAction === action.id ? 'primary' : ''}`} disabled={!plan?.ready || launching || !jobsReady} key={action.id} title={title} onClick={() => setSelectedAction(action.id)}>{action.label}</button>
+                    return <button className={`btn ${selectedAction === action.id ? 'primary' : ''}`} disabled={Boolean(gateLock) || !plan?.ready || launching || !jobsReady} key={action.id} title={gateLock ? gateLock.reason : title} onClick={() => setSelectedAction(action.id)}>{action.label}</button>
                   })}
                 </div>
                 {selectedPlan ? (
@@ -530,7 +536,7 @@ export function DevelopmentCenter() {
                       {selectedPlan.steps.map((step) => <li key={step.index}><span>{step.label}</span><code>{step.command.join(' ')}</code><small>{step.evidence_role.replaceAll('_', ' ')}</small></li>)}
                     </ol>
                     {selectedAction === 'holdout_reveal' ? <div className="suite-owner-confirm"><label><span className="eyebrow">Owner</span><input className="field" value={ownerActor} onChange={(event) => setOwnerActor(event.target.value)} /></label><label><span className="eyebrow">Permanent audit reason</span><textarea className="field" value={ownerReason} onChange={(event) => setOwnerReason(event.target.value)} /></label></div> : null}
-                    <button className="btn primary" disabled={!selectedPlan.ready || launching || !jobsReady || (selectedAction === 'holdout_reveal' && (!ownerActor.trim() || !ownerReason.trim()))} onClick={launchSelected}>{!jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
+                    <button className="btn primary" disabled={Boolean(gateLock) || !selectedPlan.ready || launching || !jobsReady || (selectedAction === 'holdout_reveal' && (!ownerActor.trim() || !ownerReason.trim()))} title={gateLock?.reason} onClick={launchSelected}>{!jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
                   </div>
                 ) : null}
                 <div className="rd-head">Durable development journals</div>
