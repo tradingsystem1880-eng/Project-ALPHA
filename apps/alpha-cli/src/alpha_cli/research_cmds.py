@@ -1326,6 +1326,104 @@ _D1_NEXT_ACTION_AFTER = (
 )
 
 
+def _failure_text(error: BaseException) -> str:
+    return (str(error).strip() or type(error).__name__)[:8192]
+
+
+def _research_job_checkpoint(
+    store: ControlStore,
+    job_id: str,
+    *,
+    operation: str,
+    checkpoint: str,
+) -> None:
+    """Persist progress without inventing a running-to-running execution transition."""
+    if store.job_cancellation_requested(job_id):
+        raise DataError(f"{operation} was cancelled at checkpoint {checkpoint}")
+    store.append_job_event(job_id, event_type="heartbeat", payload={"checkpoint": checkpoint})
+
+
+def _checkpoint_failed_research_run(
+    store: ControlStore,
+    project_id: str,
+    contract_id: str,
+    *,
+    run_error: BaseException,
+    kind: str,
+    config_fingerprint: str,
+    attempt_number: int,
+    evidence_zone: str,
+    finding: str,
+    stage: str,
+    reason: str,
+    retry_action: str,
+    retry_recovery: str,
+    job_id: str | None = None,
+    launch_reservation_id: str | None = None,
+    details: Mapping[str, object] | None = None,
+) -> str:
+    """Best-effort terminal bookkeeping shared by D0, D1, and D2 failures."""
+    error_text = _failure_text(run_error)
+    retries_exhausted = attempt_number >= 3
+    checkpoint_errors: list[str] = []
+    attempt_details: dict[str, object] = {
+        "attempt_number": attempt_number,
+        "evidence_zone": evidence_zone,
+        "finding": finding,
+        **dict(details or {}),
+    }
+    try:
+        store.record_research_attempt(
+            project_id,
+            contract_id,
+            kind=kind,
+            status="failed",
+            config_fingerprint=config_fingerprint,
+            budget_used={},
+            details=attempt_details,
+            error=error_text,
+            launch_reservation_id=launch_reservation_id,
+        )
+    except Exception as terminal_error:
+        checkpoint_errors.append(f"terminal attempt: {terminal_error}")
+    if job_id is not None:
+        try:
+            cancelled = store.job_cancellation_requested(job_id)
+            store.set_job_status(
+                job_id,
+                "cancelled" if cancelled else "failed",
+                terminal_error=None if cancelled else error_text,
+            )
+        except Exception as job_error:
+            checkpoint_errors.append(f"job terminalization: {job_error}")
+    try:
+        store.transition_research_execution(
+            project_id,
+            to_state="blocked" if retries_exhausted else "failed",
+            contract_id=contract_id,
+            actor="system",
+            reason=reason,
+            next_action=(
+                "Owner revises, parks, or rejects the case; the safe retry limit is exhausted."
+                if retries_exhausted
+                else retry_action
+            ),
+            responsibility="owner" if retries_exhausted else "codex",
+            checkpoint=f"{stage}:failed:{attempt_number}",
+            blocker=error_text,
+            recovery=(
+                "Change the approved contract only through owner-directed revision."
+                if retries_exhausted
+                else retry_recovery
+            ),
+        )
+    except Exception as execution_error:
+        checkpoint_errors.append(f"execution checkpoint: {execution_error}")
+    if checkpoint_errors:
+        return error_text + "; checkpoint errors: " + "; ".join(checkpoint_errors)
+    return error_text
+
+
 def _run_deep(project_id: str, *, json_out: bool) -> None:
     """Execute the frozen analysis plan as one governed, capacity-bound durable D1 job.
 
@@ -1443,12 +1541,11 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
         )
 
         def on_checkpoint(checkpoint: str) -> None:
-            # Execution stays 'running'; per-family durable progress lives in the job
-            # heartbeat journal (the execution matrix forbids running -> running events).
-            if store.job_cancellation_requested(job_id):
-                raise DataError(f"deep research was cancelled at checkpoint {checkpoint}")
-            store.append_job_event(
-                job_id, event_type="heartbeat", payload={"checkpoint": checkpoint}
+            _research_job_checkpoint(
+                store,
+                job_id,
+                operation="deep research",
+                checkpoint=checkpoint,
             )
 
         try:
@@ -1462,69 +1559,25 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 on_checkpoint=on_checkpoint,
             )
         except Exception as run_error:
-            cancelled = store.job_cancellation_requested(job_id)
-            retries_exhausted = attempt_number >= 3
-            error_text = (str(run_error).strip() or type(run_error).__name__)[:8192]
-            checkpoint_errors: list[str] = []
-            try:
-                store.record_research_attempt(
-                    project_id,
-                    contract_id,
-                    kind="d1-deep-research",
-                    status="failed",
-                    config_fingerprint=d1_execution_fingerprint(payload),
-                    budget_used={},
-                    details={
-                        "attempt_number": attempt_number,
-                        "evidence_zone": "D1",
-                        "finding": (
-                            "The D1 deep run failed; no empirical conclusion was produced."
-                        ),
-                    },
-                    error=error_text,
-                )
-            except Exception as terminal_error:
-                checkpoint_errors.append(f"terminal attempt: {terminal_error}")
-            try:
-                store.set_job_status(
-                    job_id,
-                    "cancelled" if cancelled else "failed",
-                    terminal_error=None if cancelled else error_text,
-                )
-            except Exception as job_error:
-                checkpoint_errors.append(f"job terminalization: {job_error}")
-            try:
-                store.transition_research_execution(
-                    project_id,
-                    to_state="blocked" if retries_exhausted else "failed",
-                    contract_id=contract_id,
-                    actor="system",
-                    reason="the D1 deep run stopped at a durable checkpoint",
-                    next_action=(
-                        "Owner revises, parks, or rejects the case; the safe retry limit is "
-                        "exhausted."
-                        if retries_exhausted
-                        else "Inspect the failure, resume the case, and re-run deep research."
-                    ),
-                    responsibility="owner" if retries_exhausted else "codex",
-                    checkpoint=f"d1:failed:{attempt_number}",
-                    blocker=error_text,
-                    recovery=(
-                        "Change the approved contract only through owner-directed revision."
-                        if retries_exhausted
-                        else "Re-execution is exact: the identical run republishes idempotently."
-                    ),
-                )
-            except Exception as execution_error:
-                checkpoint_errors.append(f"execution checkpoint: {execution_error}")
-            checkpoint_suffix = (
-                ""
-                if not checkpoint_errors
-                else "; checkpoint errors: " + "; ".join(checkpoint_errors)
+            failure = _checkpoint_failed_research_run(
+                store,
+                project_id,
+                contract_id,
+                run_error=run_error,
+                kind="d1-deep-research",
+                config_fingerprint=d1_execution_fingerprint(payload),
+                attempt_number=attempt_number,
+                evidence_zone="D1",
+                finding="The D1 deep run failed; no empirical conclusion was produced.",
+                stage="d1",
+                reason="the D1 deep run stopped at a durable checkpoint",
+                retry_action="Inspect the failure, resume the case, and re-run deep research.",
+                retry_recovery=(
+                    "Re-execution is exact: the identical run republishes idempotently."
+                ),
+                job_id=job_id,
             )
-            raise DataError(
-                f"deep research failed and was checkpointed: {error_text}{checkpoint_suffix}"
-            ) from run_error
+            raise DataError(f"deep research failed and was checkpointed: {failure}") from run_error
         # The run is published and immutable. As with D0, a store write failure past this
         # point must never fabricate a failed attempt.
         run_id = str(manifest["run_id"])
@@ -1778,12 +1831,11 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
         )
 
         def on_checkpoint(checkpoint: str) -> None:
-            # Execution stays 'running'; per-step durable progress lives in the job
-            # heartbeat journal (the execution matrix forbids running -> running events).
-            if store.job_cancellation_requested(job_id):
-                raise DataError(f"one-shot confirmation was cancelled at checkpoint {checkpoint}")
-            store.append_job_event(
-                job_id, event_type="heartbeat", payload={"checkpoint": checkpoint}
+            _research_job_checkpoint(
+                store,
+                job_id,
+                operation="one-shot confirmation",
+                checkpoint=checkpoint,
             )
 
         try:
@@ -1797,70 +1849,29 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
                 on_checkpoint=on_checkpoint,
             )
         except Exception as run_error:
-            cancelled = store.job_cancellation_requested(job_id)
-            retries_exhausted = attempt_number >= 3
-            error_text = (str(run_error).strip() or type(run_error).__name__)[:8192]
-            checkpoint_errors: list[str] = []
-            try:
-                store.record_research_attempt(
-                    project_id,
-                    contract_id,
-                    kind="sealed-confirmation",
-                    status="failed",
-                    config_fingerprint=d2_execution_fingerprint(payload),
-                    budget_used={},
-                    details={
-                        "attempt_number": attempt_number,
-                        "evidence_zone": "D2",
-                        "finding": (
-                            "The one-shot D2 run failed; no confirmatory conclusion was "
-                            "produced and the sealed share granted no authority."
-                        ),
-                    },
-                    error=error_text,
-                )
-            except Exception as terminal_error:
-                checkpoint_errors.append(f"terminal attempt: {terminal_error}")
-            try:
-                store.set_job_status(
-                    job_id,
-                    "cancelled" if cancelled else "failed",
-                    terminal_error=None if cancelled else error_text,
-                )
-            except Exception as job_error:
-                checkpoint_errors.append(f"job terminalization: {job_error}")
-            try:
-                store.transition_research_execution(
-                    project_id,
-                    to_state="blocked" if retries_exhausted else "failed",
-                    contract_id=contract_id,
-                    actor="system",
-                    reason="the one-shot D2 run stopped at a durable checkpoint",
-                    next_action=(
-                        "Owner revises, parks, or rejects the case; the safe retry limit "
-                        "is exhausted."
-                        if retries_exhausted
-                        else "Inspect the failure, resume the case, and re-run confirmation."
-                    ),
-                    responsibility="owner" if retries_exhausted else "codex",
-                    checkpoint=f"d2:failed:{attempt_number}",
-                    blocker=error_text,
-                    recovery=(
-                        "Change the approved contract only through owner-directed revision."
-                        if retries_exhausted
-                        else "Re-execution is exact: the identical run republishes idempotently."
-                    ),
-                )
-            except Exception as execution_error:
-                checkpoint_errors.append(f"execution checkpoint: {execution_error}")
-            checkpoint_suffix = (
-                ""
-                if not checkpoint_errors
-                else "; checkpoint errors: " + "; ".join(checkpoint_errors)
+            failure = _checkpoint_failed_research_run(
+                store,
+                project_id,
+                contract_id,
+                run_error=run_error,
+                kind="sealed-confirmation",
+                config_fingerprint=d2_execution_fingerprint(payload),
+                attempt_number=attempt_number,
+                evidence_zone="D2",
+                finding=(
+                    "The one-shot D2 run failed; no confirmatory conclusion was produced and "
+                    "the sealed share granted no authority."
+                ),
+                stage="d2",
+                reason="the one-shot D2 run stopped at a durable checkpoint",
+                retry_action="Inspect the failure, resume the case, and re-run confirmation.",
+                retry_recovery=(
+                    "Re-execution is exact: the identical run republishes idempotently."
+                ),
+                job_id=job_id,
             )
             raise DataError(
-                f"one-shot confirmation failed and was checkpointed: "
-                f"{error_text}{checkpoint_suffix}"
+                f"one-shot confirmation failed and was checkpointed: {failure}"
             ) from run_error
         # The run is published and immutable. As with D0/D1, a store write failure past
         # this point must never fabricate a failed attempt.
@@ -2054,55 +2065,27 @@ def run_research(
             )
         except Exception as run_error:
             retries_exhausted = attempt_number >= 3
-            error_text = str(run_error).strip() or type(run_error).__name__
-            error_text = error_text[:8192]
-            checkpoint_errors: list[str] = []
-            try:
-                store.record_research_attempt(
-                    project_id,
-                    contract_id,
-                    kind="d0-synthetic-pilot",
-                    status="failed",
-                    config_fingerprint=execution_fingerprint,
-                    budget_used={},
-                    details={
-                        "attempt_number": attempt_number,
-                        "evidence_zone": "D0",
-                        "real_market_evidence": False,
-                        "finding": "The D0 pilot failed; no empirical conclusion was produced.",
-                    },
-                    error=error_text,
-                    launch_reservation_id=reservation_id,
-                )
-            except Exception as terminal_error:
-                checkpoint_errors.append(f"terminal attempt: {terminal_error}")
-            try:
-                store.transition_research_execution(
-                    project_id,
-                    to_state="blocked" if retries_exhausted else "failed",
-                    contract_id=contract_id,
-                    actor="system",
-                    reason="the D0 pilot failed and stopped at a durable checkpoint",
-                    next_action=(
-                        "Owner revises, parks, or rejects the case; the safe retry limit is "
-                        "exhausted."
-                        if retries_exhausted
-                        else (
-                            "Codex may inspect the failure and resume safely; no more than two "
-                            "retries."
-                        )
-                    ),
-                    responsibility="owner" if retries_exhausted else "codex",
-                    checkpoint=f"d0:failed:{attempt_number}",
-                    blocker=error_text,
-                    recovery=(
-                        "Change the approved contract only through owner-directed revision."
-                        if retries_exhausted
-                        else "Inspect the error, correct only implementation defects, then resume."
-                    ),
-                )
-            except Exception as execution_error:
-                checkpoint_errors.append(f"execution checkpoint: {execution_error}")
+            failure = _checkpoint_failed_research_run(
+                store,
+                project_id,
+                contract_id,
+                run_error=run_error,
+                kind="d0-synthetic-pilot",
+                config_fingerprint=execution_fingerprint,
+                attempt_number=attempt_number,
+                evidence_zone="D0",
+                finding="The D0 pilot failed; no empirical conclusion was produced.",
+                stage="d0",
+                reason="the D0 pilot failed and stopped at a durable checkpoint",
+                retry_action=(
+                    "Codex may inspect the failure and resume safely; no more than two retries."
+                ),
+                retry_recovery=(
+                    "Inspect the error, correct only implementation defects, then resume."
+                ),
+                launch_reservation_id=reservation_id,
+                details={"real_market_evidence": False},
+            )
             if retries_exhausted:
                 try:
                     store.transition_research_phase(
@@ -2121,14 +2104,9 @@ def run_research(
                         ),
                     )
                 except Exception as phase_error:
-                    checkpoint_errors.append(f"phase checkpoint: {phase_error}")
-            checkpoint_suffix = (
-                ""
-                if not checkpoint_errors
-                else "; checkpoint errors: " + "; ".join(checkpoint_errors)
-            )
+                    failure += f"; checkpoint errors: phase checkpoint: {phase_error}"
             raise DataError(
-                f"synthetic pilot failed and was checkpointed: {error_text}{checkpoint_suffix}"
+                f"synthetic pilot failed and was checkpointed: {failure}"
             ) from run_error
         # The pilot succeeded and its immutable run is published. From here on, a store
         # write failure must never be recorded as a pilot failure: fabricating a terminal
