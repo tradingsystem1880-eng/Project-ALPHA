@@ -53,6 +53,24 @@ def test_inconclusive_and_contradicted_are_not_conflated() -> None:
     assert classify_confirmation(contradicted).status is ConfirmationStatus.CONTRADICTED
 
 
+def test_reliability_floor_forces_an_inconclusive_classification() -> None:
+    evidence = ConfirmationEvidence(
+        ClaimDirection.POSITIVE,
+        0.02,
+        0.01,
+        0.03,
+        0.001,
+        0.05,
+        0.005,
+        reliability_passed=False,
+    )
+
+    outcome = classify_confirmation(evidence)
+
+    assert outcome.status is ConfirmationStatus.INCONCLUSIVE
+    assert "reliability floor" in outcome.reason
+
+
 @pytest.mark.parametrize(
     ("direction", "estimate", "lower", "upper"),
     [

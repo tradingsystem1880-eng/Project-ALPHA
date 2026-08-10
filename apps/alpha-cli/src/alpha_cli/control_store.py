@@ -29,6 +29,7 @@ from alpha_cli.artifact_contract import (
     verify_manifest_artifacts,
 )
 from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KINDS
+from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
 from alpha_research import ResearchD2BoundaryV1, confirmation_classification_from_evidence
@@ -2337,22 +2338,22 @@ class ControlStore:
         _, manifest = self._verified_run(run_id)
         return manifest
 
-    def _mechanical_confirmation_outcome(
+    def _mechanical_confirmation_evidence(
         self,
         connection: sqlite3.Connection,
         *,
         project_id: str,
         contract_id: str,
         contract_payload: Mapping[str, object],
-    ) -> str:
-        """Return the one typed D2 result after re-verifying its immutable run lineage."""
+    ) -> dict[str, object]:
+        """Return the one typed D2 artifact after re-verifying its immutable run lineage."""
         rows = connection.execute(
             """SELECT * FROM research_attempt_records
             WHERE project_id = ? AND contract_id = ?
             ORDER BY recorded_at, attempt_id""",
             (project_id, contract_id),
         ).fetchall()
-        classified: list[str] = []
+        verified_evidence: list[dict[str, object]] = []
         for row in rows:
             details = _decode_json(row["details_json"], "research confirmation attempt details")
             if not isinstance(details, dict):  # pragma: no cover - stored JSON invariant.
@@ -2382,13 +2383,30 @@ class ControlStore:
                 contract_id=contract_id,
                 contract_payload=contract_payload,
             )
-            classification = confirmation_classification_from_evidence(evidence)
-            classified.append(classification)
-        if len(classified) != 1:
+            confirmation_classification_from_evidence(evidence)
+            verified_evidence.append(evidence)
+        if len(verified_evidence) != 1:
             raise DataError(
                 "consumed confirmation requires exactly one completed typed D2 evidence attempt"
             )
-        return classified[0]
+        return verified_evidence[0]
+
+    def _mechanical_confirmation_outcome(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        contract_payload: Mapping[str, object],
+    ) -> str:
+        """Return the one mechanical D2 classification from verified immutable evidence."""
+        evidence = self._mechanical_confirmation_evidence(
+            connection,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract_payload=contract_payload,
+        )
+        return confirmation_classification_from_evidence(evidence)
 
     def create_project(
         self,
@@ -4711,15 +4729,39 @@ class ControlStore:
                     )
                     if not isinstance(payload, dict):  # pragma: no cover - stored JSON invariant.
                         raise DataError("corrupt research confirmation contract payload")
-                    mechanical_outcome = self._mechanical_confirmation_outcome(
+                    mechanical_evidence = self._mechanical_confirmation_evidence(
                         connection,
                         project_id=project_id,
                         contract_id=contract_id,
                         contract_payload=payload,
                     )
+                    mechanical_outcome = confirmation_classification_from_evidence(
+                        mechanical_evidence
+                    )
                     if mechanical_outcome != clean_outcome:
                         raise DataError(
                             "owner outcome does not match the mechanical D2 classification"
+                        )
+                    promotion_readiness = derive_research_readiness(mechanical_evidence)[
+                        "promotion_readiness"
+                    ]
+                    if (
+                        clean_disposition == "advance_to_strategy"
+                        and promotion_readiness["state"] != "ready"
+                    ):
+                        blockers = promotion_readiness["blockers"]
+                        codes = (
+                            [
+                                str(blocker.get("code"))
+                                for blocker in blockers
+                                if isinstance(blocker, Mapping)
+                            ]
+                            if isinstance(blockers, list)
+                            else []
+                        )
+                        raise DataError(
+                            "strategy promotion is blocked by mechanical readiness: "
+                            + ", ".join(codes)
                         )
             existing = connection.execute(
                 """SELECT * FROM research_decision_events

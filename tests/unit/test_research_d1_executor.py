@@ -284,3 +284,53 @@ def test_findings_derivation_is_pure_and_direction_aware() -> None:
     assert findings["primary_result"]["status"] == "NOT_TESTED"
     assert findings["stability"]["transportability"]["status"] == "NOT_TESTED"
     assert findings == derive_d1_findings(measurements, claim=claim)
+
+
+def test_mixed_passed_and_inconclusive_controls_are_inconclusive() -> None:
+    claim = {
+        "direction": "positive",
+        "minimum_effect_return": 0.01,
+        "alpha": 0.05,
+        "confounders": [],
+        "required_families": ["event_study", "shuffled_event_null", "leadlag_leakage"],
+        "required_falsifiers": ["shuffled_event_null", "leadlag_leakage"],
+    }
+    measurements = {
+        "families": {
+            "event_study": {
+                "cells": [
+                    {
+                        "matched": {
+                            "estimate": 0.002,
+                            "ci_lower": 0.001,
+                            "ci_upper": 0.004,
+                            "confidence": 0.95,
+                            "sample_size": 40,
+                            "effective_event_count": 12,
+                            "low_cluster_count": False,
+                        }
+                    }
+                ]
+            },
+            "shuffled_event_null": {"cells": [{"placebo_p_upper": 0.5, "placebo_p_lower": 0.5}]},
+            "leadlag_leakage": {
+                "cells": [
+                    {
+                        "profile": [
+                            {"lag": -1, "n": 20, "correlation": 0.1},
+                            {"lag": 1, "n": 20, "correlation": 0.2},
+                        ]
+                    }
+                ]
+            },
+        },
+        "skipped_families": [],
+    }
+
+    findings = derive_d1_findings(measurements, claim=claim)
+
+    assert findings["negative_controls"]["status"] == "INCONCLUSIVE"
+    assert findings["confirmation_readiness"]["state"] == "blocked"
+    assert "required_falsifier_not_passed" in {
+        blocker["code"] for blocker in findings["confirmation_readiness"]["blockers"]
+    }

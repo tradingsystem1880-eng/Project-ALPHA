@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
+from alpha_cli.research_readiness import derive_research_readiness
 from alpha_core import DataError
 from alpha_research import (
     ClaimDirection,
@@ -393,6 +394,7 @@ def derive_d2_findings(
             "unresolved": [str(item) for item in confounders],
         }
         findings["power"] = _not_tested()
+        findings.update(derive_research_readiness(findings))
         return findings
 
     estimate = float(cast(float, matched["estimate"]))
@@ -407,7 +409,9 @@ def derive_d2_findings(
         adjusted_p_value=p_value,
         alpha=float(alpha),
         minimum_effect=float(minimum),
+        reliability_passed=not bool(matched.get("low_cluster_count")),
     )
+    low_cluster_count = not numeric.reliability_passed
     classification = classify_confirmation(numeric).status.name
     positive = numeric.direction is ClaimDirection.POSITIVE
     checks = {
@@ -489,7 +493,7 @@ def derive_d2_findings(
         "resolved": [_WEEKDAY_CONFOUNDER],
         "unresolved": [str(item) for item in confounders if str(item) != _WEEKDAY_CONFOUNDER],
     }
-    if bool(matched.get("low_cluster_count")):
+    if low_cluster_count:
         findings["power"] = {
             "status": "INCONCLUSIVE",
             "summary": (
@@ -505,6 +509,7 @@ def derive_d2_findings(
                 "clusters support the interval."
             ),
         }
+    findings.update(derive_research_readiness(findings))
     return findings
 
 
@@ -815,7 +820,12 @@ def validate_d2_evidence_artifacts(
 
     expected = derive_d2_findings(measurements, claim=_claim(contract))
     produced = {key: value for key, value in evidence.items() if key != "artifact_links"}
-    if _canonical(produced) != _canonical(expected):
+    legacy_expected = {
+        key: value
+        for key, value in expected.items()
+        if key not in {"confirmation_readiness", "promotion_readiness"}
+    }
+    if _canonical(produced) not in {_canonical(expected), _canonical(legacy_expected)}:
         raise DataError(
             "D2 evidence findings fail exact mechanical recomputation from raw measurements"
         )

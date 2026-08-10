@@ -6,6 +6,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
+from alpha_cli.research_readiness import derive_research_readiness
 from alpha_core import DataError
 from alpha_research import build_research_gate_packet
 
@@ -403,6 +404,9 @@ def research_scorecard_inputs(
     stability = _mapping(guided.get("stability"))
     packet_confounders = _mapping(guided.get("confounders"))
     classification = guided.get("confirmation_classification")
+    mechanical_readiness = derive_research_readiness(guided)
+    confirmation_readiness = _mapping(guided.get("confirmation_readiness"))
+    promotion_readiness = _mapping(guided.get("promotion_readiness"))
 
     confounders_registered = _string_list(payload.get("confounders"))
     confounders_resolved = _string_list(packet_confounders.get("resolved"))
@@ -480,6 +484,16 @@ def research_scorecard_inputs(
         "stability_parameter_status": _finding_status(stability.get("parameter")),
         "stability_temporal_status": _finding_status(stability.get("temporal")),
         "stability_transportability_status": _finding_status(stability.get("transportability")),
+        "confirmation_readiness": (
+            dict(confirmation_readiness)
+            if confirmation_readiness
+            else mechanical_readiness["confirmation_readiness"]
+        ),
+        "promotion_readiness": (
+            dict(promotion_readiness)
+            if promotion_readiness
+            else mechanical_readiness["promotion_readiness"]
+        ),
     }
 
 
@@ -555,6 +569,25 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
     mechanism = str(inputs.get("mechanism_status", "NOT_TESTED"))
     temporal = str(inputs.get("stability_temporal_status", "NOT_TESTED"))
     transport = str(inputs.get("stability_transportability_status", "NOT_TESTED"))
+    confirmation_readiness = dict(_mapping(inputs.get("confirmation_readiness")))
+    promotion_readiness = dict(_mapping(inputs.get("promotion_readiness")))
+    if not confirmation_readiness or not promotion_readiness:
+        fallback_readiness = derive_research_readiness(
+            {
+                "primary_result": {
+                    "status": primary_status,
+                    "practical_magnitude": {"status": magnitude},
+                },
+                "confirmation_classification": classification,
+                "power": {"status": power},
+                "multiplicity": {"status": multiplicity},
+                "negative_controls": {"status": negative_controls},
+            }
+        )
+        confirmation_readiness = confirmation_readiness or dict(
+            fallback_readiness["confirmation_readiness"]
+        )
+        promotion_readiness = promotion_readiness or dict(fallback_readiness["promotion_readiness"])
 
     if classification == "SUPPORTED":
         effect_existence = "supported"
@@ -683,7 +716,7 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
     elif outcome == "INVALID":
         recommendation = "REFORMULATE HYPOTHESIS"
         reasons = ["The confirmation run was invalid under the registered protocol."]
-    elif outcome == "SUPPORTED":
+    elif outcome == "SUPPORTED" and promotion_readiness.get("state") == "ready":
         recommendation = "READY FOR STRATEGY RESEARCH"
         reasons = [
             "Sealed confirmation supported the registered claim at the frozen alpha and "
@@ -705,6 +738,8 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
         "dimensions": dimensions,
         "unresolved_questions": {"count": len(unresolved_items), "items": unresolved_items},
         "recommendation": {"value": recommendation, "reasons": reasons},
+        "confirmation_readiness": confirmation_readiness,
+        "promotion_readiness": promotion_readiness,
     }
 
 
@@ -949,7 +984,7 @@ def _case_scorecard_inputs(
     if case.get("phase") == "closed":
         packet = build_research_gate_packet(store.research_gate_packet_inputs(project_id)).to_dict()
     elif str(case.get("phase")) in _LIVE_EVIDENCE_PHASES:
-        live_evidence = _latest_live_d1_evidence(store.research_gate_packet_inputs(project_id))
+        live_evidence = _latest_live_evidence(store.research_gate_packet_inputs(project_id))
     inputs = research_scorecard_inputs(
         case,
         payload,
@@ -988,6 +1023,7 @@ def research_decision_view_projection(
     """
     case = store.research_case_summary(project_id)
     inputs, packet = _case_scorecard_inputs(store, project_id, case)
+    scorecard = derive_research_scorecard(inputs)
     return {
         "view_schema": "ResearchDecisionViewV1",
         "project_id": str(case.get("project_id", project_id)),
@@ -995,7 +1031,9 @@ def research_decision_view_projection(
         "d2_state": str(case.get("d2_state", "")),
         "next_action": str(case.get("next_action", "")),
         "checklist": derive_research_checklist(inputs),
-        "scorecard": derive_research_scorecard(inputs),
+        "scorecard": scorecard,
+        "confirmation_readiness": scorecard["confirmation_readiness"],
+        "promotion_readiness": scorecard["promotion_readiness"],
         "gate_packet": None if packet is None else dict(packet),
         "decision_history": store.list_research_decisions(project_id),
     }
@@ -1052,8 +1090,8 @@ def _packet_findings(packet: Mapping[str, object] | None) -> list[dict[str, obje
     return [*findings, *_named_findings(guided)]
 
 
-def _latest_live_d1_evidence(inputs: Mapping[str, object]) -> Mapping[str, object] | None:
-    """The newest completed attempt's store-verified typed D1 evidence, if any."""
+def _latest_live_evidence(inputs: Mapping[str, object]) -> Mapping[str, object] | None:
+    """The newest completed attempt's store-verified typed D1 or D2 evidence, if any."""
     attempts = inputs.get("attempts")
     if not isinstance(attempts, list):
         return None
@@ -1063,10 +1101,10 @@ def _latest_live_d1_evidence(inputs: Mapping[str, object]) -> Mapping[str, objec
         if record.get("status") != "completed":
             continue
         evidence = _mapping(_mapping(record.get("details")).get("gate_packet_evidence"))
-        if (
-            evidence.get("schema") == "ResearchGateEvidenceV1"
-            and evidence.get("evidence_zone") == "D1"
-        ):
+        if evidence.get("schema") == "ResearchGateEvidenceV1" and evidence.get("evidence_zone") in {
+            "D1",
+            "D2",
+        }:
             live = evidence
     return live
 
@@ -1165,7 +1203,7 @@ def research_evidence_hub_projection(
     if summary.get("phase") == "closed":
         packet = build_research_gate_packet(inputs).to_dict()
 
-    live_evidence = None if packet is not None else _latest_live_d1_evidence(inputs)
+    live_evidence = None if packet is not None else _latest_live_evidence(inputs)
     thesis = _mapping(payload.get("thesis"))
     card = research_hypothesis_card(payload)
     datasets = _case_datasets(store, payload)

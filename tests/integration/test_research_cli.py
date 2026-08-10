@@ -1834,7 +1834,7 @@ def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_res
     assert deep_case["phase"] == "deep_research"
 
 
-def _varied_daily_lows(blocks: int = 20) -> list[float]:
+def _varied_daily_lows(blocks: int = 50) -> list[float]:
     """Planted daily motifs with heterogeneous post-confirmation rises (non-degenerate CI)."""
     from tests.unit.test_research_gate4_lane import _MOTIF
 
@@ -1842,11 +1842,11 @@ def _varied_daily_lows(blocks: int = 20) -> list[float]:
     for block in range(blocks):
         lows.extend(_MOTIF)
         level = _MOTIF[-1]
-        rise = 1.2 + 0.15 * (block % 5)
-        for day in range(14):
-            level = level + rise if day < 4 else level
+        rise = 8.0 + 0.5 * (block % 5)
+        for day in range(1):
+            level = level + rise if day == 0 else level
             lows.append(level)
-        lows.extend([100.0] * 6)
+        lows.extend([100.0] * (block % 3))
     return lows
 
 

@@ -10020,6 +10020,16 @@
             ],
             "title": "Confirmation Contract Id"
           },
+          "confirmation_readiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchReadinessProjection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "confirmation_review": {
             "$ref": "#/components/schemas/ResearchReviewSummary"
           },
@@ -10160,6 +10170,16 @@
           "project_name": {
             "title": "Project Name",
             "type": "string"
+          },
+          "promotion_readiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchReadinessProjection"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "recovery": {
             "anyOf": [
@@ -11008,6 +11028,9 @@
           "checklist": {
             "$ref": "#/components/schemas/ResearchEdgeChecklist"
           },
+          "confirmation_readiness": {
+            "$ref": "#/components/schemas/ResearchReadinessProjection"
+          },
           "d2_state": {
             "title": "D2 State",
             "type": "string"
@@ -11041,6 +11064,9 @@
             "title": "Project Id",
             "type": "string"
           },
+          "promotion_readiness": {
+            "$ref": "#/components/schemas/ResearchReadinessProjection"
+          },
           "scorecard": {
             "$ref": "#/components/schemas/ResearchScorecard"
           },
@@ -11058,6 +11084,8 @@
           "next_action",
           "checklist",
           "scorecard",
+          "confirmation_readiness",
+          "promotion_readiness",
           "gate_packet",
           "decision_history"
         ],
@@ -12517,6 +12545,55 @@
         "title": "ResearchProtocolLibrary",
         "type": "object"
       },
+      "ResearchReadinessBlocker": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Evidence Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "evidence_refs"
+        ],
+        "title": "ResearchReadinessBlocker",
+        "type": "object"
+      },
+      "ResearchReadinessProjection": {
+        "additionalProperties": false,
+        "properties": {
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchReadinessBlocker"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "blocked"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "blockers"
+        ],
+        "title": "ResearchReadinessProjection",
+        "type": "object"
+      },
       "ResearchReport": {
         "additionalProperties": false,
         "properties": {
@@ -12698,12 +12775,18 @@
       "ResearchScorecard": {
         "additionalProperties": false,
         "properties": {
+          "confirmation_readiness": {
+            "$ref": "#/components/schemas/ResearchReadinessProjection"
+          },
           "dimensions": {
             "items": {
               "$ref": "#/components/schemas/ResearchScorecardDimension"
             },
             "title": "Dimensions",
             "type": "array"
+          },
+          "promotion_readiness": {
+            "$ref": "#/components/schemas/ResearchReadinessProjection"
           },
           "recommendation": {
             "$ref": "#/components/schemas/ResearchScorecardRecommendation"
@@ -12721,7 +12804,9 @@
           "scorecard_schema",
           "dimensions",
           "unresolved_questions",
-          "recommendation"
+          "recommendation",
+          "confirmation_readiness",
+          "promotion_readiness"
         ],
         "title": "ResearchScorecard",
         "type": "object"

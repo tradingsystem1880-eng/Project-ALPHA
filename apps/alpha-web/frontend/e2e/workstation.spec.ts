@@ -182,6 +182,26 @@ const RESEARCH_HYPOTHESIS_CARD: components['schemas']['HypothesisCard'] = {
   total_fields: 14,
 }
 
+const BLOCKED_CONFIRMATION_READINESS: components['schemas']['ResearchReadinessProjection'] = {
+  state: 'blocked',
+  blockers: [
+    {
+      code: 'primary_result_not_passed',
+      evidence_refs: ['research_gate_evidence.primary_result'],
+    },
+  ],
+}
+
+const BLOCKED_PROMOTION_READINESS: components['schemas']['ResearchReadinessProjection'] = {
+  state: 'blocked',
+  blockers: [
+    {
+      code: 'confirmation_not_supported',
+      evidence_refs: ['research_gate_evidence.confirmation_classification'],
+    },
+  ],
+}
+
 const RESEARCH_SCORECARD: components['schemas']['ResearchScorecard'] = {
   scorecard_schema: 'ResearchReadinessScorecardV1',
   dimensions: [
@@ -203,6 +223,8 @@ const RESEARCH_SCORECARD: components['schemas']['ResearchScorecard'] = {
     value: 'MORE RESEARCH REQUIRED',
     reasons: ['10 of 12 readiness dimensions are untested.', '3 unresolved questions remain.'],
   },
+  confirmation_readiness: BLOCKED_CONFIRMATION_READINESS,
+  promotion_readiness: BLOCKED_PROMOTION_READINESS,
 }
 
 const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
@@ -481,6 +503,8 @@ const RESEARCH_DECISION_VIEW: components['schemas']['ResearchDecisionView'] = {
     stability_transportability_status: 'NOT_TESTED',
   }),
   scorecard: RESEARCH_SCORECARD,
+  confirmation_readiness: BLOCKED_CONFIRMATION_READINESS,
+  promotion_readiness: BLOCKED_PROMOTION_READINESS,
   gate_packet: RESEARCH_GATE_PACKET,
   decision_history: [
     {

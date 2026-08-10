@@ -1513,11 +1513,23 @@ class ResearchScorecardRecommendation(StrictModel):
     reasons: list[str]
 
 
+class ResearchReadinessBlocker(StrictModel):
+    code: str
+    evidence_refs: list[str] = Field(min_length=1)
+
+
+class ResearchReadinessProjection(StrictModel):
+    state: Literal["ready", "blocked"]
+    blockers: list[ResearchReadinessBlocker]
+
+
 class ResearchScorecard(StrictModel):
     scorecard_schema: Literal["ResearchReadinessScorecardV1"]
     dimensions: list[ResearchScorecardDimension]
     unresolved_questions: ResearchScorecardQuestions
     recommendation: ResearchScorecardRecommendation
+    confirmation_readiness: ResearchReadinessProjection
+    promotion_readiness: ResearchReadinessProjection
 
 
 class ResearchContextPacket(StrictModel):
@@ -1760,6 +1772,8 @@ class ResearchCase(StrictModel):
     # (capture/proposal/launch responses) omit them, so they default to None.
     hypothesis_card: HypothesisCard | None = None
     scorecard: ResearchScorecard | None = None
+    confirmation_readiness: ResearchReadinessProjection | None = None
+    promotion_readiness: ResearchReadinessProjection | None = None
 
 
 class ResearchCaptureResponse(StrictModel):
@@ -2005,6 +2019,8 @@ class ResearchDecisionView(StrictModel):
     next_action: str
     checklist: ResearchEdgeChecklist
     scorecard: ResearchScorecard
+    confirmation_readiness: ResearchReadinessProjection
+    promotion_readiness: ResearchReadinessProjection
     gate_packet: ResearchGatePacket | None
     decision_history: list[ResearchDecisionHistoryEvent]
 

@@ -35,16 +35,16 @@ PROJECT_ID = "9e4908b1-a9cd-4c13-a47e-740d92175680"
 CONTRACT_ID = "rc_" + "c" * 64
 
 
-def _varied_daily_lows(blocks: int = 20) -> list[float]:
+def _varied_daily_lows(blocks: int = 50) -> list[float]:
     lows: list[float] = []
     for block in range(blocks):
         lows.extend(_MOTIF)
         level = _MOTIF[-1]
-        rise = 1.2 + 0.15 * (block % 5)
-        for day in range(14):
-            level = level + rise if day < 4 else level
+        rise = 8.0 + 0.5 * (block % 5)
+        for day in range(1):
+            level = level + rise if day == 0 else level
             lows.append(level)
-        lows.extend([100.0] * 6)
+        lows.extend([100.0] * (block % 3))
     return lows
 
 
@@ -427,7 +427,13 @@ def test_mechanical_classifier_covers_negative_claims_and_contradiction() -> Non
         _matched_measurements(0.02, 0.01, 0.03, 0.001, low_cluster_count=True),
         claim=positive_claim,
     )
+    assert low_clusters["confirmation_classification"] == "INCONCLUSIVE"
     assert low_clusters["power"]["status"] == "INCONCLUSIVE"
+    assert low_clusters["promotion_readiness"]["state"] == "blocked"
+    assert {blocker["code"] for blocker in low_clusters["promotion_readiness"]["blockers"]} == {
+        "confirmation_not_supported",
+        "power_not_passed",
+    }
     assert "below the ten-cluster reliability floor" in str(low_clusters["power"]["summary"])
 
     with pytest.raises(DataError, match="registered claim direction"):

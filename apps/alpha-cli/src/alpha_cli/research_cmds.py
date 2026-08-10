@@ -54,6 +54,7 @@ from alpha_cli.research_protocols import (
     load_research_protocols,
     read_research_protocol,
 )
+from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
     registered_d0_material_choices,
@@ -1098,6 +1099,53 @@ def draft_confirmation(
         run_id = str(manifest["run_id"])
         run_dir = AlphaSettings().data_dir / "runs" / run_id
         evidence = json.loads((run_dir / D1_EVIDENCE_ARTIFACT).read_text(encoding="utf-8"))
+        analyses = json.loads((run_dir / D1_ANALYSES_ARTIFACT).read_text(encoding="utf-8"))
+        analysis_measurements = analyses.get("measurements")
+        skipped_rows = (
+            analysis_measurements.get("skipped_families", [])
+            if isinstance(analysis_measurements, Mapping)
+            else []
+        )
+        skipped_families = (
+            [
+                str(item["family"])
+                for item in skipped_rows
+                if isinstance(item, Mapping) and isinstance(item.get("family"), str)
+            ]
+            if isinstance(skipped_rows, list)
+            else []
+        )
+        analysis_plan = payload.get("analysis_plan")
+        family_rows = (
+            analysis_plan.get("families", []) if isinstance(analysis_plan, Mapping) else []
+        )
+        required_families = (
+            [
+                str(item["family"])
+                for item in family_rows
+                if isinstance(item, Mapping) and isinstance(item.get("family"), str)
+            ]
+            if isinstance(family_rows, list)
+            else []
+        )
+        required_falsifiers = (
+            [
+                str(item["family"])
+                for item in family_rows
+                if isinstance(item, Mapping)
+                and isinstance(item.get("family"), str)
+                and item.get("multiplicity") == "falsification"
+            ]
+            if isinstance(family_rows, list)
+            else []
+        )
+        readiness = derive_research_readiness(
+            evidence,
+            required_falsifiers=required_falsifiers,
+            skipped_required_families=[
+                family for family in skipped_families if family in required_families
+            ],
+        )["confirmation_readiness"]
         primary = evidence.get("primary_result")
         magnitude = None if not isinstance(primary, Mapping) else primary.get("practical_magnitude")
         magnitude_status = None if not isinstance(magnitude, Mapping) else magnitude.get("status")
@@ -1137,6 +1185,14 @@ def draft_confirmation(
                 f"projected one-shot confirmation power {power_result.estimated_power:.3f} "
                 "is below the 0.90 target; the case cannot advance to confirmation"
             )
+        if readiness["state"] != "ready":
+            blockers = readiness["blockers"]
+            codes = (
+                [str(blocker.get("code")) for blocker in blockers if isinstance(blocker, Mapping)]
+                if isinstance(blockers, list)
+                else []
+            )
+            raise DataError("confirmation drafting is blocked by D1 readiness: " + ", ".join(codes))
         horizon = _primary_plan_horizon(payload)
         confirmation_payload = dict(payload)
         confirmation_payload["scope"] = "confirmation"
@@ -2525,7 +2581,13 @@ def status(
     _emit(
         # Additive card/scorecard keys only: the summary itself stays byte-identical
         # because the dossier embeds and hashes it.
-        {**row, "hypothesis_card": card, "scorecard": scorecard},
+        {
+            **row,
+            "hypothesis_card": card,
+            "scorecard": scorecard,
+            "confirmation_readiness": scorecard["confirmation_readiness"],
+            "promotion_readiness": scorecard["promotion_readiness"],
+        },
         json_out=json_out,
         fallback=f"{row['phase']} / {row['execution_state']}: {row['next_action']}",
     )

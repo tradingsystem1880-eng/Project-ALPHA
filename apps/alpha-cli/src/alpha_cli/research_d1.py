@@ -29,6 +29,7 @@ from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
 from alpha_cli.research_analysis_plan import validate_analysis_plan
+from alpha_cli.research_readiness import derive_research_readiness
 from alpha_core import DataError
 from alpha_research import (
     DoubleBottomSpec,
@@ -320,11 +321,29 @@ def _claim(contract: Mapping[str, object]) -> dict[str, Any]:
     confounders = contract.get("confounders", [])
     if not isinstance(confounders, list) or not all(isinstance(item, str) for item in confounders):
         raise DataError("D1 contract confounders must be a list of strings")
+    plan = contract.get("analysis_plan")
+    plan_families = [] if not isinstance(plan, Mapping) else plan.get("families", [])
+    if not isinstance(plan_families, list):
+        raise DataError("D1 contract analysis_plan families must be a list")
+    required_families = [
+        str(entry["family"])
+        for entry in plan_families
+        if isinstance(entry, Mapping) and isinstance(entry.get("family"), str)
+    ]
+    required_falsifiers = [
+        str(entry["family"])
+        for entry in plan_families
+        if isinstance(entry, Mapping)
+        and isinstance(entry.get("family"), str)
+        and entry.get("multiplicity") == "falsification"
+    ]
     return {
         "direction": direction,
         "minimum_effect_return": float(minimum),
         "alpha": float(alpha),
         "confounders": list(confounders),
+        "required_families": required_families,
+        "required_falsifiers": required_falsifiers,
     }
 
 
@@ -958,10 +977,10 @@ def derive_d1_findings(
         negative_controls: dict[str, object] = _not_tested()
     elif "FAILED" in control_statuses:
         negative_controls = {"status": "FAILED", "summary": "; ".join(control_notes) + "."}
-    elif "PASSED" in control_statuses:
-        negative_controls = {"status": "PASSED", "summary": "; ".join(control_notes) + "."}
-    else:
+    elif "INCONCLUSIVE" in control_statuses:
         negative_controls = {"status": "INCONCLUSIVE", "summary": "; ".join(control_notes) + "."}
+    else:
+        negative_controls = {"status": "PASSED", "summary": "; ".join(control_notes) + "."}
 
     resolved = [_WEEKDAY_CONFOUNDER] if isinstance(matched, Mapping) else []
     unresolved = [str(item) for item in confounders if str(item) not in resolved]
@@ -992,7 +1011,7 @@ def derive_d1_findings(
     else:
         strongest_contradiction = None
 
-    return {
+    findings: dict[str, Any] = {
         "schema": "ResearchGateEvidenceV1",
         "evidence_zone": "D1",
         "primary_result": primary,
@@ -1015,6 +1034,34 @@ def derive_d1_findings(
             "an unresolved confounder shown to reproduce the conditional effect",
         ],
     }
+    required_families = claim.get("required_families", [])
+    required_falsifiers = claim.get("required_falsifiers", [])
+    skipped_families = (
+        [
+            str(item.get("family"))
+            for item in skipped
+            if isinstance(item, Mapping) and isinstance(item.get("family"), str)
+        ]
+        if isinstance(skipped, list)
+        else []
+    )
+    skipped_required = (
+        [family for family in skipped_families if family in required_families]
+        if isinstance(required_families, list)
+        else skipped_families
+    )
+    findings.update(
+        derive_research_readiness(
+            findings,
+            required_falsifiers=(
+                [str(item) for item in required_falsifiers]
+                if isinstance(required_falsifiers, list)
+                else ()
+            ),
+            skipped_required_families=skipped_required,
+        )
+    )
+    return findings
 
 
 def _publish_text(path: Path, content: str) -> None:
@@ -1309,7 +1356,12 @@ def validate_d1_evidence_artifacts(
 
     expected = derive_d1_findings(measurements, claim=_claim(contract))
     produced = {key: value for key, value in evidence.items() if key != "artifact_links"}
-    if _canonical(produced) != _canonical(expected):
+    legacy_expected = {
+        key: value
+        for key, value in expected.items()
+        if key not in {"confirmation_readiness", "promotion_readiness"}
+    }
+    if _canonical(produced) not in {_canonical(expected), _canonical(legacy_expected)}:
         raise DataError(
             "D1 evidence findings fail exact mechanical recomputation from raw measurements"
         )

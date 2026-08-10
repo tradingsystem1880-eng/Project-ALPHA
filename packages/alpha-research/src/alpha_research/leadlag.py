@@ -55,38 +55,38 @@ def leadlag_profile(
 def leakage_diagnostic(
     profile: Sequence[dict[str, float | int | None]],
 ) -> dict[str, bool | str]:
-    """Flag a profile whose negative-lag peak dominates every positive-lag correlation."""
+    """Flag a negative-lag peak that dominates the event-time and later correlations."""
     if not profile:
         raise DataError("leakage diagnostic requires a non-empty lead-lag profile")
     best_negative: tuple[float, int] | None = None
-    best_positive: tuple[float, int] | None = None
+    best_forward: tuple[float, int] | None = None
     for row in profile:
         lag = row["lag"]
         correlation = row["correlation"]
-        if not isinstance(lag, int) or lag == 0 or not isinstance(correlation, float):
+        if not isinstance(lag, int) or not isinstance(correlation, float):
             continue
         magnitude = abs(correlation)
         if lag < 0 and (best_negative is None or magnitude > best_negative[0]):
             best_negative = (magnitude, lag)
-        if lag > 0 and (best_positive is None or magnitude > best_positive[0]):
-            best_positive = (magnitude, lag)
-    positive_peak = best_positive[0] if best_positive is not None else 0.0
+        if lag >= 0 and (best_forward is None or magnitude > best_forward[0]):
+            best_forward = (magnitude, lag)
+    forward_peak = best_forward[0] if best_forward is not None else 0.0
     if (
         best_negative is not None
         and best_negative[0] >= _LEAK_MAGNITUDE_FLOOR
-        and best_negative[0] > positive_peak + _LEAK_MARGIN
+        and best_negative[0] > forward_peak + _LEAK_MARGIN
     ):
         return {
             "suspicious": True,
             "reason": (
                 f"peak |correlation| {best_negative[0]:.3f} at negative lag "
-                f"{best_negative[1]} exceeds the best positive-lag |correlation| "
-                f"{positive_peak:.3f}: the signal echoes the past outcome"
+                f"{best_negative[1]} exceeds the best event-or-forward |correlation| "
+                f"{forward_peak:.3f}: the signal echoes the past outcome"
             ),
         }
     return {
         "suspicious": False,
-        "reason": "no negative-lag correlation dominates the positive-lag structure",
+        "reason": "no negative-lag correlation dominates the event-or-forward structure",
     }
 
 

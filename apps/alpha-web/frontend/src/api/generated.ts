@@ -6192,6 +6192,7 @@ export interface components {
             completed_milestones: components["schemas"]["ResearchMilestone"][];
             /** Confirmation Contract Id */
             confirmation_contract_id: string | null;
+            confirmation_readiness?: components["schemas"]["ResearchReadinessProjection"] | null;
             confirmation_review: components["schemas"]["ResearchReviewSummary"];
             /** D2 Boundary Hash */
             d2_boundary_hash: string;
@@ -6229,6 +6230,7 @@ export interface components {
             project_id: string;
             /** Project Name */
             project_name: string;
+            promotion_readiness?: components["schemas"]["ResearchReadinessProjection"] | null;
             /** Recovery */
             recovery: string | null;
             remaining_budget: components["schemas"]["JsonObject"];
@@ -6489,6 +6491,7 @@ export interface components {
         /** ResearchDecisionView */
         ResearchDecisionView: {
             checklist: components["schemas"]["ResearchEdgeChecklist"];
+            confirmation_readiness: components["schemas"]["ResearchReadinessProjection"];
             /** D2 State */
             d2_state: string;
             /** Decision History */
@@ -6500,6 +6503,7 @@ export interface components {
             phase: string;
             /** Project Id */
             project_id: string;
+            promotion_readiness: components["schemas"]["ResearchReadinessProjection"];
             scorecard: components["schemas"]["ResearchScorecard"];
             /**
              * View Schema
@@ -6990,6 +6994,23 @@ export interface components {
             /** Protocols */
             protocols: components["schemas"]["ResearchProtocolEntry"][];
         };
+        /** ResearchReadinessBlocker */
+        ResearchReadinessBlocker: {
+            /** Code */
+            code: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /** ResearchReadinessProjection */
+        ResearchReadinessProjection: {
+            /** Blockers */
+            blockers: components["schemas"]["ResearchReadinessBlocker"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "blocked";
+        };
         /** ResearchReport */
         ResearchReport: {
             /** N Bars */
@@ -7049,8 +7070,10 @@ export interface components {
         };
         /** ResearchScorecard */
         ResearchScorecard: {
+            confirmation_readiness: components["schemas"]["ResearchReadinessProjection"];
             /** Dimensions */
             dimensions: components["schemas"]["ResearchScorecardDimension"][];
+            promotion_readiness: components["schemas"]["ResearchReadinessProjection"];
             recommendation: components["schemas"]["ResearchScorecardRecommendation"];
             /**
              * Scorecard Schema

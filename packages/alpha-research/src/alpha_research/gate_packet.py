@@ -354,6 +354,8 @@ def _confirmation_claim(
     primary: dict[str, JsonValue],
     classification: str,
     checks: dict[str, JsonValue],
+    *,
+    reliability_passed: bool,
 ) -> dict[str, JsonValue] | None:
     """Bind the D2 classification and check booleans to the numeric evidence.
 
@@ -393,6 +395,7 @@ def _confirmation_claim(
         alpha=_number(claim["alpha"], "D2 confirmation_claim.alpha"),
         minimum_effect=_number(claim["minimum_effect"], "D2 confirmation_claim.minimum_effect"),
         invalid_reason=invalid_reason,
+        reliability_passed=reliability_passed,
     )
     recomputed = classify_confirmation(numeric).status.name
     if classification != recomputed:
@@ -452,6 +455,8 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
                 "negative_controls",
                 "untested_work",
                 "what_would_change_conclusion",
+                "confirmation_readiness",
+                "promotion_readiness",
                 "artifact_links",
             }
         ),
@@ -462,6 +467,12 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
     if zone not in {"D1", "D2"}:
         raise DataError("non-synthetic gate packet evidence must identify D1 or D2")
     primary = _primary_result(raw["primary_result"])
+    power = (
+        _not_tested_finding()
+        if "power" not in raw
+        else _finding(raw["power"], "gate evidence power")
+    )
+    reliability_passed = power["status"] == "PASSED"
     classification: str | None = None
     checks: dict[str, JsonValue] | None = None
     claim: dict[str, JsonValue] | None = None
@@ -491,9 +502,16 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
         if not all(isinstance(value, bool) for value in checks_raw.values()):
             raise DataError("D2 gate evidence confirmation_checks must be booleans")
         checks = checks_raw
-        claim = _confirmation_claim(raw, primary, classification, checks)
+        claim = _confirmation_claim(
+            raw,
+            primary,
+            classification,
+            checks,
+            reliability_passed=reliability_passed,
+        )
         supports = (
-            checks["corrected_primary_test_passed"] is True
+            reliability_passed
+            and checks["corrected_primary_test_passed"] is True
             and checks["interval_registered_direction"] is True
             and checks["economic_hurdle_cleared"] is True
             and checks["interval_wholly_against_direction"] is False
@@ -502,7 +520,8 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
             == "CLEARS_HURDLE"
         )
         contradicts = (
-            checks["interval_wholly_against_direction"] is True
+            reliability_passed
+            and checks["interval_wholly_against_direction"] is True
             and checks["interval_registered_direction"] is False
             and checks["economic_hurdle_cleared"] is False
             and primary["status"] == "TESTED"
@@ -575,11 +594,7 @@ def _gate_evidence(value: object) -> dict[str, JsonValue]:
             if "multiplicity" not in raw
             else _finding(raw["multiplicity"], "gate evidence multiplicity")
         ),
-        "power": (
-            _not_tested_finding()
-            if "power" not in raw
-            else _finding(raw["power"], "gate evidence power")
-        ),
+        "power": power,
         "negative_controls": (
             _not_tested_finding()
             if "negative_controls" not in raw

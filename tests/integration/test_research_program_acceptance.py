@@ -215,9 +215,10 @@ def test_program_golden_path_reaches_the_strategy_brief_losslessly(
     assert view["gate_packet"] is None
     questions = _checklist_questions(view)
     assert str(questions[0]["question_id"]) == "effect_exists"
-    # Open cases answer from live admitted evidence: the primary is TESTED, but the
-    # SUPPORTED classification binds only once the case closes with its terminal packet.
-    assert str(questions[0]["status"]) == "TESTED"
+    # The owner view relays the admitted D2 classification before the decision; closing
+    # records authority but does not manufacture a stronger result.
+    assert str(questions[0]["status"]) == "SUPPORTED"
+    assert cast(dict[str, object], view["promotion_readiness"])["state"] == "ready"
 
     decided = _invoke(
         "decide",

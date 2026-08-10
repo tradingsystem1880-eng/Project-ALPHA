@@ -131,3 +131,15 @@ def test_leadlag_profile_flags_leakage_when_the_signal_predicts_the_past() -> No
     diagnosis = leakage_diagnostic(leaky_profile)
     assert diagnosis["suspicious"] is True
     assert "lag" in str(diagnosis["reason"]).casefold()
+
+
+def test_event_time_forward_effect_prevents_a_false_leakage_flag() -> None:
+    profile: list[dict[str, float | int | None]] = [
+        {"lag": -1, "n": 20, "correlation": 0.30},
+        {"lag": 0, "n": 21, "correlation": 0.55},
+        {"lag": 1, "n": 20, "correlation": 0.10},
+    ]
+
+    diagnosis = leakage_diagnostic(profile)
+
+    assert diagnosis["suspicious"] is False
