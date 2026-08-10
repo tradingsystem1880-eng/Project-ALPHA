@@ -39,7 +39,8 @@ def _run_id(output: str) -> str:
 def _manifest(data_dir: Path, run_id: str) -> dict[str, object]:
     rdir = find_run_dir(data_dir, run_id)
     assert rdir is not None, f"run {run_id} not found"
-    return json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
+    manifest: dict[str, object] = json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
+    return manifest
 
 
 def test_override_watermarks_manifest_forks_identity_and_reports(

@@ -2932,9 +2932,9 @@ def test_research_gate_override_is_append_only_and_fails_closed(tmp_path: Path) 
             reason="An override after the pass would only muddy the ledger.",
         )
     assert store.list_active_research_gate_overrides() == []
-    assert [
-        row["sequence"] for row in store.get_project(PROJECT_ID)["research_gate_overrides"]
-    ] == [1, 2]
+    recorded = store.get_project(PROJECT_ID)["research_gate_overrides"]
+    assert isinstance(recorded, list)
+    assert [row["sequence"] for row in recorded] == [1, 2]
 
 
 def test_overridden_gate_permits_unlinked_strategy_version(tmp_path: Path) -> None:

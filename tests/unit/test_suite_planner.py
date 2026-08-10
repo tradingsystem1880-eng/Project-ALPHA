@@ -613,7 +613,7 @@ def test_unoverridden_gates_never_inject_the_watermark_flag(tmp_path: Path) -> N
             store,
             project_id,
             experiment_id,
-            cast(SuiteAction, action),
+            action,
             data_dir=tmp_path,
         )
         assert "research_gate" not in plan.governance, action
