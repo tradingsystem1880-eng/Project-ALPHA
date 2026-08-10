@@ -10,7 +10,6 @@ from typing import cast
 import pytest
 from typer.testing import CliRunner
 
-import alpha_cli.control_store as control_store_module
 from alpha_cli import research_cmds
 from alpha_cli.control_store import ControlStore
 from alpha_cli.main import app
@@ -115,9 +114,7 @@ def test_alpha_research_report_emits_terminal_packet_json(
 
 def test_projection_walks_the_public_control_store_packet_seam(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
     store = ControlStore(tmp_path)
     _project(store)
     _, confirmation_id = _approved_contracts(
@@ -353,14 +350,12 @@ def test_scorecard_is_honest_for_a_fresh_unresolved_case() -> None:
 )
 def test_scorecard_recommendation_follows_the_recorded_outcome(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     outcome: str,
     disposition: str,
     expected: str,
 ) -> None:
     from alpha_cli.research_gate_packet import research_scorecard_projection
 
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
     store = ControlStore(tmp_path)
     _project(store)
     # INVALID can never come from consumed evidence (the mechanical classifier has no
@@ -477,11 +472,10 @@ def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
 
 
 def test_evidence_hub_partitions_closed_case_findings_for_and_against(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     from alpha_cli.research_gate_packet import research_evidence_hub_projection
 
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
     store = ControlStore(tmp_path)
     _project(store)
     _, confirmation_id = _approved_contracts(
@@ -829,11 +823,10 @@ def test_checklist_reports_blocking_audit_findings_and_missing_audits() -> None:
 
 
 def test_decision_view_assembles_checklist_scorecard_packet_and_history(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     from alpha_cli.research_gate_packet import research_decision_view_projection
 
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
     store = ControlStore(tmp_path)
     _project(store)
     _, confirmation_id = _approved_contracts(
@@ -877,11 +870,10 @@ def test_decision_view_assembles_checklist_scorecard_packet_and_history(
 
 
 def test_decision_view_keeps_open_cases_live_without_a_terminal_packet(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     from alpha_cli.research_gate_packet import research_decision_view_projection
 
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
     store = ControlStore(tmp_path)
     _project(store)
     _approved_contracts(

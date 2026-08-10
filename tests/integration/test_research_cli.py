@@ -10,7 +10,6 @@ from typing import cast
 import pytest
 from typer.testing import CliRunner
 
-from alpha_cli import control_store as control_store_module
 from alpha_cli import research_cmds
 from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import ControlStore
@@ -1950,35 +1949,6 @@ def _confirmation_ready_project(tmp_path: Path) -> tuple[str, str, str]:
     return project_id, contract_id, data_hash
 
 
-def test_confirmation_approval_and_run_refuse_while_gate3_flag_is_off(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """One flag is the production hard-disable: every D2 authority refuses when it is off."""
-    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False)
-    rejected = runner.invoke(
-        app,
-        [
-            "research",
-            "approve",
-            "confirmation",
-            project_id,
-            contract_id,
-            "--actor",
-            "owner",
-            "--reason",
-            "Confirm the exact one-shot family.",
-            "--json",
-        ],
-    )
-    assert rejected.exit_code != 0
-    assert "Gate-3 unavailable" in rejected.output
-    confirm = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
-    assert confirm.exit_code != 0
-    assert "Gate-3 unavailable" in confirm.output
-
-
 def test_one_shot_confirmation_consumes_d2_and_routes_to_owner_decision(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2574,13 +2544,6 @@ def test_run_deep_is_open_by_default_but_stays_phase_governed(
     blocked = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
     assert blocked.exit_code != 0
     assert "deep_research phase" in blocked.output
-
-    import alpha_cli.control_store as control_store_module
-
-    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", False)
-    gated = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
-    assert gated.exit_code != 0
-    assert "Gate-2 unavailable" in gated.output
 
 
 def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(

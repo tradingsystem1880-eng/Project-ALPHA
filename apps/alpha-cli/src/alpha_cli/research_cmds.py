@@ -14,7 +14,6 @@ from typing import Any, Final, NamedTuple, cast
 
 import typer
 
-from alpha_cli import control_store as control_store_module
 from alpha_cli.control_store import (
     ControlStore,
     ResearchContractScope,
@@ -1303,15 +1302,11 @@ def reject(
     )
 
 
-def _d1_enabled() -> bool:
-    return bool(getattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", False))
-
-
 def _post_d0_route(
     payload: Mapping[str, object],
 ) -> tuple[ResearchPhase, str, ResearchResponsibility]:
-    """Where a completed D0 sends the case: deep_research once the ADR-0025 gate is open."""
-    if _d1_enabled() and isinstance(payload.get("analysis_plan"), Mapping):
+    """Route an analysis-plan case to D1; retain the legacy no-plan exit."""
+    if isinstance(payload.get("analysis_plan"), Mapping):
         return (
             "deep_research",
             "Launch `alpha research run deep` to execute the frozen analysis plan on D1.",
@@ -1338,10 +1333,6 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
     launch republishes byte-identical artifacts under the same run identity and the attempt
     is recorded on the retry.
     """
-    if not _d1_enabled():
-        raise typer.BadParameter(
-            "Gate-2 unavailable: empirical D1 deep research is hard-disabled (ADR-0025)"
-        )
     store = _store()
     try:
         payload, case = _case_payload(store, project_id)
@@ -1591,10 +1582,6 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
     )
 
 
-def _d2_enabled() -> bool:
-    return bool(getattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False))
-
-
 _D2_NEXT_ACTION_AFTER = "Owner accepts, rejects, or revises the research conclusion."
 _D2_NEXT_ACTION_DURING = "Execute the frozen primary exactly once on the sealed D2 share."
 
@@ -1641,10 +1628,6 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
     frozen computation — never a second statistical shot at the sealed share. A completed
     run is recovered (consume D2, route to the owner decision) instead of re-executed.
     """
-    if not _d2_enabled():
-        raise typer.BadParameter(
-            "Gate-3 unavailable: sealed one-shot confirmation is hard-disabled (ADR-0026)"
-        )
     store = _store()
     try:
         payload, case = _case_payload(store, project_id)

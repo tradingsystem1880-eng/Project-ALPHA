@@ -307,20 +307,6 @@ _D1_RESEARCH_KIND: Final = "d1-deep-research"
 _D1_MAX_LAUNCHES: Final = 3
 _D2_RESEARCH_KIND: Final = "sealed-confirmation"
 _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fdd91e")
-# Gate 3 (ADR-0026): confirmation approval, sealed_confirmation attempts, and the D2
-# consume/contaminate transitions are OPEN. Flipped as the final commit of phase R6d after
-# the one-shot executor acceptance suite passed (planted-claim confirmation, honest
-# empty-share INCONCLUSIVE, final-holdout future-poison immunity, mechanical
-# re-verification at every admission and read, contamination-on-integrity-failure, and
-# exact kill-and-resume recovery). D2 stays one-shot: authorization is owner-review-only
-# and a consumed or contaminated share can never be re-read for authority.
-_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED: Final = True
-# Gate 2 (ADR-0025): D1 deep-research attempt admission is OPEN. Flipped as the final
-# commit of phase R5 after the acceptance suite passed (planted-pattern recovery,
-# planted-confounder rejection, null-stays-null after Holm, future-poison immunity,
-# mechanical re-verification, kill-and-resume). Confirmation approval and every D2
-# transition stay behind _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED until R6 (ADR-0026).
-_D1_EMPIRICAL_RESEARCH_ENABLED: Final = True
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -3633,14 +3619,6 @@ class ControlStore:
             raise DataError("owner review requires a human actor")
         clean_actor = _required_text(actor, "research review actor", max_length=200)
         clean_reason = _required_text(reason, "research review reason")
-        if (
-            clean_scope == "confirmation"
-            and clean_decision == "approve"
-            and not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
-        ):
-            raise DataError(
-                "Gate-3 unavailable: empirical confirmation approval remains hard-disabled"
-            )
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
             row = self._require_research_contract(connection, project_id, contract_id)
@@ -4055,8 +4033,6 @@ class ControlStore:
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Consume or contaminate D2; authorization remains owner-review-only."""
-        if not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED:
-            raise DataError("Gate-3 unavailable: D2 access remains hard-disabled")
         clean_state = _enum_value(to_state, "research D2 state", RESEARCH_D2_STATES)
         if clean_state not in {"consumed", "contaminated"}:
             raise DataError("research APIs may only consume or contaminate D2")
@@ -4388,19 +4364,6 @@ class ControlStore:
             phase = self._latest_research_phase(connection, project_id)
             if phase is None or phase["contract_id"] != contract_id:
                 raise DataError("research attempt must bind the active phase contract")
-            if phase["phase"] == "deep_research" and not (
-                _D1_EMPIRICAL_RESEARCH_ENABLED or _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
-            ):
-                raise DataError(
-                    "Gate-2/3 unavailable: empirical D1/D2 attempts remain hard-disabled"
-                )
-            if (
-                phase["phase"] == "sealed_confirmation"
-                and not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
-            ):
-                raise DataError(
-                    "Gate-2/3 unavailable: empirical D1/D2 attempts remain hard-disabled"
-                )
             allowed_phases = (
                 {"pilot", "deep_research"}
                 if contract["scope"] == "exploration"

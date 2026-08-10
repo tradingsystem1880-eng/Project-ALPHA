@@ -43,15 +43,6 @@ START = datetime(2026, 8, 6, 9, 0, tzinfo=UTC)
 _CONFIRMATION_DATA_SHA = hashlib.sha256(b"confirmation-dataset-bytes").hexdigest()
 
 
-@pytest.fixture(autouse=True)
-def _enable_future_empirical_state_machine_for_unit_tests(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Exercise future gates without exposing them through the production default."""
-
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
-
-
 def _project(store: ControlStore, project_id: str = PROJECT_ID) -> None:
     store.create_project(
         name="SPY four-hour double bottom",
@@ -2381,98 +2372,6 @@ def test_research_job_creation_is_governed_and_capacity_bound(tmp_path: Path) ->
             PROJECT_ID,
             contract_id=contract_id,
             request={"stage": "deep", "second": True},
-            at=START + timedelta(minutes=11),
-        )
-
-
-def test_production_gate_hard_disables_unreleased_empirical_research(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """ADR-0025 opened D1 admission; D2/confirmation authority stays hard-disabled."""
-    assert control_store_module._D1_EMPIRICAL_RESEARCH_ENABLED is True
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False)
-    store = ControlStore(tmp_path)
-    _project(store)
-    contract_id, payload = _approved_pilot(store)
-    _record_completed_d0(
-        store,
-        contract_id,
-        payload,
-        at=START + timedelta(minutes=7, seconds=30),
-    )
-    store.transition_research_phase(
-        PROJECT_ID,
-        to_phase="deep_research",
-        contract_id=contract_id,
-        actor="codex",
-        reason="D0 is complete.",
-        next_action="Launch the registered deep-research plan.",
-        responsibility="codex",
-        at=START + timedelta(minutes=8),
-    )
-    # D1 admission is open, so the request proceeds past the gate — and fails on the
-    # registered-kind rule instead, proving governance did not widen with the flip.
-    with pytest.raises(DataError, match="d1-deep-research"):
-        store.record_research_attempt(
-            PROJECT_ID,
-            contract_id,
-            kind="event-study",
-            status="completed",
-            config_fingerprint="a" * 64,
-            budget_used={"wall_seconds": 1},
-            details={"evidence_zone": "D1"},
-        )
-    # With ADR-0025 explicitly rolled back, the hard gate still holds.
-    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", False)
-    with pytest.raises(DataError, match="empirical D1/D2 attempts remain hard-disabled"):
-        store.record_research_attempt(
-            PROJECT_ID,
-            contract_id,
-            kind="d1-deep-research",
-            status="completed",
-            config_fingerprint="a" * 64,
-            budget_used={"wall_seconds": 1},
-            details={"evidence_zone": "D1"},
-        )
-    monkeypatch.setattr(control_store_module, "_D1_EMPIRICAL_RESEARCH_ENABLED", True)
-    with pytest.raises(DataError, match="D2 access remains hard-disabled"):
-        store.transition_research_d2_state(
-            PROJECT_ID,
-            contract_id,
-            to_state="consumed",
-            actor="system",
-            reason="This must never open D2 in Gate 1.",
-        )
-
-    confirmation = store.create_research_contract(
-        PROJECT_ID,
-        scope="confirmation",
-        payload=_payload(str(payload["source_pack_id"]), confirmation=True),
-        created_by="codex",
-        author_kind="agent",
-        parent_contract_id=contract_id,
-        at=START + timedelta(minutes=9),
-    )
-    confirmation_id = str(confirmation["contract_id"])
-    store.transition_research_phase(
-        PROJECT_ID,
-        to_phase="confirmation_review",
-        contract_id=confirmation_id,
-        actor="codex",
-        reason="Present the frozen child while Gate 3 remains disabled.",
-        next_action="Do not approve until the empirical authority exists.",
-        responsibility="owner",
-        at=START + timedelta(minutes=10),
-    )
-    with pytest.raises(DataError, match="confirmation approval remains hard-disabled"):
-        store.review_research_contract(
-            PROJECT_ID,
-            confirmation_id,
-            scope="confirmation",
-            decision="approve",
-            actor="owner",
-            actor_kind="human",
-            reason="This production-disabled action must fail.",
             at=START + timedelta(minutes=11),
         )
 
