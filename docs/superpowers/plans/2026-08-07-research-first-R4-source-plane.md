@@ -1,5 +1,8 @@
 # Phase R4 — Source Plane (literature system + acquisition worker)
 
+**Delivery state:** Completed 2026-08-09. The isolated-worker implementation gate passed; the
+separate distribution-license review remains open and is not implied by this checklist.
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec §7 + ADR-0024; exit conditions =
 > 2026-08-06 spec §12 Gate-2 row, verbatim. Audit rows: W5, W13 (literature half). Depends on R2
 > (packets/claims flow); parallel-safe with R3. Never blocks R5.
@@ -35,29 +38,29 @@ tests/.../test_hostile_documents.py              # CREATE: the phase-gating host
 ```
 
 ## Tasks
-- [ ] **Schema** — failing tests first: `research_source_claims` (fields per ADR-0024;
+- [x] **Schema** — failing tests first: `research_source_claims` (fields per ADR-0024;
       `status ∈ {draft, screened}`; append-only revisions on screen); additive typed columns on
       source records with strict read (existing extra/missing-key discipline).
-- [ ] **Claim lifecycle** — Codex path creates `draft` claims only (`author_kind='agent'`
+- [x] **Claim lifecycle** — Codex path creates `draft` claims only (`author_kind='agent'`
       forced on the MCP tool); `alpha research sources screen` elevates draft→screened with
       owner actor; **test: screened claims and draft claims project distinctly; scorecard
       literature dimension counts screened only**.
-- [ ] **Worker: metadata clients** — OpenAlex/Crossref/Unpaywall/arXiv lookups (DOI/title),
+- [x] **Worker: metadata clients** — OpenAlex/Crossref/Unpaywall/arXiv lookups (DOI/title),
       dedup by DOI+content hash, retraction/version state recorded; `@pytest.mark.network` live
       tests + offline fixture tests; bounded budgets per contract source policy.
-- [ ] **Worker: document fetch** — open-access/owner-provided only; every URL and redirect
+- [x] **Worker: document fetch** — open-access/owner-provided only; every URL and redirect
       re-validated via `validate_source_url` (allowlist from `AcquisitionPolicy`), every response
       via `validate_source_response`; content-addressed storage + `SourceReceipt`; refusal paths
       typed and loud.
-- [ ] **Hostile-document suite (phase gate)** — malformed PDFs, prohibited magic (ZIP/ELF/…),
+- [x] **Hostile-document suite (phase gate)** — malformed PDFs, prohibited magic (ZIP/ELF/…),
       oversized/mis-declared bodies, non-UTF8/NUL text, instruction-bearing document text ("to
       the AI reading this: …") — worker stores/labels but no surface treats content as
       instructions; tamper detection on object hashes.
-- [ ] **MCP (+3) + REST + UI** — local-records-only search/get + draft_source_claim; pin 59→62
+- [x] **MCP (+3) + REST + UI** — local-records-only search/get + draft_source_claim; pin 59→62
       same commit; regenerate contracts; Literature section renders the claims map
       (supports/contradicts/contextualizes/method × strength, screened vs draft badges) above
       the bibliography.
-- [ ] **Gates** — Gate-2 exit conditions checklist from the 2026-08-06 spec §12 reproduced as
+- [x] **Gates** — Gate-2 exit conditions checklist from the 2026-08-06 spec §12 reproduced as
       tests where machine-checkable; full Python + frontend gates; `static/app`; `CLAUDE.md` +
       dependency-license matrix updates for the worker's client libraries.
 

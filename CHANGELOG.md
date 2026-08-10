@@ -5,13 +5,33 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
-**Release state:** Workstation v3 is implemented and its offline release gate passed on 2026-07-19.
+**Release state:** The research-first R1–R6 program is integrated and scientifically hardened as of
+2026-08-11, but is not production-complete. The owner real-case pilot, dual security review, and
+distribution-license review remain open. Workstation v3 is implemented and its offline release
+gate passed on 2026-07-19.
 R-22 still blocks distribution; the R-14 public Binance quote smoke passed locally on 2026-08-04,
 while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. Daily-data/IBKR
 Paper hardening is implemented offline; current-universe Tiingo qualification and every real IBKR
 Paper acceptance scenario remain pending.
 
 ### Added
+
+- Python-authoritative tiered research readiness with stable blocker codes and evidence references,
+  conservative required-control aggregation, a low-cluster D2 reliability floor, and promotion
+  admission that requires both mechanical `SUPPORTED` evidence and promotion readiness.
+- ADR-0027 for tiered readiness semantics and ADR-0028 for separately governed market-state,
+  calibrated-Kronos, and Qlib rank-ensemble candidates.
+- A server-rendered research discovery trace that reads immutable D1 chart-data artifacts and
+  presents both the causal trace and its evidence table in the integrated Workstation.
+
+### Changed
+
+- The frontend renders backend research projections directly; unused TypeScript scorecard/checklist
+  derivations, parity fixtures, obsolete R5/R6 admission flags, and their stale branches were
+  removed. Repeated D0/D1/D2 checkpoint mechanics now share narrow helpers without rewriting the
+  control store.
+- Frontend delivery gates now enforce meaningful coverage on pure models, exercise rendered
+  workflows with Playwright, and resolve all high/critical npm audit findings.
 
 - A repository-local development-skill suite covering Karpathy-style surgical work, incremental
   implementation, behavior-preserving simplification, five-axis code/PR review, and fresh

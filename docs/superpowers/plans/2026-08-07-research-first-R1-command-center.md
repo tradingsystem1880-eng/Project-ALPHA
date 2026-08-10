@@ -1,5 +1,10 @@
 # Phase R1 — Research Command Center Desk (read plane + workspace)
 
+**Delivery state:** Completed 2026-08-09 and integrated into the fixed Explore/Build screens.
+The checklist records the delivered phase; its original desk/Dockview wording is historical. The
+TypeScript scorecard twin named below was retired on 2026-08-11 in favor of the sole Python
+projection (ADR-0027).
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec
 > `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md` §1–§2, §5–§6, §10.2,
 > §15.6 + ADR-0021. Read the spec sections and ADR before starting. Audit rows: W1, W6, W13, W15.
@@ -38,41 +43,41 @@ tests/unit/test_research_cmds.py, test_web_research_projection.py, test_web_cont
 ```
 
 ## Tasks
-- [ ] **`ControlStore.list_research_cases`** — failing test first: bounded (limit ≤ 200,
+- [x] **`ControlStore.list_research_cases`** — failing test first: bounded (limit ≤ 200,
       offset), newest-updated first, returns the exact `research_case_summary` shape per case
       (reuse it; no new composite). Then `alpha research list --json` in `research_cmds.py`.
-- [ ] **HypothesisCard projection** — pure fn mapping contract fields → card vocabulary
+- [x] **HypothesisCard projection** — pure fn mapping contract fields → card vocabulary
       (spec §5.1 table) with per-field `complete|partial|missing`; test on the canonical D0
       contract fixture. Exposed inside `alpha research status --json` output (additive key).
-- [ ] **Scorecard projection (Python)** — pure fn (summary + contract + packet-inputs) →
+- [x] **Scorecard projection (Python)** — pure fn (summary + contract + packet-inputs) →
       13 dimension states + recommendation line (spec §10.2); all-`NOT_TESTED` for a fresh case;
       test the derivation table exhaustively. Exposed via `alpha research report --json`
       (additive key) — no new store queries.
-- [ ] **Web seams + routes** — `_research.list_cases/evidence_hub/scorecard` (closed argv,
+- [x] **Web seams + routes** — `_research.list_cases/evidence_hub/scorecard` (closed argv,
       pinned in `test_web_research_projection.py` with exact calls+timeouts); three GET routes
       with StrictModels; 422/404 mapping; **negative test: `/api/research` router exposes no new
       mutation verbs** (assert route methods).
-- [ ] **Regenerate contracts** — `uv run python scripts/generate_web_openapi.py` +
+- [x] **Regenerate contracts** — `uv run python scripts/generate_web_openapi.py` +
       `npm run generate:api`; aliases in `src/api/types.ts`; `api.researchCases()/…` in
       `client.ts`.
-- [ ] **`researchScorecardModel.ts`** — TS twin of the Python scorecard + drift-guard fixture
-      test (same JSON fixture asserted equal in both suites; commit fixture under
-      `frontend/src/panels/__fixtures__/`).
-- [ ] **ResearchBacklog panel** — serves `sortResearchCases`/`researchCaseBucket`/
+- [x] **Historical `researchScorecardModel.ts` delivery** — the original TS twin and parity
+      fixture shipped in R1, then were deliberately removed during 2026-08-11 hardening. The
+      Python readiness/checklist projection is now the sole authority (ADR-0027).
+- [x] **ResearchBacklog panel** — serves `sortResearchCases`/`researchCaseBucket`/
       `researchCaseProgress` from the list route; bucket headers via `researchBucketLabel`;
       row click → `setLinked({projectId})`; poll via the `durableJobs.ts` cadence pattern
       (active 5 s / hidden dormant).
-- [ ] **EvidenceHub panel** — 11 sections (spec §6.2) off the evidence-hub route; every
+- [x] **EvidenceHub panel** — 11 sections (spec §6.2) off the evidence-hub route; every
       pre-D1 section renders `NOT_TESTED`/`Placeholder` honestly; for/against sections
       identical markup/prominence.
-- [ ] **Cockpit extensions** — sticky header (case · phase · state · responsibility ·
+- [x] **Cockpit extensions** — sticky header (case · phase · state · responsibility ·
       next_action · scorecard strip · native-unit budgets); HypothesisCard section.
-- [ ] **Desk + New Idea** — preset `research` per spec §2.1 anchors; New Idea = topbar action on
+- [x] **Desk + New Idea** — preset `research` per spec §2.1 anchors; New Idea = topbar action on
       the research desk + palette entry opening the existing capture form. e2e asserts the
       capture flow contains **zero** rule/stop/target/parameter inputs.
-- [ ] **e2e** — DESKS entry {id:'research', label, activePanel}; mock every new endpoint in
+- [x] **e2e** — DESKS entry {id:'research', label, activePanel}; mock every new endpoint in
       `responseFor()` (typed fixtures); axe + screenshots + dormancy pass.
-- [ ] **Gate** — full Python gate + frontend gate; commit rebuilt `static/app`; update
+- [x] **Gate** — full Python gate + frontend gate; commit rebuilt `static/app`; update
       `CLAUDE.md` (desk count, panel list, new commands) in the same change.
 
 ## Done = R1 complete

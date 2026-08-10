@@ -6,9 +6,8 @@
 
 ## Context
 
-Production empirical research is hard-disabled by `_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED = False`
-at three enforcement sites (confirmation approval, D2 transitions, D1/D2 attempt admission), and
-`alpha research run deep` fails with "not shipped." The machinery around the gap is already
+At proposal time, production empirical research was hard-disabled and `alpha research run deep`
+failed with "not shipped." The machinery around the gap was already
 built: the reserved heavyweight job kind `research:event-study`, the reserved run command
 `research_deep` mapped to evidence zone D1, the fully specified and validated
 `ResearchGateEvidenceV1` artifact contract, budget/stop-rule/launch-reservation enforcement, and
@@ -35,9 +34,9 @@ families — on registered `research_only` datasets.
 - **New pure modules.** `alpha_research/conditional_returns.py`, `stability.py`, `ic.py`,
   `leadlag.py` — core-only, deterministic, fail-loud — joining the existing event-study,
   matching, bootstrap, power, and multiple-testing primitives.
-- **Scope of the un-disable.** This ADR admits **D1 only**: attempt admission for
+- **Scope of the admission.** This ADR admits **D1 only**: attempt admission for
   `deep_research` and the exploratory evidence path. Confirmation approval and every D2
-  transition remain hard-disabled until ADR-0026. The flag change is the final commit of the
+  transition remained unavailable until ADR-0026. The admission change was the final commit of the
   phase, landing only after the planted-pattern, planted-confounder, pure-null,
   future-poison, kill-and-resume, and budget-exhaustion acceptance scenarios pass.
 - **Real-data lane.** The Gate-4 SPY intraday lane runs on ADR-0023-qualified data; if QuantPad
@@ -48,7 +47,7 @@ families — on registered `research_only` datasets.
 
 - Spec: `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md` §9
 - Phase plan: `docs/superpowers/plans/2026-08-07-research-first-R5-experiment-engine.md`
-- Hard-disable flag + sites: `apps/alpha-cli/src/alpha_cli/control_store.py`
+- Phase/evidence-zone admission: `apps/alpha-cli/src/alpha_cli/control_store.py`
 - Reserved kind: `apps/alpha-cli/src/alpha_cli/job_capacity.py`; reserved command mapping:
   `_require_research_run` in `control_store.py`
 - Evidence contract: `packages/alpha-research/src/alpha_research/gate_packet.py`
@@ -60,5 +59,6 @@ families — on registered `research_only` datasets.
   matching, multiplicity, and falsification handled by governed runners rather than notebooks.
 - Selection pressure is accounted for structurally: everything attempted is ledgered; only
   registered families can headline.
-- Un-disabling D1 raises the scientific stakes; the acceptance suite and the last-commit flag
-  policy make that an explicit, owner-visible transition rather than a side effect.
+- Admitting D1 raised the scientific stakes; the acceptance suite made that an explicit,
+  owner-visible transition rather than a side effect. Temporary rollout flags were retired after
+  ADR-0025/0026 acceptance; phase and evidence-zone checks remain.

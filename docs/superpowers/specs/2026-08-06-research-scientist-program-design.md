@@ -1,10 +1,11 @@
 # Research Scientist Program — Authoritative Design
 
 **Date:** 2026-08-06
-**State:** Gate 0 and the bounded Gate 1/D0 CLI/MCP/REST/Cockpit walking skeleton implemented;
-source-network worker, qualified real data, production empirical D1/D2 runners, verified
-owner-presence authentication, research ML, and autonomous analytical runtime not implemented
-**Authority:** `CLAUDE.md`, ADR-0011, ADR-0014, ADR-0015, ADR-0018, ADR-0019, and ADR-0020
+**State:** Historical Gate 0–1 foundation specification. R1–R6 empirical D1/D2 delivery and the
+2026-08-11 authority hardening are implemented under the research-first extension; owner real-case
+pilot, verified owner-presence authentication, research ML, security review, and distribution-
+license review remain open.
+**Authority:** `CLAUDE.md`, ADR-0011, ADR-0014, ADR-0015, ADR-0018 through ADR-0028
 
 ## 1. Outcome and present boundary
 
@@ -615,7 +616,8 @@ audit and recovery. The initial CLI slice provides `capture`, `sources add|scree
 `decide`, and `revise`; an owner may close an evidence-free or D0-only case only as
 `INCONCLUSIVE` or `INVALID` with a non-advance disposition. A pre-D2 `CONTRADICTED` outcome requires
 lineage-bound typed non-synthetic evidence.
-`run deep` and `run confirm` fail closed because production empirical D1/D2 is hard-disabled. Six
+In this initial Gate 0–1 slice, `run deep` and `run confirm` failed closed because production
+empirical D1/D2 had not yet been admitted; ADR-0025/0026 later supplied that authority. Six
 thin MCP tools provide `research_capture`, `research_get`, `research_propose`, `research_launch`,
 `research_status`, and `research_report` by subprocess CLI. The same six operations have strict
 REST/OpenAPI projections for the registered Cockpit. MCP and REST cannot approve, reject, decide,

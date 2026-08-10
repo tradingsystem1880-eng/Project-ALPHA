@@ -26,8 +26,9 @@ scorecard, a promotion context packet, and any UI-level gating or recorded overr
   (existence, magnitude, stability, breadth, regime dependence, definition survival,
   falsification, artifact/leakage risk, mechanism, cost realism, sample adequacy, residual
   uncertainty) each answered by a typed finding or `NOT_TESTED`, plus the Readiness Scorecard:
-  per-dimension enumerated states derived from the findings vocabulary, dual-implemented in
-  Python and TypeScript with drift-guard parity fixtures, **with no numeric aggregate anywhere**.
+  per-dimension enumerated states derived from the findings vocabulary, **with no numeric
+  aggregate anywhere**. ADR-0027 subsequently made the Python projection sole authority and added
+  explicit confirmation/promotion readiness blockers.
 - **Promotion packet.** `advance_to_strategy` records a `strategy_promotion` context packet
   (hypothesis card, gate-packet reference, dataset refs, screened claims, confounder ledger,
   falsification and stability results, limitations, negative-attempt summary, open questions).
@@ -40,7 +41,7 @@ scorecard, a promotion context packet, and any UI-level gating or recorded overr
   reason and case link. The only bypass is the owner-only CLI
   `alpha project override-research-gate --actor … --reason …`, recorded as an append-only project
   scope event; runs under an overridden gate carry `EXPLORATORY / RESEARCH GATE NOT COMPLETED`
-  in their manifests, RunBrowser rows, tear sheets, and the Operations desk. An overridden run
+  in their manifests and integrated provider/run-result surfaces. An overridden run
   can never present itself as validated research.
 
 ## Implementation anchors

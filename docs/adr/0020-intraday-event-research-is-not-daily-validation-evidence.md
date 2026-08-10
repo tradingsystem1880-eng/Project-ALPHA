@@ -64,7 +64,8 @@ realistic costs, and paper acceptance. This ADR grants none of those authorities
 
 Gate 1 supplies fixed-duration research-only types, a causal detector, evidence topology,
 prospective-power and confirmation primitives, and synthetic fixtures. It does not supply a
-real-market adapter or evidence, and production empirical D1/D2 admission is hard-disabled. Gate 4
+real-market adapter or evidence, and production empirical D1/D2 admission was unavailable at this
+decision point. ADR-0025/0026 later admitted the qualified daily lane; Gate 4
 must later supply the qualified real-data slice for one owner-selected chart contract and its
 session acceptance suite. This ADR and the synthetic Cockpit projection grant no real-data,
 validation, paper, or execution authority.

@@ -1,5 +1,8 @@
 # Phase R3 — Research Data Hub (inventory, quality, registration, descriptives)
 
+**Delivery state:** Completed 2026-08-09. The MCP surface is currently and deliberately pinned at
+62 tools after R4; QuantPad remains research-only and non-authoritative.
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec §8 + ADR-0023 (+ADR-0018/0020).
 > Audit rows: W3, W4, W8, W10 (regime tagging half). Depends on R1; parallel-safe with R2/R4.
 
@@ -34,35 +37,35 @@ apps/alpha-web/frontend/src/layouts/presets.ts      # MODIFY: ResearchDataExplor
 ```
 
 ## Tasks
-- [ ] **`alpha data snapshots --json`** — walk `data_dir/snapshots/*/manifest.json`; bounded,
+- [x] **`alpha data snapshots --json`** — walk `data_dir/snapshots/*/manifest.json`; bounded,
       deterministic order; failing test first.
-- [ ] **MCP inventory tools (+5)** — thin `_invoke.run_json` wrappers over
+- [x] **MCP inventory tools (+5)** — thin `_invoke.run_json` wrappers over
       `data symbols|source-status|audit|candles|snapshots` and `info providers`; strict outputs;
       candle previews bounded (≤500 bars — mirror the QuantPad discovery bound); pin 54→59 same
       commit; read-only negative tests.
-- [ ] **`research_dataset_refs`** — DDL + `register_research_dataset(ref, origin)` where origin ∈
+- [x] **`research_dataset_refs`** — DDL + `register_research_dataset(ref, origin)` where origin ∈
       {canonical store slice (symbol+range+provenance sha), snapshot (id+manifest hash), quantpad
       receipt (receipt id+response sha)}; fail-closed on missing receipt/provenance; contract
       drafts referencing unregistered data are rejected (extend draft validation test).
-- [ ] **`descriptives.py`** — pure fns: coverage/calendar-gap summary (reuse quality vocabulary),
+- [x] **`descriptives.py`** — pure fns: coverage/calendar-gap summary (reuse quality vocabulary),
       return/volume distribution moments+quantiles, autocorrelation, seasonality tables,
       volatility-bucket regime tags, effective-sample/event-frequency estimates (reuse
       `power.py`); deterministic; fail-loud on NaN/inf/empty; bias_guard future-poison test on
       any windowed statistic.
-- [ ] **`run data-audit`** — bounded synchronous run: registered dataset → descriptives →
+- [x] **`run data-audit`** — bounded synchronous run: registered dataset → descriptives →
       v3 artifacts + `ResearchChartData` renders (EXPLORATORY watermark) + manifest with
       `research_only` markers; **admissible only to the data dimension** (scorecard/evidence-hub
       tests assert it cannot flip effect/falsification dimensions).
-- [ ] **QuantPad adapter sub-slice** — `DataAdapter`-shaped, official SDK/REST, receipt with
+- [x] **QuantPad adapter sub-slice** — `DataAdapter`-shaped, official SDK/REST, receipt with
       request/response hashes + coverage/corrections + rate-limit metadata; `@pytest.mark.network`
       live tests; output registrable as dataset refs; NOT wired into canonical promotion
       (`_ADAPTERS` unchanged for `data pull`); provider definition marked
       `research_authority: false`.
-- [ ] **ResearchDataExplorer panel** — coverage matrix (symbol × source × range × quality
+- [x] **ResearchDataExplorer panel** — coverage matrix (symbol × source × range × quality
       status), gap timeline, candidate/quarantine states, provenance chain
       (receipt→candidate→quality→canonical→snapshot), descriptive/seasonality/regime views,
       sample-size readouts; feeds scorecard data dimension display.
-- [ ] **e2e + gates** — mocks, axe, dormancy; full gates; `static/app`; `CLAUDE.md` update.
+- [x] **e2e + gates** — mocks, axe, dormancy; full gates; `static/app`; `CLAUDE.md` update.
 
 ## Done = R3 complete
 Inventory/quality/snapshots on MCP; datasets registered against exact receipt-backed bytes;

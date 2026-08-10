@@ -1,9 +1,12 @@
 # Phase R5 — Pre-Strategy Experiment Engine (D1 runner + real-data lane)
 
+**Delivery state:** Completed 2026-08-09. The temporary D1 admission flag described below was
+retired after ADR-0025/0026 acceptance; phase and evidence-zone governance now enforce admission.
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec §9 + ADR-0025 (+2026-08-06 spec
 > §7, §13). Audit rows: W7, W8, W9, W10, W11, W14. Depends on R2 + R3 (packets, registered
-> datasets). **The `_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED` change for D1 attempt admission is
-> the FINAL commit of this phase, after every acceptance scenario passes.**
+> datasets). **Historical sequencing:** the temporary D1 admission switch was the final change of
+> this phase after every acceptance scenario passed; it was retired after ADR-0025/0026 acceptance.
 
 **Goal:** The phenomenon is tested before any strategy exists: preregistered per-hypothesis
 analysis plans execute as durable D1 jobs on registered `research_only` data, emitting typed

@@ -17,6 +17,11 @@ command palette, not from any desk.
 
 ## Decision
 
+**Integration amendment (2026-08-11):** Workstation v4 retired desk presets in favour of six fixed
+screens. The accepted read-plane and authority decision remains unchanged; the Research Command
+Center panels are now placed on the Explore and Build screens rather than in a seventh dockable
+desk.
+
 Split read visibility from mutation authority, and supersede the Gate-1 "no list-all" scope
 statement **for read-only projections only**.
 

@@ -1,5 +1,8 @@
 # Phase R2 — Codex Research Desk (context packets + protocol library)
 
+**Delivery state:** Completed 2026-08-09 and integrated into the fixed Build screen. The checklist
+records the delivered phase; original standalone-desk wording is historical.
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec §3, §14 + ADR-0022. Audit rows:
 > W2, W12. Depends on R1 (desk + panels exist).
 
@@ -35,34 +38,34 @@ apps/alpha-web/frontend/src/layouts/presets.ts    # MODIFY: CodexBench into the 
 ```
 
 ## Tasks
-- [ ] **Packet tables + builder** — failing tests first: `cp_<sha256>` id over canonical payload
+- [x] **Packet tables + builder** — failing tests first: `cp_<sha256>` id over canonical payload
       bytes; deterministic (same inputs → same id); kinds `asset|research_case|experiment|chart|
       validation|strategy_promotion`; per-kind payload assembled in ONE read snapshot with
       bounded collections + `*_truncated` flags; `protocol_id`/`protocol_content_hash` recorded
       when supplied; append-only (no update/delete paths).
-- [ ] **Notes table** — `note_kind ∈ {critique, confounder_review, test_design,
+- [x] **Notes table** — `note_kind ∈ {critique, confounder_review, test_design,
       completeness_review, synthesis}`; `author_kind ∈ {owner, agent}`; optional
       `context_packet_id` FK; **test: `research_gate_packet_inputs` output is byte-identical
       before/after adding notes** (structural evidence exclusion).
-- [ ] **Delta brief** — `get_research_brief`: case summary + what changed since the previous
+- [x] **Delta brief** — `get_research_brief`: case summary + what changed since the previous
       brief for this project (diff of phase/execution/attempt/decision sequences) + exact
       `next_action`; deterministic given store state; recorded as a `research_case` packet.
-- [ ] **Protocol library** — 13 files per spec §14 table, each: purpose, required packet kind,
+- [x] **Protocol library** — 13 files per spec §14 table, each: purpose, required packet kind,
       method steps (grounded in `alpha-research-scientist`/`alpha-adversarial-reviewer`
       formats), output contract (where the result lands: material answers / notes / claims /
       analysis-plan proposals). `protocols.json` index; CLI list validates index↔files
       consistency (hash per file), fails loud on drift.
-- [ ] **CLI commands** — context build/show/list, note add/list, protocols list; `--json`
+- [x] **CLI commands** — context build/show/list, note add/list, protocols list; `--json`
       everywhere; owner and agent actor paths (`--created-by`).
-- [ ] **MCP tools (+6)** — wrappers with strict types; `add_research_note` forces
+- [x] **MCP tools (+6)** — wrappers with strict types; `add_research_note` forces
       `author_kind="agent"`; pin test 48→54 **in the same commit**; negative tests: no
       approve/decide/D2 tool names appear.
-- [ ] **REST + CodexBench** — read routes (packets list/get, notes list, protocols list);
+- [x] **REST + CodexBench** — read routes (packets list/get, notes list, protocols list);
       regenerate contracts; CodexBench: packet composer (kind + case → preview exact JSON →
       record → copy, reusing the AgentBrief clipboard pattern), protocol picker (pairs packet
       with protocol text), packet history (byte-identical display), notes stream badged
       "CODEX COMMENTARY — NOT EVIDENCE".
-- [ ] **e2e + gates** — mock new endpoints; axe; full Python + frontend gates; `static/app`;
+- [x] **e2e + gates** — mock new endpoints; axe; full Python + frontend gates; `static/app`;
       `CLAUDE.md` + `.codex/config.toml` docs note (no config change needed — same MCP server).
 
 ## Done = R2 complete
