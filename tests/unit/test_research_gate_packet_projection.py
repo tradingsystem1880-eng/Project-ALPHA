@@ -526,36 +526,6 @@ def test_evidence_hub_partitions_closed_case_findings_for_and_against(
         }
 
 
-def test_scorecard_drift_fixture_pins_python_and_typescript_twins() -> None:
-    """The committed fixture is asserted byte-equal by BOTH pytest and vitest.
-
-    researchScorecardModel.ts derives the same expected scorecards from the same inputs
-    in `apps/alpha-web/frontend/src/panels/__fixtures__/researchScorecard.json`; a change
-    to either implementation without regenerating the fixture fails one of the suites.
-    """
-    from alpha_cli.research_gate_packet import derive_research_scorecard
-
-    fixture_path = (
-        Path(__file__).parents[2]
-        / "apps/alpha-web/frontend/src/panels/__fixtures__/researchScorecard.json"
-    )
-    scenarios = json.loads(fixture_path.read_text(encoding="utf-8"))
-    assert isinstance(scenarios, list) and len(scenarios) >= 3
-    names = [scenario["name"] for scenario in scenarios]
-    assert names == sorted(names) and len(set(names)) == len(names)
-    for scenario in scenarios:
-        derived = derive_research_scorecard(scenario["inputs"])
-        # Tiered readiness is an additive Python-only projection. The legacy fixture
-        # continues to pin the old TypeScript twin until that redundant twin is removed.
-        derived.pop("confirmation_readiness")
-        derived.pop("promotion_readiness")
-        if scenario["name"] == "closed_supported":
-            recommendation = cast(dict[str, object], derived["recommendation"])
-            assert recommendation["value"] == "MORE RESEARCH REQUIRED"
-            continue
-        assert derived == scenario["expected"], scenario["name"]
-
-
 def test_scorecard_data_quality_reflects_registered_datasets_and_audits() -> None:
     from alpha_cli.research_gate_packet import derive_research_scorecard
     from tests.unit.test_research_control_store import _payload
@@ -856,28 +826,6 @@ def test_checklist_reports_blocking_audit_findings_and_missing_audits() -> None:
     )
     assert exploratory["effect_exists"]["status"] == "TESTED"
     assert "sealed confirmation has not run" in str(exploratory["effect_exists"]["answer"])
-
-
-def test_checklist_drift_fixture_pins_python_and_typescript_twins() -> None:
-    """The committed checklist fixture is asserted byte-equal by BOTH pytest and vitest.
-
-    researchChecklistModel.ts derives the same expected checklists from the same inputs
-    in `apps/alpha-web/frontend/src/panels/__fixtures__/researchChecklist.json`; a change
-    to either implementation without regenerating the fixture fails one of the suites.
-    """
-    from alpha_cli.research_gate_packet import derive_research_checklist
-
-    fixture_path = (
-        Path(__file__).parents[2]
-        / "apps/alpha-web/frontend/src/panels/__fixtures__/researchChecklist.json"
-    )
-    scenarios = json.loads(fixture_path.read_text(encoding="utf-8"))
-    assert isinstance(scenarios, list) and len(scenarios) >= 3
-    names = [scenario["name"] for scenario in scenarios]
-    assert names == sorted(names) and len(set(names)) == len(names)
-    for scenario in scenarios:
-        derived = derive_research_checklist(scenario["inputs"])
-        assert derived == scenario["expected"], scenario["name"]
 
 
 def test_decision_view_assembles_checklist_scorecard_packet_and_history(

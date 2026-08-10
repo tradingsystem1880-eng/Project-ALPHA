@@ -10,13 +10,30 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
+      // Pure render-state models are the unit-test authority. React panels and workflows
+      // are exercised in the built application by Playwright instead of being diluted
+      // into a misleading repository-wide percentage.
+      include: [
+        'src/context/panelLinkModel.ts',
+        'src/panels/chartTableModel.ts',
+        'src/panels/codexBenchModel.ts',
+        'src/panels/durableJobs.ts',
+        'src/panels/jobProgress.ts',
+        'src/panels/mlTearsheetModel.ts',
+        'src/panels/paperModel.ts',
+        'src/panels/portfolioModels.ts',
+        'src/panels/researchBacklogModel.ts',
+        'src/panels/researchCockpitModel.ts',
+        'src/panels/researchDataModel.ts',
+        'src/panels/v3Models.ts',
+        'src/panels/workspaceModel.ts',
+      ],
       exclude: ['src/api/generated.ts', 'src/**/*.test.ts'],
       thresholds: {
-        statements: 11,
-        branches: 14,
-        functions: 7,
-        lines: 11,
+        statements: 85,
+        branches: 70,
+        functions: 85,
+        lines: 85,
       },
     },
   },

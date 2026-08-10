@@ -2,7 +2,6 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { components } from '../src/api/generated'
-import { deriveResearchChecklist } from '../src/panels/researchChecklistModel'
 
 // The desk presets are gone: each of these is now a screen laid out for one job, reached
 // from the top-bar tabs rather than assembled by the user.
@@ -467,41 +466,95 @@ const RESEARCH_GATE_PACKET: components['schemas']['ResearchGatePacket'] = {
   },
 }
 
-// The checklist rides the TS twin so the mock can never drift from the derivation the
-// panel actually renders; the twin itself is pinned to Python by the committed fixture.
+const RESEARCH_CHECKLIST: components['schemas']['ResearchEdgeChecklist'] = {
+  checklist_schema: 'ResearchEdgeChecklistV1',
+  questions: [
+    {
+      question_id: 'effect_exists', number: 1, question: 'Does the effect exist?',
+      binding: 'primary result', status: 'INCONCLUSIVE',
+      answer: 'Sealed confirmation classified the registered claim INCONCLUSIVE.',
+    },
+    {
+      question_id: 'practical_magnitude', number: 2, question: 'Is it large enough to matter?',
+      binding: 'practical magnitude vs registered minimum effect', status: 'INCONCLUSIVE',
+      answer: 'The recorded magnitude finding is INCONCLUSIVE.',
+    },
+    {
+      question_id: 'temporal_stability', number: 3, question: 'Is it stable through time?',
+      binding: 'temporal stability', status: 'NOT_TESTED',
+      answer: 'The recorded temporal-stability finding is NOT_TESTED.',
+    },
+    {
+      question_id: 'sample_breadth', number: 4,
+      question: 'Does it exist beyond one small sample?',
+      binding: 'effective sample and registered subsamples', status: 'NOT_TESTED',
+      answer: 'No effective-sample evidence has been recorded.',
+    },
+    {
+      question_id: 'transportability', number: 5,
+      question: 'Does it exist across relevant assets, or only one?',
+      binding: 'cross-asset transportability', status: 'NOT_TESTED',
+      answer: 'The recorded transportability finding is NOT_TESTED.',
+    },
+    {
+      question_id: 'regime_dependence', number: 6, question: 'Is it regime-dependent?',
+      binding: 'regime decomposition', status: 'NOT_TESTED',
+      answer: 'No regime-decomposition evidence exists yet.',
+    },
+    {
+      question_id: 'parameter_neighborhood', number: 7,
+      question: 'Does it survive alternative definitions?',
+      binding: 'parameter neighborhood', status: 'NOT_TESTED',
+      answer: 'The recorded parameter-neighborhood finding is NOT_TESTED.',
+    },
+    {
+      question_id: 'falsification', number: 8,
+      question: 'Does it survive falsification tests?',
+      binding: 'placebo, negative controls, and registered nulls', status: 'NOT_TESTED',
+      answer: 'The registered falsifiers have not run.',
+    },
+    {
+      question_id: 'data_artifact', number: 9, question: 'Is it likely a data artifact?',
+      binding: 'data-quality audit findings', status: 'NOT_TESTED',
+      answer: 'No registered dataset has been audited.',
+    },
+    {
+      question_id: 'leakage', number: 10, question: 'Is it likely look-ahead or leakage?',
+      binding: 'future-poison and lead-lag diagnostics', status: 'NOT_TESTED',
+      answer: 'The lead-lag leakage screen has not run.',
+    },
+    {
+      question_id: 'mechanism', number: 11, question: 'Is there a plausible mechanism?',
+      binding: 'mechanism finding and screened claims', status: 'NOT_TESTED',
+      answer: 'The recorded mechanism finding is NOT_TESTED.',
+    },
+    {
+      question_id: 'economic_hurdle', number: 12,
+      question: 'Could the magnitude survive realistic costs?',
+      binding: 'economic-hurdle check (last rung)', status: 'NOT_TESTED',
+      answer: 'No economic-hurdle evidence exists.',
+    },
+    {
+      question_id: 'observation_count', number: 13, question: 'Do we have enough observations?',
+      binding: 'power and the low-cluster floor', status: 'NOT_TESTED',
+      answer: 'No power evidence has been recorded.',
+    },
+    {
+      question_id: 'residual_uncertainty', number: 14,
+      question: 'How much uncertainty remains?',
+      binding: 'intervals and untested work', status: 'TESTED',
+      answer: 'Unresolved questions and untested work remain.',
+    },
+  ],
+}
+
 const RESEARCH_DECISION_VIEW: components['schemas']['ResearchDecisionView'] = {
   view_schema: 'ResearchDecisionViewV1',
   project_id: RESEARCH_CASE.project_id,
   phase: 'closed',
   d2_state: 'sealed',
   next_action: 'Research Case is closed.',
-  checklist: deriveResearchChecklist({
-    inputs_schema: 'ResearchScorecardInputsV1',
-    phase: 'closed',
-    outcome: 'INCONCLUSIVE',
-    disposition: 'park',
-    d2_state: 'sealed',
-    hypothesis_complete_fields: 1,
-    hypothesis_partial_fields: 0,
-    hypothesis_total_fields: 14,
-    registered_dataset_count: 0,
-    screened_claim_count: 0,
-    blocking_questions: RESEARCH_CASE.active_contract.payload.blocking_questions as string[],
-    confounders_resolved: [],
-    confounders_unresolved: ['day of week', 'volatility regime'],
-    untested_work: ['No typed D1 or D2 empirical result is present.'],
-    attempt_count: 0,
-    primary_result_status: 'NOT_TESTED',
-    practical_magnitude_status: 'NOT_TESTED',
-    confirmation_classification: null,
-    power_status: 'NOT_TESTED',
-    negative_controls_status: 'NOT_TESTED',
-    multiplicity_status: 'NOT_TESTED',
-    mechanism_status: 'NOT_TESTED',
-    stability_parameter_status: 'NOT_TESTED',
-    stability_temporal_status: 'NOT_TESTED',
-    stability_transportability_status: 'NOT_TESTED',
-  }),
+  checklist: RESEARCH_CHECKLIST,
   scorecard: RESEARCH_SCORECARD,
   confirmation_readiness: BLOCKED_CONFIRMATION_READINESS,
   promotion_readiness: BLOCKED_PROMOTION_READINESS,
@@ -1100,6 +1153,12 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (
     options.researchGateOverride
+    && url.pathname === `/api/runs/${WATERMARKED_RUN_ID}/figures`
+  ) {
+    return { run_id: WATERMARKED_RUN_ID, kind: 'portfolio', figures: [] }
+  }
+  if (
+    options.researchGateOverride
     && url.pathname === `/api/runs/${WATERMARKED_RUN_ID}/native-tearsheet`
   ) {
     return EMPTY_NATIVE_TEARSHEET
@@ -1190,6 +1249,9 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (options.researchGateLock && url.pathname === `/api/projects/${UNGATED_PROJECT.project_id}`) {
     return projectDetail(UNGATED_PROJECT)
+  }
+  if (url.pathname === `/api/projects/${RESEARCH_CASE.project_id}`) {
+    return projectDetail(GATED_PROJECT)
   }
   if (url.pathname === '/api/projects') return EMPTY_PAGE
   if (url.pathname === '/api/development/jobs') return EMPTY_PAGE
@@ -1384,8 +1446,8 @@ test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and 
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport decision-view gate')
   await preparePage(page)
 
-  await page.getByRole('button', { name: /Search/ }).click()
-  await page.getByRole('option', { name: /Research Cockpit/ }).click()
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
   await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
   await page.getByRole('button', { name: 'open case' }).click()
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
@@ -1403,18 +1465,20 @@ test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and 
   await expectReleaseAccessibility(page)
 })
 
-test('Research Command Center desk drives the cockpit and evidence hub from the backlog', async ({ page }, testInfo) => {
+test('research workflow links the backlog, cockpit, evidence, and Codex panels', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport command-center gate')
   await preparePage(page)
 
-  await page.getByLabel('DESK').selectOption('research')
+  await page.getByRole('tab', { name: 'Research backlog', exact: true }).click()
   await expect(page.getByText('Needs you (1)')).toBeVisible()
-  // Both the Evidence Hub and the Codex Bench start honestly empty.
-  await expect(page.getByText('NO CASE SELECTED', { exact: true })).toHaveCount(2)
 
   await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
 
+  await page.getByRole('tab', { name: 'Explore', exact: true }).click()
+  await page.getByRole('tab', { name: 'Evidence', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Evidence for', exact: true })).toBeVisible()
   // Literature claims render screened vs draft distinctly, claims map before bibliography.
   await page.getByRole('tab', { name: 'Literature', exact: true }).click()
@@ -1427,15 +1491,18 @@ test('Research Command Center desk drives the cockpit and evidence hub from the 
   await page.getByRole('tab', { name: 'Evidence against', exact: true }).click()
   await expect(page.getByText(/No typed findings of this direction exist yet/)).toBeVisible()
 
-  // The Codex Bench shows every recorded packet and fences commentary as never-evidence.
+  // The linked case follows into the Codex panel, which fences commentary as never-evidence.
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Codex research', exact: true }).click()
   await expect(page.getByText('MCP-ATTACHED · NO CHAT · NO API KEY', { exact: true })).toBeVisible()
   await expect(page.getByText(/RECORDING HAPPENS ON THE GOVERNED SEAMS/)).toBeVisible()
   await expect(page.getByText('CODEX COMMENTARY — NOT EVIDENCE', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /cp_f+/ }).click()
   await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
 
-  // The Research Data tab serves registered refs with audit badges and the forever badge.
-  await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
+  // The Research data panel serves registered refs with audit badges and the forever badge.
+  await page.getByRole('tab', { name: 'Explore', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research data', exact: true }).click()
   await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
   await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
   await expect(page.getByText(/snapshot snap1 · manifest/)).toBeVisible()
@@ -1447,7 +1514,14 @@ test('New Idea opens natural-language capture with zero trading-rule inputs', as
   await preparePage(page)
 
   await page.getByRole('button', { name: 'New Idea' }).click()
-  await expect(page.getByLabel('DESK')).toHaveValue('research')
+  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByRole('tab', { name: 'Research case', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
   const capture = page.getByLabel('Raw research idea')
   await expect(capture).toBeVisible()
   await expect(capture).toBeFocused()
@@ -1634,27 +1708,28 @@ test('legacy trace rerun opens the governed Development Center', async ({ page }
   await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
 })
 
-test('research-gate override watermark reaches run browser, run story, tear sheet, and Operations', async (
+test('research-gate override watermark reaches provider governance and run results', async (
   { page },
   testInfo,
 ) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
   await preparePage(page, { researchGateOverride: true })
 
-  // Operations desk lists every active override with actor + recorded reason (spec §15).
-  await page.getByLabel('DESK').selectOption('operations')
+  // Provider governance lists every active override with actor + recorded reason (spec §15).
+  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
+  await page.getByRole('tab', { name: 'Providers & system', exact: true }).click()
   await expect(page.getByText('SPY exploratory probe')).toBeVisible()
   await expect(
     page.getByText('Owner accepted exploratory-only engine work before research completes.'),
   ).toBeVisible()
 
-  // Surface 1 — the run browser row carries the permanent marker verbatim.
-  await page.getByLabel('DESK').selectOption('portfolio')
-  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toBeVisible()
-
-  // Surfaces 2 + 3 — selecting the run shows the marker on the run story AND the tear sheet.
-  await page.locator('tbody tr').filter({ hasText: 'SPY, TLT' }).click()
-  await expect(page.getByText(RESEARCH_GATE_WATERMARK)).toHaveCount(3)
+  // Selecting the watermarked run from the persistent Library opens its immutable results.
+  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
+  await expect(page.getByRole('tab', { name: 'Results', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK).first()).toBeVisible()
   await expectReleaseAccessibility(page)
 })
 
@@ -1664,13 +1739,16 @@ test('open research gates lock strategy affordances on Develop and link to the c
 ) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
   await preparePage(page, { researchGateLock: true })
-  await page.getByLabel('DESK').selectOption('development')
+  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
 
-  // Gated state — Development Center auto-selects the open research-required project and all
-  // three surfaces (Development Center, Strategy Lab, Pipeline) carry the reason banner.
-  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(3)
+  // Development Center auto-selects the research-required project and blocks versioning.
+  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(1)
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
   await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeDisabled()
+
+  // Strategy Lab and Pipeline share the same backend gate and block strategy execution.
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(2)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeDisabled()
   const preps = page.getByRole('button', { name: '▶ prep' })
   await expect(preps.first()).toBeEnabled() // 1 · Data — pulling history is not strategy work
@@ -1680,15 +1758,23 @@ test('open research gates lock strategy affordances on Develop and link to the c
 
   // The case link lands on the Research desk with the holding case in focus.
   await page.getByRole('button', { name: /Open research case/ }).first().click()
-  await expect(page.getByLabel('DESK')).toHaveValue('research')
+  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByRole('tab', { name: 'Research case', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
   await expect(page.getByText('Research Cockpit', { exact: true }).first()).toBeVisible()
 
   // Non-research context — the grandfathered project re-enables every affordance.
-  await page.getByLabel('DESK').selectOption('development')
+  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
   await page.getByLabel('Strategy project').selectOption(UNGATED_PROJECT.project_id)
-  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
   await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeEnabled()
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeEnabled()
   await expect(preps.nth(1)).toBeEnabled()
 })

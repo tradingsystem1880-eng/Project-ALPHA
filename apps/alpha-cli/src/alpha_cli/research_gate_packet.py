@@ -505,8 +505,8 @@ def derive_research_scorecard(inputs: Mapping[str, object]) -> dict[str, object]
     """Derive the 13-row readiness scorecard (spec §10.2) from recorded statuses only.
 
     Enumerated states, transparent bases, and a rule-derived recommendation — never a
-    numeric aggregate or a single confidence score. ``researchScorecardModel.ts`` is the
-    drift-guarded TypeScript twin of this function; change both together.
+    numeric aggregate or a single confidence score. This Python projection is the sole
+    readiness authority; clients render it without re-deriving semantics.
     """
     complete = int(_finite_number(inputs.get("hypothesis_complete_fields")))
     partial = int(_finite_number(inputs.get("hypothesis_partial_fields")))
@@ -765,8 +765,8 @@ def derive_research_checklist(inputs: Mapping[str, object]) -> dict[str, object]
     """Derive the 14-question edge-validation checklist (spec §10.1) from recorded statuses.
 
     Every question is answered by a typed finding status or an explicit ``NOT_TESTED`` —
-    never a numeric aggregate or a confidence score. ``researchChecklistModel.ts`` is the
-    drift-guarded TypeScript twin of this function; change both together.
+    never a numeric aggregate or a confidence score. Clients render this Python projection
+    without re-deriving semantics.
     """
     classification = _optional_text(inputs.get("confirmation_classification"))
     primary_status = str(inputs.get("primary_result_status", "NOT_TESTED"))
