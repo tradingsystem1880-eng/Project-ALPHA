@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import polars as pl
+import pytest
 
 from alpha_cli.control_store import ControlStore
 from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS, PANEL_COLUMNS
 from alpha_cli.ml_input import _draft_spec, _folds, export_project_input
+from alpha_core import DataError
 from alpha_data.snapshot import create_snapshot, snapshot_manifest_hash
 from alpha_data.store import ParquetStore
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
@@ -158,3 +160,49 @@ def test_fold_generator_never_declares_the_terminal_session_as_a_target() -> Non
     assert len(folds) == 2
     assert all(positions[str(fold["test_end"])] <= len(sessions) - 2 for fold in folds)
     assert positions[str(folds[-1]["test_end"])] == len(sessions) - 2
+
+
+def test_rank_ensemble_recipe_selects_additive_v2_contract() -> None:
+    sessions = [
+        datetime(2020, 1, 2, tzinfo=UTC) + timedelta(days=index)
+        for index in range(MIN_ALIGNED_SESSIONS)
+    ]
+    draft = _draft_spec(
+        experiment={
+            "universe": [f"S{index:02d}" for index in range(MIN_SYMBOLS)],
+            "split_policy": {"train": 504, "test": 63, "purge": 5, "embargo": 5},
+            "stage_config": {"ml": {"recipe": "rank_ensemble_v1", "validation_sessions": 120}},
+            "costs": {"fee_bps": 1.0, "slippage_bps": 2.0},
+            "seeds": {"master": 7},
+        },
+        sessions=sessions,
+        snapshot_hash="a" * 64,
+        worker_lock_hash="b" * 64,
+    )
+
+    assert draft["schema_version"] == 2
+    assert cast(dict[str, object], draft["model"])["name"] == "rank_ensemble_v1"
+
+
+@pytest.mark.parametrize("ml", [{"recipe": "unknown"}, {"ridge_alpha": 0.5}])
+def test_ml_recipe_rejects_unversioned_or_tunable_ensemble_configuration(
+    ml: dict[str, object],
+) -> None:
+    sessions = [
+        datetime(2020, 1, 2, tzinfo=UTC) + timedelta(days=index)
+        for index in range(MIN_ALIGNED_SESSIONS)
+    ]
+
+    with pytest.raises(DataError):
+        _draft_spec(
+            experiment={
+                "universe": [f"S{index:02d}" for index in range(MIN_SYMBOLS)],
+                "split_policy": {"train": 504, "test": 63, "purge": 5, "embargo": 5},
+                "stage_config": {"ml": {**ml, "validation_sessions": 120}},
+                "costs": {"fee_bps": 1.0, "slippage_bps": 2.0},
+                "seeds": {"master": 7},
+            },
+            sessions=sessions,
+            snapshot_hash="a" * 64,
+            worker_lock_hash="b" * 64,
+        )

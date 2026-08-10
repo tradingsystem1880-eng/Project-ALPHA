@@ -24,10 +24,15 @@ uv sync --project workers/qlib --locked
 uv run alpha ml train EXCHANGE --mode real --no-sync --json
 ```
 
-The worker builds a causal 158-column Alpha158-style matrix from the verified in-memory panel,
-fits preprocessing statistics on each training fold only, trains one Qlib `LGBModel` per fold,
-and writes OOS predictions plus portable diagnostics. Qlib Recorder data and LightGBM boosters stay
-inside an ephemeral worker directory and are deleted when the process exits.
+The worker builds a causal 158-column Alpha158-style matrix from the verified in-memory panel and
+fits preprocessing statistics on each training fold only. Contract v1 retains the original Qlib
+`LGBModel` recipe unchanged. Additive contract v2 selects `rank_ensemble_v1`: the same LightGBM
+member and a Qlib ridge `LinearModel` (`alpha=1.0`, fixed) are combined by an equal-weight
+cross-sectional percentile-rank average. Ensemble weights and ridge regularization are not tuned.
+The canonical `score` remains in `predictions.parquet`; member scores, ranks, model hashes, and
+disagreement are published separately as `ensemble_diagnostics.parquet`. Qlib Recorder data and
+fitted model objects stay inside an ephemeral worker directory and are deleted when the process
+exits.
 
 Daily panel rows and predictions are availability-stamped at the canonical session close
 (`session_ts + 23h`), never at midnight. After import, `alpha ml replay EXCHANGE` validates the

@@ -123,6 +123,50 @@ def test_real_worker_trains_each_fold_and_is_byte_reproducible(tmp_path: Path) -
     )
 
 
+def test_real_rank_ensemble_is_deterministic_and_publishes_member_diagnostics(
+    tmp_path: Path,
+) -> None:
+    first = _exchange(tmp_path / "first-ensemble")
+    request = json.loads((first / "request.json").read_text(encoding="utf-8"))
+    request["schema_version"] = 2
+    request["model"] = {
+        "name": "rank_ensemble_v1",
+        "parameters": {
+            "early_stopping_rounds": 3,
+            "learning_rate": 0.1,
+            "num_boost_round": 8,
+            "num_leaves": 15,
+            "num_threads": 1,
+        },
+    }
+    request["config_hash"] = compute_config_hash(request)
+    (first / "request.json").write_bytes(canonical_json_bytes(request))
+    second = tmp_path / "second-ensemble"
+    shutil.copytree(first, second)
+    lock = Path(__file__).parents[1] / "uv.lock"
+
+    result_a = run_real(first, worker_lock_path=lock)
+    result_b = run_real(second, worker_lock_path=lock)
+
+    assert result_a == result_b
+    assert result_a["schema_version"] == 2
+    assert result_a["diagnostics"]["folds"][0]["fit_count"] == 2
+    ensemble = result_a["diagnostics"]["rank_ensemble_v1"]
+    assert ensemble["weights"] == {"lightgbm": 0.5, "ridge": 0.5}
+    assert ensemble["ridge_alpha"] == 1.0
+    assert set(ensemble["members"]) == {"lightgbm", "ridge"}
+    assert sha256_file(first / "predictions.parquet") == sha256_file(second / "predictions.parquet")
+    assert sha256_file(first / "ensemble_diagnostics.parquet") == sha256_file(
+        second / "ensemble_diagnostics.parquet"
+    )
+    diagnostics = pl.read_parquet(first / "ensemble_diagnostics.parquet")
+    predictions = pl.read_parquet(first / "predictions.parquet")
+    assert diagnostics.get_column("ensemble_score").equals(predictions.get_column("score"))
+    assert diagnostics.get_column("ensemble_model_hash").equals(
+        predictions.get_column("model_hash")
+    )
+
+
 def test_label_horizon_gap_blocks_validation_open_from_train_labels(tmp_path: Path) -> None:
     exchange = _exchange(tmp_path / "exchange")
     request_path = exchange / "request.json"

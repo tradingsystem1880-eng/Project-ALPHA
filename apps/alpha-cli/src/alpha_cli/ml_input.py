@@ -228,8 +228,15 @@ def _draft_spec(
         )
     warning: str | None = None if membership == "point_in_time" else _SURVIVORSHIP_WARNING
     model_parameters = _object(ml.get("model_parameters", {}), "ML model_parameters")
+    recipe = ml.get("recipe", "lightgbm")
+    if recipe not in {"lightgbm", "rank_ensemble_v1"}:
+        raise DataError("stage_config.ml.recipe must be lightgbm or rank_ensemble_v1")
+    if "ridge_alpha" in ml:
+        raise DataError(
+            "stage_config.ml.ridge_alpha is not configurable; rank_ensemble_v1 fixes it at 1.0"
+        )
     return {
-        "schema_version": 1,
+        "schema_version": 1 if recipe == "lightgbm" else 2,
         "snapshot_hash": snapshot_hash,
         "universe": universe,
         "universe_membership": membership,
@@ -241,7 +248,7 @@ def _draft_spec(
             "fill": "open_t_plus_1",
             "horizon_sessions": 1,
         },
-        "model": {"name": "lightgbm", "parameters": model_parameters},
+        "model": {"name": recipe, "parameters": model_parameters},
         "portfolio": {
             "selection": "top_quintile",
             "weighting": "equal",

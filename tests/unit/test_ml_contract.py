@@ -12,6 +12,7 @@ import polars as pl
 import pytest
 
 from alpha_cli.ml_contract import (
+    ENSEMBLE_DIAGNOSTIC_COLUMNS,
     INPUT_ANCHOR_FILENAME,
     MIN_ALIGNED_SESSIONS,
     MIN_SYMBOLS,
@@ -117,6 +118,20 @@ def _prepare(tmp_path: Path) -> tuple[Path, dict[str, Any], pl.DataFrame]:
     return exchange, request, panel
 
 
+def _prepare_ensemble(tmp_path: Path) -> tuple[Path, dict[str, Any], pl.DataFrame]:
+    panel = _panel()
+    panel_path = tmp_path / "source.parquet"
+    panel.write_parquet(panel_path)
+    draft = _draft()
+    draft["schema_version"] = 2
+    draft["model"] = {"name": "rank_ensemble_v1", "parameters": {"num_leaves": 31}}
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(draft), encoding="utf-8")
+    exchange = tmp_path / "exchange"
+    request = prepare_exchange(spec_path, panel_path, exchange)
+    return exchange, request, panel
+
+
 def _prediction_frame(request: dict[str, Any], panel: pl.DataFrame) -> pl.DataFrame:
     sessions = panel.get_column("session_ts").unique(maintain_order=True).to_list()
     universe = request["universe"]
@@ -195,6 +210,75 @@ def test_prepare_writes_canonical_validated_immutable_request(tmp_path: Path) ->
 
     with pytest.raises(MLContractError, match="already exists"):
         prepare_exchange(tmp_path / "spec.json", tmp_path / "source.parquet", exchange)
+
+
+def test_rank_ensemble_v2_preserves_canonical_predictions_and_validates_diagnostics(
+    tmp_path: Path,
+) -> None:
+    exchange, request, panel = _prepare_ensemble(tmp_path)
+    predictions = _prediction_frame(request, panel)
+    predictions.write_parquet(exchange / "predictions.parquet")
+    diagnostics = predictions.select(
+        "symbol",
+        "origin_ts",
+        "available_at",
+        "target_ts",
+        "fold",
+        "split",
+        pl.col("score").alias("lightgbm_score"),
+        (pl.col("score") * 0.5).alias("ridge_score"),
+        pl.col("score").alias("lightgbm_rank"),
+        (pl.col("score") * 0.5).alias("ridge_rank"),
+        pl.col("score").alias("ensemble_score"),
+        (pl.col("score") * 0.5).alias("disagreement"),
+        pl.lit("1" * 64).alias("lightgbm_model_hash"),
+        pl.lit("2" * 64).alias("ridge_model_hash"),
+        pl.col("model_hash").alias("ensemble_model_hash"),
+        "config_hash",
+        "worker_lock_hash",
+        "seed",
+    ).select(ENSEMBLE_DIAGNOSTIC_COLUMNS)
+    diagnostics.write_parquet(exchange / "ensemble_diagnostics.parquet")
+    result = {
+        "schema_version": 2,
+        "status": "succeeded",
+        "request_sha256": sha256_file(exchange / "request.json"),
+        "snapshot_hash": request["snapshot_hash"],
+        "config_hash": request["config_hash"],
+        "worker_lock_hash": request["worker_lock_hash"],
+        "seed": request["seed"],
+        "worker": {"kind": "fake", "implementation_version": "1"},
+        "predictions": {
+            "path": "predictions.parquet",
+            "sha256": sha256_file(exchange / "predictions.parquet"),
+            "rows": predictions.height,
+        },
+        "ensemble_diagnostics": {
+            "schema": "QlibRankEnsembleDiagnosticsV1",
+            "schema_version": 1,
+            "path": "ensemble_diagnostics.parquet",
+            "sha256": sha256_file(exchange / "ensemble_diagnostics.parquet"),
+            "rows": diagnostics.height,
+        },
+        "diagnostics": {},
+        "diagnostic_only": True,
+        "counterfactual_refit": False,
+    }
+    (exchange / "result.json").write_bytes(canonical_json_bytes(result))
+    validated = validate_result_bundle(exchange)
+    assert validated.predictions.equals(predictions)
+    assert validated.ensemble_diagnostics is not None
+    assert validated.ensemble_diagnostics.equals(diagnostics)
+
+    diagnostics.with_columns(
+        (pl.col("ensemble_score") + 0.1).alias("ensemble_score")
+    ).write_parquet(exchange / "ensemble_diagnostics.parquet")
+    result["ensemble_diagnostics"]["sha256"] = sha256_file(
+        exchange / "ensemble_diagnostics.parquet"
+    )
+    (exchange / "result.json").write_bytes(canonical_json_bytes(result))
+    with pytest.raises(MLContractError, match="ensemble_score"):
+        validate_result_bundle(exchange)
 
 
 @pytest.mark.parametrize(
@@ -537,9 +621,14 @@ def test_protocol_descriptors_pin_exact_parquet_fields() -> None:
     repo = Path(__file__).parents[2]
     schema_root = repo / "workers/qlib/src/alpha_qlib_worker/schemas"
     request_schema = json.loads((schema_root / "request.schema.json").read_text())
+    request_v2_schema = json.loads((schema_root / "request-v2.schema.json").read_text())
     result_schema = json.loads((schema_root / "result.schema.json").read_text())
+    result_v2_schema = json.loads((schema_root / "result-v2.schema.json").read_text())
     panel_schema = json.loads((schema_root / "panel.parquet.schema.json").read_text())
     prediction_schema = json.loads((schema_root / "predictions.parquet.schema.json").read_text())
+    ensemble_schema = json.loads(
+        (schema_root / "ensemble-diagnostics.parquet.schema.json").read_text()
+    )
     assert set(request_schema["required"]) == {
         "schema_version",
         "snapshot_hash",
@@ -561,5 +650,13 @@ def test_protocol_descriptors_pin_exact_parquet_fields() -> None:
     }
     assert result_schema["properties"]["diagnostic_only"] == {"const": True}
     assert result_schema["properties"]["counterfactual_refit"] == {"const": False}
+    assert request_v2_schema["properties"]["schema_version"] == {"const": 2}
+    assert request_v2_schema["properties"]["model"]["properties"]["name"] == {
+        "const": "rank_ensemble_v1"
+    }
+    assert "ensemble_diagnostics" in result_v2_schema["required"]
     assert [column["name"] for column in panel_schema["columns"]] == PANEL_COLUMNS
     assert [column["name"] for column in prediction_schema["columns"]] == PREDICTION_COLUMNS
+    assert [column["name"] for column in ensemble_schema["columns"]] == (
+        ENSEMBLE_DIAGNOSTIC_COLUMNS
+    )

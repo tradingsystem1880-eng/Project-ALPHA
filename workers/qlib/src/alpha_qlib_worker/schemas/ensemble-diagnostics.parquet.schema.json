@@ -1,0 +1,18 @@
+{
+  "schema": "QlibRankEnsembleDiagnosticsV1",
+  "schema_version": 1,
+  "format": "parquet",
+  "columns": [
+    {"name": "symbol", "type": "string"}, {"name": "origin_ts", "type": "datetime_us_utc"},
+    {"name": "available_at", "type": "datetime_us_utc"}, {"name": "target_ts", "type": "datetime_us_utc"},
+    {"name": "fold", "type": "int64"}, {"name": "split", "type": "string"},
+    {"name": "lightgbm_score", "type": "float64"}, {"name": "ridge_score", "type": "float64"},
+    {"name": "lightgbm_rank", "type": "float64"}, {"name": "ridge_rank", "type": "float64"},
+    {"name": "ensemble_score", "type": "float64"}, {"name": "disagreement", "type": "float64"},
+    {"name": "lightgbm_model_hash", "type": "sha256"}, {"name": "ridge_model_hash", "type": "sha256"},
+    {"name": "ensemble_model_hash", "type": "sha256"}, {"name": "config_hash", "type": "sha256"},
+    {"name": "worker_lock_hash", "type": "sha256"}, {"name": "seed", "type": "int64"}
+  ],
+  "sort_by": ["fold", "split", "target_ts", "symbol", "origin_ts"],
+  "unique_by": ["symbol", "origin_ts", "target_ts", "fold", "split"]
+}
