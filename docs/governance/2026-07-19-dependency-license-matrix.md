@@ -1,6 +1,6 @@
 # Dependency and License Matrix — Post-v2, Workstation v3, and Research Scientist Tracks
 
-- **Reviewed:** 2026-08-06
+- **Reviewed:** 2026-08-11
 - **Scope:** direct Python runtime dependencies, isolated workers, vendored code, external services,
   and upstream projects considered by the post-v2, Workstation v3, and Research Scientist decisions
 - **Status:** engineering inventory; not legal advice
@@ -161,9 +161,12 @@ modifications, linking/deployment model, notices, and distribution behavior.
 
 ## Workstation v3 dependency decision
 
-Workstation v3 adds no root runtime or frontend visualization dependency for the shell, control
-plane, causal charts, native tear sheet, or evidence ledger. It retains Dockview, Lightweight
-Charts, uPlot, TanStack, Polars, Nautilus, QuantStats-Lumi, and the vendored Kronos facade.
+The integrated Workstation uses the purpose-built six-screen shell and server-rendered analytical
+figures. The hardening program removed unused Dockview and uPlot runtime dependencies, reducing the
+frontend license and attack surface while retaining Lightweight Charts and TanStack for the bounded
+interactive views. Security-only transitive updates moved MIT-licensed `js-yaml` to 4.3.1 and
+`nanoid` to 3.3.18; `npm audit --audit-level=high` reports zero vulnerabilities. Root Polars,
+Nautilus, QuantStats-Lumi, and the vendored Kronos facade remain unchanged.
 
 Qlib is the one approved external capability addition. Its separately generated
 `workers/qlib/uv.lock` is the exact resolution input for that optional process and must be reviewed
