@@ -23,6 +23,14 @@ backtest_app = typer.Typer(help="Run the v1 strategy through the backtest engine
 _load_bars = _runner.load_bars
 _load_dividends = _runner.load_dividends
 
+# Suite-injected when a governed project's research gate was owner-overridden (spec §15,
+# ADR-0026). Safe on the public CLI: it only ever downgrades the run's presentation (adds the
+# EXPLORATORY watermark and forks run identity), never upgrades or grants authority.
+_RESEARCH_GATE_OVERRIDE_HELP = (
+    "watermark this run EXPLORATORY / RESEARCH GATE NOT COMPLETED "
+    "(launched under an owner research-gate override)"
+)
+
 
 def _holdout_date(value: str, label: str) -> date:
     try:
@@ -56,6 +64,9 @@ def holdout(
     holdout_end: str = typer.Option(..., help="revealed inclusive YYYY-MM-DD boundary"),
     holdout_spec_hash: str = typer.Option(..., help="sealed holdout specification SHA-256"),
     min_sharpe: float = typer.Option(0.0, help="predeclared pass threshold"),
+    research_gate_override: bool = typer.Option(
+        False, "--research-gate-override", help=_RESEARCH_GATE_OVERRIDE_HELP
+    ),
 ) -> None:
     """Evaluate one frozen fixed-parameter candidate on its revealed final holdout once."""
     settings = AlphaSettings()
@@ -150,6 +161,7 @@ def holdout(
             "holdout_end": holdout_end,
             "holdout_spec_hash": holdout_spec_hash,
             "min_sharpe": min_sharpe,
+            **_artifacts.research_gate_override_identity(research_gate_override),
             **vars(spec),
         },
         source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
@@ -184,6 +196,7 @@ def holdout(
             },
             "n_scored_sessions": len(equity),
             "n_trades": len(scoped_trades),
+            **_artifacts.research_gate_override_fields(research_gate_override),
             **identity.manifest_fields(),
         }
     )
@@ -228,6 +241,9 @@ def oos(
     param: list[str] | None = None,
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False, "--research-gate-override", help=_RESEARCH_GATE_OVERRIDE_HELP
+    ),
 ) -> None:
     """Evaluate one fixed rule over causal walk-forward OOS windows; no model is refit."""
     settings = AlphaSettings()
@@ -277,6 +293,7 @@ def oos(
             "symbol": symbol,
             "snapshot_id": snapshot_id,
             "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
             **vars(spec),
         },
         source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
@@ -313,6 +330,7 @@ def oos(
                 "sharpe": sharpe,
                 "max_drawdown": max_drawdown(equity_values),
             },
+            **_artifacts.research_gate_override_fields(research_gate_override),
             **identity.manifest_fields(),
         }
     )
@@ -354,6 +372,9 @@ def run(
     param: list[str] | None = None,
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False, "--research-gate-override", help=_RESEARCH_GATE_OVERRIDE_HELP
+    ),
 ) -> None:
     """Backtest SYMBOL with the fixed-parameter strategy; write the run artifacts.
 
@@ -421,6 +442,7 @@ def run(
             "symbol": symbol,
             "snapshot_id": snapshot_id,
             "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
             **vars(spec),
         },
         source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
@@ -442,6 +464,7 @@ def run(
         "n_trades": len(result.trades),
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,
+        **_artifacts.research_gate_override_fields(research_gate_override),
         **identity.manifest_fields(),
     }
     if forecast_meta is not None:
@@ -495,6 +518,9 @@ def portfolio(
     param: list[str] | None = None,
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False, "--research-gate-override", help=_RESEARCH_GATE_OVERRIDE_HELP
+    ),
 ) -> None:
     """Backtest a diversified basket: run the strategy across SYMBOLS and combine the OOS streams.
 
@@ -554,6 +580,7 @@ def portfolio(
             "seed": resolved_seed,
             "snapshot_id": snapshot,
             "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
             **vars(spec),
         },
         source_fingerprint=result.source_fingerprint,
@@ -606,6 +633,7 @@ def portfolio(
             }
             for leg in result.legs
         ],
+        **_artifacts.research_gate_override_fields(research_gate_override),
         **identity.manifest_fields(),
     }
     from alpha_validation import render_returns_tearsheet
@@ -659,6 +687,9 @@ def cross_sectional(
     seed: int | None = None,
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False, "--research-gate-override", help=_RESEARCH_GATE_OVERRIDE_HELP
+    ),
 ) -> None:
     """Backtest a cross-sectional momentum book: long the universe's winners, short its losers.
 
@@ -713,6 +744,7 @@ def cross_sectional(
             "seed": resolved_seed,
             "snapshot_id": snapshot,
             "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
         },
         source_fingerprint=result.source_fingerprint,
         snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot),
@@ -745,6 +777,7 @@ def cross_sectional(
         "dsr": result.dsr if result.dsr == result.dsr else None,
         "sharpe_ci": {"lower": result.sharpe_ci.lower, "upper": result.sharpe_ci.upper},
         "cagr_ci": {"lower": result.cagr_ci.lower, "upper": result.cagr_ci.upper},
+        **_artifacts.research_gate_override_fields(research_gate_override),
         **identity.manifest_fields(),
     }
     book = "long-short" if long_short else "long-only"

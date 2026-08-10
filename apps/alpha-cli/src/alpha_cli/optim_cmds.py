@@ -82,6 +82,12 @@ def grid(
     max_workers: int | None = None,
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False,
+        "--research-gate-override",
+        help="watermark this run EXPLORATORY / RESEARCH GATE NOT COMPLETED "
+        "(launched under an owner research-gate override)",
+    ),
 ) -> None:
     """Sweep SYMBOL over the ``--grid`` axes and report the overfitting-aware best config."""
     settings = AlphaSettings()
@@ -136,6 +142,7 @@ def grid(
             "alpha": alpha,
             "seed": resolved_seed,
             "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
             **vars(base),
         },
         source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
@@ -181,6 +188,7 @@ def grid(
         snapshot_id=snapshot_id,
         research_cutoff=as_of,
     )
+    manifest.update(_artifacts.research_gate_override_fields(research_gate_override))
     manifest.update(identity.manifest_fields())
     _artifacts.write_manifest(rdir, manifest)
 

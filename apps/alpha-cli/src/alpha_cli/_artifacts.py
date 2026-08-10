@@ -36,7 +36,12 @@ from alpha_cli.artifact_contract import (
 from alpha_cli.artifact_contract import (
     validate_identity_fields as _validate_identity_fields,
 )
-from alpha_cli.run_store import find_run_dir as find_run_dir
+from alpha_cli.run_store import (
+    RESEARCH_GATE_OVERRIDE_WATERMARK,
+)
+from alpha_cli.run_store import (
+    find_run_dir as find_run_dir,
+)
 from alpha_core import DataError
 from alpha_validation import FloatArray
 from alpha_validation.native_tearsheet import TradeObservation
@@ -56,6 +61,28 @@ def sanitize(value: Any) -> Any:
     if isinstance(value, list | tuple):
         return [sanitize(v) for v in value]
     return value
+
+
+def research_gate_override_identity(overridden: bool) -> dict[str, bool]:
+    """Identity-payload fields for a run launched under an owner research-gate override.
+
+    Conditional so unmarked runs keep their historical run ids, and a watermarked run is a
+    DIFFERENT immutable run — the marker can never byte-conflict with, or be silently dropped
+    from, an unmarked identity-matched run (spec §15, ADR-0026).
+    """
+    return {"research_gate_override": True} if overridden else {}
+
+
+def research_gate_override_fields(overridden: bool) -> dict[str, dict[str, str]]:
+    """Manifest fields recording the EXPLORATORY watermark under an overridden research gate."""
+    if not overridden:
+        return {}
+    return {
+        "research_gate": {
+            "state": "overridden",
+            "watermark": RESEARCH_GATE_OVERRIDE_WATERMARK,
+        }
+    }
 
 
 if TYPE_CHECKING:

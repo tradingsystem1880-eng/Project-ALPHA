@@ -55,6 +55,12 @@ def validate(
     max_workers: int | None = None,
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False,
+        "--research-gate-override",
+        help="watermark this run EXPLORATORY / RESEARCH GATE NOT COMPLETED "
+        "(launched under an owner research-gate override)",
+    ),
 ) -> None:
     """Validate SYMBOL end-to-end and write the run artifacts (manifest, parquet, tear sheet).
 
@@ -136,6 +142,7 @@ def validate(
                 "symbol": symbol,
                 "snapshot_id": snapshot_id,
                 "research_cutoff": as_of,
+                **_artifacts.research_gate_override_identity(research_gate_override),
                 **vars(spec),
                 **gauntlet_knobs,
             },
@@ -164,6 +171,7 @@ def validate(
     manifest["folds"] = [_runner.fold_manifest(fold, bars) for fold in out.oos.folds]
     manifest["oos_execution_boundary"] = "fresh_portfolio_after_causal_indicator_priming"
     manifest["oos_trace_scope"] = "scored_test_sessions_plus_originating_prior_close_decision"
+    manifest.update(_artifacts.research_gate_override_fields(research_gate_override))
     manifest.update(identity.manifest_fields())
     if forecast_meta is not None:
         manifest["forecast"] = {**forecast_meta, "tier2_policy": tier2_mode}
