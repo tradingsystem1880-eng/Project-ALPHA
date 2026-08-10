@@ -1077,6 +1077,14 @@ class AgentStageStatus(StrictModel):
     run_id: str | None
 
 
+class ResearchPromotionReference(StrictModel):
+    packet_id: str
+    contract_id: str
+    gate_packet_id: str | None
+    gate_packet_hash: str | None
+    recorded_at: str
+
+
 class AgentBrief(StrictModel):
     schema_version: Literal[1]
     project_id: str
@@ -1086,6 +1094,7 @@ class AgentBrief(StrictModel):
     allowed_scope: AgentScope
     strategy_version: StrategyVersion | None
     experiment: ExperimentSpec | None
+    research_promotion: ResearchPromotionReference | None
     stage_statuses: list[AgentStageStatus]
     evidence: list[EvidenceRecord]
     evidence_truncated: bool

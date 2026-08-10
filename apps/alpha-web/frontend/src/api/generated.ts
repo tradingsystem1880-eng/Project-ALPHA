@@ -2920,6 +2920,7 @@ export interface components {
             project_name: string;
             /** Required Tests */
             required_tests: string[];
+            research_promotion: components["schemas"]["ResearchPromotionReference"] | null;
             /**
              * Schema Version
              * @constant
@@ -6698,6 +6699,19 @@ export interface components {
             terminal: false;
             /** Warning */
             warning: string;
+        };
+        /** ResearchPromotionReference */
+        ResearchPromotionReference: {
+            /** Contract Id */
+            contract_id: string;
+            /** Gate Packet Hash */
+            gate_packet_hash: string | null;
+            /** Gate Packet Id */
+            gate_packet_id: string | null;
+            /** Packet Id */
+            packet_id: string;
+            /** Recorded At */
+            recorded_at: string;
         };
         /** ResearchProposalRequest */
         ResearchProposalRequest: {

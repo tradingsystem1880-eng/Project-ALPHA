@@ -62,6 +62,16 @@
             "title": "Required Tests",
             "type": "array"
           },
+          "research_promotion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchPromotionReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schema_version": {
             "const": 1,
             "title": "Schema Version",
@@ -101,6 +111,7 @@
           "allowed_scope",
           "strategy_version",
           "experiment",
+          "research_promotion",
           "stage_statuses",
           "evidence",
           "evidence_truncated",
@@ -11988,6 +11999,54 @@
           "warning"
         ],
         "title": "ResearchProgressReport",
+        "type": "object"
+      },
+      "ResearchPromotionReference": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "gate_packet_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate Packet Hash"
+          },
+          "gate_packet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate Packet Id"
+          },
+          "packet_id": {
+            "title": "Packet Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "packet_id",
+          "contract_id",
+          "gate_packet_id",
+          "gate_packet_hash",
+          "recorded_at"
+        ],
+        "title": "ResearchPromotionReference",
         "type": "object"
       },
       "ResearchProposalRequest": {

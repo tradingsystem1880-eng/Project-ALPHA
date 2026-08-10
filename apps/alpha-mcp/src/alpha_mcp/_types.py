@@ -453,6 +453,14 @@ class EvidenceRecordOut(TypedDict):
     interpretation_label: Literal["association, not causation"] | None
 
 
+class ResearchPromotionReferenceOut(TypedDict):
+    packet_id: str
+    contract_id: str
+    gate_packet_id: str | None
+    gate_packet_hash: str | None
+    recorded_at: str
+
+
 class AgentBriefOut(TypedDict):
     schema_version: Literal[1]
     project_id: str
@@ -462,6 +470,7 @@ class AgentBriefOut(TypedDict):
     allowed_scope: AgentScopeOut
     strategy_version: StrategyVersionOut | None
     experiment: ExperimentSpecOut | None
+    research_promotion: ResearchPromotionReferenceOut | None
     stage_statuses: list[AgentStageStatusOut]
     evidence: list[EvidenceRecordOut]
     evidence_truncated: bool

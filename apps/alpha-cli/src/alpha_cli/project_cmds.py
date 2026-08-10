@@ -236,6 +236,15 @@ def _agent_brief(
         )
     if context["scope_history_complete"] is not True:
         warnings.append("point-in-time project scope is unavailable before the recorded lineage")
+    research_promotion = cast(dict[str, object] | None, context["research_promotion"])
+    if (
+        version is not None
+        and version.get("research_contract_id") is not None
+        and research_promotion is None
+    ):
+        warnings.append(
+            "the linked research case has no recorded promotion dossier (pre-R6f decision)"
+        )
     holdout_events = cast(list[dict[str, object]], context["holdout_events"])
     holdout_event_names = {str(row["event"]) for row in holdout_events}
     if "revealed" in holdout_event_names:
@@ -257,6 +266,7 @@ def _agent_brief(
         "allowed_scope": scope,
         "strategy_version": version,
         "experiment": experiment,
+        "research_promotion": research_promotion,
         "stage_statuses": context["stage_statuses"],
         "evidence": evidence[:evidence_limit],
         "evidence_truncated": len(evidence) > evidence_limit,
