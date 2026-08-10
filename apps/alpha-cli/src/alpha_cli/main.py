@@ -7,6 +7,7 @@ import typer
 from alpha_cli.backtest_cmds import backtest_app
 from alpha_cli.data_cmds import data_app
 from alpha_cli.evidence_cmds import evidence_app
+from alpha_cli.figures_cmds import figures_app
 from alpha_cli.forecast_cmds import forecast_app
 from alpha_cli.info_cmds import info_app
 from alpha_cli.ml_cmds import ml_app
@@ -34,6 +35,7 @@ app.add_typer(options_app, name="options")
 app.add_typer(risk_app, name="risk")
 app.add_typer(screener_app, name="screener")
 app.add_typer(research_app, name="research")
+app.add_typer(figures_app, name="figures")
 app.add_typer(project_app, name="project")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(ml_app, name="ml")

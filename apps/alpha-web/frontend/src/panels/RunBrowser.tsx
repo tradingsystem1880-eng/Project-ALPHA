@@ -3,7 +3,6 @@
 // columns; click selects + broadcasts, Enter/double-click/⏎ button opens the run story.
 
 import type { ColumnDef } from '@tanstack/react-table'
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -16,10 +15,11 @@ import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
 import { researchGateWatermark } from './researchGateModel'
 import { runKindMatches } from './runBrowserModel'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 const KINDS = ['all', 'runs', 'optim', 'portfolio', 'cross_sectional', 'propfirm', 'forecast']
 
-export function RunBrowser(props: IDockviewPanelProps) {
+export function RunBrowser(props: PanelHandleProps) {
   const params = props.params as {
     defaultKind?: string
     defaultCommand?: string
@@ -150,7 +150,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
             className="btn"
             onClick={(e) => {
               e.stopPropagation()
-              openRunDetail(props.containerApi, c.row.original.run_id)
+              openRunDetail(c.row.original.run_id)
             }}
           >
             open ⏎
@@ -159,7 +159,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
         enableSorting: false,
       },
     ],
-    [props.containerApi],
+    [],
   )
 
   function selectRow(run: RunListItem): void {
@@ -208,8 +208,8 @@ export function RunBrowser(props: IDockviewPanelProps) {
             globalFilter={query}
             initialSorting={[{ id: 'mtime', desc: true }]}
             onRowClick={selectRow}
-            onRowDoubleClick={(r) => openRunDetail(props.containerApi, r.run_id)}
-            onRowEnter={(r) => openRunDetail(props.containerApi, r.run_id)}
+            onRowDoubleClick={(r) => openRunDetail(r.run_id)}
+            onRowEnter={(r) => openRunDetail(r.run_id)}
             rowClass={(r) => (selected === r.run_id ? 'sel' : '')}
             empty={
               <Placeholder big="no runs yet">

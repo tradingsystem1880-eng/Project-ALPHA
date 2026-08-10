@@ -2,12 +2,12 @@
 // research case progresses, each rendering honest NOT_TESTED / empty states before then.
 // Evidence for and evidence against share one component so their prominence is identical.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { ResearchEvidenceHub, ResearchEvidenceHubSections } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
 import { headlineBoard } from './researchHeadlineModel'
@@ -264,7 +264,7 @@ function SectionBody({
   }
 }
 
-export function EvidenceHub(props: IDockviewPanelProps) {
+export function EvidenceHub(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const projectId = panelLink.linked.projectId
   const [hub, setHub] = useState<ResearchEvidenceHub | null>(null)

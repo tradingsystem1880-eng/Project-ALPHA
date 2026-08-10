@@ -1,12 +1,12 @@
 // Activity Feed — the desk tape: every run landing in the store and every job lifecycle change,
 // live, regardless of origin (UI, CLI, Claude via MCP). Click a run event to open it.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 
 import { Placeholder } from '../components/Placeholder'
 import { useActivity, type ActivityEvent } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 const EVENT_LABEL: Record<ActivityEvent['type'], string> = {
   run_added: 'RUN',
@@ -24,7 +24,7 @@ function eventTone(t: ActivityEvent['type']): string {
   return 'info'
 }
 
-export function ActivityFeed(props: IDockviewPanelProps) {
+export function ActivityFeed(_props: PanelHandleProps) {
   const { feed, connection } = useActivity()
 
   return (
@@ -46,7 +46,7 @@ export function ActivityFeed(props: IDockviewPanelProps) {
               <button
                 key={e.seq}
                 className={`feed-row tone-${eventTone(e.type)}`}
-                onClick={() => e.run && openRunDetail(props.containerApi, e.run.run_id)}
+                onClick={() => e.run && openRunDetail(e.run.run_id)}
                 disabled={!e.run}
               >
                 <span className="feed-time num">{fmtTime(e.at).slice(11)}</span>

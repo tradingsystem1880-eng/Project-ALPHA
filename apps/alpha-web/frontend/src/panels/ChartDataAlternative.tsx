@@ -1,3 +1,13 @@
+/**
+ * The price chart's accessible alternative.
+ *
+ * The chart itself is a canvas: a screen reader sees an empty box, and no amount of ARIA on
+ * the wrapper changes that. This is where the same bars exist as real markup, paginated, with
+ * an exact CSV of what was actually returned — not a re-derivation. It is the reason the
+ * chart is allowed to be a canvas at all, which is why it survived the sweep that removed the
+ * hand-rolled SVG charts around it.
+ */
+
 import { useEffect, useMemo, useState } from 'react'
 
 import type { Candle } from '../api/types'

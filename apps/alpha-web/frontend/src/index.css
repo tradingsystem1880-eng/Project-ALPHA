@@ -13,12 +13,21 @@
   --panel-2: #0c1017;
   --elevated: #171d29;
   --line: #1d2431;
+  /* Chart gridlines. Previously existed only as a fallback inside tokens.ts, which
+     meant nothing defined it and the value silently diverged from the figure theme. */
+  --grid: #161d29;
   --line-strong: #2a3242;
 
   /* ink */
   --ink: #e8ecf3;
   --ink-dim: #aab3c4;
-  --muted: #737d90;
+  /* Secondary text. Must clear WCAG AA (4.5:1) against the *lightest* surface it can land
+     on, which is --elevated, not --bg: an expanded job row is elevated, and a value tuned
+     against the background alone fails there by a hair (4.48:1). Held by test. */
+  --muted: #7d879b;
+  /* Hairlines and rules only -- NEVER text. At 2.35:1 on the background it is a serious
+     WCAG failure wherever it colours a glyph, and it had quietly become the colour of
+     sequence numbers, timestamps and stage indices. Held by test. */
   --faint: #495365;
 
   /* signal blue — the single interaction accent */
@@ -340,7 +349,7 @@ a:hover {
 .panel-toolbar .count {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--faint);
+  color: var(--muted);
 }
 .panel-body {
   flex: 1;
@@ -588,7 +597,9 @@ select.field:focus {
 .placeholder .big {
   font-family: var(--font-mono);
   font-size: 22px;
-  color: var(--faint);
+  /* --faint is a hairline colour for rules, not for text: 2.35:1 here. An empty state is
+     the one thing a lost user reads, so it takes a legible token. */
+  color: var(--muted);
   letter-spacing: 0.1em;
 }
 
@@ -1223,7 +1234,7 @@ select.field:focus {
 }
 .dim-note {
   font-size: 9.5px;
-  color: var(--faint);
+  color: var(--muted);
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1416,7 +1427,7 @@ select.field:focus {
 }
 .svg-axis-label {
   font-size: 10px;
-  fill: var(--faint);
+  fill: var(--muted);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1555,7 +1566,7 @@ select.field:focus {
   background: var(--elevated);
 }
 .feed-time {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 10.5px;
 }
 .feed-tag {
@@ -1958,7 +1969,7 @@ select.field:focus {
   top: 50%;
   transform: translateY(-50%);
   z-index: 2;
-  color: var(--faint);
+  color: var(--muted);
   font-size: 13px;
 }
 .pipe-suggestions {
@@ -2209,7 +2220,7 @@ select.field:focus {
 }
 
 .tear-gap-state {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 9.5px;
   letter-spacing: 0.08em;
 }
@@ -2305,7 +2316,7 @@ select.field:focus {
 
 .dev-index,
 .dev-state {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 9.5px;
 }
 
@@ -2488,7 +2499,16 @@ select.field:focus {
 }
 
 .trace-seq {
-  color: var(--faint);
+  /* The sequence number is how you refer to an event, not decoration -- --faint reads at
+     2.45:1 here, well under AA. --faint is for rules and separators, never text. */
+  color: var(--muted);
+}
+
+/* Hover and selection tint the row with --accent-soft, lifting the surface to ~#152237
+   where --muted falls to 4.41:1. Secondary text steps up with the emphasis. */
+.trace-event:hover .trace-seq,
+.trace-event.selected .trace-seq {
+  color: var(--ink-dim);
 }
 
 .trace-kind {
@@ -3977,4 +3997,294 @@ select.field:focus {
   padding: 8px;
   font-size: 11px;
   margin: 0;
+}
+
+/* ============================================================================
+   Workstation v4 — the figure report
+   Server-rendered figures, each with the text that makes it readable. Layout is
+   a sticky section rail beside a scrolling column: a run's evidence is long, and
+   hiding two thirds of it behind tabs is what made the old results page opaque.
+   ========================================================================== */
+
+.figure-report {
+  display: grid;
+  grid-template-columns: minmax(140px, 168px) minmax(0, 1fr);
+  gap: var(--pad);
+  height: 100%;
+  min-height: 0;
+}
+
+.figure-rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  padding: var(--pad) var(--pad-sm);
+  border-right: 1px solid var(--line);
+  height: 100%;
+  overflow-y: auto;
+}
+.figure-rail ul { list-style: none; margin: var(--pad-sm) 0 0; padding: 0; }
+.figure-rail li { margin: 0; }
+.figure-rail a {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--pad-sm);
+  padding: 4px var(--pad-sm);
+  border-left: 2px solid transparent;
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: calc(var(--font-size) - 1px);
+}
+.figure-rail a:hover { color: var(--ink); background: var(--panel-2); }
+.figure-rail a.active { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
+.figure-rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.figure-rail-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.figure-rail-foot { margin-top: var(--pad); font-size: calc(var(--font-size) - 2px); }
+
+.figure-scroll { overflow-y: auto; padding: var(--pad) var(--pad) 40vh; min-height: 0; }
+.figure-section { scroll-margin-top: var(--pad); }
+.figure-section > h2 {
+  margin: var(--pad) 0 var(--pad-sm);
+  font-size: calc(var(--font-size) + 3px);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.figure-card {
+  margin: 0 0 var(--pad);
+  padding: var(--pad);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+/* The figure carries its own title; the head is just the action row. */
+.figure-head {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: var(--pad);
+  margin-bottom: 2px;
+}
+.figure-card--absent .figure-head,
+.figure-card--loading .figure-head { justify-content: space-between; }
+.figure-head h3 { margin: 0; font-size: calc(var(--font-size) + 1px); color: var(--ink); }
+.figure-subtitle { margin: 2px 0 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
+.figure-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* The figure is vector: let it scale to the column rather than fixing a pixel size. */
+.figure-image { display: block; width: 100%; height: auto; }
+
+.figure-explain { margin-top: var(--pad-sm); display: grid; gap: 6px; }
+.figure-explain p { margin: 0; font-size: calc(var(--font-size) - 1px); line-height: 1.5; }
+.figure-explain .eyebrow { display: block; margin-bottom: 1px; }
+.figure-question { color: var(--ink-dim); }
+.figure-answer { color: var(--ink); }
+.figure-caveat { color: var(--muted); }
+.figure-truncation { color: var(--gold); font-size: calc(var(--font-size) - 2px); }
+
+.figure-details { margin-top: var(--pad-sm); border-top: 1px solid var(--line); padding-top: var(--pad-sm); }
+.figure-notes { margin: var(--pad-sm) 0 0; padding-left: 1.1em; color: var(--gold); font-size: calc(var(--font-size) - 2px); }
+.figure-caption { margin: var(--pad-sm) 0 0; color: var(--muted); font-size: calc(var(--font-size) - 3px); }
+
+.figure-card--absent { border-style: dashed; }
+.figure-absent-reason { margin: 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
+.figure-flag {
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  color: var(--muted);
+  font-size: calc(var(--font-size) - 3px);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.figure-flag--bad { color: var(--down); border-color: var(--down); }
+.figure-skeleton { width: 100%; background: var(--panel-2); border-radius: var(--r); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (max-width: 900px) {
+  .figure-report { grid-template-columns: minmax(0, 1fr); }
+  .figure-rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .figure-rail ul { display: flex; flex-wrap: wrap; gap: 2px; }
+  .figure-rail a { border-left: 0; border-bottom: 2px solid transparent; }
+  .figure-rail a.active { border-left: 0; border-bottom-color: var(--accent); }
+}
+
+/* ============================================================================
+   Workstation v4 — shell
+   Screens instead of a docking desk. Each screen is a named CSS grid laid out
+   once for its job, so panels stop being furniture the user has to arrange.
+   ========================================================================== */
+
+.workspace {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+.workspace--rail-collapsed { grid-template-columns: 28px minmax(0, 1fr); }
+
+/* ---- screen tabs ---- */
+.screen-tabs { display: flex; gap: 1px; margin-left: var(--pad); }
+.screen-tab {
+  padding: 4px 12px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.screen-tab:hover { color: var(--ink); }
+.screen-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+.screen-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---- library rail ---- */
+.library {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+.library--collapsed { align-items: center; padding-top: var(--pad-sm); }
+.library-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--pad-sm) var(--pad-sm) 4px;
+}
+.library-toggle {
+  background: none; border: 0; color: var(--ink-dim); cursor: pointer;
+  padding: 2px 6px; font-size: 13px;
+}
+.library-toggle:hover { color: var(--ink); }
+.library-sections { display: flex; gap: 1px; padding: 0 var(--pad-sm); }
+.library-section {
+  flex: 1; padding: 3px 4px; background: none; border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-dim); font: inherit; font-size: calc(var(--font-size) - 2px); cursor: pointer;
+}
+.library-section:hover { color: var(--ink); }
+.library-section.active { color: var(--ink); border-bottom-color: var(--accent); }
+.library-search { margin: var(--pad-sm); width: calc(100% - 2 * var(--pad-sm)); }
+.library-list { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: var(--pad); }
+.library-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--pad-sm);
+  width: 100%; padding: 3px var(--pad-sm);
+  background: none; border: 0; border-left: 2px solid transparent;
+  color: var(--ink-dim); font: inherit; text-align: left; cursor: pointer;
+}
+.library-row:hover { background: var(--panel-2); color: var(--ink); }
+.library-row.active { background: var(--accent-soft); border-left-color: var(--accent); color: var(--ink); }
+.library-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.library-row-main { display: flex; flex-direction: column; min-width: 0; }
+.library-row-sub {
+  color: var(--ink-dim); font-size: calc(var(--font-size) - 2px);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.library-empty, .library-error { padding: var(--pad-sm); color: var(--ink-dim); font-size: calc(var(--font-size) - 1px); }
+.library-save { display: flex; gap: var(--pad-sm); padding: var(--pad-sm); border-bottom: 1px solid var(--line); }
+.library-save .field { min-width: 0; flex: 1; }
+.library-error { color: var(--down); }
+
+/* ---- context chip ---- */
+.context { position: relative; }
+.context-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: var(--r);
+  color: var(--ink); font: inherit; cursor: pointer;
+}
+.context-chip:hover { border-color: var(--accent); color: var(--ink); }
+.context-sep { color: var(--muted); }
+.context-symbol { color: var(--ink); }
+.context-pop {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 60;
+  display: grid; gap: var(--pad-sm); width: 320px; padding: var(--pad);
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
+}
+.context-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--pad-sm); }
+.context-note { margin: 0; font-size: calc(var(--font-size) - 2px); }
+.context-actions { display: flex; justify-content: flex-end; gap: var(--pad-sm); }
+
+.settings-menu { position: relative; }
+.settings-pop {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; width: 200px;
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--r);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
+}
+.settings-row {
+  display: flex; justify-content: space-between; width: 100%;
+  padding: 6px var(--pad-sm); background: none; border: 0; color: var(--ink-dim);
+  font: inherit; cursor: pointer;
+}
+.settings-row:hover { background: var(--panel-2); color: var(--ink); }
+
+/* ---- screens ---- */
+.screen { display: grid; gap: 1px; background: var(--line); min-height: 0; overflow: hidden; }
+.area { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--bg); }
+.area-tabs { display: flex; gap: 1px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.area-tab {
+  padding: 3px 10px; background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--ink-dim); font: inherit; font-size: calc(var(--font-size) - 1px); cursor: pointer;
+}
+.area-tab:hover { color: var(--ink); }
+.area-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+.area-body { flex: 1; min-height: 0; overflow: hidden; }
+
+/* Results is one full-bleed column: a figure needs the width. */
+.screen--results { grid-template-areas: 'main'; grid-template-columns: minmax(0, 1fr); }
+.screen--compare { grid-template-areas: 'main'; grid-template-columns: minmax(0, 1fr); }
+
+.screen--explore {
+  grid-template-areas: 'main side';
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+.screen--build {
+  grid-template-areas: 'main side' 'foot foot';
+  grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-rows: minmax(0, 1fr) 240px;
+}
+.screen--studios {
+  grid-template-areas: 'main side';
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.screen--operate {
+  grid-template-areas: 'main side' 'foot foot';
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(0, 1fr) 260px;
+}
+
+/* ---- compare ---- */
+.compare-body { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; flex: 1; }
+.compare-picker { border-right: 1px solid var(--line); padding: var(--pad-sm); overflow-y: auto; min-height: 0; }
+.compare-picker-list { display: grid; gap: 1px; margin-top: var(--pad-sm); }
+.compare-pick {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 6px; align-items: center;
+  padding: 2px 4px; color: var(--ink-dim); cursor: pointer;
+}
+.compare-pick:hover { background: var(--panel-2); }
+.compare-main { overflow-y: auto; min-height: 0; padding: var(--pad); }
+.compare-warning {
+  margin: 0 0 var(--pad); padding: var(--pad-sm);
+  border-left: 2px solid var(--gold); background: var(--panel);
+  color: var(--gold); font-size: calc(var(--font-size) - 1px);
+}
+.compare-table td.best { color: var(--up); }
+.compare-figures { margin-top: var(--pad); }
+.compare-figure-pick { display: flex; align-items: center; gap: var(--pad-sm); margin-bottom: var(--pad); }
+
+@media (max-width: 1100px) {
+  .screen--explore, .screen--build, .screen--studios, .screen--operate {
+    grid-template-areas: 'main' 'side' 'foot';
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(240px, 1fr) minmax(200px, auto) auto;
+  }
+  .workspace { grid-template-columns: 180px minmax(0, 1fr); }
 }

@@ -2,11 +2,11 @@
 // GET /api/research/cases route. Buckets, ordering, and progress all come from the
 // already-tested researchCockpitModel; selecting a case writes only linked projectId.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import { Placeholder } from '../components/Placeholder'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { groupResearchBacklog } from './researchBacklogModel'
 import {
@@ -25,7 +25,7 @@ function progressLabel(row: ResearchCaseSummary): string {
   return `${milestones} · ${Math.round(progress.budget_fraction * 100)}% of ${row.budget.unit}`
 }
 
-export function ResearchBacklog(props: IDockviewPanelProps) {
+export function ResearchBacklog(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const [rows, setRows] = useState<ResearchCaseSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)

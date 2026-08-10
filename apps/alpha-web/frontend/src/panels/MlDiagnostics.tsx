@@ -1,13 +1,11 @@
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
-import type uPlot from 'uplot'
 
 import { api } from '../api/client'
 import type { MlExperimentPage } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
-import { UplotChart } from '../components/UplotChart'
+import { MiniLine, type MiniSeries } from '../components/MiniLine'
 import { setLinked, useLinked } from '../context/linked'
-import { AXIS, CHART, withAlpha } from '../util/chartTheme'
+import { CHART, withAlpha } from '../util/chartTheme'
 import { fmtNum, fmtPct, shortId } from '../util/format'
 import {
   buildFoldTimeline,
@@ -20,6 +18,7 @@ import {
   type MlTearSheetProjection,
 } from './mlTearsheetModel'
 import { Section } from './rundetail/common'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 const TRAINING_COLORS = [CHART.accent, CHART.gold, CHART.ink, CHART.muted]
 
@@ -70,28 +69,14 @@ function ScoreDistribution({ sheet }: { sheet: MlTearSheetProjection }) {
 
 function IcTimeline({ sheet }: { sheet: MlTearSheetProjection }) {
   const rows = sheet.ic?.by_target
-  const data = useMemo<uPlot.AlignedData>(() => {
+  const icSeries = useMemo<MiniSeries[]>(() => {
     const values = rows ?? []
+    const x = isoToEpochSeconds(values.map((row) => row.target_ts))
     return [
-      isoToEpochSeconds(values.map((row) => row.target_ts)),
-      values.map((row) => row.ic),
-      values.map((row) => row.rank_ic),
-    ] as uPlot.AlignedData
+      { label: 'IC', colour: CHART.accent, points: values.map((row, i) => [x[i], row.ic] as [number, number]) },
+      { label: 'RankIC', colour: CHART.gold, points: values.map((row, i) => [x[i], row.rank_ic] as [number, number]) },
+    ]
   }, [rows])
-  const options = useMemo<Omit<uPlot.Options, 'width' | 'height'>>(() => ({
-    scales: { x: { time: true }, coefficient: {} },
-    axes: [
-      { ...AXIS, label: 'TARGET SESSION · UTC' },
-      { ...AXIS, scale: 'coefficient', label: 'IC / RANKIC' },
-    ],
-    series: [
-      {},
-      { label: 'IC', scale: 'coefficient', stroke: CHART.accent, width: 1.4, points: { show: false } },
-      { label: 'RankIC', scale: 'coefficient', stroke: CHART.gold, width: 1.2, points: { show: false } },
-    ],
-    legend: { show: true },
-    cursor: { points: { show: false } },
-  }), [])
   if (!sheet.ic || !rows || rows.length === 0) return <ArtifactUnavailable label="IC TIMELINE NOT EMITTED" />
   return (
     <div>
@@ -100,7 +85,13 @@ function IcTimeline({ sheet }: { sheet: MlTearSheetProjection }) {
         <span>MEAN RANKIC <b>{fmtNum(sheet.ic.rank_mean, 4)}</b></span>
         <span>TARGETS <b>{sheet.timeline_total}</b></span>
       </div>
-      <UplotChart data={data} options={options} height={210} />
+      <MiniLine
+        series={icSeries}
+        xLabel="Target session (UTC)"
+        yLabel="IC / RankIC"
+        height={200}
+        formatX={(value) => new Date(value * 1000).toISOString().slice(0, 10)}
+      />
       <details className="native-data-table">
         <summary>IC / RankIC table alternative</summary>
         <table className="blotter compact"><thead><tr><th>target UTC</th><th className="r">IC</th><th className="r">RankIC</th><th className="r">n</th></tr></thead><tbody>
@@ -148,60 +139,10 @@ function QuantileReturns({ sheet }: { sheet: MlTearSheetProjection }) {
 function PortfolioDiagnostics({ sheet }: { sheet: MlTearSheetProjection }) {
   const portfolio = sheet.portfolio
   const rows = portfolio?.timeline
-  const timestamps = useMemo(
-    () => isoToEpochSeconds((rows ?? []).map((row) => row.target_ts)),
-    [rows],
-  )
-  const equityData = useMemo<uPlot.AlignedData>(() => {
-    const values = rows ?? []
-    return [
-      timestamps,
-      values.map((row) => row.gross_equity),
-      values.map((row) => row.costed_equity),
-      values.map((row) => row.benchmark_equity),
-    ] as uPlot.AlignedData
-  }, [rows, timestamps])
-  const returnData = useMemo<uPlot.AlignedData>(() => {
-    const values = rows ?? []
-    return [
-      timestamps,
-      values.map((row) => row.gross_return),
-      values.map((row) => row.costed_return),
-      values.map((row) => row.benchmark_return),
-      values.map((row) => row.excess_return),
-      values.map((row) => row.turnover),
-    ] as uPlot.AlignedData
-  }, [rows, timestamps])
-  const equityOptions = useMemo<Omit<uPlot.Options, 'width' | 'height'>>(() => ({
-    scales: { x: { time: true }, equity: {} },
-    axes: [{ ...AXIS, label: 'TARGET SESSION · UTC' }, { ...AXIS, scale: 'equity', label: 'NORMALIZED EQUITY' }],
-    series: [
-      {},
-      { label: 'Gross', scale: 'equity', stroke: CHART.accent, width: 1.4, points: { show: false } },
-      { label: 'Costed', scale: 'equity', stroke: CHART.gold, width: 1.4, points: { show: false } },
-      { label: 'Benchmark', scale: 'equity', stroke: CHART.ink, width: 1, points: { show: false } },
-    ],
-    legend: { show: true },
-    cursor: { points: { show: false } },
-  }), [])
-  const returnOptions = useMemo<Omit<uPlot.Options, 'width' | 'height'>>(() => ({
-    scales: { x: { time: true }, returns: {}, turnover: {} },
-    axes: [
-      { ...AXIS, label: 'TARGET SESSION · UTC' },
-      { ...AXIS, scale: 'returns', label: 'PERIOD RETURN', values: (_u, values) => values.map((value) => fmtPct(value, 1)) },
-      { ...AXIS, scale: 'turnover', side: 1, label: 'TURNOVER', values: (_u, values) => values.map((value) => fmtPct(value, 0)) },
-    ],
-    series: [
-      {},
-      { label: 'Gross return', scale: 'returns', stroke: CHART.accent, width: 1, points: { show: false } },
-      { label: 'Costed return', scale: 'returns', stroke: CHART.gold, width: 1.3, points: { show: false } },
-      { label: 'Benchmark return', scale: 'returns', stroke: CHART.ink, width: 1, points: { show: false } },
-      { label: 'Excess return', scale: 'returns', stroke: CHART.muted, width: 1, points: { show: false } },
-      { label: 'Turnover', scale: 'turnover', stroke: CHART.dim, width: 1, dash: [4, 3], points: { show: false } },
-    ],
-    legend: { show: true },
-    cursor: { points: { show: false } },
-  }), [])
+
+  // Equity, returns and turnover here are ml_replay run artifacts; the Report tab draws
+  // them full size with their own explanations, so this panel keeps the exact numbers
+  // and stops maintaining a second, smaller drawing of the same thing.
   if (!portfolio) return <ArtifactUnavailable label="DIAGNOSTIC PORTFOLIO NOT EMITTED" />
   return (
     <div>
@@ -213,7 +154,14 @@ function PortfolioDiagnostics({ sheet }: { sheet: MlTearSheetProjection }) {
         <div><span>MEAN TURNOVER</span><b>{fmtPct(portfolio.mean_turnover, 2)}</b></div>
         <div><span>DECLARED COSTS</span><b>FEE {fmtNum(portfolio.declared_costs.fee_bps, 2)} · SLIP {fmtNum(portfolio.declared_costs.slippage_bps, 2)} bps</b></div>
       </div>
-      {rows?.length ? <div className="ml-portfolio-charts"><div><div className="chart-subhead">Gross / costed / benchmark equity</div><UplotChart data={equityData} options={equityOptions} height={205} /></div><div><div className="chart-subhead">Returns / excess / turnover</div><UplotChart data={returnData} options={returnOptions} height={205} /></div></div> : <ArtifactUnavailable label="PORTFOLIO TIMELINE NOT EMITTED" />}
+      {rows?.length ? (
+        <p className="muted">
+          Equity, returns and turnover for this replay are on the Report tab, where each figure
+          carries what it means. The per-period numbers are in the table below.
+        </p>
+      ) : (
+        <ArtifactUnavailable label="PORTFOLIO TIMELINE NOT EMITTED" />
+      )}
       {rows?.length ? <details className="native-data-table"><summary>portfolio timeline table alternative</summary><table className="blotter compact"><thead><tr><th>target UTC</th><th className="r">gross</th><th className="r">costed</th><th className="r">benchmark</th><th className="r">excess</th><th className="r">turnover</th></tr></thead><tbody>
         {rows.map((row) => <tr key={row.target_ts}><td className="mono">{tableTimestamp(row.target_ts)}</td><td className="num">{fmtPct(row.gross_return, 3)}</td><td className="num">{fmtPct(row.costed_return, 3)}</td><td className="num">{fmtPct(row.benchmark_return, 3)}</td><td className="num">{fmtPct(row.excess_return, 3)}</td><td className="num">{fmtPct(row.turnover, 2)}</td></tr>)}
       </tbody></table></details> : null}
@@ -260,30 +208,25 @@ function FoldBoundaries({ folds }: { folds: MlFoldDiagnosticProjection[] }) {
 
 function TrainingHistoryChart({ fold }: { fold: MlFoldDiagnosticProjection }) {
   const model = useMemo(() => buildTrainingHistory(fold), [fold])
-  const data = useMemo<uPlot.AlignedData>(() => [
-    model.iterations,
-    ...model.curves.map((curve) => curve.values),
-  ] as uPlot.AlignedData, [model])
-  const options = useMemo<Omit<uPlot.Options, 'width' | 'height'>>(() => ({
-    scales: { x: {}, objective: {} },
-    axes: [{ ...AXIS, label: 'BOOSTING ITERATION' }, { ...AXIS, scale: 'objective', label: 'OBJECTIVE VALUE' }],
-    series: [
-      {},
-      ...model.curves.map((curve, index) => ({
+  const curves = useMemo<MiniSeries[]>(
+    () =>
+      model.curves.map((curve, index) => ({
         label: curve.label,
-        scale: 'objective',
-        stroke: TRAINING_COLORS[index % TRAINING_COLORS.length],
-        width: 1.2,
-        points: { show: false },
+        colour: TRAINING_COLORS[index % TRAINING_COLORS.length],
+        points: curve.values
+          .map((value, i) => [model.iterations[i], value] as [number, number | null])
+          .filter((pair): pair is [number, number] => pair[1] !== null),
       })),
-    ],
-    legend: { show: true },
-    cursor: { points: { show: false } },
-  }), [model.curves])
+    [model],
+  )
   return (
     <div className="ml-training-fold">
       <div className="ml-training-head mono"><span>FOLD {fold.fold}</span><span>BEST ITER {fold.best_iteration}</span><span>{model.iterations.length} HISTORY POINTS</span></div>
-      {model.curves.length ? <UplotChart data={data} options={options} height={175} /> : <ArtifactUnavailable label="TRAINING HISTORY EMPTY" />}
+      {curves.length ? (
+        <MiniLine series={curves} xLabel="Boosting iteration" yLabel="Objective" height={175} />
+      ) : (
+        <ArtifactUnavailable label="TRAINING HISTORY EMPTY" />
+      )}
       <details className="native-data-table"><summary>fold {fold.fold} training-history table alternative</summary><table className="blotter compact"><thead><tr><th>series</th><th>artifact values by iteration</th></tr></thead><tbody>
         {model.curves.map((curve) => <tr key={curve.label}><td className="mono">{curve.label}</td><td className="mono ml-history-values">{curve.values.map((value) => value === null ? '—' : fmtNum(value, 6)).join(' · ')}</td></tr>)}
       </tbody></table></details>
@@ -368,7 +311,7 @@ export function MlDiagnosticsBody({
   )
 }
 
-export function MlDiagnostics(_props: IDockviewPanelProps) {
+export function MlDiagnostics(_props: PanelHandleProps) {
   const linked = useLinked()
   const [experiments, setExperiments] = useState<MlExperimentPage | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)

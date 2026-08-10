@@ -3,7 +3,6 @@
 // protocol picker), records nothing itself, and displays byte-identically what Codex was
 // given (packet history) and what it said (notes, fenced as never-evidence).
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
@@ -13,6 +12,7 @@ import type {
   ResearchProtocolEntry,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import {
   NOTE_FENCE_BADGE,
@@ -24,7 +24,7 @@ import {
   type PacketKind,
 } from './codexBenchModel'
 
-export function CodexBench(props: IDockviewPanelProps) {
+export function CodexBench(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const projectId = panelLink.linked.projectId
   const [protocols, setProtocols] = useState<ResearchProtocolEntry[] | null>(null)

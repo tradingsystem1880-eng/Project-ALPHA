@@ -3068,6 +3068,264 @@
         "title": "ExperimentStageTransitionRequest",
         "type": "object"
       },
+      "FigureCatalogue": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FigureCatalogueItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "renderer_version": {
+            "title": "Renderer Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind",
+          "renderer_version",
+          "items"
+        ],
+        "title": "FigureCatalogue",
+        "type": "object"
+      },
+      "FigureCatalogueItem": {
+        "additionalProperties": false,
+        "description": "One catalogue entry as it applies to a specific run.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "figure_id": {
+            "title": "Figure Id",
+            "type": "string"
+          },
+          "panel_count": {
+            "title": "Panel Count",
+            "type": "integer"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "figure_id",
+          "title",
+          "summary",
+          "section",
+          "panel_count",
+          "available",
+          "unavailable_reason"
+        ],
+        "title": "FigureCatalogueItem",
+        "type": "object"
+      },
+      "FigureMetadata": {
+        "additionalProperties": false,
+        "description": "A figure's text and structure, served without its bytes.\n\n``alt_text`` and the four teaching strings are the accessibility path for figures\nwhose SVG text is embedded as glyph outlines and therefore invisible to a screen\nreader; the page renders them as real HTML beside the image.",
+        "properties": {
+          "alt_text": {
+            "title": "Alt Text",
+            "type": "string"
+          },
+          "cache_key": {
+            "title": "Cache Key",
+            "type": "string"
+          },
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "caveat": {
+            "title": "Caveat",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "figure_id": {
+            "title": "Figure Id",
+            "type": "string"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "height_in": {
+            "title": "Height In",
+            "type": "number"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "panels": {
+            "items": {
+              "$ref": "#/components/schemas/FigurePanelMeta"
+            },
+            "title": "Panels",
+            "type": "array"
+          },
+          "plain_language_answer": {
+            "title": "Plain Language Answer",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "renderer_version": {
+            "title": "Renderer Version",
+            "type": "integer"
+          },
+          "source_artifacts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Artifacts",
+            "type": "array"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "truncation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truncation Note"
+          },
+          "uncertainty": {
+            "title": "Uncertainty",
+            "type": "string"
+          },
+          "width_in": {
+            "title": "Width In",
+            "type": "number"
+          },
+          "x_label": {
+            "title": "X Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "figure_id",
+          "title",
+          "subtitle",
+          "caption",
+          "alt_text",
+          "x_label",
+          "question",
+          "plain_language_answer",
+          "uncertainty",
+          "caveat",
+          "truncation_note",
+          "source_artifacts",
+          "panels",
+          "renderer_version",
+          "cache_key",
+          "format",
+          "width_in",
+          "height_in",
+          "image_url",
+          "etag"
+        ],
+        "title": "FigureMetadata",
+        "type": "object"
+      },
+      "FigurePanelMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "legend": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Legend",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "panel_id": {
+            "title": "Panel Id",
+            "type": "string"
+          },
+          "y_label": {
+            "title": "Y Label",
+            "type": "string"
+          },
+          "y_unit": {
+            "title": "Y Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "panel_id",
+          "y_label",
+          "y_unit",
+          "note",
+          "legend"
+        ],
+        "title": "FigurePanelMeta",
+        "type": "object"
+      },
       "ForecastHistoryBar": {
         "additionalProperties": false,
         "properties": {
@@ -13891,12 +14149,19 @@
         "type": "object"
       },
       "WorkspaceBody": {
-        "description": "A workspace to save: a display name, the linked context, and the Dockview layout.",
+        "description": "A workspace to save: a display name and the research context it was saved from.\n\n``dockview`` is retired. A workspace used to be a window arrangement, and the shell that\nproduced those arrangements is gone -- but an old client may still post one, so the field\nis accepted and stored verbatim rather than rejected.",
         "properties": {
           "dockview": {
-            "additionalProperties": true,
-            "title": "Dockview",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dockview"
           },
           "linked_context": {
             "$ref": "#/components/schemas/WorkspaceLinkedContext",
@@ -13912,8 +14177,7 @@
           }
         },
         "required": [
-          "name",
-          "dockview"
+          "name"
         ],
         "title": "WorkspaceBody",
         "type": "object"
@@ -13922,9 +14186,16 @@
         "additionalProperties": false,
         "properties": {
           "dockview": {
-            "additionalProperties": true,
-            "title": "Dockview",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dockview"
           },
           "linked_context": {
             "$ref": "#/components/schemas/WorkspaceLinkedContext"
@@ -13947,8 +14218,7 @@
         },
         "required": [
           "name",
-          "linked_context",
-          "dockview"
+          "linked_context"
         ],
         "title": "WorkspaceDocument",
         "type": "object"
@@ -18756,6 +19026,217 @@
         "summary": "Run Equity",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/figures": {
+      "get": {
+        "description": "Every figure applicable to this run, with a specific reason for any that cannot draw.",
+        "operationId": "list_figures_api_runs__run_id__figures_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigureCatalogue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Figures",
+        "tags": [
+          "figures"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/figures/{figure_id}": {
+      "get": {
+        "description": "A figure's text, legend and provenance -- everything except its bytes.\n\nThe page needs alt text and the teaching strings before the image arrives, and needs\nthem at all for a screen reader, since the SVG's text is embedded as glyph outlines.",
+        "operationId": "figure_metadata_api_runs__run_id__figures__figure_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "figure_id",
+            "required": true,
+            "schema": {
+              "title": "Figure Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image format.",
+            "in": "query",
+            "name": "fmt",
+            "required": false,
+            "schema": {
+              "default": "svg",
+              "description": "Image format.",
+              "enum": [
+                "svg",
+                "png"
+              ],
+              "title": "Fmt",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigureMetadata"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Figure Metadata",
+        "tags": [
+          "figures"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/figures/{figure_id}/image": {
+      "get": {
+        "description": "The rendered image.\n\nThe cache key is a content hash over the run's artifact digests plus renderer\nidentity, so it doubles as a strong ETag: if the bytes could differ, the key differs.\nA caller that pins ``?key=`` gets an immutable response; one that does not must\nrevalidate. A pinned key that no longer matches returns 409 with the current key, so a\nstale page refetches instead of silently receiving different content at one URL.",
+        "operationId": "figure_image_api_runs__run_id__figures__figure_id__image_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "figure_id",
+            "required": true,
+            "schema": {
+              "title": "Figure Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image format.",
+            "in": "query",
+            "name": "fmt",
+            "required": false,
+            "schema": {
+              "default": "svg",
+              "description": "Image format.",
+              "enum": [
+                "svg",
+                "png"
+              ],
+              "title": "Fmt",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Expected cache key.",
+            "in": "query",
+            "name": "key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Expected cache key.",
+              "title": "Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Figure Image",
+        "tags": [
+          "figures"
         ]
       }
     },

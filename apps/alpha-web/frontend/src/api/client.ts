@@ -52,6 +52,9 @@ import type {
   ResearchProposalRequest,
   ResearchProposalResponse,
   ResearchReport,
+  FigureCatalogue,
+  RunComparison,
+  FigureMetadata,
   RiskReport,
   RunDetail,
   RunList,
@@ -142,6 +145,14 @@ export const api = {
     if (end) params.set('end', end)
     return getImmutableJSON(`/api/runs/${id}/chart-bundle?${params.toString()}`)
   },
+  compareRuns: (runIds: string[]): Promise<RunComparison> =>
+    postJSON('/api/v3/runs/compare', { run_ids: runIds }),
+  figures: (id: string): Promise<FigureCatalogue> => getJSON(`/api/runs/${id}/figures`),
+  figureMetadata: (id: string, figureId: string, fmt: 'svg' | 'png' = 'svg'): Promise<FigureMetadata> =>
+    getJSON(`/api/runs/${id}/figures/${figureId}?fmt=${fmt}`),
+  // Content-addressed: the key makes the URL immutable, so the browser caches it for good.
+  figureImageUrl: (id: string, figureId: string, key: string, fmt: 'svg' | 'png' = 'svg'): string =>
+    `/api/runs/${id}/figures/${figureId}/image?fmt=${fmt}&key=${key}`,
   equity: (id: string): Promise<EquitySeries> => getImmutableJSON(`/api/runs/${id}/equity`),
   trades: (id: string): Promise<TradeRow[]> => getImmutableJSON(`/api/runs/${id}/trades`),
   forecast: (id: string): Promise<ForecastSeries> => getImmutableJSON(`/api/runs/${id}/forecast`),
@@ -187,10 +198,10 @@ export const api = {
   streamUrl: (id: string): string => `/api/jobs/${id}/stream`,
   workspaces: (): Promise<WorkspaceMeta[]> => getJSON('/api/workspaces'),
   getWorkspace: (slug: string): Promise<WorkspaceDoc> => getJSON(`/api/workspaces/${slug}`),
+  // The slug is derived server-side from the name, so there is nothing to pass here.
   async saveWorkspace(body: {
     name: string
     linked_context: unknown
-    dockview: unknown
   }): Promise<{ slug: string; name: string }> {
     const res = await fetch('/api/workspaces', {
       method: 'POST',

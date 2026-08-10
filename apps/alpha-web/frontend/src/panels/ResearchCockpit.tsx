@@ -1,4 +1,3 @@
-import type { IDockviewPanelProps } from 'dockview-react'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from '../api/client'
@@ -11,6 +10,7 @@ import type {
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { onNewIdea } from '../context/newIdea'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { findingChipClass } from './researchChipModel'
 import {
@@ -391,8 +391,9 @@ function CaseSummary({
   )
 }
 
-export function ResearchCockpit(props: IDockviewPanelProps) {
-  const initialProjectId = typeof props.params?.projectId === 'string' ? props.params.projectId : ''
+export function ResearchCockpit(props: PanelHandleProps) {
+  const params = (props.params ?? {}) as { projectId?: unknown }
+  const initialProjectId = typeof params.projectId === 'string' ? params.projectId : ''
   const panelLink = usePanelLinked(props)
   const ideaRef = useRef<HTMLTextAreaElement | null>(null)
   const [researchCase, setResearchCase] = useState<ResearchCase | null>(null)

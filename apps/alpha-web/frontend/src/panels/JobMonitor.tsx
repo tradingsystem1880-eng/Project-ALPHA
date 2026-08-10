@@ -1,7 +1,6 @@
 // Job Monitor — every job this server session has run, live-updating; expand a row to attach
 // its streaming console (consoles are global now, not trapped in the launching panel).
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
@@ -12,8 +11,9 @@ import { useActivityField } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
 import { jobProgressView } from './jobProgress'
+import type { PanelHandleProps } from '../context/panelHandle'
 
-export function JobMonitor(props: IDockviewPanelProps) {
+export function JobMonitor(_props: PanelHandleProps) {
   const jobsVersion = useActivityField('jobsVersion')
   const runningJobs = useActivityField('runningJobs')
   const [jobs, setJobs] = useState<JobSummary[] | null>(null)
@@ -99,7 +99,7 @@ export function JobMonitor(props: IDockviewPanelProps) {
                         className="btn primary"
                         onClick={(e) => {
                           e.stopPropagation()
-                          openRunDetail(props.containerApi, j.run_id!)
+                          openRunDetail(j.run_id!)
                         }}
                       >
                         run {shortId(j.run_id)}
@@ -148,7 +148,7 @@ export function JobMonitor(props: IDockviewPanelProps) {
                 {open === j.job_id ? (
                   <JobConsole
                     jobId={j.job_id}
-                    onRun={(rid) => openRunDetail(props.containerApi, rid)}
+                    onRun={(rid) => openRunDetail(rid)}
                     embedded
                   />
                 ) : null}

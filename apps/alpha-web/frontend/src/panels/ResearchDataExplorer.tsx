@@ -3,12 +3,12 @@
 // latest audit findings, plus the stored-symbol inventory. Registration and audits are
 // owner-CLI operations; this panel is a read plane.
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { ResearchDatasetRefRow } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
 import {
@@ -24,7 +24,7 @@ const BADGE_CHIP: Record<string, string> = {
   blocking: 'chip fail',
 }
 
-export function ResearchDataExplorer(props: IDockviewPanelProps) {
+export function ResearchDataExplorer(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const [datasets, setDatasets] = useState<ResearchDatasetRefRow[] | null>(null)
   const [symbols, setSymbols] = useState<string[] | null>(null)

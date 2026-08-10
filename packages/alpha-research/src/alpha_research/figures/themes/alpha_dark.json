@@ -1,0 +1,25 @@
+{
+  "accent": "#4f8dff",
+  "base_font_pt": 8.5,
+  "bg": "#090c12",
+  "categorical": [
+    "#4f8dff",
+    "#a14206",
+    "#ed4f8d",
+    "#584dc5"
+  ],
+  "down": "#ef5350",
+  "faint": "#495365",
+  "font_family": "DejaVu Sans",
+  "font_mono": "DejaVu Sans Mono",
+  "gold": "#d7a63b",
+  "grid": "#161d29",
+  "ink": "#e8ecf3",
+  "ink_dim": "#aab3c4",
+  "line": "#1d2431",
+  "muted": "#7d879b",
+  "panel": "#10151e",
+  "substrate": "#3a4354",
+  "theme_id": "alpha-dark",
+  "up": "#2ea04a"
+}

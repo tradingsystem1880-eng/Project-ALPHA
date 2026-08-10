@@ -46,7 +46,7 @@ track; it is not a legal conclusion.
 | tqdm | 4.68.2 | MPL-2.0 and MIT metadata | Kronos progress dependency | retain; preserve notices on distribution |
 | finnhub-python | 2.4.29 | Apache-2.0 metadata | credential-gated quote/news edge | retain |
 | quantstats-lumi | 1.1.5 | Apache-2.0 metadata | tear-sheet pandas edge | retain |
-| matplotlib | 3.11.0 | PSF-style license plus bundled asset notices | deterministic tear-sheet and research-chart rendering | retain; release must include relevant notices |
+| matplotlib | 3.11.0 | PSF-style license plus bundled asset notices | deterministic tear-sheet, research-chart, and Workstation figure rendering | retain; release must include relevant notices, **including the bundled DejaVu fonts whose glyph outlines are now embedded in emitted SVGs** (see below) |
 | typer | 0.26.7 | MIT | authoritative CLI | retain |
 | mcp | 1.28.0 | MIT metadata | stdio conversational surface | retain |
 | fastapi | 0.138.0 | MIT | Workstation JSON backend | retain |
@@ -75,6 +75,24 @@ canonical or paper-authoritative source. The public product material demonstrate
 bulk workflows, while the service license separately restricts bulk export/retention without express
 permission; permanent archives, post-subscription retention, redistribution, and commercial/public
 use therefore remain blocked on written permission.
+
+### Fonts embedded in emitted figures (2026-08-07)
+
+The Workstation figure engine renders with `svg.fonttype="path"`, which converts every glyph to
+an outline rather than referencing a font by name. That is a determinism requirement — a named
+font resolves differently on each machine — but it changes the licence surface: Matplotlib's
+bundled **DejaVu Sans** and **DejaVu Sans Mono** outlines are now present in the bytes of every
+SVG the platform emits, not merely in a build input. DejaVu is distributed under the Bitstream
+Vera / DejaVu licence, which permits embedding and redistribution of the glyph shapes and is
+not copyleft, so no new restriction attaches to run artifacts. Two obligations follow and are
+recorded here rather than discovered at release: the DejaVu and Bitstream Vera notices must ship
+with any distribution that includes rendered figures, and the licence forbids selling the fonts
+themselves in isolation — extracting the embedded outlines back into a font file is out of
+scope for this project and must not be done.
+
+Substituting Inter or JetBrains Mono into figures, so they match the SPA's typography, is
+deferred. Both are SIL OFL 1.1 with reserved font names; embedding outlines is permitted, but
+the OFL's naming and bundling clauses need their own row here before it happens.
 
 The initial Research Scientist slice adds no academic-search package or service client. The
 first-party `alpha-research` wheel uses the root's already-sanctioned Matplotlib/NumPy/SciPy stack and
