@@ -12968,6 +12968,17 @@
             "title": "Mtime",
             "type": "number"
           },
+          "research_gate_watermark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Research Gate Watermark"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -12978,6 +12989,7 @@
           "kind",
           "mtime",
           "manifest",
+          "research_gate_watermark",
           "has_equity",
           "has_trades",
           "has_tearsheet",
@@ -13058,6 +13070,17 @@
             ],
             "title": "Passed"
           },
+          "research_gate_watermark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Research Gate Watermark"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -13132,6 +13155,7 @@
           "snapshot_hash",
           "passed",
           "verdict",
+          "research_gate_watermark",
           "mtime"
         ],
         "title": "RunListItem",

@@ -15,7 +15,7 @@ from typing import Any
 import polars as pl
 
 from alpha_cli.artifact_contract import verify_manifest_artifacts
-from alpha_cli.run_store import RUN_DIRS, find_run_dir
+from alpha_cli.run_store import RUN_DIRS, find_run_dir, research_gate_watermark
 from alpha_core import DataError
 
 MAX_MANIFEST_BYTES = 8 * 1024 * 1024
@@ -394,6 +394,9 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "snapshot_hash": manifest.get("snapshot_hash"),
         "passed": manifest.get("passed"),
         "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
+        # spec §15 / ADR-0026: the permanent EXPLORATORY marker on runs launched under an
+        # owner research-gate override; None for every unmarked run.
+        "research_gate_watermark": research_gate_watermark(manifest),
         "mtime": mtime,
     }
     _RECORD_CACHE[mpath] = (mtime, record)
@@ -449,11 +452,13 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
     mpath = rdir / "manifest.json"
     kind = rdir.parent.name
+    manifest = _verified_manifest(rdir)
     return {
         "run_id": run_id,
         "kind": kind,
         "mtime": mpath.stat().st_mtime,
-        "manifest": _verified_manifest(rdir),
+        "manifest": manifest,
+        "research_gate_watermark": research_gate_watermark(manifest),
         "has_equity": (rdir / "equity_curve.parquet").exists(),
         "has_trades": (rdir / "trades.parquet").exists(),
         "has_tearsheet": (rdir / "tearsheet.html").exists(),

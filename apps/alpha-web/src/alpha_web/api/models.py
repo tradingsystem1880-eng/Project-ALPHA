@@ -22,6 +22,8 @@ class RunListItem(StrictModel):
     snapshot_hash: str | None
     passed: bool | None
     verdict: str | None
+    # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
+    research_gate_watermark: str | None
     mtime: float
 
 
@@ -35,6 +37,8 @@ class RunDetail(StrictModel):
     kind: str
     mtime: float
     manifest: dict[str, Any]
+    # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
+    research_gate_watermark: str | None
     has_equity: bool
     has_trades: bool
     has_tearsheet: bool
