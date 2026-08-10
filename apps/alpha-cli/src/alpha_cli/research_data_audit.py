@@ -20,6 +20,7 @@ from typing import Any, Final
 from alpha_cli import _artifacts
 from alpha_core import DataError
 from alpha_data.pit import PointInTimeReader
+from alpha_data.snapshot import verify_snapshot
 from alpha_data.store import ParquetStore
 from alpha_research import (
     ResearchChartData,
@@ -84,6 +85,10 @@ def _verified_root(data_dir: Path, ref: Mapping[str, object]) -> Path:
                 f"snapshot {snapshot_id!r} no longer matches its registered manifest hash; "
                 "re-register the dataset before auditing"
             )
+        # The manifest hash alone does not cover the payload files: re-hash every
+        # snapshot file so drifted or corrupted bytes fail closed as a typed error
+        # instead of leaking an untyped parquet parse failure downstream.
+        verify_snapshot(root)
         return root
     if kind == "store_slice":
         root = data_dir / "store"

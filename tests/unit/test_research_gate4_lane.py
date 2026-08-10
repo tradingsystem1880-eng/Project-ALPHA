@@ -117,6 +117,20 @@ def test_daily_loader_fails_closed_on_drifted_or_unqualified_origins(tmp_path: P
         load_registered_research_bars(tmp_path, ref={**ref, "dataset_kind": "quantpad_receipt"})
 
 
+def test_daily_loader_fails_closed_on_tampered_snapshot_payload_bytes(tmp_path: Path) -> None:
+    """Corrupted payload bytes behind an intact manifest are a typed integrity failure.
+
+    The registered manifest hash covers manifest.json only; every payload file must be
+    re-hashed at load time so drift surfaces as DataError, never a raw parquet crash.
+    """
+    ref = _registered_daily_ref(tmp_path, _daily_lows(blocks=3))
+    parquets = sorted((tmp_path / "snapshots" / "gate4").rglob("*.parquet"))
+    assert parquets
+    parquets[0].write_bytes(parquets[0].read_bytes() + b"tampered")
+    with pytest.raises(DataError, match="snapshot integrity failure"):
+        load_registered_research_bars(tmp_path, ref=ref)
+
+
 def test_daily_loader_rejects_disordered_registered_bars(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
