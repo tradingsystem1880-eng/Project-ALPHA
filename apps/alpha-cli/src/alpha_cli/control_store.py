@@ -6862,6 +6862,21 @@ class ControlStore:
         clean_costs = _json_object(costs, "costs")
         clean_seeds = _json_object(seeds, "seeds")
         clean_stage = _json_object(stage_config or {}, "stage config")
+        market_state_value = clean_stage.get("market_state")
+        if market_state_value is not None:
+            from alpha_research import MarketStateContractV1
+
+            if not isinstance(market_state_value, Mapping):
+                raise DataError("invalid experiment market-state contract: expected an object")
+            try:
+                market_state = MarketStateContractV1.from_dict(market_state_value)
+            except DataError as exc:
+                raise DataError(f"invalid experiment market-state contract: {exc}") from exc
+            if list(market_state.universe) != clean_universe:
+                raise DataError(
+                    "invalid experiment market-state universe: must equal the experiment universe"
+                )
+            clean_stage["market_state"] = market_state.to_dict()
         clean_contract_id = (
             None
             if research_contract_id is None

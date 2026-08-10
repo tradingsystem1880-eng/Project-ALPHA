@@ -29,6 +29,7 @@ from alpha_cli.control_store import (
 )
 from alpha_cli.project_cmds import _agent_brief
 from alpha_core import DataError
+from alpha_research import MarketStateContractV1
 from tests.fixtures.control_store_fixtures import (
     mark_project_as_migrated_legacy,
     publish_decision_grade_run,
@@ -1740,6 +1741,77 @@ def test_control_store_rejects_symlink_root_and_nonfinite_json(tmp_path: Path) -
             split_policy={},
             costs={},
             seeds={"master": 7},
+        )
+
+
+def test_experiment_freezes_and_validates_optional_market_state_contract(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    _project(store)
+    version = _version(store)
+    contract = MarketStateContractV1(
+        universe=("AAPL", "SPY"),
+        benchmark="SPY",
+        calendar="equity",
+        volatility_window=21,
+        trend_window=63,
+        correlation_window=63,
+        annualization_sessions=252,
+        volatility_thresholds=(0.10, 0.25),
+        trend_threshold=0.02,
+        breadth_thresholds=(0.35, 0.65),
+        correlation_thresholds=(0.25, 0.75),
+        minimum_state_samples=20,
+    )
+    experiment = store.create_experiment_spec(
+        PROJECT_ID,
+        strategy_version_id=str(version["version_id"]),
+        snapshot_id="snap-market-state",
+        universe=["SPY", "AAPL"],
+        split_policy={"train": 504, "test": 63, "embargo": 5},
+        costs={"fee_bps": 1.0},
+        seeds={"master": 7},
+        stage_config={"market_state": contract.to_dict()},
+    )
+    assert experiment["stage_config"] == {"market_state": contract.to_dict()}
+
+    mismatched = MarketStateContractV1(
+        universe=("QQQ", "SPY"),
+        benchmark="SPY",
+        calendar="equity",
+        volatility_window=21,
+        trend_window=63,
+        correlation_window=63,
+        annualization_sessions=252,
+        volatility_thresholds=(0.10, 0.25),
+        trend_threshold=0.02,
+        breadth_thresholds=(0.35, 0.65),
+        correlation_thresholds=(0.25, 0.75),
+        minimum_state_samples=20,
+    ).to_dict()
+    with pytest.raises(DataError, match="market-state universe"):
+        store.create_experiment_spec(
+            PROJECT_ID,
+            strategy_version_id=str(version["version_id"]),
+            snapshot_id="snap-market-state-mismatch",
+            universe=["SPY", "AAPL"],
+            split_policy={},
+            costs={},
+            seeds={"master": 7},
+            stage_config={"market_state": mismatched},
+        )
+
+    malformed = contract.to_dict()
+    malformed["trend_window"] = 0
+    with pytest.raises(DataError, match="trend_window"):
+        store.create_experiment_spec(
+            PROJECT_ID,
+            strategy_version_id=str(version["version_id"]),
+            snapshot_id="snap-market-state-malformed",
+            universe=["SPY", "AAPL"],
+            split_policy={},
+            costs={},
+            seeds={"master": 7},
+            stage_config={"market_state": malformed},
         )
 
 
