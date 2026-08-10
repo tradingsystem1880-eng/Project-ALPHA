@@ -36,6 +36,9 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- Kronos validation reliability is now scored as a genuine rolling origin: every validation point
+  selects its preregistered blend and conformal radius from prior validation origins only. The final
+  fit remains frozen before OOS evaluation, and a future-poison regression pins the boundary.
 - The frontend renders backend research projections directly; unused TypeScript scorecard/checklist
   derivations, parity fixtures, obsolete R5/R6 admission flags, and their stale branches were
   removed. Repeated D0/D1/D2 checkpoint mechanics now share narrow helpers without rewriting the

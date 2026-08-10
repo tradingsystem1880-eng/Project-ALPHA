@@ -368,6 +368,32 @@ def _blend(origin: ForecastCalibrationOriginV1, model_weight: float) -> np.ndarr
     return model_weight * model + (1.0 - model_weight) * baseline
 
 
+def _select_model_weight(
+    origins: Sequence[ForecastCalibrationOriginV1], weights: Sequence[float]
+) -> float:
+    losses = {
+        weight: float(
+            np.mean(
+                [
+                    crps_sample(_blend(origin, weight), origin.observed_end_return)
+                    for origin in origins
+                ]
+            )
+        )
+        for weight in weights
+    }
+    return min(weights, key=lambda weight: (losses[weight], -weight))
+
+
+def _absolute_residuals(
+    origins: Sequence[ForecastCalibrationOriginV1], model_weight: float
+) -> tuple[float, ...]:
+    return tuple(
+        abs(origin.observed_end_return - float(np.median(_blend(origin, model_weight))))
+        for origin in origins
+    )
+
+
 def _conformal_radius(residuals: Sequence[float], coverage_level: float) -> float:
     values = np.asarray(residuals, dtype=np.float64)
     corrected = min(1.0, math.ceil((values.size + 1) * coverage_level) / values.size)
@@ -424,29 +450,13 @@ def fit_rolling_conformal_blend(
         )
     if len({origin.origin_id for origin in origins}) != len(origins):
         raise DataError("calibration validation origin ids must be unique")
-    losses = {
-        weight: float(
-            np.mean(
-                [
-                    crps_sample(_blend(origin, weight), origin.observed_end_return)
-                    for origin in origins
-                ]
-            )
-        )
-        for weight in contract.blend_weights
-    }
-    selected_weight = min(contract.blend_weights, key=lambda weight: (losses[weight], -weight))
-    blended = tuple(_blend(origin, selected_weight) for origin in origins)
-    residuals = tuple(
-        abs(origin.observed_end_return - float(np.median(samples)))
-        for origin, samples in zip(origins, blended, strict=True)
-    )
     scored: list[_ScoredOrigin] = []
     for index in range(contract.residual_window, len(origins)):
-        radius = _conformal_radius(
-            residuals[index - contract.residual_window : index], contract.coverage_level
-        )
-        raw = blended[index]
+        prior_origins = origins[:index]
+        rolling_weight = _select_model_weight(prior_origins, contract.blend_weights)
+        residuals = _absolute_residuals(prior_origins, rolling_weight)
+        radius = _conformal_radius(residuals[-contract.residual_window :], contract.coverage_level)
+        raw = _blend(origins[index], rolling_weight)
         calibrated = _calibrate_samples(
             raw, coverage_level=contract.coverage_level, conformal_radius=radius
         )
@@ -489,6 +499,8 @@ def fit_rolling_conformal_blend(
                 calibrated_coverage=state_metrics.calibrated_coverage,
             )
         )
+    selected_weight = _select_model_weight(origins, contract.blend_weights)
+    residuals = _absolute_residuals(origins, selected_weight)
     final_radius = _conformal_radius(
         residuals[-contract.residual_window :], contract.coverage_level
     )

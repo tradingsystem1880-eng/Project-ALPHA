@@ -51,3 +51,28 @@ def test_oos_and_holdout_poison_cannot_change_frozen_calibration() -> None:
     fit_after = fit_rolling_conformal_blend(_contract(), validation)
     assert fit_after == fit_before
     assert fit_after.fit_sha256 == fit_before.fit_sha256
+
+
+@pytest.mark.bias_guard
+def test_later_validation_origins_cannot_rewrite_earlier_rolling_metrics() -> None:
+    early = tuple(_origin(index) for index in range(12))
+    early_fit = fit_rolling_conformal_blend(_contract(), early)
+    poisoned_later = tuple(
+        ForecastCalibrationOriginV1(
+            origin_id=f"origin-{index:02d}",
+            model_end_returns=(-50.0, -40.0, -30.0),
+            random_walk_end_returns=(-0.01, 0.0, 0.01),
+            observed_end_return=0.0,
+            state_key="later-poison",
+        )
+        for index in range(12, 20)
+    )
+    extended_fit = fit_rolling_conformal_blend(_contract(), (*early, *poisoned_later))
+
+    early_diagnostic = next(
+        row for row in early_fit.state_diagnostics if row.state_key == "validation"
+    )
+    extended_early_diagnostic = next(
+        row for row in extended_fit.state_diagnostics if row.state_key == "validation"
+    )
+    assert extended_early_diagnostic == early_diagnostic

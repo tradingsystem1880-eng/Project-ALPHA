@@ -20,22 +20,19 @@ Read these files completely before taking research action:
 
 ## Current capability boundary
 
-Gate 0 and the deterministic Gate 1 foundation are implemented: additive control records,
-deterministic intake preview and approval-ready draft materialization, dossier projection, a bounded
-local CLI D0 pilot, fixed-duration research-only types, evidence topology, causal double-bottom
-detection, prospective-power/confirmation primitives, point-in-time exact matching and
-cluster-bootstrap inference, one frozen Holm secondary family, deterministic lineage-bound chart
-rendering, artifact payloads, six bounded MCP tools, and six matching bounded REST operations in a
-registered Cockpit. Closed cases can project one content-addressed `ResearchGatePacketV1`; it
-reports `NOT_TESTED` when typed D1/D2 evidence is absent and never promotes D0. Acquisition security
-validators exist without network I/O.
+The R1-R6 research-first program and ADR-0027 authority hardening are implemented. The additive
+control plane, isolated literature worker, registered research datasets, preregistered D1 runner,
+one-shot D2 confirmation, Python-authoritative readiness projections, promotion dossier, connected
+Workstation read plane, and permanently watermarked exploratory override are available through
+their governed surfaces. Closed cases project one content-addressed `ResearchGatePacketV1`; absent
+typed evidence remains `NOT_TESTED`, and low-cluster D2 evidence is mechanically `INCONCLUSIVE`.
 
-The shipped D0 success path ends at owner-owned `research_decision`, not `deep_research`, because D1
-is unavailable. Only the exact `alpha_synthetic_fixture`/`SYNTHETIC_SPY`/UTC 60-minute fixture is
-approval-ready; alternate charts, events, and endpoints are explicit unavailable drafts.
-Completion authority is the canonical hashed `ResearchD0AcceptanceV1` raw-measurement artifact.
-The control plane mechanically reruns the frozen detector, null, four-observation boundary-embargo,
-and prospective-power criteria; never infer completion from a manifest or prose `passed` flag.
+The exact `alpha_synthetic_fixture`/`SYNTHETIC_SPY`/UTC 60-minute fixture remains the only D0
+acceptance operator. Completion authority is the canonical hashed `ResearchD0AcceptanceV1`
+raw-measurement artifact. The control plane mechanically reruns the frozen detector, null,
+four-observation boundary embargo, and prospective-power criteria; never infer completion from a
+manifest or prose `passed` flag. A clearing governed case may proceed into registered D1 and one-shot
+D2; a D0-only early decision still cannot support or advance a claim.
 
 - You may structure the conversation, inspect the repository, search permitted sources, inspect
   bounded provider coverage, and draft a contract or implementation plan within the user's request.
@@ -46,21 +43,21 @@ and prospective-power criteria; never infer completion from a manifest or prose 
 - `alpha research capture` persists the preview. It is not approval-ready. After material questions
   and a frozen source pack exist, `alpha research draft` binds the protocol, budget, and code/
   environment/evaluator/data hashes; only that complete contract may enter owner review.
-- MCP may capture, get, propose, launch allowed D0 work, read status, and read a report. It cannot
-  approve/decide, consume D2, reveal D3, start paper, or construct an order.
-- The Workstation exposes the same six safe operations. It has no list-all/source-pack workflow and
-  no approval, decision, D2, deep-research, Python, paper, or order route.
-- There is no source network/download worker, qualified real-market dataset, D1/D2 analytical
-runner, autonomous research loop, or strategy authority. If an empirical operation needs one,
-return the exact missing capability and next valid implementation action. Never fabricate results
-or turn D0 output into a market claim.
-- Production confirmation approval, D1/D2 attempt admission, and D2 consumption are mechanically
-  hard-disabled. Future state-machine tests are not an available empirical capability.
+- MCP and REST expose bounded research operations but no owner approval/decision, D2 authorization,
+  D3 reveal, paper, or order authority. The connected Workstation remains a read/launch surface over
+  those bounded projections, never a second analytical authority.
+- The isolated literature worker, registered qualified daily research-data lane, and D1/D2 runners
+  exist. Use only immutable registered inputs and their tested command surfaces. The licensed
+  intraday lane, verified owner-presence authentication, real-case pilot, security review, and
+  distribution-license review remain open.
+- Confirmation approval and D2 authorization/consumption exist only behind trusted-local owner CLI
+  boundaries and an exact approved child contract. Agents must not invoke those owner operations or
+  infer permission from their existence.
 - Gate 1 D0 executes only the exact registered `double_bottom` +
   `second_trough_confirmable` contract. Other ideas and neckline variants may be drafted, but a
   pilot must fail before execution and leave zero attempts. D0 completion requires one
-  hash-verified passing immutable run, mechanically recomputed typed acceptance, idle execution,
-  and no typed D1/D2 evidence.
+  hash-verified passing immutable run and mechanically recomputed typed acceptance. D0 itself never
+  carries typed D1/D2 evidence.
 - Owner-only local CLI actions are a trusted-operator convention, not verified human-presence
   authentication. Agents must not invoke them; do not describe an actor string as a signature or
   cryptographic identity proof.

@@ -17,13 +17,14 @@ Read completely:
 3. `docs/adr/0019-governed-research-cases-before-strategy-development.md`
 4. Relevant data, holdout, evidence, and intraday ADRs
 
-Gate 0 and the bounded Gate 1 CLI/MCP/REST/Cockpit walking skeleton exist, but no source network
-worker, qualified real-market dataset, D1/D2 analytical runner, or autonomous analytical runtime
-exists. The Cockpit has no approval/decision/D2/deep/trading authority. Review only actual records
-and verified artifacts. Missing evidence is a finding, not permission to infer it.
-Production confirmation approval, D1/D2 attempt admission, and D2 consumption are mechanically
-hard-disabled. The local CLI's owner label is trusted-operator provenance, not cryptographic proof
-of human presence; treat any claim of verified owner identity as unsupported.
+The R1-R6 research-first program provides an isolated literature worker, registered daily research
+datasets, a preregistered D1 runner, one-shot D2 confirmation, and connected read projections. These
+capabilities do not prove any thesis. Review only actual records and verified artifacts; missing
+evidence is a finding, not permission to infer it. The Workstation and MCP still have no owner
+approval/decision, D2-authorization, D3, paper, or order authority.
+Production confirmation exists only behind the trusted-local owner CLI and an exact approved child
+contract. The CLI's owner label is trusted-operator provenance, not cryptographic proof of human
+presence; treat any claim of verified owner identity as unsupported.
 Treat a terminal ResearchGatePacket as a deterministic summary of recorded inputs, not an
 independent replication. Verify its selected evidence, immutable hashes, and `NOT_TESTED` fallbacks.
 For D0, require the exact hashed `ResearchD0AcceptanceV1` raw measurements and mechanical

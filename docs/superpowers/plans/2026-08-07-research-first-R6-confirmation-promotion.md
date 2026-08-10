@@ -77,4 +77,6 @@ Idea → evidence → gate → strategy runs end-to-end under governance: confir
 mechanical, the gate is multidimensional and honest, promotion is lossless, and premature
 backtesting is visible wherever it is chosen.
 
-**Next (optional):** R7 — bounded research ML (`research:ml`, 2026-08-06 spec Gate 5).
+**Subsequent separate program:** ADR-0028 now implements bounded research-only market-state,
+Kronos-calibration, and Qlib-ensemble candidates. Empirical hurdle evidence and release reviews
+remain open.

@@ -19,7 +19,9 @@ meta-model would add researcher degrees of freedom without evidence that the ext
   experiment contract. Equity and crypto calendars remain separate.
 - Add `kronos_calibrated` as an additive candidate. Rolling-origin conformal residual calibration
   and a preregistered convex blend against random walk fit on training/validation folds only and are
-  frozen before OOS or holdout. State diagnostics use an explicit pooled fallback when sparse.
+  frozen before OOS or holdout. Each validation-origin diagnostic is scored using only its prior
+  validation prefix; the contract's minimum validation-origin count is the exact frozen prefix
+  length used by the CLI composer. State diagnostics use an explicit pooled fallback when sparse.
 - Add Qlib `rank_ensemble_v1` without changing v1 LightGBM exchanges. It combines deterministic
   LightGBM and pinned ridge `LinearModel` members by equal-weight percentile-rank average; member
   predictions and disagreement live in a separate versioned diagnostic artifact.
@@ -42,4 +44,3 @@ and selection are fold-local; CPU reruns are byte-identical; Kronos reports raw 
 proper scores and coverage; Qlib reports member/ensemble IC, rank-IC, disagreement, turnover, and
 net-cost replay. Owner pilot, security review, and distribution-license review remain separate
 release gates.
-
