@@ -471,6 +471,45 @@ def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
     assert decision["packet_id"] is None and decision["packet_hash"] is None
 
 
+def test_evidence_hub_projects_completed_d1_runs_into_server_figures() -> None:
+    from alpha_cli.research_gate_packet import research_evidence_hub_projection
+    from tests.unit.test_research_control_store import _payload
+
+    summary: dict[str, object] = {
+        "project_id": "project-1",
+        "phase": "deep_research",
+        "execution_state": "idle",
+        "next_action": "Review D1 evidence.",
+        "responsibility": "owner",
+        "d2_state": "sealed",
+        "active_contract": {"payload": _payload("sp_" + "0" * 64)},
+        "research_decision": None,
+    }
+    inputs = _inputs()
+    inputs["attempts"] = [
+        {
+            "attempt_id": "ra_" + "1" * 64,
+            "phase": "deep_research",
+            "kind": "d1-deep-research",
+            "status": "completed",
+            "config_fingerprint": "a" * 64,
+            "run_id": "0123456789abcdef",
+            "recorded_at": "2026-08-11T00:00:00Z",
+        }
+    ]
+    hub = research_evidence_hub_projection(_FakeStore(summary, inputs), "project-1")
+    sections = cast(dict[str, object], hub["sections"])
+    exploration = cast(dict[str, object], sections["exploration"])
+    assert exploration["charts"] == [
+        {
+            "run_id": "0123456789abcdef",
+            "figure_id": "research_discovery_trace",
+            "evidence_phase": "exploratory",
+            "watermark": "EXPLORATORY",
+        }
+    ]
+
+
 def test_evidence_hub_partitions_closed_case_findings_for_and_against(
     tmp_path: Path,
 ) -> None:

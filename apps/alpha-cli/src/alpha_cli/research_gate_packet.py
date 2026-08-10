@@ -1250,6 +1250,19 @@ def research_evidence_hub_projection(
     decision = _mapping(summary.get("research_decision"))
     mechanism = thesis.get("mechanism")
     interpretation = thesis.get("interpretation")
+    attempts = _bounded_attempts(inputs.get("attempts"))
+    exploration_charts = [
+        {
+            "run_id": attempt["run_id"],
+            "figure_id": "research_discovery_trace",
+            "evidence_phase": "exploratory",
+            "watermark": "EXPLORATORY",
+        }
+        for attempt in attempts
+        if attempt["kind"] == "d1-deep-research"
+        and attempt["status"] == "completed"
+        and isinstance(attempt["run_id"], str)
+    ]
 
     sections: dict[str, object] = {
         "overview": {
@@ -1310,7 +1323,7 @@ def research_evidence_hub_projection(
             "confounders": confounder_rows,
         },
         "exploration": {
-            "charts": [],
+            "charts": exploration_charts,
             "watermark": "EXPLORATORY",
             "status": (
                 "TESTED"
@@ -1318,7 +1331,7 @@ def research_evidence_hub_projection(
                 else "NOT_TESTED"
             ),
         },
-        "experiments": {"attempts": _bounded_attempts(inputs.get("attempts"))},
+        "experiments": {"attempts": attempts},
         "evidence_for": {
             "findings": [
                 finding for finding in findings if finding["status"] in _SUPPORTING_FINDING_STATUSES

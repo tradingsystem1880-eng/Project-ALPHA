@@ -19,7 +19,8 @@ from typing import Final
 #:     price-unit ones on price -- how a moving average is meant to be read -- with the
 #:     categorical ramp when several share a panel, and several axis labels shortened so
 #:     they fit rather than elide.
-RENDERER_VERSION: Final = 2
+#: 3 — adds the server-rendered D1 discovery trace and its immutable evidence table.
+RENDERER_VERSION: Final = 3
 
 #: Bump only when the cache key composition, on-disk path, or file format changes.
 #:

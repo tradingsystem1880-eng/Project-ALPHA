@@ -229,6 +229,44 @@ class TestForecast:
         assert "Realised coverage differs" in spec.plain_language_answer  # type: ignore[attr-defined]
 
 
+class TestResearch:
+    def test_discovery_trace_renders_recorded_series_and_evidence_table(
+        self, tmp_path: Path
+    ) -> None:
+        rdir = _run_dir(tmp_path, "research_deep")
+        points = [
+            {"ts": stamp.isoformat().replace("+00:00", "Z"), "value": 100.0 + index}
+            for index, stamp in enumerate(_stamps(12))
+        ]
+        (rdir / "chart-data.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "series": [
+                        {
+                            "series_id": "discovery-close",
+                            "label": "Discovery-share close",
+                            "unit": "price",
+                            "points": points,
+                        }
+                    ],
+                    "sample_size": 12,
+                    "effective_sample_size": 5.0,
+                    "evidence_phase": "exploratory",
+                    "watermark": "EXPLORATORY — NOT CONFIRMATORY",
+                    "dataset_sha256": "a" * 64,
+                    "protocol_sha256": "b" * 64,
+                    "plain_language_answer": "Two preregistered events were observed.",
+                    "y_label": "Close",
+                }
+            ),
+            encoding="utf-8",
+        )
+        spec = _build(rdir, "research_discovery_trace", tmp_path)
+        assert spec.panel_count == 2  # type: ignore[attr-defined]
+        assert spec.plain_language_answer == "Two preregistered events were observed."  # type: ignore[attr-defined]
+
+
 def test_a_wiped_out_passive_index_fails_loud_rather_than_dividing_by_zero(
     tmp_path: Path,
 ) -> None:
@@ -280,5 +318,6 @@ def test_every_synthetic_builder_is_one_the_catalogue_declares() -> None:
         "forecast_fan",
         "forecast_skill",
         "forecast_calibration",
+        "research_discovery_trace",
     }
     assert exercised <= declared

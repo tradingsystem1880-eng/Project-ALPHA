@@ -12,6 +12,7 @@ import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
 import { headlineBoard } from './researchHeadlineModel'
 import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
+import { FigureReport } from './FigureReport'
 
 type SectionId = keyof ResearchEvidenceHubSections
 
@@ -172,14 +173,26 @@ function SectionBody({
         </>
       )
     }
-    case 'exploration':
+    case 'exploration': {
+      const runs = sections.exploration.charts
+        .map((chart) => chart['run_id'])
+        .filter((runId): runId is string => typeof runId === 'string' && runId.length > 0)
+      if (!runs.length) {
+        return (
+          <Placeholder big={sections.exploration.status}>
+            Exploratory D1 chart and table artifacts appear here after the experiment engine
+            records a completed discovery-share run.
+          </Placeholder>
+        )
+      }
       return (
-        <Placeholder big={sections.exploration.status}>
-          Exploratory D1 artifacts render here with the {sections.exploration.watermark}{' '}
-          watermark once the experiment engine runs. Charts so far:{' '}
-          {sections.exploration.charts.length}.
-        </Placeholder>
+        <div className="research-figure-runs">
+          {[...new Set(runs)].map((runId) => (
+            <FigureReport key={runId} runId={runId} />
+          ))}
+        </div>
       )
+    }
     case 'experiments': {
       const attempts = sections.experiments.attempts
       if (attempts.length === 0) {

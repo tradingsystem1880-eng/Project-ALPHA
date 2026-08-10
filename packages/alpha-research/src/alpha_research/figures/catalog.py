@@ -448,6 +448,28 @@ FIGURES: Final[tuple[FigureDefinition, ...]] = (
         panel_count=1,
         order=220,
     ),
+    FigureDefinition(
+        figure_id="research_discovery_trace",
+        title="Discovery trace and evidence table",
+        summary=(
+            "Discovery-share prices with the recorded sample, effective sample, and immutable "
+            "evidence identities beneath them."
+        ),
+        question="What data did exploratory D1 inspect, and how much independent evidence exists?",
+        uncertainty=(
+            "The line is descriptive context; inferential uncertainty lives in the mechanically "
+            "verified evidence artifact and its cluster-bootstrap intervals."
+        ),
+        caveat=(
+            "EXPLORATORY D1 only. This figure cannot authorize confirmation, strategy promotion, "
+            "paper trading, or orders."
+        ),
+        section="research",
+        run_commands=("research_deep",),
+        required_artifacts=("chart-data.json",),
+        panel_count=2,
+        order=230,
+    ),
 )
 
 
