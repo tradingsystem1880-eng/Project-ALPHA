@@ -7058,6 +7058,8 @@ export interface components {
             };
             /** Mtime */
             mtime: number;
+            /** Research Gate Watermark */
+            research_gate_watermark: string | null;
             /** Run Id */
             run_id: string;
         };
@@ -7080,6 +7082,8 @@ export interface components {
             mtime: number;
             /** Passed */
             passed: boolean | null;
+            /** Research Gate Watermark */
+            research_gate_watermark: string | null;
             /** Run Id */
             run_id: string;
             /** Snapshot Hash */

@@ -468,6 +468,21 @@ a:hover {
   text-transform: lowercase;
   color: var(--muted);
 }
+/* spec §15 / ADR-0026: research-gate override watermark — permanent, never decorative */
+.chip.warn {
+  color: var(--gold);
+  border-color: rgba(215, 166, 59, 0.45);
+  background: var(--gold-soft);
+}
+.rg-watermark {
+  margin-left: 7px;
+  white-space: nowrap;
+}
+.rg-watermark-banner {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
 
 /* ==========================================================================
    Buttons / inputs

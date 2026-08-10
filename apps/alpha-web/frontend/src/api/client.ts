@@ -1,6 +1,7 @@
 // Thin typed client over the FastAPI JSON layer. Same-origin (loopback), so no base URL.
 
 import type {
+  ActiveResearchGateOverride,
   AgentBrief,
   Candles,
   ChartBundle,
@@ -263,6 +264,8 @@ export const api = {
     if (query.symbol) params.set('symbol', query.symbol)
     return getJSON(`/api/research/datasets?${params.toString()}`)
   },
+  researchGateOverrides: (): Promise<ActiveResearchGateOverride[]> =>
+    getJSON('/api/research-gate-overrides'),
   projects: (limit = 50, offset = 0): Promise<ProjectPage> =>
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>

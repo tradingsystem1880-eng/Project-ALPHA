@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
-import type { ProviderDefinition, SystemStatus } from '../api/types'
+import type { ActiveResearchGateOverride, ProviderDefinition, SystemStatus } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { missingCredentialNames, providerReadinessLabel } from './controlPlane'
 
@@ -79,14 +79,16 @@ function ProviderCard({ provider }: { provider: ProviderDefinition }) {
 export function ProviderSystem() {
   const [providers, setProviders] = useState<ProviderDefinition[] | null>(null)
   const [system, setSystem] = useState<SystemStatus | null>(null)
+  const [overrides, setOverrides] = useState<ActiveResearchGateOverride[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
-    void Promise.all([api.providers(), api.system()])
-      .then(([providerCatalog, status]) => {
+    void Promise.all([api.providers(), api.system(), api.researchGateOverrides()])
+      .then(([providerCatalog, status, activeOverrides]) => {
         setProviders(providerCatalog)
         setSystem(status)
+        setOverrides(activeOverrides)
       })
       .catch((reason: unknown) => setError(String(reason)))
   }, [])
@@ -167,6 +169,45 @@ export function ProviderSystem() {
                   <span className="muted">explicit opt-in required</span>
                 </div>
               </div>
+            </section>
+            <section>
+              <div className="rd-head">Active research-gate overrides</div>
+              {overrides && overrides.length ? (
+                <>
+                  <div className="leak rg-watermark-banner">
+                    ▲ Runs launched under these projects carry the permanent marker
+                    {' '}EXPLORATORY / RESEARCH GATE NOT COMPLETED (spec §15, ADR-0026).
+                  </div>
+                  <table className="blotter compact" aria-label="Active research-gate overrides">
+                    <thead>
+                      <tr>
+                        <th>project</th>
+                        <th>actor</th>
+                        <th>reason</th>
+                        <th>recorded</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overrides.map((override) => (
+                        <tr key={`${override.project_id}-${override.sequence}`}>
+                          <td>
+                            {override.project_name}{' '}
+                            <span className="mono muted">{override.project_id}</span>
+                          </td>
+                          <td className="mono">{override.actor}</td>
+                          <td>{override.reason}</td>
+                          <td className="mono">{override.recorded_at}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <div className="muted">
+                  none — every research-required project reaches strategy work only through its
+                  completed research gate
+                </div>
+              )}
             </section>
             <section>
               <div className="rd-head">Provider registry</div>

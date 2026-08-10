@@ -20,6 +20,7 @@ import { usePanelLinked } from '../context/usePanelLinked'
 import type { FoldRow } from '../explain/types'
 import { AXIS, CHART } from '../util/chartTheme'
 import { fmtPct, shortId } from '../util/format'
+import { researchGateWatermark } from './researchGateModel'
 import {
   buildCalendarRows,
   matchesRunScope,
@@ -277,6 +278,8 @@ export function NativeTearSheetBody({
   const manifest = detail.manifest as Dict
   const metadata = metadataFor(manifest)
   const metrics = metricsFor(manifest)
+  // spec §15 / ADR-0026: the permanent EXPLORATORY marker on override-launched runs
+  const gateWatermark = researchGateWatermark(detail)
   const folds = Array.isArray(manifest.folds) ? (manifest.folds as FoldRow[]) : []
   const provenance = [
     ['symbol', metadata.symbol ?? manifest.symbol ?? manifest.symbols],
@@ -292,6 +295,7 @@ export function NativeTearSheetBody({
   if (native?.available === false && !metrics && !equity && !detail.has_trades) {
     return (
       <div className="native-tear">
+        {gateWatermark ? <div className="leak rg-watermark-banner">▲ {gateWatermark}</div> : null}
         <div className="tear-provenance">
           {provenance.map(([label, value]) => <div key={label}><span className="eyebrow">{label}</span><span className="mono">{value}</span></div>)}
         </div>
@@ -302,6 +306,7 @@ export function NativeTearSheetBody({
 
   return (
     <div className="native-tear">
+      {gateWatermark ? <div className="leak rg-watermark-banner">▲ {gateWatermark}</div> : null}
       <div className="tear-provenance">
         {provenance.map(([label, value]) => (
           <div key={label}>

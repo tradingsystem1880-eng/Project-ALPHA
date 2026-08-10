@@ -27,6 +27,7 @@ import { Placeholder } from '../../components/Placeholder'
 import { usePanelLinked } from '../../context/usePanelLinked'
 import { openStrategyLab } from '../actions'
 import { NativeTearSheetBody } from '../NativeTearSheet'
+import { researchGateWatermark } from '../researchGateModel'
 import { matchesRunScope, runScopeFromParams, runScopeLabel } from '../v3Models'
 import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
@@ -151,6 +152,8 @@ export function RunDetail(props: IDockviewPanelProps) {
   }
 
   const m = detail.manifest
+  // spec §15 / ADR-0026: the permanent EXPLORATORY marker on override-launched runs
+  const gateWatermark = researchGateWatermark(detail)
   const command = asStr(m.command)
   const isValidate = detail.kind === 'runs' && m.verdict !== undefined
   const kindLabel = command ?? (detail.kind === 'runs' ? (isValidate ? 'validate' : 'backtest') : detail.kind)
@@ -259,6 +262,11 @@ export function RunDetail(props: IDockviewPanelProps) {
         </button>
       </div>
       <div className="panel-body panel-pad rd">
+        {gateWatermark ? (
+          <div className="leak rg-watermark-banner">
+            ▲ {gateWatermark} — launched under an owner research-gate override
+          </div>
+        ) : null}
         {leak ? <div className="leak">⚠ {leak}</div> : null}
         {body}
       </div>

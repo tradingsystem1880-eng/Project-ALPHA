@@ -844,11 +844,64 @@ const ML_DIAGNOSTIC_TEARSHEET = {
   timeline_has_more: false,
 }
 
+// spec §15 / ADR-0026 (R6g): a run launched under an owner research-gate override permanently
+// carries this marker; the SPA relays it on the run browser, run story, and tear sheet, and the
+// Operations desk lists every active override.
+const RESEARCH_GATE_WATERMARK = 'EXPLORATORY / RESEARCH GATE NOT COMPLETED'
+const WATERMARKED_RUN_ID = 'fade0000000000ab'
+
+const WATERMARKED_RUN_ITEM: components['schemas']['RunListItem'] = {
+  run_id: WATERMARKED_RUN_ID,
+  kind: 'portfolio',
+  command: 'backtest_portfolio',
+  label: 'SPY, TLT',
+  symbol: null,
+  symbols: ['SPY', 'TLT'],
+  snapshot_id: null,
+  snapshot_hash: null,
+  passed: null,
+  verdict: null,
+  research_gate_watermark: RESEARCH_GATE_WATERMARK,
+  mtime: 1,
+}
+
+const WATERMARKED_RUN_DETAIL: components['schemas']['RunDetail'] = {
+  run_id: WATERMARKED_RUN_ID,
+  kind: 'portfolio',
+  mtime: 1,
+  manifest: {
+    command: 'backtest_portfolio',
+    symbols: ['SPY', 'TLT'],
+    research_gate: { state: 'overridden', watermark: RESEARCH_GATE_WATERMARK },
+  },
+  research_gate_watermark: RESEARCH_GATE_WATERMARK,
+  has_equity: false,
+  has_trades: false,
+  has_tearsheet: false,
+  has_forecast: false,
+  has_nulls: false,
+  has_trials: false,
+  has_forecast_paths: false,
+  has_propfirm_paths: false,
+  has_origins: false,
+  has_portfolio_analytics: false,
+}
+
+const ACTIVE_GATE_OVERRIDE: components['schemas']['ActiveResearchGateOverride'] = {
+  project_id: 'project-override-1',
+  project_name: 'SPY exploratory probe',
+  sequence: 1,
+  actor: 'owner',
+  reason: 'Owner accepted exploratory-only engine work before research completes.',
+  recorded_at: '2026-08-10T00:00:00Z',
+}
+
 interface MockOptions {
   chartBundle?: unknown
   trades?: unknown[]
   mlDiagnostics?: boolean
   jobs?: unknown[]
+  researchGateOverride?: boolean
 }
 
 function responseFor(route: Route, options: MockOptions): unknown {
@@ -939,6 +992,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
       has_forecast_paths: false,
       has_propfirm_paths: false,
       has_origins: false,
+      research_gate_watermark: null,
     }
   }
   if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}/native-tearsheet`) {
@@ -946,6 +1000,40 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}/trades`) {
     return options.trades ?? []
+  }
+  if (url.pathname === '/api/research-gate-overrides') {
+    return options.researchGateOverride ? [ACTIVE_GATE_OVERRIDE] : []
+  }
+  if (options.researchGateOverride && url.pathname === `/api/runs/${WATERMARKED_RUN_ID}`) {
+    return WATERMARKED_RUN_DETAIL
+  }
+  if (
+    options.researchGateOverride
+    && url.pathname === `/api/runs/${WATERMARKED_RUN_ID}/native-tearsheet`
+  ) {
+    return EMPTY_NATIVE_TEARSHEET
+  }
+  if (options.researchGateOverride && url.pathname === '/api/risk/scenario') {
+    return {
+      run_id: WATERMARKED_RUN_ID,
+      confidence: 0.95,
+      scenarios: [],
+      provenance: {
+        source_run_id: WATERMARKED_RUN_ID,
+        source_command: 'backtest_portfolio',
+        source_artifact: 'equity_curve.parquet',
+        source_artifact_sha256: 'f'.repeat(64),
+        snapshot_id: null,
+        snapshot_hash: null,
+        research_cutoff: null,
+        as_of: null,
+        timezone: 'UTC',
+        derived_projection: true,
+      },
+    }
+  }
+  if (options.researchGateOverride && url.pathname === '/api/runs') {
+    return { items: [WATERMARKED_RUN_ITEM], total: 1 }
   }
   if (url.pathname === '/api/runs') return { items: [], total: 0 }
   if (url.pathname === '/api/symbols') return { symbols: [] }
@@ -1398,6 +1486,30 @@ test('legacy trace rerun opens the governed Development Center', async ({ page }
   await page.getByRole('button', { name: 'Rerun for causal trace' }).click()
   await expect(page.getByText('Development Center', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
+})
+
+test('research-gate override watermark reaches run browser, run story, tear sheet, and Operations', async (
+  { page },
+  testInfo,
+) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
+  await preparePage(page, { researchGateOverride: true })
+
+  // Operations desk lists every active override with actor + recorded reason (spec §15).
+  await page.getByLabel('DESK').selectOption('operations')
+  await expect(page.getByText('SPY exploratory probe')).toBeVisible()
+  await expect(
+    page.getByText('Owner accepted exploratory-only engine work before research completes.'),
+  ).toBeVisible()
+
+  // Surface 1 — the run browser row carries the permanent marker verbatim.
+  await page.getByLabel('DESK').selectOption('portfolio')
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toBeVisible()
+
+  // Surfaces 2 + 3 — selecting the run shows the marker on the run story AND the tear sheet.
+  await page.locator('tbody tr').filter({ hasText: 'SPY, TLT' }).click()
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK)).toHaveCount(3)
+  await expectReleaseAccessibility(page)
 })
 
 test('cold shell and cached desk switch meet workstation latency budgets', async (
