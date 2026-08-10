@@ -29,3 +29,15 @@ export function stateChipClass(state: string): string {
   if (BAD_STATES.has(state)) return 'chip fail'
   return 'chip'
 }
+
+// Typed finding statuses (the D1/D2 vocabulary) are uppercase; TESTED, INCONCLUSIVE, and
+// NOT_TESTED stay neutral — an exploratory result is not a pass.
+const GOOD_FINDINGS = new Set(['SUPPORTED', 'PASSED', 'STABLE', 'CLEARS_HURDLE'])
+
+const BAD_FINDINGS = new Set(['CONTRADICTED', 'FAILED', 'UNSTABLE', 'BELOW_HURDLE', 'INVALID'])
+
+export function findingChipClass(status: string): string {
+  if (GOOD_FINDINGS.has(status)) return 'chip pass'
+  if (BAD_FINDINGS.has(status)) return 'chip fail'
+  return 'chip'
+}

@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { components } from '../src/api/generated'
+import { deriveResearchChecklist } from '../src/panels/researchChecklistModel'
 
 const DESKS = [
   { id: 'research', label: 'RESEARCH', activePanel: 'Research Cockpit' },
@@ -332,7 +333,7 @@ const RESEARCH_NOTE: components['schemas']['ResearchNote'] = {
   created_at: '2026-08-09T00:05:00Z',
 }
 
-const RESEARCH_GATE_PACKET = {
+const RESEARCH_GATE_PACKET: components['schemas']['ResearchGatePacket'] = {
   report_schema: 'ResearchGatePacketV1',
   schema_version: 1,
   terminal: true,
@@ -409,6 +410,8 @@ const RESEARCH_GATE_PACKET = {
       source_ledger: [],
       variant_ledger: [],
       attempt_ledger: [],
+      launch_reservation_ledger: [],
+      launch_attempt_link_ledger: [],
       budget_ledger: [],
       phase_review_d2_ledgers: {
         phase_events: [],
@@ -427,6 +430,8 @@ const RESEARCH_GATE_PACKET = {
           source_packs: 0,
           sources: 0,
           attempts: 0,
+          launch_reservations: 0,
+          launch_attempt_links: 0,
           phase_events: 1,
           review_events: 1,
           execution_events: 0,
@@ -437,6 +442,57 @@ const RESEARCH_GATE_PACKET = {
       },
     },
   },
+}
+
+// The checklist rides the TS twin so the mock can never drift from the derivation the
+// panel actually renders; the twin itself is pinned to Python by the committed fixture.
+const RESEARCH_DECISION_VIEW: components['schemas']['ResearchDecisionView'] = {
+  view_schema: 'ResearchDecisionViewV1',
+  project_id: RESEARCH_CASE.project_id,
+  phase: 'closed',
+  d2_state: 'sealed',
+  next_action: 'Research Case is closed.',
+  checklist: deriveResearchChecklist({
+    inputs_schema: 'ResearchScorecardInputsV1',
+    phase: 'closed',
+    outcome: 'INCONCLUSIVE',
+    disposition: 'park',
+    d2_state: 'sealed',
+    hypothesis_complete_fields: 1,
+    hypothesis_partial_fields: 0,
+    hypothesis_total_fields: 14,
+    registered_dataset_count: 0,
+    screened_claim_count: 0,
+    blocking_questions: RESEARCH_CASE.active_contract.payload.blocking_questions as string[],
+    confounders_resolved: [],
+    confounders_unresolved: ['day of week', 'volatility regime'],
+    untested_work: ['No typed D1 or D2 empirical result is present.'],
+    attempt_count: 0,
+    primary_result_status: 'NOT_TESTED',
+    practical_magnitude_status: 'NOT_TESTED',
+    confirmation_classification: null,
+    power_status: 'NOT_TESTED',
+    negative_controls_status: 'NOT_TESTED',
+    multiplicity_status: 'NOT_TESTED',
+    mechanism_status: 'NOT_TESTED',
+    stability_parameter_status: 'NOT_TESTED',
+    stability_temporal_status: 'NOT_TESTED',
+    stability_transportability_status: 'NOT_TESTED',
+  }),
+  scorecard: RESEARCH_SCORECARD,
+  gate_packet: RESEARCH_GATE_PACKET,
+  decision_history: [
+    {
+      sequence: 1,
+      contract_id: RESEARCH_CASE.active_contract_id,
+      outcome: 'INCONCLUSIVE',
+      disposition: 'park',
+      actor: 'owner',
+      actor_kind: 'human',
+      occurred_at: '2026-08-06T01:00:00Z',
+      reason: 'No typed non-synthetic evidence exists.',
+    },
+  ],
 }
 
 const PROJECT_VIEWPORTS: Record<string, { width: number; height: number }> = {
@@ -821,6 +877,9 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/scorecard`) {
     return RESEARCH_SCORECARD
   }
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/decision-view`) {
+    return RESEARCH_DECISION_VIEW
+  }
   if (url.pathname === '/api/research/protocols') return RESEARCH_PROTOCOLS
   if (url.pathname === '/api/research/datasets') {
     return {
@@ -1089,6 +1148,29 @@ test('Research Cockpit teaches the bounded terminal Gate Packet without upgradin
   await expect(page.getByText('NO TYPED NON SYNTHETIC EVIDENCE', { exact: true })).toBeVisible()
   await expect(page.getByText('NOT TESTED', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/strategy validated false · paper ready false · places orders false/)).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and history', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport decision-view gate')
+  await preparePage(page)
+
+  await page.getByRole('button', { name: /Search/ }).click()
+  await page.getByRole('option', { name: /Research Cockpit/ }).click()
+  await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
+  await page.getByRole('button', { name: 'open case' }).click()
+  await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Decision', exact: true }).click()
+  // The fourteen spec-§10.1 questions render as typed statuses, never a numeric aggregate.
+  await expect(page.getByText(/Edge-validation checklist · fourteen questions/)).toBeVisible()
+  await expect(page.getByText('1. Does the effect exist?')).toBeVisible()
+  await expect(page.getByText('14. How much uncertainty remains?')).toBeVisible()
+  // The full scorecard, terminal gate packet, and append-only history ride the same view.
+  await expect(page.getByText('Full readiness scorecard', { exact: true })).toBeVisible()
+  await expect(page.getByText('MORE RESEARCH REQUIRED').first()).toBeVisible()
+  await expect(page.getByText('90-second Research Gate conclusion', { exact: true })).toBeVisible()
+  await expect(page.getByText(/INCONCLUSIVE · PARK · owner \(human\)/)).toBeVisible()
   await expectReleaseAccessibility(page)
 })
 

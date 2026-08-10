@@ -42,6 +42,7 @@ import type {
   ResearchContextPacket,
   ResearchContextPacketPage,
   ResearchDatasetPage,
+  ResearchDecisionView,
   ResearchEvidenceHub,
   ResearchNotePage,
   ResearchProtocolLibrary,
@@ -231,6 +232,8 @@ export const api = {
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/evidence-hub`),
   researchScorecard: (projectId: string): Promise<ResearchScorecard> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/scorecard`),
+  researchDecisionView: (projectId: string): Promise<ResearchDecisionView> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/decision-view`),
   researchContextPackets: (
     projectId: string,
     query: { limit?: number; offset?: number } = {},

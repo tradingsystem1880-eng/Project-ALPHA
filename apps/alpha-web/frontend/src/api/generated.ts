@@ -1151,6 +1151,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/decision-view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Decision View
+         * @description Read the owner decision view: checklist, full scorecard, packet, and history.
+         */
+        get: operations["research_decision_view_api_research_cases__project_id__decision_view_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/evidence-hub": {
         parameters: {
             query?: never;
@@ -6060,6 +6080,21 @@ export interface components {
         };
         /** @constant */
         ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
+        /** ResearchChecklistQuestion */
+        ResearchChecklistQuestion: {
+            /** Answer */
+            answer: string;
+            /** Binding */
+            binding: string;
+            /** Number */
+            number: number;
+            /** Question */
+            question: string;
+            /** Question Id */
+            question_id: string;
+            /** Status */
+            status: string;
+        };
         /** ResearchContextPacket */
         ResearchContextPacket: {
             /** Created At */
@@ -6199,6 +6234,61 @@ export interface components {
             reason: string;
             /** Sequence */
             sequence: number;
+        };
+        /** ResearchDecisionHistoryEvent */
+        ResearchDecisionHistoryEvent: {
+            /** Actor */
+            actor: string;
+            actor_kind: components["schemas"]["AuthorKindValue"];
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "advance_to_strategy" | "revise" | "park" | "reject";
+            /** Occurred At */
+            occurred_at: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID";
+            /** Reason */
+            reason: string;
+            /** Sequence */
+            sequence: number;
+        };
+        /** ResearchDecisionView */
+        ResearchDecisionView: {
+            checklist: components["schemas"]["ResearchEdgeChecklist"];
+            /** D2 State */
+            d2_state: string;
+            /** Decision History */
+            decision_history: components["schemas"]["ResearchDecisionHistoryEvent"][];
+            gate_packet: components["schemas"]["ResearchGatePacket"] | null;
+            /** Next Action */
+            next_action: string;
+            /** Phase */
+            phase: string;
+            /** Project Id */
+            project_id: string;
+            scorecard: components["schemas"]["ResearchScorecard"];
+            /**
+             * View Schema
+             * @constant
+             */
+            view_schema: "ResearchDecisionViewV1";
+        };
+        /** ResearchEdgeChecklist */
+        ResearchEdgeChecklist: {
+            /**
+             * Checklist Schema
+             * @constant
+             */
+            checklist_schema: "ResearchEdgeChecklistV1";
+            /** Questions */
+            questions: components["schemas"]["ResearchChecklistQuestion"][];
         };
         /** @constant */
         ResearchEventAvailabilityValue: "second_trough_confirmable";
@@ -9340,6 +9430,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchContextPacketPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_decision_view_api_research_cases__project_id__decision_view_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchDecisionView"];
                 };
             };
             /** @description Validation Error */

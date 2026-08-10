@@ -5,12 +5,14 @@ import { api } from '../api/client'
 import type {
   ResearchCase,
   ResearchCaseReport,
+  ResearchDecisionView,
   ResearchGatePacket,
   ResearchMaterialAnswers,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { onNewIdea } from '../context/newIdea'
 import { usePanelLinked } from '../context/usePanelLinked'
+import { findingChipClass } from './researchChipModel'
 import {
   researchBudgetRows,
   researchContractView,
@@ -19,12 +21,13 @@ import {
   researchPilotEligibility,
   researchProposalAvailable,
 } from './researchCockpitModel'
-import { HypothesisCardView, ScorecardStrip } from './researchViews'
+import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
 
 type ChartConstruction = ResearchMaterialAnswers['chart_construction']
 type EventAvailability = ResearchMaterialAnswers['event_availability']
 type PrimaryOutcome = ResearchMaterialAnswers['primary_outcome']
-type BusyOperation = 'capture' | 'load' | 'proposal' | 'pilot' | 'status' | 'report'
+type BusyOperation = 'capture' | 'load' | 'proposal' | 'pilot' | 'status' | 'report' | 'decision'
+type CockpitView = 'overview' | 'decision'
 
 const CHART_OPTIONS: ReadonlyArray<{ value: ChartConstruction; label: string }> = [
   { value: 'spy_rth_60m_four_hour_window', label: 'Synthetic SPY-like 60m D0 · four-hour window' },
@@ -129,6 +132,69 @@ function TerminalGatePacket({ packet }: { packet: ResearchGatePacket }) {
         <div><span className="eyebrow">Bounded ledgers</span><span className="mono">{Object.entries(appendix.ledger_bounds.counts).map(([name, count]) => `${name.replaceAll('_', ' ')} ${count}`).join(' · ')}</span></div>
         <div><span className="eyebrow">Authority</span><span>{packet.authority.evidence_claim}; strategy validated {String(packet.authority.strategy_validated)} · paper ready {String(packet.authority.paper_ready)} · places orders {String(packet.authority.places_orders)}</span></div>
       </div>
+    </section>
+  )
+}
+
+function DecisionViewSection({
+  view,
+  busy,
+}: {
+  view: ResearchDecisionView | null
+  busy: BusyOperation | null
+}) {
+  if (!view) {
+    return (
+      <Placeholder big={busy === 'decision' ? 'LOADING DECISION VIEW' : 'DECISION VIEW UNAVAILABLE'}>
+        The decision view assembles the edge-validation checklist, the full readiness scorecard,
+        the gate packet, and the append-only owner decision history.
+      </Placeholder>
+    )
+  }
+  return (
+    <section className="research-decision-view" aria-label="Owner decision view">
+      <div className="rd-head">Edge-validation checklist · fourteen questions, typed statuses only</div>
+      <div className="scorecard-table" aria-label="Edge-validation checklist">
+        {view.checklist.questions.map((row) => (
+          <div key={row.question_id} className="scorecard-row">
+            <span className="eyebrow">{row.number}. {row.question}</span>
+            <span className={findingChipClass(row.status)} title={`binding: ${row.binding}`}>
+              {row.status.replaceAll('_', ' ')}
+            </span>
+            <p>{row.answer}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rd-head">Full readiness scorecard</div>
+      <ScorecardDetail scorecard={view.scorecard} />
+      {view.gate_packet ? (
+        <TerminalGatePacket packet={view.gate_packet} />
+      ) : (
+        <div className="workbench-notice" role="note">
+          <strong>NO TERMINAL GATE PACKET</strong>
+          <span>
+            The case is open; the checklist and scorecard above stay live from admitted evidence.
+            A terminal packet appears only after the owner closes the case.
+          </span>
+        </div>
+      )}
+      <div className="rd-head">Owner decision history · append-only</div>
+      {view.decision_history.length ? (
+        <div className="research-lineage" aria-label="Owner decision history">
+          {view.decision_history.map((event) => (
+            <div key={event.sequence}>
+              <span className="eyebrow">#{event.sequence} · {event.occurred_at}</span>
+              <span className="mono" title={`contract ${event.contract_id}`}>
+                {event.outcome} · {event.disposition.replaceAll('_', ' ').toUpperCase()} ·{' '}
+                {event.actor} ({event.actor_kind})
+              </span>
+              <p>{event.reason}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <span className="muted">No owner decisions recorded. Decisions are owner-only CLI acts.</span>
+      )}
     </section>
   )
 }
@@ -331,6 +397,8 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
   const ideaRef = useRef<HTMLTextAreaElement | null>(null)
   const [researchCase, setResearchCase] = useState<ResearchCase | null>(null)
   const [report, setReport] = useState<ResearchCaseReport | null>(null)
+  const [view, setView] = useState<CockpitView>('overview')
+  const [decisionView, setDecisionView] = useState<ResearchDecisionView | null>(null)
   const [lookupId, setLookupId] = useState(initialProjectId)
   const [idea, setIdea] = useState('')
   const [caseName, setCaseName] = useState('')
@@ -352,6 +420,7 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
     setLookupId(next.project_id)
     setSourcePackId(next.source_pack_id ?? '')
     setReport(null)
+    setDecisionView(null)
   }
 
   async function loadCase(projectId: string, operation: 'load' | 'status' = 'load'): Promise<void> {
@@ -452,6 +521,27 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
     }
   }
 
+  async function loadDecisionView(): Promise<void> {
+    if (!researchCase) return
+    setBusy('decision')
+    setError(null)
+    try {
+      setDecisionView(await api.researchDecisionView(researchCase.project_id))
+    } catch (reason) {
+      setError(errorMessage(reason))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Selecting the Decision tab (or refreshing the case while on it) fetches the assembled view.
+  useEffect(() => {
+    if (view === 'decision' && researchCase && decisionView === null) {
+      void loadDecisionView()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, researchCase, decisionView])
+
   async function loadReport(): Promise<void> {
     if (!researchCase) return
     setBusy('report')
@@ -530,19 +620,43 @@ export function ResearchCockpit(props: IDockviewPanelProps) {
         {researchCase ? (
           <>
             <CaseHeader researchCase={researchCase} />
-            <CaseSummary
-              researchCase={researchCase}
-              report={report}
-              busy={busy}
-              onRefresh={() => void loadCase(researchCase.project_id, 'status')}
-              onReport={() => void loadReport()}
-              onPilot={() => void launchPilot()}
-            />
-            {researchCase.hypothesis_card ? (
+            <div className="research-view-tabs" role="tablist" aria-label="Cockpit views">
+              <button
+                className={view === 'overview' ? 'btn primary' : 'btn'}
+                type="button"
+                role="tab"
+                aria-selected={view === 'overview'}
+                onClick={() => setView('overview')}
+              >
+                Overview
+              </button>
+              <button
+                className={view === 'decision' ? 'btn primary' : 'btn'}
+                type="button"
+                role="tab"
+                aria-selected={view === 'decision'}
+                onClick={() => setView('decision')}
+              >
+                Decision
+              </button>
+            </div>
+            {view === 'decision' ? (
+              <DecisionViewSection view={decisionView} busy={busy} />
+            ) : (
+              <CaseSummary
+                researchCase={researchCase}
+                report={report}
+                busy={busy}
+                onRefresh={() => void loadCase(researchCase.project_id, 'status')}
+                onReport={() => void loadReport()}
+                onPilot={() => void launchPilot()}
+              />
+            )}
+            {view === 'overview' && researchCase.hypothesis_card ? (
               <HypothesisCardView card={researchCase.hypothesis_card} />
             ) : null}
 
-            {researchProposalAvailable(researchCase.phase) ? (
+            {view === 'overview' && researchProposalAvailable(researchCase.phase) ? (
               <form className="research-proposal" onSubmit={(event) => void propose(event)}>
                 <div className="rd-head">Materialize the exact exploration proposal</div>
                 <div className="workbench-notice">

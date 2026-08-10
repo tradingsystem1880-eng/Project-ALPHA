@@ -3915,6 +3915,9 @@ select.field:focus {
 .research-case-header-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .research-case-header .research-case-next { font-size: 12px; opacity: 0.85; }
 
+.research-view-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.research-decision-view { display: grid; gap: 10px; }
+
 .scorecard-strip { display: flex; flex-wrap: wrap; gap: 6px; }
 .scorecard-strip .chip { font-size: 10px; }
 
