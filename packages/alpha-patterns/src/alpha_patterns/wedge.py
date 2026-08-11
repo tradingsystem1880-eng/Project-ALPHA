@@ -233,7 +233,7 @@ def _build(  # noqa: PLR0911 — each early return is a distinct, named rejectio
     past_apex = int(round(brk_idx - apex)) if brk_idx >= 0 else 0
 
     # "Failed apex": the search window ran past the apex and no close ever left the lines. This is
-    # the population the live XRP setup sits in, so it is flagged explicitly rather than inferred.
+    # a distinct outcome, so it is flagged explicitly rather than inferred.
     watch_end = min(confirmed + cfg.track_bars, n - 1)
     apex_passed_unbroken = brk_idx < 0 and watch_end > apex
 

@@ -11,7 +11,7 @@ Two design rules run through everything here, and both exist to stop the study l
    rather than being back-filled, which keeps arrays the same length as the series without inventing
    data. The ``bias_guard`` tests poison the future and assert nothing moves.
 2. **Percentile-rank over absolute thresholds.** "Bollinger bandwidth below 0.04" means something
-   different for XRP in 2018 and XRP in 2026. :func:`percentile_rank` converts any series into its
+   different across assets and market regimes. :func:`percentile_rank` converts any series into its
    own trailing-window rank, so "compressed" means *compressed relative to this asset's own recent
    history* — the only definition that transfers across assets and epochs.
 
@@ -186,7 +186,7 @@ def percentile_rank(values: FloatArray, window: int) -> FloatArray:
     The single most reused function in the study. "Volatility is compressed" is not a statement
     about an absolute number, it is a statement about *where the current reading sits in this
     asset's own recent distribution* — and that phrasing is what makes a threshold transferable
-    across XRP, BTC and 2018 versus 2026.
+    across assets and market regimes.
 
     Includes the current bar in its own window, so a fresh all-time-low reading ranks at
     ``1/window`` rather than 0. Bars before a full window rank within whatever history exists.
@@ -225,8 +225,8 @@ class LeadLag:
     """Cross-correlation of two return series across a symmetric band of lags.
 
     ``lags`` are in bars, negative meaning *``leader`` moved first*. ``best_lag`` is the lag with
-    the largest absolute correlation, which is the empirical answer to "does BTC lead XRP, and by
-    how much?" — a claim traders assert constantly and almost never measure.
+    the largest absolute correlation, which is the empirical answer to "does one asset lead another,
+    and by how much?" — a claim traders assert constantly and almost never measure.
     """
 
     lags: IntArray

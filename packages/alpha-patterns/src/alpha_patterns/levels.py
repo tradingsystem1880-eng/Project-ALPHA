@@ -14,9 +14,9 @@ being asked about. Skipping that step is the single most common way a Fibonacci 
 spectacular and completely fake result: retracement levels drawn from tomorrow's high are, quite
 naturally, excellent support.
 
-Round numbers need no anchor and so have no such trap. They do have a scale problem — "round" for
-XRP at 0.50 is not "round" for BTC at 68,000 — so :func:`round_levels` derives the grid from the
-price's own order of magnitude.
+Round numbers need no anchor and so have no such trap. They do have a scale problem — a round level
+for a low-priced asset is not round for a high-priced one — so :func:`round_levels` derives the grid
+from the price's own order of magnitude.
 """
 
 from __future__ import annotations

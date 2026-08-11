@@ -3,7 +3,7 @@
 Every claim a discretionary trader makes has the same shape: *when X happens, Y tends to follow*.
 Measured naively, that claim is almost always "true" and almost always worthless, because the
 quantity people report is ``P(Y | X)`` and the quantity that matters is how that compares with
-``P(Y | not X)``. XRP rising 20% in the next 30 days happens roughly a fifth of the time
+``P(Y | not X)``. An asset rising 20% in the next 30 days may happen roughly a fifth of the time
 unconditionally; a signal that "predicts" it 22% of the time has told you nothing.
 
 So the unit of analysis here is a **difference of two proportions**, with the sample split into two
