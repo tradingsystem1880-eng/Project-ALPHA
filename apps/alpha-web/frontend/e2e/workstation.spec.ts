@@ -1318,6 +1318,19 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
     await route.continue()
   })
   await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url())
+    if (
+      options.researchGateLock
+      && route.request().method() === 'GET'
+      && url.pathname === `/api/research/cases/${UNGATED_PROJECT.project_id}`
+    ) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Research case not found' }),
+      })
+      return
+    }
     const body = responseFor(route, options)
     await route.fulfill({
       status: 200,
@@ -1776,6 +1789,7 @@ test('open research gates lock strategy affordances on Develop and link to the c
   await page.getByRole('tab', { name: 'Build', exact: true }).click()
   await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeEnabled()
+  await page.getByRole('tab', { name: 'What next', exact: true }).click()
   await expect(preps.nth(1)).toBeEnabled()
 })
 
