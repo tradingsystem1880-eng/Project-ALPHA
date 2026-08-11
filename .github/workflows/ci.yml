@@ -35,12 +35,12 @@ jobs:
         run: uv run pytest -q -m "not network" --cov --cov-report=term-missing
       - name: OpenAPI freshness
         run: uv run python scripts/generate_web_openapi.py --check
-      - name: Build all 12 wheels
+      - name: Build all 13 wheels
         run: uv build --all-packages
       - name: Import built wheels
         run: |
           uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
-          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli, alpha_mcp, alpha_web))'
+          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web))'
 
   frontend:
     runs-on: ubuntu-latest

@@ -57,7 +57,7 @@ uv lock --check && uv sync --locked \
   && uv run pytest -q -m "not network" --cov --cov-report=term-missing \
   && uv run python scripts/generate_web_openapi.py --check \
   && uv build --all-packages
-# Then reinstall dist/*.whl with --no-deps and import-smoke all 12 packages (the exact CI assertion
+# Then reinstall dist/*.whl with --no-deps and import-smoke all 13 packages (the exact CI assertion
 # is in .github/workflows/ci.yml).
 
 cd apps/alpha-web/frontend
@@ -328,9 +328,10 @@ interface — Bloomberg/OpenBB-class, but $0.
   deterministic audit/export view. Dense series are deterministically endpoint-preserving and
   bounded, with original/returned/truncated metadata. Explicitly unavailable analytics remain
   distinct from artifacts that were not emitted.
-- **Development Center** — immutable setup, 14 exposed stage IDs (12 core lifecycle stages plus
-  separate Kronos and ML tracks), resolved one-click suites,
-  holdout/attempt governance, durable jobs, decision packets, Asset Memory, and AgentBrief export.
+- **Development Center** — immutable setup, 15 exposed stage IDs (13 core lifecycle stages plus
+  separate Kronos and ML tracks), resolved one-click suites, required four-family Monte Carlo
+  evidence and owner warning review, holdout/attempt governance, durable jobs, decision packets,
+  Asset Memory, and AgentBrief export.
 - **Research Cockpit** — exact-idea capture, explicit thesis/mechanism/prediction and competing
   explanations, owner-visible gates, native-unit budgets, a D0-only launch, immutable D2/D3
   firewalls, and a teaching-oriented terminal packet for D0/early-terminal cases. Empirical packet
@@ -404,10 +405,10 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Quality gate
 
-The v3 offline release gate passed on 2026-07-19. The current gate covers 13 import contracts,
+The v3 offline release gate passed on 2026-07-19. The current gate covers 14 import contracts,
 strict mypy, warnings as errors, a true 93.00% minimum owned-source Python line coverage threshold,
 OpenAPI/generated TypeScript freshness, frontend V8 coverage, Playwright/axe at 1280×720,
-1440×900, and 1920×1080, deterministic artifact publication, isolated builds/imports for all 12
+1440×900, and 1920×1080, deterministic artifact publication, isolated builds/imports for all 13
 root wheels, and the separately locked Qlib worker. Historical hardening evidence is recorded in
 [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md);
 exact 2026-07-19 v3 release evidence is recorded in the

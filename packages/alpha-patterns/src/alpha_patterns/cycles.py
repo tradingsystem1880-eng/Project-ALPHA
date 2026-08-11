@@ -219,6 +219,8 @@ def dominant_cycle(values: FloatArray, *, min_period: int = 4, max_period: int =
     n = values.size
     if n < 4 * min_period:
         return Cycle(float("nan"), float("nan"), n)
+    if float(np.ptp(values)) == 0.0:
+        return Cycle(float("nan"), float("nan"), n)
     idx = np.arange(n, dtype=np.float64)
     slope, intercept = np.polyfit(idx, values, 1)
     detrended = values - (slope * idx + intercept)

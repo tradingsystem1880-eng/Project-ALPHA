@@ -342,6 +342,7 @@ describe('development lifecycle projection', () => {
       holdouts: [],
       holdout_audit: [],
       decision_packets: [],
+      monte_carlo_reviews: [],
       research_gate_state: 'not_required',
       research_gate_overrides: [],
       truncated: {
@@ -353,6 +354,7 @@ describe('development lifecycle projection', () => {
         holdouts: false,
         holdout_audit: false,
         decision_packets: false,
+        monte_carlo_reviews: false,
         research_gate_overrides: false,
       },
     } satisfies ProjectDetail

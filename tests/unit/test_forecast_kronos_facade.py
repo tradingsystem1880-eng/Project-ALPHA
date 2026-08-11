@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,7 @@ class _StubPredictor:
                 "verbose": verbose,
                 "columns": list(df_list[0].columns),
                 "n_context": len(df_list[0]),
+                "y_timestamps": [tuple(series.tolist()) for series in y_timestamp_list],
             }
         )
         out = []
@@ -131,6 +133,21 @@ def test_stubbed_round_trip_uses_batched_single_sample_calls(
     assert r.samples[0].close != r.samples[1].close  # stub drifts per-copy -> distinct paths
     assert r.origin_ts == bars[-1].ts
     assert all(t.weekday() < 5 for t in r.step_ts)
+
+
+def test_stubbed_round_trip_uses_exact_step_timestamps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    f = _forecaster()
+    stub = _StubPredictor()
+    monkeypatch.setattr(f, "_load_predictor", lambda: stub)
+    bars = daily_bars(20)
+    exact = tuple(bars[-1].ts + timedelta(days=offset) for offset in (1, 5, 9))
+
+    result = f.forecast(bars, horizon=3, sample_count=2, step_ts=exact, seed=3)
+
+    assert result.step_ts == exact
+    assert stub.calls[0]["y_timestamps"] == [exact, exact]
 
 
 class _RecordingLoader:

@@ -3617,7 +3617,7 @@ export interface components {
             deleted: string;
         };
         /** @enum {string} */
-        DevelopmentStageValue: "hypothesis" | "data" | "strategy" | "baseline" | "oos" | "robustness" | "optimization" | "portfolio" | "candidate" | "holdout" | "paper" | "decision" | "kronos" | "ml";
+        DevelopmentStageValue: "hypothesis" | "data" | "strategy" | "baseline" | "oos" | "robustness" | "monte_carlo" | "optimization" | "portfolio" | "candidate" | "holdout" | "paper" | "decision" | "kronos" | "ml";
         /** EquitySeries */
         EquitySeries: {
             /** Drawdown */
@@ -5347,6 +5347,38 @@ export interface components {
              */
             worker_kind: "fake" | "qlib";
         };
+        /** MonteCarloReview */
+        MonteCarloReview: {
+            /** Actor */
+            actor: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "continue" | "revise" | "reject";
+            /** Evidence Hashes */
+            evidence_hashes: [
+                string,
+                string
+            ][];
+            /** Evidence Hashes Json */
+            evidence_hashes_json: string;
+            /** Experiment Id */
+            experiment_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Rationale */
+            rationale: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Review Id */
+            review_id: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
         /** NativeBenchmarkComparison */
         NativeBenchmarkComparison: {
             /** Available */
@@ -5993,6 +6025,8 @@ export interface components {
             holdouts: components["schemas"]["HoldoutState"][];
             /** Hypothesis */
             hypothesis: string;
+            /** Monte Carlo Reviews */
+            monte_carlo_reviews: components["schemas"]["MonteCarloReview"][];
             /** Name */
             name: string;
             /** Project Id */
@@ -6057,6 +6091,8 @@ export interface components {
             holdout_audit: boolean;
             /** Holdouts */
             holdouts: boolean;
+            /** Monte Carlo Reviews */
+            monte_carlo_reviews: boolean;
             /** Research Gate Overrides */
             research_gate_overrides: boolean;
             /** Stage Run Links */
@@ -7422,7 +7458,7 @@ export interface components {
             strategy_name: string;
         };
         /** @enum {string} */
-        SuiteActionValue: "baseline" | "inner_oos" | "three_null_families" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
+        SuiteActionValue: "baseline" | "inner_oos" | "three_null_families" | "monte_carlo" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
         /** SuiteCancelResponse */
         SuiteCancelResponse: {
             /** Job Id */
@@ -9342,7 +9378,7 @@ export interface operations {
             path: {
                 project_id: string;
                 experiment_id: string;
-                stage: "hypothesis" | "data" | "strategy" | "baseline" | "oos" | "robustness" | "optimization" | "portfolio" | "candidate" | "holdout" | "paper" | "decision" | "kronos" | "ml";
+                stage: "hypothesis" | "data" | "strategy" | "baseline" | "oos" | "robustness" | "monte_carlo" | "optimization" | "portfolio" | "candidate" | "holdout" | "paper" | "decision" | "kronos" | "ml";
             };
             cookie?: never;
         };
@@ -9379,7 +9415,7 @@ export interface operations {
             path: {
                 project_id: string;
                 experiment_id: string;
-                action: "baseline" | "inner_oos" | "three_null_families" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
+                action: "baseline" | "inner_oos" | "three_null_families" | "monte_carlo" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
             };
             cookie?: never;
         };
@@ -9412,7 +9448,7 @@ export interface operations {
             path: {
                 project_id: string;
                 experiment_id: string;
-                action: "baseline" | "inner_oos" | "three_null_families" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
+                action: "baseline" | "inner_oos" | "three_null_families" | "monte_carlo" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
             };
             cookie?: never;
         };
@@ -12098,7 +12134,7 @@ export interface operations {
             path: {
                 project_id: string;
                 experiment_id: string;
-                stage: "hypothesis" | "data" | "strategy" | "baseline" | "oos" | "robustness" | "optimization" | "portfolio" | "candidate" | "holdout" | "paper" | "decision" | "kronos" | "ml";
+                stage: "hypothesis" | "data" | "strategy" | "baseline" | "oos" | "robustness" | "monte_carlo" | "optimization" | "portfolio" | "candidate" | "holdout" | "paper" | "decision" | "kronos" | "ml";
             };
             cookie?: never;
         };
@@ -12135,7 +12171,7 @@ export interface operations {
             path: {
                 project_id: string;
                 experiment_id: string;
-                action: "baseline" | "inner_oos" | "three_null_families" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
+                action: "baseline" | "inner_oos" | "three_null_families" | "monte_carlo" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
             };
             cookie?: never;
         };
@@ -12168,7 +12204,7 @@ export interface operations {
             path: {
                 project_id: string;
                 experiment_id: string;
-                action: "baseline" | "inner_oos" | "three_null_families" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
+                action: "baseline" | "inner_oos" | "three_null_families" | "monte_carlo" | "optimize_grid" | "fixed_stress" | "portfolio_cross_asset" | "qlib" | "kronos" | "holdout_reveal" | "paper_preflight";
             };
             cookie?: never;
         };

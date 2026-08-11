@@ -13,6 +13,8 @@ from alpha_cli._suite import (
     StepExecution,
     SuiteAction,
     SuiteStep,
+    _monte_carlo_results,
+    _monte_carlo_stage_state,
     build_suite_plan,
     execute_suite,
     reserve_suite_job,
@@ -93,6 +95,13 @@ def _complete_action(
                 ("2000000000000005", "validate", "warning", None, "garch"),
             ],
         ),
+        "monte_carlo": (
+            "monte_carlo",
+            [
+                ("2000000000000009", "monte_carlo_classical", "pass", None, None),
+                ("200000000000000a", "monte_carlo_kronos", "pass", None, None),
+            ],
+        ),
         "optimize_grid": (
             "optimization",
             [("2000000000000006", "optim_grid", "pass", True, None)],
@@ -102,6 +111,13 @@ def _complete_action(
             [
                 ("2000000000000007", "backtest_portfolio", "pass", None, None),
                 ("2000000000000008", "cross_sectional", "pass", None, None),
+            ],
+        ),
+        "kronos": (
+            "kronos",
+            [
+                ("200000000000000b", "forecast_run", "pass", None, None),
+                ("200000000000000c", "forecast_eval", "pass", None, None),
             ],
         ),
     }
@@ -145,6 +161,12 @@ def _complete_action(
             manifest["passed"] = passed
         if null_model is not None:
             manifest["metadata"] = {"null_model": null_model}
+        if command.startswith("monte_carlo_"):
+            manifest["status"] = "clear"
+            manifest["source_run_id"] = "2000000000000003"
+        if command == "forecast_eval":
+            manifest["model"] = {"model_id": "fake", "determinism": "exact"}
+            manifest["params"] = {"context": 20}
         (run_dir / "manifest.json").write_text(
             json.dumps(manifest, sort_keys=True), encoding="utf-8"
         )
@@ -164,6 +186,64 @@ def _complete_action(
         state="pass",
         reason="verified test evidence",
     )
+
+
+def _publish_suite_run(
+    tmp_path: Path,
+    run_id: str,
+    command: str,
+    *,
+    status: str | None = None,
+    passed: bool | None = None,
+    null_model: str | None = None,
+    source_run_id: str | None = None,
+) -> None:
+    snapshot_hash = hashlib.sha256(
+        (tmp_path / "snapshots" / "frozen-2026q2" / "manifest.json").read_bytes()
+    ).hexdigest()
+    manifest: dict[str, object] = {
+        "schema_version": 3,
+        "artifact_contract_version": 3,
+        "run_identity_version": 3,
+        "run_id": run_id,
+        "command": command,
+        "snapshot_id": "frozen-2026q2",
+        "snapshot_hash": snapshot_hash,
+        "execution_fingerprint": "a" * 64,
+        "strategy_fingerprint": "b" * 64,
+        "source_fingerprint": "c" * 64,
+        "research_cutoff": "2026-03-31",
+        "artifacts": {},
+    }
+    if status is not None:
+        manifest["status"] = status
+    if passed is not None:
+        manifest["passed"] = passed
+    if null_model is not None:
+        manifest["metadata"] = {"null_model": null_model}
+    if source_run_id is not None:
+        manifest["source_run_id"] = source_run_id
+    run_dir = tmp_path / "runs" / run_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+def test_monte_carlo_result_statuses_map_and_aggregate_fail_closed(tmp_path: Path) -> None:
+    _experiment(tmp_path)
+    run_ids = ("20000000000000a1", "20000000000000a2", "20000000000000a3")
+    for run_id, status in zip(run_ids, ("clear", "warning", "unexpected"), strict=True):
+        _publish_suite_run(tmp_path, run_id, "monte_carlo_classical", status=status)
+
+    results = _monte_carlo_results(tmp_path, run_ids)
+    assert results == [
+        (run_ids[0], "pass"),
+        (run_ids[1], "warning"),
+        (run_ids[2], "fail"),
+    ]
+    assert _monte_carlo_stage_state(results[:1]) == "pass"
+    assert _monte_carlo_stage_state(results[:2]) == "warning"
+    assert _monte_carlo_stage_state(results) == "fail"
+    assert _monte_carlo_stage_state(()) == "fail"
 
 
 def test_research_actions_are_blocked_until_a_dated_holdout_is_sealed(
@@ -265,6 +345,135 @@ def test_action_readiness_uses_stage_dependencies_and_nulls_are_not_a_vote(
     assert "non-governing" in str(governance["sensitivity_tier2_execution"])
 
 
+def test_monte_carlo_remains_ready_after_failed_bootstrap_null(tmp_path: Path) -> None:
+    store, project_id, experiment_id = _experiment(tmp_path)
+    _complete_action(store, tmp_path, project_id, experiment_id, "baseline")
+    _complete_action(store, tmp_path, project_id, experiment_id, "inner_oos")
+    _complete_action(store, tmp_path, project_id, experiment_id, "kronos")
+    for state in ("ready", "queued", "running"):
+        store.append_experiment_stage_state(
+            project_id, experiment_id, "robustness", state, reason="failed null test"
+        )
+    source_run = "200000000000000d"
+    _publish_suite_run(
+        tmp_path,
+        source_run,
+        "validate",
+        passed=False,
+        null_model="bootstrap",
+    )
+    store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="three_null_families",
+        stage="robustness",
+        state="fail",
+        run_id=source_run,
+    )
+    later_sensitivity_run = "200000000000001d"
+    _publish_suite_run(
+        tmp_path,
+        later_sensitivity_run,
+        "validate",
+        passed=False,
+        null_model="student_t",
+    )
+    store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="three_null_families",
+        stage="robustness",
+        state="warning",
+        run_id=later_sensitivity_run,
+    )
+    store.complete_suite_stage(
+        project_id,
+        experiment_id,
+        suite_action="three_null_families",
+        stage="robustness",
+        state="fail",
+        reason="stationary-bootstrap headline failed",
+    )
+
+    plan = build_suite_plan(store, project_id, experiment_id, "monte_carlo", data_dir=tmp_path)
+    assert plan.ready is True
+    assert len(plan.steps) == 2
+    assert plan.steps[0].argv[:4] == ("monte-carlo", "classical", "--from-run", source_run)
+    assert plan.governance["aggregation"] == "no_majority_vote"
+
+
+def test_monte_carlo_warning_requires_hash_bound_owner_continue(tmp_path: Path) -> None:
+    store, project_id, experiment_id = _experiment(tmp_path)
+    for action in ("baseline", "inner_oos", "three_null_families"):
+        _complete_action(store, tmp_path, project_id, experiment_id, action)
+    for state in ("ready", "queued", "running"):
+        store.append_experiment_stage_state(
+            project_id, experiment_id, "monte_carlo", state, reason="Monte Carlo suite"
+        )
+    classical_run = "200000000000000e"
+    kronos_run = "200000000000000f"
+    _publish_suite_run(
+        tmp_path,
+        classical_run,
+        "monte_carlo_classical",
+        status="clear",
+        source_run_id="2000000000000003",
+    )
+    _publish_suite_run(
+        tmp_path,
+        kronos_run,
+        "monte_carlo_kronos",
+        status="warning",
+        source_run_id="2000000000000003",
+    )
+    store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="monte_carlo",
+        stage="monte_carlo",
+        state="pass",
+        run_id=classical_run,
+    )
+    store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="monte_carlo",
+        stage="monte_carlo",
+        state="warning",
+        run_id=kronos_run,
+    )
+    store.complete_suite_stage(
+        project_id,
+        experiment_id,
+        suite_action="monte_carlo",
+        stage="monte_carlo",
+        state="warning",
+        reason="Kronos calibration warning",
+    )
+
+    blocked = build_suite_plan(store, project_id, experiment_id, "optimize_grid", data_dir=tmp_path)
+    assert blocked.ready is False
+    assert "Monte Carlo warning requires an owner continue decision" in blocked.blockers
+    review = store.review_monte_carlo(
+        project_id,
+        experiment_id,
+        decision="continue",
+        actor="owner",
+        rationale="risk accepted for this exact evidence set",
+    )
+    assert review["decision"] == "continue"
+    assert len(cast(list[object], review["evidence_hashes"])) == 2
+    assert build_suite_plan(
+        store, project_id, experiment_id, "optimize_grid", data_dir=tmp_path
+    ).ready
+
+    manifest_path = tmp_path / "runs" / kronos_run / "manifest.json"
+    tampered = json.loads(manifest_path.read_text())
+    tampered["status"] = "clear"
+    manifest_path.write_text(json.dumps(tampered, sort_keys=True), encoding="utf-8")
+    assert not store.monte_carlo_review_allows_progression(project_id, experiment_id)
+
+
 def test_qlib_plan_derives_opaque_control_resources_and_all_four_steps(
     tmp_path: Path,
 ) -> None:
@@ -307,6 +516,8 @@ def test_optimizer_grid_is_declared_and_bounded(tmp_path: Path) -> None:
     store, project_id, experiment_id = _experiment(tmp_path)
     _complete_action(store, tmp_path, project_id, experiment_id, "baseline")
     _complete_action(store, tmp_path, project_id, experiment_id, "inner_oos")
+    _complete_action(store, tmp_path, project_id, experiment_id, "three_null_families")
+    _complete_action(store, tmp_path, project_id, experiment_id, "monte_carlo")
 
     plan = build_suite_plan(store, project_id, experiment_id, "optimize_grid", data_dir=tmp_path)
     plan_public = plan.as_dict()
@@ -335,6 +546,7 @@ def test_suite_rejects_unmanaged_paths_and_unknown_actions(tmp_path: Path) -> No
                 "baseline",
                 "inner_oos",
                 "three_null_families",
+                "monte_carlo",
                 "optimize_grid",
                 "fixed_stress",
                 "portfolio_cross_asset",
@@ -370,6 +582,7 @@ def test_holdout_plan_redacts_sealed_window_and_runs_canonical_evaluation(tmp_pa
         "baseline",
         "inner_oos",
         "three_null_families",
+        "monte_carlo",
         "optimize_grid",
         "portfolio_cross_asset",
     ):
@@ -410,6 +623,7 @@ def test_interrupted_holdout_evaluation_resumes_only_the_same_reserved_job(
         "baseline",
         "inner_oos",
         "three_null_families",
+        "monte_carlo",
         "optimize_grid",
         "portfolio_cross_asset",
     ):

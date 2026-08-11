@@ -22,6 +22,7 @@ HEAVYWEIGHT_JOB_KINDS: Final = frozenset(
         "kronos_strategy",
         "suite:qlib",
         "suite:kronos",
+        "suite:monte_carlo",
         "research:event-study",
         "research:ml",
     }
@@ -35,6 +36,8 @@ def heavyweight_job_kind_for_command(args: Sequence[str]) -> str | None:
         return "kronos_forecast"
     if command == ("forecast", "eval"):
         return "kronos_evaluate"
+    if command == ("monte-carlo", "kronos"):
+        return "kronos_strategy"
     if command == ("ml", "train"):
         return "ml_train"
     if command == ("research", "run"):

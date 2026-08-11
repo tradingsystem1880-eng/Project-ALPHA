@@ -88,6 +88,17 @@ from alpha_validation.montecarlo import (
     student_t_paths,
 )
 from alpha_validation.overfitting import PBOResult, probability_of_backtest_overfitting
+from alpha_validation.path_montecarlo import (
+    MonteCarloFamilySummaryV1,
+    MonteCarloReviewV1,
+    PathMetricArrays,
+    RegimePathResult,
+    empirical_return_paths,
+    path_metric_arrays,
+    regime_switching_return_paths,
+    student_t_return_paths,
+    summarize_path_family,
+)
 from alpha_validation.propfirm import (
     FIRM_PRESETS,
     PropFirmResult,
@@ -119,7 +130,7 @@ from alpha_validation.tearsheet import (
     render_tearsheet_html,
     report_to_manifest,
 )
-from alpha_validation.verdict import VerdictSummary, grade_verdict
+from alpha_validation.verdict import VerdictSummary, grade_tail_risk, grade_verdict
 from alpha_validation.walkforward import Split, walk_forward_splits
 
 __version__ = version("alpha-validation")
@@ -149,6 +160,9 @@ __all__ = [
     "GauntletReport",
     "LiftResult",
     "MultipleTestResult",
+    "MonteCarloFamilySummaryV1",
+    "MonteCarloReviewV1",
+    "PathMetricArrays",
     "NullResult",
     "NullSummary",
     "OriginScore",
@@ -158,6 +172,7 @@ __all__ = [
     "PropFirmResult",
     "PropFirmRules",
     "ProportionInterval",
+    "RegimePathResult",
     "RunMetadata",
     "ScenarioSummary",
     "Split",
@@ -182,6 +197,7 @@ __all__ = [
     "crps_sample",
     "deflated_sharpe",
     "effective_sample_size",
+    "empirical_return_paths",
     "excursion_quantiles",
     "expected_max_sharpe",
     "expected_shortfall",
@@ -189,6 +205,7 @@ __all__ = [
     "fit_rolling_conformal_blend",
     "garch_paths",
     "grade_verdict",
+    "grade_tail_risk",
     "drawdown_episodes",
     "lift_table",
     "max_drawdown",
@@ -196,11 +213,14 @@ __all__ = [
     "n_cpcv_splits",
     "newcombe_diff_interval",
     "overlap_factor",
+    "path_metric_arrays",
     "parametric_price_null",
     "pinball_loss",
     "probabilistic_sharpe_ratio",
     "probability_of_backtest_overfitting",
     "randomized_price_null",
+    "regime_switching_return_paths",
+    "student_t_return_paths",
     "reality_check",
     "render_returns_tearsheet",
     "render_tearsheet_html",
@@ -214,6 +234,7 @@ __all__ = [
     "spa_test",
     "stationary_bootstrap_indices",
     "student_t_paths",
+    "summarize_path_family",
     "summarize_scores",
     "to_returns",
     "two_proportion_pvalue",

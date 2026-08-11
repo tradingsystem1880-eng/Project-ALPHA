@@ -5,11 +5,12 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 
 import numpy as np
 
 from alpha_core import Bar, DataError
-from alpha_forecast.timestamps import future_session_ts
+from alpha_forecast.timestamps import resolve_forecast_timestamps
 from alpha_forecast.types import ForecastResult, SampledPath
 
 # Degenerate (constant-return) windows still get usable sample spread: this is a test
@@ -46,6 +47,7 @@ class FakeForecaster:
         top_p: float = 0.9,
         top_k: int = 0,
         seed: int = 0,
+        step_ts: Sequence[datetime] | None = None,
     ) -> ForecastResult:
         if len(bars) < 2:
             raise DataError(f"FakeForecaster needs >= 2 bars for return stats, got {len(bars)}")
@@ -85,6 +87,6 @@ class FakeForecaster:
             symbol=bars[-1].symbol,
             origin_ts=bars[-1].ts,
             horizon=horizon,
-            step_ts=tuple(future_session_ts(recent_ts, horizon)),
+            step_ts=resolve_forecast_timestamps(recent_ts, horizon, step_ts),
             samples=tuple(samples),
         )

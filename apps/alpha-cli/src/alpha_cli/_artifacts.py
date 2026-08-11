@@ -166,6 +166,23 @@ _REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
     "propfirm_run": ("propfirm_paths.parquet",),
     "forecast_run": ("paths.parquet", "quantiles.parquet", "history.parquet"),
     "forecast_eval": ("origins.parquet",),
+    "monte_carlo_classical": (
+        "observed_oos.parquet",
+        "paths.parquet",
+        "path_metrics.parquet",
+        "regime_diagnostics.parquet",
+        "regime_emissions.parquet",
+        "report.md",
+    ),
+    "monte_carlo_kronos": (
+        "observed_oos.parquet",
+        "synthetic_bars.parquet",
+        "paths.parquet",
+        "path_metrics.parquet",
+        "model_diagnostics.json",
+        "calibration_origins.parquet",
+        "report.md",
+    ),
     "ml_replay": (
         "equity_curve.parquet",
         "trades.parquet",

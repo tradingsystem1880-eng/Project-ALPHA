@@ -153,6 +153,7 @@ def test_all_expected_tools_are_registered() -> None:
             "run_python",
             "raw_sql",
             "read_file",
+            "review_monte_carlo",
         }
         & names
     )
@@ -248,7 +249,7 @@ def test_control_plane_tools_round_trip_through_cli(
     assert server.list_projects(limit=1)["items"][0]["project_id"] == project_id
     shown_project = server.get_project(project_id)
     assert shown_project["current_version_id"] == version["version_id"]
-    assert len(shown_project["stage_states"]) == 14
+    assert len(shown_project["stage_states"]) == 15
     assert (
         next(row for row in shown_project["stage_states"] if row["stage"] == "baseline")["state"]
         == "queued"
@@ -287,7 +288,7 @@ def test_control_plane_tools_round_trip_through_cli(
 
     brief = server.get_agent_brief(project_id, evidence_limit=10)
     assert brief["allowed_scope"]["snapshot_id"] == "snap-aapl"
-    assert len(brief["stage_statuses"]) == 14
+    assert len(brief["stage_statuses"]) == 15
     assert (
         next(row for row in brief["stage_statuses"] if row["stage"] == "baseline")["run_id"] is None
     )

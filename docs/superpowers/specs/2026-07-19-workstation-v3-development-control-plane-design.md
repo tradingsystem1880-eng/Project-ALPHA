@@ -32,23 +32,24 @@ migrations are explicit and tested; research run directories are never used as m
 
 ## Lifecycle
 
-The eleven owner-facing workflow steps below map to **12 core stage IDs** because parameter
+The twelve owner-facing workflow steps below map to **13 core stage IDs** because parameter
 optimization and broader robustness are separately governed. The exact core IDs are `hypothesis`,
-`data`, `strategy`, `baseline`, `oos`, `robustness`, `optimization`, `portfolio`, `candidate`,
-`holdout`, `paper`, and `decision`. Independent `kronos` and `ml` research tracks bring the exposed
-control-plane total to **14 stage IDs**; they do not silently advance the core lifecycle.
+`data`, `strategy`, `baseline`, `oos`, `robustness`, `monte_carlo`, `optimization`, `portfolio`,
+`candidate`, `holdout`, `paper`, and `decision`. Independent `kronos` and `ml` research tracks bring
+the exposed control-plane total to **15 stage IDs**; they do not silently advance the core lifecycle.
 
 1. Hypothesis and falsification criterion.
 2. Frozen universe/snapshot/costs and sealed final holdout.
 3. Immutable strategy version and declared parameter search space.
 4. Baseline discovery run.
 5. Inner OOS/walk-forward evaluation.
-6. Parameter and robustness research.
-7. Portfolio/cross-asset analysis.
-8. Frozen candidate.
-9. One-shot final holdout reveal.
-10. Sandbox paper preflight/session.
-11. Accept/reject/revise decision packet.
+6. Randomized-price robustness.
+7. Four-family path/scenario Monte Carlo.
+8. Parameter optimization.
+9. Portfolio/cross-asset analysis.
+10. Frozen candidate.
+11. One-shot final holdout reveal.
+12. Sandbox paper preflight/session and accept/reject/revise decision packet.
 
 Stage states are `not_started`, `ready`, `queued`, `running`, `pass`, `warning`, `fail`, and `stale`.
 A changed strategy or experiment fingerprint makes dependent stage links stale. Optimization and
@@ -79,7 +80,9 @@ The three return-null families are separate evidence, not votes:
 - stationary bootstrap is the headline Tier-1 family and is paired with the existing full-engine
   Tier-2 gate;
 - Student-t and GARCH are labeled Tier-1 sensitivity analyses pending calibration;
-- fixed stress, risk-of-ruin, prop-firm Monte Carlo, and Kronos samples remain separate workflows.
+- fixed stress, bootstrap-CI risk-of-ruin, and prop-firm Monte Carlo remain separate workflows;
+- the required path-risk stage independently reports IID empirical, causal regime Markov,
+  Student-t, and full-engine Kronos families under ADR-0029. It is not a no-edge test or a vote.
 
 Stable semantic seed namespaces ensure inserting or reordering a family does not perturb an
 existing result.

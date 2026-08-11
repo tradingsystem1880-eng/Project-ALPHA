@@ -219,6 +219,7 @@ export const DEVELOPMENT_STAGES: ReadonlyArray<{ id: DevelopmentStage; label: st
   { id: 'baseline', label: 'Baseline discovery' },
   { id: 'oos', label: 'Inner OOS / walk-forward' },
   { id: 'robustness', label: 'Nulls & robustness' },
+  { id: 'monte_carlo', label: 'Four-family Monte Carlo' },
   { id: 'optimization', label: 'Parameter research' },
   { id: 'portfolio', label: 'Portfolio / cross-asset' },
   { id: 'candidate', label: 'Candidate freeze' },

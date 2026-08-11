@@ -86,6 +86,8 @@ def _run(
         manifest["holdout_spec_hash"] = holdout_spec_hash
     if null_model is not None:
         manifest["metadata"] = {"null_model": null_model}
+    if command.startswith("monte_carlo_"):
+        manifest["status"] = "clear"
     (rdir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
 
 
@@ -107,6 +109,13 @@ def _link_required_runs(
                 ("0000000000000003", "validate", "pass", True, "bootstrap"),
                 ("0000000000000008", "validate", "warning", None, "student_t"),
                 ("0000000000000009", "validate", "warning", None, "garch"),
+            ],
+        ),
+        "monte_carlo": (
+            "monte_carlo",
+            [
+                ("000000000000000a", "monte_carlo_classical", "pass", None, None),
+                ("000000000000000b", "monte_carlo_kronos", "pass", None, None),
             ],
         ),
         "optimize_grid": (

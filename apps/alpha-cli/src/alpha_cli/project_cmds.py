@@ -12,6 +12,7 @@ from alpha_cli.control_store import (
     ControlStore,
     DecisionVerdict,
     JobStatus,
+    MonteCarloReviewDecision,
     StageState,
     parse_timestamp,
 )
@@ -43,6 +44,33 @@ def _emit(value: object, *, json_out: bool, fallback: str) -> None:
         typer.echo(json.dumps(value, sort_keys=True, allow_nan=False))
     else:
         typer.echo(fallback)
+
+
+@project_app.command("review-monte-carlo")
+def review_monte_carlo(
+    project_id: str,
+    experiment_id: str,
+    decision: str = typer.Option(..., help="continue | revise | reject"),
+    actor: str = typer.Option(..., help="trusted-local human owner identity"),
+    reason: str = typer.Option(..., help="rationale bound to the exact evidence hashes"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Append the owner-only continue/revise/reject decision for a warning Monte Carlo stage."""
+    try:
+        row = _store().review_monte_carlo(
+            project_id,
+            experiment_id,
+            decision=cast(MonteCarloReviewDecision, decision),
+            actor=actor,
+            rationale=reason,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=f"Monte Carlo review {decision} recorded for {experiment_id}",
+    )
 
 
 @project_app.command("create")
@@ -130,6 +158,7 @@ def show(
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "monte_carlo_reviews",
         "research_gate_overrides",
     ):
         values = cast(list[dict[str, object]], row[key])
@@ -276,6 +305,7 @@ def _agent_brief(
             "baseline",
             "oos",
             "robustness",
+            "monte_carlo",
             "optimization",
             "portfolio",
             "holdout",

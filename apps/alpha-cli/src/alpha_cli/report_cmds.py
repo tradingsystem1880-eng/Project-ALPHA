@@ -112,6 +112,21 @@ def report(run_id: str) -> None:
             f"target ${_fmt(rules.get('profit_target'))}, "
             f"max-dd ${_fmt(rules.get('max_drawdown'))}"
         )
+    if manifest.get("command") in {"monte_carlo_classical", "monte_carlo_kronos"}:
+        typer.echo(f"Monte Carlo stage status: {manifest.get('status')}")
+        families = manifest.get("families")
+        if not isinstance(families, list):
+            family = manifest.get("family")
+            families = [family] if isinstance(family, dict) else []
+        for family in families:
+            if not isinstance(family, dict):
+                continue
+            typer.echo(
+                f"family[{family.get('family')}]: status={family.get('status')} "
+                f"grade={family.get('risk_grade')} paths={family.get('n_paths')} "
+                f"median_terminal={_fmt(family.get('terminal_return_q50'))} "
+                f"drawdown_q95={_fmt(family.get('maximum_drawdown_q95'))}"
+            )
     if "passed" in manifest:
         typer.echo(f"verdict: {'PASS' if manifest['passed'] else 'FAIL'}")
     verdict = manifest.get("verdict")

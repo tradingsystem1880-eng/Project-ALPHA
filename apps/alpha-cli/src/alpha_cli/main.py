@@ -11,6 +11,7 @@ from alpha_cli.figures_cmds import figures_app
 from alpha_cli.forecast_cmds import forecast_app
 from alpha_cli.info_cmds import info_app
 from alpha_cli.ml_cmds import ml_app
+from alpha_cli.monte_carlo_cmds import monte_carlo_app
 from alpha_cli.optim_cmds import optim_app
 from alpha_cli.options_cmds import options_app
 from alpha_cli.paper_cmds import paper_app
@@ -39,6 +40,7 @@ app.add_typer(figures_app, name="figures")
 app.add_typer(project_app, name="project")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(ml_app, name="ml")
+app.add_typer(monte_carlo_app, name="monte-carlo")
 app.add_typer(suite_app, name="suite")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)

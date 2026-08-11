@@ -33,3 +33,23 @@ def future_session_ts(recent_ts: Sequence[datetime], horizon: int) -> list[datet
         if calendar or t.weekday() < 5:
             out.append(t)
     return out
+
+
+def resolve_forecast_timestamps(
+    recent_ts: Sequence[datetime],
+    horizon: int,
+    step_ts: Sequence[datetime] | None,
+) -> tuple[datetime, ...]:
+    """Return caller-frozen future sessions or the existing inferred cadence."""
+    if step_ts is None:
+        return tuple(future_session_ts(recent_ts, horizon))
+    result = tuple(step_ts)
+    if len(result) != horizon:
+        raise DataError(f"step_ts length {len(result)} != horizon {horizon}")
+    if any(value.tzinfo is None for value in result):
+        raise DataError("step_ts must be tz-aware")
+    if any(b <= a for a, b in zip(result, result[1:], strict=False)):
+        raise DataError("step_ts must be sorted strictly ascending")
+    if not recent_ts or result[0] <= recent_ts[-1]:
+        raise DataError("step_ts must start after the forecast origin")
+    return result

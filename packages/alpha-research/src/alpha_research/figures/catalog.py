@@ -398,6 +398,78 @@ FIGURES: Final[tuple[FigureDefinition, ...]] = (
         panel_count=2,
         order=190,
     ),
+    # ---------------------------------------------------------------- Monte Carlo path risk
+    FigureDefinition(
+        figure_id="monte_carlo_equity_fans",
+        title="Monte Carlo equity fans",
+        summary="Simulated equity quantile fans with the observed OOS account equity overlaid.",
+        question="How wide is the range of account outcomes under each path-generation family?",
+        uncertainty=(
+            "Bands are finite-simulation quantiles and inherit each generator's assumptions; "
+            "they are not confidence intervals for future wealth."
+        ),
+        caveat=(
+            "Classical and Kronos runs are standalone immutable contracts; together their "
+            "panels form the required four-family evidence set."
+        ),
+        section="monte_carlo",
+        run_commands=("monte_carlo_classical", "monte_carlo_kronos"),
+        required_artifacts=("paths.parquet", "observed_oos.parquet"),
+        panel_count=4,
+        order=191,
+    ),
+    FigureDefinition(
+        figure_id="monte_carlo_terminal_returns",
+        title="Monte Carlo terminal returns",
+        summary="Terminal account-return distributions, one panel for each available family.",
+        question="How often does each simulated account path finish with a gain or a loss?",
+        uncertainty="Histogram shape and tail counts vary with finite path count and binning.",
+        caveat="A positive terminal median does not establish that the strategy has edge.",
+        section="monte_carlo",
+        run_commands=("monte_carlo_classical", "monte_carlo_kronos"),
+        required_artifacts=("path_metrics.parquet",),
+        panel_count=4,
+        order=192,
+    ),
+    FigureDefinition(
+        figure_id="monte_carlo_drawdown_ruin",
+        title="Monte Carlo drawdown and ruin",
+        summary="Maximum-drawdown distributions with the declared 50% ruin boundary.",
+        question="How severe are simulated drawdowns, and how often do they cross ruin?",
+        uncertainty="Ruin probabilities carry finite-path sampling uncertainty in the manifest.",
+        caveat="Ruin means a 50% peak-to-trough account drawdown, not legal insolvency.",
+        section="monte_carlo",
+        run_commands=("monte_carlo_classical", "monte_carlo_kronos"),
+        required_artifacts=("path_metrics.parquet",),
+        panel_count=4,
+        order=193,
+    ),
+    FigureDefinition(
+        figure_id="monte_carlo_regimes",
+        title="Causal regime diagnostics",
+        summary="Calm/volatile return emissions beside the fitted transition matrix.",
+        question="Are both causal volatility states supported, and how persistent are they?",
+        uncertainty="Two states compress a continuous and evolving volatility process.",
+        caveat="The state boundary is frozen from the training prefix and never sees OOS outcomes.",
+        section="monte_carlo",
+        run_commands=("monte_carlo_classical",),
+        required_artifacts=("regime_emissions.parquet", "regime_diagnostics.parquet"),
+        panel_count=2,
+        order=194,
+    ),
+    FigureDefinition(
+        figure_id="kronos_monte_carlo_calibration",
+        title="Kronos calibration and skill",
+        summary="Rolling-origin CRPS versus both baselines and empirical interval coverage.",
+        question="Was the generator calibrated and more skillful than simple baselines?",
+        uncertainty="Rolling origins overlap and post-cutoff samples may remain small.",
+        caveat="Weak skill pauses progression for review; it does not turn Kronos into an oracle.",
+        section="monte_carlo",
+        run_commands=("monte_carlo_kronos",),
+        required_artifacts=("calibration_origins.parquet",),
+        panel_count=2,
+        order=195,
+    ),
     # ---------------------------------------------------------------- forecast
     FigureDefinition(
         figure_id="forecast_fan",

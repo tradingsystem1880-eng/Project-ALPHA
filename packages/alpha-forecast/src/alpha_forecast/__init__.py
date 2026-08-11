@@ -15,7 +15,7 @@ from alpha_forecast.fake import FakeForecaster
 from alpha_forecast.kronos import KronosForecaster
 from alpha_forecast.quantiles import DEFAULT_QS, close_quantiles
 from alpha_forecast.signals import kronos_signal
-from alpha_forecast.timestamps import future_session_ts
+from alpha_forecast.timestamps import future_session_ts, resolve_forecast_timestamps
 from alpha_forecast.types import Forecaster, ForecastResult, SampledPath
 
 __version__ = version("alpha-forecast")
@@ -30,5 +30,6 @@ __all__ = [
     "__version__",
     "close_quantiles",
     "future_session_ts",
+    "resolve_forecast_timestamps",
     "kronos_signal",
 ]

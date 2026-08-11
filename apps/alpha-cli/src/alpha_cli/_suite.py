@@ -32,6 +32,7 @@ type SuiteAction = Literal[
     "baseline",
     "inner_oos",
     "three_null_families",
+    "monte_carlo",
     "optimize_grid",
     "fixed_stress",
     "portfolio_cross_asset",
@@ -46,6 +47,7 @@ SUITE_ACTIONS: Final = frozenset(
         "baseline",
         "inner_oos",
         "three_null_families",
+        "monte_carlo",
         "optimize_grid",
         "fixed_stress",
         "portfolio_cross_asset",
@@ -60,6 +62,7 @@ _ACTION_STAGE: Final[dict[str, str]] = {
     "baseline": "baseline",
     "inner_oos": "oos",
     "three_null_families": "robustness",
+    "monte_carlo": "monte_carlo",
     "optimize_grid": "optimization",
     "fixed_stress": "robustness",
     "portfolio_cross_asset": "portfolio",
@@ -74,6 +77,7 @@ _RUN_BACKED_STAGE_ACTIONS: Final = frozenset(
         "baseline",
         "inner_oos",
         "three_null_families",
+        "monte_carlo",
         "optimize_grid",
         "portfolio_cross_asset",
         "qlib",
@@ -87,6 +91,7 @@ _PRE_REVEAL_RESEARCH_ACTIONS: Final = frozenset(
         "baseline",
         "inner_oos",
         "three_null_families",
+        "monte_carlo",
         "optimize_grid",
         "fixed_stress",
         "portfolio_cross_asset",
@@ -99,12 +104,21 @@ _PREREQUISITES: Final[dict[str, tuple[str, ...]]] = {
     "baseline": (),
     "inner_oos": ("baseline",),
     "three_null_families": ("oos",),
-    "optimize_grid": ("oos",),
+    "monte_carlo": ("robustness",),
+    "optimize_grid": ("oos", "robustness", "monte_carlo"),
     "fixed_stress": ("baseline",),
     "portfolio_cross_asset": ("robustness", "optimization"),
     "qlib": ("data", "strategy"),
     "kronos": ("data",),
-    "holdout_reveal": ("baseline", "oos", "robustness", "optimization", "portfolio", "candidate"),
+    "holdout_reveal": (
+        "baseline",
+        "oos",
+        "robustness",
+        "monte_carlo",
+        "optimization",
+        "portfolio",
+        "candidate",
+    ),
     "paper_preflight": ("holdout",),
 }
 
@@ -390,6 +404,48 @@ def _latest_run(
     return None
 
 
+def _latest_run_for_command(
+    project: Mapping[str, object],
+    experiment_id: str,
+    stages: Sequence[str],
+    *,
+    data_dir: Path,
+    commands: frozenset[str],
+    states: frozenset[str] = frozenset({"pass", "warning"}),
+    null_model: str | None = None,
+) -> tuple[str, dict[str, object]] | None:
+    from alpha_cli._artifacts import read_manifest
+    from alpha_cli.run_store import find_run_dir
+
+    rows = project.get("stage_run_links")
+    if not isinstance(rows, list):
+        return None
+    for stage in stages:
+        candidates = [
+            row
+            for row in rows
+            if isinstance(row, dict)
+            and row.get("experiment_id") == experiment_id
+            and row.get("stage") == stage
+            and row.get("state") in states
+        ]
+        for row in reversed(candidates):
+            run_id = str(row["run_id"])
+            rdir = find_run_dir(data_dir, run_id)
+            if rdir is None:
+                continue
+            manifest = read_manifest(rdir)
+            if manifest.get("command") not in commands:
+                continue
+            metadata = manifest.get("metadata")
+            if null_model is not None and (
+                not isinstance(metadata, Mapping) or metadata.get("null_model") != null_model
+            ):
+                continue
+            return run_id, cast(dict[str, object], manifest)
+    return None
+
+
 def _workload(
     action: str, *, commands: int, canonical_runs: int, grid_configurations: int | None = None
 ) -> dict[str, object]:
@@ -397,6 +453,7 @@ def _workload(
         "baseline": "one fixed-parameter discovery backtest",
         "inner_oos": "one fixed-rule walk-forward OOS evaluation with no refit",
         "three_null_families": "bootstrap headline plus Student-t and GARCH sensitivities",
+        "monte_carlo": "three classical path families plus Kronos full-engine synthetic replay",
         "optimize_grid": "declared deterministic parameter grid with overfit diagnostics",
         "fixed_stress": "fixed scenarios over one cited realized return stream",
         "portfolio_cross_asset": "portfolio and cross-sectional replay over the frozen universe",
@@ -406,7 +463,7 @@ def _workload(
         "paper_preflight": "one offline sandbox wiring preflight; no order placement",
     }
     result: dict[str, object] = {
-        "class": "heavyweight" if action in {"qlib", "kronos"} else "standard",
+        "class": "heavyweight" if action in {"qlib", "kronos", "monte_carlo"} else "standard",
         "commands": commands,
         "estimated_canonical_runs": canonical_runs,
         "description": descriptions[action],
@@ -559,7 +616,16 @@ def build_suite_plan(
     if current_state in {"queued", "running", "fail", "stale"} and not resume_reveal:
         blockers.append(f"{stage} stage is {current_state}")
     for prerequisite in _PREREQUISITES[action]:
-        if states.get(prerequisite) not in {"pass", "warning"}:
+        prerequisite_state = states.get(prerequisite)
+        if action == "monte_carlo" and prerequisite == "robustness":
+            if prerequisite_state not in {"pass", "warning", "fail"}:
+                blockers.append("robustness stage must be completed")
+            continue
+        if prerequisite == "monte_carlo" and prerequisite_state == "warning":
+            if not store.monte_carlo_review_allows_progression(project_id, experiment_id):
+                blockers.append("Monte Carlo warning requires an owner continue decision")
+            continue
+        if prerequisite_state not in {"pass", "warning"}:
             blockers.append(f"{prerequisite} stage must be pass or warning")
 
     universe_raw = experiment.get("universe")
@@ -739,6 +805,153 @@ def build_suite_plan(
             }
         )
         workload = _workload(action, commands=3, canonical_runs=3)
+    elif action == "monte_carlo":
+        source = _latest_run_for_command(
+            project,
+            experiment_id,
+            ("robustness",),
+            data_dir=data_dir,
+            commands=frozenset({"validate"}),
+            states=frozenset({"pass", "warning", "fail"}),
+            null_model="bootstrap",
+        )
+        evaluation_source = _latest_run_for_command(
+            project,
+            experiment_id,
+            ("kronos",),
+            data_dir=data_dir,
+            commands=frozenset({"forecast_eval"}),
+        )
+        if source is None:
+            blockers.append("Monte Carlo requires the completed bootstrap validation run")
+            source_run = "<bootstrap-validation-required>"
+            source_manifest: dict[str, object] = {}
+        else:
+            source_run, source_manifest = source
+            metadata = source_manifest.get("metadata")
+            null_model = metadata.get("null_model") if isinstance(metadata, Mapping) else None
+            if null_model != "bootstrap":
+                blockers.append("Monte Carlo source must be the stationary-bootstrap headline run")
+        if evaluation_source is None:
+            blockers.append("Monte Carlo requires a matching Kronos rolling-origin evaluation")
+            evaluation_run = "<forecast-evaluation-required>"
+            evaluation_manifest: dict[str, object] = {}
+        else:
+            evaluation_run, evaluation_manifest = evaluation_source
+
+        classical_args = (
+            "monte-carlo",
+            "classical",
+            "--from-run",
+            source_run,
+            "--paths",
+            str(
+                _stage_int(
+                    config,
+                    "monte_carlo_paths",
+                    10_000,
+                    minimum=1,
+                    maximum=1_000_000,
+                )
+            ),
+            "--regime-window",
+            str(
+                _stage_int(
+                    config,
+                    "monte_carlo_regime_window",
+                    63,
+                    minimum=2,
+                    maximum=2_000,
+                )
+            ),
+            "--min-state-observations",
+            str(
+                _stage_int(
+                    config,
+                    "monte_carlo_min_state_observations",
+                    20,
+                    minimum=1,
+                    maximum=100_000,
+                )
+            ),
+            "--min-state-transitions",
+            str(
+                _stage_int(
+                    config,
+                    "monte_carlo_min_state_transitions",
+                    10,
+                    minimum=1,
+                    maximum=100_000,
+                )
+            ),
+            "--seed",
+            str(_seed(seeds)),
+        )
+        steps.append(
+            SuiteStep(
+                "Classical Monte Carlo families",
+                classical_args,
+                classical_args,
+                "iid_regime_student_t_no_majority_vote",
+            )
+        )
+
+        eval_model = evaluation_manifest.get("model")
+        eval_params = evaluation_manifest.get("params")
+        model_block = eval_model if isinstance(eval_model, Mapping) else {}
+        params_block = eval_params if isinstance(eval_params, Mapping) else {}
+        model_id = str(model_block.get("model_id", "fake"))
+        context_bars = int(params_block.get("context", 512))
+        kronos_args: list[str] = [
+            "monte-carlo",
+            "kronos",
+            "--from-run",
+            source_run,
+            "--forecast-eval-run",
+            evaluation_run,
+            "--paths",
+            str(
+                _stage_int(
+                    config,
+                    "kronos_monte_carlo_paths",
+                    128,
+                    minimum=1,
+                    maximum=10_000,
+                )
+            ),
+            "--context",
+            str(context_bars),
+            "--model",
+            model_id,
+            "--seed",
+            str(_seed(seeds)),
+        ]
+        for field, flag in (
+            ("model_revision", "--model-revision"),
+            ("tokenizer_id", "--tokenizer"),
+            ("tokenizer_revision", "--tokenizer-revision"),
+            ("device", "--device"),
+        ):
+            value = model_block.get(field)
+            if isinstance(value, str) and value:
+                kronos_args.extend((flag, value))
+        steps.append(
+            SuiteStep(
+                "Kronos synthetic-OHLCV full-engine replay",
+                tuple(kronos_args),
+                tuple(kronos_args),
+                "standalone_model_path_no_observed_signal_replay",
+            )
+        )
+        governance.update(
+            {
+                "aggregation": "no_majority_vote",
+                "warning_authority": "trusted_local_owner_cli_only",
+                "warning_decisions": ["continue", "revise", "reject"],
+                "kronos_role": "calibrated_stochastic_generator_not_market_oracle",
+            }
+        )
+        workload = _workload(action, commands=2, canonical_runs=2)
     elif action == "optimize_grid":
         step, combinations = _grid_steps(
             primary=primary,
@@ -757,11 +970,11 @@ def build_suite_plan(
         steps.append(step)
         workload = _workload(action, commands=1, canonical_runs=1, grid_configurations=combinations)
     elif action == "fixed_stress":
-        source_run = _latest_run(project, experiment_id, ("oos", "baseline"))
-        if source_run is None:
+        fixed_source_run = _latest_run(project, experiment_id, ("oos", "baseline"))
+        if fixed_source_run is None:
             blockers.append("fixed stress requires a cited baseline or OOS run")
-            source_run = "<required-run>"
-        args = ("risk", "scenario", "--from-run", source_run, "--json")
+            fixed_source_run = "<required-run>"
+        args = ("risk", "scenario", "--from-run", fixed_source_run, "--json")
         steps.append(SuiteStep("Fixed stress scenarios", args, args, "scenario_sensitivity"))
         governance["separate_from_nulls"] = True
         workload = _workload(action, commands=1, canonical_runs=0)
@@ -1396,7 +1609,11 @@ def _finish_stage(
 def _headline_state(data_dir: Path, plan: SuitePlan, run_ids: Sequence[str]) -> StageState:
     if not run_ids:
         return "pass"
-    if plan.action not in {"three_null_families", "optimize_grid", "holdout_reveal"}:
+    if plan.action not in {
+        "three_null_families",
+        "optimize_grid",
+        "holdout_reveal",
+    }:
         return "pass"
     from alpha_cli._artifacts import read_manifest
     from alpha_cli.run_store import find_run_dir
@@ -1420,6 +1637,35 @@ def _headline_state(data_dir: Path, plan: SuitePlan, run_ids: Sequence[str]) -> 
         if isinstance(headline, dict):
             return "pass" if headline.get("passed") is True else "fail"
     return "fail"
+
+
+def _monte_carlo_results(data_dir: Path, run_ids: Sequence[str]) -> list[tuple[str, StageState]]:
+    """Read each family manifest once and map its declared status to a stage-link state."""
+    from alpha_cli._artifacts import read_manifest
+    from alpha_cli.run_store import find_run_dir
+
+    status_states: dict[str, StageState] = {
+        "clear": "pass",
+        "warning": "warning",
+        "fail": "fail",
+    }
+    results: list[tuple[str, StageState]] = []
+    for run_id in run_ids:
+        result_dir = find_run_dir(data_dir, run_id)
+        if result_dir is None:
+            raise DataError(f"suite result run {run_id!r} was not published")
+        status = str(read_manifest(result_dir).get("status"))
+        results.append((run_id, status_states.get(status, "fail")))
+    return results
+
+
+def _monte_carlo_stage_state(results: Sequence[tuple[str, StageState]]) -> StageState:
+    states = {state for _, state in results}
+    if "fail" in states:
+        return "fail"
+    if "warning" in states:
+        return "warning"
+    return "pass" if results and states == {"pass"} else "fail"
 
 
 def _record_optimization_trial_attempts(
@@ -1605,13 +1851,17 @@ def execute_suite(
             job_id=jid,
             run_ids=run_ids,
         )
-        stage_state = _headline_state(data_dir, plan, run_ids)
-        linked_results: list[tuple[str, StageState]] = [(run_id, stage_state) for run_id in run_ids]
-        if plan.action == "three_null_families" and run_ids:
-            linked_results = [
-                *((run_id, "warning") for run_id in run_ids[1:]),
-                (run_ids[0], stage_state),
-            ]
+        if plan.action == "monte_carlo":
+            linked_results = _monte_carlo_results(data_dir, run_ids)
+            stage_state = _monte_carlo_stage_state(linked_results)
+        else:
+            stage_state = _headline_state(data_dir, plan, run_ids)
+            linked_results = [(run_id, stage_state) for run_id in run_ids]
+            if plan.action == "three_null_families" and run_ids:
+                linked_results = [
+                    *((run_id, "warning") for run_id in run_ids[1:]),
+                    (run_ids[0], stage_state),
+                ]
         for run_id, link_state in linked_results:
             store.link_suite_stage_run(
                 plan.project_id,

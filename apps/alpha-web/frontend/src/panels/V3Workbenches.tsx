@@ -40,6 +40,7 @@ const STAGE_ACTIONS: { id: SuiteAction; label: string }[] = [
   { id: 'baseline', label: 'Run baseline' },
   { id: 'inner_oos', label: 'Run inner OOS' },
   { id: 'three_null_families', label: 'Run three null families' },
+  { id: 'monte_carlo', label: 'Run four-family Monte Carlo' },
   { id: 'optimize_grid', label: 'Optimize deterministic grid' },
   { id: 'fixed_stress', label: 'Run fixed stress scenarios' },
   { id: 'portfolio_cross_asset', label: 'Run portfolio / cross-asset' },
@@ -341,9 +342,12 @@ export function DevelopmentCenter() {
   const experimentId = detail?.current_experiment_id ?? null
   const holdout = detail?.holdouts.find((row) => row.experiment_id === experimentId)
   const decision = detail?.decision_packets.find((row) => row.experiment_id === experimentId)
+  const monteCarloReview = detail?.monte_carlo_reviews.find((row) => row.experiment_id === experimentId)
+  const monteCarloStage = detail?.stage_states.find((row) => row.experiment_id === experimentId && row.stage === 'monte_carlo')
   const candidate = detail?.stage_states.find((row) => row.experiment_id === experimentId && row.stage === 'candidate')
   const candidatePrerequisites = ['baseline', 'oos', 'robustness', 'optimization', 'portfolio']
-  const candidateReady = candidatePrerequisites.every((stage) => detail?.stage_states.some((row) => row.experiment_id === experimentId && row.stage === stage && ['pass', 'warning'].includes(row.state)))
+  const monteCarloReady = monteCarloStage?.state === 'pass' || (monteCarloStage?.state === 'warning' && monteCarloReview?.decision === 'continue')
+  const candidateReady = monteCarloReady && candidatePrerequisites.every((stage) => detail?.stage_states.some((row) => row.experiment_id === experimentId && row.stage === stage && ['pass', 'warning'].includes(row.state)))
 
   async function reloadDetail() {
     if (!selectedId) return
@@ -552,8 +556,12 @@ export function DevelopmentCenter() {
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Candidate freeze</span><span className={`chip ${candidate?.state === 'pass' ? 'pass' : ''}`}>{candidate?.state ?? 'NOT STARTED'}</span></div>
-                  <p>Freezes the current strategy and experiment only after baseline, OOS, robustness, optimization, and portfolio research clear.</p>
+                  <p>Freezes the current strategy and experiment only after baseline, OOS, robustness, four-family Monte Carlo, optimization, and portfolio research clear.</p>
                   <button className="btn primary" disabled={governanceBusy || !candidateReady || candidate?.state === 'pass'} onClick={freezeCandidate}>{candidate?.state === 'pass' ? 'Candidate frozen' : 'Freeze candidate'}</button>
+                </div>
+                <div className="governance-block">
+                  <div className="governance-title"><span>Monte Carlo review</span><span className={`chip ${monteCarloReview?.decision === 'continue' ? 'pass' : monteCarloReview ? 'fail' : ''}`}>{monteCarloReview?.decision.toUpperCase() ?? (monteCarloStage?.state === 'warning' ? 'OWNER REVIEW REQUIRED' : monteCarloStage?.state?.toUpperCase() ?? 'NOT STARTED')}</span></div>
+                  {monteCarloReview ? <><span className="mono">{shortId(monteCarloReview.review_id)} · {monteCarloReview.actor}</span><p>{monteCarloReview.rationale}</p><span className="mono muted">{monteCarloReview.evidence_hashes.length} EXACT RUN HASHES · CLI-ONLY AUTHORITY</span></> : <p>Warnings pause here. Record continue, revise, or reject with <code>alpha project review-monte-carlo</code>; the Workstation and MCP are read-only for this owner decision.</p>}
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Decision packet</span><span className={`chip ${decision?.verdict === 'accept' ? 'pass' : decision?.verdict === 'reject' ? 'fail' : ''}`}>{decision?.verdict?.toUpperCase() ?? 'OPEN'}</span></div>

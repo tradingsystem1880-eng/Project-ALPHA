@@ -445,6 +445,10 @@ def _complete_pre_holdout(store: ControlStore, experiment_id: str, *, at: dateti
             ("1000000000000004", "validate", "warning", None, "student_t"),
             ("1000000000000005", "validate", "warning", None, "garch"),
         ],
+        "monte_carlo": [
+            ("1000000000000009", "monte_carlo_classical", "pass", None, None),
+            ("100000000000000a", "monte_carlo_kronos", "pass", None, None),
+        ],
         "optimize_grid": [("1000000000000006", "optim_grid", "pass", True, None)],
         "portfolio_cross_asset": [
             ("1000000000000007", "backtest_portfolio", "pass", None, None),
@@ -455,6 +459,7 @@ def _complete_pre_holdout(store: ControlStore, experiment_id: str, *, at: dateti
         "baseline": "baseline",
         "inner_oos": "oos",
         "three_null_families": "robustness",
+        "monte_carlo": "monte_carlo",
         "optimize_grid": "optimization",
         "portfolio_cross_asset": "portfolio",
     }
@@ -497,6 +502,9 @@ def _complete_pre_holdout(store: ControlStore, experiment_id: str, *, at: dateti
                 manifest["passed"] = passed
             if null_model is not None:
                 manifest["metadata"] = {"null_model": null_model}
+            if command.startswith("monte_carlo_"):
+                manifest["status"] = "clear"
+                manifest["source_run_id"] = "1000000000000003"
             (run_dir / "manifest.json").write_text(
                 json.dumps(manifest, sort_keys=True), encoding="utf-8"
             )
@@ -589,7 +597,7 @@ def test_content_addressed_versions_and_experiments_are_idempotent(tmp_path: Pat
     assert len(cast(list[object], detail["versions"])) == 1
     assert len(cast(list[object], detail["experiments"])) == 1
     stages = cast(list[dict[str, object]], detail["stage_states"])
-    assert len(stages) == 14
+    assert len(stages) == 15
     assert next(row for row in stages if row["stage"] == "baseline")["state"] == "ready"
     assert {row["stage"] for row in stages if row["state"] == "pass"} == {
         "hypothesis",

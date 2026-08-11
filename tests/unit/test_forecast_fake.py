@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 import pytest
 
 from alpha_core import DataError
@@ -41,6 +43,13 @@ def test_samples_are_distinct_paths() -> None:
     assert len({p.close for p in r.samples}) > 1
 
 
+def test_exact_step_timestamps_override_inferred_calendar() -> None:
+    bars = daily_bars(20)
+    exact = tuple(bars[-1].ts + timedelta(days=offset) for offset in (1, 4, 8))
+    result = FakeForecaster().forecast(bars, horizon=3, sample_count=2, step_ts=exact, seed=4)
+    assert result.step_ts == exact
+
+
 def test_fails_loud_on_bad_input() -> None:
     bars = daily_bars(20)
     with pytest.raises(DataError, match="bars"):
@@ -51,3 +60,26 @@ def test_fails_loud_on_bad_input() -> None:
         FakeForecaster().forecast(bars, horizon=0, sample_count=2)
     with pytest.raises(DataError, match="sample_count"):
         FakeForecaster().forecast(bars, horizon=3, sample_count=0)
+    with pytest.raises(DataError, match="step_ts"):
+        FakeForecaster().forecast(bars, horizon=3, sample_count=2, step_ts=(bars[-1].ts,))
+    with pytest.raises(DataError, match="tz-aware"):
+        FakeForecaster().forecast(
+            bars,
+            horizon=2,
+            sample_count=2,
+            step_ts=(datetime(2030, 1, 1), datetime(2030, 1, 2)),
+        )
+    with pytest.raises(DataError, match="strictly ascending"):
+        FakeForecaster().forecast(
+            bars,
+            horizon=2,
+            sample_count=2,
+            step_ts=(bars[-1].ts + timedelta(days=2), bars[-1].ts + timedelta(days=1)),
+        )
+    with pytest.raises(DataError, match="after the forecast origin"):
+        FakeForecaster().forecast(
+            bars,
+            horizon=2,
+            sample_count=2,
+            step_ts=(bars[-1].ts, bars[-1].ts + timedelta(days=1)),
+        )
