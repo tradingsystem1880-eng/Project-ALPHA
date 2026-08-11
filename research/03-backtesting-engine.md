@@ -66,10 +66,10 @@ Each framework is scored on the dimensions that matter for an institutional-grad
 
 - **Institutional friction modeling.** Configurable `FillModel`:
   ```python
-  fill_model=FillModelConfig(
-      prob_fill_on_limit=0.2,   # chance a limit fills when price only touches
-      prob_slippage=0.5,        # chance of 1-tick adverse slippage (L1 data)
-      random_seed=42,           # reproducible
+  fill_model = FillModelConfig(
+      prob_fill_on_limit=0.2,  # chance a limit fills when price only touches
+      prob_slippage=0.5,  # chance of 1-tick adverse slippage (L1 data)
+      random_seed=42,  # reproducible
   )
   ```
   - **L2/L3 order-book data → fills walk real book levels** (size-aware, depth impact, per-level liquidity consumption via `liquidity_consumption=True`).

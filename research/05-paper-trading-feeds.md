@@ -121,23 +121,34 @@ The elegant part: in Nautilus you swap the **execution client**, not the strateg
   from alpaca.trading.requests import MarketOrderRequest
   from alpaca.trading.enums import OrderSide, TimeInForce
 
-  client = TradingClient("KEY", "SECRET", paper=True)   # paper sandbox
-  client.submit_order(MarketOrderRequest(
-      symbol="BTC/USD", qty=0.001, side=OrderSide.BUY, time_in_force=TimeInForce.DAY))
+  client = TradingClient("KEY", "SECRET", paper=True)  # paper sandbox
+  client.submit_order(
+      MarketOrderRequest(
+          symbol="BTC/USD", qty=0.001, side=OrderSide.BUY, time_in_force=TimeInForce.DAY
+      )
+  )
   ```
 - **Order/fill stream (websocket):**
   ```python
   from alpaca.trading.stream import TradingStream
+
   ts = TradingStream("KEY", "SECRET", paper=True)
-  async def on_update(data): print(data)   # new / partial_fill / fill / canceled ...
+
+
+  async def on_update(data):
+      print(data)  # new / partial_fill / fill / canceled ...
+
+
   ts.subscribe_trade_updates(on_update)
   ts.run()
   ```
 - **Market data stream (the catch — see §4):**
   ```python
   from alpaca.data.live import StockDataStream
-  s = StockDataStream("KEY", "SECRET")   # FREE = IEX feed only
-  s.subscribe_quotes(handler, "SPY"); s.subscribe_trades(handler, "SPY")
+
+  s = StockDataStream("KEY", "SECRET")  # FREE = IEX feed only
+  s.subscribe_quotes(handler, "SPY")
+  s.subscribe_trades(handler, "SPY")
   s.run()
   ```
 - **Crypto data** is full and free (no IEX/SIP issue — crypto has no SIP). `CryptoDataStream` gives real-time crypto quotes/trades/bars at no cost.
@@ -157,8 +168,9 @@ The elegant part: in Nautilus you swap the **execution client**, not the strateg
 - **`ccxt`** unifies 100+ exchanges; flip to testnet with one call **before** any other call:
   ```python
   import ccxt
+
   ex = ccxt.binance({"apiKey": K, "secret": S})
-  ex.set_sandbox_mode(True)            # -> testnet endpoints, virtual funds
+  ex.set_sandbox_mode(True)  # -> testnet endpoints, virtual funds
   ex.load_markets()
   ex.create_order("ETH/USDT", "limit", "buy", 0.01, 1000)
   ```

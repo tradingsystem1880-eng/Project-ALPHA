@@ -9,12 +9,28 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_validation.barrier import (
+    BarrierCounts,
+    BarrierResult,
+    Outcome,
+    aggregate_outcomes,
+    barrier_outcome,
+    excursion_quantiles,
+)
 from alpha_validation.bootstrap import (
     ConfidenceInterval,
     Statistic,
     block_bootstrap_ci,
     risk_of_ruin,
     stationary_bootstrap_indices,
+)
+from alpha_validation.conditional import (
+    LiftResult,
+    apply_fdr,
+    conditional_lift,
+    lift_table,
+    monotonic_trend,
+    two_proportion_pvalue,
 )
 from alpha_validation.cpcv import (
     CPCVSplit,
@@ -78,6 +94,16 @@ from alpha_validation.propfirm import (
     PropFirmRules,
     simulate_propfirm,
 )
+from alpha_validation.proportion import (
+    MultipleTestResult,
+    ProportionInterval,
+    autocorrelation_effective_size,
+    benjamini_hochberg,
+    effective_sample_size,
+    newcombe_diff_interval,
+    overlap_factor,
+    wilson_interval,
+)
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
 from alpha_validation.scenario import ScenarioSummary, scenario_metrics
 from alpha_validation.tearsheet import (
@@ -99,6 +125,8 @@ from alpha_validation.walkforward import Split, walk_forward_splits
 __version__ = version("alpha-validation")
 
 __all__ = [
+    "BarrierCounts",
+    "BarrierResult",
     "CISummary",
     "CPCVSplit",
     "CPCVSummary",
@@ -119,13 +147,17 @@ __all__ = [
     "ForecastCalibrationOriginV1",
     "ForecastStateDiagnosticV1",
     "GauntletReport",
+    "LiftResult",
+    "MultipleTestResult",
     "NullResult",
     "NullSummary",
     "OriginScore",
     "KronosCalibratedAssessmentV1",
+    "Outcome",
     "PBOResult",
     "PropFirmResult",
     "PropFirmRules",
+    "ProportionInterval",
     "RunMetadata",
     "ScenarioSummary",
     "Split",
@@ -133,16 +165,24 @@ __all__ = [
     "StrategyFn",
     "VerdictSummary",
     "__version__",
+    "aggregate_outcomes",
     "annualized_volatility",
+    "apply_fdr",
     "assess_kronos_calibrated_candidate",
+    "autocorrelation_effective_size",
+    "barrier_outcome",
+    "benjamini_hochberg",
     "block_bootstrap_ci",
     "bootstrap_end_returns",
     "build_outcomes",
     "cagr",
     "central_coverage",
     "combinatorial_purged_splits",
+    "conditional_lift",
     "crps_sample",
     "deflated_sharpe",
+    "effective_sample_size",
+    "excursion_quantiles",
     "expected_max_sharpe",
     "expected_shortfall",
     "evaluate_frozen_calibration",
@@ -150,8 +190,12 @@ __all__ = [
     "garch_paths",
     "grade_verdict",
     "drawdown_episodes",
+    "lift_table",
     "max_drawdown",
+    "monotonic_trend",
     "n_cpcv_splits",
+    "newcombe_diff_interval",
+    "overlap_factor",
     "parametric_price_null",
     "pinball_loss",
     "probabilistic_sharpe_ratio",
@@ -172,6 +216,8 @@ __all__ = [
     "student_t_paths",
     "summarize_scores",
     "to_returns",
+    "two_proportion_pvalue",
     "value_at_risk",
     "walk_forward_splits",
+    "wilson_interval",
 ]
