@@ -5,11 +5,11 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
-**Release state:** The research-first R1–R6 program is integrated and scientifically hardened as of
-2026-08-11, but is not production-complete. The owner real-case pilot, dual security review, and
-distribution-license review remain open. Workstation v3 is implemented and its offline release
-gate passed on 2026-07-19.
-R-22 still blocks distribution; the R-14 public Binance quote smoke passed locally on 2026-08-04,
+**Private local-use state:** The research-first R1–R6 program is integrated and scientifically
+hardened as of 2026-08-11. ALPHA is permanently a private, single-owner application for the owner's
+local device; production, sale, distribution, hosting, and multi-user release work are out of scope.
+The owner real-case pilot remains empirical validation rather than a software release gate.
+The R-14 public Binance quote smoke passed locally on 2026-08-04,
 while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. Daily-data/IBKR
 Paper hardening is implemented offline; current-universe Tiingo qualification and every real IBKR
 Paper acceptance scenario remain pending.
@@ -36,6 +36,9 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- Simplified project governance around the permanent private/local-only scope: no root project
+  license or distribution-release review is required unless the owner explicitly changes that
+  scope. Third-party notices, service terms, and data-retention restrictions remain enforced.
 - Kronos validation reliability is now scored as a genuine rolling origin: every validation point
   selects its preregistered blend and conformal radius from prior validation origins only. The final
   fit remains frozen before OOS evaluation, and a future-poison regression pins the boundary.

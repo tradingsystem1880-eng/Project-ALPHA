@@ -42,5 +42,5 @@ candidate must publish its preregistered hurdle result as passed, rejected, or i
 Future-poison and availability-time tests cover every state feature and calibration step; fitting
 and selection are fold-local; CPU reruns are byte-identical; Kronos reports raw and calibrated
 proper scores and coverage; Qlib reports member/ensemble IC, rank-IC, disagreement, turnover, and
-net-cost replay. Owner pilot, security review, and distribution-license review remain separate
-release gates.
+net-cost replay. A real-case owner pilot remains required before an empirical model claim;
+production and distribution release gates are out of scope for the private local application.

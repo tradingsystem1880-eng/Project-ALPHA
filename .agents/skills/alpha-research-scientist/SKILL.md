@@ -48,8 +48,8 @@ D2; a D0-only early decision still cannot support or advance a claim.
   those bounded projections, never a second analytical authority.
 - The isolated literature worker, registered qualified daily research-data lane, and D1/D2 runners
   exist. Use only immutable registered inputs and their tested command surfaces. The licensed
-  intraday lane, verified owner-presence authentication, real-case pilot, security review, and
-  distribution-license review remain open.
+  intraday lane and real-case pilot remain evidence-dependent. Production, distribution, hosting,
+  and multi-user readiness are out of scope for this private local application.
 - Confirmation approval and D2 authorization/consumption exist only behind trusted-local owner CLI
   boundaries and an exact approved child contract. Agents must not invoke those owner operations or
   infer permission from their existence.

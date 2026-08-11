@@ -1,7 +1,7 @@
 # Phase R4 — Source Plane (literature system + acquisition worker)
 
-**Delivery state:** Completed 2026-08-09. The isolated-worker implementation gate passed; the
-separate distribution-license review remains open and is not implied by this checklist.
+**Delivery state:** Completed 2026-08-09. The isolated-worker implementation gate passed. ALPHA is
+private and local-only; distribution review is out of scope unless the owner changes that scope.
 
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec §7 + ADR-0024; exit conditions =
 > 2026-08-06 spec §12 Gate-2 row, verbatim. Audit rows: W5, W13 (literature half). Depends on R2

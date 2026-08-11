@@ -1,8 +1,8 @@
 # Phase R6 — Confirmation, Readiness Gate, Promotion, UI Enforcement
 
 **Delivery state:** Completed 2026-08-10 and scientifically hardened 2026-08-11 under ADR-0027.
-The owner real-case pilot, dual security review, and distribution-license review remain open; this
-phase completion is not a production-readiness claim.
+The private local implementation is complete. A real-case owner pilot remains empirical validation;
+production, distribution, hosting, and multi-user readiness are out of scope.
 
 > **For agentic workers:** TDD per `CLAUDE.md`. Authority: spec §10, §11, §15 + ADR-0026. Audit
 > rows: W14, W15, W16, W17. Depends on R5.

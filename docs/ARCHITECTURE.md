@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-08-11
 **Status:** Living (six-screen Workstation and governed D0/D1/D2 research flow implemented;
-owner pilot, security review, and distribution-license review remain open)
+private single-owner local-device scope; no production or distribution target)
 **Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
 
 ---
@@ -319,7 +319,7 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **Intraday research cannot inherit daily authority.** Gate 1 uses only synthetic fixed-duration proxy bars. There is no qualified real intraday adapter, and research bars/results cannot enter daily snapshots, validation, holdout, paper, or orders. → [ADR-0020](adr/0020-intraday-event-research-is-not-daily-validation-evidence.md)
 - **Surface state is bounded and recoverable.** REST publishes an explicit contract version and endpoint limits; chart windows filter bars and every linked evidence series together; figures report downsampling bounds; the fixed six-screen shell mounts only visible panels; direct and suite durable jobs rehydrate, expose failure, and use owner-driven heartbeat/cancellation/reconciliation rather than raw PID authority. Journal recovery alone does not prove an orphan child has stopped.
 - **Paper authority is narrow and never live capital.** Crypto execution is local Sandbox only. IBKR is paper-account only and consumes an exact immutable intent after reconciliation, dual flags, fresh quote, and cutoff checks. Futures remain connectivity probes, not research. Kronos has no live-paper support without a separately approved causal cache.
-- **No implicit project license.** ALPHA has no root license declaration; distribution/publication is blocked on an explicit owner decision and exact dependency/notice review.
+- **Private local use only.** ALPHA has no root license because it is not distributed, sold, hosted, or used by others. Preserve dependency notices and provider/data terms; reopen distribution governance only if the owner explicitly changes the scope.
 
 ## 6. Key Decisions (ADR index)
 

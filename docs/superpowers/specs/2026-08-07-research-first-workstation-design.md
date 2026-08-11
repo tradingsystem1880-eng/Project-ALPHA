@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-07
 **State:** R1–R6 implemented and integrated; scientific hardening completed 2026-08-11. The
-owner pilot on a real case, dual security review, and distribution-license review remain open, so
-the program is not production-complete. Extends the Research Scientist program
+private single-owner local-device program is complete. A real-case owner pilot remains empirical
+validation; production, sale, distribution, hosting, and multi-user readiness are out of scope.
+Extends the Research Scientist program
 (`2026-08-06-research-scientist-program-design.md`), which remains authoritative for Gate 0–1
 mechanics, the D0 fixture, and the schema-v2 research control plane.
 **Authority:** `CLAUDE.md`, ADR-0011, ADR-0014, ADR-0015, ADR-0018, ADR-0019, ADR-0020, and the
@@ -908,4 +909,3 @@ The redesign is unacceptable if any of the following holds; each row names the b
 | Strategy development begins without research evidence | promotion packet + AgentBrief research block (§11) |
 | Claude designed in as the strategy-development AI | §0 rule 1; no Claude surface exists in the product |
 | Codex not the intended AI research collaborator | §0 rule 2; `.codex/config.toml`; responsibility field; ADR-0022 |
-

@@ -4,6 +4,11 @@
 > owner-approved Workstation v3 specs and ADR-0013 through ADR-0016 add versioned artifacts,
 > development/evidence control state, and an isolated Qlib worker without changing this track's
 > sandbox-execution limits.
+>
+> **Scope update (2026-08-11):** Project ALPHA is permanently private, single-owner, and
+> local-device-only. R-22 is retired for that scope. The distribution findings below preserve the
+> audit's historical record and reopen only if sale, publication, sharing, hosting, or use by others
+> enters scope.
 
 - **Audit date:** 2026-07-19
 - **Baseline:** shipped Workstation v2 on `main`, before the Recommended-track delta
