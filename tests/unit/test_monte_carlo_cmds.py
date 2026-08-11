@@ -8,12 +8,16 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+import typer
 
+import alpha_cli.monte_carlo_cmds as monte_carlo_cmds
+from alpha_cli import _artifacts
 from alpha_cli.monte_carlo_cmds import (
     _calibration_assessment,
     _causal_regime_states,
     _path_frame,
     _project_forecast_path,
+    _spec_from_validation,
     _verified_forecast_eval,
     _verified_validation_source,
 )
@@ -59,6 +63,87 @@ def test_run_resolution_and_path_frames_reject_missing_or_malformed_inputs(
         _path_frame((("iid_empirical", np.array([0.1, 0.2])),))
     with pytest.raises(DataError, match="at least one"):
         _path_frame(())
+
+
+def test_source_contracts_reject_wrong_run_kinds_and_mismatched_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    monkeypatch.setattr(_artifacts, "find_run_dir", lambda _data_dir, _run_id: run_dir)
+
+    monkeypatch.setattr(
+        _artifacts,
+        "read_manifest",
+        lambda _run_dir: {"command": "backtest_run", "metadata": {"symbol": "SPY"}},
+    )
+    with pytest.raises(DataError, match="completed validate run"):
+        _verified_validation_source(tmp_path, "source")
+
+    monkeypatch.setattr(
+        _artifacts,
+        "read_manifest",
+        lambda _run_dir: {"command": "validate", "metadata": {}},
+    )
+    with pytest.raises(DataError, match="invalid validation metadata"):
+        _verified_validation_source(tmp_path, "source")
+
+    source_manifest = {
+        "metadata": {"symbol": "SPY", "snapshot_id": "snapshot-a"},
+        "research_cutoff": "2026-01-01T00:00:00Z",
+    }
+    monkeypatch.setattr(
+        _artifacts,
+        "read_manifest",
+        lambda _run_dir: {"command": "validate"},
+    )
+    with pytest.raises(DataError, match="completed forecast_eval run"):
+        _verified_forecast_eval(tmp_path, "evaluation", source_manifest=source_manifest)
+
+    monkeypatch.setattr(
+        _artifacts,
+        "read_manifest",
+        lambda _run_dir: {
+            "command": "forecast_eval",
+            "symbol": "QQQ",
+            "snapshot_id": "snapshot-a",
+            "research_cutoff": "2026-01-01T00:00:00Z",
+        },
+    )
+    with pytest.raises(DataError, match="symbol 'QQQ' differs from source 'SPY'"):
+        _verified_forecast_eval(tmp_path, "evaluation", source_manifest=source_manifest)
+
+    with pytest.raises(DataError, match="strategy_params must be a sequence"):
+        _spec_from_validation({"metadata": {"strategy_params": {"lookback": 20}}})
+
+
+def test_classical_command_translates_short_oos_history_to_cli_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = SimpleNamespace(data_dir=tmp_path, random_seed=7)
+    manifest = {"metadata": {"symbol": "SPY"}}
+    monkeypatch.setattr(monte_carlo_cmds, "AlphaSettings", lambda: settings)
+    monkeypatch.setattr(
+        monte_carlo_cmds,
+        "_verified_validation_source",
+        lambda _data_dir, _run_id: (tmp_path / "source", manifest),
+    )
+    monkeypatch.setattr(
+        _artifacts,
+        "read_equity",
+        lambda _run_dir: [(daily_bars(2)[index].ts, 100.0 + index) for index in range(2)],
+    )
+
+    with pytest.raises(typer.BadParameter, match="at least 20 OOS account returns"):
+        monte_carlo_cmds.classical(
+            from_run="source",
+            paths=10,
+            regime_window=2,
+            min_state_observations=1,
+            min_state_transitions=1,
+            confidence=0.95,
+            seed=7,
+        )
 
 
 def test_causal_regime_classifier_rejects_unfrozen_or_unavailable_history() -> None:
