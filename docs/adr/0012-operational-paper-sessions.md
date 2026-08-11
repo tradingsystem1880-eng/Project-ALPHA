@@ -13,9 +13,9 @@ identity, process lifecycle, wall-clock heartbeat, terminal error, and append-on
 events. Treating both as one artifact type would either corrupt research determinism or make paper
 monitoring unusable.
 
-The distinction is semantic as well as technical. A sandbox session is an operational observation,
-not a validated out-of-sample result, even when it uses the same strategy class and a verified
-snapshot for warmup.
+The distinction is semantic as well as technical. A local-sandbox or broker-paper session is an
+operational observation, not a validated out-of-sample result, even when it uses the same strategy
+class and a verified snapshot for warmup.
 
 ## Decision
 
@@ -24,12 +24,14 @@ Keep the two planes separate:
 | Plane | Identity | Location | Time semantics | Authority |
 |---|---|---|---|---|
 | Research | content-derived `run_id` | `data_dir/<RUN_DIRS kind>/<run_id>/` | deterministic inputs; no wall clock in identity/manifest | validation and reproducible evidence |
-| Paper operations | random UUID `session_id` | `data_dir/paper/<session_id>/` | start/end time, PID, heartbeat, event sequence | monitoring only; never validation evidence |
+| Paper operations | random UUID `session_id` | `data_dir/paper/<session_id>/` | start/end time, PID, heartbeat, execution mode, reconciliation, event sequence | monitoring and machine acceptance only; never strategy-validation evidence |
 
 Paper session state is published as `session.json` plus atomic
-`events/<zero-padded-sequence>.json` records. Only lifecycle, order, fill, rejection, position, and
-reconciliation-warning events are persisted; ticks and bars are not journaled. The journal is
-bounded by event meaning rather than market-data volume.
+`events/<zero-padded-sequence>.json` records. Schema v2 distinguishes `local_sandbox` from
+`ibkr_paper` and adds intent, risk-check, connection, account-snapshot, cancellation, expiration,
+and reconciliation events. Schema-v1 Binance sessions remain readable and mutable through their
+legacy field/event contract. Ticks and bars are never journaled; the journal remains bounded by
+event meaning rather than market-data volume.
 
 An `ExecutionEventSink` protocol lives in `alpha_core` so strategy classes can emit operational
 events without importing the CLI store. The sink is optional and supplied only in paper mode. It
@@ -44,8 +46,9 @@ Paper state must never be copied into `RUN_DIRS`, presented as a gauntlet result
 a deterministic run's hash. Promotion of observations into a future research dataset would require
 a separate immutable-ingestion specification and provenance contract.
 
-**Code anchors:** `apps/alpha-cli/src/alpha_cli/paper_store.py` (operational store),
-`apps/alpha-cli/src/alpha_cli/_paper.py` (node lifecycle),
+**Code anchors:** `apps/alpha-cli/src/alpha_cli/paper_store.py` (versioned operational store),
+`apps/alpha-cli/src/alpha_cli/_paper.py` and `_ibkr_paper.py` (node lifecycles),
+`apps/alpha-cli/src/alpha_cli/paper_readiness.py` (machine evidence gate),
 `packages/alpha-core/src/alpha_core/protocols.py` (`ExecutionEventSink`),
 `apps/alpha-cli/src/alpha_cli/run_store.py` (`RUN_DIRS` research boundary), and
 `apps/alpha-web/src/alpha_web/_invoke.py` (known-child job lifecycle).
@@ -93,3 +96,6 @@ pretending a network session is reproducible.
 - **Harder:** paper sessions cannot reuse generic run-store readers or claim validation status.
 - **Revisit when:** event volume requires compaction, multiple hosts must coordinate sessions, or a
   separately governed immutable operational-data ingestion path is approved.
+
+ADR-0017 extends this separation with authoritative daily-data qualification, immutable order
+intents, and the IBKR Paper safety boundary; it does not change research-run identity.

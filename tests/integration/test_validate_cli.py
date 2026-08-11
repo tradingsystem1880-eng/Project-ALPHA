@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
@@ -66,6 +67,27 @@ def test_validate_writes_manifest_and_tearsheet(
     assert manifest["cpcv"]["n_folds"] >= 1
     assert isinstance(manifest["passed"], bool)
     assert manifest["metadata"]["quantstats_version"]  # provenance recorded
+    assert manifest["oos_execution_boundary"].startswith("fresh_portfolio")
+    assert manifest["oos_semantics"] == "fixed_rule_evaluation_no_refit"
+
+    # The native chart evidence is the same fresh-state OOS execution used by the verdict.  No
+    # discovery-run positions or trace rows may be smuggled into an OOS report.
+    equity = pl.read_parquet(rdir / "equity_curve.parquet")
+    decisions = pl.read_parquet(rdir / "decision_trace.parquet")
+    fills = pl.read_parquet(rdir / "fills.parquet")
+    trades = pl.read_parquet(rdir / "trades.parquet")
+    first_fold = manifest["folds"][0]
+    last_fold = manifest["folds"][-1]
+    first_scored = datetime.fromisoformat(first_fold["test_start_ts"])
+    first_decision = datetime.fromisoformat(first_fold["test_decision_start_ts"])
+    final_scored = datetime.fromisoformat(last_fold["test_end_ts"])
+    assert equity.height == 1 + sum(row["n_test"] for row in manifest["folds"])
+    assert equity["equity"][0] == pytest.approx(1.0)
+    assert decisions.filter(pl.col("ts") < first_decision).is_empty()
+    assert decisions.filter(pl.col("ts").dt.date() >= final_scored.date()).is_empty()
+    assert fills.filter(pl.col("ts") < first_scored).is_empty()
+    assert fills.filter(pl.col("ts") > final_scored).is_empty()
+    assert trades.filter(pl.col("entry_ts") < first_scored).is_empty()
 
     # the A-F Verdict + tail-risk metrics (the QuantPad-style headline)
     assert manifest["verdict"]["overall"] in {"A", "B", "C", "D", "F"}

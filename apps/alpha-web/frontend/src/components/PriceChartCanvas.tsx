@@ -5,20 +5,72 @@ import {
   ColorType,
   CrosshairMode,
   HistogramSeries,
+  LineSeries,
+  LineStyle,
   createChart,
+  createSeriesMarkers,
+  type MouseEventParams,
+  type SeriesMarker,
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 
-import type { Candle } from '../api/types'
+import type { Candle, ChartAnnotation, ChartTraceEvent } from '../api/types'
+import type { EvidenceMarker } from '../panels/v3Models'
 import { CHART } from '../util/chartTheme'
+import { createChartAnnotationPrimitive } from './ChartAnnotationPrimitive'
 
-export function PriceChartCanvas({ bars }: { bars: Candle[] }) {
+interface Props {
+  bars: Candle[]
+  evidence?: EvidenceMarker[]
+  annotations?: ChartAnnotation[]
+  selectedSequenceId?: number | null
+  selectedTrade?: ChartTraceEvent | null
+  onSelectEvidence?: (sequenceId: number) => void
+}
+
+function markerColor(marker: EvidenceMarker): string {
+  if (marker.tone === 'selection') return CHART.accent
+  if (marker.tone === 'positive') return CHART.up
+  if (marker.tone === 'negative') return CHART.down
+  return CHART.muted
+}
+
+function seriesMarker(marker: EvidenceMarker, selected: boolean): SeriesMarker<UTCTimestamp> {
+  const isBelow = marker.kind === 'fill' || marker.kind === 'entry'
+  return {
+    id: marker.id,
+    time: marker.barTs as UTCTimestamp,
+    position: isBelow ? 'belowBar' : 'aboveBar',
+    shape:
+      marker.kind === 'decision'
+        ? 'circle'
+        : marker.kind === 'fill'
+          ? marker.tone === 'negative'
+            ? 'arrowDown'
+            : 'arrowUp'
+          : 'square',
+    color: markerColor(marker),
+    size: selected ? 1.8 : 1.1,
+    ...(selected || marker.id.startsWith('paper:') ? { text: marker.label } : {}),
+  }
+}
+
+export function PriceChartCanvas({
+  bars,
+  evidence = [],
+  annotations = [],
+  selectedSequenceId = null,
+  selectedTrade = null,
+  onSelectEvidence,
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
+  const crosshairRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const host = hostRef.current
-    if (!host) return
+    const crosshair = crosshairRef.current
+    if (!host || !crosshair) return
     const chart = createChart(host, {
       width: host.clientWidth,
       height: host.clientHeight,
@@ -58,16 +110,108 @@ export function PriceChartCanvas({ bars }: { bars: Candle[] }) {
         color: b.c >= b.o ? 'rgba(46, 160, 74, 0.35)' : 'rgba(239, 83, 80, 0.35)',
       })),
     )
-    chart.timeScale().fitContent()
+    const annotationPrimitive = createChartAnnotationPrimitive(annotations)
+    series.attachPrimitive(annotationPrimitive)
+    if (
+      selectedTrade?.event_type === 'trade' &&
+      selectedTrade.entry_ts !== null &&
+      selectedTrade.exit_ts !== null &&
+      selectedTrade.entry_price !== null &&
+      selectedTrade.exit_price !== null
+    ) {
+      const holding = chart.addSeries(LineSeries, {
+        color:
+          selectedTrade.realized_return !== null && selectedTrade.realized_return < 0
+            ? CHART.down
+            : CHART.up,
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title:
+          selectedTrade.realized_return === null
+            ? 'HOLDING'
+            : `HOLDING ${(selectedTrade.realized_return * 100).toFixed(2)}%`,
+      })
+      holding.setData([
+        {
+          time: selectedTrade.entry_ts as UTCTimestamp,
+          value: selectedTrade.entry_price,
+        },
+        {
+          time: selectedTrade.exit_ts as UTCTimestamp,
+          value: selectedTrade.exit_price,
+        },
+      ])
+    }
+    const markerRows = evidence.map((marker) => ({ marker, id: marker.id }))
+    const markerPlugin = createSeriesMarkers(
+      series,
+      evidence.map((marker) => seriesMarker(marker, marker.sequenceId === selectedSequenceId)),
+      { zOrder: 'top' },
+    )
+    const handleClick = (param: MouseEventParams) => {
+      const objectId = param.hoveredInfo?.objectId ?? param.hoveredObjectId
+      if (typeof objectId !== 'string') return
+      const row = markerRows.find((candidate) => candidate.id === objectId)
+      if (row) onSelectEvidence?.(row.marker.sequenceId)
+    }
+    chart.subscribeClick(handleClick)
+    const handleCrosshair = (param: MouseEventParams) => {
+      const candle = param.seriesData.get(series)
+      const volumePoint = param.seriesData.get(volume)
+      if (!candle || !('open' in candle) || typeof param.time !== 'number') {
+        crosshair.textContent = 'CROSSHAIR —'
+        return
+      }
+      const volumeValue = volumePoint && 'value' in volumePoint ? volumePoint.value : null
+      crosshair.textContent =
+        `${new Date(param.time * 1_000).toISOString()}  ` +
+        `O ${Number(candle.open).toFixed(4)}  H ${Number(candle.high).toFixed(4)}  ` +
+        `L ${Number(candle.low).toFixed(4)}  C ${Number(candle.close).toFixed(4)}  ` +
+        `V ${volumeValue === null ? '—' : Number(volumeValue).toFixed(0)}`
+    }
+    chart.subscribeCrosshairMove(handleCrosshair)
+
+    const selectedMarkers = evidence.filter(
+      (marker) =>
+        marker.sequenceId === selectedSequenceId ||
+        (selectedTrade !== null && marker.sequenceId === selectedTrade.sequence_id),
+    )
+    const selectedIndexes = selectedMarkers
+      .map((marker) => bars.findIndex((bar) => bar.t === marker.barTs))
+      .filter((index) => index >= 0)
+    if (selectedIndexes.length) {
+      const firstIndex = Math.min(...selectedIndexes)
+      const lastIndex = Math.max(...selectedIndexes)
+      const from = bars[Math.max(0, firstIndex - 5)]?.t
+      const to = bars[Math.min(bars.length - 1, lastIndex + 5)]?.t
+      if (from !== undefined && to !== undefined) {
+        chart.timeScale().setVisibleRange({ from: from as UTCTimestamp, to: to as UTCTimestamp })
+      }
+    } else {
+      chart.timeScale().fitContent()
+    }
     const ro = new ResizeObserver(() =>
       chart.applyOptions({ width: host.clientWidth, height: host.clientHeight }),
     )
     ro.observe(host)
     return () => {
       ro.disconnect()
+      chart.unsubscribeClick(handleClick)
+      chart.unsubscribeCrosshairMove(handleCrosshair)
+      series.detachPrimitive(annotationPrimitive)
+      markerPlugin.detach()
       chart.remove()
     }
-  }, [bars])
+  }, [annotations, bars, evidence, onSelectEvidence, selectedSequenceId, selectedTrade])
 
-  return <div ref={hostRef} className="price-host" />
+  return (
+    <>
+      <div ref={hostRef} className="price-host" />
+      <div ref={crosshairRef} className="chart-crosshair-readout mono" aria-live="polite">
+        CROSSHAIR —
+      </div>
+    </>
+  )
 }

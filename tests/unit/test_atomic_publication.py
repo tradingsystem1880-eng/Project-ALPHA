@@ -21,7 +21,7 @@ def _temp_files(root: Path) -> list[Path]:
 def test_run_sidecar_failure_never_publishes_manifest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    original: Any = _artifacts.publish  # type: ignore[attr-defined]
+    original: Any = _artifacts.publish_artifact
     calls = 0
 
     def fail_second(path: Path, writer: Any) -> None:
@@ -31,7 +31,7 @@ def test_run_sidecar_failure_never_publishes_manifest(
             raise OSError("disk full")
         original(path, writer)
 
-    monkeypatch.setattr(_artifacts, "publish", fail_second)
+    monkeypatch.setattr(_artifacts, "publish_artifact", fail_second)
     rdir = tmp_path / "runs" / "0123456789abcdef"
     with pytest.raises(OSError, match="disk full"):
         _artifacts.write_run(
@@ -47,7 +47,14 @@ def test_run_sidecar_failure_never_publishes_manifest(
 
 def test_concurrent_identical_run_writers_publish_one_complete_set(tmp_path: Path) -> None:
     rdir = tmp_path / "runs" / "0123456789abcdef"
-    manifest = {"run_id": "0123456789abcdef", "command": "backtest_run"}
+    manifest = {
+        "run_id": "0123456789abcdef",
+        "command": "test_fixture",
+        "run_identity_version": 3,
+        "execution_fingerprint": "a" * 64,
+        "strategy_fingerprint": "b" * 64,
+        "source_fingerprint": "c" * 64,
+    }
 
     def write() -> None:
         _artifacts.write_run(
@@ -60,7 +67,9 @@ def test_concurrent_identical_run_writers_publish_one_complete_set(tmp_path: Pat
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(lambda _: write(), range(8)))
 
-    assert _artifacts.read_manifest(rdir) == manifest
+    published = _artifacts.read_manifest(rdir)
+    assert {key: published[key] for key in manifest} == manifest
+    assert published["schema_version"] == 3
     assert _artifacts.read_equity(rdir)[0][1] == 1.0
     assert (rdir / "trades.parquet").is_file()
     assert _temp_files(rdir) == []
@@ -83,14 +92,14 @@ def test_forecast_sidecar_failure_never_publishes_manifest(
         as_of=None,
         cutoff=date(2025, 1, 1),
     )
-    original: Any = _forecast.publish  # type: ignore[attr-defined]
+    original: Any = _artifacts.publish_artifact
 
     def fail_history(path: Path, writer: Any) -> None:
         if path.name == "history.parquet":
             raise OSError("disk full")
         original(path, writer)
 
-    monkeypatch.setattr(_forecast, "publish", fail_history)
+    monkeypatch.setattr(_forecast, "publish_artifact", fail_history)
     rdir = tmp_path / "forecast" / "0123456789abcdef"
     with pytest.raises(OSError, match="disk full"):
         _forecast.write_forecast_run(

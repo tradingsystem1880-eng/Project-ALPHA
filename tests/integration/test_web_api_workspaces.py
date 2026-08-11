@@ -42,6 +42,118 @@ def test_save_list_get_delete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert client.get("/api/workspaces").json() == []
 
 
+def test_save_without_a_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A workspace is a research context now; the shell posts no window layout at all."""
+    client = _client(tmp_path, monkeypatch)
+    saved = client.post(
+        "/api/workspaces",
+        json={"name": "Momentum Study", "linked_context": {"symbol": "SPY"}},
+    )
+    assert saved.status_code == 200, saved.text
+    doc = client.get("/api/workspaces/momentum-study").json()
+    assert doc["linked_context"]["symbol"] == "SPY"
+    assert doc["dockview"] is None
+
+
+def test_save_and_restore_v3_linked_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    linked = {
+        "schemaVersion": 3,
+        "linkGroup": "C",
+        "projectId": "project-context",
+        "versionId": "version-context",
+        "symbol": "AAPL",
+        "universe": "US-LIQUID-50",
+        "timeframe": "1D",
+        "start": "2024-01-01",
+        "end": "2026-06-30",
+        "snapshotId": "snapshot-context",
+        "runId": "0123456789abcdef",
+    }
+    saved = client.post(
+        "/api/workspaces",
+        json={"name": "V3 Desk", "linked_context": linked, "dockview": {"grid": {}}},
+    )
+    assert saved.status_code == 200, saved.text
+    restored = client.get("/api/workspaces/v3-desk")
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["linked_context"] == linked
+
+    legacy = client.post(
+        "/api/workspaces",
+        json={
+            "name": "Legacy Desk",
+            "linked_context": {"symbol": "SPY", "runId": None},
+            "dockview": {},
+        },
+    )
+    assert legacy.status_code == 200, legacy.text
+    migrated = client.get("/api/workspaces/legacy-desk").json()["linked_context"]
+    assert migrated["symbol"] == "SPY"
+    assert migrated["schemaVersion"] == 3
+    assert migrated["linkGroup"] == "A"
+    assert migrated["timeframe"] == "1D"
+
+
+def test_save_and_restore_grouped_v3_linked_context_and_panel_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    linked = {
+        "schemaVersion": 3,
+        "linkGroup": "B",
+        "projectId": None,
+        "versionId": None,
+        "symbol": "MSFT",
+        "universe": None,
+        "timeframe": "1D",
+        "start": None,
+        "end": None,
+        "snapshotId": "snapshot-b",
+        "runId": "run-b",
+        "groups": {
+            "A": {"symbol": "AAPL", "runId": "run-a"},
+            "B": {"symbol": "MSFT", "snapshotId": "snapshot-b", "runId": "run-b"},
+            "C": {"symbol": "BTC-USD"},
+            "D": {},
+        },
+    }
+    dockview = {
+        "panels": {
+            "price": {
+                "params": {
+                    "linkBinding": {
+                        "mode": "pinned-to-group",
+                        "group": "A",
+                        "local": {"symbol": "SPY", "timeframe": "1D"},
+                    }
+                }
+            }
+        }
+    }
+
+    saved = client.post(
+        "/api/workspaces",
+        json={"name": "Grouped Desk", "linked_context": linked, "dockview": dockview},
+    )
+    assert saved.status_code == 200, saved.text
+    restored = client.get("/api/workspaces/grouped-desk")
+    assert restored.status_code == 200, restored.text
+    body = restored.json()
+    restored_linked = body["linked_context"]
+    assert {key: value for key, value in restored_linked.items() if key != "groups"} == {
+        key: value for key, value in linked.items() if key != "groups"
+    }
+    assert restored_linked["groups"]["A"]["symbol"] == "AAPL"
+    assert restored_linked["groups"]["A"]["runId"] == "run-a"
+    assert restored_linked["groups"]["B"]["snapshotId"] == "snapshot-b"
+    assert restored_linked["groups"]["C"]["symbol"] == "BTC-USD"
+    assert restored_linked["groups"]["D"]["timeframe"] == "1D"
+    assert body["dockview"] == dockview
+
+
 def test_get_unknown_is_404(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert _client(tmp_path, monkeypatch).get("/api/workspaces/nope").status_code == 404
 

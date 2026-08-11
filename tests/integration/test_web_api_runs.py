@@ -10,13 +10,15 @@ from __future__ import annotations
 import json
 import os
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_cli import run_projection
+from alpha_cli.artifact_contract import artifact_contract
 from alpha_web import _runs
 from alpha_web.app import create_app
 
@@ -52,7 +54,13 @@ def _seed(data_dir: Path) -> None:
         data_dir,
         "runs",
         "aaaa000000000001",
-        {"command": "backtest_run", "symbol": "SPY", "passed": True},
+        {
+            "command": "backtest_run",
+            "symbol": "SPY",
+            "snapshot_id": "snapshot-2020-01",
+            "snapshot_hash": "a" * 64,
+            "passed": True,
+        },
         equity=[100.0, 101.0, 99.5, 103.0],
         trades=[
             {
@@ -102,6 +110,8 @@ def test_runs_index_lists_all_kinds_newest_first(
     assert first["kind"] == "runs"
     assert first["label"] == "SPY"
     assert first["command"] == "backtest_run"
+    assert first["snapshot_id"] == "snapshot-2020-01"
+    assert first["snapshot_hash"] == "a" * 64
 
 
 def test_runs_index_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -137,6 +147,35 @@ def test_run_detail_unknown_is_404(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert _client(tmp_path, monkeypatch).get("/api/runs/deadbeefdeadbeef").status_code == 404
 
 
+def test_research_gate_watermark_surfaces_in_index_and_detail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec §15 / ADR-0026 (R6g): a run launched under an owner research-gate override carries
+    the permanent EXPLORATORY watermark through the run index and run detail; unmarked runs
+    project ``null`` so the SPA can badge exactly the overridden runs."""
+    watermark = "EXPLORATORY / RESEARCH GATE NOT COMPLETED"
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path,
+        "runs",
+        "abab000000000007",
+        {
+            "command": "backtest_run",
+            "symbol": "SPY",
+            "research_gate": {"state": "overridden", "watermark": watermark},
+        },
+    )
+    items = client.get("/api/runs").json()["items"]
+    marked = next(r for r in items if r["run_id"] == "abab000000000007")
+    assert marked["research_gate_watermark"] == watermark
+    plain = next(r for r in items if r["run_id"] == "aaaa000000000001")
+    assert plain["research_gate_watermark"] is None
+
+    detail = client.get("/api/runs/abab000000000007").json()
+    assert detail["research_gate_watermark"] == watermark
+    assert client.get("/api/runs/aaaa000000000001").json()["research_gate_watermark"] is None
+
+
 def test_equity_endpoint_returns_ts_equity_drawdown(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -146,6 +185,74 @@ def test_equity_endpoint_returns_ts_equity_drawdown(
     # drawdown: 0, 0, (99.5/101 - 1), 0
     assert body["drawdown"][0] == 0.0 and body["drawdown"][-1] == 0.0
     assert body["drawdown"][2] == pytest.approx(99.5 / 101.0 - 1.0)
+
+
+def test_native_tearsheet_endpoint_is_typed_and_legacy_safe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    legacy = client.get("/api/runs/aaaa000000000001/native-tearsheet")
+    assert legacy.status_code == 200
+    assert legacy.json()["available"] is False
+
+    from alpha_cli._native_tearsheet import native_tearsheet_frames
+
+    rdir = tmp_path / "runs" / "aaaa000000000001"
+    start = datetime(2020, 1, 1, tzinfo=UTC)
+    equity = [(datetime(2020, 1, 1 + i, tzinfo=UTC), 100.0 + i) for i in range(4)]
+    for filename, frame in native_tearsheet_frames(equity, periods_per_year=252).items():
+        frame.write_parquet(rdir / filename)
+
+    body = client.get("/api/runs/aaaa000000000001/native-tearsheet").json()
+    assert body["available"] is True
+    assert body["calendar_returns"][0]["year"] == start.year
+    assert body["yearly_returns"][0]["year"] == start.year
+    assert len(body["histogram"]) == 20
+    assert len(body["qq"]) == 3
+    assert body["provenance"]["metric_namespace"] == "alpha_validation"
+
+
+def test_native_tearsheet_projection_is_bounded_and_preserves_endpoints(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    from alpha_cli._native_tearsheet import native_tearsheet_frames
+
+    rdir = tmp_path / "runs" / "aaaa000000000001"
+    start = datetime(2020, 1, 1, tzinfo=UTC)
+    equity = [(start + timedelta(days=index), 100.0 * (1.0005**index)) for index in range(300)]
+    for filename, frame in native_tearsheet_frames(equity, periods_per_year=252).items():
+        frame.write_parquet(rdir / filename)
+
+    direct = _runs.native_tearsheet(
+        "aaaa000000000001",
+        data_dir=tmp_path,
+        point_limit=10,
+    )
+    assert len(direct["qq"]) == 10
+    assert len(direct["rolling"]) == 10
+    assert len(direct["exposure_turnover"]) == 10
+    assert len(direct["benchmark"]) == 10
+    assert direct["bounds"]["qq"] == {
+        "original": 299,
+        "returned": 10,
+        "truncated": True,
+        "sampling": "endpoint_uniform",
+    }
+    assert direct["rolling"][0]["ts"] < direct["rolling"][-1]["ts"]
+    assert direct["benchmark"][0]["ts"] == start.timestamp()
+    assert direct["benchmark"][-1]["ts"] == (start + timedelta(days=299)).timestamp()
+
+    response = client.get("/api/runs/aaaa000000000001/native-tearsheet?point_limit=10")
+    assert response.status_code == 200
+    assert response.json()["bounds"] == direct["bounds"]
+    assert (
+        client.get("/api/runs/aaaa000000000001/native-tearsheet?point_limit=1").status_code == 422
+    )
+    assert (
+        client.get("/api/runs/aaaa000000000001/native-tearsheet?point_limit=5001").status_code
+        == 422
+    )
 
 
 def test_trades_endpoint_returns_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -206,7 +313,9 @@ def test_equity_endpoint_serves_returns_level_curves(
     assert body["drawdown"][2] == pytest.approx(0.98 - 1.0)
 
 
-def _write_forecast_run(data_dir: Path, run_id: str, *, n_samples: int = 0) -> None:
+def _write_forecast_run(
+    data_dir: Path, run_id: str, *, n_samples: int = 0, complete_history: bool = False
+) -> None:
     """A forecast run's cone artifacts: the CLI's ``quantiles.parquet`` + ``history.parquet``.
 
     With ``n_samples > 0`` also writes ``paths.parquet`` (per-sample OHLCV, long) with
@@ -231,7 +340,10 @@ def _write_forecast_run(data_dir: Path, run_id: str, *, n_samples: int = 0) -> N
             "mean": [100.9, 102.1, 103.2],
         }
     ).write_parquet(rdir / "quantiles.parquet")
-    pl.DataFrame({"ts": [t0], "close": [100.0]}).write_parquet(rdir / "history.parquet")
+    history = {"ts": [t0], "close": [100.0]}
+    if complete_history:
+        history.update({"open": [99.0], "high": [102.0], "low": [98.0], "volume": [1_234.0]})
+    pl.DataFrame(history).write_parquet(rdir / "history.parquet")
     if n_samples:
         pl.DataFrame(
             [
@@ -258,11 +370,33 @@ def test_forecast_endpoint_reads_the_cone(tmp_path: Path, monkeypatch: pytest.Mo
     assert client.get("/api/runs/ffff000000000009").json()["has_forecast"] is True
     body = client.get("/api/runs/ffff000000000009/forecast").json()
     assert body["history"] == [100.0]
+    assert body["history_bars"] == []
+    assert body["history_ohlcv_available"] is False
     assert body["forecast"] == [101.0, 102.0, 103.0]  # q50 median line
     assert body["p10"] == [95.0, 93.0, 91.0]
     assert body["p90"] == [109.0, 112.0, 115.0]
     assert "q05" not in body and "q95" not in body  # established wire keys stay stable
     assert len(body["forecast_ts"]) == 3
+
+
+def test_forecast_endpoint_replays_frozen_complete_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """New runs serve observed candles from their artifact, never the mutable candle endpoint."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _write_forecast_run(tmp_path, "ffff000000000009", complete_history=True)
+    body = TestClient(create_app()).get("/api/runs/ffff000000000009/forecast").json()
+    assert body["history_ohlcv_available"] is True
+    assert body["history_bars"] == [
+        {
+            "t": datetime(2026, 6, 1, tzinfo=UTC).timestamp(),
+            "o": 99.0,
+            "h": 102.0,
+            "l": 98.0,
+            "c": 100.0,
+            "v": 1_234.0,
+        }
+    ]
 
 
 def test_forecast_endpoint_404_for_non_forecast_run(
@@ -297,7 +431,11 @@ def test_forecast_paths_returns_first_n_samples(
     client = TestClient(create_app())
     body = client.get("/api/runs/ffff000000000009/forecast/paths?n=3").json()
     assert [s["sample"] for s in body["samples"]] == [0, 1, 2]  # first n, deterministic
+    assert body["samples"][0]["opens"] == [100.0, 100.0, 100.0]
+    assert body["samples"][0]["highs"] == [101.0, 101.0, 101.0]
+    assert body["samples"][0]["lows"] == [99.0, 99.0, 99.0]
     assert body["samples"][0]["closes"] == [101.0, 102.0, 103.0]  # 100 + sample + step
+    assert body["samples"][0]["volumes"] == [1.0, 1.0, 1.0]
     assert body["samples"][2]["closes"] == [103.0, 104.0, 105.0]
     assert len(body["ts"]) == 3 and body["ts"] == sorted(body["ts"])
 
@@ -318,6 +456,184 @@ def test_forecast_paths_404_when_absent(tmp_path: Path, monkeypatch: pytest.Monk
     client = TestClient(create_app())
     assert client.get("/api/runs/ffff000000000009/forecast/paths").status_code == 404
     assert client.get("/api/runs/aaaa000000000001/forecast/paths").status_code == 404
+
+
+def _write_trace_run(data_dir: Path, run_id: str) -> None:
+    rdir = data_dir / "runs" / run_id
+    rdir.mkdir(parents=True, exist_ok=True)
+    ts = [datetime(2020, 1, 1 + i, tzinfo=UTC) for i in range(4)]
+    pl.DataFrame({"ts": ts, "equity": [100.0, 101.0, 102.0, 103.0]}).write_parquet(
+        rdir / "equity_curve.parquet"
+    )
+    pl.DataFrame(
+        {
+            "instrument_id": ["SPY.SIM"] * 3,
+            "side": ["BUY"] * 3,
+            "quantity": [10.0] * 3,
+            "entry_price": [99.0, 100.0, 101.0],
+            "exit_price": [100.0, 101.0, 102.0],
+            "entry_ts": ts[:3],
+            "exit_ts": ts[1:],
+            "realized_pnl": [10.0] * 3,
+            "realized_return": [0.01] * 3,
+        }
+    ).write_parquet(rdir / "trades.parquet")
+    pl.DataFrame(
+        {
+            "sequence_id": [1, 2, 3],
+            "event_type": ["decision", "order", "fill"],
+            "ts": ts[:3],
+            "parent_sequence_id": [None, 1, 2],
+            "instrument_id": ["SPY.SIM"] * 3,
+            "side": [None, "BUY", "BUY"],
+            "quantity": [10.0, 10.0, 10.0],
+            "filled_quantity": [None, 10.0, 10.0],
+            "price": [None, None, 102.0],
+            "status": [None, "FILLED", None],
+            "signal": [1, None, None],
+            "decision_reason": ["target", None, None],
+            "entry_ts": [None, None, None],
+            "exit_ts": [None, None, None],
+            "entry_price": [None, None, None],
+            "exit_price": [None, None, None],
+            "realized_pnl": [None, None, None],
+            "realized_return": [None, None, None],
+        }
+    ).write_parquet(rdir / "execution_trace.parquet")
+    pl.DataFrame(
+        {
+            "sequence_id": [1, 2, 3, 4],
+            "decision_sequence_id": [1, None, None, None],
+            "ts": ts,
+            "instrument_id": ["SPY.SIM"] * 4,
+            "name": ["close"] * 4,
+            "value": [100.0, 101.0, 102.0, 103.0],
+            "unit": ["price"] * 4,
+        }
+    ).write_parquet(rdir / "indicator_series.parquet")
+    pl.DataFrame(
+        {
+            "annotation_id": [1, 1, 2, 2, 3, 3],
+            "decision_sequence_id": [1, 1, 2, 2, 3, 3],
+            "kind": ["line"] * 6,
+            "label": ["before", "before", "inside", "inside", "after", "after"],
+            "unit": ["price"] * 6,
+            "reason": ["causal"] * 6,
+            "anchor_index": [0, 1, 0, 1, 0, 1],
+            "ts": [ts[0], ts[1], ts[1], ts[2], ts[2], ts[3]],
+            "value": [100.0, 101.0, 101.0, 102.0, 102.0, 103.0],
+        }
+    ).write_parquet(rdir / "chart_annotations.parquet")
+    for filename in ("decision_trace.parquet", "orders.parquet", "fills.parquet"):
+        pl.DataFrame({"placeholder": []}, schema={"placeholder": pl.Int64()}).write_parquet(
+            rdir / filename
+        )
+    (rdir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 3,
+                "run_identity_version": 3,
+                "artifact_contract_version": 3,
+                "run_id": run_id,
+                "command": "backtest_run",
+                "symbol": "SPY",
+                "snapshot_id": "snapshot-trace",
+                "snapshot_hash": "b" * 64,
+                "execution_fingerprint": "c" * 64,
+                "strategy_fingerprint": "d" * 64,
+                "source_fingerprint": "e" * 64,
+                "artifacts": artifact_contract(rdir),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_chart_bundle_is_bounded_and_old_runs_report_trace_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    old = client.get("/api/runs/aaaa000000000001/chart-bundle?limit=2")
+    assert old.status_code == 200
+    assert old.json()["trace_status"] == "trace_unavailable"
+    assert old.json()["trace"] == []
+    assert len(old.json()["equity"]["ts"]) == 2
+    assert old.json()["truncated"]["equity"] is True
+
+    run_id = "dddd000000000004"
+    _write_trace_run(tmp_path, run_id)
+    body = client.get(f"/api/runs/{run_id}/chart-bundle?limit=2").json()
+    assert body["trace_status"] == "available"
+    assert body["bars_status"] == "snapshot_unavailable"
+    assert body["bars"] == []
+    assert [event["sequence_id"] for event in body["trace"]] == [1, 2]
+    assert body["truncated"]["trace"] is True
+    assert body["trace"][1]["parent_sequence_id"] == 1
+    artifact_hashes = body["provenance"].pop("artifact_sha256")
+    assert set(artifact_hashes) == set(artifact_contract(tmp_path / "runs" / run_id))
+    assert body["provenance"] == {
+        "command": "backtest_run",
+        "symbol": "SPY",
+        "symbols": None,
+        "snapshot_id": "snapshot-trace",
+        "snapshot_hash": "b" * 64,
+        "timezone": "UTC",
+        "price_unit": "native_quote",
+        "artifact_contract_version": 3,
+        "as_of": body["equity"]["ts"][-1],
+    }
+    assert [event["sequence_id"] for event in body["decisions"]] == [1]
+    assert [event["sequence_id"] for event in body["orders"]] == [2]
+    assert [event["sequence_id"] for event in body["fills"]] == [3]
+    assert body["folds"] == []
+    assert body["forecast"] is None
+    assert body["indicators"][0]["name"] == "close"
+    assert [anchor["anchor_index"] for anchor in body["annotations"][0]["anchors"]] == [0, 1]
+
+
+def test_chart_bundle_windows_bars_and_every_causal_overlay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    run_id = "dddd000000000004"
+    _write_trace_run(tmp_path, run_id)
+    candle_ts = [datetime(2020, 1, 1 + index, tzinfo=UTC).timestamp() for index in range(4)]
+    monkeypatch.setattr(
+        run_projection,
+        "_candle_rows",
+        lambda *args, **kwargs: [
+            {"t": ts, "o": 100.0, "h": 101.0, "l": 99.0, "c": 100.5, "v": 1_000.0}
+            for ts in candle_ts
+        ],
+    )
+
+    response = TestClient(create_app()).get(
+        f"/api/runs/{run_id}/chart-bundle?start=2020-01-02&end=2020-01-03"
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [row["t"] for row in body["bars"]] == candle_ts[1:3]
+    assert [row["sequence_id"] for row in body["trace"]] == [2, 3]
+    assert body["decisions"] == []
+    assert [row["sequence_id"] for row in body["orders"]] == [2]
+    assert [row["sequence_id"] for row in body["fills"]] == [3]
+    assert [row["exit_ts"] for row in body["trades"]] == candle_ts[1:3]
+    assert [row["sequence_id"] for row in body["indicators"]] == [2, 3]
+    assert [row["annotation_id"] for row in body["annotations"]] == [2]
+    assert [anchor["ts"] for anchor in body["annotations"][0]["anchors"]] == candle_ts[1:3]
+    assert body["equity"]["ts"] == candle_ts[1:3]
+
+
+def test_chart_bundle_bounds_are_validated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.get("/api/runs/aaaa000000000001/chart-bundle?limit=0").status_code == 422
+    assert (
+        client.get(
+            f"/api/runs/aaaa000000000001/chart-bundle?limit={run_projection.MAX_CHART_POINTS + 1}"
+        ).status_code
+        == 422
+    )
 
 
 # --- phase-7 projections: null distributions, optim trials, propfirm paths, eval origins -------

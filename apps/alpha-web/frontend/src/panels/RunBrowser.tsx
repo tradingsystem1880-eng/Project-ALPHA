@@ -3,7 +3,6 @@
 // columns; click selects + broadcasts, Enter/double-click/⏎ button opens the run story.
 
 import type { ColumnDef } from '@tanstack/react-table'
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
@@ -14,15 +13,37 @@ import { setLinked } from '../context/linked'
 import { useActivityField } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
+import { researchGateWatermark } from './researchGateModel'
+import { runKindMatches } from './runBrowserModel'
+import type { PanelHandleProps } from '../context/panelHandle'
 
 const KINDS = ['all', 'runs', 'optim', 'portfolio', 'cross_sectional', 'propfirm', 'forecast']
 
-export function RunBrowser(props: IDockviewPanelProps) {
+export function RunBrowser(props: PanelHandleProps) {
+  const params = props.params as {
+    defaultKind?: string
+    defaultCommand?: string
+    allowedKinds?: string[]
+  } | undefined
+  const allowedKinds = useMemo(
+    () => Array.isArray(params?.allowedKinds)
+      ? params.allowedKinds.filter((kind) => kind !== 'all' && KINDS.includes(kind))
+      : [],
+    [params?.allowedKinds],
+  )
+  const kindOptions = allowedKinds.length > 0 ? ['all', ...allowedKinds] : KINDS
+  const requestedKind = String(
+    params?.defaultKind ?? 'all',
+  )
+  const defaultKind = kindOptions.includes(requestedKind) ? requestedKind : 'all'
+  const defaultCommand = String(
+    params?.defaultCommand ?? '',
+  )
   const [items, setItems] = useState<RunListItem[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [kind, setKind] = useState('all')
+  const [kind, setKind] = useState(defaultKind)
   const runsVersion = useActivityField('runsVersion')
 
   useEffect(() => {
@@ -45,8 +66,11 @@ export function RunBrowser(props: IDockviewPanelProps) {
   }, [runsVersion])
 
   const filtered = useMemo(
-    () => (items ?? []).filter((r) => kind === 'all' || r.kind === kind),
-    [items, kind],
+    () => (items ?? []).filter(
+      (r) => runKindMatches(r.kind, kind, allowedKinds)
+        && (!defaultCommand || r.command === defaultCommand),
+    ),
+    [allowedKinds, defaultCommand, items, kind],
   )
 
   const columns = useMemo<ColumnDef<RunListItem, unknown>[]>(
@@ -71,7 +95,23 @@ export function RunBrowser(props: IDockviewPanelProps) {
       {
         header: 'Label',
         accessorKey: 'label',
-        cell: (c) => c.row.original.label ?? '—',
+        cell: (c) => {
+          // spec §15 / ADR-0026: relay the permanent research-gate override marker on the row
+          const watermark = researchGateWatermark(c.row.original)
+          return (
+            <>
+              {c.row.original.label ?? '—'}
+              {watermark ? (
+                <span
+                  className="chip warn rg-watermark"
+                  title="Launched under an owner research-gate override (spec §15, ADR-0026)"
+                >
+                  {watermark}
+                </span>
+              ) : null}
+            </>
+          )
+        },
         meta: { className: 'mono' },
       },
       {
@@ -110,7 +150,7 @@ export function RunBrowser(props: IDockviewPanelProps) {
             className="btn"
             onClick={(e) => {
               e.stopPropagation()
-              openRunDetail(props.containerApi, c.row.original.run_id)
+              openRunDetail(c.row.original.run_id)
             }}
           >
             open ⏎
@@ -119,12 +159,16 @@ export function RunBrowser(props: IDockviewPanelProps) {
         enableSorting: false,
       },
     ],
-    [props.containerApi],
+    [],
   )
 
   function selectRow(run: RunListItem): void {
     setSelected(run.run_id)
-    setLinked({ runId: run.run_id, ...(run.symbol ? { symbol: run.symbol } : {}) })
+    setLinked({
+      runId: run.run_id,
+      ...(run.symbol ? { symbol: run.symbol } : {}),
+      snapshotId: run.snapshot_id,
+    })
   }
 
   return (
@@ -134,12 +178,18 @@ export function RunBrowser(props: IDockviewPanelProps) {
         {items ? <span className="count">{filtered.length}</span> : null}
         <input
           className="field toolbar-search"
+          aria-label="Search runs"
           placeholder="search…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="field" value={kind} onChange={(e) => setKind(e.target.value)}>
-          {KINDS.map((k) => (
+        <select
+          className="field"
+          aria-label="Filter runs by kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+        >
+          {kindOptions.map((k) => (
             <option key={k} value={k}>
               {k}
             </option>
@@ -158,8 +208,8 @@ export function RunBrowser(props: IDockviewPanelProps) {
             globalFilter={query}
             initialSorting={[{ id: 'mtime', desc: true }]}
             onRowClick={selectRow}
-            onRowDoubleClick={(r) => openRunDetail(props.containerApi, r.run_id)}
-            onRowEnter={(r) => openRunDetail(props.containerApi, r.run_id)}
+            onRowDoubleClick={(r) => openRunDetail(r.run_id)}
+            onRowEnter={(r) => openRunDetail(r.run_id)}
             rowClass={(r) => (selected === r.run_id ? 'sel' : '')}
             empty={
               <Placeholder big="no runs yet">

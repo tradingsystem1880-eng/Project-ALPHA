@@ -61,6 +61,12 @@ def _check_snapshot_id(snapshot_id: str) -> None:
         raise DataError(f"invalid snapshot id for storage: {snapshot_id!r}")
 
 
+def resolve_snapshot_dir(snapshots_root: Path, snapshot_id: str) -> Path:
+    """Resolve a validated opaque snapshot id beneath its configured root."""
+    _check_snapshot_id(snapshot_id)
+    return snapshots_root / snapshot_id
+
+
 def _copy_snapshot_files(
     store: ParquetStore,
     staging: Path,
@@ -106,7 +112,8 @@ def _copy_snapshot_files(
                 f"cannot snapshot {sym!r} as {source!r}: stored bars have no pull provenance"
             )
         if provenance is not None:
-            if provenance != expected:
+            actual = {name: provenance.get(name) for name in expected}
+            if actual != expected:
                 raise DataError(
                     f"cannot snapshot {sym!r} as {source!r}: stored pull provenance is "
                     f"{provenance['source']!r}"
@@ -135,7 +142,7 @@ def create_snapshot(
 ) -> dict[str, Any]:
     """Freeze bars + actions for `symbols` into snaps_root/snapshot_id/ with a manifest."""
     _check_snapshot_id(snapshot_id)
-    dest = snaps_root / snapshot_id
+    dest = resolve_snapshot_dir(snaps_root, snapshot_id)
     if dest.exists():
         raise DataError(f"snapshot {snapshot_id!r} already exists at {dest}")
     snaps_root.mkdir(parents=True, exist_ok=True)
@@ -196,3 +203,14 @@ def verify_snapshot(snapshot_dir: Path) -> None:
                     symbol=sym,
                     kind=optional_kind,
                 )
+
+
+def snapshot_manifest_hash(snapshot_dir: Path) -> str:
+    """Return the SHA-256 of a fully verified frozen-snapshot manifest.
+
+    The manifest already contains the digest of every bars, actions, and provenance file.  Hashing
+    its exact bytes therefore gives run identity one stable, bounded fingerprint for the complete
+    snapshot contract while still failing loudly if any referenced content has been modified.
+    """
+    verify_snapshot(snapshot_dir)
+    return _sha256(snapshot_dir / "manifest.json")

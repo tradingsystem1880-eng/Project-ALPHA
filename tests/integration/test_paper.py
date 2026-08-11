@@ -12,9 +12,10 @@ from typing import Any, cast
 
 import polars as pl
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
-from alpha_cli import _paper, paper_store
+from alpha_cli import _ibkr_paper, _paper, daily_scheduler, paper_store
 from alpha_cli._runner import RunSpec
 from alpha_cli.main import app
 from alpha_core import Bar, DataError
@@ -508,3 +509,378 @@ def test_cli_run_rejects_kronos_before_creating_session(
     assert result.exit_code != 0
     assert "does not support live paper" in result.output
     assert paper_store.list_sessions(tmp_path) == []
+
+
+def test_ibkr_preflight_is_read_only_redacted_and_offline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account = "DU1234567"
+    image = "ghcr.io/gnzsnz/ib-gateway@sha256:" + "a" * 64
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", account)
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", image)
+
+    result = runner.invoke(app, ["paper", "ibkr-preflight", "SPY.ARCA"])
+
+    assert result.exit_code == 0, result.output
+    assert "paper, read-only, digest pinned" in result.output
+    assert "DU…4567" in result.output
+    assert account not in result.output and image not in result.output
+
+
+def test_ibkr_run_requires_both_independent_enable_flags_before_creating_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_PAPER_ENABLED", "true")
+    monkeypatch.delenv("ALPHA_IBKR_PAPER_ENABLED", raising=False)
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", "DU1234567")
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/gnzsnz/ib-gateway@sha256:" + "a" * 64)
+
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-run",
+            "SPY",
+            "--instrument-id",
+            "SPY.ARCA",
+            "--snapshot",
+            "spy",
+            "--expected-session",
+            "2099-01-02",
+            "--next-session",
+            "2099-01-03",
+            "--order-cutoff",
+            "2099-01-03T14:25:00+00:00",
+            "--nav",
+            "100000",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "two independent enable flags" in result.output
+    assert paper_store.list_sessions(tmp_path) == []
+
+
+def test_ibkr_run_journals_native_paper_mode_with_offline_runner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_PAPER_ENABLED", "true")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ENABLED", "true")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", "DU1234567")
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/gnzsnz/ib-gateway@sha256:" + "a" * 64)
+    warmup = _ibkr_paper.IBKRWarmup(
+        bars=_warmup_bars(),
+        snapshot_sha256="b" * 64,
+        knowledge_cutoff=datetime(2099, 1, 2, tzinfo=UTC),
+        expected_session=datetime(2099, 1, 2, tzinfo=UTC).date(),
+    )
+    from alpha_cli._identity import strategy_fingerprint
+
+    version = strategy_fingerprint("ts_momentum")
+    assert version is not None
+    approved = _ibkr_paper.OrderIntent.create(
+        strategy="ts_momentum",
+        strategy_version=version,
+        parameters={
+            "paper_nav": 100000.0,
+            "lookback": 252,
+            "skip": 21,
+            "vol_window": 63,
+            "target_vol": 0.15,
+            "rebalance_every": 21,
+        },
+        snapshot_id="spy",
+        snapshot_sha256="b" * 64,
+        instrument_id="SPY.ARCA",
+        target_quantity=10.0,
+        next_session="2099-01-03",
+        risk_profile=_ibkr_paper.EQUITY_RISK_PROFILE,
+        knowledge_cutoff=datetime(2099, 1, 2, tzinfo=UTC),
+        expires_at=datetime(2099, 1, 3, 14, 25, tzinfo=UTC),
+    )
+    _ibkr_paper.persist_order_intent(tmp_path, approved)
+    monkeypatch.setattr(_ibkr_paper, "load_ibkr_warmup", lambda *args, **kwargs: warmup)
+    seen: dict[str, object] = {}
+
+    def fake_run(spec: RunSpec, **kwargs: object) -> bool:
+        seen.update(kwargs)
+        return True
+
+    monkeypatch.setattr(_ibkr_paper, "run_ibkr_paper", fake_run)
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-run",
+            "SPY",
+            "--instrument-id",
+            "SPY.ARCA",
+            "--snapshot",
+            "spy",
+            "--expected-session",
+            "2099-01-02",
+            "--next-session",
+            "2099-01-03",
+            "--order-cutoff",
+            "2099-01-03T14:25:00+00:00",
+            "--intent",
+            approved.intent_id,
+            "--nav",
+            "100000",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    session = paper_store.list_sessions(tmp_path)[0]
+    assert session["execution_mode"] == "ibkr_paper"
+    assert session["sandbox"] is False
+    assert session["risk_profile_id"] == "ibkr-equity-paper-v1"
+    assert len(str(session["decision_artifact_id"])) == 64
+    assert seen["instrument_id"] == "SPY.ARCA"
+
+
+def test_ibkr_run_requires_scheduler_intent_after_all_other_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_PAPER_ENABLED", "true")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ENABLED", "true")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", "DU1234567")
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/gnzsnz/ib-gateway@sha256:" + "a" * 64)
+    monkeypatch.setattr(
+        _ibkr_paper,
+        "load_ibkr_warmup",
+        lambda *args, **kwargs: _ibkr_paper.IBKRWarmup(
+            bars=_warmup_bars(),
+            snapshot_sha256="b" * 64,
+            knowledge_cutoff=datetime(2099, 1, 2, tzinfo=UTC),
+            expected_session=datetime(2099, 1, 2, tzinfo=UTC).date(),
+        ),
+    )
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-run",
+            "SPY",
+            "--instrument-id",
+            "SPY.ARCA",
+            "--snapshot",
+            "spy",
+            "--expected-session",
+            "2099-01-02",
+            "--next-session",
+            "2099-01-03",
+            "--order-cutoff",
+            "2099-01-03T14:25:00+00:00",
+            "--nav",
+            "100000",
+        ],
+        color=True,
+    )
+    assert result.exit_code != 0 and "requires --intent" in unstyle(result.output)
+    assert paper_store.list_sessions(tmp_path) == []
+
+
+def test_ibkr_run_journals_native_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_PAPER_ENABLED", "true")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ENABLED", "true")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", "DU1234567")
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/gnzsnz/ib-gateway@sha256:" + "a" * 64)
+    warmup = _ibkr_paper.IBKRWarmup(
+        bars=_warmup_bars(),
+        snapshot_sha256="b" * 64,
+        knowledge_cutoff=datetime(2099, 1, 2, tzinfo=UTC),
+        expected_session=datetime(2099, 1, 2, tzinfo=UTC).date(),
+    )
+    from alpha_cli._identity import strategy_fingerprint
+
+    approved = _ibkr_paper.OrderIntent.create(
+        strategy="ts_momentum",
+        strategy_version=cast(str, strategy_fingerprint("ts_momentum")),
+        parameters={
+            "paper_nav": 100000.0,
+            "lookback": 252,
+            "skip": 21,
+            "vol_window": 63,
+            "target_vol": 0.15,
+            "rebalance_every": 21,
+        },
+        snapshot_id="spy",
+        snapshot_sha256="b" * 64,
+        instrument_id="SPY.ARCA",
+        target_quantity=10.0,
+        next_session="2099-01-03",
+        risk_profile=_ibkr_paper.EQUITY_RISK_PROFILE,
+        knowledge_cutoff=datetime(2099, 1, 2, tzinfo=UTC),
+        expires_at=datetime(2099, 1, 3, 14, 25, tzinfo=UTC),
+    )
+    _ibkr_paper.persist_order_intent(tmp_path, approved)
+    monkeypatch.setattr(_ibkr_paper, "load_ibkr_warmup", lambda *args, **kwargs: warmup)
+    monkeypatch.setattr(
+        _ibkr_paper,
+        "run_ibkr_paper",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("gateway disconnected")),
+    )
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-run",
+            "SPY",
+            "--instrument-id",
+            "SPY.ARCA",
+            "--snapshot",
+            "spy",
+            "--expected-session",
+            "2099-01-02",
+            "--next-session",
+            "2099-01-03",
+            "--order-cutoff",
+            "2099-01-03T14:25:00+00:00",
+            "--intent",
+            approved.intent_id,
+            "--nav",
+            "100000",
+        ],
+    )
+    assert result.exit_code == 1 and "gateway disconnected" in result.output
+    assert paper_store.list_sessions(tmp_path)[0]["status"] == "failed"
+
+
+def test_paper_operator_read_commands_and_safe_stop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    created = paper_store.create_session(
+        tmp_path,
+        provider="binance",
+        symbol="BTC/USDT",
+        instrument_id="BTCUSDT.BINANCE",
+        strategy="ts_momentum",
+        strategy_params={},
+        snapshot_id="warmup",
+        pid=os.getpid(),
+    )
+    session_id = str(created["session_id"])
+    paper_store.append_event(tmp_path, session_id, "reconciliation_warning", {"detail": "test"})
+
+    listed = runner.invoke(app, ["paper", "sessions"])
+    assert listed.exit_code == 0 and session_id in listed.output and "SANDBOX" in listed.output
+    shown = runner.invoke(app, ["paper", "show", session_id, "--json"])
+    assert shown.exit_code == 0 and json.loads(shown.stdout)["session_id"] == session_id
+    reconciled = runner.invoke(app, ["paper", "reconcile", session_id, "--json"])
+    assert reconciled.exit_code == 0
+    assert json.loads(reconciled.stdout)["operator_approval_supported"] is False
+    stopped = runner.invoke(app, ["paper", "stop", session_id])
+    assert stopped.exit_code == 0 and "will not be flattened" in stopped.output
+    readiness = runner.invoke(app, ["paper", "readiness", "--json"])
+    assert readiness.exit_code == 0 and json.loads(readiness.stdout)["paper_passed"] is False
+    plain_reconcile = runner.invoke(app, ["paper", "reconcile", session_id])
+    plain_readiness = runner.invoke(app, ["paper", "readiness"])
+    assert plain_reconcile.exit_code == 0 and '"session_id"' in plain_reconcile.stdout
+    assert plain_readiness.exit_code == 0 and '"paper_passed"' in plain_readiness.stdout
+
+
+def test_paper_operator_commands_fail_closed_for_empty_or_unknown_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    empty = runner.invoke(app, ["paper", "sessions"])
+    assert empty.exit_code == 0 and "no paper sessions" in empty.output
+    for command in (["show", "missing"], ["reconcile", "missing"], ["stop", "missing"]):
+        result = runner.invoke(app, ["paper", *command])
+        assert result.exit_code != 0
+
+
+def test_paper_run_rejects_any_non_binance_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_PAPER_ENABLED", "true")
+    result = runner.invoke(
+        app,
+        ["paper", "run", "BTC/USDT", "--provider", "kraken", "--snapshot", "warmup"],
+        color=True,
+    )
+    assert result.exit_code != 0 and "--provider must be 'binance'" in unstyle(result.output)
+
+
+def test_ibkr_preflight_requires_secret_sources(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ALPHA_IBKR_PAPER_ACCOUNT", raising=False)
+    monkeypatch.delenv("ALPHA_IBKR_GATEWAY_IMAGE", raising=False)
+    result = runner.invoke(app, ["paper", "ibkr-preflight", "SPY.ARCA"])
+    assert result.exit_code != 0 and "ALPHA_IBKR_PAPER_ACCOUNT" in result.output
+
+
+def test_scheduler_operator_commands_are_thin_cli_boundaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    config = tmp_path / "daily.json"
+    config.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        daily_scheduler,
+        "scheduler_tick",
+        lambda config_path, data_dir: [{"status": "intent_ready"}],
+    )
+    monkeypatch.setattr(
+        daily_scheduler,
+        "scheduler_status",
+        lambda config_path, data_dir: [{"symbol": "SPY", "completed": False}],
+    )
+    tick = runner.invoke(app, ["paper", "scheduler-tick", "--config", str(config)])
+    assert (
+        tick.exit_code == 0 and json.loads(tick.stdout)["executed"][0]["status"] == "intent_ready"
+    )
+    status = runner.invoke(app, ["paper", "scheduler-status", "--config", str(config)])
+    assert status.exit_code == 0 and json.loads(status.stdout)[0]["symbol"] == "SPY"
+
+
+def test_scheduler_commands_normalize_errors_and_require_explicit_repair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    config = tmp_path / "daily.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fail(*args: object, **kwargs: object) -> list[object]:
+        del args, kwargs
+        raise DataError("scheduler unavailable")
+
+    monkeypatch.setattr(daily_scheduler, "scheduler_tick", fail)
+    monkeypatch.setattr(daily_scheduler, "scheduler_status", fail)
+    assert runner.invoke(app, ["paper", "scheduler-tick", "--config", str(config)]).exit_code != 0
+    assert runner.invoke(app, ["paper", "scheduler-status", "--config", str(config)]).exit_code != 0
+
+    class Item:
+        symbol = "SPY"
+
+    monkeypatch.setattr(daily_scheduler, "load_schedule", lambda path: [Item()])
+    monkeypatch.setattr(daily_scheduler, "repair_interrupted_cycle", lambda *args, **kwargs: None)
+    repaired = runner.invoke(
+        app,
+        [
+            "paper",
+            "scheduler-repair",
+            "SPY",
+            "2026-08-03",
+            "--config",
+            str(config),
+            "--acknowledge",
+        ],
+    )
+    assert repaired.exit_code == 0 and "cleared interrupted" in repaired.output
+    unknown = runner.invoke(
+        app,
+        ["paper", "scheduler-repair", "QQQ", "2026-08-03", "--config", str(config)],
+    )
+    invalid_date = runner.invoke(
+        app,
+        ["paper", "scheduler-repair", "SPY", "bad", "--config", str(config)],
+    )
+    assert unknown.exit_code != 0 and "not configured" in unknown.output
+    assert invalid_date.exit_code != 0

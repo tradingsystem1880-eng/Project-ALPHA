@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Final
 
 import typer
 
@@ -88,6 +88,16 @@ def _walk_commands(group: Any, prefix: str) -> Iterator[tuple[str, Any]]:
             yield path, cmd
 
 
+#: Command prefixes the Workstation's new-run form must not offer. These produce no run:
+#: `figures` renders a derived cache from a run that already exists, so surfacing it as a
+#: launchable command would invite the user to "run" something that cannot start.
+_NON_RUN_COMMAND_PREFIXES: Final = ("figures",)
+
+
+def _launchable(path: str) -> bool:
+    return path.split(" ", 1)[0] not in _NON_RUN_COMMAND_PREFIXES
+
+
 def _command_catalog() -> list[dict[str, Any]]:
     """Introspect the Typer→Click command tree: id + positional args + options (with defaults)."""
     from alpha_cli.main import app as root_app
@@ -95,6 +105,8 @@ def _command_catalog() -> list[dict[str, Any]]:
     group = typer.main.get_command(root_app)
     catalog: list[dict[str, Any]] = []
     for path, cmd in _walk_commands(group, ""):
+        if not _launchable(path):
+            continue
         args: list[dict[str, Any]] = []
         options: list[dict[str, Any]] = []
         for param in cmd.params:
@@ -171,3 +183,4 @@ def system(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> 
         f"(pinned {status['nautilus']['pinned_version']})"
     )
     typer.echo(f"paper_enabled={status['paper_enabled']}")
+    typer.echo(f"ibkr_paper_enabled={status['ibkr_paper_enabled']}")

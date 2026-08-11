@@ -37,6 +37,26 @@ def test_result_schema_round_trip() -> None:
     assert result.final_equity == pytest.approx(1_002_000.0)  # realized +2000
     assert len(result.equity_curve) == 5  # one snapshot per session
 
+    assert [order.sequence_id for order in result.order_trace] == [1, 2]
+    assert [order.side for order in result.order_trace] == ["BUY", "SELL"]
+    assert [fill.sequence_id for fill in result.fill_trace] == [1, 2]
+    assert [fill.order_sequence_id for fill in result.fill_trace] == [1, 2]
+    assert [fill.price for fill in result.fill_trace] == [100.0, 120.0]
+
+    assert len(result.portfolio_state_trace) == len(result.equity_curve)
+    states = {row.ts: row for row in result.portfolio_state_trace}
+    entry = states[datetime(2024, 1, 2, tzinfo=UTC)]
+    assert entry.gross_exposure == pytest.approx(0.01)
+    assert entry.net_exposure == pytest.approx(0.01)
+    assert entry.turnover == pytest.approx(0.01)
+    exit_ = states[datetime(2024, 1, 4, tzinfo=UTC)]
+    assert exit_.gross_exposure == pytest.approx(0.0)
+    assert exit_.turnover == pytest.approx(12_000.0 / 1_002_000.0)
+    assert result.benchmark_kind == "passive_open_to_open_price_only"
+    assert [value for _, value in result.benchmark_curve] == pytest.approx(
+        [1.0, 1.1, 1.2, 1.3, 1.4]
+    )
+
 
 def test_short_round_trip_realized_pnl_and_sign() -> None:
     # Short on a MARGIN account: sell @100 (quote 1), cover @120 (quote 3). A short loses as the
@@ -57,3 +77,7 @@ def test_short_round_trip_realized_pnl_and_sign() -> None:
     assert trade.realized_pnl == pytest.approx(-2000.0)  # (100 - 120) * 100
     assert trade.realized_return == pytest.approx(-0.2)
     assert result.final_equity == pytest.approx(998_000.0)
+    assert result.portfolio_state_trace[0].net_exposure < 0.0
+    assert result.portfolio_state_trace[0].gross_exposure == pytest.approx(
+        abs(result.portfolio_state_trace[0].net_exposure)
+    )

@@ -9,6 +9,7 @@ from alpha_cli._schemas import STRATEGY_PARAM_SCHEMA
 
 COMMAND_RUN_TYPES: dict[str, str] = {
     "backtest run": "runs",
+    "backtest oos": "runs",
     "backtest portfolio": "portfolio",
     "backtest cross-sectional": "cross_sectional",
     "validate": "runs",

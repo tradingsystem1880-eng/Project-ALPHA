@@ -61,6 +61,7 @@ class PropFirmRunResult:
     source: str
     rules: PropFirmRules
     result: PropFirmResult
+    source_fingerprint: str
 
 
 def resolve_rules(firm: str | None, overrides: Mapping[str, float]) -> PropFirmRules:
@@ -94,7 +95,7 @@ def trim_warmup(returns: FloatArray) -> FloatArray:
     return returns if nonzero.size == 0 else returns[int(nonzero[0]) :]
 
 
-def _returns_from_run(data_dir: Path, run_id: str) -> FloatArray:
+def _returns_from_run(data_dir: Path, run_id: str) -> tuple[FloatArray, str]:
     """Daily returns from a prior run's stored equity curve (any ``RUN_DIRS`` run type).
 
     Resolves the run across every run-type subdir (backtest/validate runs, portfolio,
@@ -104,18 +105,21 @@ def _returns_from_run(data_dir: Path, run_id: str) -> FloatArray:
     rdir = _artifacts.find_run_dir(data_dir, run_id)
     if rdir is None:
         raise DataError(f"no run {run_id!r} found under {data_dir}")
+    _artifacts.read_manifest(rdir)
     equity = _artifacts.read_equity(rdir)
-    return to_returns([value for _, value in equity])
+    returns = to_returns([value for _, value in equity])
+    return returns, _runner.numeric_source_fingerprint(returns.tolist(), domain=f"run:{run_id}")
 
 
 def _returns_from_backtest(
     symbol: str, spec: _runner.RunSpec, data_dir: Path, snapshot: str | None
-) -> FloatArray:
+) -> tuple[FloatArray, str]:
     """Daily returns from a fresh full backtest of ``symbol`` (the equity curve, net of costs)."""
     bars, _ = _runner.load_bars(symbol, data_dir=data_dir, snapshot_id=snapshot)
     dividends = _runner.load_dividends(symbol, data_dir=data_dir, snapshot_id=snapshot)
     result = _runner.run_full_backtest(bars, spec, dividends=dividends)
-    return to_returns([value for _, value in result.equity_curve])
+    returns = to_returns([value for _, value in result.equity_curve])
+    return returns, _runner.source_fingerprint(bars, dividends=dividends)
 
 
 def run_propfirm(
@@ -138,10 +142,12 @@ def run_propfirm(
     (``DataError``) on a missing run, an unknown firm, or a degenerate return stream.
     """
     if from_run is not None:
-        returns: Sequence[float] | FloatArray = trim_warmup(_returns_from_run(data_dir, from_run))
+        raw_returns, observed_source = _returns_from_run(data_dir, from_run)
+        returns: Sequence[float] | FloatArray = trim_warmup(raw_returns)
         source = f"run:{from_run}"
     elif symbol is not None:
-        returns = trim_warmup(_returns_from_backtest(symbol, spec, data_dir, snapshot))
+        raw_returns, observed_source = _returns_from_backtest(symbol, spec, data_dir, snapshot)
+        returns = trim_warmup(raw_returns)
         source = f"symbol:{symbol}"
     else:  # pragma: no cover - the CLI guarantees one input is set
         raise DataError("provide a SYMBOL or --from-run RUN_ID")
@@ -150,4 +156,10 @@ def run_propfirm(
     result = simulate_propfirm(
         returns, rules, n_paths=n_paths, mean_block=mean_block, seed=seed, horizon_days=horizon_days
     )
-    return PropFirmRunResult(firm=firm or "custom", source=source, rules=rules, result=result)
+    return PropFirmRunResult(
+        firm=firm or "custom",
+        source=source,
+        rules=rules,
+        result=result,
+        source_fingerprint=observed_source,
+    )

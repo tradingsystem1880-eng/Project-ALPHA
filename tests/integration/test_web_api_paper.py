@@ -97,3 +97,13 @@ def test_stale_heartbeat_is_reported_without_process_action(
     assert response.status_code == 200
     assert response.json()["stale"] is True
     assert response.json()["pid"] == 999_999
+
+
+def test_readiness_endpoint_is_machine_derived_and_keeps_live_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    response = _client(tmp_path, monkeypatch).get("/api/paper/readiness")
+    assert response.status_code == 200
+    assert response.json()["paper_passed"] is False
+    assert response.json()["derived_from_elapsed_time"] is False
+    assert response.json()["live_capital_routing"] == "absent"

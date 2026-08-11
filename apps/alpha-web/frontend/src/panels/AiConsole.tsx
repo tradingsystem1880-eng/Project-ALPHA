@@ -94,6 +94,11 @@ export function AiConsole() {
         </div>
 
         <div className="rd-head">Command console</div>
+        <div className="ai-note">
+          Governed Research Case approvals, rejections, decisions, and empirical runs are blocked
+          from this console. Use the Research Cockpit for bounded case actions and the trusted-local
+          CLI for owner-only decisions.
+        </div>
         <div className="ai-input">
           <span className="ai-prompt mono">alpha</span>
           <input

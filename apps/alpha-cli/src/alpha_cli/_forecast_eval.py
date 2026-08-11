@@ -50,6 +50,9 @@ class OriginResult:
     origin_index: int
     origin_ts: datetime
     pre_cutoff: bool
+    model_end_returns: tuple[float, ...]
+    random_walk_end_returns: tuple[float, ...]
+    observed_end_return: float
     score: OriginScore
 
 
@@ -131,6 +134,9 @@ def run_forecast_eval(
                 origin_index=t,
                 origin_ts=series[t].ts,
                 pre_cutoff=series[t].ts.date() <= cutoff,
+                model_end_returns=tuple(float(value) for value in model_end),
+                random_walk_end_returns=tuple(float(value) for value in rw),
+                observed_end_return=float(realized),
                 score=score_origin(
                     model_end, realized, rw_end_returns=rw, bootstrap_end_returns_=boot
                 ),

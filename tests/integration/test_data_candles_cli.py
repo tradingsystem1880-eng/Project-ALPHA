@@ -23,6 +23,16 @@ def test_candles_json_returns_ohlcv(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     payload = json.loads(result.stdout)
     assert payload["symbol"] == "SPY" and len(payload["bars"]) == 30
     assert set(payload["bars"][0]) == {"t", "o", "h", "l", "c", "v"}
+    assert payload["provenance"] == {
+        "source": "unknown",
+        "venue": None,
+        "timeframe": "1D",
+        "snapshot_id": None,
+        "provenance_sha256": None,
+        "receipt_id": None,
+        "knowledge_cutoff": "2020-01-30T00:00:00+00:00",
+        "quality_status": "legacy_unqualified",
+    }
 
 
 def test_candles_window_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

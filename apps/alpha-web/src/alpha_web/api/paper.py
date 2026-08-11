@@ -6,11 +6,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 
-from alpha_cli import paper_store
+from alpha_cli import paper_readiness, paper_store
 from alpha_web.api._common import data_dir
-from alpha_web.api.models import PaperEvent, PaperSession
+from alpha_web.api.models import PaperEvent, PaperReadinessReport, PaperSession
 
 router = APIRouter(prefix="/api/paper", tags=["paper"])
+
+
+@router.get("/readiness", response_model=PaperReadinessReport)
+def get_paper_readiness() -> dict[str, object]:
+    """Machine-derived paper acceptance state; elapsed time cannot mark it passed."""
+    return paper_readiness.readiness_report(data_dir())
 
 
 def _validate_session_id(session_id: str) -> None:

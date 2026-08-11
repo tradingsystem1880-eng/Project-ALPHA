@@ -55,8 +55,8 @@ export function Artifacts({
         </Section>
       ) : null}
       {hasTearsheet ? (
-        <Section title="Tear sheet" right={<span className="muted">external quantstats report</span>}>
-          <iframe className="tearsheet" src={api.tearsheetUrl(runId)} title="Tear sheet" />
+        <Section title="QuantStats audit export" right={<span className="muted">external report · metric definitions may differ</span>}>
+          <iframe className="tearsheet" src={api.tearsheetUrl(runId)} title="QuantStats audit export" />
         </Section>
       ) : null}
     </>

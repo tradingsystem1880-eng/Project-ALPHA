@@ -26,6 +26,8 @@ htmlcov/
 # node_modules + TS build info are not)
 node_modules/
 coverage/
+apps/alpha-web/frontend/playwright-report/
+apps/alpha-web/frontend/test-results/
 *.tsbuildinfo
 
 # Data is large + reproducible from snapshots; never commit it

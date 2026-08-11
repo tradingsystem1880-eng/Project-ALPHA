@@ -54,6 +54,13 @@ def validate(
     seed: int | None = None,
     max_workers: int | None = None,
     snapshot: str | None = None,
+    as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False,
+        "--research-gate-override",
+        help="watermark this run EXPLORATORY / RESEARCH GATE NOT COMPLETED "
+        "(launched under an owner research-gate override)",
+    ),
 ) -> None:
     """Validate SYMBOL end-to-end and write the run artifacts (manifest, parquet, tear sheet).
 
@@ -100,8 +107,19 @@ def validate(
             "the kronos strategy"
         )
     try:
-        bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-        dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
+        research_cutoff = _runner.parse_as_of(as_of)
+        bars, snapshot_id = _load_bars(
+            symbol,
+            data_dir=settings.data_dir,
+            snapshot_id=snapshot,
+            as_of=research_cutoff,
+        )
+        dividends = _load_dividends(
+            symbol,
+            data_dir=settings.data_dir,
+            snapshot_id=snapshot,
+            as_of=research_cutoff,
+        )
         # kronos: precompute the signal cache and pin its key on the spec (no-op otherwise)
         spec, forecast_meta = _forecast_cache.prepare_spec_for_engine(
             bars, spec, data_dir=settings.data_dir, seed=resolved_seed
@@ -118,15 +136,20 @@ def validate(
         # max_workers is an execution-only knob (results are order-preserving and identical
         # serial or pooled), so it must NOT change the run id (same params -> same id).
         gauntlet_knobs = {k: v for k, v in vars(gparams).items() if k != "max_workers"}
-        run_id = _runner.run_id_for(
+        identity = _runner.run_identity_for(
             {
                 "command": "validate",
                 "symbol": symbol,
                 "snapshot_id": snapshot_id,
+                "research_cutoff": as_of,
+                **_artifacts.research_gate_override_identity(research_gate_override),
                 **vars(spec),
                 **gauntlet_knobs,
-            }
+            },
+            source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
+            snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot_id),
         )
+        run_id = identity.run_id
         out = _gauntlet.run_gauntlet(
             bars,
             spec,
@@ -142,6 +165,14 @@ def validate(
     rdir = _artifacts.run_dir(settings.data_dir, run_id)
     equity = list(zip(out.oos.oos_timestamps, out.oos.oos_equity.tolist(), strict=True))
     manifest = report_to_manifest(out.report)
+    manifest["command"] = "validate"
+    manifest["research_cutoff"] = as_of
+    manifest["oos_semantics"] = "fixed_rule_evaluation_no_refit"
+    manifest["folds"] = [_runner.fold_manifest(fold, bars) for fold in out.oos.folds]
+    manifest["oos_execution_boundary"] = "fresh_portfolio_after_causal_indicator_priming"
+    manifest["oos_trace_scope"] = "scored_test_sessions_plus_originating_prior_close_decision"
+    manifest.update(_artifacts.research_gate_override_fields(research_gate_override))
+    manifest.update(identity.manifest_fields())
     if forecast_meta is not None:
         manifest["forecast"] = {**forecast_meta, "tier2_policy": tier2_mode}
     # raw two-tier null distributions BEFORE the manifest (manifest.json is the run-exists marker)
@@ -152,13 +183,22 @@ def validate(
             ("full_engine", out.tier2_null.tolist()),
         ),
     )
-    _artifacts.write_run_sidecars(rdir, equity=equity, trades=out.result.trades)
-    render_tearsheet_html(
-        out.report,
-        oos_returns=out.oos.oos_returns,
-        oos_timestamps=out.oos.oos_timestamps[1:],
-        output_path=rdir / "tearsheet.html",
+    _artifacts.write_run_sidecars(
+        rdir,
+        equity=equity,
+        trades=out.result.trades,
+        trace_result=out.result,
         periods_per_year=spec.periods_per_year,
+    )
+    _artifacts.publish_artifact(
+        rdir / "tearsheet.html",
+        lambda path: render_tearsheet_html(
+            out.report,
+            oos_returns=out.oos.oos_returns,
+            oos_timestamps=out.oos.oos_timestamps[1:],
+            output_path=path,
+            periods_per_year=spec.periods_per_year,
+        ),
     )
     _artifacts.write_manifest(rdir, manifest)
 

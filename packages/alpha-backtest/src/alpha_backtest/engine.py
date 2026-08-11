@@ -8,6 +8,7 @@ per-session mark-to-market equity curve).
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -20,13 +21,20 @@ from nautilus_trader.core.data import Data
 from nautilus_trader.model.currencies import USD
 from nautilus_trader.model.data import QuoteTick
 from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
+from nautilus_trader.model.events import OrderFilled
 from nautilus_trader.model.identifiers import InstrumentId, Venue
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
 from alpha_backtest.frictions import BpsFeeModel
-from alpha_backtest.results import BacktestResult, Trade
+from alpha_backtest.results import (
+    BacktestResult,
+    FillTrace,
+    OrderTrace,
+    PortfolioStateTrace,
+    Trade,
+)
 from alpha_core import ActionType, CorporateAction, DataError
 
 _NS_PER_SECOND = 1_000_000_000
@@ -135,6 +143,138 @@ def _closed_trades(engine: BacktestEngine) -> list[Trade]:
     return trades
 
 
+def _execution_trace(
+    engine: BacktestEngine,
+) -> tuple[tuple[OrderTrace, ...], tuple[FillTrace, ...]]:
+    """Canonicalize engine orders/fills without persisting vendor UUIDs or opaque event ids."""
+
+    def order_key(order: Any) -> tuple[Any, ...]:
+        raw: dict[str, Any] = order.to_dict()
+        fill_signature = tuple(
+            (
+                int(event.ts_event),
+                str(event.instrument_id),
+                "BUY" if event.order_side == OrderSide.BUY else "SELL",
+                float(event.last_qty),
+                float(event.last_px),
+            )
+            for event in order.events
+            if isinstance(event, OrderFilled)
+        )
+        return (
+            int(order.ts_init),
+            str(raw["instrument_id"]),
+            str(raw["side"]),
+            float(raw["quantity"]),
+            float(raw["filled_qty"]),
+            str(raw["status"]),
+            fill_signature,
+        )
+
+    # Persisted semantics (including fill history) fully determine ordering. If two keys tie, their
+    # projected rows are identical, so cache enumeration cannot change the resulting bytes. Vendor
+    # and client UUIDs never participate in ordering or persistence.
+    orders = sorted(engine.cache.orders(), key=order_key)
+    order_trace: list[OrderTrace] = []
+    pending_fills: list[tuple[int, int, int, OrderFilled]] = []
+    for sequence_id, order in enumerate(orders, start=1):
+        raw: dict[str, Any] = order.to_dict()
+        order_trace.append(
+            OrderTrace(
+                sequence_id=sequence_id,
+                ts=_ns_to_dt(int(order.ts_init)),
+                instrument_id=str(raw["instrument_id"]),
+                side=str(raw["side"]),
+                quantity=float(raw["quantity"]),
+                filled_quantity=float(raw["filled_qty"]),
+                status=str(raw["status"]),
+            )
+        )
+        for event_index, event in enumerate(order.events):
+            if isinstance(event, OrderFilled):
+                pending_fills.append((int(event.ts_event), sequence_id, event_index, event))
+
+    fill_trace: list[FillTrace] = []
+    sorted_fills = sorted(pending_fills, key=lambda item: (item[0], item[1], item[2]))
+    for sequence_id, (_, order_id, _, event) in enumerate(sorted_fills, start=1):
+        fill_trace.append(
+            FillTrace(
+                sequence_id=sequence_id,
+                order_sequence_id=order_id,
+                ts=_ns_to_dt(int(event.ts_event)),
+                instrument_id=str(event.instrument_id),
+                side="BUY" if event.order_side == OrderSide.BUY else "SELL",
+                quantity=float(event.last_qty),
+                price=float(event.last_px),
+            )
+        )
+    return tuple(order_trace), tuple(fill_trace)
+
+
+def _portfolio_and_benchmark_trace(
+    data: Sequence[Data],
+    equity_curve: Sequence[tuple[datetime, float]],
+    fill_trace: Sequence[FillTrace],
+) -> tuple[tuple[PortfolioStateTrace, ...], tuple[tuple[datetime, float], ...]]:
+    """Derive post-fill exposure/turnover and a passive price benchmark from engine evidence."""
+
+    quotes: list[tuple[datetime, float]] = []
+    seen_timestamps: set[datetime] = set()
+    for item in data:
+        if not isinstance(item, QuoteTick):
+            continue
+        ts = _ns_to_dt(item.ts_event)
+        if ts in seen_timestamps:
+            raise DataError(f"duplicate opening quote timestamp in engine feed: {ts.isoformat()}")
+        seen_timestamps.add(ts)
+        midpoint = (float(item.bid_price) + float(item.ask_price)) / 2.0
+        if midpoint <= 0.0:
+            raise DataError(f"opening quote midpoint must be positive, got {midpoint}")
+        quotes.append((ts, midpoint))
+    if not quotes:
+        return (), ()
+    quotes.sort(key=lambda item: item[0])
+    equity_by_ts = dict(equity_curve)
+    if len(equity_by_ts) != len(equity_curve):
+        raise DataError("equity curve has duplicate session timestamps")
+    fills_by_ts: dict[datetime, list[FillTrace]] = {}
+    for fill in fill_trace:
+        fills_by_ts.setdefault(fill.ts, []).append(fill)
+    quote_timestamps = {ts for ts, _ in quotes}
+    unmatched = sorted(set(fills_by_ts) - quote_timestamps)
+    if unmatched:
+        raise DataError(
+            "fill timestamps do not reconcile to opening quotes: "
+            + ", ".join(ts.isoformat() for ts in unmatched)
+        )
+    position = 0.0
+    states: list[PortfolioStateTrace] = []
+    first_midpoint = quotes[0][1]
+    benchmark: list[tuple[datetime, float]] = []
+    for ts, midpoint in quotes:
+        if ts not in equity_by_ts:
+            raise DataError(f"opening quote {ts.isoformat()} has no canonical equity sample")
+        equity = equity_by_ts[ts]
+        if equity <= 0.0 or not math.isfinite(equity):
+            raise DataError(f"portfolio analytics require positive finite equity, got {equity}")
+        notional = 0.0
+        for fill in sorted(fills_by_ts.get(ts, ()), key=lambda item: item.sequence_id):
+            direction = 1.0 if fill.side == "BUY" else -1.0
+            position += direction * fill.quantity
+            notional += abs(fill.quantity * fill.price)
+        signed_exposure = position * midpoint / equity
+        states.append(
+            PortfolioStateTrace(
+                ts=ts,
+                gross_exposure=abs(signed_exposure),
+                net_exposure=signed_exposure,
+                turnover=notional / equity,
+            )
+        )
+        benchmark.append((ts, midpoint / first_midpoint))
+    return tuple(states), tuple(benchmark)
+
+
 def run_backtest(
     instrument: Instrument,
     data: Sequence[Data],
@@ -206,12 +346,24 @@ def run_backtest(
                 + recorder.credited_cash
             )
             recorder.curve[-1] = (recorder.curve[-1][0], terminal)
+        order_trace, fill_trace = _execution_trace(engine)
+        portfolio_state_trace, benchmark_curve = _portfolio_and_benchmark_trace(
+            data, recorder.curve, fill_trace
+        )
         result = BacktestResult(
             orders=len(engine.trader.generate_orders_report()),
             fills=len(engine.trader.generate_order_fills_report()),
             trades=_closed_trades(engine),
             equity_curve=recorder.curve,
             rejected=int(getattr(strategy, "rejections", 0)),
+            decision_trace=tuple(getattr(strategy, "decision_trace", ())),
+            indicator_trace=tuple(getattr(strategy, "indicator_trace", ())),
+            chart_annotations=tuple(getattr(strategy, "chart_annotations", ())),
+            order_trace=order_trace,
+            fill_trace=fill_trace,
+            portfolio_state_trace=portfolio_state_trace,
+            benchmark_curve=benchmark_curve,
+            benchmark_kind="passive_open_to_open_price_only",
         )
     finally:
         engine.dispose()

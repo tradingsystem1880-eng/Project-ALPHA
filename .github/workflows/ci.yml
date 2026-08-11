@@ -35,12 +35,12 @@ jobs:
         run: uv run pytest -q -m "not network" --cov --cov-report=term-missing
       - name: OpenAPI freshness
         run: uv run python scripts/generate_web_openapi.py --check
-      - name: Build all 11 wheels
+      - name: Build all 12 wheels
         run: uv build --all-packages
       - name: Import built wheels
         run: |
           uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
-          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_cli, alpha_mcp, alpha_web))'
+          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli, alpha_mcp, alpha_web))'
 
   frontend:
     runs-on: ubuntu-latest
@@ -62,8 +62,32 @@ jobs:
       - name: Generated TypeScript freshness
         working-directory: apps/alpha-web/frontend
         run: npm run generate:api && git diff --exit-code -- src/api/generated.ts
-      - name: Type-check and build SPA
+      - name: Install Playwright Chromium
         working-directory: apps/alpha-web/frontend
-        run: npm run build
+        run: npx playwright install --with-deps chromium
+      - name: Browser release gate (build, six desks, layouts, axe)
+        working-directory: apps/alpha-web/frontend
+        run: npm run test:e2e
       - name: Committed SPA asset freshness
         run: git diff --exit-code -- apps/alpha-web/src/alpha_web/static/app
+
+  qlib-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: workers/qlib
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install isolated worker (locked)
+        run: uv sync --locked
+      - name: Lint and format
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Types
+        run: uv run mypy
+      - name: Worker tests
+        run: uv run pytest -q

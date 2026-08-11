@@ -10,13 +10,22 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_cli.artifact_contract import sha256_file
 from alpha_web.app import create_app
 
 
 def _seed_run(data_dir: Path, run_id: str, n: int = 150) -> None:
     rdir = data_dir / "runs" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
-    (rdir / "manifest.json").write_text('{"command": "backtest_run"}', encoding="utf-8")
+    (rdir / "manifest.json").write_text(
+        """{
+          "command": "backtest_run",
+          "snapshot_id": "risk-snapshot",
+          "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "research_cutoff": "2026-06-30"
+        }""",
+        encoding="utf-8",
+    )
     rng = np.random.default_rng(1)
     equity = 1_000_000.0 * np.cumprod(1.0 + rng.normal(0.0005, 0.01, n))
     ts = [datetime(2020, 1, 1, tzinfo=UTC) + timedelta(days=i) for i in range(n)]
@@ -37,6 +46,19 @@ def test_scenario_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     body = resp.json()
     assert body["run_id"] == "1111222233334444"
     assert [s["name"] for s in body["scenarios"]][0] == "base"
+    provenance = body["provenance"]
+    assert provenance["source_run_id"] == "1111222233334444"
+    assert provenance["source_command"] == "backtest_run"
+    assert provenance["source_artifact"] == "equity_curve.parquet"
+    assert provenance["source_artifact_sha256"] == sha256_file(
+        tmp_path / "runs" / "1111222233334444" / "equity_curve.parquet"
+    )
+    assert provenance["snapshot_id"] == "risk-snapshot"
+    assert provenance["snapshot_hash"] == "a" * 64
+    assert provenance["research_cutoff"] == "2026-06-30"
+    assert provenance["timezone"] == "UTC"
+    assert provenance["derived_projection"] is True
+    assert provenance["metric_namespace"] == "alpha_validation.scenario"
 
 
 def test_run_without_equity_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

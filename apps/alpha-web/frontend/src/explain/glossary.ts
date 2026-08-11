@@ -32,7 +32,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   total_return: {
     name: 'Total return',
     short: 'Cumulative OOS return over the whole test span.',
-    long: 'Product of (1 + r) over every out-of-sample day, minus one. Spans multiple walk-forward folds stitched in time order, so it is the return a single continuously-run account would have seen.',
+    long: 'Product of (1 + r) over every out-of-sample day, minus one. Historical sessions only prime causal indicators; a fresh portfolio begins at the first scored boundary and then runs continuously across the contiguous walk-forward test sessions.',
   },
   value_at_risk: {
     name: 'VaR (95%)',
@@ -107,7 +107,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   walk_forward: {
     name: 'Walk-forward OOS',
     short: 'Contiguous test windows after a training warmup, stitched in time.',
-    long: 'The series is split into rolling train/test windows with an embargo gap; the strategy (fixed params — training windows are warmup only, nothing refits) trades each test window and the test segments concatenate into ONE out-of-sample stream. Every headline metric derives from that stream; in-sample numbers appear nowhere.',
+    long: 'The session calendar is split into rolling train/test windows with an embargo gap. For fixed rules, historical sessions prime indicators and cadence without creating positions or orders; nothing refits. A fresh portfolio starts at the first scored boundary and runs through the contiguous test sessions. Every headline metric and plotted execution record derives from that same OOS stream; in-sample numbers appear nowhere.',
   },
   embargo: {
     name: 'Embargo / purging',

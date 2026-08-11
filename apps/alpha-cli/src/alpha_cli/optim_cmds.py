@@ -81,6 +81,13 @@ def grid(
     seed: int | None = None,
     max_workers: int | None = None,
     snapshot: str | None = None,
+    as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False,
+        "--research-gate-override",
+        help="watermark this run EXPLORATORY / RESEARCH GATE NOT COMPLETED "
+        "(launched under an owner research-gate override)",
+    ),
 ) -> None:
     """Sweep SYMBOL over the ``--grid`` axes and report the overfitting-aware best config."""
     settings = AlphaSettings()
@@ -106,9 +113,23 @@ def grid(
         strategy_name=strategy,
         strategy_params=_runner.parse_strategy_params(strategy, param),
     )
-    bars, snapshot_id = _load_bars(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-    dividends = _load_dividends(symbol, data_dir=settings.data_dir, snapshot_id=snapshot)
-    run_id = _runner.run_id_for(
+    try:
+        research_cutoff = _runner.parse_as_of(as_of)
+        bars, snapshot_id = _load_bars(
+            symbol,
+            data_dir=settings.data_dir,
+            snapshot_id=snapshot,
+            as_of=research_cutoff,
+        )
+        dividends = _load_dividends(
+            symbol,
+            data_dir=settings.data_dir,
+            snapshot_id=snapshot,
+            as_of=research_cutoff,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    identity = _runner.run_identity_for(
         {
             "command": "optim_grid",
             "symbol": symbol,
@@ -120,9 +141,14 @@ def grid(
             "dsr_threshold": dsr_threshold,
             "alpha": alpha,
             "seed": resolved_seed,
+            "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
             **vars(base),
-        }
+        },
+        source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
+        snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot_id),
     )
+    run_id = identity.run_id
     try:
         result = _optim.run_optimization(
             bars,
@@ -143,56 +169,136 @@ def grid(
 
     rdir = settings.data_dir / "optim" / run_id
     rdir.mkdir(parents=True, exist_ok=True)
-    # the per-trial OOS matrix BEFORE the manifest (manifest.json is the run-exists marker)
-    _artifacts.write_trials(rdir, matrix=result.oos_matrix)
-    manifest = _manifest(result, run_id=run_id, symbol=symbol, snapshot_id=snapshot_id)
+    # Publish every declared outcome and the aligned successful matrix before the manifest marker.
+    _optim.write_trial_ledger(rdir, result.outcomes)
+    matrix_trial_indices = (
+        result.successful_trial_indices
+        if result.oos_matrix.shape[1] == len(result.successful_trial_indices)
+        else ()
+    )
+    _artifacts.write_trials(
+        rdir,
+        matrix=result.oos_matrix,
+        trial_indices=matrix_trial_indices,
+    )
+    manifest = _manifest(
+        result,
+        run_id=run_id,
+        symbol=symbol,
+        snapshot_id=snapshot_id,
+        research_cutoff=as_of,
+    )
+    manifest.update(_artifacts.research_gate_override_fields(research_gate_override))
+    manifest.update(identity.manifest_fields())
     _artifacts.write_manifest(rdir, manifest)
 
     verdict = "PASS" if result.passed else "FAIL"
-    best = ", ".join(f"{k}={v:g}" for k, v in result.best_config)
-    typer.echo(
-        f"optim {symbol} -> run {run_id}: {verdict} over {result.n_configs} configs\n"
-        f"  best: {best} (OOS Sharpe {result.best_sharpe:.3f})\n"
-        f"  deflated Sharpe {result.dsr.dsr:.3f} (>= {dsr_threshold}? {result.dsr.passed}); "
-        f"PBO {result.pbo.pbo:.3f}; SPA p {result.spa.p_value:.3f}; "
-        f"RC p {result.reality_check.p_value:.3f}\n"
-        f"  manifest at {rdir / 'manifest.json'}"
-    )
+    lines = [
+        f"optim {symbol} -> run {run_id}: {verdict} over {result.n_configs} declared configs "
+        f"({result.n_successful_configs} successful)"
+    ]
+    if result.best_config is not None and result.best_sharpe is not None:
+        best = ", ".join(f"{key}={value:g}" for key, value in result.best_config)
+        lines.append(f"  best: {best} (OOS Sharpe {result.best_sharpe:.3f})")
+    if (
+        result.dsr is not None
+        and result.pbo is not None
+        and result.spa is not None
+        and result.reality_check is not None
+    ):
+        lines.append(
+            f"  deflated Sharpe {result.dsr.dsr:.3f} "
+            f"(>= {dsr_threshold}? {result.dsr.passed}); PBO {result.pbo.pbo:.3f}; "
+            f"SPA p {result.spa.p_value:.3f}; RC p {result.reality_check.p_value:.3f}"
+        )
+    if result.analysis_error is not None:
+        lines.append(f"  analysis failure: {result.analysis_error}")
+    lines.append(f"  manifest at {rdir / 'manifest.json'}")
+    typer.echo("\n".join(lines))
 
 
 def _manifest(
-    result: _optim.OptimResult, *, run_id: str, symbol: str, snapshot_id: str | None
+    result: _optim.OptimResult,
+    *,
+    run_id: str,
+    symbol: str,
+    snapshot_id: str | None,
+    research_cutoff: str | None = None,
 ) -> dict[str, Any]:
     """Byte-stable summary manifest for a sweep (configs, per-config Sharpe, the four verdicts)."""
+    status_counts = {
+        status: sum(outcome.status == status for outcome in result.outcomes)
+        for status in ("passed", "failed", "pruned", "rejected")
+    }
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
         "command": "optim_grid",
         "symbol": symbol,
         "snapshot_id": snapshot_id,
+        "research_cutoff": research_cutoff,
         "n_configs": result.n_configs,
+        "n_successful_configs": result.n_successful_configs,
         "n_oos": result.n_oos,
-        "best_config": [list(pair) for pair in result.best_config],
+        "best_config": (
+            [list(pair) for pair in result.best_config] if result.best_config is not None else []
+        ),
         "best_sharpe": result.best_sharpe,
-        "dsr": {
-            "psr": result.dsr.psr,
-            "dsr": result.dsr.dsr,
-            "expected_max_sharpe": result.dsr.expected_max_sharpe,
-            "n_trials": result.dsr.n_trials,
-            "passed": result.dsr.passed,
-        },
-        "pbo": {
-            "pbo": result.pbo.pbo,
-            "n_splits": result.pbo.n_splits,
-            "passed": result.pbo.passed,
-        },
-        "reality_check": {
-            "p_value": result.reality_check.p_value,
-            "passed": result.reality_check.passed,
-        },
-        "spa": {"p_value": result.spa.p_value, "passed": result.spa.passed},
+        "dsr": (
+            {
+                "psr": result.dsr.psr,
+                "dsr": result.dsr.dsr,
+                "expected_max_sharpe": result.dsr.expected_max_sharpe,
+                "n_trials": result.dsr.n_trials,
+                "passed": result.dsr.passed,
+            }
+            if result.dsr is not None
+            else None
+        ),
+        "pbo": (
+            {
+                "pbo": result.pbo.pbo,
+                "n_splits": result.pbo.n_splits,
+                "passed": result.pbo.passed,
+            }
+            if result.pbo is not None
+            else None
+        ),
+        "reality_check": (
+            {
+                "p_value": result.reality_check.p_value,
+                "passed": result.reality_check.passed,
+            }
+            if result.reality_check is not None
+            else None
+        ),
+        "spa": (
+            {"p_value": result.spa.p_value, "passed": result.spa.passed}
+            if result.spa is not None
+            else None
+        ),
         "configs": [[list(pair) for pair in c] for c in result.configs],
         "sharpes": result.sharpes.tolist(),
+        "successful_trial_indices": list(result.successful_trial_indices),
+        "analysis_trial_indices": (
+            list(result.successful_trial_indices)
+            if result.oos_matrix.shape[1] == len(result.successful_trial_indices)
+            else []
+        ),
+        "trial_status_counts": status_counts,
+        "trial_outcomes": [
+            {
+                "trial": outcome.trial_index,
+                "status": outcome.status,
+                "config_fingerprint": outcome.config_fingerprint,
+                "error": outcome.error,
+                "n_oos": len(outcome.oos_returns),
+                "annualized_sharpe": outcome.annualized_sharpe,
+            }
+            for outcome in result.outcomes
+        ],
+        "analysis_error": result.analysis_error,
+        "analysis_status": "failed" if result.analysis_error is not None else "completed",
         "passed": result.passed,
     }
     return {k: sanitize(v) for k, v in manifest.items()}

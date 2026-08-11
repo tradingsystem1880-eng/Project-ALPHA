@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
@@ -11,6 +12,8 @@ import pytest
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
+from alpha_data.snapshot import create_snapshot, snapshot_manifest_hash
+from alpha_data.store import ParquetStore
 from tests.fixtures.cli_fixtures import seed_store
 
 runner = CliRunner()
@@ -29,8 +32,31 @@ def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.Mon
         {"AAA": 0.012, "BBB": -0.004, "CCC": -0.012, "DDD": 0.004}.items()
     ):
         seed_store(tmp_path, symbol=sym, n=120, seed=i, drift=drift, sigma=0.012)
+    create_snapshot(
+        ParquetStore(tmp_path / "store"),
+        tmp_path / "snapshots",
+        "cross-sectional-frozen",
+        ["AAA", "BBB", "CCC", "DDD"],
+        source="fixture",
+        adapter_version="1",
+        parser_version="1",
+        created_at=datetime(2026, 7, 19, tzinfo=UTC),
+    )
 
-    result = runner.invoke(app, ["backtest", "cross-sectional", "AAA", "BBB", "CCC", "DDD", *_ARGS])
+    result = runner.invoke(
+        app,
+        [
+            "backtest",
+            "cross-sectional",
+            "AAA",
+            "BBB",
+            "CCC",
+            "DDD",
+            *_ARGS,
+            "--snapshot",
+            "cross-sectional-frozen",
+        ],
+    )
     assert result.exit_code == 0, result.output
     assert "cross-sectional" in result.output
 
@@ -38,6 +64,10 @@ def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.Mon
     manifest = json.loads((rdir / "manifest.json").read_text())
     assert manifest["symbols"] == ["AAA", "BBB", "CCC", "DDD"]
     assert manifest["long_short"] is True
+    assert manifest["snapshot_id"] == "cross-sectional-frozen"
+    assert manifest["snapshot_hash"] == snapshot_manifest_hash(
+        tmp_path / "snapshots" / "cross-sectional-frozen"
+    )
     assert manifest["n_periods"] > 0
     # Don't just check membership: pin that the BCa interval is finite and brackets a finite point
     # Sharpe, so a future degenerate-stats regression (None / absurd CI) is caught, not serialized.
@@ -59,6 +89,13 @@ def test_cross_sectional_writes_manifest(tmp_path: Path, monkeypatch: pytest.Mon
     assert eq["equity"][-1] / eq["equity"][0] - 1.0 == pytest.approx(
         manifest["metrics"]["total_return"]
     )
+    exposure = pl.read_parquet(rdir / "exposure_turnover.parquet")
+    benchmark = pl.read_parquet(rdir / "benchmark_comparison.parquet")
+    trade_statistics = pl.read_parquet(rdir / "trade_statistics.parquet")
+    assert exposure.get_column("exposure_available").to_list() == [False] * (eq.height - 1)
+    assert exposure.get_column("gross_exposure").null_count() == eq.height - 1
+    assert benchmark.get_column("available").to_list() == [False] * eq.height
+    assert trade_statistics.get_column("available").to_list() == [False] * trade_statistics.height
 
     report_out = runner.invoke(app, ["report", manifest["run_id"]])
     assert report_out.exit_code == 0, report_out.output

@@ -1,9 +1,11 @@
+import json
 from datetime import date
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from alpha_cli import data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
 from alpha_data.adapters.base import FetchResult
@@ -96,6 +98,12 @@ def test_pull_then_snapshot_then_verify(tmp_path: Path, monkeypatch: pytest.Monk
     assert r3.exit_code == 0, r3.output
     assert "ok" in r3.output.lower()
 
+    status = runner.invoke(app, ["data", "source-status", "AAPL", "--json"])
+    assert status.exit_code == 0, status.output
+    payload = json.loads(status.stdout)
+    assert payload["provenance"]["source"] == "fake"
+    assert payload["promotion_pending"] is False
+
 
 def test_pull_fails_loud_on_blocked_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # A gated/blocked source raises DataError; the CLI must show a clean message, not a traceback.
@@ -140,6 +148,39 @@ def test_pull_rejects_malformed_date(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert "YYYY-MM-DD" in r.output and "Traceback" not in r.output
 
 
+def test_audit_and_explicit_repair_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    quality = tmp_path / "store" / "candidates" / "tiingo" / "receipt" / "quality.json"
+    quality.parent.mkdir(parents=True)
+    quality.write_text('{"status":"passed","symbol":"SPY"}', encoding="utf-8")
+    audited = runner.invoke(app, ["data", "audit", "tiingo", "receipt", "--json"])
+    assert audited.exit_code == 0 and json.loads(audited.stdout)["status"] == "passed"
+
+    class Outcome:
+        provider = "tiingo"
+        receipt_id = "receipt"
+        symbol = "SPY"
+
+    monkeypatch.setattr(data_cmds, "promote_quarantined", lambda *args, **kwargs: Outcome())
+    repaired = runner.invoke(
+        app,
+        ["data", "repair", "tiingo", "receipt", "--approve-differences"],
+    )
+    assert repaired.exit_code == 0 and "promoted reviewed receipt" in repaired.output
+    monkeypatch.setattr(
+        data_cmds,
+        "rollback_interrupted_promotion",
+        lambda *args, **kwargs: None,
+    )
+    rolled_back = runner.invoke(
+        app,
+        ["data", "rollback-promotion", "SPY", "--acknowledge"],
+    )
+    assert rolled_back.exit_code == 0 and "restored pre-promotion" in rolled_back.output
+
+
 def test_snapshot_fails_loud_on_unknown_symbol(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -158,3 +199,56 @@ def test_verify_fails_loud_on_missing_snapshot(
     r = runner.invoke(app, ["data", "verify", "no-such-snapshot"])
     assert r.exit_code == 2
     assert "Traceback" not in r.output
+
+
+def test_snapshots_lists_manifest_summaries_deterministically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"fake": _FakeAdapter})
+    empty = runner.invoke(app, ["data", "snapshots", "--json"])
+    assert empty.exit_code == 0, empty.output
+    assert json.loads(empty.stdout) == {"snapshots": []}
+
+    pull = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-02",
+        ],
+    )
+    assert pull.exit_code == 0, pull.output
+    for snapshot_id in ("snap-b", "snap-a"):
+        created = runner.invoke(app, ["data", "snapshot", snapshot_id, "AAPL", "--source", "fake"])
+        assert created.exit_code == 0, created.output
+
+    listed = runner.invoke(app, ["data", "snapshots", "--json"])
+    assert listed.exit_code == 0, listed.output
+    payload = json.loads(listed.stdout)
+    rows = payload["snapshots"]
+    # Deterministic order: snapshot id ascending, independent of creation order.
+    assert [row["snapshot_id"] for row in rows] == ["snap-a", "snap-b"]
+    for row in rows:
+        assert set(row) == {
+            "snapshot_id",
+            "created_at",
+            "source",
+            "adapter_version",
+            "parser_version",
+            "symbols",
+            "manifest_sha256",
+        }
+        assert row["source"] == "fake"
+        assert row["symbols"] == ["AAPL"]
+        assert len(row["manifest_sha256"]) == 64
+
+    fallback = runner.invoke(app, ["data", "snapshots"])
+    assert fallback.exit_code == 0
+    assert "snap-a" in fallback.output and "snap-b" in fallback.output

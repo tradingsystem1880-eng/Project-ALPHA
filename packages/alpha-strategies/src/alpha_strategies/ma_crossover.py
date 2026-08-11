@@ -6,6 +6,8 @@ Pure decision logic lives in ``signals.ma_crossover_signal``; this class is only
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from nautilus_trader.model.data import BarType
 from nautilus_trader.model.identifiers import InstrumentId
 
@@ -52,3 +54,14 @@ class MovingAverageCrossover(VolTargetStrategy):
 
     def _signal(self) -> int:
         return ma_crossover_signal(self._closes, self._fast, self._slow)
+
+    def _indicator_snapshot(self) -> Mapping[str, tuple[float, str]]:
+        values = dict(super()._indicator_snapshot())
+        window = self._closes[-self._slow :]
+        values.update(
+            {
+                "fast_sma": (sum(window[-self._fast :]) / self._fast, "price"),
+                "slow_sma": (sum(window) / self._slow, "price"),
+            }
+        )
+        return values

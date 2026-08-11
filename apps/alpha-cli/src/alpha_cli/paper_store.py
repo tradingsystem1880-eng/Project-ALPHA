@@ -25,16 +25,36 @@ from alpha_core import DataError
 type JsonScalar = str | int | float | bool | None
 type SessionStatus = Literal["starting", "running", "stopping", "completed", "cancelled", "failed"]
 type TerminalSessionStatus = Literal["completed", "cancelled", "failed"]
+type ExecutionMode = Literal["local_sandbox", "ibkr_paper"]
+type ReconciliationState = Literal["not_applicable", "pending", "matched", "mismatch", "halted"]
 
-SCHEMA_VERSION: Final = 1
+LEGACY_SCHEMA_VERSION: Final = 1
+SCHEMA_VERSION: Final = 2
 STALE_HEARTBEAT_SECONDS: Final = 30.0
 EVENT_TYPES: Final = frozenset(
+    {
+        "lifecycle",
+        "intent",
+        "risk_check",
+        "connection",
+        "account_snapshot",
+        "order",
+        "fill",
+        "cancel",
+        "expired",
+        "rejection",
+        "position",
+        "reconciliation",
+        "reconciliation_warning",
+    }
+)
+_LEGACY_EVENT_TYPES: Final = frozenset(
     {"lifecycle", "order", "fill", "rejection", "position", "reconciliation_warning"}
 )
 
 _SESSION_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _EVENT_FILE_RE = re.compile(r"([0-9]{20})\.json")
-_SESSION_FIELDS = frozenset(
+_SESSION_FIELDS_V1 = frozenset(
     {
         "schema_version",
         "session_id",
@@ -52,6 +72,17 @@ _SESSION_FIELDS = frozenset(
         "ended_at",
         "last_sequence",
         "terminal_error",
+    }
+)
+_SESSION_FIELDS_V2 = frozenset(
+    {
+        *_SESSION_FIELDS_V1,
+        "paper",
+        "execution_mode",
+        "account_alias",
+        "risk_profile_id",
+        "decision_artifact_id",
+        "reconciliation_state",
     }
 )
 _EVENT_FIELDS = frozenset(
@@ -103,6 +134,24 @@ class PaperEventSink:
             payload,
             ts_event_ns=ts_event_ns,
         )
+        state = payload.get("state")
+        if event_type == "reconciliation" and state == "matched":
+            set_reconciliation_state(self.data_dir, self.session_id, "matched")
+        elif event_type == "reconciliation" and state == "mismatch":
+            set_reconciliation_state(self.data_dir, self.session_id, "mismatch")
+        elif event_type == "reconciliation" and state == "halted":
+            set_reconciliation_state(
+                self.data_dir,
+                self.session_id,
+                "halted",
+            )
+        elif (event_type == "risk_check" and payload.get("passed") is False) or event_type in {
+            "rejection",
+            "reconciliation_warning",
+        }:
+            session = read_session(self.data_dir, self.session_id)
+            if session["execution_mode"] == "ibkr_paper":
+                set_reconciliation_state(self.data_dir, self.session_id, "halted")
 
 
 def valid_session_id(session_id: str) -> bool:
@@ -219,18 +268,29 @@ def _nonnegative_int(value: object, field: str) -> int:
 
 
 def _validate_session(raw: dict[str, object], path: Path) -> dict[str, object]:
-    if frozenset(raw) != _SESSION_FIELDS:
-        raise DataError(f"invalid paper session at {path}: schema fields do not match v1")
-    version = _nonnegative_int(raw["schema_version"], "session schema_version")
-    if version != SCHEMA_VERSION:
+    version = _nonnegative_int(raw.get("schema_version"), "session schema_version")
+    if version not in {LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}:
         raise DataError(f"invalid paper session at {path}: unsupported schema version {version}")
+    expected_fields = _SESSION_FIELDS_V1 if version == LEGACY_SCHEMA_VERSION else _SESSION_FIELDS_V2
+    if frozenset(raw) != expected_fields:
+        raise DataError(f"invalid paper session at {path}: schema fields do not match v{version}")
     session_id = _require_nonempty_string(raw["session_id"], "session_id")
     _require_session_id(session_id)
     status = _require_nonempty_string(raw["status"], "status")
     if status not in _STATUSES:
         raise DataError(f"invalid paper session at {path}: unsupported status {status!r}")
-    if raw["sandbox"] is not True:
-        raise DataError(f"invalid paper session at {path}: sandbox must be true")
+    execution_mode = (
+        "local_sandbox"
+        if version == LEGACY_SCHEMA_VERSION
+        else _require_nonempty_string(raw["execution_mode"], "execution_mode")
+    )
+    if execution_mode not in {"local_sandbox", "ibkr_paper"}:
+        raise DataError(f"invalid paper session at {path}: unsupported execution_mode")
+    expected_sandbox = execution_mode == "local_sandbox"
+    if raw["sandbox"] is not expected_sandbox:
+        raise DataError(f"invalid paper session at {path}: sandbox does not match execution_mode")
+    if version == SCHEMA_VERSION and raw["paper"] is not True:
+        raise DataError(f"invalid paper session at {path}: paper must be true")
     started = _parse_timestamp(raw["started_at"], "started_at")
     heartbeat = _parse_timestamp(raw["heartbeat_at"], "heartbeat_at")
     if heartbeat < started:
@@ -248,12 +308,37 @@ def _validate_session(raw: dict[str, object], path: Path) -> dict[str, object]:
     if status != "failed" and terminal_error is not None:
         raise DataError(f"invalid paper session at {path}: only failed sessions have errors")
 
+    account_alias = None if version == LEGACY_SCHEMA_VERSION else raw["account_alias"]
+    if account_alias is not None:
+        account_alias = _require_nonempty_string(account_alias, "account_alias")
+    if execution_mode == "ibkr_paper" and account_alias is None:
+        raise DataError(f"invalid paper session at {path}: IBKR paper requires account_alias")
+    reconciliation_state = (
+        "not_applicable" if version == LEGACY_SCHEMA_VERSION else raw["reconciliation_state"]
+    )
+    if reconciliation_state not in {"not_applicable", "pending", "matched", "mismatch", "halted"}:
+        raise DataError(f"invalid paper session at {path}: unsupported reconciliation_state")
+    decision_artifact_id = None if version == LEGACY_SCHEMA_VERSION else raw["decision_artifact_id"]
+    if decision_artifact_id is not None:
+        decision_artifact_id = _require_nonempty_string(
+            decision_artifact_id, "decision_artifact_id"
+        )
     return {
         "schema_version": version,
         "session_id": session_id,
         "status": status,
         "provider": _require_nonempty_string(raw["provider"], "provider"),
-        "sandbox": True,
+        "paper": True,
+        "sandbox": expected_sandbox,
+        "execution_mode": execution_mode,
+        "account_alias": account_alias,
+        "risk_profile_id": (
+            "crypto-sandbox-v1"
+            if version == LEGACY_SCHEMA_VERSION
+            else _require_nonempty_string(raw["risk_profile_id"], "risk_profile_id")
+        ),
+        "decision_artifact_id": decision_artifact_id,
+        "reconciliation_state": reconciliation_state,
         "symbol": _require_nonempty_string(raw["symbol"], "symbol"),
         "instrument_id": _require_nonempty_string(raw["instrument_id"], "instrument_id"),
         "strategy": _require_nonempty_string(raw["strategy"], "strategy"),
@@ -266,6 +351,16 @@ def _validate_session(raw: dict[str, object], path: Path) -> dict[str, object]:
         "last_sequence": _nonnegative_int(raw["last_sequence"], "last_sequence"),
         "terminal_error": terminal_error,
     }
+
+
+def _stored_session(doc: Mapping[str, object]) -> dict[str, object]:
+    """Strip normalized v2 view fields before mutating a legacy v1 session."""
+    fields = (
+        _SESSION_FIELDS_V1
+        if doc.get("schema_version") == LEGACY_SCHEMA_VERSION
+        else _SESSION_FIELDS_V2
+    )
+    return {field: doc[field] for field in fields}
 
 
 def _read_session_doc(data_dir: Path, session_id: str) -> tuple[Path, dict[str, object]]:
@@ -340,17 +435,41 @@ def create_session(
     pid: int | None = None,
     session_id: str | None = None,
     started_at: datetime | None = None,
+    execution_mode: ExecutionMode = "local_sandbox",
+    account_alias: str | None = None,
+    risk_profile_id: str = "crypto-sandbox-v1",
+    decision_artifact_id: str | None = None,
 ) -> dict[str, object]:
-    """Create a sandbox paper session and atomically publish its initial status."""
+    """Create a paper session and atomically publish its initial status."""
     sid = str(uuid.uuid4()) if session_id is None else session_id
     _require_session_id(sid)
     start = _now(started_at)
+    if execution_mode not in {"local_sandbox", "ibkr_paper"}:
+        raise DataError(f"unsupported paper execution_mode {execution_mode!r}")
+    clean_account = (
+        None if account_alias is None else _require_nonempty_string(account_alias, "account_alias")
+    )
+    if execution_mode == "ibkr_paper" and clean_account is None:
+        raise DataError("IBKR paper sessions require account_alias")
+    clean_artifact = (
+        None
+        if decision_artifact_id is None
+        else _require_nonempty_string(decision_artifact_id, "decision_artifact_id")
+    )
     doc: dict[str, object] = {
         "schema_version": SCHEMA_VERSION,
         "session_id": sid,
         "status": "starting",
         "provider": _require_nonempty_string(provider, "provider"),
-        "sandbox": True,
+        "paper": True,
+        "sandbox": execution_mode == "local_sandbox",
+        "execution_mode": execution_mode,
+        "account_alias": clean_account,
+        "risk_profile_id": _require_nonempty_string(risk_profile_id, "risk_profile_id"),
+        "decision_artifact_id": clean_artifact,
+        "reconciliation_state": (
+            "not_applicable" if execution_mode == "local_sandbox" else "pending"
+        ),
         "symbol": _require_nonempty_string(symbol, "symbol"),
         "instrument_id": _require_nonempty_string(instrument_id, "instrument_id"),
         "strategy": _require_nonempty_string(strategy, "strategy"),
@@ -372,7 +491,7 @@ def create_session(
     except FileExistsError as exc:
         raise DataError(f"paper session {sid!r} already exists") from exc
     path = sdir / "session.json"
-    write_text(path, _json_text(doc))
+    write_text(path, _json_text(_stored_session(doc)))
     return _view(doc, now=start, stale_after_seconds=STALE_HEARTBEAT_SECONDS)
 
 
@@ -458,7 +577,7 @@ def set_session_status(
         doc["heartbeat_at"] = _format_timestamp(current_time)
         if status in _TERMINAL_STATUSES:
             doc["ended_at"] = _format_timestamp(current_time)
-        write_text(sdir / "session.json", _json_text(doc))
+        write_text(sdir / "session.json", _json_text(_stored_session(doc)))
     return _view(doc, now=current_time, stale_after_seconds=STALE_HEARTBEAT_SECONDS)
 
 
@@ -476,7 +595,7 @@ def heartbeat_session(
         if current_time < prior:
             raise DataError("paper heartbeat timestamp precedes prior heartbeat")
         doc["heartbeat_at"] = _format_timestamp(current_time)
-        write_text(sdir / "session.json", _json_text(doc))
+        write_text(sdir / "session.json", _json_text(_stored_session(doc)))
     return _view(doc, now=current_time, stale_after_seconds=STALE_HEARTBEAT_SECONDS)
 
 
@@ -536,7 +655,7 @@ def append_event(
         write_text(path, _json_text(event))
         # Event first, session pointer second: a crash between them is recoverable by scanning.
         doc["last_sequence"] = sequence
-        write_text(sdir / "session.json", _json_text(doc))
+        write_text(sdir / "session.json", _json_text(_stored_session(doc)))
     return event
 
 
@@ -546,14 +665,15 @@ def _validate_event(
     if frozenset(raw) != _EVENT_FIELDS:
         raise DataError(f"invalid paper event at {path}: schema fields do not match v1")
     version = _nonnegative_int(raw["schema_version"], "event schema_version")
-    if version != SCHEMA_VERSION:
+    if version not in {LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}:
         raise DataError(f"invalid paper event at {path}: unsupported schema version {version}")
     stored_session_id = _require_nonempty_string(raw["session_id"], "event session_id")
     stored_sequence = _nonnegative_int(raw["sequence"], "event sequence")
     if stored_session_id != session_id or stored_sequence != sequence:
         raise DataError(f"invalid paper event at {path}: identity does not match path")
     event_type = _require_nonempty_string(raw["event_type"], "event_type")
-    if event_type not in EVENT_TYPES:
+    allowed_types = _LEGACY_EVENT_TYPES if version == LEGACY_SCHEMA_VERSION else EVENT_TYPES
+    if event_type not in allowed_types:
         raise DataError(f"invalid paper event at {path}: unsupported type {event_type!r}")
     recorded = _parse_timestamp(raw["recorded_at"], "event recorded_at")
     ts_event_ns = raw["ts_event_ns"]
@@ -598,9 +718,69 @@ def read_events(data_dir: Path, session_id: str, *, after: int = 0) -> list[dict
     return rows
 
 
+def set_reconciliation_state(
+    data_dir: Path,
+    session_id: str,
+    state: ReconciliationState,
+    *,
+    at: datetime | None = None,
+) -> dict[str, object]:
+    """Persist the fail-closed account reconciliation state for an IBKR paper session."""
+    if state not in {"pending", "matched", "mismatch", "halted"}:
+        raise DataError(f"unsupported IBKR reconciliation state {state!r}")
+    current_time = _now(at)
+    with _JOURNAL_LOCK:
+        sdir, doc = _read_session_doc(data_dir, session_id)
+        if doc["schema_version"] != SCHEMA_VERSION or doc["execution_mode"] != "ibkr_paper":
+            raise DataError("reconciliation state applies only to v2 IBKR paper sessions")
+        if doc["status"] in _TERMINAL_STATUSES:
+            raise DataError(f"cannot reconcile terminal paper session {session_id!r}")
+        doc["reconciliation_state"] = state
+        doc["heartbeat_at"] = _format_timestamp(current_time)
+        write_text(sdir / "session.json", _json_text(_stored_session(doc)))
+    return _view(doc, now=current_time, stale_after_seconds=STALE_HEARTBEAT_SECONDS)
+
+
+def request_safe_stop(
+    data_dir: Path, session_id: str, *, at: datetime | None = None
+) -> dict[str, object]:
+    """Request cooperative cancellation; the worker cancels orders and never flattens positions."""
+    current_time = _now(at)
+    with _JOURNAL_LOCK:
+        sdir, doc = _read_session_doc(data_dir, session_id)
+        if doc["status"] in _TERMINAL_STATUSES:
+            return _view(doc, now=current_time, stale_after_seconds=STALE_HEARTBEAT_SECONDS)
+        marker = sdir / "safe-stop.request.json"
+        if not marker.exists():
+            write_text(
+                marker,
+                _json_text(
+                    {
+                        "schema_version": 1,
+                        "session_id": session_id,
+                        "requested_at": _format_timestamp(current_time),
+                        "flatten_positions": False,
+                    }
+                ),
+            )
+        doc["status"] = "stopping"
+        doc["heartbeat_at"] = _format_timestamp(current_time)
+        write_text(sdir / "session.json", _json_text(_stored_session(doc)))
+    return _view(doc, now=current_time, stale_after_seconds=STALE_HEARTBEAT_SECONDS)
+
+
+def safe_stop_requested(data_dir: Path, session_id: str) -> bool:
+    """Return whether the cooperative safe-stop marker exists for this exact session."""
+    sdir, _ = _read_session_doc(data_dir, session_id)
+    return (sdir / "safe-stop.request.json").is_file()
+
+
 __all__ = [
     "EVENT_TYPES",
+    "ExecutionMode",
+    "LEGACY_SCHEMA_VERSION",
     "PaperEventSink",
+    "ReconciliationState",
     "SCHEMA_VERSION",
     "STALE_HEARTBEAT_SECONDS",
     "SessionStatus",
@@ -612,6 +792,9 @@ __all__ = [
     "list_sessions",
     "read_events",
     "read_session",
+    "request_safe_stop",
+    "safe_stop_requested",
+    "set_reconciliation_state",
     "set_session_status",
     "valid_session_id",
 ]

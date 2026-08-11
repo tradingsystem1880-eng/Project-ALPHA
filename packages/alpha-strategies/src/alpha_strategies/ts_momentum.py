@@ -11,6 +11,8 @@ retired during the 2026-07 audit.)
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from nautilus_trader.model.data import BarType
 from nautilus_trader.model.identifiers import InstrumentId
 
@@ -57,3 +59,16 @@ class TimeSeriesMomentum(VolTargetStrategy):
 
     def _signal(self) -> int:
         return ts_momentum_signal(self._closes, self._lookback, self._skip)
+
+    def _indicator_snapshot(self) -> Mapping[str, tuple[float, str]]:
+        values = dict(super()._indicator_snapshot())
+        recent = self._closes[-1 - self._skip]
+        past = self._closes[-1 - self._skip - self._lookback]
+        values.update(
+            {
+                "momentum_return": (recent / past - 1.0, "ratio"),
+                "momentum_recent": (recent, "price"),
+                "momentum_past": (past, "price"),
+            }
+        )
+        return values

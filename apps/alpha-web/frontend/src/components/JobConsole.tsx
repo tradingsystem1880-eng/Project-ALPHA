@@ -12,9 +12,10 @@ interface Props {
   jobId: string
   onRun?: (runId: string) => void
   onDone?: () => void
+  embedded?: boolean
 }
 
-export function JobConsole({ jobId, onRun, onDone }: Props) {
+export function JobConsole({ jobId, onRun, onDone, embedded = false }: Props) {
   const [lines, setLines] = useState<string[]>([])
   const [status, setStatus] = useState<Status>('running')
   const [runId, setRunId] = useState<string | null>(null)
@@ -61,9 +62,9 @@ export function JobConsole({ jobId, onRun, onDone }: Props) {
   return (
     <div className="console">
       <div className="console-status">
-        <span className={`dot ${status === 'running' ? 'busy' : ''}`} />
-        <span className="mono">{status}</span>
-        {status === 'running' ? (
+        {embedded ? <span className="title">Live output</span> : <span className={`dot ${status === 'running' ? 'busy' : ''}`} />}
+        <span className="mono">{embedded ? `${lines.length} lines` : status}</span>
+        {!embedded && status === 'running' ? (
           <button className="btn" onClick={() => void api.cancel(jobId)}>
             cancel
           </button>
@@ -75,7 +76,9 @@ export function JobConsole({ jobId, onRun, onDone }: Props) {
         ) : null}
       </div>
       <pre ref={preRef} className={`console-out ${status}`}>
-        {lines.join('\n')}
+        {lines.length > 0
+          ? lines.join('\n')
+          : 'Waiting for process output… Runtime and job heartbeat remain visible above.'}
       </pre>
     </div>
   )

@@ -6,16 +6,21 @@ import typer
 
 from alpha_cli.backtest_cmds import backtest_app
 from alpha_cli.data_cmds import data_app
+from alpha_cli.evidence_cmds import evidence_app
+from alpha_cli.figures_cmds import figures_app
 from alpha_cli.forecast_cmds import forecast_app
 from alpha_cli.info_cmds import info_app
+from alpha_cli.ml_cmds import ml_app
 from alpha_cli.optim_cmds import optim_app
 from alpha_cli.options_cmds import options_app
 from alpha_cli.paper_cmds import paper_app
+from alpha_cli.project_cmds import project_app
 from alpha_cli.propfirm_cmds import propfirm_app
 from alpha_cli.report_cmds import report as _report
 from alpha_cli.research_cmds import research_app
 from alpha_cli.risk_cmds import risk_app
 from alpha_cli.screener_cmds import screener_app
+from alpha_cli.suite_cmds import suite_app
 from alpha_cli.validate_cmds import validate as _validate
 
 app = typer.Typer(help="Project ALPHA command-line interface.")
@@ -30,6 +35,11 @@ app.add_typer(options_app, name="options")
 app.add_typer(risk_app, name="risk")
 app.add_typer(screener_app, name="screener")
 app.add_typer(research_app, name="research")
+app.add_typer(figures_app, name="figures")
+app.add_typer(project_app, name="project")
+app.add_typer(evidence_app, name="evidence")
+app.add_typer(ml_app, name="ml")
+app.add_typer(suite_app, name="suite")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)
 

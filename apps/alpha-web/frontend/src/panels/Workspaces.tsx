@@ -1,100 +1,132 @@
-// Workspaces — save the current dockable layout (+ linked context) under a name, and restore or
-// delete saved ones. Layouts persist server-side under the data dir, so they survive restarts.
+/**
+ * Workspaces: saved research context, not saved window positions.
+ *
+ * A workspace used to be a serialised dock layout — where you had dragged your panels.
+ * That is not something worth naming and returning to. What is worth returning to is *what
+ * you were working on*: the symbol, the window, the project and version, the data snapshot.
+ * Restoring that puts every screen back on the same problem, which is what "resume my work"
+ * should have meant all along.
+ *
+ * Documents written by the old shell still carry their layout blob; it is read and ignored.
+ */
 
-import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import type { PanelHandleProps } from '../context/panelHandle'
 import type { WorkspaceMeta } from '../api/types'
-import { getLinked, setLinked } from '../context/linked'
+import { getLinked, restoreLinked, useLinked } from '../context/linked'
 
-export function Workspaces(props: IDockviewPanelProps) {
-  const [list, setList] = useState<WorkspaceMeta[]>([])
+function slugify(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+export function Workspaces(_props: PanelHandleProps) {
+  const linked = useLinked()
+  const [items, setItems] = useState<WorkspaceMeta[]>([])
   const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  const load = useCallback(() => {
-    api.workspaces().then(setList)
+  const refresh = useCallback(() => {
+    api
+      .workspaces()
+      .then(setItems)
+      .catch((cause: unknown) => setError(String(cause)))
   }, [])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(refresh, [refresh])
 
-  function save(): void {
-    const n = name.trim()
-    if (!n) return
-    api
-      .saveWorkspace({ name: n, linked_context: getLinked(), dockview: props.containerApi.toJSON() })
-      .then(() => {
-        setName('')
-        load()
+  const save = async () => {
+    const slug = slugify(name)
+    if (!slug) {
+      setError('Give the workspace a name first.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const current = getLinked()
+      await api.saveWorkspace({
+        name: name.trim(),
+        linked_context: current as never,
       })
+      setName('')
+      refresh()
+    } catch (cause) {
+      setError(String(cause))
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function open(slug: string): void {
-    api.getWorkspace(slug).then((doc) => {
-      try {
-        // `dockview` is a Dockview SerializedDockview; typed loosely across the wire.
-        props.containerApi.fromJSON(doc.dockview as never)
-      } catch (e) {
-        // fromJSON clears the dock BEFORE validating, so a malformed/incompatible layout would
-        // otherwise leave it blank (and get that blank autosaved) — recover with a default panel.
-        console.error('workspace restore failed', e)
-        if (props.containerApi.panels.length === 0) {
-          props.containerApi.addPanel({
-            id: 'RunBrowser-0',
-            component: 'RunBrowser',
-            title: 'Run Browser',
-          })
-        }
-        return
-      }
-      if (doc.linked_context) setLinked(doc.linked_context)
-    })
+  const load = async (slug: string) => {
+    try {
+      const doc = await api.getWorkspace(slug)
+      if (doc.linked_context) restoreLinked(doc.linked_context)
+    } catch (cause) {
+      setError(String(cause))
+    }
   }
 
-  function remove(slug: string): void {
-    void api.deleteWorkspace(slug).then(load)
+  const remove = async (slug: string) => {
+    try {
+      await api.deleteWorkspace(slug)
+      refresh()
+    } catch (cause) {
+      setError(String(cause))
+    }
   }
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Workspaces</span>
-        <span className="count">{list.length}</span>
+        <span className="muted">saved research context</span>
       </div>
-      <div className="panel-body panel-pad de">
-        <div className="lab-row">
-          <label className="field-row">
-            <span className="field-label">Save current layout as</span>
-            <input
-              className="field"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && save()}
-              placeholder="Research Desk"
-            />
-          </label>
-          <button className="btn primary ws-save" onClick={save}>
-            Save
+      <div className="panel-body">
+        <p className="muted">
+          Saves what you are working on — symbol, window, project, version, snapshot — so every
+          screen can return to it. It does not save panel positions.
+        </p>
+
+        <div className="workspace-save">
+          <input
+            className="field"
+            value={name}
+            placeholder="Name this context"
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => event.key === 'Enter' && void save()}
+          />
+          <button className="btn primary" disabled={busy} onClick={() => void save()}>
+            Save current
           </button>
         </div>
-        {list.length === 0 ? (
-          <div className="muted">No saved workspaces — arrange panels and save one.</div>
-        ) : (
-          <div className="ws-list">
-            {list.map((w) => (
-              <div className="ws-item" key={w.slug}>
-                <button className="ws-open" onClick={() => open(w.slug)}>
-                  {w.name}
-                </button>
-                <button className="btn ws-del" title="delete" onClick={() => remove(w.slug)}>
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+
+        <p className="workspace-current muted mono">
+          {linked.symbol ?? 'no symbol'} · {linked.start ?? 'start'} → {linked.end ?? 'latest'}
+          {linked.projectId ? ` · ${linked.projectId}` : ''}
+        </p>
+
+        {error ? <p className="workspace-error">{error}</p> : null}
+
+        <ul className="workspace-list">
+          {items.map((item) => (
+            <li key={item.slug}>
+              <button className="btn ghost" onClick={() => void load(item.slug)}>
+                {item.name}
+              </button>
+              <button
+                className="btn ghost"
+                title={`Delete ${item.name}`}
+                onClick={() => void remove(item.slug)}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+          {!items.length ? <li className="muted">Nothing saved yet.</li> : null}
+        </ul>
       </div>
     </div>
   )

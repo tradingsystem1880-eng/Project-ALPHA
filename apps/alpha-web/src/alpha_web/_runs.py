@@ -14,8 +14,26 @@ from typing import Any
 
 import polars as pl
 
-from alpha_cli.run_store import RUN_DIRS, find_run_dir
+from alpha_cli.artifact_contract import verify_manifest_artifacts
+from alpha_cli.run_store import RUN_DIRS, find_run_dir, research_gate_watermark
 from alpha_core import DataError
+
+MAX_MANIFEST_BYTES = 8 * 1024 * 1024
+
+
+def _verified_manifest(rdir: Path) -> dict[str, Any]:
+    """Read one bounded manifest and verify every declared v3 artifact before projection."""
+    path = rdir / "manifest.json"
+    try:
+        if path.stat().st_size > MAX_MANIFEST_BYTES:
+            raise DataError(f"run manifest exceeds {MAX_MANIFEST_BYTES} bytes at {path}")
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise DataError(f"corrupt run manifest at {path}") from exc
+    if not isinstance(value, dict):
+        raise DataError(f"invalid run manifest at {path}: expected an object")
+    verify_manifest_artifacts(rdir, value)
+    return value
 
 
 def _run_dir(run_id: str, *, data_dir: Path) -> Path | None:
@@ -33,6 +51,7 @@ def _artifact_frame(
     rdir = _run_dir(run_id, data_dir=data_dir)
     if rdir is None:
         return None
+    _verified_manifest(rdir)
     path = rdir / filename
     if not path.exists():
         return None
@@ -52,8 +71,27 @@ def forecast_series(run_id: str, *, data_dir: Path) -> dict[str, Any] | None:
     history = _artifact_frame(run_id, "history.parquet", data_dir=data_dir)
     if quant is None or history is None:
         return None
+    ohlcv_columns = {"open", "high", "low", "close", "volume"}
+    history_ohlcv_available = ohlcv_columns.issubset(history.columns)
+    history_bars = (
+        [
+            {
+                "t": row["ts"].timestamp(),
+                "o": float(row["open"]),
+                "h": float(row["high"]),
+                "l": float(row["low"]),
+                "c": float(row["close"]),
+                "v": float(row["volume"]),
+            }
+            for row in history.iter_rows(named=True)
+        ]
+        if history_ohlcv_available
+        else []
+    )
     return {
         "history": [float(v) for v in history["close"].to_list()],
+        "history_bars": history_bars,
+        "history_ohlcv_available": history_ohlcv_available,
         "forecast": [float(v) for v in quant["q50"].to_list()],
         "p10": [float(v) for v in quant["q05"].to_list()],
         "p90": [float(v) for v in quant["q95"].to_list()],
@@ -70,10 +108,10 @@ MAX_FORECAST_PATHS = 40  # spaghetti-line cap: more is unreadable and bloats the
 
 
 def forecast_paths(run_id: str, *, data_dir: Path, n: int = 20) -> dict[str, Any] | None:
-    """The first ``n`` sampled close paths of a forecast run (deterministic — no RNG).
+    """The first ``n`` sampled OHLCV paths of a forecast run (deterministic — no RNG).
 
     Reads the forecast run's ``paths.parquet`` (per-sample OHLCV, long) and returns
-    ``{samples: [{sample, closes}], ts}`` with ``ts`` in epoch seconds. ``n`` is clamped to
+    ``{samples: [{sample, opens, highs, lows, closes, volumes}], ts}`` with epoch seconds.
     [1, MAX_FORECAST_PATHS]. Returns None when the run is absent or wrote no paths.
     """
     rdir = _run_dir(run_id, data_dir=data_dir)
@@ -86,15 +124,24 @@ def forecast_paths(run_id: str, *, data_dir: Path, n: int = 20) -> dict[str, Any
     parts = frame.partition_by("sample", maintain_order=True)[:n]
     if not parts:
         raise DataError(f"forecast run {run_id!r} wrote an empty paths.parquet")
+    reference_steps = parts[0]["step"].to_list()
+    reference_ts = parts[0]["ts"].to_list()
+    for part in parts[1:]:
+        if part["step"].to_list() != reference_steps or part["ts"].to_list() != reference_ts:
+            raise DataError(f"forecast run {run_id!r} wrote misaligned sampled paths")
     return {
         "samples": [
             {
                 "sample": int(part["sample"][0]),
+                "opens": [float(v) for v in part["open"].to_list()],
+                "highs": [float(v) for v in part["high"].to_list()],
+                "lows": [float(v) for v in part["low"].to_list()],
                 "closes": [float(v) for v in part["close"].to_list()],
+                "volumes": [float(v) for v in part["volume"].to_list()],
             }
             for part in parts
         ],
-        "ts": [t.timestamp() for t in parts[0]["ts"].to_list()],
+        "ts": [t.timestamp() for t in reference_ts],
     }
 
 
@@ -210,15 +257,67 @@ _RECORD_CACHE: dict[Path, tuple[float, dict[str, Any]]] = {}
 _READABLE_CACHE: dict[Path, tuple[float, bool]] = {}
 
 _REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
-    "backtest_run": ("equity_curve.parquet", "trades.parquet"),
-    "validate": ("equity_curve.parquet", "trades.parquet", "nulls.parquet", "tearsheet.html"),
-    "backtest_portfolio": ("equity_curve.parquet", "tearsheet.html"),
-    "backtest_cross_sectional": ("equity_curve.parquet", "tearsheet.html"),
+    "backtest_run": (
+        "equity_curve.parquet",
+        "trades.parquet",
+        "calendar_returns.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+    ),
+    "validate": (
+        "equity_curve.parquet",
+        "trades.parquet",
+        "nulls.parquet",
+        "tearsheet.html",
+        "calendar_returns.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+    ),
+    "backtest_portfolio": (
+        "equity_curve.parquet",
+        "tearsheet.html",
+        "calendar_returns.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+    ),
+    "backtest_cross_sectional": (
+        "equity_curve.parquet",
+        "tearsheet.html",
+        "calendar_returns.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+    ),
+    "cross_sectional": (
+        "equity_curve.parquet",
+        "tearsheet.html",
+        "calendar_returns.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+    ),
     "optim_grid": ("trials.parquet",),
     "propfirm_run": ("propfirm_paths.parquet",),
+    "propfirm": ("propfirm_paths.parquet",),
     "forecast_run": ("paths.parquet", "quantiles.parquet", "history.parquet"),
     "forecast_eval": ("origins.parquet",),
 }
+_V3_TRACE_ARTIFACTS = (
+    "decision_trace.parquet",
+    "orders.parquet",
+    "fills.parquet",
+    "execution_trace.parquet",
+    "indicator_series.parquet",
+    "chart_annotations.parquet",
+)
+
+
+def _v3_artifacts_verified(rdir: Path, manifest: dict[str, Any]) -> bool:
+    if manifest.get("run_identity_version") != 3 or manifest.get("artifact_contract_version") != 3:
+        return False
+    try:
+        verify_manifest_artifacts(rdir, manifest)
+    except DataError:
+        return False
+    return True
 
 
 def run_artifacts_readable(kind: str, run_id: str, *, data_dir: Path) -> bool:
@@ -237,6 +336,13 @@ def run_artifacts_readable(kind: str, run_id: str, *, data_dir: Path) -> bool:
         # Pre-hardening/third-party manifests remain discoverable; current writers identify their
         # schema and are held to the full command-specific artifact contract.
         required = _REQUIRED_ARTIFACTS.get(str(manifest.get("command")), ())
+        if manifest.get("schema_version") == 3 and manifest.get("command") in {
+            "backtest_run",
+            "validate",
+        }:
+            required = (*required, *_V3_TRACE_ARTIFACTS)
+        if manifest.get("schema_version") == 3 and not _v3_artifacts_verified(rdir, manifest):
+            return False
         if "schema_version" in manifest:
             for filename in required:
                 path = rdir / filename
@@ -267,10 +373,12 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
     """
     mpath = data_dir / kind / run_id / "manifest.json"
     mtime = mpath.stat().st_mtime
+    # Artifact bytes can be tampered without touching the manifest mtime, so verification must
+    # precede the metadata cache hit.
+    manifest = _verified_manifest(mpath.parent)
     cached = _RECORD_CACHE.get(mpath)
     if cached is not None and cached[0] == mtime:
         return cached[1]
-    manifest = json.loads(mpath.read_text(encoding="utf-8"))
     symbols = manifest.get("symbols")
     verdict = manifest.get("verdict")
     record = {
@@ -282,8 +390,13 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
         or manifest.get("source"),
         "symbol": manifest.get("symbol"),
         "symbols": symbols,
+        "snapshot_id": manifest.get("snapshot_id"),
+        "snapshot_hash": manifest.get("snapshot_hash"),
         "passed": manifest.get("passed"),
         "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
+        # spec §15 / ADR-0026: the permanent EXPLORATORY marker on runs launched under an
+        # owner research-gate override; None for every unmarked run.
+        "research_gate_watermark": research_gate_watermark(manifest),
         "mtime": mtime,
     }
     _RECORD_CACHE[mpath] = (mtime, record)
@@ -339,11 +452,13 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
     mpath = rdir / "manifest.json"
     kind = rdir.parent.name
+    manifest = _verified_manifest(rdir)
     return {
         "run_id": run_id,
         "kind": kind,
         "mtime": mpath.stat().st_mtime,
-        "manifest": json.loads(mpath.read_text(encoding="utf-8")),
+        "manifest": manifest,
+        "research_gate_watermark": research_gate_watermark(manifest),
         "has_equity": (rdir / "equity_curve.parquet").exists(),
         "has_trades": (rdir / "trades.parquet").exists(),
         "has_tearsheet": (rdir / "tearsheet.html").exists(),
@@ -354,6 +469,8 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "has_propfirm_paths": kind == "propfirm"
         and ((rdir / "propfirm_paths.parquet").exists() or (rdir / "paths.parquet").exists()),
         "has_origins": (rdir / "origins.parquet").exists(),
+        "has_portfolio_analytics": (rdir / "portfolio_allocations.parquet").exists()
+        and (rdir / "correlations.parquet").exists(),
     }
 
 
@@ -370,6 +487,259 @@ def equity_series(run_id: str, *, data_dir: Path) -> dict[str, list[float]]:
         peak = max(peak, v)
         drawdown.append(v / peak - 1.0 if peak > 0 else 0.0)
     return {"ts": ts, "equity": equity, "drawdown": drawdown}
+
+
+MAX_NATIVE_TEARSHEET_POINTS = 5_000
+
+
+def _bounded_rows(
+    rows: list[dict[str, Any]], point_limit: int
+) -> tuple[list[dict[str, Any]], dict[str, int | bool | str]]:
+    """Deterministically retain both endpoints and uniformly sample oversized series."""
+    original = len(rows)
+    if original <= point_limit:
+        return rows, {
+            "original": original,
+            "returned": original,
+            "truncated": False,
+            "sampling": "all",
+        }
+    # point_limit >= 2 and point_limit <= original: rounding an evenly spaced monotone grid
+    # produces unique indices while preserving the first and last observations exactly.
+    indices = [round(index * (original - 1) / (point_limit - 1)) for index in range(point_limit)]
+    sampled = [rows[index] for index in indices]
+    return sampled, {
+        "original": original,
+        "returned": len(sampled),
+        "truncated": True,
+        "sampling": "endpoint_uniform",
+    }
+
+
+def native_tearsheet(run_id: str, *, data_dir: Path, point_limit: int = 2_000) -> dict[str, Any]:
+    """Typed, bounded Python-authored analytics; legacy runs report unavailable."""
+    if not 2 <= point_limit <= MAX_NATIVE_TEARSHEET_POINTS:
+        raise DataError(
+            f"native tear-sheet point_limit must be in [2, {MAX_NATIVE_TEARSHEET_POINTS}]"
+        )
+    rdir = _run_dir(run_id, data_dir=data_dir)
+    if rdir is None:
+        raise FileNotFoundError(f"no run {run_id!r} under {data_dir}")
+    calendar = _artifact_frame(run_id, "calendar_returns.parquet", data_dir=data_dir)
+    distribution = _artifact_frame(run_id, "return_distribution.parquet", data_dir=data_dir)
+    rolling = _artifact_frame(run_id, "rolling_metrics.parquet", data_dir=data_dir)
+    exposure = _artifact_frame(run_id, "exposure_turnover.parquet", data_dir=data_dir)
+    benchmark = _artifact_frame(run_id, "benchmark_comparison.parquet", data_dir=data_dir)
+    trade_statistics = _artifact_frame(run_id, "trade_statistics.parquet", data_dir=data_dir)
+    manifest = json.loads((rdir / "manifest.json").read_text(encoding="utf-8"))
+    declared = manifest.get("artifacts")
+    artifact_names = (
+        "calendar_returns.parquet",
+        "benchmark_comparison.parquet",
+        "exposure_turnover.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+        "trade_statistics.parquet",
+    )
+    provenance = {
+        "run_id": run_id,
+        "metric_namespace": "alpha_validation",
+        "artifact_contract_version": manifest.get("artifact_contract_version"),
+        "artifact_sha256": {
+            name: declared[name]["sha256"]
+            for name in artifact_names
+            if isinstance(declared, dict)
+            and isinstance(declared.get(name), dict)
+            and isinstance(declared[name].get("sha256"), str)
+        },
+    }
+    return _finish_native_tearsheet(
+        point_limit=point_limit,
+        calendar=calendar,
+        distribution=distribution,
+        rolling=rolling,
+        exposure=exposure,
+        benchmark=benchmark,
+        trade_statistics=trade_statistics,
+        provenance=provenance,
+    )
+
+
+def _finish_native_tearsheet(
+    *,
+    point_limit: int,
+    calendar: pl.DataFrame | None,
+    distribution: pl.DataFrame | None,
+    rolling: pl.DataFrame | None,
+    exposure: pl.DataFrame | None,
+    benchmark: pl.DataFrame | None,
+    trade_statistics: pl.DataFrame | None,
+    provenance: dict[str, Any],
+) -> dict[str, Any]:
+    empty_bound = {"original": 0, "returned": 0, "truncated": False, "sampling": "all"}
+    empty_bounds = {
+        "point_limit": point_limit,
+        "qq": dict(empty_bound),
+        "rolling": dict(empty_bound),
+        "exposure_turnover": dict(empty_bound),
+        "benchmark": dict(empty_bound),
+    }
+    if calendar is None or distribution is None or rolling is None:
+        return {
+            "available": False,
+            "calendar_returns": [],
+            "yearly_returns": [],
+            "histogram": [],
+            "qq": [],
+            "rolling": [],
+            "exposure_turnover": [],
+            "benchmark": [],
+            "trade_statistics": [],
+            "exposure_available": False,
+            "turnover_available": False,
+            "benchmark_available": False,
+            "trade_statistics_available": False,
+            "provenance": provenance,
+            "bounds": empty_bounds,
+        }
+
+    month_rows = calendar.filter(pl.col("period_type") == "month").sort("year", "month")
+    year_rows = calendar.filter(pl.col("period_type") == "year").sort("year")
+    histogram_rows = distribution.filter(pl.col("kind") == "histogram").sort("index")
+    qq_rows = distribution.filter(pl.col("kind") == "qq").sort("index").to_dicts()
+    rolling_rows = rolling.sort("ts").to_dicts()
+    exposure_rows = [] if exposure is None else exposure.sort("start_ts").to_dicts()
+    benchmark_rows = [] if benchmark is None else benchmark.sort("ts").to_dicts()
+    trade_stat_rows = [] if trade_statistics is None else trade_statistics.sort("metric").to_dicts()
+    exposure_available = bool(exposure_rows and exposure_rows[0].get("exposure_available") is True)
+    turnover_available = bool(exposure_rows and exposure_rows[0].get("turnover_available") is True)
+    benchmark_available = bool(benchmark_rows and benchmark_rows[0].get("available") is True)
+    trade_statistics_available = bool(
+        trade_stat_rows and any(row.get("available") is True for row in trade_stat_rows)
+    )
+    qq_rows, qq_bound = _bounded_rows(qq_rows, point_limit)
+    rolling_rows, rolling_bound = _bounded_rows(rolling_rows, point_limit)
+    exposure_rows, exposure_bound = _bounded_rows(exposure_rows, point_limit)
+    benchmark_rows, benchmark_bound = _bounded_rows(benchmark_rows, point_limit)
+
+    return {
+        "available": True,
+        "calendar_returns": [
+            {
+                "year": int(row["year"]),
+                "month": int(row["month"]),
+                "return_value": float(row["return_value"]),
+            }
+            for row in month_rows.iter_rows(named=True)
+        ],
+        "yearly_returns": [
+            {"year": int(row["year"]), "return_value": float(row["return_value"])}
+            for row in year_rows.iter_rows(named=True)
+        ],
+        "histogram": [
+            {
+                "left": float(row["left"]),
+                "right": float(row["right"]),
+                "count": int(row["count"]),
+            }
+            for row in histogram_rows.iter_rows(named=True)
+        ],
+        "qq": [
+            {
+                "probability": float(row["probability"]),
+                "theoretical": float(row["theoretical"]),
+                "sample": float(row["sample"]),
+            }
+            for row in qq_rows
+        ],
+        "rolling": [
+            {
+                "ts": row["ts"].timestamp(),
+                "window": int(row["window"]),
+                "return_value": float(row["return_value"]),
+                "volatility": float(row["volatility"]),
+                "sharpe": float(row["sharpe"]) if row["sharpe"] is not None else None,
+                "gross_exposure": (
+                    float(row["gross_exposure"]) if row.get("gross_exposure") is not None else None
+                ),
+                "net_exposure": (
+                    float(row["net_exposure"]) if row.get("net_exposure") is not None else None
+                ),
+                "turnover": (float(row["turnover"]) if row.get("turnover") is not None else None),
+                "exposure_available": row.get("exposure_available") is True,
+                "turnover_available": row.get("turnover_available") is True,
+            }
+            for row in rolling_rows
+        ],
+        "exposure_turnover": [
+            {
+                "start_ts": row["start_ts"].timestamp(),
+                "end_ts": row["end_ts"].timestamp(),
+                "gross_exposure": (
+                    float(row["gross_exposure"]) if row.get("gross_exposure") is not None else None
+                ),
+                "net_exposure": (
+                    float(row["net_exposure"]) if row.get("net_exposure") is not None else None
+                ),
+                "turnover": (float(row["turnover"]) if row.get("turnover") is not None else None),
+                "exposure_available": row.get("exposure_available") is True,
+                "turnover_available": row.get("turnover_available") is True,
+                "exposure_unavailable_reason": row.get("exposure_unavailable_reason"),
+                "turnover_unavailable_reason": row.get("turnover_unavailable_reason"),
+            }
+            for row in exposure_rows
+        ],
+        "benchmark": [
+            {
+                "ts": row["ts"].timestamp(),
+                "strategy_equity": float(row["strategy_equity"]),
+                "benchmark_equity": (
+                    float(row["benchmark_equity"])
+                    if row.get("benchmark_equity") is not None
+                    else None
+                ),
+                "strategy_return": (
+                    float(row["strategy_return"])
+                    if row.get("strategy_return") is not None
+                    else None
+                ),
+                "benchmark_return": (
+                    float(row["benchmark_return"])
+                    if row.get("benchmark_return") is not None
+                    else None
+                ),
+                "excess_return": (
+                    float(row["excess_return"]) if row.get("excess_return") is not None else None
+                ),
+                "available": row.get("available") is True,
+                "benchmark_kind": row.get("benchmark_kind"),
+                "unavailable_reason": row.get("unavailable_reason"),
+            }
+            for row in benchmark_rows
+        ],
+        "trade_statistics": [
+            {
+                "metric": str(row["metric"]),
+                "value": float(row["value"]) if row.get("value") is not None else None,
+                "unit": str(row["unit"]),
+                "available": row.get("available") is True,
+                "unavailable_reason": row.get("unavailable_reason"),
+            }
+            for row in trade_stat_rows
+        ],
+        "exposure_available": exposure_available,
+        "turnover_available": turnover_available,
+        "benchmark_available": benchmark_available,
+        "trade_statistics_available": trade_statistics_available,
+        "provenance": provenance,
+        "bounds": {
+            "point_limit": point_limit,
+            "qq": qq_bound,
+            "rolling": rolling_bound,
+            "exposure_turnover": exposure_bound,
+            "benchmark": benchmark_bound,
+        },
+    }
 
 
 def trades(run_id: str, *, data_dir: Path) -> list[dict[str, Any]]:

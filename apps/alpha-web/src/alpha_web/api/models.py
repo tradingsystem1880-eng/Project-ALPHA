@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 
 class StrictModel(BaseModel):
@@ -18,8 +18,12 @@ class RunListItem(StrictModel):
     label: str | None
     symbol: str | None
     symbols: list[str] | None
+    snapshot_id: str | None
+    snapshot_hash: str | None
     passed: bool | None
     verdict: str | None
+    # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
+    research_gate_watermark: str | None
     mtime: float
 
 
@@ -33,6 +37,8 @@ class RunDetail(StrictModel):
     kind: str
     mtime: float
     manifest: dict[str, Any]
+    # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
+    research_gate_watermark: str | None
     has_equity: bool
     has_trades: bool
     has_tearsheet: bool
@@ -42,6 +48,7 @@ class RunDetail(StrictModel):
     has_forecast_paths: bool
     has_propfirm_paths: bool
     has_origins: bool
+    has_portfolio_analytics: bool
 
 
 class EquitySeries(StrictModel):
@@ -50,9 +57,20 @@ class EquitySeries(StrictModel):
     drawdown: list[float]
 
 
+class ForecastHistoryBar(StrictModel):
+    t: float
+    o: float
+    h: float
+    low: float = Field(alias="l", serialization_alias="l")
+    c: float
+    v: float
+
+
 class ForecastSeries(StrictModel):
     history_ts: list[float]
     history: list[float]
+    history_bars: list[ForecastHistoryBar]
+    history_ohlcv_available: bool
     forecast_ts: list[float]
     forecast: list[float]
     p10: list[float]
@@ -64,12 +82,304 @@ class ForecastSeries(StrictModel):
 
 class ForecastPath(StrictModel):
     sample: int
+    opens: list[float]
+    highs: list[float]
+    lows: list[float]
     closes: list[float]
+    volumes: list[float]
 
 
 class ForecastPaths(StrictModel):
     samples: list[ForecastPath]
     ts: list[float]
+
+
+class ChartTrade(StrictModel):
+    instrument_id: str
+    side: str
+    quantity: float
+    entry_price: float
+    exit_price: float
+    entry_ts: float
+    exit_ts: float
+    realized_pnl: float
+    realized_return: float
+
+
+class ChartTraceEvent(StrictModel):
+    sequence_id: int
+    event_type: Literal["decision", "order", "fill", "trade"]
+    ts: float
+    parent_sequence_id: int | None
+    instrument_id: str
+    side: str | None
+    quantity: float | None
+    filled_quantity: float | None
+    price: float | None
+    status: str | None
+    signal: int | None
+    decision_reason: str | None
+    entry_ts: float | None
+    exit_ts: float | None
+    entry_price: float | None
+    exit_price: float | None
+    realized_pnl: float | None
+    realized_return: float | None
+
+
+class ChartIndicator(StrictModel):
+    sequence_id: int
+    decision_sequence_id: int | None
+    ts: float
+    instrument_id: str
+    name: str
+    value: float
+    unit: str
+
+
+class ChartAnnotationAnchor(StrictModel):
+    anchor_index: int
+    ts: float
+    value: float
+
+
+class ChartAnnotation(StrictModel):
+    annotation_id: int
+    decision_sequence_id: int | None
+    kind: Literal["line", "polyline", "zone"]
+    label: str
+    unit: str
+    reason: str
+    anchors: list[ChartAnnotationAnchor]
+
+
+class ChartTruncation(StrictModel):
+    bars: bool
+    equity: bool
+    trades: bool
+    trace: bool
+    indicators: bool
+    annotations: bool
+
+
+class ChartProvenance(StrictModel):
+    command: str | None
+    symbol: str | None
+    symbols: list[str] | None
+    snapshot_id: str | None
+    snapshot_hash: str | None
+    timezone: Literal["UTC"]
+    price_unit: Literal["native_quote"]
+    artifact_contract_version: int | None
+    as_of: float | None
+    artifact_sha256: dict[str, str]
+
+
+class ChartBar(StrictModel):
+    t: float
+    o: float
+    h: float
+    low: float = Field(alias="l", serialization_alias="l")
+    c: float
+    v: float
+
+
+class ChartFold(StrictModel):
+    fold: int
+    semantics: Literal["fixed_rule_evaluation_no_refit", "fold_by_fold_refit"]
+    train_start: float | int
+    train_end: float | int
+    validation_start: float | None = None
+    validation_end: float | None = None
+    test_start: float | int
+    test_end: float | int
+
+
+class ChartBundle(StrictModel):
+    run_id: str
+    trace_status: Literal["available", "trace_unavailable"]
+    bars_status: Literal["available", "snapshot_unavailable", "not_applicable"]
+    provenance: ChartProvenance
+    bars: list[ChartBar]
+    equity: EquitySeries
+    trades: list[ChartTrade]
+    trace: list[ChartTraceEvent]
+    decisions: list[ChartTraceEvent]
+    orders: list[ChartTraceEvent]
+    fills: list[ChartTraceEvent]
+    indicators: list[ChartIndicator]
+    annotations: list[ChartAnnotation]
+    folds: list[ChartFold]
+    forecast: ForecastSeries | None
+    truncated: ChartTruncation
+
+
+class NativeCalendarReturn(StrictModel):
+    year: int
+    month: int
+    return_value: float
+
+
+class NativeYearlyReturn(StrictModel):
+    year: int
+    return_value: float
+
+
+class NativeHistogramBin(StrictModel):
+    left: float
+    right: float
+    count: int
+
+
+class NativeQQPoint(StrictModel):
+    probability: float
+    theoretical: float
+    sample: float
+
+
+class NativeRollingMetric(StrictModel):
+    ts: float
+    window: int
+    return_value: float
+    volatility: float
+    sharpe: float | None
+    gross_exposure: float | None
+    net_exposure: float | None
+    turnover: float | None
+    exposure_available: bool
+    turnover_available: bool
+
+
+class NativeExposureTurnover(StrictModel):
+    start_ts: float
+    end_ts: float
+    gross_exposure: float | None
+    net_exposure: float | None
+    turnover: float | None
+    exposure_available: bool
+    turnover_available: bool
+    exposure_unavailable_reason: str | None
+    turnover_unavailable_reason: str | None
+
+
+class NativeBenchmarkComparison(StrictModel):
+    ts: float
+    strategy_equity: float
+    benchmark_equity: float | None
+    strategy_return: float | None
+    benchmark_return: float | None
+    excess_return: float | None
+    available: bool
+    benchmark_kind: str | None
+    unavailable_reason: str | None
+
+
+class NativeTradeStatistic(StrictModel):
+    metric: str
+    value: float | None
+    unit: str
+    available: bool
+    unavailable_reason: str | None
+
+
+class NativeSeriesBound(StrictModel):
+    original: int
+    returned: int
+    truncated: bool
+    sampling: Literal["all", "endpoint_uniform"]
+
+
+class NativeTearSheetBounds(StrictModel):
+    point_limit: int
+    qq: NativeSeriesBound
+    rolling: NativeSeriesBound
+    exposure_turnover: NativeSeriesBound
+    benchmark: NativeSeriesBound
+
+
+class NativeTearSheetResponse(StrictModel):
+    available: bool
+    calendar_returns: list[NativeCalendarReturn]
+    yearly_returns: list[NativeYearlyReturn]
+    histogram: list[NativeHistogramBin]
+    qq: list[NativeQQPoint]
+    rolling: list[NativeRollingMetric]
+    exposure_turnover: list[NativeExposureTurnover]
+    benchmark: list[NativeBenchmarkComparison]
+    trade_statistics: list[NativeTradeStatistic]
+    exposure_available: bool
+    turnover_available: bool
+    benchmark_available: bool
+    trade_statistics_available: bool
+    provenance: dict[str, Any]
+    bounds: NativeTearSheetBounds
+
+
+class PortfolioAllocationRow(StrictModel):
+    start_ts: float
+    ts: float
+    symbol: str
+    weight: float
+    leg_return: float
+    contribution: float
+    leg_gross_exposure: float
+    leg_net_exposure: float
+    weighted_gross_exposure: float
+    weighted_net_exposure: float
+
+
+class PortfolioCorrelationRow(StrictModel):
+    asset_a: str
+    asset_b: str
+    metric_name: Literal["pearson_correlation"]
+    metric_unit: Literal["coefficient"]
+    correlation: float | None
+    sample_count: int
+    aligned_oos: Literal[True]
+    frequency: Literal["1d"]
+    oos_start: str | None
+    oos_end: str | None
+    association_not_causation: Literal[True]
+
+
+class PortfolioProjectionBound(StrictModel):
+    original: int
+    returned: int
+    truncated: bool
+    sampling: Literal["all", "endpoint_uniform", "canonical_prefix"]
+
+
+class PortfolioAnalyticsBounds(StrictModel):
+    timestamp_limit: int
+    symbol_limit: int
+    allocation_timestamps: PortfolioProjectionBound
+    symbols: PortfolioProjectionBound
+
+
+class PortfolioAnalyticsProvenance(StrictModel):
+    source_run_id: str
+    source_command: Literal["backtest_portfolio"]
+    snapshot_id: str | None
+    snapshot_hash: str | None
+    research_cutoff: str | None
+    as_of: float | None
+    timezone: Literal["UTC"]
+    frequency: Literal["1d"]
+    metric_namespace: Literal["alpha_validation.portfolio"]
+    correlation_alignment: Literal["exact_pairwise_oos_timestamp_intersection"]
+    allocation_semantics: Literal["causal_sleeve_weight_at_interval_start"]
+    association_label: Literal["association, not causation"]
+    artifact_contract_version: int | None
+    artifact_sha256: dict[str, str]
+
+
+class PortfolioAnalyticsResponse(StrictModel):
+    symbols: list[str]
+    allocations: list[PortfolioAllocationRow]
+    correlations: list[PortfolioCorrelationRow]
+    exposure: list[NativeExposureTurnover]
+    provenance: PortfolioAnalyticsProvenance
+    bounds: PortfolioAnalyticsBounds
 
 
 class NullTier(StrictModel):
@@ -124,10 +434,36 @@ class Candle(StrictModel):
     v: float
 
 
+class CandleProvenance(StrictModel):
+    source: str
+    venue: str | None
+    timeframe: Literal["1D"]
+    snapshot_id: str | None
+    provenance_sha256: str | None
+    receipt_id: str | None
+    knowledge_cutoff: str | None
+    quality_status: Literal["legacy_unqualified", "qualified", "passed", "owner_approved"]
+
+
+class PaperCandleMarker(StrictModel):
+    session_id: str
+    sequence: int
+    t: int
+    exact_ts: int
+    event_type: Literal["intent", "order", "fill", "cancel", "expired"]
+    execution_mode: Literal["local_sandbox", "ibkr_paper"]
+    side: str | None
+    quantity: float | None
+    price: float | None
+    intent_id: str | None
+
+
 class Candles(StrictModel):
     symbol: str
     snapshot_id: str | None
+    provenance: CandleProvenance
     bars: list[Candle]
+    paper_markers: list[PaperCandleMarker]
 
 
 class ParamDefinition(StrictModel):
@@ -167,6 +503,11 @@ class ProviderDefinition(StrictModel):
     credential_env: list[CredentialStatus]
     options: dict[str, ProviderOption]
     limitations: list[str]
+    asset_classes: list[str]
+    timeframes: list[str]
+    research_authority: bool
+    paper_execution: bool
+    budget_tier: str
     installed: bool
     configured: bool
 
@@ -203,6 +544,7 @@ class SystemStatus(StrictModel):
     nautilus: NautilusStatus
     kronos_cache: KronosCacheStatus
     paper_enabled: bool
+    ibkr_paper_enabled: bool
 
 
 class CommandOption(StrictModel):
@@ -246,6 +588,14 @@ class JobSummary(StrictModel):
     kind: str | None
     status: str
     created_at: float
+    finished_at: float | None
+    elapsed_seconds: float
+    command_path: str
+    current_step: str
+    progress_mode: Literal["indeterminate", "estimated", "terminal"]
+    progress_fraction: float | None
+    eta_seconds: float | None
+    eta_sample_count: int
     run_id: str | None
     session_id: str | None
     returncode: int | None
@@ -257,6 +607,520 @@ class JobDetail(JobSummary):
 
 
 type JsonScalar = str | int | float | bool | None
+type JsonObject = dict[str, JsonValue]
+
+
+type ProjectStatusValue = Literal["active", "accepted", "rejected", "archived"]
+type ResearchGateStateValue = Literal["not_required", "open", "passed", "overridden"]
+type DevelopmentStageValue = Literal[
+    "hypothesis",
+    "data",
+    "strategy",
+    "baseline",
+    "oos",
+    "robustness",
+    "optimization",
+    "portfolio",
+    "candidate",
+    "holdout",
+    "paper",
+    "decision",
+    "kronos",
+    "ml",
+]
+type StageStateValue = Literal[
+    "not_started", "ready", "queued", "running", "pass", "warning", "fail", "stale"
+]
+type PublicStageStateValue = Literal["not_started", "ready", "queued", "running", "stale"]
+type AttemptStatusValue = Literal[
+    "queued",
+    "running",
+    "completed",
+    "passed",
+    "warning",
+    "failed",
+    "pruned",
+    "rejected",
+    "cancelled",
+]
+type ControlJobStatusValue = Literal["queued", "running", "succeeded", "failed", "cancelled"]
+type SuiteActionValue = Literal[
+    "baseline",
+    "inner_oos",
+    "three_null_families",
+    "optimize_grid",
+    "fixed_stress",
+    "portfolio_cross_asset",
+    "qlib",
+    "kronos",
+    "holdout_reveal",
+    "paper_preflight",
+]
+type EvidenceStatusValue = Literal["draft", "corroborated", "rejected", "superseded"]
+type AuthorKindValue = Literal["human", "agent"]
+type ResearchPhaseValue = Literal[
+    "captured",
+    "triage",
+    "exploration_review",
+    "pilot",
+    "deep_research",
+    "confirmation_review",
+    "sealed_confirmation",
+    "research_decision",
+    "closed",
+]
+type ResearchExecutionStateValue = Literal[
+    "idle", "queued", "running", "paused", "blocked", "failed"
+]
+type ResearchD2StateValue = Literal["sealed", "authorized", "consumed", "contaminated"]
+type ResearchD3StateValue = Literal["not_sealed", "sealed", "consumed", "contaminated"]
+type ResearchChartConstructionValue = Literal["spy_rth_60m_four_hour_window",]
+type ResearchEventAvailabilityValue = Literal["second_trough_confirmable"]
+type ResearchPrimaryOutcomeValue = Literal["four_trading_hour_return_25bp"]
+
+
+class ProjectCreateRequest(StrictModel):
+    name: str = Field(min_length=1, max_length=200)
+    hypothesis: str = Field(min_length=1, max_length=8192)
+    falsification_criterion: str = Field(min_length=1, max_length=8192)
+
+
+class ProjectSummary(StrictModel):
+    project_id: str
+    name: str
+    hypothesis: str
+    falsification_criterion: str
+    status: ProjectStatusValue
+    current_version_id: str | None
+    current_experiment_id: str | None
+    created_at: str
+    updated_at: str
+    research_gate_state: ResearchGateStateValue
+
+
+class ResearchGateOverride(StrictModel):
+    project_id: str
+    sequence: int
+    actor: str
+    reason: str
+    recorded_at: str
+
+
+class ActiveResearchGateOverride(ResearchGateOverride):
+    project_name: str
+
+
+class ProjectPage(StrictModel):
+    items: list[ProjectSummary]
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class StrategyVersionCreateRequest(StrictModel):
+    strategy_name: str = Field(min_length=1, max_length=200)
+    source_fingerprint: str = Field(min_length=1, max_length=512)
+    definition: JsonObject = Field(default_factory=dict)
+    parameter_space: JsonObject = Field(default_factory=dict)
+
+
+class StrategyVersion(StrictModel):
+    version_id: str
+    strategy_name: str
+    source_fingerprint: str
+    definition: JsonObject
+    parameter_space: JsonObject
+    created_at: str
+
+
+class ExperimentCreateRequest(StrictModel):
+    version_id: str
+    snapshot_id: str = Field(min_length=1, max_length=8192)
+    universe: list[str] = Field(min_length=1, max_length=512)
+    split_policy: JsonObject
+    costs: JsonObject
+    seeds: JsonObject
+    stage_config: JsonObject = Field(default_factory=dict)
+
+
+class ExperimentSpec(StrictModel):
+    experiment_id: str
+    strategy_version_id: str
+    snapshot_id: str
+    universe: list[str]
+    split_policy: JsonObject
+    costs: JsonObject
+    seeds: JsonObject
+    stage_config: JsonObject
+    created_at: str
+
+
+class StageLinkCreateRequest(StrictModel):
+    experiment_id: str
+    stage: DevelopmentStageValue
+    state: PublicStageStateValue
+    run_id: str = Field(pattern=r"^[0-9a-f]{16}$")
+
+
+class StageStateRequest(StrictModel):
+    state: PublicStageStateValue
+    reason: str = Field(min_length=1, max_length=8192)
+
+
+class ExperimentStageTransitionRequest(StrictModel):
+    state: Literal["ready", "queued", "running", "pass", "warning", "fail", "stale"]
+    reason: str = Field(min_length=1, max_length=8192)
+
+
+class StageStateEvent(StrictModel):
+    sequence: int
+    state: StageStateValue
+    occurred_at: str
+    reason: str
+
+
+class ExperimentStageState(StrictModel):
+    project_id: str
+    experiment_id: str
+    stage: DevelopmentStageValue
+    state: StageStateValue
+    state_history: list[StageStateEvent]
+    state_history_truncated: bool = False
+
+
+class StageRunLink(StrictModel):
+    link_id: str
+    project_id: str
+    experiment_id: str
+    stage: str
+    run_id: str
+    linked_at: str
+    state: StageStateValue
+    state_history: list[StageStateEvent]
+    state_history_truncated: bool = False
+
+
+class AttemptRecord(StrictModel):
+    attempt_id: str
+    project_id: str
+    experiment_id: str
+    stage: str
+    status: AttemptStatusValue
+    config_fingerprint: str
+    run_id: str | None
+    error: str | None
+    details: JsonObject
+    recorded_at: str
+
+
+class AttemptCreateRequest(StrictModel):
+    experiment_id: str
+    stage: DevelopmentStageValue
+    status: AttemptStatusValue
+    config_fingerprint: str = Field(min_length=1, max_length=512)
+    run_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{16}$")
+    error: str | None = Field(default=None, max_length=8192)
+    details: JsonObject = Field(default_factory=dict)
+
+
+class HoldoutState(StrictModel):
+    project_id: str
+    experiment_id: str
+    sealed_at: str
+    sealed_by: str
+    sealed_version_id: str
+    seal_reason: str
+    revealed_at: str | None
+    revealed_by: str | None
+    revealed_version_id: str | None
+    reveal_reason: str | None
+    contaminated_at: str | None
+    contamination_reason: str | None
+    holdout_spec_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+class HoldoutSealRequest(StrictModel):
+    experiment_id: str
+    actor: str = Field(min_length=1, max_length=200)
+    reason: str = Field(min_length=1, max_length=8192)
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
+class HoldoutAuditEvent(StrictModel):
+    audit_id: int
+    project_id: str
+    experiment_id: str
+    event: Literal["sealed", "revealed", "contaminated"]
+    actor: str
+    occurred_at: str
+    reason: str
+    version_id: str
+
+
+class DecisionRequest(StrictModel):
+    verdict: Literal["accept", "reject", "revise"]
+    actor: str = Field(min_length=1, max_length=200)
+    reason: str = Field(min_length=1, max_length=8192)
+    negative_results_acknowledged: Literal[True]
+
+
+class DecisionPacket(StrictModel):
+    packet_id: str
+    packet_hash: str
+    schema_version: Literal[1]
+    project_id: str
+    experiment_id: str
+    strategy_version_id: str
+    verdict: Literal["accept", "reject", "revise"]
+    actor: str
+    reason: str
+    negative_results_acknowledged: Literal[True]
+    negative_result_attempt_ids: list[str]
+    stage_evidence: JsonObject
+    deployment_scope: Literal["sandbox_only"]
+    places_real_orders: Literal[False]
+    created_at: str
+
+
+class ProjectTruncation(StrictModel):
+    versions: bool
+    experiments: bool
+    stage_states: bool
+    stage_run_links: bool
+    attempts: bool
+    holdouts: bool
+    holdout_audit: bool
+    decision_packets: bool
+    research_gate_overrides: bool
+
+
+class ProjectDetail(ProjectSummary):
+    versions: list[StrategyVersion]
+    experiments: list[ExperimentSpec]
+    stage_states: list[ExperimentStageState]
+    stage_run_links: list[StageRunLink]
+    attempts: list[AttemptRecord]
+    holdouts: list[HoldoutState]
+    holdout_audit: list[HoldoutAuditEvent]
+    decision_packets: list[DecisionPacket]
+    truncated: ProjectTruncation
+    research_gate_overrides: list[ResearchGateOverride]
+
+
+class ControlJobCreateRequest(StrictModel):
+    kind: str = Field(min_length=1, max_length=100)
+    request: JsonObject = Field(default_factory=dict)
+    project_id: str | None = None
+    experiment_id: str | None = None
+
+
+class ControlJob(StrictModel):
+    job_id: str
+    kind: str
+    status: ControlJobStatusValue
+    project_id: str | None
+    experiment_id: str | None
+    request: JsonObject
+    created_at: str
+    updated_at: str
+    heartbeat_at: str
+    result_run_id: str | None
+    terminal_error: str | None
+    last_sequence: int
+
+
+class ControlJobEvent(StrictModel):
+    job_id: str
+    sequence: int
+    event_type: Literal[
+        "created", "status", "heartbeat", "progress", "log", "result", "cancel_requested"
+    ]
+    occurred_at: str
+    payload: JsonObject
+
+
+class ControlJobDetail(ControlJob):
+    events: list[ControlJobEvent]
+    event_total: int
+    events_has_more: bool
+    events_truncated: bool
+    event_limit: int
+    event_offset: int
+    event_tail: bool
+
+
+class ControlJobPage(StrictModel):
+    items: list[ControlJob]
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class SuiteStep(StrictModel):
+    index: int
+    label: str
+    command: list[str]
+    evidence_role: str
+
+
+class SuitePlan(StrictModel):
+    schema_version: Literal[1]
+    project_id: str
+    experiment_id: str
+    action: SuiteActionValue
+    stage: DevelopmentStageValue
+    ready: bool
+    blockers: list[str]
+    resolved_experiment: ExperimentSpec
+    resolved_strategy_version: StrategyVersion
+    current_stage_state: StageStateValue
+    estimated_workload: JsonObject
+    steps: list[SuiteStep]
+    governance: JsonObject
+
+
+class SuiteRunRequest(StrictModel):
+    owner_actor: str | None = Field(default=None, min_length=1, max_length=200)
+    owner_reason: str | None = Field(default=None, min_length=1, max_length=8192)
+
+
+class SuiteLaunch(StrictModel):
+    job_id: str
+    status: Literal["starting"]
+    plan: SuitePlan
+
+
+class SuiteCancelResponse(StrictModel):
+    job_id: str
+    status: Literal["cancellation_requested", "already_terminal"]
+
+
+class JobReconcileResponse(StrictModel):
+    items: list[ControlJob]
+    count: int
+
+
+class EvidenceDraftRequest(StrictModel):
+    claim: str = Field(min_length=1, max_length=8192)
+    assets: list[str] = Field(min_length=1, max_length=512)
+    frozen_universe: list[str] = Field(min_length=1, max_length=512)
+    timeframe: str = Field(default="1d", min_length=1, max_length=32)
+    method: str = Field(min_length=1, max_length=200)
+    knowledge_at: str
+    market_data_cutoff: str | None = None
+    author: str = Field(min_length=1, max_length=200)
+    author_kind: AuthorKindValue
+    project_id: str | None = None
+    strategy_version_id: str | None = None
+    experiment_id: str | None = None
+    metric_name: str | None = None
+    metric_value: float | None = None
+    metric_unit: str | None = None
+    source_run_id: str = Field(pattern=r"^[0-9a-f]{16}$")
+    source_artifact: str = Field(min_length=1, max_length=80)
+    source_field: str = Field(min_length=1, max_length=8192)
+    row_selector: JsonObject = Field(default_factory=dict)
+    counterevidence: list[str] = Field(default_factory=list, max_length=256)
+    contradiction_ids: list[str] = Field(default_factory=list, max_length=256)
+
+
+class EvidenceReviewRequest(StrictModel):
+    status: EvidenceStatusValue
+    author: str = Field(min_length=1, max_length=200)
+    author_kind: AuthorKindValue
+    claim: str | None = Field(default=None, max_length=8192)
+    counterevidence: list[str] | None = Field(default=None, min_length=1, max_length=256)
+    contradiction_ids: list[str] | None = Field(default=None, min_length=1, max_length=256)
+    source_run_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{16}$")
+    source_artifact: str | None = Field(default=None, max_length=80)
+    source_field: str | None = Field(default=None, max_length=8192)
+    row_selector: JsonObject | None = None
+
+
+class EvidenceRecord(StrictModel):
+    evidence_id: str
+    revision: int
+    parent_revision: int | None
+    status: EvidenceStatusValue
+    claim: str
+    assets: list[str]
+    frozen_universe: list[str]
+    timeframe: str
+    method: str
+    market_data_cutoff: str | None
+    knowledge_at: str
+    project_id: str | None
+    strategy_version_id: str | None
+    experiment_id: str | None
+    metric_name: str | None
+    metric_value: float | None
+    metric_unit: str | None
+    source_run_id: str
+    source_artifact: str
+    source_field: str
+    row_selector: JsonObject
+    counterevidence: list[str]
+    contradiction_ids: list[str]
+    author: str
+    author_kind: AuthorKindValue
+    created_at: str
+    interpretation_label: Literal["association, not causation"] | None
+
+
+class EvidenceDetail(EvidenceRecord):
+    revisions: list[EvidenceRecord]
+    revisions_truncated: bool
+    revision_limit: int
+    revision_offset: int
+
+
+class EvidencePage(StrictModel):
+    items: list[EvidenceRecord]
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class AgentScope(StrictModel):
+    version_id: str | None
+    experiment_id: str | None
+    snapshot_id: str | None
+    universe: list[str]
+
+
+class AgentStageStatus(StrictModel):
+    stage: str
+    state: StageStateValue
+    run_id: str | None
+
+
+class ResearchPromotionReference(StrictModel):
+    packet_id: str
+    contract_id: str
+    gate_packet_id: str | None
+    gate_packet_hash: str | None
+    recorded_at: str
+
+
+class AgentBrief(StrictModel):
+    schema_version: Literal[1]
+    project_id: str
+    project_name: str
+    hypothesis: str
+    falsification_criterion: str
+    allowed_scope: AgentScope
+    strategy_version: StrategyVersion | None
+    experiment: ExperimentSpec | None
+    research_promotion: ResearchPromotionReference | None
+    stage_statuses: list[AgentStageStatus]
+    evidence: list[EvidenceRecord]
+    evidence_truncated: bool
+    knowledge_cutoff: str | None
+    required_tests: list[str]
+    warnings: list[str]
 
 
 class PaperSession(StrictModel):
@@ -264,7 +1128,13 @@ class PaperSession(StrictModel):
     session_id: str
     status: Literal["starting", "running", "stopping", "completed", "cancelled", "failed"]
     provider: str
-    sandbox: Literal[True]
+    paper: Literal[True]
+    sandbox: bool
+    execution_mode: Literal["local_sandbox", "ibkr_paper"]
+    account_alias: str | None
+    risk_profile_id: str
+    decision_artifact_id: str | None
+    reconciliation_state: Literal["not_applicable", "pending", "matched", "mismatch", "halted"]
     symbol: str
     instrument_id: str
     strategy: str
@@ -284,11 +1154,53 @@ class PaperEvent(StrictModel):
     session_id: str
     sequence: int
     event_type: Literal[
-        "lifecycle", "order", "fill", "rejection", "position", "reconciliation_warning"
+        "lifecycle",
+        "intent",
+        "risk_check",
+        "connection",
+        "account_snapshot",
+        "order",
+        "fill",
+        "cancel",
+        "expired",
+        "rejection",
+        "position",
+        "reconciliation",
+        "reconciliation_warning",
     ]
     recorded_at: str
     ts_event_ns: int | None
     payload: dict[str, JsonScalar]
+
+
+class PaperReadinessEvidence(StrictModel):
+    session_id: str
+    sequence: int
+    event_type: str
+    execution_mode: Literal["local_sandbox", "ibkr_paper"]
+
+
+class PaperReadinessRequirement(StrictModel):
+    id: str
+    passed: bool
+    evidence: list[PaperReadinessEvidence]
+
+
+class PaperReadinessBlocker(StrictModel):
+    session_id: str
+    sequence: int
+    event_type: str
+
+
+class PaperReadinessReport(StrictModel):
+    schema_version: Literal[1]
+    status: Literal["passed", "pending"]
+    paper_passed: bool
+    requirements: list[PaperReadinessRequirement]
+    blocking_events: list[PaperReadinessBlocker]
+    futures_research_supported: Literal[False]
+    live_capital_routing: Literal["absent"]
+    derived_from_elapsed_time: Literal[False]
 
 
 class WorkspaceMeta(StrictModel):
@@ -302,17 +1214,33 @@ class WorkspaceSaved(StrictModel):
     name: str
 
 
-class WorkspaceLinkedContext(StrictModel):
+class WorkspaceGroupLinkedContext(StrictModel):
+    projectId: str | None = None
+    versionId: str | None = None
     symbol: str | None = None
+    universe: str | None = None
+    timeframe: Literal["1D"] = "1D"
     start: str | None = None
     end: str | None = None
+    snapshotId: str | None = None
     runId: str | None = None
+
+
+class WorkspaceLinkedContext(WorkspaceGroupLinkedContext):
+    schemaVersion: Literal[3] = 3
+    linkGroup: Literal["A", "B", "C", "D"] = "A"
+    groups: dict[Literal["A", "B", "C", "D"], WorkspaceGroupLinkedContext] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class WorkspaceDocument(StrictModel):
     name: str
     linked_context: WorkspaceLinkedContext
-    dockview: dict[str, Any]
+    #: Retired. A workspace used to be a window arrangement; it is now the research
+    #: context you were working in. Documents saved by the old shell still carry a
+    #: layout blob, so the field is read and ignored rather than rejected.
+    dockview: dict[str, Any] | None = None
     updated: float | None = None
 
 
@@ -330,10 +1258,27 @@ class RiskScenario(StrictModel):
     total_return: float
 
 
+class RiskProvenance(StrictModel):
+    source_run_id: str
+    source_command: str | None
+    source_artifact: Literal["equity_curve.parquet"]
+    source_artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    snapshot_id: str | None
+    snapshot_hash: str | None
+    research_cutoff: str | None
+    as_of: str | None
+    timezone: Literal["UTC"]
+    derived_projection: Literal[True]
+    metric_namespace: Literal["alpha_validation.scenario"]
+    periods_per_year: int
+    confidence: float
+
+
 class RiskReport(StrictModel):
     run_id: str
     confidence: float
     scenarios: list[RiskScenario]
+    provenance: RiskProvenance
 
 
 class ScreenerQuote(StrictModel):
@@ -374,6 +1319,712 @@ class ResearchReport(StrictModel):
     ranked: list[ResearchRow]
 
 
+class ResearchCaptureRequest(StrictModel):
+    idea: str = Field(min_length=1, max_length=8192, pattern=r"^[^\x00]+$")
+    name: str | None = Field(default=None, min_length=1, max_length=200, pattern=r"^[^\x00]+$")
+
+
+class ResearchMaterialAnswers(StrictModel):
+    chart_construction: ResearchChartConstructionValue
+    event_availability: ResearchEventAvailabilityValue
+    primary_outcome: ResearchPrimaryOutcomeValue
+
+
+class ResearchProposalRequest(StrictModel):
+    source_pack_id: str = Field(min_length=1, max_length=80)
+    answers: ResearchMaterialAnswers
+
+
+class ResearchLaunchRequest(StrictModel):
+    stage: Literal["pilot"]
+
+
+class ResearchReviewEvent(StrictModel):
+    contract_id: str
+    sequence: int
+    project_id: str
+    scope: Literal["exploration", "confirmation"]
+    decision: Literal["approve", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchContract(StrictModel):
+    contract_id: str
+    project_id: str
+    scope: Literal["exploration", "confirmation"]
+    parent_contract_id: str | None
+    payload: JsonObject
+    created_by: str
+    author_kind: AuthorKindValue
+    created_at: str
+    review_state: Literal["pending", "approved", "rejected"]
+    latest_review: ResearchReviewEvent | None
+
+
+class ResearchReviewSummary(StrictModel):
+    state: Literal["pending", "approved", "rejected"]
+    event: ResearchReviewEvent | None
+
+
+class ResearchDecisionEvent(StrictModel):
+    project_id: str
+    sequence: int
+    contract_id: str
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchMilestone(StrictModel):
+    phase: ResearchPhaseValue
+    contract_id: str
+    occurred_at: str
+    reason: str
+
+
+class ResearchD2Event(StrictModel):
+    contract_id: str
+    state: ResearchD2StateValue
+    boundary_hash: str
+    actor: str
+    occurred_at: str
+    reason: str
+
+
+class ResearchPriority(StrictModel):
+    falsifiability: float = Field(ge=0)
+    data_readiness: float = Field(ge=0)
+    novelty: float = Field(ge=0)
+    information_gain_per_cost: float = Field(ge=0)
+
+
+class ResearchBudgetProjection(StrictModel):
+    approved_units: float = Field(ge=0)
+    consumed_units: float = Field(ge=0)
+    unit: Literal["minutes", "compute_units"]
+
+
+class ResearchCaseSummaryRow(StrictModel):
+    case_id: str
+    title: str
+    original_idea: str
+    phase: ResearchPhaseValue
+    execution_state: ResearchExecutionStateValue
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"] | None
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"] | None
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    latest_finding: str | None
+    blocker: str | None
+    recovery_action: str | None
+    completed_milestones: int = Field(ge=0)
+    total_milestones: int = Field(ge=0)
+    owner_pinned: bool
+    priority: ResearchPriority
+    budget: ResearchBudgetProjection
+    updated_at: str
+
+
+class ResearchCasePage(StrictModel):
+    items: list[ResearchCaseSummaryRow]
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class HypothesisCardField(StrictModel):
+    field_id: Literal[
+        "research_question",
+        "phenomenon",
+        "population",
+        "condition_event",
+        "dependent_variable",
+        "horizon",
+        "expected_direction",
+        "economic_mechanism",
+        "null_hypothesis",
+        "alternative_hypothesis",
+        "baseline",
+        "confounders",
+        "falsification_criteria",
+        "success_criteria",
+    ]
+    label: str
+    value: str | None
+    status: Literal["complete", "partial", "missing"]
+
+
+class HypothesisCardPlanFamily(StrictModel):
+    family: str
+    multiplicity: str
+
+
+class HypothesisCardPlan(StrictModel):
+    family_count: int = Field(ge=1)
+    families: list[HypothesisCardPlanFamily]
+
+
+class HypothesisCard(StrictModel):
+    card_schema: Literal["HypothesisCardV1"]
+    fields: list[HypothesisCardField]
+    complete_fields: int = Field(ge=0)
+    total_fields: Literal[14]
+    analysis_plan: HypothesisCardPlan | None = None
+
+
+class ResearchScorecardDimension(StrictModel):
+    dimension_id: Literal[
+        "hypothesis_definition",
+        "data_quality",
+        "sample_adequacy",
+        "effect_existence",
+        "effect_size",
+        "temporal_stability",
+        "cross_asset_stability",
+        "regime_robustness",
+        "falsification",
+        "mechanism",
+        "literature",
+        "data_mining_risk",
+    ]
+    label: str
+    state: str
+    basis: str
+
+
+class ResearchScorecardQuestions(StrictModel):
+    count: int = Field(ge=0)
+    items: list[str]
+
+
+class ResearchScorecardRecommendation(StrictModel):
+    value: Literal[
+        "READY FOR STRATEGY RESEARCH",
+        "MORE RESEARCH REQUIRED",
+        "REFORMULATE HYPOTHESIS",
+        "EVIDENCE DOES NOT SUPPORT CONTINUATION",
+    ]
+    reasons: list[str]
+
+
+class ResearchReadinessBlocker(StrictModel):
+    code: str
+    evidence_refs: list[str] = Field(min_length=1)
+
+
+class ResearchReadinessProjection(StrictModel):
+    state: Literal["ready", "blocked"]
+    blockers: list[ResearchReadinessBlocker]
+
+
+class ResearchScorecard(StrictModel):
+    scorecard_schema: Literal["ResearchReadinessScorecardV1"]
+    dimensions: list[ResearchScorecardDimension]
+    unresolved_questions: ResearchScorecardQuestions
+    recommendation: ResearchScorecardRecommendation
+    confirmation_readiness: ResearchReadinessProjection
+    promotion_readiness: ResearchReadinessProjection
+
+
+class ResearchContextPacket(StrictModel):
+    packet_id: str = Field(pattern=r"^cp_[0-9a-f]{64}$")
+    project_id: str
+    packet_kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ]
+    protocol_id: str | None
+    protocol_content_hash: str | None
+    payload: JsonObject
+    created_by: str
+    created_at: str
+
+
+class ResearchContextPacketPage(StrictModel):
+    items: list[ResearchContextPacket]
+    limit: int
+    offset: int
+
+
+class ResearchNote(StrictModel):
+    note_id: str = Field(pattern=r"^rn_[0-9a-f]{64}$")
+    project_id: str
+    sequence: int = Field(ge=1)
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ]
+    body: str
+    author: str
+    author_kind: Literal["owner", "agent"]
+    context_packet_id: str | None
+    created_at: str
+
+
+class ResearchNotePage(StrictModel):
+    items: list[ResearchNote]
+    limit: int
+    offset: int
+
+
+class ResearchDatasetRefRow(StrictModel):
+    ref_id: str = Field(pattern=r"^rd_[0-9a-f]{64}$")
+    dataset_kind: Literal["store_slice", "snapshot", "quantpad_receipt"]
+    instrument: str
+    provider: str
+    start_ts: str
+    end_ts: str
+    bar_duration_minutes: int | None
+    origin: JsonObject
+    research_only: Literal[True]
+    registered_by: str
+    registered_at: str
+    latest_audit: JsonObject | None
+
+
+class ResearchDatasetPage(StrictModel):
+    items: list[ResearchDatasetRefRow]
+    limit: int
+    offset: int
+
+
+class ResearchProtocolEntry(StrictModel):
+    id: str
+    title: str
+    purpose: str
+    packet_kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ]
+    output_contract: str
+    file: str
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ResearchProtocolLibrary(StrictModel):
+    protocols: list[ResearchProtocolEntry]
+
+
+class HubSource(StrictModel):
+    source_id: str
+    title: str
+    locator: str
+    provider: str
+    access_mode: str
+    screening: str | None
+
+
+class HubFinding(StrictModel):
+    finding_id: str
+    status: str
+    summary: str | None
+
+
+class HubFindings(StrictModel):
+    findings: list[HubFinding]
+
+
+class HubConfounder(StrictModel):
+    text: str
+    status: Literal["resolved", "unresolved"]
+
+
+class HubFalsifier(StrictModel):
+    text: str
+    result: str
+
+
+class HubOverview(StrictModel):
+    original_idea: str
+    phase: ResearchPhaseValue
+    execution_state: ResearchExecutionStateValue
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    latest_finding: str | None
+    outstanding_questions: list[str]
+    hypothesis_card: HypothesisCard
+    scorecard: ResearchScorecard
+
+
+class HubData(StrictModel):
+    registered_datasets: list[JsonObject]
+    status: str
+    note: str
+
+
+class HubLiterature(StrictModel):
+    claims: list[JsonObject]
+    sources: list[HubSource]
+    status: str
+
+
+class HubMechanism(StrictModel):
+    mechanism: str | None
+    interpretation: str | None
+    alternatives: list[str]
+    confounders: list[HubConfounder]
+
+
+class HubExploration(StrictModel):
+    charts: list[JsonObject]
+    watermark: Literal["EXPLORATORY"]
+    status: str
+
+
+class HubAttempt(StrictModel):
+    attempt_id: str
+    phase: str
+    kind: str
+    status: str
+    config_fingerprint: str
+    run_id: str | None
+    recorded_at: str
+
+
+class HubExperiments(StrictModel):
+    attempts: list[HubAttempt]
+
+
+class HubFalsification(StrictModel):
+    falsifiers: list[HubFalsifier]
+    stop_rules: list[str]
+
+
+class HubRobustness(StrictModel):
+    findings: list[HubFinding]
+    status: str
+
+
+class HubDecision(StrictModel):
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"] | None
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"] | None
+    d2_state: ResearchD2StateValue
+    d3_state: ResearchD3StateValue
+    packet_id: str | None
+    packet_hash: str | None
+
+
+class ResearchEvidenceHubSections(StrictModel):
+    overview: HubOverview
+    data: HubData
+    literature: HubLiterature
+    mechanism: HubMechanism
+    exploration: HubExploration
+    experiments: HubExperiments
+    evidence_for: HubFindings
+    evidence_against: HubFindings
+    falsification: HubFalsification
+    robustness: HubRobustness
+    decision: HubDecision
+
+
+class ResearchEvidenceHub(StrictModel):
+    hub_schema: Literal["ResearchEvidenceHubV1"]
+    project_id: str
+    sections: ResearchEvidenceHubSections
+
+
+class ResearchCase(StrictModel):
+    schema_version: Literal[1]
+    project_id: str
+    project_name: str
+    phase: ResearchPhaseValue
+    execution_state: ResearchExecutionStateValue
+    active_contract_id: str
+    active_contract: ResearchContract
+    exploration_contract_id: str
+    confirmation_contract_id: str | None
+    exploration_review: ResearchReviewSummary
+    confirmation_review: ResearchReviewSummary
+    research_decision: ResearchDecisionEvent | None
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    blocker: str | None
+    recovery: str | None
+    latest_finding: str | None
+    milestones: list[ResearchMilestone]
+    completed_milestones: list[ResearchMilestone]
+    remaining_milestones: list[ResearchPhaseValue]
+    elapsed_time_seconds: float = Field(ge=0)
+    elapsed_budget: JsonObject
+    remaining_budget: JsonObject
+    active_job_id: str | None
+    checkpoint: str | None
+    hashes: JsonObject
+    source_pack_id: str | None
+    attempt_count: int = Field(ge=0)
+    terminal_attempt_count: int = Field(ge=0)
+    unfinalized_launch_count: int = Field(ge=0)
+    remaining_launches: int = Field(ge=0)
+    latest_launch_reservation_id: str | None
+    latest_launch_number: int | None = Field(ge=1, le=3)
+    latest_attempt_id: str | None
+    latest_run_id: str | None
+    latest_run_fingerprint: str | None
+    d2_state: ResearchD2StateValue
+    d2_boundary_hash: str
+    d2_history: list[ResearchD2Event]
+    d3_state: ResearchD3StateValue
+    # Additive projections present on the status read; store-level case payloads
+    # (capture/proposal/launch responses) omit them, so they default to None.
+    hypothesis_card: HypothesisCard | None = None
+    scorecard: ResearchScorecard | None = None
+    confirmation_readiness: ResearchReadinessProjection | None = None
+    promotion_readiness: ResearchReadinessProjection | None = None
+
+
+class ResearchCaptureResponse(StrictModel):
+    project: ProjectSummary
+    contract: ResearchContract
+    case: ResearchCase
+
+
+class ResearchProposalResponse(StrictModel):
+    contract: ResearchContract
+    case: ResearchCase
+
+
+class ResearchAttempt(StrictModel):
+    attempt_id: str
+    project_id: str
+    contract_id: str
+    phase: ResearchPhaseValue
+    kind: str
+    status: AttemptStatusValue
+    config_fingerprint: str
+    budget_used: JsonObject
+    run_id: str | None
+    error: str | None
+    details: JsonObject
+    recorded_at: str
+    launch_reservation_id: str | None = None
+
+
+class ResearchLaunchResponse(StrictModel):
+    manifest: JsonObject
+    attempt: ResearchAttempt
+    case: ResearchCase
+
+
+class ResearchProgressReport(StrictModel):
+    report_schema: Literal["ResearchProgressReportV1"]
+    terminal: Literal[False]
+    case: ResearchCase
+    warning: str
+
+
+class ResearchGateAuthority(StrictModel):
+    evidence_claim: Literal["point-in-time-valid predictive association"]
+    strategy_validated: Literal[False]
+    paper_ready: Literal[False]
+    places_orders: Literal[False]
+    uses_final_strategy_holdout: Literal[False]
+
+
+class ResearchGateUncertainty(StrictModel):
+    lower: float
+    upper: float
+    level: float = Field(gt=0, lt=1)
+    method: str
+
+
+class ResearchGatePracticalMagnitude(StrictModel):
+    status: Literal["CLEARS_HURDLE", "BELOW_HURDLE", "INCONCLUSIVE", "NOT_TESTED"]
+    value: float | None
+    unit: str | None
+    interpretation: str
+
+
+class ResearchGatePrimaryResult(StrictModel):
+    status: Literal["TESTED", "NOT_TESTED"]
+    estimate: float | None
+    unit: str | None
+    sample_size: int | None = Field(default=None, ge=1)
+    effective_sample_size: float | None = Field(default=None, gt=0)
+    uncertainty: ResearchGateUncertainty | None
+    practical_magnitude: ResearchGatePracticalMagnitude
+
+
+class ResearchGateFinding(StrictModel):
+    status: Literal[
+        "PASSED",
+        "FAILED",
+        "STABLE",
+        "UNSTABLE",
+        "SUPPORTED",
+        "CONTRADICTED",
+        "INCONCLUSIVE",
+        "NOT_TESTED",
+        "OBSERVED",
+    ]
+    summary: str | None
+
+
+class ResearchGateConfounders(StrictModel):
+    resolved: list[str]
+    unresolved: list[str]
+
+
+class ResearchGateStability(StrictModel):
+    parameter: ResearchGateFinding
+    temporal: ResearchGateFinding
+    transportability: ResearchGateFinding
+
+
+class ResearchGateConfirmationChecks(StrictModel):
+    corrected_primary_test_passed: bool
+    interval_registered_direction: bool
+    economic_hurdle_cleared: bool
+    interval_wholly_against_direction: bool
+
+
+class ResearchGateConclusion(StrictModel):
+    project_name: str
+    thesis: str
+    thesis_answer: str
+    scientific_outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    recommended_disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    owner_decision_reason: str
+    evidence_basis: Literal["SEALED_D2", "EXPLORATORY_D1", "NO_TYPED_NON_SYNTHETIC_EVIDENCE"]
+    primary_estimate: float | None
+    uncertainty: ResearchGateUncertainty | None
+    effective_sample_size: float | None
+    practical_magnitude: ResearchGatePracticalMagnitude
+    strongest_caveat: str
+
+
+class ResearchGateGuidedEvidence(StrictModel):
+    primary_result: ResearchGatePrimaryResult
+    confirmation_classification: (
+        Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"] | None
+    )
+    confirmation_checks: ResearchGateConfirmationChecks | None
+    mechanism: ResearchGateFinding
+    strongest_support: ResearchGateFinding
+    strongest_contradiction: ResearchGateFinding
+    confounders: ResearchGateConfounders
+    stability: ResearchGateStability
+    multiplicity: ResearchGateFinding
+    power: ResearchGateFinding
+    negative_controls: ResearchGateFinding
+    untested_work: list[str]
+    what_would_change_conclusion: list[str]
+    teaching_note: str
+
+
+class ResearchGateAuditLedgers(StrictModel):
+    phase_events: list[JsonObject]
+    review_events: list[JsonObject]
+    execution_events: list[JsonObject]
+    d2_events: list[JsonObject]
+    decision_events: list[JsonObject]
+
+
+class ResearchGateLedgerCounts(StrictModel):
+    contracts: int = Field(ge=0)
+    source_packs: int = Field(ge=0)
+    sources: int = Field(ge=0)
+    attempts: int = Field(ge=0)
+    launch_reservations: int = Field(ge=0)
+    launch_attempt_links: int = Field(ge=0)
+    phase_events: int = Field(ge=0)
+    review_events: int = Field(ge=0)
+    execution_events: int = Field(ge=0)
+    d2_events: int = Field(ge=0)
+    decision_events: int = Field(ge=0)
+    artifact_links: int = Field(ge=0)
+
+
+class ResearchGateLedgerBounds(StrictModel):
+    maximum_rows_per_input_ledger: Literal[10_000]
+    truncated: Literal[False]
+    counts: ResearchGateLedgerCounts
+
+
+class ResearchGateTechnicalAppendix(StrictModel):
+    project: JsonObject
+    contract_lineage: list[JsonObject]
+    source_pack_ledger: list[JsonObject]
+    source_ledger: list[JsonObject]
+    variant_ledger: list[JsonObject]
+    attempt_ledger: list[JsonObject]
+    launch_reservation_ledger: list[JsonObject]
+    launch_attempt_link_ledger: list[JsonObject]
+    budget_ledger: list[JsonObject]
+    phase_review_d2_ledgers: ResearchGateAuditLedgers
+    immutable_artifact_links: list[JsonObject]
+    selected_evidence: JsonObject | None
+    ledger_bounds: ResearchGateLedgerBounds
+
+
+class ResearchGateLayers(StrictModel):
+    conclusion_90_seconds: ResearchGateConclusion
+    guided_evidence: ResearchGateGuidedEvidence
+    technical_appendix: ResearchGateTechnicalAppendix
+
+
+class ResearchGatePacket(StrictModel):
+    report_schema: Literal["ResearchGatePacketV1"]
+    schema_version: Literal[1]
+    terminal: Literal[True]
+    packet_id: str = Field(pattern=r"^rgp_[0-9a-f]{64}$")
+    packet_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    project_id: str
+    active_contract_id: str
+    scientific_outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    recommended_disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    authority: ResearchGateAuthority
+    layers: ResearchGateLayers
+
+
+type ResearchCaseReport = Annotated[
+    ResearchProgressReport | ResearchGatePacket,
+    Field(discriminator="report_schema"),
+]
+
+
+class ResearchChecklistQuestion(StrictModel):
+    question_id: str
+    number: int = Field(ge=1, le=14)
+    question: str
+    binding: str
+    status: str
+    answer: str
+
+
+class ResearchEdgeChecklist(StrictModel):
+    checklist_schema: Literal["ResearchEdgeChecklistV1"]
+    questions: list[ResearchChecklistQuestion] = Field(min_length=14, max_length=14)
+
+
+class ResearchDecisionHistoryEvent(StrictModel):
+    sequence: int
+    contract_id: str
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchDecisionView(StrictModel):
+    view_schema: Literal["ResearchDecisionViewV1"]
+    project_id: str
+    phase: str
+    d2_state: str
+    next_action: str
+    checklist: ResearchEdgeChecklist
+    scorecard: ResearchScorecard
+    confirmation_readiness: ResearchReadinessProjection
+    promotion_readiness: ResearchReadinessProjection
+    gate_packet: ResearchGatePacket | None
+    decision_history: list[ResearchDecisionHistoryEvent]
+
+
 class OptionGreeks(StrictModel):
     spot: float
     strike: float
@@ -407,3 +2058,60 @@ class OptionCurve(StrictModel):
     rate: float
     kind: str
     points: list[OptionCurvePoint] = Field(min_length=2)
+
+
+class FigureCatalogueItem(StrictModel):
+    """One catalogue entry as it applies to a specific run."""
+
+    figure_id: str
+    title: str
+    summary: str
+    section: str
+    panel_count: int
+    available: bool
+    unavailable_reason: str | None
+
+
+class FigureCatalogue(StrictModel):
+    run_id: str
+    kind: str | None
+    renderer_version: int
+    items: list[FigureCatalogueItem]
+
+
+class FigurePanelMeta(StrictModel):
+    panel_id: str
+    y_label: str
+    y_unit: str
+    note: str | None
+    legend: list[str]
+
+
+class FigureMetadata(StrictModel):
+    """A figure's text and structure, served without its bytes.
+
+    ``alt_text`` and the four teaching strings are the accessibility path for figures
+    whose SVG text is embedded as glyph outlines and therefore invisible to a screen
+    reader; the page renders them as real HTML beside the image.
+    """
+
+    figure_id: str
+    title: str
+    subtitle: str
+    caption: str
+    alt_text: str
+    x_label: str
+    question: str
+    plain_language_answer: str
+    uncertainty: str
+    caveat: str
+    truncation_note: str | None
+    source_artifacts: list[str]
+    panels: list[FigurePanelMeta]
+    renderer_version: int
+    cache_key: str
+    format: str
+    width_in: float
+    height_in: float
+    image_url: str
+    etag: str

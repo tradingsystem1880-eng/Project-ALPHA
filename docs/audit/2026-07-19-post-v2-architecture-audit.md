@@ -1,11 +1,102 @@
 # Project ALPHA Post-v2 Architecture Audit
 
+> **Historical baseline:** this audit governs the bounded provider/paper track. The later
+> owner-approved Workstation v3 specs and ADR-0013 through ADR-0016 add versioned artifacts,
+> development/evidence control state, and an isolated Qlib worker without changing this track's
+> sandbox-execution limits.
+>
+> **Scope update (2026-08-11):** Project ALPHA is permanently private, single-owner, and
+> local-device-only. R-22 is retired for that scope. The distribution findings below preserve the
+> audit's historical record and reopen only if sale, publication, sharing, hosting, or use by others
+> enters scope.
+
 - **Audit date:** 2026-07-19
 - **Baseline:** shipped Workstation v2 on `main`, before the Recommended-track delta
 - **Scope:** capability reuse, architecture fit, provider control, crypto paper execution,
   operational monitoring, dependency/license posture
 - **Readiness call:** **Bounded Recommended-track implementation complete offline; network/UTC soak
   acceptance pending; not ready for real-order execution or distribution.**
+
+## Workstation v3 Implementation Checkpoint
+
+**Program status:** **Implemented; offline release gate passed 2026-07-19.** The later
+owner-approved v3 program is implemented without broadening the paper-execution authority
+described by this audit:
+
+- v3 identity includes normalized configuration, snapshot, seed, and a strategy
+  execution/source fingerprint; manifests pin every artifact and completed directories are
+  immutable;
+- decisions, orders, fills, indicators, vector annotations, and native tear-sheet series are
+  Python-authored causal artifacts; fresh-state OOS/holdout metrics and scoped traces come from the
+  same execution; v1/v2 runs remain readable and explicitly report missing traces;
+- six linked professional desks consume typed, bounded REST projections; explicit `/api/v3`
+  aliases cover the v3 control/ML/chart contract while compatibility routes remain; 42 MCP tools
+  (12 retained generic + 30 typed v3) expose project/stage/job/evidence/chart/ML resources to Codex;
+- the CLI-owned SQLite control plane records versions, experiments, every attempt, stage state,
+  sealed/revealed holdouts, decisions, jobs, and append-only cited evidence outside immutable runs;
+  14 exposed stage IDs comprise the 12 core lifecycle stages plus separate Kronos and ML tracks;
+- terminal stage changes, holdout reveal, run links, and cited evidence verify canonical v3 runs and
+  artifact hashes; generic callers cannot reserve suite job kinds or impersonate reviewed evidence;
+- durable suite and direct heavyweight jobs persist cancellation/reconciliation state. Direct Web,
+  ML, and MCP children renew independently of stdout and terminate/reap before cancelled or failed
+  lease publication; the UI rehydrates journals and exposes bounded cancellation without raw PID
+  authority;
+- chart/date filters scope every related evidence series, native tear sheets publish deterministic
+  bounds, and v2 layouts migrate atomically without destroying their legacy source;
+- Kronos exposes complete sampled OHLCV paths, uncertainty/calibration, provenance, and permanent
+  pretraining/replay warnings; and
+- `workers/qlib` is independently locked. Fold boundaries enforce the one-session label horizon and
+  terminal targets without a following open are excluded. Only close-stamped JSON/Parquet
+  predictions return for a
+  synchronized, costed canonical ALPHA replay across the frozen universe; Qlib models never cross
+  or enter the root runtime. ALPHA metrics are authoritative for that replay, while complete
+  counterfactual model retraining remains deferred.
+
+The v3 checkpoint does not authorize real/testnet routing, unattended holdout reveal, arbitrary
+runtime Python, direct SQLite access from the web, or an embedded LLM. The remaining R-14 Binance
+network smoke, R-24 UTC-rollover soak, R-22 root-license decision, and distribution review retain
+their original status below.
+
+**Offline release evidence — passed 2026-07-19 on the final worktree:** root lock/sync, Ruff, and
+format gates passed; import-linter kept all 12 contracts (159 files, 460 dependencies); strict mypy
+reported zero issues across 334 files; the offline Python suite passed 1,136 tests with five
+deselected and 93.13% owned-source coverage (15,591 statements, 1,071 missed); and the dedicated
+bias gate passed 39 tests. OpenAPI was fresh, all 11 sdists/wheels built, and reinstall/import
+verified all 11 packages at `1.0.0`. The isolated Qlib project resolved 212 locked packages, passed
+Ruff/format and strict mypy across seven source files, and passed nine worker tests; two root
+isolation tests also proved that Qlib, LightGBM, and the worker package cannot import in the root
+runtime. Frontend install audited 151 packages with zero vulnerabilities; zero-warning lint and
+91/91 Vitest tests passed. Generated TypeScript was idempotent and the 182-module production build
+was stable. Playwright passed 26 tests with ten expected reference-only skips across 1280x720,
+1440x900, and 1920x1080, including six-desk keyboard/layout checks, twelve 1440/1920 pixel
+baselines, and zero serious/critical WCAG 2.2 A/AA axe findings. On the target Mac mini
+(`Mac16,10`, Apple M4, 10 cores, 16 GB), cold shell stayed below 1.5 seconds, cached desk switching
+below 100 ms, and the 25,000-bar/200-annotation interaction sustained the 60 Hz gate (median at
+most 17.5 ms; p95 at most 20 ms). Committed generated contracts and SPA assets are clean and
+deterministic. This closes the Workstation v3 offline gate only: R-22 still blocks distribution;
+the R-14 Binance network smoke and R-24 UTC-rollover soak remain pending operational acceptance.
+
+### 2026-08-03 Live UI Hardening Checkpoint
+
+The six desks were re-audited in the production build against representative v3 development,
+portfolio, causal-trace, Kronos, evidence-ledger, and real isolated-Qlib artifacts. Run-kind-aware
+panels suppressed incompatible artifact and risk requests; inactive Dockview tabs made no data
+requests; Qlib suite lineage resolved its project, managed exchange, and canonical replay; chart
+layers preserved the full event table while capping visual markers; native tear sheets separated
+explicit unavailability from missing artifacts; and the browser console remained free of warnings
+and errors. Live jobs stayed ahead of terminal history and exposed exact elapsed/current-operation/
+output state; ETA remained indeterminate until backed by a comparable successful same-session run.
+
+The checkpoint passed locked dependency sync, Ruff, format, all 12 import contracts, strict mypy,
+OpenAPI freshness, wheel build/import smoke, and 1,159 offline Python tests with five expected
+deselections at 93.20% owned-source coverage. The isolated Qlib lane passed nine tests. Frontend
+locked install, lint, 103 Vitest tests, generated-client idempotence, production build, zero high
+severity dependency findings, and the complete Playwright/axe/visual matrix passed (29 executed,
+16 intentional viewport skips). The 25,000-bar/200-annotation probe draws vector annotations in one
+official Lightweight Charts primitive and compares interactive cadence with an adjacent no-input
+rAF baseline; interactive median remains at most 18 ms, p99 at most 34 ms, and scheduler slips may
+exceed baseline by at most five percentage points. This checkpoint adds no real-order,
+distribution, metric-composition, or holdout authority.
 
 ## Executive Finding
 
@@ -156,10 +247,10 @@ The Recommended track is complete only when all of the following are green:
 
 ## Readiness Call
 
-The bounded Recommended track is **implemented offline** and ready for final deterministic gates plus
-the separately opted-in network smoke/UTC-rollover soak. It is **not ready** for real-order routing,
-Kronos live paper use, distribution, remote hosting, or any Ambitious-track dependency. Those are
-new decisions, not implied follow-ups.
+The bounded Recommended track and Workstation v3 are **implemented and passed the deterministic
+offline gates**. The separately opted-in R-14 Binance network smoke and R-24 UTC-rollover soak are
+still pending. ALPHA is **not ready** for real-order routing, Kronos live paper use, distribution,
+remote hosting, or any Ambitious-track dependency. Those are new decisions, not implied follow-ups.
 
 Companion documents:
 
