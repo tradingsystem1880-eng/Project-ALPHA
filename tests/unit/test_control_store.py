@@ -29,6 +29,8 @@ from alpha_cli.control_store import (
 )
 from alpha_cli.project_cmds import _agent_brief
 from alpha_core import DataError
+from alpha_research import MarketStateContractV1
+from alpha_validation import ForecastCalibrationContractV1
 from tests.fixtures.control_store_fixtures import (
     mark_project_as_migrated_legacy,
     publish_decision_grade_run,
@@ -1740,6 +1742,136 @@ def test_control_store_rejects_symlink_root_and_nonfinite_json(tmp_path: Path) -
             split_policy={},
             costs={},
             seeds={"master": 7},
+        )
+
+
+def test_experiment_freezes_and_validates_optional_market_state_contract(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    _project(store)
+    version = _version(store)
+    contract = MarketStateContractV1(
+        universe=("AAPL", "SPY"),
+        benchmark="SPY",
+        calendar="equity",
+        volatility_window=21,
+        trend_window=63,
+        correlation_window=63,
+        annualization_sessions=252,
+        volatility_thresholds=(0.10, 0.25),
+        trend_threshold=0.02,
+        breadth_thresholds=(0.35, 0.65),
+        correlation_thresholds=(0.25, 0.75),
+        minimum_state_samples=20,
+    )
+    experiment = store.create_experiment_spec(
+        PROJECT_ID,
+        strategy_version_id=str(version["version_id"]),
+        snapshot_id="snap-market-state",
+        universe=["SPY", "AAPL"],
+        split_policy={"train": 504, "test": 63, "embargo": 5},
+        costs={"fee_bps": 1.0},
+        seeds={"master": 7},
+        stage_config={"market_state": contract.to_dict()},
+    )
+    assert experiment["stage_config"] == {"market_state": contract.to_dict()}
+
+    mismatched = MarketStateContractV1(
+        universe=("QQQ", "SPY"),
+        benchmark="SPY",
+        calendar="equity",
+        volatility_window=21,
+        trend_window=63,
+        correlation_window=63,
+        annualization_sessions=252,
+        volatility_thresholds=(0.10, 0.25),
+        trend_threshold=0.02,
+        breadth_thresholds=(0.35, 0.65),
+        correlation_thresholds=(0.25, 0.75),
+        minimum_state_samples=20,
+    ).to_dict()
+    with pytest.raises(DataError, match="market-state universe"):
+        store.create_experiment_spec(
+            PROJECT_ID,
+            strategy_version_id=str(version["version_id"]),
+            snapshot_id="snap-market-state-mismatch",
+            universe=["SPY", "AAPL"],
+            split_policy={},
+            costs={},
+            seeds={"master": 7},
+            stage_config={"market_state": mismatched},
+        )
+
+    malformed = contract.to_dict()
+    malformed["trend_window"] = 0
+    with pytest.raises(DataError, match="trend_window"):
+        store.create_experiment_spec(
+            PROJECT_ID,
+            strategy_version_id=str(version["version_id"]),
+            snapshot_id="snap-market-state-malformed",
+            universe=["SPY", "AAPL"],
+            split_policy={},
+            costs={},
+            seeds={"master": 7},
+            stage_config={"market_state": malformed},
+        )
+
+
+def test_experiment_freezes_kronos_calibration_only_with_market_state(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    _project(store)
+    version = _version(store)
+    market_state = MarketStateContractV1(
+        universe=("AAPL", "SPY"),
+        benchmark="SPY",
+        calendar="equity",
+        volatility_window=21,
+        trend_window=63,
+        correlation_window=63,
+        annualization_sessions=252,
+        volatility_thresholds=(0.10, 0.25),
+        trend_threshold=0.02,
+        breadth_thresholds=(0.35, 0.65),
+        correlation_thresholds=(0.25, 0.75),
+        minimum_state_samples=20,
+    )
+    calibration = ForecastCalibrationContractV1(
+        coverage_level=0.8,
+        residual_window=20,
+        blend_weights=(0.0, 0.25, 0.5, 0.75, 1.0),
+        minimum_validation_origins=40,
+        minimum_empirical_coverage=0.75,
+        minimum_edge=0.01,
+        maximum_interval_width=0.20,
+        minimum_state_samples=20,
+    )
+    experiment = store.create_experiment_spec(
+        PROJECT_ID,
+        strategy_version_id=str(version["version_id"]),
+        snapshot_id="snap-kronos-calibrated",
+        universe=["SPY", "AAPL"],
+        split_policy={"train": 504, "validation": 126, "test": 63, "embargo": 5},
+        costs={"fee_bps": 1.0},
+        seeds={"master": 7},
+        stage_config={
+            "market_state": market_state.to_dict(),
+            "kronos_calibration": calibration.to_dict(),
+        },
+    )
+    assert experiment["stage_config"] == {
+        "market_state": market_state.to_dict(),
+        "kronos_calibration": calibration.to_dict(),
+    }
+
+    with pytest.raises(DataError, match="requires.*market_state"):
+        store.create_experiment_spec(
+            PROJECT_ID,
+            strategy_version_id=str(version["version_id"]),
+            snapshot_id="snap-kronos-no-state",
+            universe=["SPY", "AAPL"],
+            split_policy={},
+            costs={},
+            seeds={"master": 7},
+            stage_config={"kronos_calibration": calibration.to_dict()},
         )
 
 

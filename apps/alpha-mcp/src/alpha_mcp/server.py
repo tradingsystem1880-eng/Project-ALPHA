@@ -578,6 +578,179 @@ def research_report(project_id: str) -> _types.ResearchReportOut:
 
 
 @mcp.tool()
+def build_research_context_packet(
+    project_id: str,
+    kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ],
+    protocol_id: str | None = None,
+    symbol: str | None = None,
+) -> _types.ResearchContextPacketOut:
+    """Assemble and record one bounded, content-addressed Codex context packet.
+
+    Recording is visibility: the owner can open the exact bytes of every packet ever built.
+    This draft-write records context only — it cannot approve, decide, or launch anything.
+    """
+    return cast(
+        _types.ResearchContextPacketOut,
+        _control.research_context_build(
+            project_id, kind, data_dir=_data_dir(), protocol_id=protocol_id, symbol=symbol
+        ),
+    )
+
+
+@mcp.tool()
+def get_research_context_packet(packet_id: str) -> _types.ResearchContextPacketOut:
+    """Return one recorded context packet byte-identically."""
+    return cast(
+        _types.ResearchContextPacketOut,
+        _control.research_context_get(packet_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def add_research_note(
+    project_id: str,
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ],
+    body: str,
+    context_packet_id: str | None = None,
+) -> _types.ResearchNoteOut:
+    """Append Codex commentary — structurally outside the evidence model, agent-authored only."""
+    return cast(
+        _types.ResearchNoteOut,
+        _control.research_note_add(
+            project_id,
+            note_kind,
+            body,
+            data_dir=_data_dir(),
+            context_packet_id=context_packet_id,
+        ),
+    )
+
+
+@mcp.tool()
+def get_research_brief(project_id: str) -> _types.ResearchBriefOut:
+    """Build the "Resume with Codex" delta brief: what changed since the previous brief."""
+    return cast(
+        _types.ResearchBriefOut,
+        _control.research_brief(project_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def list_research_protocols() -> _types.ResearchProtocolListOut:
+    """List the Git-owned research protocol library (content stays owner-reviewed in Git)."""
+    return cast(
+        _types.ResearchProtocolListOut,
+        _control.research_protocols_list(data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def get_research_protocol(protocol_id: str) -> _types.ResearchProtocolOut:
+    """Read one protocol entry plus its exact content."""
+    return cast(
+        _types.ResearchProtocolOut,
+        _control.research_protocol_get(protocol_id, data_dir=_data_dir()),
+    )
+
+
+@mcp.tool()
+def search_research_sources(query: str, limit: int = 50) -> _types.SourceSearchOut:
+    """Search LOCAL source records by title/locator/DOI terms; never the network."""
+    return cast(
+        _types.SourceSearchOut,
+        _control.research_sources_search(query, data_dir=_data_dir(), limit=limit),
+    )
+
+
+@mcp.tool()
+def get_research_source(source_id: str) -> _types.JsonObject:
+    """Read one immutable source record with its typed DOI/year/author descriptors."""
+    return _control.research_source_get(source_id, data_dir=_data_dir())
+
+
+@mcp.tool()
+def draft_source_claim(
+    project_id: str,
+    source_id: str,
+    contract_id: str,
+    claim_text: str,
+    direction: Literal["supports", "contradicts", "contextualizes", "method"],
+    strength: Literal["weak", "moderate", "strong"],
+    method_summary: str,
+    sample_summary: str,
+    markets: list[str],
+    limitations: str,
+) -> _types.SourceClaimOut:
+    """Draft one claim-level literature statement (always agent-authored).
+
+    A published paper is never auto-trusted: only the owner's trusted-local CLI screening
+    elevates a draft, and the scorecard's literature dimension counts screened claims only.
+    """
+    return cast(
+        _types.SourceClaimOut,
+        _control.source_claim_draft(
+            project_id,
+            data_dir=_data_dir(),
+            source_id=source_id,
+            contract_id=contract_id,
+            claim_text=claim_text,
+            direction=direction,
+            strength=strength,
+            method_summary=method_summary,
+            sample_summary=sample_summary,
+            markets=markets,
+            limitations=limitations,
+        ),
+    )
+
+
+@mcp.tool()
+def get_data_inventory() -> _types.DataInventoryOut:
+    """List every stored symbol — the read-only starting point of data feasibility."""
+    return cast(_types.DataInventoryOut, _control.data_inventory(data_dir=_data_dir()))
+
+
+@mcp.tool()
+def get_data_quality(symbol: str) -> _types.JsonObject:
+    """Read one symbol's source, qualification, and promotion status (read-only)."""
+    return _control.data_quality(symbol, data_dir=_data_dir())
+
+
+@mcp.tool()
+def get_data_candles(
+    symbol: str,
+    start: str | None = None,
+    end: str | None = None,
+    limit: int = 100,
+) -> _types.DataCandlesOut:
+    """Bounded point-in-time candle preview (last ``limit`` bars, at most 500).
+
+    Reads through the same look-ahead firewall a backtest uses; ``end`` is a knowledge
+    cutoff. This preview mirrors the QuantPad discovery bound and is never a bulk feed.
+    """
+    return cast(
+        _types.DataCandlesOut,
+        _control.data_candles(symbol, data_dir=_data_dir(), start=start, end=end, limit=limit),
+    )
+
+
+@mcp.tool()
+def list_snapshots() -> _types.SnapshotListOut:
+    """List every immutable snapshot's manifest summary (id, source, symbols, hash)."""
+    return cast(_types.SnapshotListOut, _control.snapshots(data_dir=_data_dir()))
+
+
+@mcp.tool()
+def get_provider_registry() -> _types.ProviderRegistryOut:
+    """The redacted provider capability/limitation registry; never probes the network."""
+    return cast(_types.ProviderRegistryOut, _control.provider_registry(data_dir=_data_dir()))
+
+
+@mcp.tool()
 def create_strategy_project(
     name: str, hypothesis: str, falsification_criterion: str
 ) -> _types.ProjectSummaryOut:

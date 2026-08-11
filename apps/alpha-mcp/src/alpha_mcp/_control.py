@@ -143,6 +143,210 @@ def research_report(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     )
 
 
+def research_context_build(
+    project_id: str,
+    kind: str,
+    *,
+    data_dir: Path,
+    protocol_id: str | None = None,
+    symbol: str | None = None,
+) -> dict[str, Any]:
+    """Record one bounded, content-addressed context packet; recording is visibility."""
+    args = ["research", "context", "build", project_id, "--kind", kind, "--created-by", "codex"]
+    if protocol_id is not None:
+        args += ["--protocol", protocol_id]
+    if symbol is not None:
+        args += ["--symbol", symbol]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research context packet")
+
+
+def research_context_get(packet_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Return one recorded packet byte-identically."""
+    return _object(
+        _invoke.run_json(["research", "context", "show", packet_id, "--json"], data_dir=data_dir),
+        "research context packet",
+    )
+
+
+def research_note_add(
+    project_id: str,
+    note_kind: str,
+    body: str,
+    *,
+    data_dir: Path,
+    context_packet_id: str | None = None,
+) -> dict[str, Any]:
+    """Append agent commentary; MCP notes can never claim owner authorship."""
+    args = [
+        "research",
+        "note",
+        "add",
+        project_id,
+        "--kind",
+        note_kind,
+        "--body",
+        body,
+        "--author",
+        "codex",
+        "--author-kind",
+        "agent",
+    ]
+    if context_packet_id is not None:
+        args += ["--packet", context_packet_id]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research note")
+
+
+def research_brief(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Build the "Resume with Codex" delta brief (recorded as a packet)."""
+    return _object(
+        _invoke.run_json(
+            ["research", "brief", project_id, "--created-by", "codex", "--json"],
+            data_dir=data_dir,
+        ),
+        "research brief",
+    )
+
+
+def research_protocols_list(*, data_dir: Path) -> dict[str, Any]:
+    """List the Git-owned protocol library (index↔file drift fails loud)."""
+    return _object(
+        _invoke.run_json(["research", "protocols", "list", "--json"], data_dir=data_dir),
+        "research protocols",
+    )
+
+
+def research_protocol_get(protocol_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read one protocol entry plus its exact content."""
+    return _object(
+        _invoke.run_json(
+            ["research", "protocols", "show", protocol_id, "--json"], data_dir=data_dir
+        ),
+        "research protocol",
+    )
+
+
+def research_sources_search(query: str, *, data_dir: Path, limit: int = 50) -> dict[str, Any]:
+    """Local-records-only source search; the network stays behind the isolated worker."""
+    limit = bound("limit", limit, 200)
+    return _object(
+        _invoke.run_json(
+            ["research", "sources", "search", query, "--limit", str(limit), "--json"],
+            data_dir=data_dir,
+        ),
+        "research source search",
+    )
+
+
+def research_source_get(source_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read one immutable source record (the ``sources screen`` read projection)."""
+    return _object(
+        _invoke.run_json(["research", "sources", "screen", source_id, "--json"], data_dir=data_dir),
+        "research source",
+    )
+
+
+def source_claim_draft(
+    project_id: str,
+    *,
+    data_dir: Path,
+    source_id: str,
+    contract_id: str,
+    claim_text: str,
+    direction: str,
+    strength: str,
+    method_summary: str,
+    sample_summary: str,
+    markets: Sequence[str],
+    limitations: str,
+) -> dict[str, Any]:
+    """Draft one claim; MCP claims are always agent-authored and never screened here."""
+    args = [
+        "research",
+        "sources",
+        "claim",
+        "add",
+        project_id,
+        "--source-id",
+        source_id,
+        "--contract-id",
+        contract_id,
+        "--text",
+        claim_text,
+        "--direction",
+        direction,
+        "--strength",
+        strength,
+        "--method",
+        method_summary,
+        "--sample",
+        sample_summary,
+        "--limitations",
+        limitations,
+        "--author",
+        "codex",
+        "--author-kind",
+        "agent",
+    ]
+    for market in markets:
+        args += ["--market", market]
+    args += ["--json"]
+    return _object(_invoke.run_json(args, data_dir=data_dir), "research source claim")
+
+
+def data_inventory(*, data_dir: Path) -> dict[str, Any]:
+    """Every stored symbol — the starting point of data feasibility."""
+    return _object(_invoke.run_json(["data", "symbols", "--json"], data_dir=data_dir), "symbols")
+
+
+def data_quality(symbol: str, *, data_dir: Path) -> dict[str, Any]:
+    """One symbol's source/qualification/promotion status (read-only)."""
+    return _object(
+        _invoke.run_json(["data", "source-status", symbol, "--json"], data_dir=data_dir),
+        "source status",
+    )
+
+
+def data_candles(
+    symbol: str,
+    *,
+    data_dir: Path,
+    start: str | None = None,
+    end: str | None = None,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Bounded point-in-time candle preview (last ``limit`` bars, ≤500 like discovery)."""
+    limit = bound("limit", limit, 500)
+    args = ["data", "candles", symbol]
+    if start is not None:
+        args += ["--start", start]
+    if end is not None:
+        args += ["--end", end]
+    args += ["--json"]
+    payload = _object(_invoke.run_json(args, data_dir=data_dir), "candles")
+    bars = payload.get("bars")
+    if not isinstance(bars, list):
+        raise RuntimeError("alpha returned an invalid candles projection")
+    truncated = len(bars) > limit
+    return {**payload, "bars": bars[-limit:], "truncated": truncated}
+
+
+def snapshots(*, data_dir: Path) -> dict[str, Any]:
+    """Every immutable snapshot's manifest summary."""
+    return _object(
+        _invoke.run_json(["data", "snapshots", "--json"], data_dir=data_dir), "snapshots"
+    )
+
+
+def provider_registry(*, data_dir: Path) -> dict[str, Any]:
+    """The redacted provider capability/limitation registry (never probes the network)."""
+    rows = _objects(
+        _invoke.run_json(["info", "providers", "--json"], data_dir=data_dir), "providers"
+    )
+    return {"providers": rows}
+
+
 def list_projects(*, data_dir: Path, limit: int, start: int) -> dict[str, Any]:
     limit = bound("limit", limit, 100)
     start = offset(start)
@@ -191,6 +395,7 @@ def get_project(project_id: str, *, data_dir: Path, lineage_limit: int) -> dict[
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "research_gate_overrides",
     ):
         values = _objects(row.get(key), f"project {key}")
         truncated[key] = bool(upstream_truncated.get(key, False)) or len(values) > lineage_limit

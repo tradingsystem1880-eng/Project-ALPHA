@@ -47,29 +47,27 @@ _D0_OPERATOR_SCHEMA: Final = "AlphaRegisteredResearchOperatorV1"
 _D0_OPERATOR_NAME: Final = "double_bottom"
 _D0_OPERATOR_VERSION: Final = 1
 _D0_EVENT_AVAILABILITY: Final = "second_trough_confirmable"
-_D0_CHART_CHOICE: Final = "spy_rth_60m_four_hour_window"
-_D0_OUTCOME_CHOICE: Final = "four_trading_hour_return_25bp"
-_D0_HORIZON_TRADING_MINUTES: Final = 240
-_D0_MINIMUM_EFFECT_RETURN: Final = 0.0025
 _D0_TOPOLOGY_SCHEMA_VERSION: Final = 2
 # GENERATION POLICY: every registered constant in this module (the detector _SPEC, the
 # planted/null fixture lows, the power parameters and their frozen seed, and
-# _D0_RUNTIME_VERSION) is part of one registered operator generation, identified by
-# (_D0_FIXTURE_ID, _D0_FIXTURE_VERSION). Changing ANY of them is a breaking generation
-# change and MUST bump _D0_FIXTURE_VERSION. Completed runs verify by exact recomputation,
-# so a run from another generation is unreadable by this runtime BY DESIGN — but it must
-# fail with the explicit generation error below (see _require_current_d0_generation),
-# never with an error implying tampering. Reading an earlier generation requires the
-# producing code generation or an explicit owner-approved data-dir migration.
+# _D0_RUNTIME_VERSION) belongs to exactly one registered operator generation, identified
+# by its (fixture_id, fixture_version) pair in _D0_GENERATIONS. Changing ANY constant of
+# an existing generation is a breaking generation change and MUST bump that generation's
+# fixture_version; ADDING a new generation for a new material (chart, outcome) combo is
+# additive and must NOT bump existing versions or _D0_RUNTIME_VERSION (either bump would
+# orphan completed runs of the untouched generations). Completed runs verify by exact
+# recomputation, so a run from an unregistered generation is unreadable by this runtime
+# BY DESIGN — but it must fail with the explicit generation error below (see
+# _require_current_d0_generation), never with an error implying tampering. Reading such a
+# run requires the producing code generation or an explicit owner-approved data-dir
+# migration.
 #
 # SEED POLICY (deliberate deviation from the generic v3 semantic-seed rule): the power
 # simulation seed below is a protocol-frozen literal, like alpha or the planted lows —
 # NOT derived from AlphaSettings.random_seed. Acceptance is re-verified by exact
 # recomputation on every machine that reads the run; a settings-derived seed would make
 # acceptance depend on the reader's local configuration and break machine-independent
-# verification of the one canonical registered fixture.
-_D0_FIXTURE_ID: Final = "spy_60m_double_bottom_v1"
-_D0_FIXTURE_VERSION: Final = 1
+# verification of the registered fixtures.
 _D0_RUNTIME_VERSION: Final = 3
 _D0_ACCEPTANCE_SCHEMA: Final = "ResearchD0AcceptanceV1"
 _D0_ACCEPTANCE_ARTIFACT: Final = "d0_acceptance.json"
@@ -96,26 +94,145 @@ _SINGLE_TROUGH_LOWS: Final = (
     *(101.0 + index for index in range(21)),
 )
 
-_D0_CONTRACT_CHART: Final = {
-    "provider": "alpha_synthetic_fixture",
-    "timezone": "UTC",
-    "timestamp_semantics": "bar_end_available",
-    "adjustment_basis": "synthetic_not_applicable",
-    "instrument": "SYNTHETIC_SPY",
-    "venue": "SYNTHETIC",
-    "session": "synthetic_equal_duration",
-    "bar_duration_minutes": 60,
-    "pattern_window_trading_minutes": 240,
-    "anchor": "SYNTHETIC_EPOCH",
-    "label": "synthetic SPY-like 60-minute D0 fixture with a four-hour pattern window",
+
+class _D0Generation(NamedTuple):
+    """One registered D0 operator generation (see the GENERATION POLICY above)."""
+
+    fixture_id: str
+    fixture_version: int
+    chart_choice: str
+    outcome_choice: str
+    bar_duration_minutes: int
+    timeframe: str
+    forward_outcome_observations: int
+    outcome_horizon: int | str
+    minimum_effect_return: float
+    power_alternative_effect: float
+    power_standard_deviation: float
+    contract_chart: Mapping[str, object]
+    protocol_chart: Mapping[str, object]
+    primary_claim: Mapping[str, object]
+
+
+_GENERATION_60M: Final = _D0Generation(
+    fixture_id="spy_60m_double_bottom_v1",
+    fixture_version=1,
+    chart_choice="spy_rth_60m_four_hour_window",
+    outcome_choice="four_trading_hour_return_25bp",
+    bar_duration_minutes=60,
+    timeframe="60m",
+    forward_outcome_observations=4,
+    outcome_horizon=240,
+    minimum_effect_return=0.0025,
+    power_alternative_effect=0.0075,
+    power_standard_deviation=0.015,
+    contract_chart={
+        "provider": "alpha_synthetic_fixture",
+        "timezone": "UTC",
+        "timestamp_semantics": "bar_end_available",
+        "adjustment_basis": "synthetic_not_applicable",
+        "instrument": "SYNTHETIC_SPY",
+        "venue": "SYNTHETIC",
+        "session": "synthetic_equal_duration",
+        "bar_duration_minutes": 60,
+        "pattern_window_trading_minutes": 240,
+        "anchor": "SYNTHETIC_EPOCH",
+        "label": "synthetic SPY-like 60-minute D0 fixture with a four-hour pattern window",
+    },
+    protocol_chart=ResearchChartFingerprintV1(
+        instrument="SYNTHETIC_SPY",
+        provider="alpha_synthetic_fixture",
+        venue="SYNTHETIC",
+        timezone="UTC",
+        session="synthetic_equal_duration",
+        bar_construction="fixed_60_trading_minute_bars_with_240_trading_minute_pattern_window",
+        bar_duration_seconds=3_600,
+        anchor="SYNTHETIC_EPOCH",
+        adjustment_basis="synthetic_not_applicable",
+        timestamp_semantics="bar_end_available",
+    ).to_dict(),
+    primary_claim={
+        "estimand": "event_minus_matched_control_arithmetic_return",
+        "endpoint": "forward_arithmetic_return",
+        "horizon_trading_minutes": 240,
+        "direction": "positive",
+        "minimum_effect_return": 0.0025,
+    },
+)
+_GENERATION_DAILY: Final = _D0Generation(
+    fixture_id="spy_session_daily_double_bottom_v1",
+    fixture_version=1,
+    chart_choice="tiingo_daily_fallback",
+    outcome_choice="next_regular_session_return_50bp",
+    bar_duration_minutes=1_440,
+    timeframe="1d",
+    forward_outcome_observations=1,
+    outcome_horizon="next_regular_session",
+    minimum_effect_return=0.005,
+    power_alternative_effect=0.010,
+    power_standard_deviation=0.012,
+    contract_chart={
+        "provider": "tiingo",
+        "timezone": "America/New_York",
+        "timestamp_semantics": "bar_close_available",
+        "adjustment_basis": "point_in_time",
+        "instrument": "SPY",
+        "venue": "US_EQUITIES",
+        "session": "regular_session_daily",
+        "bar_duration_minutes": 1_440,
+        "anchor": "US_EQUITIES_SESSION_CLOSE",
+        "label": "registered Tiingo session-daily Gate-4 fallback bars",
+    },
+    protocol_chart=ResearchChartFingerprintV1(
+        instrument="SPY",
+        provider="tiingo",
+        venue="US_EQUITIES",
+        timezone="America/New_York",
+        session="regular_session_daily",
+        bar_construction="fixed_session_daily_bars",
+        bar_duration_seconds=86_400,
+        anchor="US_EQUITIES_SESSION_CLOSE",
+        adjustment_basis="point_in_time",
+        timestamp_semantics="bar_close_available",
+    ).to_dict(),
+    primary_claim={
+        "estimand": "event_minus_matched_control_arithmetic_return",
+        "endpoint": "next_regular_session_arithmetic_return",
+        "horizon": "next_regular_session",
+        "direction": "positive",
+        "minimum_effect_return": 0.005,
+    },
+)
+_D0_GENERATIONS: Final = (_GENERATION_60M, _GENERATION_DAILY)
+_D0_GENERATIONS_BY_CHART: Final = {
+    generation.chart_choice: generation for generation in _D0_GENERATIONS
 }
-_D0_PRIMARY_CLAIM: Final = {
-    "estimand": "event_minus_matched_control_arithmetic_return",
-    "endpoint": "forward_arithmetic_return",
-    "horizon_trading_minutes": _D0_HORIZON_TRADING_MINUTES,
-    "direction": "positive",
-    "minimum_effect_return": _D0_MINIMUM_EFFECT_RETURN,
-}
+
+
+def registered_d0_material_choices() -> frozenset[tuple[str, str]]:
+    """The exact (chart_construction, primary_outcome) combos with a registered generation."""
+
+    return frozenset(
+        (generation.chart_choice, generation.outcome_choice) for generation in _D0_GENERATIONS
+    )
+
+
+def _generation_for_choices(chart_choice: object, outcome_choice: object) -> _D0Generation:
+    generation = (
+        _D0_GENERATIONS_BY_CHART.get(chart_choice) if isinstance(chart_choice, str) else None
+    )
+    if generation is None:
+        registered = ", ".join(gen.chart_choice for gen in _D0_GENERATIONS)
+        raise DataError(
+            f"Gate 1 registers no D0 operator generation for the {chart_choice!r} chart "
+            f"construction; registered charts: {registered}"
+        )
+    if outcome_choice != generation.outcome_choice:
+        raise DataError(
+            f"the {generation.chart_choice} chart construction is registered with the "
+            f"{generation.outcome_choice} primary outcome; got {outcome_choice!r}"
+        )
+    return generation
 
 
 def _canonical(value: object) -> str:
@@ -129,29 +246,14 @@ def _sha(value: object) -> str:
     return hashlib.sha256(_canonical(value).encode("utf-8")).hexdigest()
 
 
-def _d0_fixture_definition() -> dict[str, object]:
+def _d0_fixture_definition(generation: _D0Generation) -> dict[str, object]:
     return {
-        "fixture": _D0_FIXTURE_ID,
-        "fixture_version": _D0_FIXTURE_VERSION,
+        "fixture": generation.fixture_id,
+        "fixture_version": generation.fixture_version,
         "planted_lows": list(_PLANTED_LOWS),
         "monotonic_lows": list(_MONOTONIC_LOWS),
         "single_trough_lows": list(_SINGLE_TROUGH_LOWS),
     }
-
-
-def _d0_protocol_chart() -> dict[str, object]:
-    return ResearchChartFingerprintV1(
-        instrument="SYNTHETIC_SPY",
-        provider="alpha_synthetic_fixture",
-        venue="SYNTHETIC",
-        timezone="UTC",
-        session="synthetic_equal_duration",
-        bar_construction="fixed_60_trading_minute_bars_with_240_trading_minute_pattern_window",
-        bar_duration_seconds=3_600,
-        anchor="SYNTHETIC_EPOCH",
-        adjustment_basis="synthetic_not_applicable",
-        timestamp_semantics="bar_end_available",
-    ).to_dict()
 
 
 def _contract_mapping(
@@ -163,7 +265,9 @@ def _contract_mapping(
     return value
 
 
-def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
+def _registered_d0_binding(
+    contract: Mapping[str, object],
+) -> tuple[dict[str, object], _D0Generation]:
     """Build the exact material contract/operator binding executable by the Gate-1 pilot."""
 
     event = _contract_mapping(
@@ -195,12 +299,7 @@ def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
         raise DataError("material event availability disagrees with the event definition")
     chart_choice = resolved.get("chart_construction")
     outcome_choice = resolved.get("primary_outcome")
-    if chart_choice != _D0_CHART_CHOICE:
-        raise DataError(
-            "Gate-1 D0 only supports the spy_rth_60m_four_hour_window chart construction"
-        )
-    if outcome_choice != _D0_OUTCOME_CHOICE:
-        raise DataError("Gate-1 D0 only supports the four_trading_hour_return_25bp primary outcome")
+    generation = _generation_for_choices(chart_choice, outcome_choice)
 
     primary_claim = _contract_mapping(
         contract,
@@ -212,9 +311,9 @@ def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
         "chart_fingerprint",
         label="one resolved chart fingerprint",
     )
-    if _canonical(chart) != _canonical(_D0_CONTRACT_CHART):
+    if _canonical(chart) != _canonical(generation.contract_chart):
         raise DataError("Gate-1 D0 chart fingerprint does not match its executable fixture")
-    if _canonical(primary_claim) != _canonical(_D0_PRIMARY_CLAIM):
+    if _canonical(primary_claim) != _canonical(generation.primary_claim):
         raise DataError("Gate-1 D0 primary claim does not match its executable power fixture")
 
     protocol = _contract_mapping(contract, "protocol", label="an immutable protocol")
@@ -223,7 +322,7 @@ def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
         "chart_fingerprint",
         label="a protocol chart fingerprint",
     )
-    if _canonical(protocol_chart) != _canonical(_d0_protocol_chart()):
+    if _canonical(protocol_chart) != _canonical(generation.protocol_chart):
         raise DataError("Gate-1 D0 protocol chart does not match its executable fixture")
     payload: dict[str, object] = {
         "schema": _D0_OPERATOR_SCHEMA,
@@ -246,8 +345,8 @@ def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
         },
         "primary_outcome": {
             "choice": outcome_choice,
-            "horizon": _D0_HORIZON_TRADING_MINUTES,
-            "minimum_effect_return": _D0_MINIMUM_EFFECT_RETURN,
+            "horizon": generation.outcome_horizon,
+            "minimum_effect_return": generation.minimum_effect_return,
             "claim": dict(primary_claim),
         },
         "topology": {
@@ -256,28 +355,36 @@ def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
             "cross_boundary_outcomes": "REJECT",
         },
         "fixture": {
-            "fixture_id": _D0_FIXTURE_ID,
-            "fixture_version": _D0_FIXTURE_VERSION,
-            "definition_fingerprint": _sha(_d0_fixture_definition()),
-            "bar_duration_minutes": 60,
+            "fixture_id": generation.fixture_id,
+            "fixture_version": generation.fixture_version,
+            "definition_fingerprint": _sha(_d0_fixture_definition(generation)),
+            "bar_duration_minutes": generation.bar_duration_minutes,
             "real_market_evidence": False,
         },
     }
-    return {**payload, "fingerprint": _sha(payload)}
+    return {**payload, "fingerprint": _sha(payload)}, generation
+
+
+def registered_d0_operator(contract: Mapping[str, object]) -> dict[str, object]:
+    """Build the exact material contract/operator binding executable by the Gate-1 pilot."""
+
+    return _registered_d0_binding(contract)[0]
 
 
 def _require_current_d0_generation(
     fixture_id: object, fixture_version: object, *, source: str
-) -> None:
+) -> _D0Generation | None:
     """Separate a well-formed foreign registered generation from evidence of tampering.
 
-    Only an exactly well-formed, different (fixture_id, fixture_version) pair earns the
-    generation error; malformed values fall through to the strict authority comparisons,
-    preserving fail-closed semantics.
+    Returns the registered generation on an exact (fixture_id, fixture_version) match and
+    ``None`` for malformed values, which fall through to the strict authority comparisons,
+    preserving fail-closed semantics. Only an exactly well-formed, unregistered pair earns
+    the generation error.
     """
 
-    if fixture_id == _D0_FIXTURE_ID and fixture_version == _D0_FIXTURE_VERSION:
-        return
+    for generation in _D0_GENERATIONS:
+        if fixture_id == generation.fixture_id and fixture_version == generation.fixture_version:
+            return generation
     well_formed = (
         isinstance(fixture_id, str)
         and bool(fixture_id.strip())
@@ -286,16 +393,23 @@ def _require_current_d0_generation(
         and fixture_version >= 1
     )
     if well_formed:
+        known = " or ".join(
+            f"{generation.fixture_id!r} v{generation.fixture_version}"
+            for generation in _D0_GENERATIONS
+        )
         raise DataError(
             f"D0 {source} was produced by registered operator generation "
             f"{fixture_id!r} v{fixture_version} but this runtime executes only "
-            f"{_D0_FIXTURE_ID!r} v{_D0_FIXTURE_VERSION} — a generation mismatch, not "
+            f"{known} — a generation mismatch, not "
             "tampering; read it with the producing code generation or an explicit "
             "owner-approved data-dir migration"
         )
+    return None
 
 
-def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, object]:
+def _validated_d0_binding(
+    contract: Mapping[str, object],
+) -> tuple[dict[str, object], _D0Generation]:
     """Fail closed unless ``contract`` binds the exact registered Gate-1 event operator."""
 
     if contract.get("schema") != "ResearchContractV1":
@@ -307,7 +421,7 @@ def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, obje
     if contract.get("blocking_questions") != []:
         raise DataError("synthetic research pilot requires no blocking questions")
 
-    expected_binding = registered_d0_operator(contract)
+    expected_binding, generation = _registered_d0_binding(contract)
     event = _contract_mapping(contract, "event_definition", label="one material event definition")
     primary_claim = _contract_mapping(
         contract,
@@ -344,7 +458,13 @@ def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, obje
         )
     if _canonical(binding) != _canonical(expected_binding):
         raise DataError("registered D0 operator binding does not match the executable operator")
-    return expected_binding
+    return expected_binding, generation
+
+
+def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, object]:
+    """Fail closed unless ``contract`` binds the exact registered Gate-1 event operator."""
+
+    return _validated_d0_binding(contract)[0]
 
 
 def d0_execution_fingerprint(contract: Mapping[str, object]) -> str:
@@ -360,25 +480,31 @@ def d0_execution_fingerprint(contract: Mapping[str, object]) -> str:
     )
 
 
-def _bars(lows: Sequence[float], dataset_id: str, content_sha256: str) -> EqualDurationResearchBars:
+def _bars(
+    generation: _D0Generation,
+    lows: Sequence[float],
+    dataset_id: str,
+    content_sha256: str,
+) -> EqualDurationResearchBars:
     dataset = ResearchDatasetRef(
         dataset_id=dataset_id,
         provider="alpha_synthetic_fixture",
         provider_symbol="SYNTHETIC_SPY",
         symbol="SPY",
         venue="SYNTHETIC",
-        timeframe="60m",
+        timeframe=generation.timeframe,
         timezone="UTC",
         session="synthetic_equal_duration",
         content_sha256=content_sha256,
     )
     start = datetime(2020, 1, 1, tzinfo=UTC)
+    duration = timedelta(minutes=generation.bar_duration_minutes)
     values = tuple(
         ResearchBar(
             dataset_id=dataset_id,
-            start=start + timedelta(hours=index),
-            end=start + timedelta(hours=index + 1),
-            available_at=start + timedelta(hours=index + 1),
+            start=start + duration * index,
+            end=start + duration * (index + 1),
+            available_at=start + duration * (index + 1),
             open=low + 1.0,
             high=low + 6.0,
             low=low,
@@ -420,6 +546,7 @@ def _publish_json(path: Path, payload: object) -> None:
 
 def _d0_acceptance_payload(
     *,
+    generation: _D0Generation,
     run_id: str,
     project_id: str,
     contract_id: str,
@@ -439,8 +566,8 @@ def _d0_acceptance_payload(
         "dataset_hash": dataset_hash,
         "execution_fingerprint": execution_fingerprint,
         "d0_operator_fingerprint": d0_operator_fingerprint,
-        "fixture_id": _D0_FIXTURE_ID,
-        "fixture_version": _D0_FIXTURE_VERSION,
+        "fixture_id": generation.fixture_id,
+        "fixture_version": generation.fixture_version,
         "evidence_zone": "D0",
         "real_market_evidence": False,
         "eligible_for_holdout_or_execution": False,
@@ -460,16 +587,22 @@ class _ExecutedD0Fixture(NamedTuple):
     measurements: dict[str, object]
 
 
-def _execute_registered_d0_fixture() -> _ExecutedD0Fixture:
-    """Execute every deterministic Gate-1 criterion from the registered fixture.
+def _execute_registered_d0_fixture(generation: _D0Generation) -> _ExecutedD0Fixture:
+    """Execute every deterministic Gate-1 criterion from one registered fixture generation.
 
     The ONE builder shared by the pilot (write path) and acceptance verification
     (read path), so the two can never drift apart.
     """
 
-    planted = _bars(_PLANTED_LOWS, "d0-planted", _sha(_d0_fixture_definition()))
-    monotonic = _bars(_MONOTONIC_LOWS, "d0-monotonic", _sha(_MONOTONIC_LOWS))
+    planted = _bars(
+        generation,
+        _PLANTED_LOWS,
+        "d0-planted",
+        _sha(_d0_fixture_definition(generation)),
+    )
+    monotonic = _bars(generation, _MONOTONIC_LOWS, "d0-monotonic", _sha(_MONOTONIC_LOWS))
     single_trough = _bars(
+        generation,
         _SINGLE_TROUGH_LOWS,
         "d0-single-trough",
         _sha(_SINGLE_TROUGH_LOWS),
@@ -479,7 +612,7 @@ def _execute_registered_d0_fixture() -> _ExecutedD0Fixture:
     single_trough_events = detect_double_bottom_events(single_trough, _SPEC)
     topology = ResearchEvidenceTopology.for_observations(
         len(planted.bars),
-        forward_outcome_observations=_D0_HORIZON_TRADING_MINUTES // 60,
+        forward_outcome_observations=generation.forward_outcome_observations,
     )
     if topology.to_dict().get("schema_version") != _D0_TOPOLOGY_SCHEMA_VERSION:
         raise DataError("registered D0 topology version does not match the executable topology")
@@ -495,17 +628,17 @@ def _execute_registered_d0_fixture() -> _ExecutedD0Fixture:
         else:  # pragma: no cover - a topology regression must stop publication immediately.
             raise DataError(f"registered D0 topology failed to reject {phase} boundary crossing")
     required = required_observations_known_sigma(
-        alternative_effect=0.0075,
-        minimum_effect=_D0_MINIMUM_EFFECT_RETURN,
-        standard_deviation=0.015,
+        alternative_effect=generation.power_alternative_effect,
+        minimum_effect=generation.minimum_effect_return,
+        standard_deviation=generation.power_standard_deviation,
         alpha=0.05,
         target_power=0.90,
     )
     power = simulate_prospective_power_known_sigma(
         sample_size=required,
-        alternative_effect=0.0075,
-        minimum_effect=_D0_MINIMUM_EFFECT_RETURN,
-        standard_deviation=0.015,
+        alternative_effect=generation.power_alternative_effect,
+        minimum_effect=generation.minimum_effect_return,
+        standard_deviation=generation.power_standard_deviation,
         alpha=0.05,
         simulations=20_000,
         seed=7,
@@ -520,9 +653,9 @@ def _execute_registered_d0_fixture() -> _ExecutedD0Fixture:
             "rejected_boundaries": rejected_boundaries,
         },
         "power": {
-            "alternative_effect": 0.0075,
-            "minimum_effect": _D0_MINIMUM_EFFECT_RETURN,
-            "standard_deviation": 0.015,
+            "alternative_effect": generation.power_alternative_effect,
+            "minimum_effect": generation.minimum_effect_return,
+            "standard_deviation": generation.power_standard_deviation,
             "alpha": 0.05,
             "target_power": 0.90,
             "required_observations": required,
@@ -544,10 +677,10 @@ def _execute_registered_d0_fixture() -> _ExecutedD0Fixture:
     )
 
 
-def _recomputed_d0_measurements() -> dict[str, object]:
+def _recomputed_d0_measurements(generation: _D0Generation) -> dict[str, object]:
     """Re-execute every deterministic Gate-1 criterion from the registered fixture."""
 
-    return _execute_registered_d0_fixture().measurements
+    return _execute_registered_d0_fixture(generation).measurements
 
 
 def validate_d0_acceptance_artifact(
@@ -581,11 +714,26 @@ def validate_d0_acceptance_artifact(
     acceptance: dict[str, object] = parsed
     if raw != _canonical(acceptance).encode("utf-8"):
         raise DataError("D0 acceptance artifact must use canonical JSON bytes")
-    _require_current_d0_generation(
+    manifest_generation: _D0Generation | None = None
+    manifest_operator = manifest.get("d0_operator")
+    if isinstance(manifest_operator, Mapping):
+        manifest_fixture = manifest_operator.get("fixture")
+        if isinstance(manifest_fixture, Mapping):
+            manifest_generation = _require_current_d0_generation(
+                manifest_fixture.get("fixture_id"),
+                manifest_fixture.get("fixture_version"),
+                source="run manifest operator binding",
+            )
+    artifact_generation = _require_current_d0_generation(
         acceptance.get("fixture_id"),
         acceptance.get("fixture_version"),
         source="acceptance artifact",
     )
+    # The manifest binding names the authoritative generation; a registered-but-different
+    # artifact generation then fails the strict identity comparison below, and malformed
+    # values in both fall back to the first registered generation so every strict
+    # comparison still runs fail-closed.
+    generation = manifest_generation or artifact_generation or _D0_GENERATIONS[0]
     expected_identity: dict[str, object] = {
         "schema": _D0_ACCEPTANCE_SCHEMA,
         "schema_version": 1,
@@ -596,8 +744,8 @@ def validate_d0_acceptance_artifact(
         "dataset_hash": dataset_hash,
         "execution_fingerprint": execution_fingerprint,
         "d0_operator_fingerprint": d0_operator_fingerprint,
-        "fixture_id": _D0_FIXTURE_ID,
-        "fixture_version": _D0_FIXTURE_VERSION,
+        "fixture_id": generation.fixture_id,
+        "fixture_version": generation.fixture_version,
         "evidence_zone": "D0",
         "real_market_evidence": False,
         "eligible_for_holdout_or_execution": False,
@@ -614,7 +762,7 @@ def validate_d0_acceptance_artifact(
     measurements = acceptance.get("measurements")
     if not isinstance(measurements, Mapping):
         raise DataError("D0 acceptance artifact has no typed raw measurements")
-    expected_measurements = _recomputed_d0_measurements()
+    expected_measurements = _recomputed_d0_measurements(generation)
     if _canonical(measurements) != _canonical(expected_measurements):
         raise DataError("D0 acceptance measurements fail exact deterministic recomputation")
     power = expected_measurements["power"]
@@ -658,10 +806,10 @@ def run_synthetic_pilot(
         raise DataError("synthetic research pilot requires a canonical project_id")
     if _CONTRACT_ID.fullmatch(contract_id) is None:
         raise DataError("synthetic research pilot requires a content-addressed contract_id")
-    d0_operator = validate_d0_pilot_contract(contract)
+    d0_operator, generation = _validated_d0_binding(contract)
 
-    dataset_hash = _sha(_d0_fixture_definition())
-    executed = _execute_registered_d0_fixture()
+    dataset_hash = _sha(_d0_fixture_definition(generation))
+    executed = _execute_registered_d0_fixture(generation)
     planted = executed.planted
     events = executed.planted_events
     if len(events) != 1 or executed.monotonic_events or executed.single_trough_events:
@@ -747,6 +895,7 @@ def run_synthetic_pilot(
         run_dir / _D0_ACCEPTANCE_ARTIFACT,
         _canonical(
             _d0_acceptance_payload(
+                generation=generation,
                 run_id=run_id,
                 project_id=project_id,
                 contract_id=contract_id,

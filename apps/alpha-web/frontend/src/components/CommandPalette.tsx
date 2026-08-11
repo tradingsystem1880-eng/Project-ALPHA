@@ -17,6 +17,7 @@ interface Props {
   onClose: () => void
   onOpenScreen: (id: ScreenId) => void
   onOpenRun: (runId: string) => void
+  onNewIdea: () => void
 }
 
 type Page = 'root' | 'symbols' | 'runs'
@@ -27,7 +28,7 @@ const PLACEHOLDER: Record<Page, string> = {
   runs: 'Open run…',
 }
 
-export function CommandPalette({ open, onClose, onOpenScreen, onOpenRun }: Props) {
+export function CommandPalette({ open, onClose, onOpenScreen, onOpenRun, onNewIdea }: Props) {
   const [page, setPage] = useState<Page>('root')
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [runs, setRuns] = useState<RunListItem[] | null>(null)
@@ -72,6 +73,15 @@ export function CommandPalette({ open, onClose, onOpenScreen, onOpenRun }: Props
             {page === 'root' ? (
               <>
                 <Command.Group heading="Actions">
+                  <Command.Item
+                    value="new idea new research capture observation"
+                    onSelect={() => {
+                      onNewIdea()
+                      close()
+                    }}
+                  >
+                    New Idea / New Research <span className="hint">capture · no rules asked</span>
+                  </Command.Item>
                   <Command.Item value="set symbol" onSelect={() => setPage('symbols')}>
                     Set symbol… <span className="hint">linked context</span>
                   </Command.Item>

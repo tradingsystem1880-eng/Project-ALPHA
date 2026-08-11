@@ -19,6 +19,7 @@ from typing import Any, NoReturn
 import polars as pl
 
 CONTRACT_SCHEMA_VERSION = 1
+SUPPORTED_CONTRACT_SCHEMA_VERSIONS = frozenset({1, 2})
 MIN_SYMBOLS = 20
 MIN_ALIGNED_SESSIONS = 756
 MIN_LABEL_BOUNDARY_GAP_SESSIONS = 1
@@ -305,7 +306,7 @@ def validate_request(exchange_dir: Path) -> WorkerRequest:
     request = _exact(request, _REQUEST_FIELDS, "request")
     if raw != canonical_json_bytes(request):
         _fail("request.json is not canonical JSON")
-    if request["schema_version"] != CONTRACT_SCHEMA_VERSION:
+    if request["schema_version"] not in SUPPORTED_CONTRACT_SCHEMA_VERSIONS:
         _fail("unsupported request schema_version")
     for name in ("snapshot_hash", "worker_lock_hash", "config_hash"):
         if not isinstance(request[name], str) or _HASH.fullmatch(request[name]) is None:
@@ -361,7 +362,8 @@ def validate_request(exchange_dir: Path) -> WorkerRequest:
     }:
         _fail("unsupported label recipe")
     model = _exact(request["model"], {"name", "parameters"}, "model")
-    if model["name"] != "lightgbm" or not isinstance(model["parameters"], dict):
+    expected_model = "lightgbm" if request["schema_version"] == 1 else "rank_ensemble_v1"
+    if model["name"] != expected_model or not isinstance(model["parameters"], dict):
         _fail("unsupported model recipe")
     unknown_model_parameters = sorted(set(model["parameters"]) - set(_MODEL_PARAMETER_RULES))
     if unknown_model_parameters:

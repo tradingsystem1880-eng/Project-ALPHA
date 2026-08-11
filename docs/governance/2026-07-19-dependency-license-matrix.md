@@ -1,25 +1,24 @@
 # Dependency and License Matrix — Post-v2, Workstation v3, and Research Scientist Tracks
 
-- **Reviewed:** 2026-08-06
+- **Reviewed:** 2026-08-11
 - **Scope:** direct Python runtime dependencies, isolated workers, vendored code, external services,
   and upstream projects considered by the post-v2, Workstation v3, and Research Scientist decisions
 - **Status:** engineering inventory; not legal advice
 
-## Root Project License and Distribution Gate
+## Permanent Private Local-Use Scope
 
 The Project ALPHA repository has **no root `LICENSE`, `LICENSE.txt`, `COPYING`, or declared
 `project.license` metadata**. Licenses attached to third-party dependencies or the vendored Kronos
 subtree do not license ALPHA's original code.
 
-Therefore:
+The owner has fixed ALPHA's scope as private, single-owner software used only on the owner's local
+device. It will not be sold, published, shared, hosted, or used by others. A root project license,
+SBOM release bundle, and distribution legal review are therefore not project requirements.
 
-- no project license is inferred or selected by this change;
-- personal local use remains the stated operating scope;
-- publishing wheels, sharing a source/binary bundle, offering a hosted service, or otherwise
-  distributing ALPHA is **blocked on an explicit owner license decision and release-time legal
-  review**; and
-- a release review must preserve dependency copyright/license notices and examine the exact locked
-  transitive graph and frontend bundle, not only this direct-dependency summary.
+This does not erase third-party obligations. Keep dependency notices, provider/service terms,
+credential rules, and data-retention restrictions intact for local use. If the owner ever changes
+the private/local-only scope, stop and reopen the exact distribution and notice review before any
+source, wheel, artifact, data, or hosted surface is shared.
 
 ## Current Direct Python Runtime Dependencies
 
@@ -60,8 +59,8 @@ Enabling Nautilus's pinned `ib` and `docker` extras adds `docker==7.2.0` (Apache
 `defusedxml==0.7.1` (PSF), `protobuf==5.29.5` (BSD-3-Clause), and
 `nautilus-ibapi==10.45.1`. The installed `nautilus-ibapi` metadata identifies the **IB API
 Non-Commercial License or IB API Commercial License**. This is not treated as an open-source grant;
-distribution/hosted use requires exact terms, entitlement, and legal review in addition to ALPHA's
-existing root-license blocker.
+the private local operator must retain the required entitlement. Distribution and hosted use are
+outside ALPHA's scope.
 
 Tiingo is an external commercial data service, not code licensed by this repository. The approved
 scope is private single-operator research/paper use under the owner's Tiingo plan; raw/canonical data
@@ -161,9 +160,12 @@ modifications, linking/deployment model, notices, and distribution behavior.
 
 ## Workstation v3 dependency decision
 
-Workstation v3 adds no root runtime or frontend visualization dependency for the shell, control
-plane, causal charts, native tear sheet, or evidence ledger. It retains Dockview, Lightweight
-Charts, uPlot, TanStack, Polars, Nautilus, QuantStats-Lumi, and the vendored Kronos facade.
+The integrated Workstation uses the purpose-built six-screen shell and server-rendered analytical
+figures. The hardening program removed unused Dockview and uPlot runtime dependencies, reducing the
+frontend license and attack surface while retaining Lightweight Charts and TanStack for the bounded
+interactive views. Security-only transitive updates moved MIT-licensed `js-yaml` to 4.3.1 and
+`nanoid` to 3.3.18; `npm audit --audit-level=high` reports zero vulnerabilities. Root Polars,
+Nautilus, QuantStats-Lumi, and the vendored Kronos facade remain unchanged.
 
 Qlib is the one approved external capability addition. Its separately generated
 `workers/qlib/uv.lock` is the exact resolution input for that optional process and must be reviewed
@@ -210,5 +212,16 @@ occurs:
 - a deferred upstream candidate becomes executable in the ALPHA runtime;
 - an academic metadata/full-text client, retained source corpus, or external agent runtime is added;
 - the Workstation binds beyond loopback or becomes multi-user/hosted;
-- ALPHA is prepared for publication or distribution; or
-- the owner chooses a root project license.
+- the owner proposes publication, sale, distribution, hosting, or access by another person; or
+- the owner otherwise changes the permanent private/local-only scope.
+
+## Literature acquisition worker (`workers/literature`, ADR-0024)
+
+The isolated literature worker introduces **zero third-party runtime dependencies**: it is
+Python-stdlib-only (urllib, json, hashlib, xml.etree with DOCTYPE/ENTITY markup refused).
+Its dev group pins the same ruff/mypy/pytest tools already reviewed for the Qlib worker.
+`workers/literature/uv.lock` is the exact resolution input for that optional process. Network
+access is limited to the ADR-0024 approved metadata services (OpenAlex, Crossref, Unpaywall,
+arXiv) and open-access/owner-provided documents; every stored object carries an
+`UNTRUSTED_SOURCE` receipt and grants no license or redistribution right beyond the source's
+own terms.

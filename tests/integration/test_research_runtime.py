@@ -56,6 +56,38 @@ def _contract() -> dict[str, object]:
     return contract
 
 
+def _daily_contract() -> dict[str, object]:
+    contract = draft_exploration_contract(
+        "S&P500 bounces after double bottoms on the daily chart",
+        resolutions={
+            "chart_construction": "tiingo_daily_fallback",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "next_regular_session_return_50bp",
+        },
+    )
+    event_definition = contract["event_definition"]
+    primary_claim = contract["primary_claim"]
+    protocol: dict[str, object] = {
+        "event_definition": dict(event_definition),
+        "chart_fingerprint": ResearchChartFingerprintV1(
+            instrument="SPY",
+            provider="tiingo",
+            venue="US_EQUITIES",
+            timezone="America/New_York",
+            session="regular_session_daily",
+            bar_construction="fixed_session_daily_bars",
+            bar_duration_seconds=86_400,
+            anchor="US_EQUITIES_SESSION_CLOSE",
+            adjustment_basis="point_in_time",
+            timestamp_semantics="bar_close_available",
+        ).to_dict(),
+        "primary_claims": [primary_claim],
+    }
+    contract["protocol"] = protocol
+    protocol["d0_operator"] = registered_d0_operator(contract)
+    return contract
+
+
 def test_registered_d0_operator_is_deterministic_exact_and_defensive() -> None:
     contract = _contract()
     first = registered_d0_operator(contract)
@@ -119,17 +151,22 @@ def test_d0_contract_validator_returns_the_exact_registered_binding() -> None:
         (
             "es_fixed_4h",
             "four_trading_hour_return_25bp",
-            "only supports the spy_rth_60m_four_hour_window chart construction",
+            "registers no D0 operator generation for the 'es_fixed_4h' chart",
         ),
         (
             "synthetic_only",
             "four_trading_hour_return_25bp",
-            "only supports the spy_rth_60m_four_hour_window chart construction",
+            "registers no D0 operator generation for the 'synthetic_only' chart",
         ),
         (
             "spy_rth_60m_four_hour_window",
             "next_regular_session_return_50bp",
-            "only supports the four_trading_hour_return_25bp primary outcome",
+            "registered with the four_trading_hour_return_25bp primary outcome",
+        ),
+        (
+            "tiingo_daily_fallback",
+            "four_trading_hour_return_25bp",
+            "registered with the next_regular_session_return_50bp primary outcome",
         ),
     ],
 )
@@ -320,7 +357,7 @@ def test_synthetic_pilot_rejects_invalid_authority_inputs(tmp_path: Path) -> Non
             lambda contract: contract["resolved_material_choices"].__setitem__(
                 "chart_construction", "synthetic_only"
             ),
-            "only supports the spy_rth_60m_four_hour_window chart construction",
+            "registers no D0 operator generation for the 'synthetic_only' chart",
         ),
         (
             lambda contract: contract["chart_fingerprint"].__setitem__("bar_duration_minutes", 240),
@@ -482,3 +519,110 @@ def test_registered_d0_fingerprints_are_pinned() -> None:
     assert d0_execution_fingerprint(_contract()) == (
         "aec9becaf16abf768a22f2a8a9a1a680524227e07026915b73368db213c1f487"
     )
+    daily_operator = registered_d0_operator(_daily_contract())
+    assert daily_operator["fingerprint"] == (
+        "deac44ea9d639e1cc82a63e65c158c4b557449d6c7e88b4ce2e1bbe44212c2e6"
+    )
+    assert d0_execution_fingerprint(_daily_contract()) == (
+        "03c38397a68a0924fcbc5cfb1e433c95d30184dbaf93142a1f7dca8d44f23279"
+    )
+
+
+def test_registered_daily_generation_operator_binds_the_gate4_material_combo() -> None:
+    """R6a (ADR-0026): the tiingo_daily_fallback combo has its own registered generation."""
+    contract = _daily_contract()
+    operator = registered_d0_operator(contract)
+    assert validate_d0_pilot_contract(contract) == operator
+    fixture = operator["fixture"]
+    assert isinstance(fixture, dict)
+    assert fixture["fixture_id"] == "spy_session_daily_double_bottom_v1"
+    assert fixture["fixture_version"] == 1
+    assert fixture["bar_duration_minutes"] == 1_440
+    assert fixture["real_market_evidence"] is False
+    chart = operator["chart"]
+    assert isinstance(chart, dict)
+    assert chart["construction_choice"] == "tiingo_daily_fallback"
+    primary_outcome = operator["primary_outcome"]
+    assert isinstance(primary_outcome, dict)
+    assert primary_outcome["choice"] == "next_regular_session_return_50bp"
+    assert primary_outcome["horizon"] == "next_regular_session"
+    assert primary_outcome["minimum_effect_return"] == 0.005
+    sixty = registered_d0_operator(_contract())
+    daily_inner = operator["operator"]
+    sixty_inner = sixty["operator"]
+    assert isinstance(daily_inner, dict) and isinstance(sixty_inner, dict)
+    assert daily_inner["spec"] == sixty_inner["spec"]  # one shared detector across generations
+    assert operator["fingerprint"] != sixty["fingerprint"]
+    daily_fixture = fixture
+    sixty_fixture = sixty["fixture"]
+    assert isinstance(sixty_fixture, dict)
+    assert daily_fixture["definition_fingerprint"] != sixty_fixture["definition_fingerprint"]
+
+
+def test_daily_synthetic_pilot_calibrates_and_reverifies_under_its_generation(
+    tmp_path: Path,
+) -> None:
+    manifest = run_synthetic_pilot(
+        tmp_path,
+        project_id="11111111-1111-4111-8111-111111111111",
+        contract_id="rc_" + "9" * 64,
+        contract=_daily_contract(),
+    )
+    run_dir = tmp_path / "runs" / str(manifest["run_id"])
+    acceptance = json.loads((run_dir / "d0_acceptance.json").read_text(encoding="utf-8"))
+    assert acceptance["fixture_id"] == "spy_session_daily_double_bottom_v1"
+    assert acceptance["fixture_version"] == 1
+    measurements = acceptance["measurements"]
+    assert len(measurements["planted_events"]) == 1
+    assert measurements["monotonic_event_count"] == 0
+    assert measurements["single_trough_event_count"] == 0
+    assert measurements["topology"]["forward_outcome_observations"] == 1
+    assert measurements["topology"]["rejected_boundaries"] == ["D1_D2", "D2_D3"]
+    power = measurements["power"]
+    assert power["alternative_effect"] == 0.010
+    assert power["minimum_effect"] == 0.005
+    assert power["standard_deviation"] == 0.012
+    assert power["required_observations"] == 50
+    assert power["estimated_power"] >= 0.89
+    assert power["seed"] == 7  # protocol-frozen, shared by every generation
+    assert manifest["real_market_evidence"] is False
+    assert manifest["watermark"] == "EXPLORATORY"
+    research_runtime.validate_d0_acceptance_artifact(
+        run_dir,
+        manifest,
+        project_id=str(manifest["project_id"]),
+        contract_id=str(manifest["research_contract_id"]),
+        contract_hash=str(manifest["contract_hash"]),
+        dataset_hash=str(manifest["dataset_hash"]),
+        execution_fingerprint=str(manifest["execution_fingerprint"]),
+        d0_operator_fingerprint=str(manifest["d0_operator_fingerprint"]),
+    )
+
+
+def test_acceptance_from_the_other_registered_generation_is_an_authority_mismatch(
+    tmp_path: Path,
+) -> None:
+    """A registered-but-different generation contradicting its own manifest fails closed."""
+    manifest = run_synthetic_pilot(
+        tmp_path,
+        project_id="11111111-1111-4111-8111-111111111111",
+        contract_id="rc_" + "8" * 64,
+        contract=_daily_contract(),
+    )
+    run_dir = tmp_path / "runs" / str(manifest["run_id"])
+    path = run_dir / "d0_acceptance.json"
+    acceptance = json.loads(path.read_text(encoding="utf-8"))
+    acceptance["fixture_id"] = "spy_60m_double_bottom_v1"
+    path.write_text(_canonical(acceptance), encoding="utf-8")
+
+    with pytest.raises(DataError, match="authority mismatch"):
+        research_runtime.validate_d0_acceptance_artifact(
+            run_dir,
+            manifest,
+            project_id=str(manifest["project_id"]),
+            contract_id=str(manifest["research_contract_id"]),
+            contract_hash=str(manifest["contract_hash"]),
+            dataset_hash=str(manifest["dataset_hash"]),
+            execution_fingerprint=str(manifest["execution_fingerprint"]),
+            d0_operator_fingerprint=str(manifest["d0_operator_fingerprint"]),
+        )

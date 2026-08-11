@@ -100,3 +100,54 @@ def simulate_prospective_power_known_sigma(
         estimated_power=estimated,
         monte_carlo_standard_error=monte_carlo_se,
     )
+
+
+def projected_confirmation_power(
+    *,
+    matched_estimate: float,
+    ci_lower: float,
+    ci_upper: float,
+    confidence: float,
+    sample_size: int,
+    projected_sample_size: int,
+    minimum_effect: float,
+    alpha: float = 0.05,
+    simulations: int = 20_000,
+    seed: int = 7,
+) -> ProspectivePowerResult:
+    """Project one-shot confirmation power from an admitted discovery-share estimate.
+
+    The discovery interval is inverted into the known-sigma model: the bootstrap CI
+    half-width gives the discovery standard error, scaled by ``sqrt(sample_size)`` to a
+    per-observation sigma, and the registered one-sided mean test is simulated at the
+    confirmation share's projected sample size. A degenerate (zero-width) interval cannot
+    estimate dispersion and fails loud rather than fabricating certainty. The caller
+    supplies positive magnitudes; a negative directional claim is sign-flipped first.
+    """
+    for name, value in (
+        ("matched_estimate", matched_estimate),
+        ("ci_lower", ci_lower),
+        ("ci_upper", ci_upper),
+    ):
+        if not math.isfinite(value):
+            raise DataError(f"{name} must be finite")
+    if ci_upper <= ci_lower:
+        raise DataError(
+            "confirmation power projection requires an ordered, non-degenerate discovery interval"
+        )
+    if not math.isfinite(confidence) or not 0.5 <= confidence < 1.0:
+        raise DataError("confidence must be finite in [0.5, 1)")
+    if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size < 2:
+        raise DataError("sample_size must be an integer >= 2")
+    z_confidence = float(norm.ppf(0.5 + confidence / 2.0))
+    standard_error = (ci_upper - ci_lower) / (2.0 * z_confidence)
+    standard_deviation = standard_error * math.sqrt(sample_size)
+    return simulate_prospective_power_known_sigma(
+        projected_sample_size,
+        matched_estimate,
+        minimum_effect,
+        standard_deviation,
+        alpha=alpha,
+        simulations=simulations,
+        seed=seed,
+    )

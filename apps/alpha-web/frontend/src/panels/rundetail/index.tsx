@@ -17,6 +17,7 @@ import type { ValidateManifest } from '../../explain/types'
 import { Placeholder } from '../../components/Placeholder'
 import { usePanelLinked } from '../../context/usePanelLinked'
 import { openStrategyLab } from '../actions'
+import { researchGateWatermark } from '../researchGateModel'
 import { FigureReport } from '../FigureReport'
 import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
@@ -94,6 +95,8 @@ export function RunDetail(props: PanelHandleProps) {
   if (!detail) return <Placeholder big="Loading run…" />
 
   const manifest = detail.manifest
+  // ADR-0026: an override-launched run keeps its exploratory marker on every report surface.
+  const gateWatermark = researchGateWatermark(detail)
   const command = asStr(manifest.command)
   const isValidate = detail.kind === 'runs' && manifest.verdict !== undefined
   const kindLabel =
@@ -154,6 +157,11 @@ export function RunDetail(props: PanelHandleProps) {
           </button>
         ) : null}
       </div>
+      {gateWatermark ? (
+        <div className="leak rg-watermark-banner">
+          ▲ {gateWatermark} — launched under an owner research-gate override
+        </div>
+      ) : null}
       {leak ? <p className="leak-warning">{leak}</p> : null}
       <div className="panel-body rd-body">{body}</div>
     </div>

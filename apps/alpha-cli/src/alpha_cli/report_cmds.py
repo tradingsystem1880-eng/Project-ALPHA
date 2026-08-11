@@ -49,6 +49,12 @@ def report(run_id: str) -> None:
         f"[{label}]  schema_version={manifest.get('schema_version')}"
     )
 
+    research_gate = manifest.get("research_gate")
+    if isinstance(research_gate, dict) and research_gate.get("watermark"):
+        # spec §15 / ADR-0026: a run launched under an owner research-gate override is
+        # permanently watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED.
+        typer.secho(str(research_gate["watermark"]), fg=typer.colors.YELLOW, bold=True)
+
     if manifest.get("command") in ("forecast_run", "forecast_eval"):  # Kronos forecasting
         model = manifest.get("model") or {}
         params = manifest.get("params") or {}

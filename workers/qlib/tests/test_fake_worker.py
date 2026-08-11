@@ -112,6 +112,27 @@ def test_fake_worker_is_byte_reproducible_and_sorted(tmp_path: Path) -> None:
     assert frame.get_column("score").is_finite().all()
 
 
+def test_fake_rank_ensemble_v2_preserves_canonical_scores_and_separate_diagnostics(
+    tmp_path: Path,
+) -> None:
+    exchange = _exchange(tmp_path / "ensemble")
+    request_path = exchange / "request.json"
+    request = json.loads(request_path.read_text())
+    request["schema_version"] = 2
+    request["model"] = {"name": "rank_ensemble_v1", "parameters": {}}
+    request["config_hash"] = compute_config_hash(request)
+    request_path.write_bytes(canonical_json_bytes(request))
+    worker_lock = Path(__file__).parents[1] / "uv.lock"
+
+    result = run_fake(exchange, worker_lock_path=worker_lock)
+    assert result["schema_version"] == 2
+    assert result["ensemble_diagnostics"]["schema"] == "QlibRankEnsembleDiagnosticsV1"
+    predictions = pl.read_parquet(exchange / "predictions.parquet")
+    diagnostics = pl.read_parquet(exchange / "ensemble_diagnostics.parquet")
+    assert diagnostics.get_column("ensemble_score").equals(predictions.get_column("score"))
+    assert diagnostics.get_column("disagreement").is_between(0.0, 1.0).all()
+
+
 def test_fake_worker_refuses_overwrite_and_corrupt_request(tmp_path: Path) -> None:
     exchange = _exchange(tmp_path / "exchange")
     worker_lock = Path(__file__).parents[1] / "uv.lock"

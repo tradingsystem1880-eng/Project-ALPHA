@@ -7,9 +7,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { CommandDef, StrategyDef } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
+import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { onLabPrefill, openRunDetail, takeLabPrefill, type LabPrefill } from './actions'
 import { livePaperStrategies } from './controlPlane'
-import type { PanelHandleProps } from '../context/panelHandle'
+import { useLinkedProjectGate } from './useLinkedProjectGate'
 
 const SKIP_OPTS = new Set(['param', 'grid', 'json', 'strategy'])
 
@@ -25,6 +27,10 @@ export function StrategyLab(_props: PanelHandleProps) {
   const [extra, setExtra] = useState('')
   const [jobId, setJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // R6h (spec §15): while the linked project's research gate is open, launching is disabled
+  // with the reason and a link to the case; non-research contexts (no linked project,
+  // passed/overridden/grandfathered gates) are unaffected.
+  const gate = useLinkedProjectGate()
 
   useEffect(() => {
     api.commands().then((c) => setCommands(c.filter((x) => x.run_type || x.id === 'paper run')))
@@ -102,6 +108,7 @@ export function StrategyLab(_props: PanelHandleProps) {
   }, [isPaper, strategy, symbols, visibleStrategies])
 
   function launch(): void {
+    if (gate.lock) return
     if (!cmd) {
       // non-run-producing prefill (e.g. `data pull`, `forecast eval`): free-form launch
       const parts = [symbols.trim(), extra.trim()].filter(Boolean)
@@ -154,6 +161,13 @@ export function StrategyLab(_props: PanelHandleProps) {
           <div className="sandbox-banner">
             SANDBOX · PUBLIC BINANCE DATA · REAL EXECUTION IS NOT AVAILABLE
           </div>
+        ) : null}
+        {gate.lock && gate.projectId ? (
+          <ResearchGateLockNotice
+            lock={gate.lock}
+            projectId={gate.projectId}
+            projectName={gate.projectName}
+          />
         ) : null}
         <div className="lab-row">
           <label className="field-row">
@@ -266,7 +280,12 @@ export function StrategyLab(_props: PanelHandleProps) {
         </label>
 
         <div className="lab-actions">
-          <button className="btn primary" onClick={launch}>
+          <button
+            className="btn primary"
+            disabled={Boolean(gate.lock)}
+            title={gate.lock?.reason}
+            onClick={launch}
+          >
             ▶ Launch {cmdId}
           </button>
           <span className="mono muted">alpha {cmdId} {symbols} …</span>

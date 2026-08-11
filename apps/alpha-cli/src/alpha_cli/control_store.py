@@ -29,6 +29,7 @@ from alpha_cli.artifact_contract import (
     verify_manifest_artifacts,
 )
 from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KINDS
+from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
 from alpha_research import ResearchD2BoundaryV1, confirmation_classification_from_evidence
@@ -261,8 +262,34 @@ _RESEARCH_EXECUTION_TRANSITIONS: Final[dict[str, frozenset[str]]] = {
     "blocked": frozenset({"queued", "failed", "idle"}),
     "failed": frozenset({"queued", "idle"}),
 }
+_RESEARCH_PACKET_KINDS: Final = frozenset(
+    {"asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"}
+)
+_RESEARCH_NOTE_KINDS: Final = frozenset(
+    {"critique", "confounder_review", "test_design", "completeness_review", "synthesis"}
+)
+_RESEARCH_NOTE_AUTHOR_KINDS: Final = frozenset({"owner", "agent"})
+_RESEARCH_PACKET_COLLECTION_LIMIT: Final = 50
+_RESEARCH_DATASET_KINDS: Final = frozenset({"store_slice", "snapshot", "quantpad_receipt"})
+# Fail-closed origin bindings (ADR-0023): a registration without its exact receipt or
+# provenance hash is refused — research data is either bound to bytes or not registered.
+_RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
+    "store_slice": ("provenance_sha256",),
+    "snapshot": ("snapshot_id", "manifest_sha256"),
+    "quantpad_receipt": ("receipt_id", "response_sha256"),
+}
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl)_[0-9a-f]{64}")
+_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc)_[0-9a-f]{64}")
+_SOURCE_CLAIM_DIRECTIONS: Final = frozenset({"supports", "contradicts", "contextualizes", "method"})
+_SOURCE_CLAIM_STRENGTHS: Final = frozenset({"weak", "moderate", "strong"})
+# Columns added to research_source_records after schema v2 shipped (ADR-0024).  The heal
+# probe reads PRAGMA table_info (read-only) and only a store actually missing them takes
+# the writer lock for the idempotent ALTERs.
+_SOURCE_RECORD_ADDITIVE_COLUMNS: Final = (
+    ("doi", "TEXT"),
+    ("year", "INTEGER"),
+    ("authors_json", "TEXT"),
+)
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
@@ -276,11 +303,10 @@ _D0_LAUNCH_BUDGET: Final[dict[str, int]] = {
     "variants": 3,
 }
 _D0_MAX_LAUNCHES: Final = 3
+_D1_RESEARCH_KIND: Final = "d1-deep-research"
+_D1_MAX_LAUNCHES: Final = 3
+_D2_RESEARCH_KIND: Final = "sealed-confirmation"
 _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fdd91e")
-# Gate 1 deliberately ships only D0. Tests may exercise the future state machine, but no public
-# production path may admit empirical D1/D2 evidence until the qualified dataset authority and
-# isolated workers required by Gates 2-3 exist.
-_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED: Final = False
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -525,8 +551,37 @@ CREATE TABLE IF NOT EXISTS research_source_records (
         CHECK (access_mode IN ('metadata_only', 'open_access', 'owner_provided')),
     content_hash TEXT,
     metadata_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    doi TEXT,
+    year INTEGER,
+    authors_json TEXT
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_source_claims (
+    claim_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    source_id TEXT NOT NULL REFERENCES research_source_records(source_id),
+    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    claim_text TEXT NOT NULL,
+    direction TEXT NOT NULL CHECK (direction IN (
+        'supports', 'contradicts', 'contextualizes', 'method'
+    )),
+    strength TEXT NOT NULL CHECK (strength IN ('weak', 'moderate', 'strong')),
+    method_summary TEXT NOT NULL,
+    sample_summary TEXT NOT NULL,
+    markets_json TEXT NOT NULL,
+    limitations TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('draft', 'screened')),
+    author TEXT NOT NULL,
+    author_kind TEXT NOT NULL CHECK (author_kind IN ('owner', 'agent')),
+    screened_by TEXT,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (claim_id, revision)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_source_claims_project
+    ON research_source_claims(project_id, created_at, claim_id);
 
 CREATE TABLE IF NOT EXISTS research_source_packs (
     pack_id TEXT PRIMARY KEY,
@@ -667,6 +722,15 @@ CREATE TABLE IF NOT EXISTS research_decision_events (
     UNIQUE (project_id, contract_id)
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS research_gate_override_events (
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL,
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, sequence)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS research_contract_strategy_links (
     project_id TEXT NOT NULL REFERENCES projects(project_id),
     version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
@@ -684,6 +748,70 @@ CREATE TABLE IF NOT EXISTS research_contract_experiment_links (
     PRIMARY KEY (project_id, experiment_id),
     UNIQUE (project_id, contract_id, experiment_id)
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_context_packets (
+    packet_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    packet_kind TEXT NOT NULL CHECK (packet_kind IN (
+        'asset', 'research_case', 'experiment', 'chart', 'validation', 'strategy_promotion'
+    )),
+    protocol_id TEXT,
+    protocol_content_hash TEXT,
+    payload_json TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_case_notes (
+    note_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL,
+    note_kind TEXT NOT NULL CHECK (note_kind IN (
+        'critique', 'confounder_review', 'test_design', 'completeness_review', 'synthesis'
+    )),
+    body TEXT NOT NULL,
+    author TEXT NOT NULL,
+    author_kind TEXT NOT NULL CHECK (author_kind IN ('owner', 'agent')),
+    context_packet_id TEXT REFERENCES research_context_packets(packet_id),
+    created_at TEXT NOT NULL,
+    UNIQUE (project_id, sequence)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_context_packets_project
+    ON research_context_packets(project_id, created_at, packet_id);
+CREATE INDEX IF NOT EXISTS idx_research_case_notes_project
+    ON research_case_notes(project_id, sequence);
+
+CREATE TABLE IF NOT EXISTS research_dataset_refs (
+    ref_id TEXT PRIMARY KEY,
+    dataset_kind TEXT NOT NULL CHECK (dataset_kind IN (
+        'store_slice', 'snapshot', 'quantpad_receipt'
+    )),
+    instrument TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    start_ts TEXT NOT NULL,
+    end_ts TEXT NOT NULL,
+    bar_duration_minutes INTEGER,
+    origin_json TEXT NOT NULL,
+    research_only INTEGER NOT NULL CHECK (research_only = 1),
+    registered_by TEXT NOT NULL,
+    registered_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_dataset_audits (
+    ref_id TEXT NOT NULL REFERENCES research_dataset_refs(ref_id),
+    sequence INTEGER NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    run_id TEXT NOT NULL,
+    summary_json TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (ref_id, sequence)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_dataset_refs_instrument
+    ON research_dataset_refs(instrument, registered_at, ref_id);
+CREATE INDEX IF NOT EXISTS idx_research_dataset_audits_project
+    ON research_dataset_audits(project_id, recorded_at);
 
 CREATE INDEX IF NOT EXISTS idx_research_source_records_project
     ON research_source_records(project_id, created_at, source_id);
@@ -995,6 +1123,16 @@ def _apply_schema_v2(
         raise
 
 
+def _missing_source_record_columns(connection: sqlite3.Connection) -> tuple[str, ...]:
+    present = {
+        str(row[1]) for row in connection.execute("PRAGMA table_info(research_source_records)")
+    }
+    if not present:
+        # The table itself is missing; the object-level heal recreates it with all columns.
+        return ()
+    return tuple(name for name, _ in _SOURCE_RECORD_ADDITIVE_COLUMNS if name not in present)
+
+
 def _missing_schema_objects(connection: sqlite3.Connection) -> bool:
     present = {
         str(row[0])
@@ -1013,13 +1151,18 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
     governance backfill, which runs exactly once at migration or fresh creation.
     """
 
-    if not _missing_schema_objects(connection):
+    if not _missing_schema_objects(connection) and not _missing_source_record_columns(connection):
         return
     connection.execute("BEGIN IMMEDIATE")
     try:
         if _missing_schema_objects(connection):
             _execute_static_sql_script(connection, _SCHEMA)
             _execute_static_sql_script(connection, _SCHEMA_V2)
+        for name, column_type in _SOURCE_RECORD_ADDITIVE_COLUMNS:
+            if name in _missing_source_record_columns(connection):
+                connection.execute(
+                    f"ALTER TABLE research_source_records ADD COLUMN {name} {column_type}"
+                )
         connection.commit()
     except sqlite3.Error:
         if connection.in_transaction:
@@ -1285,6 +1428,14 @@ class ControlStore:
     def _research_source_view(row: sqlite3.Row) -> dict[str, object]:
         result = dict(row)
         result["metadata"] = _decode_json(result.pop("metadata_json"), "research source metadata")
+        authors_raw = result.pop("authors_json", None)
+        if authors_raw is None:
+            result["authors"] = []
+        else:
+            authors = _decode_json(authors_raw, "research source authors")
+            if not isinstance(authors, list) or any(not isinstance(item, str) for item in authors):
+                raise DataError("corrupt research source authors")
+            result["authors"] = authors
         return result
 
     @staticmethod
@@ -1425,7 +1576,18 @@ class ControlStore:
         ).fetchone()
         if pack is None:
             raise DataError("research contract source pack is not linked to its project")
-        _budget_values(payload.get("budget"), require_minimum=True)
+        budget = _budget_values(payload.get("budget"), require_minimum=True)
+        analysis_plan = payload.get("analysis_plan")
+        if analysis_plan is not None:
+            from alpha_cli.research_analysis_plan import validate_analysis_plan
+
+            if not isinstance(analysis_plan, Mapping):
+                raise DataError("research contract analysis_plan must be a JSON object")
+            variants = budget["variants"]
+            validate_analysis_plan(
+                analysis_plan,
+                max_grid_cells=int(variants) if int(variants) == variants else 0,
+            )
         hashes = payload.get("hashes")
         if not isinstance(hashes, dict):
             raise DataError("research contract approval requires a hashes object")
@@ -1891,6 +2053,57 @@ class ControlStore:
             ).hexdigest()[:16]
             if run_id != expected_run_id:
                 raise DataError("research D0 run_id does not match its content-derived identity")
+        if phase == "deep_research":
+            manifest_dataset_hash = manifest.get("dataset_hash")
+            if (
+                not isinstance(manifest_dataset_hash, str)
+                or _SHA256_RE.fullmatch(manifest_dataset_hash) is None
+            ):
+                raise DataError("research D1 run has no content-addressed dataset hash")
+            # An empirical contract froze its dataset bytes at approval (hashes.data); the
+            # run must claim exactly those bytes. Synthetic lanes carry data=None and are
+            # bound through the content-derived run identity below instead.
+            frozen_data = hashes.get("data")
+            if frozen_data is not None:
+                expected["dataset_hash"] = frozen_data
+            run_identity = {
+                "command": expected_command,
+                "project_id": project_id,
+                "research_contract_id": contract_id,
+                "contract_hash": contract_hash,
+                "dataset_hash": manifest_dataset_hash,
+                "execution_fingerprint": config_fingerprint,
+            }
+            expected_run_id = hashlib.sha256(
+                _canonical_json(run_identity, "research D1 run identity").encode("utf-8")
+            ).hexdigest()[:16]
+            if run_id != expected_run_id:
+                raise DataError("research D1 run_id does not match its content-derived identity")
+        if phase == "sealed_confirmation":
+            manifest_dataset_hash = manifest.get("dataset_hash")
+            if (
+                not isinstance(manifest_dataset_hash, str)
+                or _SHA256_RE.fullmatch(manifest_dataset_hash) is None
+            ):
+                raise DataError("research D2 run has no content-addressed dataset hash")
+            # Confirmation approval requires a frozen dataset hash (hashes.data); the sealed
+            # one-shot run must claim exactly those approval-frozen bytes.
+            expected["dataset_hash"] = hashes.get("data")
+            expected["watermark"] = "REGISTERED CONFIRMATORY"
+            expected["real_market_evidence"] = True
+            run_identity = {
+                "command": expected_command,
+                "project_id": project_id,
+                "research_contract_id": contract_id,
+                "contract_hash": contract_hash,
+                "dataset_hash": manifest_dataset_hash,
+                "execution_fingerprint": config_fingerprint,
+            }
+            expected_run_id = hashlib.sha256(
+                _canonical_json(run_identity, "research D2 run identity").encode("utf-8")
+            ).hexdigest()[:16]
+            if run_id != expected_run_id:
+                raise DataError("research D2 run_id does not match its content-derived identity")
         mismatches = [field for field, value in expected.items() if manifest.get(field) != value]
         if mismatches:
             raise DataError("research run authority mismatch: " + ", ".join(sorted(mismatches)))
@@ -1980,6 +2193,48 @@ class ControlStore:
         )
         return manifest
 
+    def _require_d1_verified_evidence(
+        self,
+        *,
+        run_id: str,
+        project_id: str,
+        contract_id: str,
+        contract_payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Reverify D1 typed evidence by exact mechanical recomputation (D0 pattern)."""
+
+        from alpha_cli.research_d1 import validate_d1_evidence_artifacts
+
+        run_dir, manifest = self._verified_run(run_id)
+        return validate_d1_evidence_artifacts(
+            run_dir,
+            manifest,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract_payload,
+        )
+
+    def _require_d2_verified_evidence(
+        self,
+        *,
+        run_id: str,
+        project_id: str,
+        contract_id: str,
+        contract_payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Reverify D2 typed evidence by exact mechanical recomputation (D0/D1 pattern)."""
+
+        from alpha_cli.research_d2 import validate_d2_evidence_artifacts
+
+        run_dir, manifest = self._verified_run(run_id)
+        return validate_d2_evidence_artifacts(
+            run_dir,
+            manifest,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract_payload,
+        )
+
     @staticmethod
     def _require_d0_acceptance_reference(
         details: Mapping[str, object], manifest: Mapping[str, object]
@@ -2046,25 +2301,45 @@ class ControlStore:
             phase=cast(str, phase),
             config_fingerprint=cast(str, config_fingerprint),
         )
+        if phase == "deep_research" and attempt.get("status") == "completed":
+            details = attempt.get("details")
+            if not isinstance(details, Mapping) or "gate_packet_evidence_ref" not in details:
+                raise DataError("completed D1 attempt has no typed evidence reference")
+            self._require_d1_verified_evidence(
+                run_id=run_id,
+                project_id=project_id,
+                contract_id=cast(str, contract_id),
+                contract_payload=contract_payload,
+            )
+        if phase == "sealed_confirmation" and attempt.get("status") == "completed":
+            details = attempt.get("details")
+            if not isinstance(details, Mapping) or "gate_packet_evidence_ref" not in details:
+                raise DataError("completed D2 attempt has no typed evidence reference")
+            self._require_d2_verified_evidence(
+                run_id=run_id,
+                project_id=project_id,
+                contract_id=cast(str, contract_id),
+                contract_payload=contract_payload,
+            )
         _, manifest = self._verified_run(run_id)
         return manifest
 
-    def _mechanical_confirmation_outcome(
+    def _mechanical_confirmation_evidence(
         self,
         connection: sqlite3.Connection,
         *,
         project_id: str,
         contract_id: str,
         contract_payload: Mapping[str, object],
-    ) -> str:
-        """Return the one typed D2 result after re-verifying its immutable run lineage."""
+    ) -> dict[str, object]:
+        """Return the one typed D2 artifact after re-verifying its immutable run lineage."""
         rows = connection.execute(
             """SELECT * FROM research_attempt_records
             WHERE project_id = ? AND contract_id = ?
             ORDER BY recorded_at, attempt_id""",
             (project_id, contract_id),
         ).fetchall()
-        classified: list[str] = []
+        verified_evidence: list[dict[str, object]] = []
         for row in rows:
             details = _decode_json(row["details_json"], "research confirmation attempt details")
             if not isinstance(details, dict):  # pragma: no cover - stored JSON invariant.
@@ -2088,13 +2363,36 @@ class ControlStore:
                 config_fingerprint=str(row["config_fingerprint"]),
             )
             evidence = self._read_research_gate_evidence(str(row["run_id"]), details)
-            classification = confirmation_classification_from_evidence(evidence)
-            classified.append(classification)
-        if len(classified) != 1:
+            self._require_d2_verified_evidence(
+                run_id=str(row["run_id"]),
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_payload=contract_payload,
+            )
+            confirmation_classification_from_evidence(evidence)
+            verified_evidence.append(evidence)
+        if len(verified_evidence) != 1:
             raise DataError(
                 "consumed confirmation requires exactly one completed typed D2 evidence attempt"
             )
-        return classified[0]
+        return verified_evidence[0]
+
+    def _mechanical_confirmation_outcome(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        contract_payload: Mapping[str, object],
+    ) -> str:
+        """Return the one mechanical D2 classification from verified immutable evidence."""
+        evidence = self._mechanical_confirmation_evidence(
+            connection,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract_payload=contract_payload,
+        )
+        return confirmation_classification_from_evidence(evidence)
 
     def create_project(
         self,
@@ -2418,6 +2716,7 @@ class ControlStore:
                     raise DataError("research capture retry conflicts with persisted triage state")
             # A repeated capture after later progress resolves to the existing case without
             # manufacturing a duplicate project or resetting its phase.
+            project_row["research_gate_state"] = self._research_gate_state(connection, pid)
 
         contract_view = self.get_research_contract(contract_id)
         return {
@@ -2434,7 +2733,119 @@ class ControlStore:
                 "SELECT * FROM projects ORDER BY updated_at DESC, project_id LIMIT ? OFFSET ?",
                 (limit, offset),
             ).fetchall()
-        return [dict(row) for row in rows]
+            views = []
+            for row in rows:
+                view = dict(row)
+                view["research_gate_state"] = self._research_gate_state(
+                    connection, str(row["project_id"])
+                )
+                views.append(view)
+        return views
+
+    def _research_gate_state(self, connection: sqlite3.Connection, project_id: str) -> str:
+        """Derive the spec-§15 anti-premature-backtesting gate state for one project.
+
+        `passed` deliberately supersedes `overridden`: once an owner advance_to_strategy
+        decision exists, earlier overrides are historical ledger entries, not live authority.
+        """
+        governance = connection.execute(
+            """SELECT research_required FROM project_research_governance
+            WHERE project_id = ?""",
+            (project_id,),
+        ).fetchone()
+        if governance is None:
+            raise DataError("strategy project has no research-governance record")
+        governed = int(governance["research_required"]) == 1 or (
+            self._latest_research_phase(connection, project_id) is not None
+        )
+        if not governed:
+            return "not_required"
+        advanced = connection.execute(
+            """SELECT 1 FROM research_decision_events
+            WHERE project_id = ? AND disposition = 'advance_to_strategy' LIMIT 1""",
+            (project_id,),
+        ).fetchone()
+        if advanced is not None:
+            return "passed"
+        override = connection.execute(
+            "SELECT 1 FROM research_gate_override_events WHERE project_id = ? LIMIT 1",
+            (project_id,),
+        ).fetchone()
+        if override is not None:
+            return "overridden"
+        return "open"
+
+    def research_gate_state(self, project_id: str) -> str:
+        """Return {not_required, open, passed, overridden} for one project (spec §15)."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            return self._research_gate_state(connection, project_id)
+
+    def record_research_gate_override(
+        self,
+        project_id: str,
+        *,
+        actor: str,
+        reason: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append one owner research-gate override event (never a mutable boolean)."""
+        clean_actor = _required_text(actor, "research gate override actor", max_length=100)
+        clean_reason = _required_text(reason, "research gate override reason")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            state = self._research_gate_state(connection, project_id)
+            if state == "not_required":
+                raise DataError("grandfathered project has no research gate to override")
+            if state == "passed":
+                raise DataError("research gate already passed; an override cannot apply")
+            latest = connection.execute(
+                """SELECT COALESCE(MAX(sequence), 0) AS sequence
+                FROM research_gate_override_events WHERE project_id = ?""",
+                (project_id,),
+            ).fetchone()
+            sequence = int(latest["sequence"]) + 1
+            connection.execute(
+                """INSERT INTO research_gate_override_events (
+                    project_id, sequence, actor, reason, recorded_at
+                ) VALUES (?, ?, ?, ?, ?)""",
+                (project_id, sequence, clean_actor, clean_reason, timestamp),
+            )
+        return {
+            "project_id": project_id,
+            "sequence": sequence,
+            "actor": clean_actor,
+            "reason": clean_reason,
+            "recorded_at": timestamp,
+        }
+
+    def list_active_research_gate_overrides(
+        self, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return override events for projects whose gate is currently overridden.
+
+        Overrides on projects that later pass research drop out of this projection but
+        remain in the per-project append-only ledger.
+        """
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                """SELECT o.project_id, o.sequence, o.actor, o.reason, o.recorded_at,
+                    p.name AS project_name
+                FROM research_gate_override_events o
+                JOIN projects p ON p.project_id = o.project_id
+                ORDER BY o.recorded_at DESC, o.project_id, o.sequence DESC""",
+            ).fetchall()
+            states: dict[str, str] = {}
+            active = []
+            for row in rows:
+                pid = str(row["project_id"])
+                if pid not in states:
+                    states[pid] = self._research_gate_state(connection, pid)
+                if states[pid] == "overridden":
+                    active.append(dict(row))
+        return active[offset : offset + limit]
 
     def get_project(self, project_id: str) -> dict[str, object]:
         """Return a complete bounded projection of one project's control-plane lineage."""
@@ -2481,6 +2892,12 @@ class ControlStore:
                 WHERE project_id = ? ORDER BY created_at, packet_id""",
                 (project_id,),
             ).fetchall()
+            gate_state = self._research_gate_state(connection, project_id)
+            gate_overrides = connection.execute(
+                """SELECT * FROM research_gate_override_events
+                WHERE project_id = ? ORDER BY sequence""",
+                (project_id,),
+            ).fetchall()
             version_views = []
             for row in versions:
                 view = self._version_view(row)
@@ -2522,6 +2939,8 @@ class ControlStore:
         project["holdouts"] = [dict(row) for row in holdouts]
         project["holdout_audit"] = [dict(row) for row in audit]
         project["decision_packets"] = [self._decision_packet_view(row) for row in decisions]
+        project["research_gate_state"] = gate_state
+        project["research_gate_overrides"] = [dict(row) for row in gate_overrides]
         return project
 
     def create_research_source(
@@ -2534,6 +2953,9 @@ class ControlStore:
         access_mode: str,
         metadata: Mapping[str, object] | None = None,
         content_hash: str | None = None,
+        doi: str | None = None,
+        year: int | None = None,
+        authors: Sequence[str] | None = None,
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Create or reuse one immutable, content-addressed literature/source record."""
@@ -2548,6 +2970,21 @@ class ControlStore:
         if clean_hash is not None and _SHA256_RE.fullmatch(clean_hash) is None:
             raise DataError("research source content_hash must be a lowercase SHA-256 digest")
         clean_metadata = _json_object(metadata or {}, "research source metadata")
+        clean_doi = (
+            None
+            if doi is None
+            else _required_text(doi, "research source doi", max_length=200).lower()
+        )
+        if year is not None and (
+            isinstance(year, bool) or not isinstance(year, int) or not 1800 <= year <= 2100
+        ):
+            raise DataError("research source year must be a plausible integer year")
+        clean_authors: list[str] | None = None
+        if authors is not None:
+            clean_authors = [
+                _required_text(author, "research source authors entry", max_length=200)
+                for author in authors
+            ]
         identity = {
             "schema_version": 1,
             "project_id": _canonical_uuid(project_id, "project_id"),
@@ -2558,6 +2995,13 @@ class ControlStore:
             "content_hash": clean_hash,
             "metadata": clean_metadata,
         }
+        # Typed descriptors join the identity only when supplied so pre-R4 ids stay stable.
+        if clean_doi is not None:
+            identity["doi"] = clean_doi
+        if year is not None:
+            identity["year"] = year
+        if clean_authors is not None:
+            identity["authors"] = clean_authors
         source_id = _content_id("rs", identity)
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
@@ -2569,8 +3013,8 @@ class ControlStore:
                 connection.execute(
                     """INSERT INTO research_source_records (
                         source_id, project_id, title, locator, provider, access_mode,
-                        content_hash, metadata_json, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        content_hash, metadata_json, created_at, doi, year, authors_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         source_id,
                         project_id,
@@ -2581,6 +3025,13 @@ class ControlStore:
                         clean_hash,
                         _canonical_json(clean_metadata, "research source metadata"),
                         timestamp,
+                        clean_doi,
+                        year,
+                        (
+                            None
+                            if clean_authors is None
+                            else _canonical_json(clean_authors, "research source authors")
+                        ),
                     ),
                 )
                 existing = connection.execute(
@@ -2600,6 +3051,249 @@ class ControlStore:
         if row is None:
             raise DataError(f"unknown research source {sid!r}")
         return self._research_source_view(row)
+
+    @staticmethod
+    def _source_claim_view(row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        result = dict(row)
+        markets = _decode_json(result.pop("markets_json"), "research claim markets")
+        if not isinstance(markets, list) or any(not isinstance(item, str) for item in markets):
+            raise DataError("corrupt research claim markets")
+        result["markets"] = markets
+        return result
+
+    def draft_source_claim(
+        self,
+        project_id: str,
+        *,
+        source_id: str,
+        contract_id: str,
+        claim_text: str,
+        direction: str,
+        strength: str,
+        method_summary: str,
+        sample_summary: str,
+        markets: Sequence[str],
+        limitations: str,
+        author: str,
+        author_kind: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Draft one claim-level literature statement (spec §7.2, ADR-0024).
+
+        A published paper is never auto-trusted: drafts carry their author kind, and only
+        the owner's screening appends a ``screened`` revision. Rows are append-only.
+        """
+        clean_source = _require_content_id(source_id, "research source_id", prefix="rs")
+        clean_contract = _require_content_id(contract_id, "research contract_id", prefix="rc")
+        clean_direction = _enum_value(
+            direction, "research claim direction", _SOURCE_CLAIM_DIRECTIONS
+        )
+        clean_strength = _enum_value(strength, "research claim strength", _SOURCE_CLAIM_STRENGTHS)
+        clean_text = _required_text(claim_text, "research claim text", max_length=4_000)
+        clean_method = _required_text(method_summary, "research claim method", max_length=4_000)
+        clean_sample = _required_text(sample_summary, "research claim sample", max_length=4_000)
+        clean_limits = _required_text(limitations, "research claim limitations", max_length=4_000)
+        clean_markets = [
+            _required_text(market, "research claim markets entry", max_length=64)
+            for market in markets
+        ]
+        clean_author = _required_text(author, "research claim author", max_length=200)
+        clean_author_kind = _enum_value(
+            author_kind, "research claim author kind", _RESEARCH_NOTE_AUTHOR_KINDS
+        )
+        timestamp = _at(at)
+        identity = {
+            "schema_version": 1,
+            "project_id": _canonical_uuid(project_id, "project_id"),
+            "source_id": clean_source,
+            "contract_id": clean_contract,
+            "claim_text": clean_text,
+            "direction": clean_direction,
+        }
+        claim_id = _content_id("sc", identity)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            source = connection.execute(
+                "SELECT project_id FROM research_source_records WHERE source_id = ?",
+                (clean_source,),
+            ).fetchone()
+            if source is None or source["project_id"] != identity["project_id"]:
+                raise DataError(f"unknown research source {clean_source!r} for this project")
+            self._require_research_contract(connection, project_id, clean_contract)
+            existing = connection.execute(
+                "SELECT * FROM research_source_claims WHERE claim_id = ? ORDER BY revision DESC "
+                "LIMIT 1",
+                (claim_id,),
+            ).fetchone()
+            if existing is not None:
+                return self._source_claim_view(existing)
+            connection.execute(
+                """INSERT INTO research_source_claims (
+                    claim_id, revision, project_id, source_id, contract_id, claim_text,
+                    direction, strength, method_summary, sample_summary, markets_json,
+                    limitations, status, author, author_kind, screened_by, created_at
+                ) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, NULL, ?)""",
+                (
+                    claim_id,
+                    identity["project_id"],
+                    clean_source,
+                    clean_contract,
+                    clean_text,
+                    clean_direction,
+                    clean_strength,
+                    clean_method,
+                    clean_sample,
+                    _canonical_json(clean_markets, "research claim markets"),
+                    clean_limits,
+                    clean_author,
+                    clean_author_kind,
+                    timestamp,
+                ),
+            )
+        return {
+            "claim_id": claim_id,
+            "revision": 1,
+            "project_id": identity["project_id"],
+            "source_id": clean_source,
+            "contract_id": clean_contract,
+            "claim_text": clean_text,
+            "direction": clean_direction,
+            "strength": clean_strength,
+            "method_summary": clean_method,
+            "sample_summary": clean_sample,
+            "markets": clean_markets,
+            "limitations": clean_limits,
+            "status": "draft",
+            "author": clean_author,
+            "author_kind": clean_author_kind,
+            "screened_by": None,
+            "created_at": timestamp,
+        }
+
+    def screen_source_claim(
+        self,
+        project_id: str,
+        *,
+        claim_id: str,
+        actor: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append the owner's ``screened`` revision; the draft row survives unchanged."""
+        clean_claim = _require_content_id(claim_id, "research claim_id", prefix="sc")
+        clean_actor = _required_text(actor, "research claim screener", max_length=200)
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            latest = connection.execute(
+                "SELECT * FROM research_source_claims WHERE claim_id = ? AND project_id = ? "
+                "ORDER BY revision DESC LIMIT 1",
+                (clean_claim, project_id),
+            ).fetchone()
+            if latest is None:
+                raise DataError(f"unknown research claim {clean_claim!r}")
+            if latest["status"] == "screened":
+                raise DataError(f"research claim {clean_claim!r} is already screened")
+            revision = int(latest["revision"]) + 1
+            connection.execute(
+                """INSERT INTO research_source_claims (
+                    claim_id, revision, project_id, source_id, contract_id, claim_text,
+                    direction, strength, method_summary, sample_summary, markets_json,
+                    limitations, status, author, author_kind, screened_by, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'screened', ?, ?, ?, ?)""",
+                (
+                    clean_claim,
+                    revision,
+                    latest["project_id"],
+                    latest["source_id"],
+                    latest["contract_id"],
+                    latest["claim_text"],
+                    latest["direction"],
+                    latest["strength"],
+                    latest["method_summary"],
+                    latest["sample_summary"],
+                    latest["markets_json"],
+                    latest["limitations"],
+                    latest["author"],
+                    latest["author_kind"],
+                    clean_actor,
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM research_source_claims WHERE claim_id = ? AND revision = ?",
+                (clean_claim, revision),
+            ).fetchone()
+        if row is None:  # pragma: no cover - written in this transaction.
+            raise DataError("control store failed to persist research claim screening")
+        return self._source_claim_view(row)
+
+    def list_source_claims(
+        self,
+        project_id: str,
+        *,
+        include_history: bool = False,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[dict[str, object]]:
+        """Return claims (latest revision per claim unless history is requested)."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            if include_history:
+                rows = connection.execute(
+                    """SELECT * FROM research_source_claims WHERE project_id = ?
+                    ORDER BY created_at DESC, claim_id, revision DESC LIMIT ? OFFSET ?""",
+                    (project_id, limit, offset),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """SELECT claims.* FROM research_source_claims AS claims
+                    JOIN (
+                        SELECT claim_id, MAX(revision) AS revision
+                        FROM research_source_claims WHERE project_id = ? GROUP BY claim_id
+                    ) AS latest
+                        ON latest.claim_id = claims.claim_id
+                        AND latest.revision = claims.revision
+                    ORDER BY claims.created_at DESC, claims.claim_id LIMIT ? OFFSET ?""",
+                    (project_id, limit, offset),
+                ).fetchall()
+        return [self._source_claim_view(row) for row in rows]
+
+    def list_research_decisions(self, project_id: str) -> list[dict[str, object]]:
+        """Return the append-only owner decision history for one case, oldest first."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT sequence, contract_id, outcome, disposition, actor, actor_kind,
+                    occurred_at, reason
+                FROM research_decision_events WHERE project_id = ? ORDER BY sequence""",
+                (project_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def search_research_sources(
+        self, query: str, *, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Local-records-only search over titles, locators, and DOIs (never the network)."""
+        clean_query = _required_text(query, "research source search query", max_length=200)
+        limit, offset = _page(limit, offset)
+        tokens = clean_query.casefold().split()
+        if not tokens or len(tokens) > 8:
+            raise DataError("research source search query must contain 1..8 terms")
+        # Every token must appear in the concatenated title/locator/DOI text (AND search).
+        clause = " AND ".join(
+            "(lower(title) || ' ' || lower(locator) || ' ' || lower(COALESCE(doi, ''))) LIKE ?"
+            for _ in tokens
+        )
+        params: list[object] = [f"%{token}%" for token in tokens]
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                f"""SELECT * FROM research_source_records
+                WHERE {clause}
+                ORDER BY created_at, source_id LIMIT ? OFFSET ?""",  # noqa: S608
+                [*params, limit, offset],
+            ).fetchall()
+        return [self._research_source_view(row) for row in rows]
 
     def create_research_source_pack(
         self,
@@ -2925,14 +3619,6 @@ class ControlStore:
             raise DataError("owner review requires a human actor")
         clean_actor = _required_text(actor, "research review actor", max_length=200)
         clean_reason = _required_text(reason, "research review reason")
-        if (
-            clean_scope == "confirmation"
-            and clean_decision == "approve"
-            and not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
-        ):
-            raise DataError(
-                "Gate-3 unavailable: empirical confirmation approval remains hard-disabled"
-            )
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
             row = self._require_research_contract(connection, project_id, contract_id)
@@ -3192,13 +3878,14 @@ class ControlStore:
                         contract_id=contract_id,
                         contract_payload=confirmation_payload,
                     )
-            elif clean_phase == "closed":
-                decision = connection.execute(
-                    """SELECT 1 FROM research_decision_events
+            closing_decision: sqlite3.Row | None = None
+            if clean_phase == "closed":
+                closing_decision = connection.execute(
+                    """SELECT * FROM research_decision_events
                     WHERE project_id = ? AND contract_id = ?""",
                     (project_id, contract_id),
                 ).fetchone()
-                if decision is None:
+                if closing_decision is None:
                     raise DataError("research case cannot close without an owner research decision")
 
             row = self._append_research_phase_event(
@@ -3214,6 +3901,21 @@ class ControlStore:
                 recovery=clean_recovery,
                 at=timestamp,
             )
+            if (
+                closing_decision is not None
+                and closing_decision["disposition"] == "advance_to_strategy"
+            ):
+                # The terminal gate packet exists only once the case closes, so the lossless
+                # spec-§11 promotion dossier commits atomically with the closing phase event —
+                # an advance_to_strategy case cannot close without its research inheritance.
+                self._record_strategy_promotion_packet(
+                    connection,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    decision=dict(closing_decision),
+                    actor=str(closing_decision["actor"]),
+                    timestamp=timestamp,
+                )
         return dict(row)
 
     def transition_research_execution(
@@ -3331,8 +4033,6 @@ class ControlStore:
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Consume or contaminate D2; authorization remains owner-review-only."""
-        if not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED:
-            raise DataError("Gate-3 unavailable: D2 access remains hard-disabled")
         clean_state = _enum_value(to_state, "research D2 state", RESEARCH_D2_STATES)
         if clean_state not in {"consumed", "contaminated"}:
             raise DataError("research APIs may only consume or contaminate D2")
@@ -3564,6 +4264,17 @@ class ControlStore:
             raise DataError("control store failed to persist research launch reservation")
         return self._research_reservation_view(cast(sqlite3.Row, row))
 
+    def count_research_attempts(self, project_id: str, contract_id: str, *, kind: str) -> int:
+        """Count recorded attempts of one registered kind for a contract (retry ceilings)."""
+        clean_kind = _required_text(kind, "research attempt kind", max_length=100)
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                """SELECT COUNT(*) AS count FROM research_attempt_records
+                WHERE project_id = ? AND contract_id = ? AND kind = ?""",
+                (project_id, contract_id, clean_kind),
+            ).fetchone()
+        return int(cast(sqlite3.Row, row)["count"])
+
     def verified_research_attempt(
         self,
         project_id: str,
@@ -3653,13 +4364,6 @@ class ControlStore:
             phase = self._latest_research_phase(connection, project_id)
             if phase is None or phase["contract_id"] != contract_id:
                 raise DataError("research attempt must bind the active phase contract")
-            if (
-                phase["phase"] in {"deep_research", "sealed_confirmation"}
-                and not _UNRELEASED_EMPIRICAL_RESEARCH_ENABLED
-            ):
-                raise DataError(
-                    "Gate-2/3 unavailable: empirical D1/D2 attempts remain hard-disabled"
-                )
             allowed_phases = (
                 {"pilot", "deep_research"}
                 if contract["scope"] == "exploration"
@@ -3684,6 +4388,24 @@ class ControlStore:
                     raise DataError("D0 pilot attempts must be completed or failed")
                 if clean_status == "completed" and clean_run is None:
                     raise DataError("completed D0 pilot requires an immutable run_id")
+            if phase_name == "deep_research":
+                if clean_kind != _D1_RESEARCH_KIND:
+                    raise DataError(
+                        "deep research accepts only the registered d1-deep-research kind"
+                    )
+                if clean_status not in {"completed", "failed"}:
+                    raise DataError("D1 deep-research attempts must be completed or failed")
+                if clean_status == "completed" and clean_run is None:
+                    raise DataError("completed D1 deep research requires an immutable run_id")
+            if phase_name == "sealed_confirmation":
+                if clean_kind != _D2_RESEARCH_KIND:
+                    raise DataError(
+                        "sealed confirmation accepts only the registered sealed-confirmation kind"
+                    )
+                if clean_status not in {"completed", "failed"}:
+                    raise DataError("D2 sealed-confirmation attempts must be completed or failed")
+                if clean_status == "completed" and clean_run is None:
+                    raise DataError("completed sealed confirmation requires an immutable run_id")
             reservation: sqlite3.Row | None = None
             reservation_link: sqlite3.Row | None = None
             if clean_reservation_id is not None:
@@ -3740,6 +4462,14 @@ class ControlStore:
             evidence_ref_present = "gate_packet_evidence_ref" in clean_details
             if phase_name == "pilot" and evidence_ref_present:
                 raise DataError("D0 pilot cannot carry typed D1 or D2 gate evidence")
+            if (
+                phase_name == "deep_research"
+                and clean_status == "completed"
+                and not evidence_ref_present
+            ):
+                raise DataError(
+                    "completed D1 deep research requires its typed gate evidence artifact"
+                )
             if evidence_ref_present:
                 if clean_run is None:
                     raise DataError("research gate evidence selector requires an immutable run_id")
@@ -3752,8 +4482,21 @@ class ControlStore:
                     raise DataError("research gate evidence zone does not match its contract phase")
                 if clean_details.get("evidence_zone") != expected_zone:
                     raise DataError("research attempt evidence_zone does not match its artifact")
+                if expected_zone == "D1":
+                    self._require_d1_verified_evidence(
+                        run_id=clean_run,
+                        project_id=project_id,
+                        contract_id=contract_id,
+                        contract_payload=payload,
+                    )
                 if expected_zone == "D2":
                     confirmation_classification_from_evidence(evidence)
+                    self._require_d2_verified_evidence(
+                        run_id=clean_run,
+                        project_id=project_id,
+                        contract_id=contract_id,
+                        contract_payload=payload,
+                    )
             elif contract["scope"] == "confirmation" and clean_status == "completed":
                 raise DataError(
                     "completed confirmation requires a declared immutable artifact for typed D2 "
@@ -3949,15 +4692,39 @@ class ControlStore:
                     )
                     if not isinstance(payload, dict):  # pragma: no cover - stored JSON invariant.
                         raise DataError("corrupt research confirmation contract payload")
-                    mechanical_outcome = self._mechanical_confirmation_outcome(
+                    mechanical_evidence = self._mechanical_confirmation_evidence(
                         connection,
                         project_id=project_id,
                         contract_id=contract_id,
                         contract_payload=payload,
                     )
+                    mechanical_outcome = confirmation_classification_from_evidence(
+                        mechanical_evidence
+                    )
                     if mechanical_outcome != clean_outcome:
                         raise DataError(
                             "owner outcome does not match the mechanical D2 classification"
+                        )
+                    promotion_readiness = derive_research_readiness(mechanical_evidence)[
+                        "promotion_readiness"
+                    ]
+                    if (
+                        clean_disposition == "advance_to_strategy"
+                        and promotion_readiness["state"] != "ready"
+                    ):
+                        blockers = promotion_readiness["blockers"]
+                        codes = (
+                            [
+                                str(blocker.get("code"))
+                                for blocker in blockers
+                                if isinstance(blocker, Mapping)
+                            ]
+                            if isinstance(blockers, list)
+                            else []
+                        )
+                        raise DataError(
+                            "strategy promotion is blocked by mechanical readiness: "
+                            + ", ".join(codes)
                         )
             existing = connection.execute(
                 """SELECT * FROM research_decision_events
@@ -4369,138 +5136,851 @@ class ControlStore:
             "d3_state": d3_state,
         }
 
+    def list_research_cases(self, *, limit: int = 50, offset: int = 0) -> list[dict[str, object]]:
+        """Return bounded research-case rows ordered by latest research activity.
+
+        Each row is ``{"case": <research_case_summary>, "updated_at": <ISO timestamp>}``.
+        The nested summary is byte-identical to :meth:`research_case_summary` so the
+        dossier's embedded-summary hash never drifts; ``updated_at`` rides alongside it
+        because the summary itself is hash-pinned and cannot gain keys.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+            raise DataError("research case list limit must be in 1..200")
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise DataError("research case list offset must be non-negative")
+        with self._transaction(write=False) as connection:
+            ordered = connection.execute(
+                """SELECT project_id, MAX(ts) AS updated_at FROM (
+                    SELECT project_id, occurred_at AS ts FROM research_phase_events
+                    UNION ALL
+                    SELECT project_id, occurred_at AS ts FROM research_execution_events
+                    UNION ALL
+                    SELECT project_id, recorded_at AS ts FROM research_attempt_records
+                    UNION ALL
+                    SELECT project_id, reserved_at AS ts FROM research_launch_reservations
+                ) GROUP BY project_id ORDER BY updated_at DESC, project_id
+                LIMIT ? OFFSET ?""",
+                (limit, offset),
+            ).fetchall()
+        return [
+            {
+                "case": self.research_case_summary(str(row["project_id"])),
+                "updated_at": str(row["updated_at"]),
+            }
+            for row in ordered
+        ]
+
+    def _bounded_project_rows(
+        self,
+        connection: sqlite3.Connection,
+        query: str,
+        params: Sequence[object],
+        *,
+        limit: int = _RESEARCH_PACKET_COLLECTION_LIMIT,
+    ) -> tuple[list[dict[str, object]], bool]:
+        rows = connection.execute(f"{query} LIMIT ?", [*params, limit + 1]).fetchall()  # noqa: S608
+        truncated = len(rows) > limit
+        return [dict(row) for row in rows[:limit]], truncated
+
+    def _packet_row_view(self, row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        record = dict(row)
+        payload = _decode_json(record.pop("payload_json"), "research context packet payload")
+        if not isinstance(payload, dict):
+            raise DataError("corrupt research context packet payload")
+        return {**record, "payload": payload}
+
+    def build_research_context_packet(
+        self,
+        project_id: str,
+        *,
+        kind: str,
+        created_by: str,
+        symbol: str | None = None,
+        protocol_id: str | None = None,
+        protocol_content_hash: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Assemble and append-only-record one content-addressed Codex context packet.
+
+        The payload is built from authoritative records inside one write transaction with
+        bounded collections and explicit truncation flags; ``cp_<sha256>`` is derived from
+        the canonical payload bytes, so identical inputs re-record idempotently and the UI
+        can display byte-identical context. Recording is visibility (spec §3.2).
+        """
+        clean_kind = _enum_value(kind, "research context packet kind", _RESEARCH_PACKET_KINDS)
+        clean_actor = _required_text(created_by, "research packet creator", max_length=200)
+        clean_protocol = _optional_text(protocol_id, "research packet protocol_id")
+        clean_protocol_hash = _optional_text(
+            protocol_content_hash, "research packet protocol_content_hash"
+        )
+        if clean_protocol_hash is not None and _SHA256_RE.fullmatch(clean_protocol_hash) is None:
+            raise DataError("research packet protocol_content_hash must be a sha256 hex digest")
+        if (clean_protocol is None) != (clean_protocol_hash is None):
+            raise DataError("research packet protocol id and content hash travel together")
+        clean_symbol = None
+        if clean_kind == "asset":
+            if symbol is None:
+                raise DataError("asset research packets require a symbol")
+            clean_symbol = _symbols([symbol])[0]
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            project = dict(self._require_project(connection, project_id))
+            pid = str(project["project_id"])
+            phase = self._latest_research_phase(connection, pid)
+            execution = self._latest_research_execution(connection, pid)
+            if phase is None or execution is None:
+                raise DataError(f"strategy project {pid!r} has no research case")
+            contract = self._require_research_contract(connection, pid, str(phase["contract_id"]))
+            contract_view = self._research_contract_view(connection, contract)
+            decision = connection.execute(
+                """SELECT * FROM research_decision_events WHERE project_id = ?
+                ORDER BY sequence DESC LIMIT 1""",
+                (pid,),
+            ).fetchone()
+            attempts, attempts_truncated = self._bounded_project_rows(
+                connection,
+                """SELECT attempt_id, contract_id, phase, kind, status, config_fingerprint,
+                    run_id, recorded_at
+                FROM research_attempt_records WHERE project_id = ?
+                ORDER BY recorded_at, attempt_id""",
+                (pid,),
+            )
+            sources, sources_truncated = self._bounded_project_rows(
+                connection,
+                """SELECT source_id, title, locator, provider, access_mode, created_at
+                FROM research_source_records WHERE project_id = ?
+                ORDER BY created_at, source_id""",
+                (pid,),
+            )
+            notes, notes_truncated = self._bounded_project_rows(
+                connection,
+                """SELECT note_id, note_kind, body, author, author_kind, context_packet_id,
+                    created_at
+                FROM research_case_notes WHERE project_id = ? ORDER BY sequence""",
+                (pid,),
+            )
+            payload_contract = contract_view["payload"]
+            if not isinstance(payload_contract, dict):
+                raise DataError("corrupt research contract payload")
+            kind_specific = self._packet_kind_specific(
+                connection,
+                kind=clean_kind,
+                symbol=clean_symbol,
+                contract_payload=payload_contract,
+                decision=None if decision is None else dict(decision),
+                attempts=attempts,
+            )
+            cursor_rows = connection.execute(
+                """SELECT
+                    (SELECT COALESCE(MAX(sequence), 0) FROM research_phase_events
+                        WHERE project_id = ?) AS phase,
+                    (SELECT COALESCE(MAX(sequence), 0) FROM research_execution_events
+                        WHERE project_id = ?) AS execution,
+                    (SELECT COUNT(*) FROM research_attempt_records
+                        WHERE project_id = ?) AS attempts,
+                    (SELECT COALESCE(MAX(sequence), 0) FROM research_decision_events
+                        WHERE project_id = ?) AS decisions""",
+                (pid, pid, pid, pid),
+            ).fetchone()
+            payload: dict[str, object] = {
+                "packet_schema": "ResearchContextPacketV1",
+                "packet_kind": clean_kind,
+                "project_id": pid,
+                "project_name": project["name"],
+                "hypothesis": project["hypothesis"],
+                "falsification_criterion": project["falsification_criterion"],
+                "phase": phase["phase"],
+                "execution_state": execution["state"],
+                "next_action": (
+                    execution["next_action"]
+                    if str(execution["occurred_at"]) > str(phase["occurred_at"])
+                    else phase["next_action"]
+                ),
+                "responsibility": (
+                    execution["responsibility"]
+                    if str(execution["occurred_at"]) > str(phase["occurred_at"])
+                    else phase["responsibility"]
+                ),
+                "active_contract_id": contract_view["contract_id"],
+                "contract_review_state": contract_view["review_state"],
+                "contract_payload": payload_contract,
+                "decision": None if decision is None else dict(decision),
+                "attempts": attempts,
+                "attempts_truncated": attempts_truncated,
+                "sources": sources,
+                "sources_truncated": sources_truncated,
+                "notes": notes,
+                "notes_truncated": notes_truncated,
+                "kind_specific": kind_specific,
+                "history_cursors": {
+                    "phase": int(cursor_rows["phase"]),
+                    "execution": int(cursor_rows["execution"]),
+                    "attempts": int(cursor_rows["attempts"]),
+                    "decisions": int(cursor_rows["decisions"]),
+                },
+                # Honest availability: planes that have not shipped are named, not faked.
+                "unavailable_context": {
+                    "dataset_refs": "registered research datasets arrive with the data plane",
+                    "source_claims": "claim-level literature arrives with the source plane",
+                },
+            }
+            packet_id = _content_id("cp", payload)
+            existing = connection.execute(
+                "SELECT * FROM research_context_packets WHERE packet_id = ?",
+                (packet_id,),
+            ).fetchone()
+            if existing is not None:
+                return self._packet_row_view(existing)
+            connection.execute(
+                """INSERT INTO research_context_packets (
+                    packet_id, project_id, packet_kind, protocol_id, protocol_content_hash,
+                    payload_json, created_by, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    packet_id,
+                    pid,
+                    clean_kind,
+                    clean_protocol,
+                    clean_protocol_hash,
+                    _canonical_json(payload, "research context packet payload"),
+                    clean_actor,
+                    timestamp,
+                ),
+            )
+        return {
+            "packet_id": packet_id,
+            "project_id": pid,
+            "packet_kind": clean_kind,
+            "protocol_id": clean_protocol,
+            "protocol_content_hash": clean_protocol_hash,
+            "payload": payload,
+            "created_by": clean_actor,
+            "created_at": timestamp,
+        }
+
+    def _packet_kind_specific(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        kind: str,
+        symbol: str | None,
+        contract_payload: Mapping[str, object],
+        decision: Mapping[str, object] | None,
+        attempts: list[dict[str, object]],
+    ) -> dict[str, object]:
+        if kind == "asset":
+            rows = connection.execute(
+                """SELECT evidence_id, revision, status, claim, timeframe, method,
+                    metric_name, metric_value, metric_unit, market_data_cutoff, knowledge_at,
+                    author_kind
+                FROM evidence_revisions WHERE assets_json LIKE ?
+                ORDER BY created_at DESC, evidence_id, revision DESC LIMIT ?""",
+                (f'%"{symbol}"%', _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
+            ).fetchall()
+            return {
+                "symbol": symbol,
+                "asset_evidence": [dict(row) for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]],
+                "asset_evidence_truncated": len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT,
+            }
+        if kind == "experiment":
+            return {"attempts": attempts}
+        if kind == "chart":
+            report_plan = contract_payload.get("report_plan")
+            return {"report_plan": report_plan if isinstance(report_plan, dict) else None}
+        if kind == "validation":
+            return {
+                "required_falsifiers": contract_payload.get("required_falsifiers", []),
+                "confounders": contract_payload.get("confounders", []),
+                "stop_rules": contract_payload.get("stop_rules", []),
+            }
+        if kind == "strategy_promotion":
+            promotion_packet_id: str | None = None
+            if decision is not None:
+                decision_project = decision.get("project_id")
+                decision_contract = decision.get("contract_id")
+                if isinstance(decision_project, str) and isinstance(decision_contract, str):
+                    reference = self._promotion_reference(
+                        connection,
+                        project_id=decision_project,
+                        contract_id=decision_contract,
+                        cutoff=None,
+                    )
+                    if reference is not None:
+                        promotion_packet_id = cast(str, reference["packet_id"])
+            return {"decision": decision, "promotion_packet_id": promotion_packet_id}
+        # research_case: the open material questions are the packet's task surface.
+        return {"blocking_questions": contract_payload.get("blocking_questions", [])}
+
+    def get_research_context_packet(self, packet_id: str) -> dict[str, object]:
+        """Return one recorded packet byte-identically (recording is visibility)."""
+        clean = _require_content_id(packet_id, "research context packet_id", prefix="cp")
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM research_context_packets WHERE packet_id = ?", (clean,)
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research context packet {clean!r}")
+        return self._packet_row_view(row)
+
+    def list_research_context_packets(
+        self, project_id: str, *, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return this case's recorded packets, newest first."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT * FROM research_context_packets WHERE project_id = ?
+                ORDER BY created_at DESC, packet_id LIMIT ? OFFSET ?""",
+                (project_id, limit, offset),
+            ).fetchall()
+        return [self._packet_row_view(row) for row in rows]
+
+    def add_research_note(
+        self,
+        project_id: str,
+        *,
+        note_kind: str,
+        body: str,
+        author: str,
+        author_kind: str,
+        context_packet_id: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append one Codex/owner commentary note — structurally outside the evidence model."""
+        clean_kind = _enum_value(note_kind, "research note kind", _RESEARCH_NOTE_KINDS)
+        clean_body = _required_text(body, "research note body", max_length=20_000)
+        clean_author = _required_text(author, "research note author", max_length=200)
+        clean_author_kind = _enum_value(
+            author_kind, "research note author kind", _RESEARCH_NOTE_AUTHOR_KINDS
+        )
+        clean_packet = (
+            None
+            if context_packet_id is None
+            else _require_content_id(
+                context_packet_id, "research note context_packet_id", prefix="cp"
+            )
+        )
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            if clean_packet is not None:
+                packet = connection.execute(
+                    "SELECT project_id FROM research_context_packets WHERE packet_id = ?",
+                    (clean_packet,),
+                ).fetchone()
+                if packet is None or packet["project_id"] != project_id:
+                    raise DataError(f"unknown research context packet {clean_packet!r}")
+            sequence_row = connection.execute(
+                "SELECT COALESCE(MAX(sequence), 0) + 1 FROM research_case_notes "
+                "WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()
+            sequence = int(sequence_row[0])
+            note_identity = {
+                "schema_version": 1,
+                "project_id": project_id,
+                "sequence": sequence,
+                "note_kind": clean_kind,
+                "body": clean_body,
+                "author": clean_author,
+                "author_kind": clean_author_kind,
+                "context_packet_id": clean_packet,
+                "created_at": timestamp,
+            }
+            note_id = _content_id("rn", note_identity)
+            connection.execute(
+                """INSERT INTO research_case_notes (
+                    note_id, project_id, sequence, note_kind, body, author, author_kind,
+                    context_packet_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    note_id,
+                    project_id,
+                    sequence,
+                    clean_kind,
+                    clean_body,
+                    clean_author,
+                    clean_author_kind,
+                    clean_packet,
+                    timestamp,
+                ),
+            )
+        return {
+            "note_id": note_id,
+            "project_id": project_id,
+            "sequence": sequence,
+            "note_kind": clean_kind,
+            "body": clean_body,
+            "author": clean_author,
+            "author_kind": clean_author_kind,
+            "context_packet_id": clean_packet,
+            "created_at": timestamp,
+        }
+
+    def list_research_notes(
+        self, project_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return this case's commentary notes, newest first (never evidence)."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT * FROM research_case_notes WHERE project_id = ?
+                ORDER BY sequence DESC LIMIT ? OFFSET ?""",
+                (project_id, limit, offset),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def _dataset_ref_view(self, row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        record = dict(row)
+        origin = _decode_json(record.pop("origin_json"), "research dataset origin")
+        if not isinstance(origin, dict):
+            raise DataError("corrupt research dataset origin")
+        record["origin"] = origin
+        record["research_only"] = bool(record.get("research_only"))
+        return record
+
+    def register_research_dataset(
+        self,
+        *,
+        dataset_kind: str,
+        instrument: str,
+        provider: str,
+        start_ts: str,
+        end_ts: str,
+        bar_duration_minutes: int | None,
+        origin: Mapping[str, object],
+        registered_by: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Fail-closed research dataset registration: no receipt/provenance → no ref.
+
+        The ref is content-addressed (``rd_<sha256>``) over its complete identity, so an
+        identical registration is idempotent and a changed origin is a different dataset.
+        Every ref is ``research_only`` forever (ADR-0023): registration grants research
+        readability, never canonical authority.
+        """
+        clean_kind = _enum_value(dataset_kind, "research dataset kind", _RESEARCH_DATASET_KINDS)
+        clean_instrument = _symbols([instrument])[0]
+        clean_provider = _required_text(provider, "research dataset provider", max_length=100)
+        clean_start = _required_text(start_ts, "research dataset start_ts", max_length=64)
+        clean_end = _required_text(end_ts, "research dataset end_ts", max_length=64)
+        if bar_duration_minutes is not None and (
+            isinstance(bar_duration_minutes, bool)
+            or not isinstance(bar_duration_minutes, int)
+            or bar_duration_minutes < 1
+        ):
+            raise DataError("research dataset bar_duration_minutes must be a positive integer")
+        clean_origin = _json_object(origin, "research dataset origin")
+        for field in _RESEARCH_DATASET_ORIGIN_FIELDS[clean_kind]:
+            value = clean_origin.get(field)
+            if not isinstance(value, str) or not value:
+                raise DataError(
+                    f"research dataset origin for {clean_kind!r} requires {field} "
+                    "(fail-closed: unreceipted data cannot be registered)"
+                )
+            if field.endswith("sha256") and _SHA256_RE.fullmatch(value) is None:
+                raise DataError(f"research dataset origin {field} must be a sha256 hex digest")
+        clean_actor = _required_text(registered_by, "research dataset registrar", max_length=200)
+        identity = {
+            "schema_version": 1,
+            "dataset_kind": clean_kind,
+            "instrument": clean_instrument,
+            "provider": clean_provider,
+            "start_ts": clean_start,
+            "end_ts": clean_end,
+            "bar_duration_minutes": bar_duration_minutes,
+            "origin": clean_origin,
+        }
+        ref_id = _content_id("rd", identity)
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            existing = connection.execute(
+                "SELECT * FROM research_dataset_refs WHERE ref_id = ?", (ref_id,)
+            ).fetchone()
+            if existing is not None:
+                return self._dataset_ref_view(existing)
+            connection.execute(
+                """INSERT INTO research_dataset_refs (
+                    ref_id, dataset_kind, instrument, provider, start_ts, end_ts,
+                    bar_duration_minutes, origin_json, research_only, registered_by,
+                    registered_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)""",
+                (
+                    ref_id,
+                    clean_kind,
+                    clean_instrument,
+                    clean_provider,
+                    clean_start,
+                    clean_end,
+                    bar_duration_minutes,
+                    _canonical_json(clean_origin, "research dataset origin"),
+                    clean_actor,
+                    timestamp,
+                ),
+            )
+        return {
+            "ref_id": ref_id,
+            "dataset_kind": clean_kind,
+            "instrument": clean_instrument,
+            "provider": clean_provider,
+            "start_ts": clean_start,
+            "end_ts": clean_end,
+            "bar_duration_minutes": bar_duration_minutes,
+            "origin": clean_origin,
+            "research_only": True,
+            "registered_by": clean_actor,
+            "registered_at": timestamp,
+        }
+
+    def get_research_dataset(self, ref_id: str) -> dict[str, object]:
+        """Return one registered research dataset ref."""
+        clean = _require_content_id(ref_id, "research dataset ref_id", prefix="rd")
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM research_dataset_refs WHERE ref_id = ?", (clean,)
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research dataset {clean!r}")
+        return self._dataset_ref_view(row)
+
+    def list_research_datasets(
+        self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return registered refs (optionally per instrument) with their latest audit."""
+        limit, offset = _page(limit, offset)
+        clean_instrument = None if instrument is None else _symbols([instrument])[0]
+        with self._transaction(write=False) as connection:
+            if clean_instrument is None:
+                rows = connection.execute(
+                    """SELECT * FROM research_dataset_refs
+                    ORDER BY registered_at DESC, ref_id LIMIT ? OFFSET ?""",
+                    (limit, offset),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """SELECT * FROM research_dataset_refs WHERE instrument = ?
+                    ORDER BY registered_at DESC, ref_id LIMIT ? OFFSET ?""",
+                    (clean_instrument, limit, offset),
+                ).fetchall()
+            views: list[dict[str, object]] = []
+            for row in rows:
+                view = self._dataset_ref_view(row)
+                audit = connection.execute(
+                    """SELECT * FROM research_dataset_audits WHERE ref_id = ?
+                    ORDER BY sequence DESC LIMIT 1""",
+                    (row["ref_id"],),
+                ).fetchone()
+                view["latest_audit"] = None if audit is None else self._dataset_audit_view(audit)
+                views.append(view)
+        return views
+
+    def _dataset_audit_view(self, row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
+        record = dict(row)
+        summary = _decode_json(record.pop("summary_json"), "research dataset audit summary")
+        if not isinstance(summary, dict):
+            raise DataError("corrupt research dataset audit summary")
+        record["summary"] = summary
+        return record
+
+    def record_research_dataset_audit(
+        self,
+        ref_id: str,
+        *,
+        project_id: str,
+        run_id: str,
+        summary: Mapping[str, object],
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append one immutable data-audit result for a registered dataset."""
+        clean_ref = _require_content_id(ref_id, "research dataset ref_id", prefix="rd")
+        clean_run = _required_text(run_id, "research dataset audit run_id", max_length=64)
+        clean_summary = _json_object(summary, "research dataset audit summary")
+        if clean_summary.get("audit_schema") != "ResearchDataAuditV1":
+            raise DataError(
+                "research dataset audit summary must declare audit_schema ResearchDataAuditV1"
+            )
+        for field in ("blocking_count", "limiting_count"):
+            value = clean_summary.get(field)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise DataError(f"research dataset audit summary requires integer {field}")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            ref = connection.execute(
+                "SELECT ref_id FROM research_dataset_refs WHERE ref_id = ?", (clean_ref,)
+            ).fetchone()
+            if ref is None:
+                raise DataError(f"unknown research dataset {clean_ref!r}")
+            sequence_row = connection.execute(
+                "SELECT COALESCE(MAX(sequence), 0) + 1 FROM research_dataset_audits "
+                "WHERE ref_id = ?",
+                (clean_ref,),
+            ).fetchone()
+            sequence = int(sequence_row[0])
+            connection.execute(
+                """INSERT INTO research_dataset_audits (
+                    ref_id, sequence, project_id, run_id, summary_json, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    clean_ref,
+                    sequence,
+                    project_id,
+                    clean_run,
+                    _canonical_json(clean_summary, "research dataset audit summary"),
+                    timestamp,
+                ),
+            )
+        return {
+            "ref_id": clean_ref,
+            "sequence": sequence,
+            "project_id": project_id,
+            "run_id": clean_run,
+            "summary": clean_summary,
+            "recorded_at": timestamp,
+        }
+
+    def list_research_dataset_audits(
+        self, ref_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return one dataset's audit history, newest first."""
+        clean = _require_content_id(ref_id, "research dataset ref_id", prefix="rd")
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                """SELECT * FROM research_dataset_audits WHERE ref_id = ?
+                ORDER BY sequence DESC LIMIT ? OFFSET ?""",
+                (clean, limit, offset),
+            ).fetchall()
+        return [self._dataset_audit_view(row) for row in rows]
+
+    def research_brief(
+        self,
+        project_id: str,
+        *,
+        created_by: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Build the "Resume with Codex" delta brief and record it as a packet.
+
+        The delta covers phase/execution/attempt/decision history appended since the
+        previous ``research_case`` packet for this project (the whole history on the
+        first brief), so an external Codex session resumes without re-reading everything.
+        """
+        clean_actor = _required_text(created_by, "research brief creator", max_length=200)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            previous = connection.execute(
+                """SELECT payload_json FROM research_context_packets
+                WHERE project_id = ? AND packet_kind = 'research_case'
+                ORDER BY created_at DESC, packet_id LIMIT 1""",
+                (project_id,),
+            ).fetchone()
+            cursors = {"phase": 0, "execution": 0, "attempts": 0, "decisions": 0}
+            if previous is not None:
+                payload = _decode_json(previous["payload_json"], "previous research packet")
+                if isinstance(payload, dict):
+                    recorded = payload.get("history_cursors")
+                    if isinstance(recorded, dict):
+                        for key in cursors:
+                            value = recorded.get(key)
+                            if isinstance(value, int) and not isinstance(value, bool):
+                                cursors[key] = value
+            phase_events = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT sequence, phase, contract_id, occurred_at, reason
+                    FROM research_phase_events WHERE project_id = ? AND sequence > ?
+                    ORDER BY sequence""",
+                    (project_id, cursors["phase"]),
+                ).fetchall()
+            ]
+            execution_events = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT sequence, state, occurred_at, reason, next_action
+                    FROM research_execution_events WHERE project_id = ? AND sequence > ?
+                    ORDER BY sequence""",
+                    (project_id, cursors["execution"]),
+                ).fetchall()
+            ]
+            attempt_rows = connection.execute(
+                """SELECT attempt_id, phase, kind, status, run_id, recorded_at
+                FROM research_attempt_records WHERE project_id = ?
+                ORDER BY recorded_at, attempt_id""",
+                (project_id,),
+            ).fetchall()
+            attempts = [dict(row) for row in attempt_rows[cursors["attempts"] :]]
+            decision_events = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT sequence, contract_id, outcome, disposition, occurred_at, reason
+                    FROM research_decision_events WHERE project_id = ? AND sequence > ?
+                    ORDER BY sequence""",
+                    (project_id, cursors["decisions"]),
+                ).fetchall()
+            ]
+        case = self.research_case_summary(project_id)
+        changes = {
+            "phase_events": phase_events,
+            "execution_events": execution_events,
+            "attempts": attempts,
+            "decisions": decision_events,
+        }
+        packet = self.build_research_context_packet(
+            project_id, kind="research_case", created_by=clean_actor, at=at
+        )
+        return {
+            "brief_schema": "ResearchBriefV1",
+            "case": case,
+            "changes": changes,
+            "next_action": case["next_action"],
+            "packet_id": packet["packet_id"],
+        }
+
     def research_gate_packet_inputs(
         self, project_id: str, *, ledger_limit: int = 10_000
     ) -> dict[str, object]:
         """Return canonical public inputs for a deterministic ResearchGatePacket renderer."""
+        with self._transaction(write=False) as connection:
+            return self._gate_packet_inputs(connection, project_id, ledger_limit=ledger_limit)
+
+    def _gate_packet_inputs(
+        self, connection: sqlite3.Connection, project_id: str, *, ledger_limit: int
+    ) -> dict[str, object]:
+        """Assemble the packet inputs on an existing connection (decision-transaction safe)."""
         if (
             isinstance(ledger_limit, bool)
             or not isinstance(ledger_limit, int)
             or not 1 <= ledger_limit <= 100_000
         ):
             raise DataError("research gate packet ledger_limit must be in 1..100000")
-        with self._transaction(write=False) as connection:
-            project = dict(self._require_project(connection, project_id))
-            phase = self._latest_research_phase(connection, project_id)
-            if phase is None:
-                raise DataError(f"strategy project {project_id!r} has no research case")
-            active = self._require_research_contract(
-                connection, project_id, str(phase["contract_id"])
-            )
-            exploration_id = (
-                str(active["parent_contract_id"])
-                if active["scope"] == "confirmation"
-                else str(active["contract_id"])
-            )
-            lineage_ids = [exploration_id]
-            if active["scope"] == "confirmation":
-                lineage_ids.append(str(active["contract_id"]))
-            placeholders = ",".join("?" for _ in lineage_ids)
+        project_row = self._require_project(connection, project_id)
+        # Only the immutable research identity feeds packet content: mutable strategy-plane
+        # fields (status, current version/experiment, updated_at) would silently change the
+        # terminal packet identity after promotion, breaking recorded id/hash references.
+        project: dict[str, object] = {
+            "project_id": project_row["project_id"],
+            "name": project_row["name"],
+            "hypothesis": project_row["hypothesis"],
+            "falsification_criterion": project_row["falsification_criterion"],
+            "created_at": project_row["created_at"],
+        }
+        phase = self._latest_research_phase(connection, project_id)
+        if phase is None:
+            raise DataError(f"strategy project {project_id!r} has no research case")
+        active = self._require_research_contract(connection, project_id, str(phase["contract_id"]))
+        exploration_id = (
+            str(active["parent_contract_id"])
+            if active["scope"] == "confirmation"
+            else str(active["contract_id"])
+        )
+        lineage_ids = [exploration_id]
+        if active["scope"] == "confirmation":
+            lineage_ids.append(str(active["contract_id"]))
+        placeholders = ",".join("?" for _ in lineage_ids)
 
-            contract_rows = [
-                self._require_research_contract(connection, project_id, contract_id)
-                for contract_id in lineage_ids
-            ]
-            contracts = [self._research_contract_view(connection, row) for row in contract_rows]
-            pack_ids: set[str] = set()
-            for contract in contracts:
-                payload = contract["payload"]
-                if isinstance(payload, dict) and isinstance(payload.get("source_pack_id"), str):
-                    pack_ids.add(str(payload["source_pack_id"]))
-            pack_rows: list[sqlite3.Row] = []
-            source_ids: set[str] = set()
-            for pack_id in sorted(pack_ids):
-                pack = connection.execute(
-                    """SELECT * FROM research_source_packs
-                    WHERE project_id = ? AND pack_id = ?""",
-                    (project_id, pack_id),
-                ).fetchone()
-                if pack is None:
-                    raise DataError("active research contract references a missing source pack")
-                pack_rows.append(cast(sqlite3.Row, pack))
-                ids = _decode_json(pack["source_ids_json"], "research source pack ids")
-                if not isinstance(ids, list) or not all(isinstance(item, str) for item in ids):
-                    raise DataError("corrupt research source pack ids")
-                source_ids.update(cast(list[str], ids))
-            source_rows: list[sqlite3.Row] = []
-            for source_id in sorted(source_ids):
-                source = connection.execute(
-                    """SELECT * FROM research_source_records
-                    WHERE project_id = ? AND source_id = ?""",
-                    (project_id, source_id),
-                ).fetchone()
-                if source is None:
-                    raise DataError("active research source pack references a missing source")
-                source_rows.append(cast(sqlite3.Row, source))
+        contract_rows = [
+            self._require_research_contract(connection, project_id, contract_id)
+            for contract_id in lineage_ids
+        ]
+        contracts = [self._research_contract_view(connection, row) for row in contract_rows]
+        pack_ids: set[str] = set()
+        for contract in contracts:
+            payload = contract["payload"]
+            if isinstance(payload, dict) and isinstance(payload.get("source_pack_id"), str):
+                pack_ids.add(str(payload["source_pack_id"]))
+        pack_rows: list[sqlite3.Row] = []
+        source_ids: set[str] = set()
+        for pack_id in sorted(pack_ids):
+            pack = connection.execute(
+                """SELECT * FROM research_source_packs
+                WHERE project_id = ? AND pack_id = ?""",
+                (project_id, pack_id),
+            ).fetchone()
+            if pack is None:
+                raise DataError("active research contract references a missing source pack")
+            pack_rows.append(cast(sqlite3.Row, pack))
+            ids = _decode_json(pack["source_ids_json"], "research source pack ids")
+            if not isinstance(ids, list) or not all(isinstance(item, str) for item in ids):
+                raise DataError("corrupt research source pack ids")
+            source_ids.update(cast(list[str], ids))
+        source_rows: list[sqlite3.Row] = []
+        for source_id in sorted(source_ids):
+            source = connection.execute(
+                """SELECT * FROM research_source_records
+                WHERE project_id = ? AND source_id = ?""",
+                (project_id, source_id),
+            ).fetchone()
+            if source is None:
+                raise DataError("active research source pack references a missing source")
+            source_rows.append(cast(sqlite3.Row, source))
 
-            def bounded_rows(
-                query: str, parameters: Sequence[object], label: str
-            ) -> list[sqlite3.Row]:
-                rows = connection.execute(
-                    f"{query} LIMIT ?",  # noqa: S608 - static queries plus a bound limit.
-                    [*parameters, ledger_limit + 1],
-                ).fetchall()
-                if len(rows) > ledger_limit:
-                    raise DataError(
-                        f"research gate packet {label} exceeds ledger_limit={ledger_limit}"
-                    )
-                return [cast(sqlite3.Row, row) for row in rows]
+        def bounded_rows(query: str, parameters: Sequence[object], label: str) -> list[sqlite3.Row]:
+            rows = connection.execute(
+                f"{query} LIMIT ?",  # noqa: S608 - static queries plus a bound limit.
+                [*parameters, ledger_limit + 1],
+            ).fetchall()
+            if len(rows) > ledger_limit:
+                raise DataError(f"research gate packet {label} exceeds ledger_limit={ledger_limit}")
+            return [cast(sqlite3.Row, row) for row in rows]
 
-            attempts = bounded_rows(
-                f"""SELECT a.*, l.reservation_id AS launch_reservation_id
-                FROM research_attempt_records AS a
-                LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
-                WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
-                ORDER BY a.recorded_at, a.attempt_id""",  # noqa: S608
-                [project_id, *lineage_ids],
-                "attempt ledger",
-            )
-            launch_reservations = bounded_rows(
-                f"""SELECT * FROM research_launch_reservations
-                WHERE project_id = ? AND contract_id IN ({placeholders})
-                ORDER BY reserved_at, reservation_id""",  # noqa: S608
-                [project_id, *lineage_ids],
-                "launch reservation ledger",
-            )
-            launch_attempt_links = bounded_rows(
-                f"""SELECT l.* FROM research_launch_attempt_links AS l
-                JOIN research_launch_reservations AS r
-                    ON r.reservation_id = l.reservation_id
-                WHERE r.project_id = ? AND r.contract_id IN ({placeholders})
-                ORDER BY l.linked_at, l.reservation_id""",  # noqa: S608
-                [project_id, *lineage_ids],
-                "launch terminal-link ledger",
-            )
-            phase_events = bounded_rows(
-                """SELECT * FROM research_phase_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "phase ledger",
-            )
-            review_events = bounded_rows(
-                """SELECT * FROM research_contract_review_events
-                WHERE project_id = ? ORDER BY occurred_at, contract_id, sequence""",
-                [project_id],
-                "review ledger",
-            )
-            execution_events = bounded_rows(
-                """SELECT * FROM research_execution_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "execution ledger",
-            )
-            d2_events = bounded_rows(
-                """SELECT * FROM research_d2_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "D2 ledger",
-            )
-            decision_events = bounded_rows(
-                """SELECT * FROM research_decision_events
-                WHERE project_id = ? ORDER BY sequence""",
-                [project_id],
-                "decision ledger",
-            )
+        attempts = bounded_rows(
+            f"""SELECT a.*, l.reservation_id AS launch_reservation_id
+            FROM research_attempt_records AS a
+            LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
+            WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
+            ORDER BY a.recorded_at, a.attempt_id""",  # noqa: S608
+            [project_id, *lineage_ids],
+            "attempt ledger",
+        )
+        launch_reservations = bounded_rows(
+            f"""SELECT * FROM research_launch_reservations
+            WHERE project_id = ? AND contract_id IN ({placeholders})
+            ORDER BY reserved_at, reservation_id""",  # noqa: S608
+            [project_id, *lineage_ids],
+            "launch reservation ledger",
+        )
+        launch_attempt_links = bounded_rows(
+            f"""SELECT l.* FROM research_launch_attempt_links AS l
+            JOIN research_launch_reservations AS r
+                ON r.reservation_id = l.reservation_id
+            WHERE r.project_id = ? AND r.contract_id IN ({placeholders})
+            ORDER BY l.linked_at, l.reservation_id""",  # noqa: S608
+            [project_id, *lineage_ids],
+            "launch terminal-link ledger",
+        )
+        phase_events = bounded_rows(
+            """SELECT * FROM research_phase_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "phase ledger",
+        )
+        review_events = bounded_rows(
+            """SELECT * FROM research_contract_review_events
+            WHERE project_id = ? ORDER BY occurred_at, contract_id, sequence""",
+            [project_id],
+            "review ledger",
+        )
+        execution_events = bounded_rows(
+            """SELECT * FROM research_execution_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "execution ledger",
+        )
+        d2_events = bounded_rows(
+            """SELECT * FROM research_d2_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "D2 ledger",
+        )
+        decision_events = bounded_rows(
+            """SELECT * FROM research_decision_events
+            WHERE project_id = ? ORDER BY sequence""",
+            [project_id],
+            "decision ledger",
+        )
 
         contract_payloads: dict[str, dict[str, object]] = {}
         for contract in contracts:
@@ -4556,6 +6036,200 @@ class ControlStore:
             "d2_events": [dict(row) for row in d2_events],
             "decision_events": [dict(row) for row in decision_events],
         }
+
+    def _contract_datasets(
+        self, connection: sqlite3.Connection, contract_payload: Mapping[str, object]
+    ) -> tuple[list[dict[str, object]], bool]:
+        """Registered dataset refs for the contract's instrument, on this connection."""
+        fingerprint = contract_payload.get("chart_fingerprint")
+        instrument = fingerprint.get("instrument") if isinstance(fingerprint, Mapping) else None
+        if not isinstance(instrument, str) or not instrument:
+            return [], False
+        try:
+            clean_instrument = _symbols([instrument])[0]
+        except DataError:
+            # Synthetic fixture instruments are not registrable symbols; no datasets exist.
+            return [], False
+        rows = connection.execute(
+            """SELECT * FROM research_dataset_refs WHERE instrument = ?
+            ORDER BY registered_at DESC, ref_id LIMIT ?""",
+            (clean_instrument, _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
+        ).fetchall()
+        views: list[dict[str, object]] = []
+        for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]:
+            view = self._dataset_ref_view(row)
+            audit = connection.execute(
+                """SELECT * FROM research_dataset_audits WHERE ref_id = ?
+                ORDER BY sequence DESC LIMIT 1""",
+                (row["ref_id"],),
+            ).fetchone()
+            view["latest_audit"] = None if audit is None else self._dataset_audit_view(audit)
+            views.append(view)
+        return views, len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT
+
+    def _screened_claims(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> tuple[list[dict[str, object]], bool]:
+        """Latest-revision screened literature claims for one case, on this connection."""
+        rows = connection.execute(
+            """SELECT claims.* FROM research_source_claims AS claims
+            JOIN (
+                SELECT claim_id, MAX(revision) AS revision
+                FROM research_source_claims WHERE project_id = ? GROUP BY claim_id
+            ) AS latest
+                ON latest.claim_id = claims.claim_id
+                AND latest.revision = claims.revision
+            WHERE claims.status = 'screened'
+            ORDER BY claims.created_at, claims.claim_id LIMIT ?""",
+            (project_id, _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
+        ).fetchall()
+        views = [self._source_claim_view(row) for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]]
+        return views, len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT
+
+    def _verified_chart_references(
+        self, attempts: Sequence[Mapping[str, object]]
+    ) -> list[dict[str, object]]:
+        """Exact content-addressed chart-data references from verified immutable runs."""
+        references: list[dict[str, object]] = []
+        seen: set[str] = set()
+        for attempt in attempts:
+            run_id = attempt.get("run_id")
+            if not isinstance(run_id, str) or run_id in seen:
+                continue
+            seen.add(run_id)
+            _, manifest = self._verified_run(run_id)
+            artifacts = manifest.get("artifacts")
+            metadata = artifacts.get("chart-data.json") if isinstance(artifacts, Mapping) else None
+            sha256 = metadata.get("sha256") if isinstance(metadata, Mapping) else None
+            if not isinstance(sha256, str):
+                continue
+            details = attempt.get("details")
+            zone = details.get("evidence_zone") if isinstance(details, Mapping) else None
+            references.append(
+                {
+                    "run_id": run_id,
+                    "artifact": "chart-data.json",
+                    "content_sha256": sha256,
+                    "evidence_zone": zone if isinstance(zone, str) else None,
+                }
+            )
+        return references
+
+    def _record_strategy_promotion_packet(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        decision: Mapping[str, object],
+        actor: str,
+        timestamp: str,
+    ) -> str:
+        """Record the lossless spec-§11 promotion dossier inside the decision transaction.
+
+        The dossier binds the deterministic terminal gate packet (id + hash) computed from
+        the exact post-decision ledgers on this connection, so an ``advance_to_strategy``
+        decision and its complete research inheritance commit or roll back together.
+        """
+        from alpha_cli.research_gate_packet import build_strategy_promotion_payload
+        from alpha_research import build_research_gate_packet
+
+        inputs = self._gate_packet_inputs(connection, project_id, ledger_limit=10_000)
+        gate_packet = build_research_gate_packet(inputs).to_dict()
+        contracts = inputs.get("contracts")
+        contract_payload: dict[str, object] | None = None
+        for contract in contracts if isinstance(contracts, list) else []:
+            if isinstance(contract, dict) and contract.get("contract_id") == contract_id:
+                payload = contract.get("payload")
+                if isinstance(payload, dict):
+                    contract_payload = payload
+        if contract_payload is None:
+            raise DataError("strategy promotion requires the decided contract payload")
+        datasets, datasets_truncated = self._contract_datasets(connection, contract_payload)
+        claims, claims_truncated = self._screened_claims(connection, project_id)
+        attempts = inputs.get("attempts")
+        chart_references = self._verified_chart_references(
+            [attempt for attempt in attempts if isinstance(attempt, Mapping)]
+            if isinstance(attempts, list)
+            else []
+        )
+        project = inputs.get("project")
+        payload_out = build_strategy_promotion_payload(
+            project=project if isinstance(project, Mapping) else {},
+            decision=decision,
+            contract_payload=contract_payload,
+            gate_packet=gate_packet,
+            datasets=datasets,
+            datasets_truncated=datasets_truncated,
+            claims=claims,
+            claims_truncated=claims_truncated,
+            chart_references=chart_references,
+        )
+        packet_id = _content_id("cp", payload_out)
+        existing = connection.execute(
+            "SELECT packet_id FROM research_context_packets WHERE packet_id = ?",
+            (packet_id,),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                """INSERT INTO research_context_packets (
+                    packet_id, project_id, packet_kind, protocol_id, protocol_content_hash,
+                    payload_json, created_by, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    packet_id,
+                    project_id,
+                    "strategy_promotion",
+                    None,
+                    None,
+                    _canonical_json(payload_out, "strategy promotion packet payload"),
+                    actor,
+                    timestamp,
+                ),
+            )
+        return packet_id
+
+    def _promotion_reference(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        contract_id: str,
+        cutoff: str | None,
+    ) -> dict[str, object] | None:
+        """Resolve the recorded promotion dossier for one linked contract at the cutoff."""
+        params: list[object] = [project_id]
+        time_filter = ""
+        if cutoff is not None:
+            time_filter = " AND created_at <= ?"
+            params.append(cutoff)
+        rows = connection.execute(
+            """SELECT packet_id, payload_json, created_at FROM research_context_packets
+            WHERE project_id = ? AND packet_kind = 'strategy_promotion'"""
+            + time_filter
+            + " ORDER BY created_at, packet_id",
+            params,
+        ).fetchall()
+        for row in rows:
+            payload = _decode_json(row["payload_json"], "strategy promotion packet payload")
+            if not isinstance(payload, dict):
+                raise DataError("corrupt strategy promotion packet payload")
+            if payload.get("packet_schema") != "StrategyPromotionPacketV1":
+                # Codex-built review packets share the kind but are not the dossier.
+                continue
+            decision = payload.get("decision")
+            if not isinstance(decision, Mapping) or decision.get("contract_id") != contract_id:
+                continue
+            reference = payload.get("gate_packet_reference")
+            gate = reference if isinstance(reference, Mapping) else {}
+            return {
+                "packet_id": str(row["packet_id"]),
+                "contract_id": contract_id,
+                "gate_packet_id": gate.get("packet_id"),
+                "gate_packet_hash": gate.get("packet_hash"),
+                "recorded_at": str(row["created_at"]),
+            }
+        return None
 
     def get_agent_brief_context(
         self,
@@ -4627,6 +6301,7 @@ class ControlStore:
             if experiment_id is not None and experiment_row is None:
                 raise DataError("corrupt control store: selected experiment is missing")
             version_view = None if version_row is None else self._version_view(version_row)
+            research_promotion: dict[str, object] | None = None
             if version_view is not None and version_id is not None:
                 version_link_params: list[object] = [project_id, version_id]
                 time_filter = ""
@@ -4641,6 +6316,12 @@ class ControlStore:
                 ).fetchone()
                 if research_link is not None:
                     version_view["research_contract_id"] = research_link["contract_id"]
+                    research_promotion = self._promotion_reference(
+                        connection,
+                        project_id=project_id,
+                        contract_id=str(research_link["contract_id"]),
+                        cutoff=cutoff,
+                    )
             experiment_view = (
                 None if experiment_row is None else self._experiment_view(experiment_row)
             )
@@ -4782,6 +6463,7 @@ class ControlStore:
             "holdout_events": holdout_events,
             "scope_history_complete": scope_history_complete,
             "evidence": evidence,
+            "research_promotion": research_promotion,
         }
 
     @staticmethod
@@ -5065,17 +6747,11 @@ class ControlStore:
         parameter_space_json = _canonical_json(clean_space, "parameter space")
         with self._transaction(write=True) as connection:
             project = self._require_project(connection, project_id)
-            governance = connection.execute(
-                """SELECT research_required FROM project_research_governance
-                WHERE project_id = ?""",
-                (project_id,),
-            ).fetchone()
-            if governance is None:
-                raise DataError("strategy project has no research-governance record")
-            research_case = self._latest_research_phase(connection, project_id)
-            if (
-                int(governance["research_required"]) == 1 or research_case is not None
-            ) and clean_contract_id is None:
+            gate_state = self._research_gate_state(connection, project_id)
+            # An explicit owner override (spec §15) is the only unlinked path through a
+            # governed gate; runs under it stay watermarked EXPLORATORY, and a later pass
+            # re-locks the gate so promoted work must carry its research linkage.
+            if clean_contract_id is None and gate_state not in ("not_required", "overridden"):
                 raise DataError(
                     "research-governed project strategy versions require research_contract_id"
                 )
@@ -5186,6 +6862,36 @@ class ControlStore:
         clean_costs = _json_object(costs, "costs")
         clean_seeds = _json_object(seeds, "seeds")
         clean_stage = _json_object(stage_config or {}, "stage config")
+        market_state_value = clean_stage.get("market_state")
+        if market_state_value is not None:
+            from alpha_research import MarketStateContractV1
+
+            if not isinstance(market_state_value, Mapping):
+                raise DataError("invalid experiment market-state contract: expected an object")
+            try:
+                market_state = MarketStateContractV1.from_dict(market_state_value)
+            except DataError as exc:
+                raise DataError(f"invalid experiment market-state contract: {exc}") from exc
+            if list(market_state.universe) != clean_universe:
+                raise DataError(
+                    "invalid experiment market-state universe: must equal the experiment universe"
+                )
+            clean_stage["market_state"] = market_state.to_dict()
+        calibration_value = clean_stage.get("kronos_calibration")
+        if calibration_value is not None:
+            from alpha_validation import ForecastCalibrationContractV1
+
+            if market_state_value is None:
+                raise DataError("kronos_calibration requires a frozen market_state contract")
+            if not isinstance(calibration_value, Mapping):
+                raise DataError(
+                    "invalid experiment kronos_calibration contract: expected an object"
+                )
+            try:
+                calibration = ForecastCalibrationContractV1.from_dict(calibration_value)
+            except DataError as exc:
+                raise DataError(f"invalid experiment kronos_calibration contract: {exc}") from exc
+            clean_stage["kronos_calibration"] = calibration.to_dict()
         clean_contract_id = (
             None
             if research_contract_id is None
@@ -6601,6 +8307,48 @@ class ControlStore:
             job_id=job_id,
             at=at,
             allow_reserved=False,
+        )
+
+    def create_research_job(
+        self,
+        project_id: str,
+        *,
+        contract_id: str,
+        request: Mapping[str, object],
+        job_id: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Create the governed ``research:event-study`` durable job for active D1/D2 work.
+
+        The phase pre-check runs in its own read transaction; a lost race can only leave a
+        stray queued job that the execution-event binding check refuses to activate.
+        """
+        with self._transaction(write=False) as connection:
+            contract = self._require_research_contract(connection, project_id, contract_id)
+            review = self._latest_research_review(connection, contract_id)
+            phase = self._latest_research_phase(connection, project_id)
+            expected_phase = (
+                "deep_research" if contract["scope"] == "exploration" else "sealed_confirmation"
+            )
+            if (
+                contract["scope"] not in {"exploration", "confirmation"}
+                or _research_review_state(review) != "approved"
+                or phase is None
+                or phase["phase"] != expected_phase
+                or phase["contract_id"] != contract_id
+            ):
+                raise DataError(
+                    "research job creation requires the approved active deep_research or "
+                    "sealed_confirmation contract"
+                )
+        return self._create_job(
+            kind="research:event-study",
+            request=request,
+            project_id=project_id,
+            experiment_id=None,
+            job_id=job_id,
+            at=at,
+            allow_reserved=True,
         )
 
     def create_suite_job(

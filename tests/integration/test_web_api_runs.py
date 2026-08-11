@@ -147,6 +147,35 @@ def test_run_detail_unknown_is_404(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert _client(tmp_path, monkeypatch).get("/api/runs/deadbeefdeadbeef").status_code == 404
 
 
+def test_research_gate_watermark_surfaces_in_index_and_detail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec §15 / ADR-0026 (R6g): a run launched under an owner research-gate override carries
+    the permanent EXPLORATORY watermark through the run index and run detail; unmarked runs
+    project ``null`` so the SPA can badge exactly the overridden runs."""
+    watermark = "EXPLORATORY / RESEARCH GATE NOT COMPLETED"
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path,
+        "runs",
+        "abab000000000007",
+        {
+            "command": "backtest_run",
+            "symbol": "SPY",
+            "research_gate": {"state": "overridden", "watermark": watermark},
+        },
+    )
+    items = client.get("/api/runs").json()["items"]
+    marked = next(r for r in items if r["run_id"] == "abab000000000007")
+    assert marked["research_gate_watermark"] == watermark
+    plain = next(r for r in items if r["run_id"] == "aaaa000000000001")
+    assert plain["research_gate_watermark"] is None
+
+    detail = client.get("/api/runs/abab000000000007").json()
+    assert detail["research_gate_watermark"] == watermark
+    assert client.get("/api/runs/aaaa000000000001").json()["research_gate_watermark"] is None
+
+
 def test_equity_endpoint_returns_ts_equity_drawdown(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

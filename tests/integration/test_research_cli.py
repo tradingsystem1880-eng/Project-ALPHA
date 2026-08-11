@@ -139,12 +139,11 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     assert isinstance(pilot_case, dict)
     assert manifest["evidence_zone"] == "D0"
     assert manifest["real_market_evidence"] is False
-    assert pilot_case["phase"] == "research_decision"
+    assert pilot_case["phase"] == "deep_research"
     assert pilot_case["execution_state"] == "idle"
-    assert pilot_case["responsibility"] == "owner"
+    assert pilot_case["responsibility"] == "codex"
     assert pilot_case["next_action"] == (
-        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
-        "in Gate 1."
+        "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert pilot_case["attempt_count"] == 1
     assert pilot_case["terminal_attempt_count"] == 1
@@ -168,8 +167,13 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     assert pilot_case["latest_run_fingerprint"] == manifest["execution_fingerprint"]
     assert "not real-market evidence" in str(pilot_case["latest_finding"])
     assert pilot_case["elapsed_time_seconds"] >= 0
-    assert pilot_case["completed_milestones"][-1]["phase"] == "research_decision"
-    assert pilot_case["remaining_milestones"] == ["closed"]
+    assert pilot_case["completed_milestones"][-1]["phase"] == "deep_research"
+    assert pilot_case["remaining_milestones"] == [
+        "confirmation_review",
+        "sealed_confirmation",
+        "research_decision",
+        "closed",
+    ]
 
     contradicted = runner.invoke(
         app,
@@ -190,7 +194,7 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     )
     assert contradicted.exit_code != 0
     after_rejected_claim = _invoke("status", project_id)
-    assert after_rejected_claim["phase"] == "research_decision"
+    assert after_rejected_claim["phase"] == "deep_research"
     assert after_rejected_claim["research_decision"] is None
 
     closed = _invoke(
@@ -267,7 +271,7 @@ def test_interrupted_pilot_recovery_rejects_post_admission_d0_rewrite(
         self: ControlStore, *args: object, **kwargs: object
     ) -> dict[str, object]:
         nonlocal interrupted
-        if kwargs.get("to_phase") == "research_decision" and not interrupted:
+        if kwargs.get("to_phase") in {"research_decision", "deep_research"} and not interrupted:
             interrupted = True
             raise RuntimeError("simulated process interruption after D0 admission")
         return original_transition(self, *args, **kwargs)  # type: ignore[arg-type]
@@ -604,13 +608,16 @@ def test_deep_and_confirmation_runs_remain_gated(
     assert isinstance(project, dict)
     project_id = str(project["project_id"])
 
-    for phase in ("deep", "confirm"):
+    for phase, gate in (
+        ("deep", "deep_research phase"),
+        ("confirm", "sealed_confirmation phase"),
+    ):
         result = runner.invoke(
             app,
             ["research", "run", phase, project_id, "--json"],
         )
         assert result.exit_code != 0
-        assert "Gate-1 unavailable" in result.output
+        assert gate in result.output
 
 
 def test_postlaunch_v1_project_attaches_to_research_through_public_cli(
@@ -1031,7 +1038,7 @@ def test_store_failure_after_successful_pilot_never_fabricates_a_failed_attempt(
     assert recovered_manifest["run_id"] == manifest["run_id"]
     assert recovered_case["attempt_count"] == 2
     assert recovered_case["terminal_attempt_count"] == 1
-    assert recovered_case["phase"] == "research_decision"
+    assert recovered_case["phase"] == "deep_research"
     assert recovered_case["remaining_launches"] == 1
 
 
@@ -1220,11 +1227,10 @@ def test_completed_pilot_is_adopted_after_crash_without_duplicate_attempt(
 
     recovered = _invoke("run", "pilot", project_id)
     recovered_case = cast(dict[str, object], recovered["case"])
-    assert recovered_case["phase"] == "research_decision"
-    assert recovered_case["responsibility"] == "owner"
+    assert recovered_case["phase"] == "deep_research"
+    assert recovered_case["responsibility"] == "codex"
     assert recovered_case["next_action"] == (
-        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
-        "in Gate 1."
+        "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert recovered_case["attempt_count"] == 1
     assert recovered_case["latest_run_id"] == run_id
@@ -1261,3 +1267,1375 @@ def test_legacy_compare_subset_and_missing_data_behavior_remain_compatible(
 
     missing = runner.invoke(app, ["research", "compare", "NOPE", "--json"])
     assert missing.exit_code != 0
+
+
+def test_research_list_projects_bounded_backlog_rows_newest_activity_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    first = _invoke("capture", "Gold rallies after triple witching expiries", "--name", "Gold")
+    second = _invoke("capture", "SPY drifts upward into month-end rebalancing", "--name", "SPY")
+    first_case = cast(dict[str, object], first["case"])
+    second_case = cast(dict[str, object], second["case"])
+    first_id = str(cast(dict[str, object], first["project"])["project_id"])
+    second_id = str(cast(dict[str, object], second["project"])["project_id"])
+    assert first_case["phase"] == "triage" and second_case["phase"] == "triage"
+
+    page = _invoke("list")
+    assert set(page) == {"items", "limit", "offset", "has_more"}
+    assert page["limit"] == 50 and page["offset"] == 0 and page["has_more"] is False
+    items = page["items"]
+    assert isinstance(items, list) and len(items) == 2
+    row = cast(dict[str, object], items[0])
+    assert set(row) == {
+        "case_id",
+        "title",
+        "original_idea",
+        "phase",
+        "execution_state",
+        "outcome",
+        "disposition",
+        "next_action",
+        "responsibility",
+        "latest_finding",
+        "blocker",
+        "recovery_action",
+        "completed_milestones",
+        "total_milestones",
+        "owner_pinned",
+        "priority",
+        "budget",
+        "updated_at",
+    }
+    # Newest research activity first: the second capture leads.
+    assert [cast(dict[str, object], item)["case_id"] for item in items] == [second_id, first_id]
+    assert row["title"] == "SPY"
+    assert row["original_idea"] == "SPY drifts upward into month-end rebalancing"
+    assert row["phase"] == "triage"
+    assert row["execution_state"] == "idle"
+    assert row["outcome"] is None and row["disposition"] is None
+    assert row["responsibility"] == "owner"
+    assert (
+        row["recovery_action"]
+        == "Answer the single bounded question batch; Codex handles technical defaults."
+    )
+    assert row["completed_milestones"] == 2  # captured + triage phase events
+    assert row["total_milestones"] == 9  # the nine research phases
+    # The advisory priority rubric is not yet scored; the projection says so honestly.
+    assert row["owner_pinned"] is False
+    assert row["priority"] == {
+        "falsifiability": 0,
+        "data_readiness": 0,
+        "novelty": 0,
+        "information_gain_per_cost": 0,
+    }
+    budget = cast(dict[str, object], row["budget"])
+    assert set(budget) == {"approved_units", "consumed_units", "unit"}
+    assert budget["unit"] == "minutes"
+    assert isinstance(row["updated_at"], str) and row["updated_at"]
+
+    bounded = _invoke("list", "--limit", "1")
+    assert bounded["has_more"] is True
+    assert len(cast(list[object], bounded["items"])) == 1
+    offset_page = _invoke("list", "--limit", "1", "--offset", "1")
+    assert [
+        cast(dict[str, object], item)["case_id"]
+        for item in cast(list[object], offset_page["items"])
+    ] == [first_id]
+
+    rejected = runner.invoke(app, ["research", "list", "--limit", "0", "--json"])
+    assert rejected.exit_code != 0
+
+
+def test_context_packets_notes_protocols_and_brief_cli_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "SPY drifts upward into month-end rebalancing")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+
+    protocols = _invoke("protocols", "list")
+    entries = cast(list[dict[str, object]], protocols["protocols"])
+    assert len(entries) == 13
+    assert entries[0]["id"] == "new-idea-intake"
+    shown = _invoke("protocols", "show", "new-idea-intake")
+    assert isinstance(shown["content"], str) and "no trading rules" in str(shown["purpose"])
+
+    built = _invoke(
+        "context",
+        "build",
+        project_id,
+        "--kind",
+        "research_case",
+        "--protocol",
+        "new-idea-intake",
+    )
+    packet_id = str(built["packet_id"])
+    assert packet_id.startswith("cp_")
+    assert built["protocol_id"] == "new-idea-intake"
+    assert str(built["protocol_content_hash"]) == str(entries[0]["sha256"])
+    payload = cast(dict[str, object], built["payload"])
+    assert payload["packet_kind"] == "research_case"
+
+    listed = _invoke("context", "list", project_id)
+    assert [row["packet_id"] for row in cast(list[dict[str, object]], listed["items"])] == [
+        packet_id
+    ]
+    shown_packet = _invoke("context", "show", packet_id)
+    assert shown_packet["payload"] == payload
+
+    note = _invoke(
+        "note",
+        "add",
+        project_id,
+        "--kind",
+        "critique",
+        "--body",
+        "The volatility-regime confounder is not yet matched.",
+        "--author",
+        "codex",
+        "--author-kind",
+        "agent",
+        "--packet",
+        packet_id,
+    )
+    assert str(note["note_id"]).startswith("rn_")
+    notes = _invoke("note", "list", project_id)
+    assert [row["note_id"] for row in cast(list[dict[str, object]], notes["items"])] == [
+        note["note_id"]
+    ]
+
+    brief = _invoke("brief", project_id)
+    assert brief["brief_schema"] == "ResearchBriefV1"
+    assert str(brief["packet_id"]).startswith("cp_")
+    changes = cast(dict[str, object], brief["changes"])
+    assert set(changes) == {"phase_events", "execution_events", "attempts", "decisions"}
+
+
+def test_new_research_commands_report_human_fallbacks_and_fail_loud_on_unknown_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Gold rallies after triple witching expiries")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+
+    listing = runner.invoke(app, ["research", "list"])
+    assert listing.exit_code == 0 and project_id in listing.output
+    hub = runner.invoke(app, ["research", "evidence-hub", project_id])
+    assert hub.exit_code == 0 and "evidence hub sections" in hub.output
+    empty_context = runner.invoke(app, ["research", "context", "list", project_id])
+    assert empty_context.exit_code == 0 and "no packets recorded" in empty_context.output
+    empty_notes = runner.invoke(app, ["research", "note", "list", project_id])
+    assert empty_notes.exit_code == 0 and "no notes recorded" in empty_notes.output
+    protocols_text = runner.invoke(app, ["research", "protocols", "list"])
+    assert protocols_text.exit_code == 0 and "new-idea-intake" in protocols_text.output
+    protocol_text = runner.invoke(app, ["research", "protocols", "show", "research-critic"])
+    assert protocol_text.exit_code == 0 and "Research Critic" in protocol_text.output
+    built = runner.invoke(app, ["research", "context", "build", project_id, "--kind", "validation"])
+    assert built.exit_code == 0 and "recorded packet cp_" in built.output
+    noted = runner.invoke(
+        app,
+        [
+            "research",
+            "note",
+            "add",
+            project_id,
+            "--kind",
+            "synthesis",
+            "--body",
+            "Established: nothing yet.",
+        ],
+    )
+    assert noted.exit_code == 0 and "recorded note rn_" in noted.output
+    briefed = runner.invoke(app, ["research", "brief", project_id])
+    assert briefed.exit_code == 0 and "brief recorded as cp_" in briefed.output
+    shown = runner.invoke(app, ["research", "context", "list", project_id])
+    assert shown.exit_code == 0 and "validation" in shown.output
+
+    unknown = "00000000-0000-4000-8000-000000000000"
+    for args in (
+        ["research", "evidence-hub", unknown, "--json"],
+        ["research", "context", "build", unknown, "--kind", "research_case", "--json"],
+        ["research", "context", "show", "cp_" + "9" * 64, "--json"],
+        ["research", "context", "list", unknown, "--json"],
+        ["research", "note", "add", unknown, "--kind", "critique", "--body", "x", "--json"],
+        ["research", "note", "list", unknown, "--json"],
+        ["research", "protocols", "show", "unknown-protocol", "--json"],
+        ["research", "brief", unknown, "--json"],
+        ["research", "status", unknown, "--json"],
+    ):
+        rejected = runner.invoke(app, args)
+        assert rejected.exit_code != 0, args
+
+
+def _pull_and_snapshot_aapl(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.integration.test_data_cli import _FakeAdapter
+
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"fake": _FakeAdapter})
+    pull = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-02",
+        ],
+    )
+    assert pull.exit_code == 0, pull.output
+    snapped = runner.invoke(app, ["data", "snapshot", "snap1", "AAPL", "--source", "fake"])
+    assert snapped.exit_code == 0, snapped.output
+
+
+def test_research_dataset_register_list_and_audit_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _pull_and_snapshot_aapl(monkeypatch)
+    captured = _invoke("capture", "AAPL drifts after gap days")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+
+    registered = _invoke(
+        "data",
+        "register",
+        "AAPL",
+        "--kind",
+        "snapshot",
+        "--snapshot-id",
+        "snap1",
+        "--start",
+        "2020-08-28",
+        "--end",
+        "2020-09-02",
+    )
+    ref_id = str(registered["ref_id"])
+    assert ref_id.startswith("rd_")
+    assert registered["research_only"] is True
+    assert registered["provider"] == "fake"
+    origin = cast(dict[str, object], registered["origin"])
+    assert origin["snapshot_id"] == "snap1"
+    assert len(str(origin["manifest_sha256"])) == 64
+
+    slice_registered = _invoke(
+        "data",
+        "register",
+        "AAPL",
+        "--kind",
+        "store-slice",
+        "--start",
+        "2020-08-28",
+        "--end",
+        "2020-09-02",
+    )
+    assert str(slice_registered["ref_id"]).startswith("rd_")
+    assert "provenance_sha256" in cast(dict[str, object], slice_registered["origin"])
+
+    listed = _invoke("data", "list")
+    assert len(cast(list[object], listed["items"])) == 2
+    filtered = _invoke("data", "list", "--symbol", "AAPL")
+    assert len(cast(list[object], filtered["items"])) == 2
+
+    audited = _invoke("data", "audit", project_id, ref_id)
+    manifest = cast(dict[str, object], audited["manifest"])
+    assert manifest["command"] == "research_data_audit"
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["real_market_evidence"] is False
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    audit = cast(dict[str, object], audited["audit"])
+    summary = cast(dict[str, object], audit["summary"])
+    assert summary["audit_schema"] == "ResearchDataAuditV1"
+    # A four-bar dataset is honestly blocking: far below any usable sample.
+    assert cast(int, summary["blocking_count"]) >= 1
+    assert audit["project_id"] == project_id
+
+    enriched = _invoke("data", "list")
+    rows = cast(list[dict[str, object]], enriched["items"])
+    audited_row = next(row for row in rows if row["ref_id"] == ref_id)
+    assert audited_row["latest_audit"] is not None
+
+
+def test_research_dataset_registration_fails_closed_without_receipts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=50)  # bars without provenance
+
+    unknown_snapshot = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "SPY",
+            "--kind",
+            "snapshot",
+            "--snapshot-id",
+            "missing",
+            "--start",
+            "2020-01-01",
+            "--end",
+            "2020-06-01",
+            "--json",
+        ],
+    )
+    assert unknown_snapshot.exit_code != 0
+
+    no_provenance = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "SPY",
+            "--kind",
+            "store-slice",
+            "--start",
+            "2020-01-01",
+            "--end",
+            "2020-06-01",
+            "--json",
+        ],
+    )
+    assert no_provenance.exit_code != 0
+    assert "provenance" in no_provenance.output.casefold()
+
+
+def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(
+        json.dumps({"receipt_id": "a" * 32, "response_sha256": "b" * 64}), encoding="utf-8"
+    )
+    registered = _invoke(
+        "data",
+        "register",
+        "AAPL",
+        "--kind",
+        "quantpad",
+        "--receipt",
+        str(receipt_path),
+        "--start",
+        "2026-01-01",
+        "--end",
+        "2026-02-01",
+        "--bar-minutes",
+        "60",
+    )
+    assert registered["dataset_kind"] == "quantpad_receipt"
+    assert registered["provider"] == "quantpad"
+    assert registered["bar_duration_minutes"] == 60
+
+    missing_receipt = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "AAPL",
+            "--kind",
+            "quantpad",
+            "--start",
+            "2026-01-01",
+            "--end",
+            "2026-02-01",
+            "--json",
+        ],
+    )
+    assert missing_receipt.exit_code != 0
+    malformed = tmp_path / "bad-receipt.json"
+    malformed.write_text("[]", encoding="utf-8")
+    bad_receipt = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "register",
+            "AAPL",
+            "--kind",
+            "quantpad",
+            "--receipt",
+            str(malformed),
+            "--start",
+            "2026-01-01",
+            "--end",
+            "2026-02-01",
+            "--json",
+        ],
+    )
+    assert bad_receipt.exit_code != 0
+
+    corrupt = tmp_path / "snapshots" / "broken"
+    corrupt.mkdir(parents=True)
+    (corrupt / "manifest.json").write_text("{not json", encoding="utf-8")
+    listing = runner.invoke(app, ["data", "snapshots", "--json"])
+    assert listing.exit_code != 0
+    unknown_audit = runner.invoke(
+        app,
+        [
+            "research",
+            "data",
+            "audit",
+            "00000000-0000-4000-8000-000000000000",
+            "rd_" + "0" * 64,
+            "--json",
+        ],
+    )
+    assert unknown_audit.exit_code != 0
+
+
+def _register_daily_dataset(tmp_path: Path, symbol: str, lows: list[float] | None = None) -> str:
+    """Snapshot planted Tiingo-shaped daily bars and register them via the CLI."""
+    from datetime import UTC, datetime, timedelta
+
+    from alpha_data.snapshot import create_snapshot
+    from alpha_data.store import ParquetStore
+    from tests.unit.test_research_gate4_lane import _daily_frame, _daily_lows
+
+    if lows is None:
+        lows = _daily_lows()
+    store = ParquetStore(tmp_path / "store")
+    store.write_bars(symbol, _daily_frame(lows))
+    snapshot_id = f"gate4-{symbol.lower()}"
+    create_snapshot(
+        store,
+        tmp_path / "snapshots",
+        snapshot_id,
+        [symbol],
+        source="tiingo",
+        adapter_version="1",
+        parser_version="1",
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    end_day = datetime(2020, 1, 6, tzinfo=UTC) + timedelta(days=len(lows) - 1)
+    registered = _invoke(
+        "data",
+        "register",
+        symbol,
+        "--kind",
+        "snapshot",
+        "--snapshot-id",
+        snapshot_id,
+        "--start",
+        "2020-01-06",
+        "--end",
+        end_day.date().isoformat(),
+        "--bar-minutes",
+        "1440",
+    )
+    return str(registered["ref_id"])
+
+
+def _daily_draft_args(project_id: str, pack_id: str) -> list[str]:
+    return [
+        "draft",
+        project_id,
+        "--source-pack-id",
+        pack_id,
+        "--answer",
+        "chart_construction=tiingo_daily_fallback",
+        "--answer",
+        "event_availability=second_trough_confirmable",
+        "--answer",
+        "primary_outcome=next_regular_session_return_50bp",
+    ]
+
+
+def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_research(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6a (ADR-0026): the Gate-4 daily lane freezes an empirical exploration boundary."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    ref_id = _register_daily_dataset(tmp_path, "SPY")
+    captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    drafted = _invoke(
+        *_daily_draft_args(project_id, str(pack["pack_id"])),
+        "--dataset",
+        ref_id,
+    )
+    payload = cast(dict[str, object], cast(dict[str, object], drafted["contract"])["payload"])
+    assert payload["approval_ready"] is True
+    assert payload["blocking_questions"] == []
+    hashes = cast(dict[str, object], payload["hashes"])
+    data_hash = hashes["data"]
+    assert isinstance(data_hash, str) and len(data_hash) == 64
+    protocol = cast(dict[str, object], payload["protocol"])
+    assert protocol["boundary_authority"] == {
+        "kind": "empirical_dataset",
+        "real_market_evidence": True,
+        "empirical_confirmation_authorized": True,
+    }
+    empirical = cast(dict[str, object], protocol["empirical_dataset"])
+    assert empirical["ref_id"] == ref_id
+    assert empirical["content_sha256"] == data_hash
+    assert empirical["instrument"] == "SPY"
+    assert empirical["provider"] == "tiingo"
+    assert cast(int, empirical["session_group_count"]) >= 100
+    topology = cast(dict[str, object], protocol["evidence_topology"])
+    d2 = cast(dict[str, object], topology["D2"])
+    assert d2["share"] == 0.2
+    boundary_hash = d2["boundary_hash"]
+    assert isinstance(boundary_hash, str) and len(boundary_hash) == 64
+    operator = cast(dict[str, object], protocol["d0_operator"])
+    fixture = cast(dict[str, object], operator["fixture"])
+    assert fixture["fixture_id"] == "spy_session_daily_double_bottom_v1"
+
+    frozen_id = str(cast(dict[str, object], drafted["contract"])["contract_id"])
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        frozen_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "The registered daily dataset and bounded plan suit empirical D1 exploration.",
+    )
+    pilot = _invoke("run", "pilot", project_id)
+    pilot_case = cast(dict[str, object], pilot["case"])
+    assert pilot_case["phase"] == "deep_research"
+    manifest = cast(dict[str, object], pilot["manifest"])
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["real_market_evidence"] is False  # the D0 pilot itself stays synthetic
+
+    # R6b (ADR-0026): the governed deep run executes on the registered daily dataset.
+    deep = _invoke("run", "deep", project_id)
+    deep_manifest = cast(dict[str, object], deep["manifest"])
+    assert deep_manifest["evidence_zone"] == "D1"
+    assert deep_manifest["real_market_evidence"] is True
+    assert deep_manifest["watermark"] == "EXPLORATORY"
+    assert deep_manifest["eligible_for_holdout_or_execution"] is False
+    assert deep_manifest["dataset_hash"] == data_hash  # the approval-frozen dataset bytes
+    deep_attempt = cast(dict[str, object], deep["attempt"])
+    assert deep_attempt["status"] == "completed"
+    assert deep_attempt["kind"] == "d1-deep-research"
+    deep_case = cast(dict[str, object], deep["case"])
+    assert deep_case["phase"] == "deep_research"
+
+
+def _varied_daily_lows(blocks: int = 50) -> list[float]:
+    """Planted daily motifs with heterogeneous post-confirmation rises (non-degenerate CI)."""
+    from tests.unit.test_research_gate4_lane import _MOTIF
+
+    lows: list[float] = []
+    for block in range(blocks):
+        lows.extend(_MOTIF)
+        level = _MOTIF[-1]
+        rise = 8.0 + 0.5 * (block % 5)
+        for day in range(1):
+            level = level + rise if day == 0 else level
+            lows.append(level)
+        lows.extend([100.0] * (block % 3))
+    return lows
+
+
+def _approved_empirical_daily_project(
+    tmp_path: Path, lows: list[float] | None = None
+) -> tuple[str, str]:
+    """Register the daily SPY dataset and drive one empirical case into deep_research."""
+    ref_id = _register_daily_dataset(tmp_path, "SPY", lows)
+    captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    drafted = _invoke(
+        *_daily_draft_args(project_id, str(pack["pack_id"])),
+        "--dataset",
+        ref_id,
+    )
+    contract = cast(dict[str, object], drafted["contract"])
+    payload = cast(dict[str, object], contract["payload"])
+    data_hash = str(cast(dict[str, object], payload["hashes"])["data"])
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        str(contract["contract_id"]),
+        "--actor",
+        "owner",
+        "--reason",
+        "The registered daily dataset and bounded plan suit empirical D1 exploration.",
+    )
+    pilot = _invoke("run", "pilot", project_id)
+    assert cast(dict[str, object], pilot["case"])["phase"] == "deep_research"
+    return project_id, data_hash
+
+
+def test_confirmation_drafting_freezes_the_one_shot_family_from_d1_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6c (ADR-0026): the confirmation contract is frozen mechanically from admitted D1."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, data_hash = _approved_empirical_daily_project(tmp_path, lows=_varied_daily_lows())
+    _invoke("run", "deep", project_id)
+
+    drafted = _invoke("draft-confirmation", project_id)
+    contract = cast(dict[str, object], drafted["contract"])
+    payload = cast(dict[str, object], contract["payload"])
+    assert contract["scope"] == "confirmation"
+    parent_id = str(contract["parent_contract_id"])
+    assert parent_id.startswith("rc_")
+    confirmation = cast(dict[str, object], payload["confirmation"])
+    assert confirmation["variant_count"] == 1
+    assert confirmation["multiplicity_count"] == 1
+    assert confirmation["familywise_alpha"] == 0.05
+    assert confirmation["target_power"] == 0.90
+    power_report = cast(dict[str, object], confirmation["power_report"])
+    assert 0.90 <= cast(float, power_report["achieved_power"]) <= 1.0
+    assert power_report["seed"] == 7
+    assert str(power_report["source_run_id"])
+    fingerprints = cast(dict[str, object], confirmation["fingerprints"])
+    assert isinstance(fingerprints.get("data"), str)
+    hashes = cast(dict[str, object], payload["hashes"])
+    assert hashes["data"] == data_hash
+    plan = cast(dict[str, object], payload["analysis_plan"])
+    families = cast(list[dict[str, object]], plan["families"])
+    assert [entry["family"] for entry in families] == ["event_study"]
+    assert families[0]["multiplicity"] == "primary"
+    case = cast(dict[str, object], drafted["case"])
+    assert case["phase"] == "confirmation_review"
+    assert case["d2_state"] == "sealed"
+
+    store = ControlStore(tmp_path)
+    parent = store.get_research_contract(parent_id)
+    parent_payload = cast(dict[str, object], parent["payload"])
+
+    def _boundary_hash(value: dict[str, object]) -> str:
+        protocol = cast(dict[str, object], value["protocol"])
+        topology = cast(dict[str, object], protocol["evidence_topology"])
+        return str(cast(dict[str, object], topology["D2"])["boundary_hash"])
+
+    assert _boundary_hash(payload) == _boundary_hash(parent_payload)
+
+
+def _confirmation_ready_project(tmp_path: Path) -> tuple[str, str, str]:
+    """Drive one empirical case through D1 and freeze its confirmation contract."""
+    project_id, data_hash = _approved_empirical_daily_project(tmp_path, lows=_varied_daily_lows())
+    _invoke("run", "deep", project_id)
+    drafted = _invoke("draft-confirmation", project_id)
+    contract_id = str(cast(dict[str, object], drafted["contract"])["contract_id"])
+    return project_id, contract_id, data_hash
+
+
+def test_one_shot_confirmation_consumes_d2_and_routes_to_owner_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6d (ADR-0026): approve -> sealed_confirmation -> one governed one-shot D2 run."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, data_hash = _confirmation_ready_project(tmp_path)
+    approved = _approve_confirmation(project_id, contract_id)
+    approved_case = cast(dict[str, object], approved["case"])
+    assert approved_case["phase"] == "sealed_confirmation"
+    assert approved_case["d2_state"] == "authorized"
+
+    confirm = _invoke("run", "confirm", project_id)
+    manifest = cast(dict[str, object], confirm["manifest"])
+    assert manifest["command"] == "research_confirm"
+    assert manifest["evidence_zone"] == "D2"
+    assert manifest["watermark"] == "REGISTERED CONFIRMATORY"
+    assert manifest["real_market_evidence"] is True
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    assert manifest["dataset_hash"] == data_hash
+    attempt = cast(dict[str, object], confirm["attempt"])
+    assert attempt["kind"] == "sealed-confirmation"
+    assert attempt["status"] == "completed"
+    case = cast(dict[str, object], confirm["case"])
+    assert case["phase"] == "research_decision"
+    assert case["d2_state"] == "consumed"
+    assert case["execution_state"] == "idle"
+
+    run_id = str(manifest["run_id"])
+    evidence = json.loads(
+        (tmp_path / "runs" / run_id / "research_gate_evidence.json").read_text(encoding="utf-8")
+    )
+    assert evidence["confirmation_classification"] == "SUPPORTED"
+
+    # The sealed share is spent: a second invocation recovers the same immutable run and
+    # records no new attempt, execution, or data read.
+    second = _invoke("run", "confirm", project_id)
+    assert cast(dict[str, object], second["manifest"])["run_id"] == run_id
+    assert cast(dict[str, object], second["attempt"])["attempt_id"] == attempt["attempt_id"]
+
+    # The owner decision is bound to the mechanical classification.
+    contradicted = runner.invoke(
+        app,
+        [
+            "research",
+            "decide",
+            project_id,
+            "--outcome",
+            "CONTRADICTED",
+            "--disposition",
+            "reject",
+            "--actor",
+            "owner",
+            "--reason",
+            "An owner claim against the mechanical classification must fail.",
+            "--json",
+        ],
+    )
+    assert contradicted.exit_code != 0
+    assert "mechanical D2 classification" in contradicted.output
+    decided = _invoke(
+        "decide",
+        project_id,
+        "--outcome",
+        "SUPPORTED",
+        "--disposition",
+        "advance_to_strategy",
+        "--actor",
+        "owner",
+        "--reason",
+        "The mechanically confirmed effect advances to strategy work.",
+    )
+    assert cast(dict[str, object], decided["decision"])["outcome"] == "SUPPORTED"
+
+
+def _approve_confirmation(project_id: str, contract_id: str) -> dict[str, object]:
+    return _invoke(
+        "approve",
+        "confirmation",
+        project_id,
+        contract_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "Confirm the exact one-shot family.",
+    )
+
+
+def test_confirmation_contaminates_d2_on_sealed_dataset_integrity_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pre-flight integrity failure spends the sealed share: INVALID is the only exit."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+    parquets = sorted((tmp_path / "snapshots" / "gate4-spy").rglob("*.parquet"))
+    assert parquets
+    for parquet in parquets:
+        parquet.write_bytes(parquet.read_bytes() + b"tampered")
+
+    blocked = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "contaminated" in blocked.output
+    case = _invoke("status", project_id)
+    assert case["d2_state"] == "contaminated"
+    assert case["phase"] == "research_decision"
+
+    # The spent share can never be re-run, and no attempt or run was recorded.
+    rerun = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert rerun.exit_code != 0
+    assert "contaminated" in rerun.output
+    assert case["attempt_count"] == 2  # D0 pilot + D1 deep only
+
+    # SUPPORTED and advance are unreachable from a contaminated share.
+    advance = runner.invoke(
+        app,
+        [
+            "research",
+            "decide",
+            project_id,
+            "--outcome",
+            "SUPPORTED",
+            "--disposition",
+            "advance_to_strategy",
+            "--actor",
+            "owner",
+            "--reason",
+            "A contaminated share cannot support the claim.",
+            "--json",
+        ],
+    )
+    assert advance.exit_code != 0
+    assert "INVALID" in advance.output
+    closed = _invoke(
+        "decide",
+        project_id,
+        "--outcome",
+        "INVALID",
+        "--disposition",
+        "park",
+        "--actor",
+        "owner",
+        "--reason",
+        "The sealed confirmation dataset failed integrity before the one-shot read.",
+    )
+    closed_case = cast(dict[str, object], closed["case"])
+    assert closed_case["phase"] == "closed"
+    assert closed_case["d2_state"] == "contaminated"
+
+
+def test_confirmation_crash_checkpoints_and_recovers_with_exact_reexecution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A runtime crash checkpoints honestly and never contaminates the sealed share."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, data_hash = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+
+    from alpha_cli.research_d2 import run_confirmation as real_run_confirmation
+
+    def crash(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise DataError("simulated executor crash")
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", crash)
+    failed = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert failed.exit_code != 0
+    assert "checkpointed" in failed.output
+    case = _invoke("status", project_id)
+    assert case["execution_state"] == "failed"
+    assert case["checkpoint"] == "d2:failed:1"
+    assert case["d2_state"] == "authorized"
+    assert case["phase"] == "sealed_confirmation"
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", real_run_confirmation)
+    resumed = _invoke("resume", project_id)
+    assert resumed["execution_state"] == "queued"
+    confirm = _invoke("run", "confirm", project_id)
+    manifest = cast(dict[str, object], confirm["manifest"])
+    assert manifest["dataset_hash"] == data_hash
+    attempt = cast(dict[str, object], confirm["attempt"])
+    assert attempt["status"] == "completed"
+    recovered_case = cast(dict[str, object], confirm["case"])
+    assert recovered_case["phase"] == "research_decision"
+    assert recovered_case["d2_state"] == "consumed"
+    assert recovered_case["checkpoint"] == "d2:complete"
+
+
+def test_confirmation_retries_exhaust_to_blocked_without_touching_the_share(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+
+    def crash(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise DataError("simulated executor crash")
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", crash)
+    for attempt_number in range(1, 4):
+        failed = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+        assert failed.exit_code != 0
+        case = _invoke("status", project_id)
+        assert case["checkpoint"] == f"d2:failed:{attempt_number}"
+        assert case["execution_state"] == ("blocked" if attempt_number == 3 else "failed")
+        assert case["d2_state"] == "authorized"
+        if attempt_number < 3:
+            assert _invoke("resume", project_id)["execution_state"] == "queued"
+
+    # The initial attempt plus two safe retries are spent: the cap holds even after resume.
+    assert _invoke("resume", project_id)["execution_state"] == "queued"
+    capped = runner.invoke(app, ["research", "run", "confirm", project_id, "--json"])
+    assert capped.exit_code != 0
+    assert "revision" in capped.output
+
+
+def test_confirmation_drafting_fails_closed_without_authority_or_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    synthetic_project = _approved_deep_ready_project()
+    blocked = runner.invoke(app, ["research", "draft-confirmation", synthetic_project, "--json"])
+    assert blocked.exit_code != 0
+    assert "cannot authorize D2" in blocked.output
+
+
+def test_confirmation_drafting_requires_a_completed_clearing_d1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, _ = _approved_empirical_daily_project(tmp_path, lows=_varied_daily_lows())
+    blocked = runner.invoke(app, ["research", "draft-confirmation", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "deep-research" in blocked.output  # "…requires a completed D1 deep-research attempt"
+
+
+def test_confirmation_drafting_fails_loud_on_degenerate_discovery_intervals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Perfectly uniform planted outcomes cannot fabricate confirmation certainty."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, _ = _approved_empirical_daily_project(tmp_path)  # uniform rises
+    _invoke("run", "deep", project_id)
+    blocked = runner.invoke(app, ["research", "draft-confirmation", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "non-degenerate" in blocked.output
+
+
+def test_empirical_deep_run_fails_closed_on_drifted_dataset_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A registered dataset that no longer reproduces the frozen data hash cannot run."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, _ = _approved_empirical_daily_project(tmp_path)
+
+    from alpha_cli.research_d1 import registered_synthetic_d1_bars
+
+    monkeypatch.setattr(
+        research_cmds,
+        "load_registered_research_bars",
+        lambda *args, **kwargs: registered_synthetic_d1_bars(),
+    )
+    blocked = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "approval-frozen data hash" in blocked.output
+
+
+def test_empirical_daily_draft_fails_closed_on_missing_or_mismatched_datasets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "SPY bounces after double bottoms on the daily chart")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack_id = str(
+        _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))["pack_id"]
+    )
+
+    no_dataset = runner.invoke(app, ["research", *_daily_draft_args(project_id, pack_id), "--json"])
+    assert no_dataset.exit_code != 0
+    assert "registered" in no_dataset.output and "dataset" in no_dataset.output
+
+    unknown_ref = runner.invoke(
+        app,
+        [
+            "research",
+            *_daily_draft_args(project_id, pack_id),
+            "--dataset",
+            "rd_" + "0" * 64,
+            "--json",
+        ],
+    )
+    assert unknown_ref.exit_code != 0
+
+    wrong_instrument_ref = _register_daily_dataset(tmp_path, "AAPL")
+    mismatched = runner.invoke(
+        app,
+        [
+            "research",
+            *_daily_draft_args(project_id, pack_id),
+            "--dataset",
+            wrong_instrument_ref,
+            "--json",
+        ],
+    )
+    assert mismatched.exit_code != 0
+    assert "instrument" in mismatched.output.casefold()
+
+    spy_ref = _register_daily_dataset(tmp_path, "SPY")
+    synthetic_with_dataset = runner.invoke(
+        app,
+        [
+            "research",
+            "draft",
+            project_id,
+            "--source-pack-id",
+            pack_id,
+            "--answer",
+            "chart_construction=spy_rth_60m_four_hour_window",
+            "--answer",
+            "event_availability=second_trough_confirmable",
+            "--answer",
+            "primary_outcome=four_trading_hour_return_25bp",
+            "--dataset",
+            spy_ref,
+            "--json",
+        ],
+    )
+    assert synthetic_with_dataset.exit_code != 0
+    assert "synthetic" in synthetic_with_dataset.output.casefold()
+
+
+def test_approval_payload_rejects_inconsistent_empirical_bindings() -> None:
+    """Provider and session-group integrity hold even for hand-built dataset bindings."""
+    from alpha_cli.research_intake import draft_exploration_contract
+    from alpha_cli.research_runtime import _GENERATION_60M, _bars
+
+    preview = draft_exploration_contract(
+        "SPY bounces after double bottoms on the daily chart",
+        resolutions={
+            "chart_construction": "tiingo_daily_fallback",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "next_regular_session_return_50bp",
+        },
+    )
+    hourly_bars = _bars(_GENERATION_60M, [100.0 + i for i in range(25)], "d0-planted", "e" * 64)
+    ref: dict[str, object] = {
+        "ref_id": "rd_" + "f" * 64,
+        "instrument": "SPY",
+        "provider": "yfinance",
+        "start_ts": "2020-01-01",
+        "end_ts": "2020-06-01",
+    }
+    with pytest.raises(DataError, match="provider"):
+        research_cmds._approval_payload(
+            preview,
+            source_pack_id="sp_" + "a" * 64,
+            empirical_dataset=research_cmds._EmpiricalDataset(ref=ref, bars=hourly_bars),
+        )
+    # 25 hourly bars share calendar dates: duplicate session groups must fail closed.
+    with pytest.raises(DataError, match="duplicate session groups"):
+        research_cmds._approval_payload(
+            preview,
+            source_pack_id="sp_" + "a" * 64,
+            empirical_dataset=research_cmds._EmpiricalDataset(
+                ref={**ref, "provider": "tiingo"}, bars=hourly_bars
+            ),
+        )
+    assert research_cmds._implementation_drifted(["not", "a", "mapping"]) is True
+
+
+def test_claim_lifecycle_drafts_screens_and_feeds_the_literature_dimension(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "SPY drifts upward into month-end rebalancing")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    contract_id = str(cast(dict[str, object], captured["case"])["active_contract_id"])
+
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Calendar effects in index returns",
+        "--locator",
+        "doi:10.0000/calendar",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+        "--doi",
+        "10.0000/Calendar",
+        "--year",
+        "2015",
+        "--author",
+        "A. Author",
+        "--author",
+        "B. Author",
+    )
+    source_id = str(source["source_id"])
+    assert source["doi"] == "10.0000/calendar"
+    assert source["authors"] == ["A. Author", "B. Author"]
+
+    found = _invoke("sources", "search", "calendar effects")
+    assert [row["source_id"] for row in cast(list[dict[str, object]], found["items"])] == [
+        source_id
+    ]
+
+    drafted = _invoke(
+        "sources",
+        "claim",
+        "add",
+        project_id,
+        "--source-id",
+        source_id,
+        "--contract-id",
+        contract_id,
+        "--text",
+        "Month-end index drift is positive and statistically detectable pre-2010.",
+        "--direction",
+        "supports",
+        "--strength",
+        "moderate",
+        "--method",
+        "Calendar-day regression with Newey-West errors.",
+        "--sample",
+        "US index returns 1970-2010.",
+        "--market",
+        "US_EQUITY",
+        "--limitations",
+        "Post-publication decay is not addressed.",
+    )
+    claim_id = str(drafted["claim_id"])
+    assert claim_id.startswith("sc_")
+    assert drafted["status"] == "draft"
+    assert drafted["author_kind"] == "agent"
+
+    # A draft claim never moves the scorecard's literature dimension.
+    status_before = _invoke("status", project_id)
+    scorecard_before = cast(dict[str, object], status_before["scorecard"])
+    literature_before = next(
+        cast(dict[str, object], row)
+        for row in cast(list[object], scorecard_before["dimensions"])
+        if cast(dict[str, object], row)["dimension_id"] == "literature"
+    )
+    assert literature_before["state"] == "insufficient"
+
+    screened = _invoke("sources", "claim", "screen", project_id, claim_id, "--actor", "owner")
+    assert screened["status"] == "screened"
+    listed = _invoke("sources", "claim", "list", project_id)
+    rows = cast(list[dict[str, object]], listed["items"])
+    assert [(row["claim_id"], row["status"]) for row in rows] == [(claim_id, "screened")]
+
+    status_after = _invoke("status", project_id)
+    scorecard_after = cast(dict[str, object], status_after["scorecard"])
+    literature_after = next(
+        cast(dict[str, object], row)
+        for row in cast(list[object], scorecard_after["dimensions"])
+        if cast(dict[str, object], row)["dimension_id"] == "literature"
+    )
+    assert literature_after["state"] == "supporting"
+
+    hub = _invoke("evidence-hub", project_id)
+    literature_section = cast(
+        dict[str, object], cast(dict[str, object], hub["sections"])["literature"]
+    )
+    hub_claims = cast(list[dict[str, object]], literature_section["claims"])
+    assert [row["claim_id"] for row in hub_claims] == [claim_id]
+    assert hub_claims[0]["status"] == "screened"
+
+
+def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured_argv: list[list[str]] = []
+
+    class _Completed:
+        returncode = 0
+        stdout = json.dumps(
+            {
+                "final_url": "https://arxiv.org/pdf/1234v1",
+                "media_type": "application/pdf",
+                "byte_count": 10,
+                "sha256": "a" * 64,
+                "trust_label": "UNTRUSTED_SOURCE",
+                "object_path": "/objects/aa",
+                "receipt_path": "/objects/aa.receipt.json",
+            }
+        )
+        stderr = ""
+
+    def fake_run(argv: list[str], **kwargs: object) -> _Completed:
+        del kwargs
+        captured_argv.append(argv)
+        return _Completed()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    fetched = _invoke("sources", "fetch", "https://arxiv.org/pdf/1234v1")
+    assert fetched["trust_label"] == "UNTRUSTED_SOURCE"
+    assert len(captured_argv) == 1
+    argv = captured_argv[0]
+    assert argv[:4] == ["uv", "run", "--project", argv[3]]
+    assert argv[3].endswith("workers/literature")
+    assert argv[4:7] == ["literature-worker", "fetch", "--url"]
+    assert argv[7] == "https://arxiv.org/pdf/1234v1"
+    assert "--objects-dir" in argv
+
+    class _Failed(_Completed):
+        returncode = 1
+        stdout = ""
+        stderr = json.dumps({"error": "research source hostname is not allowlisted"})
+
+    monkeypatch.setattr(subprocess, "run", lambda argv, **kwargs: _Failed())
+    rejected = runner.invoke(
+        app, ["research", "sources", "fetch", "https://evil.example.com/x", "--json"]
+    )
+    assert rejected.exit_code != 0
+    assert "not allowlisted" in rejected.output
+
+
+def _approved_deep_ready_project() -> str:
+    """Capture → sources → draft → approve → D0 pilot, landing in deep_research."""
+    captured = _invoke(
+        "capture",
+        "I notice the S&P500 bounces after double bottoms on the 4h time frame",
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source = _invoke(
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        "Technical trading revisited",
+        "--locator",
+        "doi:10.0000/example",
+        "--provider",
+        "crossref",
+        "--access-mode",
+        "metadata_only",
+    )
+    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    drafted = _invoke(
+        "draft",
+        project_id,
+        "--source-pack-id",
+        str(pack["pack_id"]),
+        "--answer",
+        "chart_construction=spy_rth_60m_four_hour_window",
+        "--answer",
+        "event_availability=second_trough_confirmable",
+        "--answer",
+        "primary_outcome=four_trading_hour_return_25bp",
+    )
+    frozen_id = str(cast(dict[str, object], drafted["contract"])["contract_id"])
+    _invoke(
+        "approve",
+        "exploration",
+        project_id,
+        frozen_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "The bounded protocol, plan, and source pack suit D0/D1 exploration.",
+    )
+    pilot = _invoke("run", "pilot", project_id)
+    pilot_case = cast(dict[str, object], pilot["case"])
+    assert pilot_case["phase"] == "deep_research"
+    assert "run deep" in str(pilot_case["next_action"])
+    return project_id
+
+
+def test_run_deep_is_open_by_default_but_stays_phase_governed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR-0025 opened D1 admission; every other governance rail still applies."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "A generic idea that has not completed D0")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    blocked = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert blocked.exit_code != 0
+    assert "deep_research phase" in blocked.output
+
+
+def test_run_deep_executes_the_frozen_plan_as_a_governed_durable_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+
+    deep = _invoke("run", "deep", project_id)
+    manifest = cast(dict[str, object], deep["manifest"])
+    attempt = cast(dict[str, object], deep["attempt"])
+    case = cast(dict[str, object], deep["case"])
+    assert manifest["command"] == "research_deep"
+    assert manifest["evidence_zone"] == "D1"
+    assert manifest["watermark"] == "EXPLORATORY"
+    assert manifest["real_market_evidence"] is False
+    assert manifest["eligible_for_holdout_or_execution"] is False
+    assert attempt["kind"] == "d1-deep-research"
+    assert attempt["status"] == "completed"
+    assert attempt["budget_used"] == {"variants": 6}
+    assert case["phase"] == "deep_research"
+    assert case["execution_state"] == "idle"
+    assert case["latest_run_id"] == manifest["run_id"]
+
+    store = ControlStore(tmp_path)
+    jobs = store.list_jobs()
+    research_jobs = [job for job in jobs if job["kind"] == "research:event-study"]
+    assert len(research_jobs) == 1
+    assert research_jobs[0]["status"] == "succeeded"
+    assert research_jobs[0]["result_run_id"] == manifest["run_id"]
+
+    # The synthetic registered fixture is null by construction: it must never look like a
+    # discovered edge.
+    evidence_path = tmp_path / "runs" / str(manifest["run_id"]) / "research_gate_evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    assert evidence["primary_result"]["practical_magnitude"]["status"] != "CLEARS_HURDLE"
+
+    recovered = _invoke("run", "deep", project_id)
+    assert cast(dict[str, object], recovered["manifest"])["run_id"] == manifest["run_id"]
+
+    # The Evidence Hub and scorecard go live from the admitted D1 evidence — no terminal
+    # packet is required for an open case.
+    hub = _invoke("evidence-hub", project_id)
+    sections = cast(dict[str, object], hub["sections"])
+    exploration = cast(dict[str, object], sections["exploration"])
+    assert exploration["status"] == "TESTED"
+    robustness = cast(dict[str, object], sections["robustness"])
+    assert robustness["status"] == "RECORDED"
+    finding_ids = {
+        str(cast(dict[str, object], finding)["finding_id"])
+        for section in ("evidence_for", "evidence_against")
+        for finding in cast(list[object], cast(dict[str, object], sections[section])["findings"])
+    }
+    assert finding_ids  # live D1 findings are partitioned into for/against
+    status = _invoke("status", project_id)
+    dimensions = {
+        str(cast(dict[str, object], entry)["dimension_id"]): str(
+            cast(dict[str, object], entry)["state"]
+        )
+        for entry in cast(list[object], cast(dict[str, object], status["scorecard"])["dimensions"])
+    }
+    assert dimensions["effect_existence"] == "mixed"  # exploratory only, honestly capped
+    assert dimensions["falsification"] != "not_tested"
+
+
+def test_run_deep_failures_checkpoint_and_exact_reexecution_resumes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+
+    def _boom(*args: object, **kwargs: object) -> dict[str, object]:
+        raise DataError("simulated mid-plan crash")
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", _boom)
+    failed = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert failed.exit_code != 0
+    assert "checkpointed" in failed.output
+
+    store = ControlStore(tmp_path)
+    case = store.research_case_summary(project_id)
+    assert case["execution_state"] == "failed"
+    assert str(case["checkpoint"]).startswith("d1:failed:")
+    failed_jobs = [job for job in store.list_jobs() if job["kind"] == "research:event-study"]
+    assert failed_jobs and failed_jobs[0]["status"] == "failed"
+
+    monkeypatch.undo()
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _invoke("resume", project_id)
+    resumed = _invoke("run", "deep", project_id)
+    manifest = cast(dict[str, object], resumed["manifest"])
+    attempt = cast(dict[str, object], resumed["attempt"])
+    assert manifest["evidence_zone"] == "D1"
+    assert attempt["status"] == "completed"
+    assert cast(dict[str, object], attempt["details"])["attempt_number"] == 2

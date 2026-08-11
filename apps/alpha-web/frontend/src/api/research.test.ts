@@ -52,6 +52,45 @@ describe('bounded Research Case API client', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/research/cases/project%2Fid/report')
   })
 
+  it('adds only the ADR-0021 read-plane routes: list, evidence hub, scorecard', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.researchCases()
+    await api.researchCases({ limit: 25, offset: 5 })
+    await api.researchEvidenceHub('project/id')
+    await api.researchScorecard('project/id')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/research/cases?limit=50&offset=0')
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/research/cases?limit=25&offset=5')
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/research/cases/project%2Fid/evidence-hub',
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/research/cases/project%2Fid/scorecard')
+  })
+
+  it('adds only the ADR-0022 Codex read routes: packets, notes, protocols', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.researchContextPackets('project/id')
+    await api.researchContextPacket('cp_abc')
+    await api.researchNotes('project/id', { limit: 30 })
+    await api.researchProtocols()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/research/cases/project%2Fid/context-packets?limit=50&offset=0',
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/research/context-packets/cp_abc')
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/research/cases/project%2Fid/notes?limit=30&offset=0',
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/research/protocols')
+  })
+
   it('does not expose owner approval, decision, D2 reveal, deep, or trading methods', () => {
     for (const method of [
       'researchApprove',

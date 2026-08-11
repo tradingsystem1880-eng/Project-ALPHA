@@ -13,6 +13,7 @@ import { setLinked } from '../context/linked'
 import { useActivityField } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
+import { researchGateWatermark } from './researchGateModel'
 import { runKindMatches } from './runBrowserModel'
 import type { PanelHandleProps } from '../context/panelHandle'
 
@@ -94,7 +95,23 @@ export function RunBrowser(props: PanelHandleProps) {
       {
         header: 'Label',
         accessorKey: 'label',
-        cell: (c) => c.row.original.label ?? '—',
+        cell: (c) => {
+          // spec §15 / ADR-0026: relay the permanent research-gate override marker on the row
+          const watermark = researchGateWatermark(c.row.original)
+          return (
+            <>
+              {c.row.original.label ?? '—'}
+              {watermark ? (
+                <span
+                  className="chip warn rg-watermark"
+                  title="Launched under an owner research-gate override (spec §15, ADR-0026)"
+                >
+                  {watermark}
+                </span>
+              ) : null}
+            </>
+          )
+        },
         meta: { className: 'mono' },
       },
       {

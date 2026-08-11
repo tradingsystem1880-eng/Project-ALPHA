@@ -16,7 +16,9 @@ import type { FunctionComponent } from 'react'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { ActivityFeed } from '../panels/ActivityFeed'
 import { AiConsole } from '../panels/AiConsole'
+import { CodexBench } from '../panels/CodexBench'
 import { DataExplorer } from '../panels/DataExplorer'
+import { EvidenceHub } from '../panels/EvidenceHub'
 import { Glossary } from '../panels/Glossary'
 import { JobMonitor } from '../panels/JobMonitor'
 import { KronosStudio } from '../panels/KronosStudio'
@@ -26,7 +28,9 @@ import { PaperMonitor } from '../panels/PaperMonitor'
 import { Pipeline } from '../panels/Pipeline'
 import { PriceChart } from '../panels/PriceChart'
 import { ProviderSystem } from '../panels/ProviderSystem'
+import { ResearchBacklog } from '../panels/ResearchBacklog'
 import { ResearchCockpit } from '../panels/ResearchCockpit'
+import { ResearchDataExplorer } from '../panels/ResearchDataExplorer'
 import { RiskMonitor } from '../panels/RiskMonitor'
 import { Screener } from '../panels/Screener'
 import { StrategyLab } from '../panels/StrategyLab'
@@ -65,6 +69,9 @@ export const SCREENS: ScreenDefinition[] = [
     panes: [
       { area: 'main', name: 'PriceChart', title: 'Price', component: PriceChart },
       { area: 'side', name: 'DataExplorer', title: 'Symbols & data', component: DataExplorer },
+      { area: 'side', name: 'ResearchDataExplorer', title: 'Research data', component: ResearchDataExplorer },
+      { area: 'side', name: 'ResearchBacklog', title: 'Research backlog', component: ResearchBacklog },
+      { area: 'side', name: 'EvidenceHub', title: 'Evidence', component: EvidenceHub },
       { area: 'side', name: 'Screener', title: 'Quotes & news', component: Screener },
       { area: 'side', name: 'OptionsGreeks', title: 'Options', component: OptionsGreeks },
     ],
@@ -78,6 +85,7 @@ export const SCREENS: ScreenDefinition[] = [
       { area: 'main', name: 'StrategyLab', title: 'Strategy lab', component: StrategyLab },
       { area: 'side', name: 'Pipeline', title: 'What next', component: Pipeline },
       { area: 'side', name: 'ResearchCockpit', title: 'Research case', component: ResearchCockpit },
+      { area: 'side', name: 'CodexBench', title: 'Codex research', component: CodexBench },
       { area: 'foot', name: 'JobMonitor', title: 'Jobs', component: JobMonitor },
     ],
   },

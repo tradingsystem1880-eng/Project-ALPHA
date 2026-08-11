@@ -22,6 +22,8 @@ class RunListItem(StrictModel):
     snapshot_hash: str | None
     passed: bool | None
     verdict: str | None
+    # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
+    research_gate_watermark: str | None
     mtime: float
 
 
@@ -35,6 +37,8 @@ class RunDetail(StrictModel):
     kind: str
     mtime: float
     manifest: dict[str, Any]
+    # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
+    research_gate_watermark: str | None
     has_equity: bool
     has_trades: bool
     has_tearsheet: bool
@@ -607,6 +611,7 @@ type JsonObject = dict[str, JsonValue]
 
 
 type ProjectStatusValue = Literal["active", "accepted", "rejected", "archived"]
+type ResearchGateStateValue = Literal["not_required", "open", "passed", "overridden"]
 type DevelopmentStageValue = Literal[
     "hypothesis",
     "data",
@@ -690,6 +695,19 @@ class ProjectSummary(StrictModel):
     current_experiment_id: str | None
     created_at: str
     updated_at: str
+    research_gate_state: ResearchGateStateValue
+
+
+class ResearchGateOverride(StrictModel):
+    project_id: str
+    sequence: int
+    actor: str
+    reason: str
+    recorded_at: str
+
+
+class ActiveResearchGateOverride(ResearchGateOverride):
+    project_name: str
 
 
 class ProjectPage(StrictModel):
@@ -876,6 +894,7 @@ class ProjectTruncation(StrictModel):
     holdouts: bool
     holdout_audit: bool
     decision_packets: bool
+    research_gate_overrides: bool
 
 
 class ProjectDetail(ProjectSummary):
@@ -888,6 +907,7 @@ class ProjectDetail(ProjectSummary):
     holdout_audit: list[HoldoutAuditEvent]
     decision_packets: list[DecisionPacket]
     truncated: ProjectTruncation
+    research_gate_overrides: list[ResearchGateOverride]
 
 
 class ControlJobCreateRequest(StrictModel):
@@ -1077,6 +1097,14 @@ class AgentStageStatus(StrictModel):
     run_id: str | None
 
 
+class ResearchPromotionReference(StrictModel):
+    packet_id: str
+    contract_id: str
+    gate_packet_id: str | None
+    gate_packet_hash: str | None
+    recorded_at: str
+
+
 class AgentBrief(StrictModel):
     schema_version: Literal[1]
     project_id: str
@@ -1086,6 +1114,7 @@ class AgentBrief(StrictModel):
     allowed_scope: AgentScope
     strategy_version: StrategyVersion | None
     experiment: ExperimentSpec | None
+    research_promotion: ResearchPromotionReference | None
     stage_statuses: list[AgentStageStatus]
     evidence: list[EvidenceRecord]
     evidence_truncated: bool
@@ -1368,6 +1397,336 @@ class ResearchD2Event(StrictModel):
     reason: str
 
 
+class ResearchPriority(StrictModel):
+    falsifiability: float = Field(ge=0)
+    data_readiness: float = Field(ge=0)
+    novelty: float = Field(ge=0)
+    information_gain_per_cost: float = Field(ge=0)
+
+
+class ResearchBudgetProjection(StrictModel):
+    approved_units: float = Field(ge=0)
+    consumed_units: float = Field(ge=0)
+    unit: Literal["minutes", "compute_units"]
+
+
+class ResearchCaseSummaryRow(StrictModel):
+    case_id: str
+    title: str
+    original_idea: str
+    phase: ResearchPhaseValue
+    execution_state: ResearchExecutionStateValue
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"] | None
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"] | None
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    latest_finding: str | None
+    blocker: str | None
+    recovery_action: str | None
+    completed_milestones: int = Field(ge=0)
+    total_milestones: int = Field(ge=0)
+    owner_pinned: bool
+    priority: ResearchPriority
+    budget: ResearchBudgetProjection
+    updated_at: str
+
+
+class ResearchCasePage(StrictModel):
+    items: list[ResearchCaseSummaryRow]
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class HypothesisCardField(StrictModel):
+    field_id: Literal[
+        "research_question",
+        "phenomenon",
+        "population",
+        "condition_event",
+        "dependent_variable",
+        "horizon",
+        "expected_direction",
+        "economic_mechanism",
+        "null_hypothesis",
+        "alternative_hypothesis",
+        "baseline",
+        "confounders",
+        "falsification_criteria",
+        "success_criteria",
+    ]
+    label: str
+    value: str | None
+    status: Literal["complete", "partial", "missing"]
+
+
+class HypothesisCardPlanFamily(StrictModel):
+    family: str
+    multiplicity: str
+
+
+class HypothesisCardPlan(StrictModel):
+    family_count: int = Field(ge=1)
+    families: list[HypothesisCardPlanFamily]
+
+
+class HypothesisCard(StrictModel):
+    card_schema: Literal["HypothesisCardV1"]
+    fields: list[HypothesisCardField]
+    complete_fields: int = Field(ge=0)
+    total_fields: Literal[14]
+    analysis_plan: HypothesisCardPlan | None = None
+
+
+class ResearchScorecardDimension(StrictModel):
+    dimension_id: Literal[
+        "hypothesis_definition",
+        "data_quality",
+        "sample_adequacy",
+        "effect_existence",
+        "effect_size",
+        "temporal_stability",
+        "cross_asset_stability",
+        "regime_robustness",
+        "falsification",
+        "mechanism",
+        "literature",
+        "data_mining_risk",
+    ]
+    label: str
+    state: str
+    basis: str
+
+
+class ResearchScorecardQuestions(StrictModel):
+    count: int = Field(ge=0)
+    items: list[str]
+
+
+class ResearchScorecardRecommendation(StrictModel):
+    value: Literal[
+        "READY FOR STRATEGY RESEARCH",
+        "MORE RESEARCH REQUIRED",
+        "REFORMULATE HYPOTHESIS",
+        "EVIDENCE DOES NOT SUPPORT CONTINUATION",
+    ]
+    reasons: list[str]
+
+
+class ResearchReadinessBlocker(StrictModel):
+    code: str
+    evidence_refs: list[str] = Field(min_length=1)
+
+
+class ResearchReadinessProjection(StrictModel):
+    state: Literal["ready", "blocked"]
+    blockers: list[ResearchReadinessBlocker]
+
+
+class ResearchScorecard(StrictModel):
+    scorecard_schema: Literal["ResearchReadinessScorecardV1"]
+    dimensions: list[ResearchScorecardDimension]
+    unresolved_questions: ResearchScorecardQuestions
+    recommendation: ResearchScorecardRecommendation
+    confirmation_readiness: ResearchReadinessProjection
+    promotion_readiness: ResearchReadinessProjection
+
+
+class ResearchContextPacket(StrictModel):
+    packet_id: str = Field(pattern=r"^cp_[0-9a-f]{64}$")
+    project_id: str
+    packet_kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ]
+    protocol_id: str | None
+    protocol_content_hash: str | None
+    payload: JsonObject
+    created_by: str
+    created_at: str
+
+
+class ResearchContextPacketPage(StrictModel):
+    items: list[ResearchContextPacket]
+    limit: int
+    offset: int
+
+
+class ResearchNote(StrictModel):
+    note_id: str = Field(pattern=r"^rn_[0-9a-f]{64}$")
+    project_id: str
+    sequence: int = Field(ge=1)
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ]
+    body: str
+    author: str
+    author_kind: Literal["owner", "agent"]
+    context_packet_id: str | None
+    created_at: str
+
+
+class ResearchNotePage(StrictModel):
+    items: list[ResearchNote]
+    limit: int
+    offset: int
+
+
+class ResearchDatasetRefRow(StrictModel):
+    ref_id: str = Field(pattern=r"^rd_[0-9a-f]{64}$")
+    dataset_kind: Literal["store_slice", "snapshot", "quantpad_receipt"]
+    instrument: str
+    provider: str
+    start_ts: str
+    end_ts: str
+    bar_duration_minutes: int | None
+    origin: JsonObject
+    research_only: Literal[True]
+    registered_by: str
+    registered_at: str
+    latest_audit: JsonObject | None
+
+
+class ResearchDatasetPage(StrictModel):
+    items: list[ResearchDatasetRefRow]
+    limit: int
+    offset: int
+
+
+class ResearchProtocolEntry(StrictModel):
+    id: str
+    title: str
+    purpose: str
+    packet_kind: Literal[
+        "asset", "research_case", "experiment", "chart", "validation", "strategy_promotion"
+    ]
+    output_contract: str
+    file: str
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ResearchProtocolLibrary(StrictModel):
+    protocols: list[ResearchProtocolEntry]
+
+
+class HubSource(StrictModel):
+    source_id: str
+    title: str
+    locator: str
+    provider: str
+    access_mode: str
+    screening: str | None
+
+
+class HubFinding(StrictModel):
+    finding_id: str
+    status: str
+    summary: str | None
+
+
+class HubFindings(StrictModel):
+    findings: list[HubFinding]
+
+
+class HubConfounder(StrictModel):
+    text: str
+    status: Literal["resolved", "unresolved"]
+
+
+class HubFalsifier(StrictModel):
+    text: str
+    result: str
+
+
+class HubOverview(StrictModel):
+    original_idea: str
+    phase: ResearchPhaseValue
+    execution_state: ResearchExecutionStateValue
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+    latest_finding: str | None
+    outstanding_questions: list[str]
+    hypothesis_card: HypothesisCard
+    scorecard: ResearchScorecard
+
+
+class HubData(StrictModel):
+    registered_datasets: list[JsonObject]
+    status: str
+    note: str
+
+
+class HubLiterature(StrictModel):
+    claims: list[JsonObject]
+    sources: list[HubSource]
+    status: str
+
+
+class HubMechanism(StrictModel):
+    mechanism: str | None
+    interpretation: str | None
+    alternatives: list[str]
+    confounders: list[HubConfounder]
+
+
+class HubExploration(StrictModel):
+    charts: list[JsonObject]
+    watermark: Literal["EXPLORATORY"]
+    status: str
+
+
+class HubAttempt(StrictModel):
+    attempt_id: str
+    phase: str
+    kind: str
+    status: str
+    config_fingerprint: str
+    run_id: str | None
+    recorded_at: str
+
+
+class HubExperiments(StrictModel):
+    attempts: list[HubAttempt]
+
+
+class HubFalsification(StrictModel):
+    falsifiers: list[HubFalsifier]
+    stop_rules: list[str]
+
+
+class HubRobustness(StrictModel):
+    findings: list[HubFinding]
+    status: str
+
+
+class HubDecision(StrictModel):
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"] | None
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"] | None
+    d2_state: ResearchD2StateValue
+    d3_state: ResearchD3StateValue
+    packet_id: str | None
+    packet_hash: str | None
+
+
+class ResearchEvidenceHubSections(StrictModel):
+    overview: HubOverview
+    data: HubData
+    literature: HubLiterature
+    mechanism: HubMechanism
+    exploration: HubExploration
+    experiments: HubExperiments
+    evidence_for: HubFindings
+    evidence_against: HubFindings
+    falsification: HubFalsification
+    robustness: HubRobustness
+    decision: HubDecision
+
+
+class ResearchEvidenceHub(StrictModel):
+    hub_schema: Literal["ResearchEvidenceHubV1"]
+    project_id: str
+    sections: ResearchEvidenceHubSections
+
+
 class ResearchCase(StrictModel):
     schema_version: Literal[1]
     project_id: str
@@ -1409,6 +1768,12 @@ class ResearchCase(StrictModel):
     d2_boundary_hash: str
     d2_history: list[ResearchD2Event]
     d3_state: ResearchD3StateValue
+    # Additive projections present on the status read; store-level case payloads
+    # (capture/proposal/launch responses) omit them, so they default to None.
+    hypothesis_card: HypothesisCard | None = None
+    scorecard: ResearchScorecard | None = None
+    confirmation_readiness: ResearchReadinessProjection | None = None
+    promotion_readiness: ResearchReadinessProjection | None = None
 
 
 class ResearchCaptureResponse(StrictModel):
@@ -1619,6 +1984,45 @@ type ResearchCaseReport = Annotated[
     ResearchProgressReport | ResearchGatePacket,
     Field(discriminator="report_schema"),
 ]
+
+
+class ResearchChecklistQuestion(StrictModel):
+    question_id: str
+    number: int = Field(ge=1, le=14)
+    question: str
+    binding: str
+    status: str
+    answer: str
+
+
+class ResearchEdgeChecklist(StrictModel):
+    checklist_schema: Literal["ResearchEdgeChecklistV1"]
+    questions: list[ResearchChecklistQuestion] = Field(min_length=14, max_length=14)
+
+
+class ResearchDecisionHistoryEvent(StrictModel):
+    sequence: int
+    contract_id: str
+    outcome: Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
+    disposition: Literal["advance_to_strategy", "revise", "park", "reject"]
+    actor: str
+    actor_kind: AuthorKindValue
+    occurred_at: str
+    reason: str
+
+
+class ResearchDecisionView(StrictModel):
+    view_schema: Literal["ResearchDecisionViewV1"]
+    project_id: str
+    phase: str
+    d2_state: str
+    next_action: str
+    checklist: ResearchEdgeChecklist
+    scorecard: ResearchScorecard
+    confirmation_readiness: ResearchReadinessProjection
+    promotion_readiness: ResearchReadinessProjection
+    gate_packet: ResearchGatePacket | None
+    decision_history: list[ResearchDecisionHistoryEvent]
 
 
 class OptionGreeks(StrictModel):

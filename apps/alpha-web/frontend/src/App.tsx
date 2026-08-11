@@ -12,6 +12,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
 import { setLinked } from './context/linked'
+import { requestNewIdea } from './context/newIdea'
+import { onResearchCase } from './context/researchCase'
 import { registerNavigator } from './panels/actions'
 import { ContextBar } from './shell/ContextBar'
 import { LibraryRail } from './shell/LibraryRail'
@@ -180,6 +182,24 @@ export function App() {
     return () => window.removeEventListener('hashchange', apply)
   }, [])
 
+  // New Idea opens the research case pane and then asks the cockpit to focus its
+  // natural-language capture field. No strategy parameters are requested here.
+  const newIdea = useCallback(() => {
+    showPane('build', 'ResearchCockpit')
+    window.setTimeout(requestNewIdea, 50)
+  }, [showPane])
+
+  // R6h (spec §15): a gated strategy surface's "open research case" link lands the owner on
+  // the case that is holding the gate — link the project, then focus the research desk.
+  useEffect(
+    () =>
+      onResearchCase((projectId) => {
+        setLinked({ projectId })
+        showPane('build', 'ResearchCockpit')
+      }),
+    [showPane],
+  )
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -202,7 +222,6 @@ export function App() {
           <span className="mark">ALPHA</span>
           <span className="sub">WORKSTATION</span>
         </div>
-
         <nav className="screen-tabs" role="tablist" aria-label="Screens">
           {SCREENS.map((item) => (
             <button
@@ -218,6 +237,13 @@ export function App() {
           ))}
         </nav>
 
+        <button
+          className="kbd new-idea"
+          title="Capture a raw research observation in your own words — no trading rules asked"
+          onClick={newIdea}
+        >
+          ＋ New Idea
+        </button>
         <div className="spacer" />
         <ContextBar />
         <button className="kbd" onClick={() => setPaletteOpen(true)}>
@@ -253,6 +279,7 @@ export function App() {
         onClose={() => setPaletteOpen(false)}
         onOpenScreen={(id) => setCurrent(id)}
         onOpenRun={openRun}
+        onNewIdea={newIdea}
       />
     </div>
   )

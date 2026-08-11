@@ -12,6 +12,21 @@ from alpha_core import DataError
 RUN_DIRS = ("runs", "portfolio", "cross_sectional", "optim", "propfirm", "forecast")
 _RUN_ID_RE = re.compile(r"[0-9a-f]{16}")
 
+# spec §15 / ADR-0026: the permanent marker on any run launched under an owner
+# research-gate override. Polars-free here so the suite planner and web/MCP readers
+# share one source of truth without importing the artifact layer.
+RESEARCH_GATE_OVERRIDE_WATERMARK = "EXPLORATORY / RESEARCH GATE NOT COMPLETED"
+
+
+def research_gate_watermark(manifest: Any) -> str | None:
+    """The EXPLORATORY watermark recorded on a run launched under an overridden gate, if any."""
+    if not isinstance(manifest, dict):
+        return None
+    block = manifest.get("research_gate")
+    if isinstance(block, dict) and isinstance(block.get("watermark"), str):
+        return str(block["watermark"])
+    return None
+
 
 def valid_run_id(run_id: str) -> bool:
     return _RUN_ID_RE.fullmatch(run_id) is not None

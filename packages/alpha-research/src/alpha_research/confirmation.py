@@ -33,6 +33,7 @@ class ConfirmationEvidence:
     alpha: float
     minimum_effect: float
     invalid_reason: str | None = None
+    reliability_passed: bool = True
 
     def __post_init__(self) -> None:
         if not isinstance(self.direction, ClaimDirection):
@@ -51,6 +52,8 @@ class ConfirmationEvidence:
             raise DataError("minimum_effect must be finite and non-negative")
         if self.invalid_reason is not None and not self.invalid_reason.strip():
             raise DataError("invalid_reason must be non-empty when supplied")
+        if not isinstance(self.reliability_passed, bool):
+            raise DataError("reliability_passed must be a boolean")
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +66,11 @@ def classify_confirmation(evidence: ConfirmationEvidence) -> ConfirmationOutcome
     """Classify without silently treating low power or weak effects as a failed hypothesis."""
     if evidence.invalid_reason is not None:
         return ConfirmationOutcome(ConfirmationStatus.INVALID, evidence.invalid_reason)
+    if not evidence.reliability_passed:
+        return ConfirmationOutcome(
+            ConfirmationStatus.INCONCLUSIVE,
+            "the effective sample is below the frozen reliability floor",
+        )
     if evidence.direction is ClaimDirection.POSITIVE and evidence.ci_upper < 0.0:
         return ConfirmationOutcome(
             ConfirmationStatus.CONTRADICTED,

@@ -7,6 +7,7 @@ import importlib
 import math
 import os
 import tempfile
+import warnings
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import datetime
@@ -27,6 +28,7 @@ from alpha_qlib_worker.contract import (
     validate_request,
 )
 from alpha_qlib_worker.features import alpha158_feature_names, alpha158_features
+from alpha_qlib_worker.rank_ensemble import rank_ensemble_v1
 
 
 class WorkerDependencyError(RuntimeError):
@@ -300,7 +302,12 @@ def _fold_model(
     fold: dict[str, Any],
     qlib_module: ModuleType,
     lightgbm_module: ModuleType,
-) -> tuple[pl.DataFrame, dict[str, Any], list[tuple[str, float, int]]]:
+) -> tuple[
+    pl.DataFrame,
+    dict[str, Any],
+    list[tuple[str, float, int]],
+    pl.DataFrame | None,
+]:
     del lightgbm_module
     train_x, train_y, train_meta = _select_split(
         samples,
@@ -416,9 +423,64 @@ def _fold_model(
             "seed": pl.Int64,
         },
     ).select(PREDICTION_COLUMNS)
-    diagnostic = {
+    ensemble_diagnostics: pl.DataFrame | None = None
+    ridge_diagnostic: dict[str, Any] | None = None
+    if request.payload["schema_version"] == 2:
+        ridge_class = importlib.import_module("qlib.contrib.model.linear").LinearModel
+        ridge = ridge_class(
+            estimator="ridge",
+            alpha=1.0,
+            fit_intercept=False,
+            include_valid=False,
+        )
+        # NumPy 2 may emit spurious matmul overflow warnings from sklearn's finite-check fast
+        # path even for the bounded, fold-normalized matrix.  Validate the fitted outputs below.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="(divide by zero|overflow) encountered in matmul",
+                category=RuntimeWarning,
+            )
+            ridge.fit(dataset)
+            ridge_scores = ridge.predict(dataset, segment="test")
+        coefficients = np.asarray(ridge.coef_, dtype="float64")
+        if not np.isfinite(coefficients).all():
+            raise RuntimeError("Qlib ridge produced non-finite coefficients")
+        if not np.isfinite(ridge_scores.to_numpy(dtype="float64")).all():
+            raise RuntimeError("Qlib ridge produced non-finite OOS scores")
+        ridge_hash = hashlib.sha256(
+            canonical_json_bytes(
+                {
+                    "recipe": "qlib_ridge_v1",
+                    "alpha": 1.0,
+                    "fit_intercept": False,
+                    "include_valid": False,
+                    "coefficients": [float(value) for value in coefficients],
+                }
+            )
+        ).hexdigest()
+        ridge_predictions = predictions.with_columns(
+            pl.Series(
+                "score",
+                [float(ridge_scores.loc[index]) for index in scores.index],
+                dtype=pl.Float64,
+            ),
+            pl.lit(ridge_hash).alias("model_hash"),
+        )
+        predictions, ensemble_diagnostics = rank_ensemble_v1(predictions, ridge_predictions)
+        ridge_diagnostic = {
+            "recipe": "qlib_ridge_v1",
+            "alpha": 1.0,
+            "fit_intercept": False,
+            "include_valid": False,
+            "model_hash": ridge_hash,
+            "coefficient_l1": float(np.abs(coefficients).sum()),
+            "coefficient_l2": float(np.linalg.norm(coefficients)),
+            "nonzero_coefficients": int(np.count_nonzero(coefficients)),
+        }
+    diagnostic: dict[str, Any] = {
         "fold": int(fold["fold"]),
-        "fit_count": 1,
+        "fit_count": 2 if ridge_diagnostic is not None else 1,
         "train_rows": len(train_x),
         "validation_rows": len(valid_x),
         "test_rows": len(test_x),
@@ -442,7 +504,46 @@ def _fold_model(
             )
         },
     }
-    return predictions, diagnostic, importance
+    if ridge_diagnostic is not None:
+        diagnostic["ridge"] = ridge_diagnostic
+        diagnostic["feature_importance"] = [
+            {"feature": name, "gain": gain, "split_count": split_count}
+            for name, gain, split_count in importance
+        ]
+    return predictions, diagnostic, importance, ensemble_diagnostics
+
+
+def _member_signal_summary(
+    request: WorkerRequest,
+    ensemble_diagnostics: pl.DataFrame,
+    *,
+    score_column: str,
+    model_hash_column: str,
+) -> dict[str, Any]:
+    member = ensemble_diagnostics.select(
+        "symbol",
+        "origin_ts",
+        "available_at",
+        "target_ts",
+        pl.col(score_column).alias("score"),
+        "fold",
+        "split",
+        pl.col(model_hash_column).alias("model_hash"),
+        "config_hash",
+        "worker_lock_hash",
+        "seed",
+    ).select(PREDICTION_COLUMNS)
+    analysis = _diagnostic_signal_analysis(request, member)
+    ic = cast(dict[str, Any], analysis["ic"])
+    portfolio = cast(dict[str, Any], analysis["portfolio"])
+    return {
+        "ic_mean": ic["mean"],
+        "rank_ic_mean": ic["rank_mean"],
+        "costed_total_return": portfolio["costed_total_return"],
+        "costed_excess_total_return": portfolio["costed_excess_total_return"],
+        "mean_turnover": portfolio["mean_turnover"],
+        "periods": portfolio["periods"],
+    }
 
 
 def _portable_diagnostics(
@@ -453,6 +554,7 @@ def _portable_diagnostics(
     *,
     qlib_version: str,
     lightgbm_version: str,
+    ensemble_diagnostics: pl.DataFrame | None = None,
 ) -> dict[str, Any]:
     score = predictions.get_column("score")
     importance_rows: list[dict[str, str | float]] = []
@@ -473,7 +575,7 @@ def _portable_diagnostics(
         )
     )
     signal_analysis = _diagnostic_signal_analysis(request, predictions)
-    return {
+    result: dict[str, Any] = {
         "authority": "qlib_diagnostic_only",
         "versions": {
             "worker": __version__,
@@ -518,6 +620,46 @@ def _portable_diagnostics(
         "counterfactual_refit": False,
         "label": "OOS prediction contract validated — canonical ALPHA replay pending",
     }
+    if ensemble_diagnostics is not None:
+        disagreement = ensemble_diagnostics.get_column("disagreement")
+        result["rank_ensemble_v1"] = {
+            "recipe": "equal_weight_percentile_rank",
+            "weights": {"lightgbm": 0.5, "ridge": 0.5},
+            "ridge_alpha": 1.0,
+            "members": {
+                "lightgbm": _member_signal_summary(
+                    request,
+                    ensemble_diagnostics,
+                    score_column="lightgbm_score",
+                    model_hash_column="lightgbm_model_hash",
+                ),
+                "ridge": _member_signal_summary(
+                    request,
+                    ensemble_diagnostics,
+                    score_column="ridge_score",
+                    model_hash_column="ridge_model_hash",
+                ),
+            },
+            "ensemble": {
+                "ic_mean": signal_analysis["ic"]["mean"],
+                "rank_ic_mean": signal_analysis["ic"]["rank_mean"],
+                "costed_total_return": signal_analysis["portfolio"]["costed_total_return"],
+                "costed_excess_total_return": signal_analysis["portfolio"][
+                    "costed_excess_total_return"
+                ],
+                "mean_turnover": signal_analysis["portfolio"]["mean_turnover"],
+                "periods": signal_analysis["portfolio"]["periods"],
+            },
+            "disagreement": {
+                "mean": _finite_float(disagreement.mean(), "mean ensemble disagreement"),
+                "q95": _finite_float(
+                    disagreement.quantile(0.95, interpolation="linear"),
+                    "ensemble disagreement q95",
+                ),
+                "max": _finite_float(disagreement.max(), "maximum ensemble disagreement"),
+            },
+        }
+    return result
 
 
 def _mean_or_none(values: Sequence[float]) -> float | None:
@@ -696,10 +838,11 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
     features = alpha158_features(request.panel)
     samples = _sample_table(request, features)
     prediction_frames: list[pl.DataFrame] = []
+    ensemble_frames: list[pl.DataFrame] = []
     fold_diagnostics: list[dict[str, Any]] = []
     importances: list[list[tuple[str, float, int]]] = []
     for fold in request.folds:
-        predictions, diagnostic, importance = _fold_model(
+        predictions, diagnostic, importance, ensemble_diagnostics = _fold_model(
             request=request,
             samples=samples,
             fold=fold,
@@ -709,6 +852,8 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
         prediction_frames.append(predictions)
         fold_diagnostics.append(diagnostic)
         importances.append(importance)
+        if ensemble_diagnostics is not None:
+            ensemble_frames.append(ensemble_diagnostics)
     combined = pl.concat(prediction_frames).sort(
         ["fold", "split", "target_ts", "symbol", "origin_ts"]
     )
@@ -716,6 +861,14 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
         raise RuntimeError("real worker produced non-finite OOS scores")
     predictions_path = exchange_dir / "predictions.parquet"
     _publish(predictions_path, combined.write_parquet)
+    combined_ensemble = (
+        pl.concat(ensemble_frames).sort(["fold", "split", "target_ts", "symbol", "origin_ts"])
+        if ensemble_frames
+        else None
+    )
+    ensemble_path = exchange_dir / "ensemble_diagnostics.parquet"
+    if combined_ensemble is not None:
+        _publish(ensemble_path, combined_ensemble.write_parquet)
     diagnostics = _portable_diagnostics(
         request,
         combined,
@@ -723,9 +876,10 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
         importances,
         qlib_version=str(getattr(qlib_module, "__version__", "unknown")),
         lightgbm_version=str(getattr(lightgbm_module, "__version__", "unknown")),
+        ensemble_diagnostics=combined_ensemble,
     )
     result: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": request.payload["schema_version"],
         "status": "succeeded",
         "request_sha256": sha256_file(exchange_dir / "request.json"),
         "snapshot_hash": request.payload["snapshot_hash"],
@@ -742,5 +896,13 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
         "diagnostic_only": True,
         "counterfactual_refit": False,
     }
+    if combined_ensemble is not None:
+        result["ensemble_diagnostics"] = {
+            "schema": "QlibRankEnsembleDiagnosticsV1",
+            "schema_version": 1,
+            "path": "ensemble_diagnostics.parquet",
+            "sha256": sha256_file(ensemble_path),
+            "rows": combined_ensemble.height,
+        }
     _publish(result_path, lambda path: path.write_bytes(canonical_json_bytes(result)))
     return result

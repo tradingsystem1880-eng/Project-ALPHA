@@ -17,7 +17,9 @@ from alpha_cli.main import app
 from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS, PANEL_COLUMNS
 
 
-def _write_inputs(tmp_path: Path, *, worker_lock_hash: str) -> tuple[Path, Path]:
+def _write_inputs(
+    tmp_path: Path, *, worker_lock_hash: str, rank_ensemble: bool = False
+) -> tuple[Path, Path]:
     symbols = [f"S{i:02d}" for i in range(MIN_SYMBOLS)]
     sessions = [
         datetime(2023, 1, 2, tzinfo=UTC) + timedelta(days=i) for i in range(MIN_ALIGNED_SESSIONS)
@@ -40,8 +42,8 @@ def _write_inputs(tmp_path: Path, *, worker_lock_hash: str) -> tuple[Path, Path]
             )
     panel = tmp_path / "panel-source.parquet"
     pl.DataFrame(rows).select(PANEL_COLUMNS).write_parquet(panel)
-    spec = {
-        "schema_version": 1,
+    spec: dict[str, object] = {
+        "schema_version": 2 if rank_ensemble else 1,
         "snapshot_hash": "a" * 64,
         "universe": symbols,
         "universe_membership": "current_membership",
@@ -53,7 +55,10 @@ def _write_inputs(tmp_path: Path, *, worker_lock_hash: str) -> tuple[Path, Path]
             "fill": "open_t_plus_1",
             "horizon_sessions": 1,
         },
-        "model": {"name": "lightgbm", "parameters": {}},
+        "model": {
+            "name": "rank_ensemble_v1" if rank_ensemble else "lightgbm",
+            "parameters": {},
+        },
         "portfolio": {
             "selection": "top_quintile",
             "weighting": "equal",
@@ -179,3 +184,66 @@ def test_ml_cli_fails_cleanly_on_invalid_bundle(tmp_path: Path) -> None:
     assert result.exit_code != 0
     assert "request.json" in result.output
     assert "Traceback" not in result.output
+
+
+def test_rank_ensemble_replay_publishes_diagnostics_and_cost_sensitivity(
+    tmp_path: Path,
+) -> None:
+    repo = Path(__file__).parents[2]
+    worker_lock = repo / "workers/qlib/uv.lock"
+    spec, panel = _write_inputs(
+        tmp_path,
+        worker_lock_hash=hashlib.sha256(worker_lock.read_bytes()).hexdigest(),
+        rank_ensemble=True,
+    )
+    exchange = tmp_path / "ensemble-exchange"
+    runner = CliRunner()
+    prepared = runner.invoke(
+        app,
+        [
+            "ml",
+            "prepare",
+            str(spec),
+            str(panel),
+            str(exchange),
+            "--worker-lock",
+            str(worker_lock),
+            "--json",
+        ],
+    )
+    assert prepared.exit_code == 0, prepared.output
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(repo / "workers/qlib/src")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "alpha_qlib_worker",
+            "fake",
+            str(exchange),
+            "--worker-lock",
+            str(worker_lock),
+        ],
+        cwd=repo,
+        env=env,
+        check=True,
+    )
+    data_dir = tmp_path / "ensemble-data"
+    replay = runner.invoke(
+        app,
+        ["ml", "replay", str(exchange), "--json"],
+        env={"ALPHA_DATA_DIR": str(data_dir)},
+    )
+    assert replay.exit_code == 0, replay.output
+    summary = json.loads(replay.output)
+    run_dir = data_dir / "runs" / summary["run_id"]
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    assert {
+        "ensemble_diagnostics.parquet",
+        "ml_cost_sensitivity.parquet",
+    } <= set(manifest["artifacts"])
+    sensitivity = pl.read_parquet(run_dir / "ml_cost_sensitivity.parquet")
+    assert sensitivity.get_column("cost_multiplier").to_list() == [0.0, 0.5, 1.0, 2.0]
+    assert sensitivity.get_column("total_return").is_finite().all()
+    returns = sensitivity.get_column("total_return").to_list()
+    assert returns == sorted(returns, reverse=True)

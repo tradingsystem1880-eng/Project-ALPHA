@@ -60,6 +60,9 @@ describe('screen definitions', () => {
     const side = explore.find(([area]) => area === 'side')
     expect(side?.[1].map((pane) => pane.name)).toEqual([
       'DataExplorer',
+      'ResearchDataExplorer',
+      'ResearchBacklog',
+      'EvidenceHub',
       'Screener',
       'OptionsGreeks',
     ])

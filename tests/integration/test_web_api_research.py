@@ -118,11 +118,10 @@ def test_research_case_capture_propose_status_report_and_pilot_round_trip(
     launched = launched_response.json()
     assert launched["manifest"]["evidence_zone"] == "D0"
     assert launched["attempt"]["kind"] == "d0-synthetic-pilot"
-    assert launched["case"]["phase"] == "research_decision"
-    assert launched["case"]["responsibility"] == "owner"
+    assert launched["case"]["phase"] == "deep_research"
+    assert launched["case"]["responsibility"] == "codex"
     assert launched["case"]["next_action"] == (
-        "Owner records INCONCLUSIVE with revise, park, or reject; empirical D1 is unavailable "
-        "in Gate 1."
+        "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert launched["case"]["d2_state"] == "sealed"
 
@@ -233,3 +232,193 @@ def test_option_shaped_project_id_maps_to_a_typed_error_not_a_500(
     resp = _client(tmp_path, monkeypatch).get("/api/research/cases/--help")
     assert resp.status_code == 404
     assert "did not return valid JSON" in resp.json()["detail"]
+
+
+def test_research_case_list_evidence_hub_and_scorecard_read_plane(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases",
+        json={"idea": "SPY drifts upward into month-end rebalancing", "name": "Month-end"},
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+
+    listed = client.get("/api/research/cases")
+    assert listed.status_code == 200, listed.text
+    page = listed.json()
+    assert page["limit"] == 50 and page["offset"] == 0 and page["has_more"] is False
+    assert [row["case_id"] for row in page["items"]] == [project_id]
+    row = page["items"][0]
+    assert row["title"] == "Month-end"
+    assert row["phase"] == "triage"
+    assert row["owner_pinned"] is False
+    assert row["budget"]["unit"] == "minutes"
+
+    bounded = client.get("/api/research/cases", params={"limit": 1, "offset": 5})
+    assert bounded.status_code == 200
+    assert bounded.json()["items"] == []
+    assert client.get("/api/research/cases", params={"limit": 0}).status_code == 422
+    assert client.get("/api/research/cases", params={"limit": 101}).status_code == 422
+    assert client.get("/api/research/cases", params={"offset": -1}).status_code == 422
+
+    hub_response = client.get(f"/api/research/cases/{project_id}/evidence-hub")
+    assert hub_response.status_code == 200, hub_response.text
+    hub = hub_response.json()
+    assert hub["hub_schema"] == "ResearchEvidenceHubV1"
+    assert hub["project_id"] == project_id
+    sections = hub["sections"]
+    assert sections["overview"]["hypothesis_card"]["card_schema"] == "HypothesisCardV1"
+    assert sections["evidence_for"] == {"findings": []}
+    assert sections["evidence_against"] == {"findings": []}
+    assert sections["decision"]["packet_id"] is None
+
+    scorecard_response = client.get(f"/api/research/cases/{project_id}/scorecard")
+    assert scorecard_response.status_code == 200, scorecard_response.text
+    scorecard = scorecard_response.json()
+    assert scorecard["scorecard_schema"] == "ResearchReadinessScorecardV1"
+    assert len(scorecard["dimensions"]) == 12
+    assert scorecard["recommendation"]["value"] == "MORE RESEARCH REQUIRED"
+
+    assert client.get("/api/research/cases/unknown-project/evidence-hub").status_code == 404
+    assert client.get("/api/research/cases/unknown-project/scorecard").status_code == 404
+
+
+def test_research_router_exposes_no_new_mutation_verbs() -> None:
+    paths = create_app().openapi()["paths"]
+    research_routes: dict[str, set[str]] = {
+        path: {method.upper() for method in operations}
+        for path, operations in paths.items()
+        if path.startswith("/api/research")
+    }
+    # ADR-0021: the read plane grows, mutation authority does not. Exactly the three
+    # bounded Gate-1 POSTs (capture, proposal, pilot launch) may write; everything else
+    # on the research router is GET-only.
+    mutating = {
+        path: methods - {"GET", "HEAD"}
+        for path, methods in research_routes.items()
+        if methods - {"GET", "HEAD"}
+    }
+    assert mutating == {
+        "/api/research/cases": {"POST"},
+        "/api/research/cases/{project_id}/proposal": {"POST"},
+        "/api/research/cases/{project_id}/launch": {"POST"},
+    }
+    read_only_paths = {
+        "/api/research/cases/{project_id}/evidence-hub",
+        "/api/research/cases/{project_id}/scorecard",
+        "/api/research/cases/{project_id}/decision-view",
+    }
+    assert read_only_paths <= set(research_routes)
+
+
+def test_research_decision_view_read_plane(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases",
+        json={"idea": "SPY drifts upward into month-end rebalancing", "name": "Month-end"},
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+
+    response = client.get(f"/api/research/cases/{project_id}/decision-view")
+    assert response.status_code == 200, response.text
+    view = response.json()
+    assert view["view_schema"] == "ResearchDecisionViewV1"
+    assert view["project_id"] == project_id
+    assert view["phase"] == "triage"
+    # A fresh case has no terminal packet and no recorded owner decisions.
+    assert view["gate_packet"] is None
+    assert view["decision_history"] == []
+    questions = view["checklist"]["questions"]
+    assert len(questions) == 14
+    assert [entry["number"] for entry in questions] == list(range(1, 15))
+    statuses = {entry["question_id"]: entry["status"] for entry in questions}
+    assert statuses["effect_exists"] == "NOT_TESTED"
+    assert statuses["economic_hurdle"] == "NOT_TESTED"
+    assert statuses["residual_uncertainty"] == "TESTED"
+    assert len(view["scorecard"]["dimensions"]) == 12
+    assert view["scorecard"]["recommendation"]["value"] == "MORE RESEARCH REQUIRED"
+
+    assert client.get("/api/research/cases/unknown-project/decision-view").status_code == 404
+
+
+def test_codex_read_plane_serves_packets_notes_and_protocols(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases",
+        json={"idea": "SPY drifts upward into month-end rebalancing"},
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+
+    store = ControlStore(AlphaSettings().data_dir)
+    packet = store.build_research_context_packet(
+        project_id, kind="research_case", created_by="codex"
+    )
+    packet_id = str(packet["packet_id"])
+    store.add_research_note(
+        project_id,
+        note_kind="critique",
+        body="The volatility-regime confounder is not yet matched.",
+        author="codex",
+        author_kind="agent",
+        context_packet_id=packet_id,
+    )
+
+    packets = client.get(f"/api/research/cases/{project_id}/context-packets")
+    assert packets.status_code == 200, packets.text
+    packet_rows = packets.json()["items"]
+    assert [row["packet_id"] for row in packet_rows] == [packet_id]
+
+    fetched = client.get(f"/api/research/context-packets/{packet_id}")
+    assert fetched.status_code == 200, fetched.text
+    # Byte-identical visibility: the served payload equals the recorded payload.
+    assert fetched.json()["payload"] == packet["payload"]
+
+    notes = client.get(f"/api/research/cases/{project_id}/notes")
+    assert notes.status_code == 200, notes.text
+    note_rows = notes.json()["items"]
+    assert len(note_rows) == 1
+    assert note_rows[0]["author_kind"] == "agent"
+    assert note_rows[0]["context_packet_id"] == packet_id
+
+    protocols = client.get("/api/research/protocols")
+    assert protocols.status_code == 200, protocols.text
+    entries = protocols.json()["protocols"]
+    assert len(entries) == 13
+    assert entries[0]["id"] == "new-idea-intake"
+
+    assert client.get("/api/research/context-packets/cp_" + "9" * 64).status_code == 404
+    assert client.get("/api/research/cases/unknown/context-packets").status_code == 404
+
+
+def test_dataset_read_plane_serves_registered_refs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    store = ControlStore(AlphaSettings().data_dir)
+    ref = store.register_research_dataset(
+        dataset_kind="store_slice",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-01-01",
+        end_ts="2020-06-01",
+        bar_duration_minutes=None,
+        origin={"provenance_sha256": "a" * 64},
+        registered_by="owner",
+    )
+    listed = client.get("/api/research/datasets")
+    assert listed.status_code == 200, listed.text
+    payload = listed.json()
+    assert [row["ref_id"] for row in payload["items"]] == [ref["ref_id"]]
+    row = payload["items"][0]
+    assert row["research_only"] is True
+    assert row["latest_audit"] is None
+    filtered = client.get("/api/research/datasets", params={"symbol": "SPY"})
+    assert filtered.status_code == 200
+    assert filtered.json()["items"] == []
+    assert client.get("/api/research/datasets", params={"limit": 0}).status_code == 422

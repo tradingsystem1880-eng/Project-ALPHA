@@ -1087,6 +1087,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research-gate-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Active Research Gate Overrides
+         * @description Override events on projects whose research gate is currently overridden (read-only).
+         */
+        get: operations["list_active_research_gate_overrides_api_research_gate_overrides_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases": {
         parameters: {
             query?: never;
@@ -1094,7 +1114,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Research Cases
+         * @description Read the bounded backlog page, newest research activity first (ADR-0021).
+         */
+        get: operations["research_cases_api_research_cases_get"];
         put?: never;
         /**
          * Research Capture
@@ -1127,6 +1151,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/context-packets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Context Packets
+         * @description Read this case's recorded Codex context packets — every byte Codex saw.
+         */
+        get: operations["research_context_packets_api_research_cases__project_id__context_packets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/decision-view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Decision View
+         * @description Read the owner decision view: checklist, full scorecard, packet, and history.
+         */
+        get: operations["research_decision_view_api_research_cases__project_id__decision_view_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/evidence-hub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Evidence Hub
+         * @description Read the eleven-section Evidence Hub projection for one case.
+         */
+        get: operations["research_evidence_hub_api_research_cases__project_id__evidence_hub_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/launch": {
         parameters: {
             query?: never;
@@ -1141,6 +1225,26 @@ export interface paths {
          * @description Run the deterministic D0 pilot after approval performed outside REST.
          */
         post: operations["research_launch_api_research_cases__project_id__launch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Notes
+         * @description Read the commentary stream — badged as Codex commentary, never evidence.
+         */
+        get: operations["research_notes_api_research_cases__project_id__notes_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1187,6 +1291,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Scorecard
+         * @description Read the readiness scorecard: enumerated states, never a numeric aggregate.
+         */
+        get: operations["research_scorecard_api_research_cases__project_id__scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/status": {
         parameters: {
             query?: never;
@@ -1219,6 +1343,66 @@ export interface paths {
          * @description Backtest each strategy on ``symbol`` and rank by total return (slow — runs the engine).
          */
         get: operations["research_compare_api_research_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/context-packets/{packet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Context Packet
+         * @description Return one recorded packet byte-identically.
+         */
+        get: operations["research_context_packet_api_research_context_packets__packet_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Datasets
+         * @description Read registered research-only dataset refs with their latest audits.
+         */
+        get: operations["research_datasets_api_research_datasets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/protocols": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Protocols
+         * @description Read the Git-owned protocol library index.
+         */
+        get: operations["research_protocols_api_research_protocols_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2586,6 +2770,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v3/research-gate-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 List Active Research Gate Overrides
+         * @description Override events on projects whose research gate is currently overridden (read-only).
+         *
+         *     Versioned Workstation-v3 alias of `/api/research-gate-overrides`.
+         */
+        get: operations["v3_list_active_research_gate_overrides_api_v3_research_gate_overrides_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v3/runs/compare": {
         parameters: {
             query?: never;
@@ -2805,6 +3011,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActiveResearchGateOverride */
+        ActiveResearchGateOverride: {
+            /** Actor */
+            actor: string;
+            /** Project Id */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /** Reason */
+            reason: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Sequence */
+            sequence: number;
+        };
         /** AgentBrief */
         AgentBrief: {
             allowed_scope: components["schemas"]["AgentScope"];
@@ -2825,6 +3046,7 @@ export interface components {
             project_name: string;
             /** Required Tests */
             required_tests: string[];
+            research_promotion: components["schemas"]["ResearchPromotionReference"] | null;
             /**
              * Schema Version
              * @constant
@@ -3909,6 +4131,211 @@ export interface components {
             sealed_version_id: string;
             /** Start Date */
             start_date?: string | null;
+        };
+        /** HubAttempt */
+        HubAttempt: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Config Fingerprint */
+            config_fingerprint: string;
+            /** Kind */
+            kind: string;
+            /** Phase */
+            phase: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Run Id */
+            run_id: string | null;
+            /** Status */
+            status: string;
+        };
+        /** HubConfounder */
+        HubConfounder: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "resolved" | "unresolved";
+            /** Text */
+            text: string;
+        };
+        /** HubData */
+        HubData: {
+            /** Note */
+            note: string;
+            /** Registered Datasets */
+            registered_datasets: components["schemas"]["JsonObject"][];
+            /** Status */
+            status: string;
+        };
+        /** HubDecision */
+        HubDecision: {
+            d2_state: components["schemas"]["ResearchD2StateValue"];
+            d3_state: components["schemas"]["ResearchD3StateValue"];
+            /** Disposition */
+            disposition: ("advance_to_strategy" | "revise" | "park" | "reject") | null;
+            /** Outcome */
+            outcome: ("SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID") | null;
+            /** Packet Hash */
+            packet_hash: string | null;
+            /** Packet Id */
+            packet_id: string | null;
+        };
+        /** HubExperiments */
+        HubExperiments: {
+            /** Attempts */
+            attempts: components["schemas"]["HubAttempt"][];
+        };
+        /** HubExploration */
+        HubExploration: {
+            /** Charts */
+            charts: components["schemas"]["JsonObject"][];
+            /** Status */
+            status: string;
+            /**
+             * Watermark
+             * @constant
+             */
+            watermark: "EXPLORATORY";
+        };
+        /** HubFalsification */
+        HubFalsification: {
+            /** Falsifiers */
+            falsifiers: components["schemas"]["HubFalsifier"][];
+            /** Stop Rules */
+            stop_rules: string[];
+        };
+        /** HubFalsifier */
+        HubFalsifier: {
+            /** Result */
+            result: string;
+            /** Text */
+            text: string;
+        };
+        /** HubFinding */
+        HubFinding: {
+            /** Finding Id */
+            finding_id: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
+        };
+        /** HubFindings */
+        HubFindings: {
+            /** Findings */
+            findings: components["schemas"]["HubFinding"][];
+        };
+        /** HubLiterature */
+        HubLiterature: {
+            /** Claims */
+            claims: components["schemas"]["JsonObject"][];
+            /** Sources */
+            sources: components["schemas"]["HubSource"][];
+            /** Status */
+            status: string;
+        };
+        /** HubMechanism */
+        HubMechanism: {
+            /** Alternatives */
+            alternatives: string[];
+            /** Confounders */
+            confounders: components["schemas"]["HubConfounder"][];
+            /** Interpretation */
+            interpretation: string | null;
+            /** Mechanism */
+            mechanism: string | null;
+        };
+        /** HubOverview */
+        HubOverview: {
+            execution_state: components["schemas"]["ResearchExecutionStateValue"];
+            hypothesis_card: components["schemas"]["HypothesisCard"];
+            /** Latest Finding */
+            latest_finding: string | null;
+            /** Next Action */
+            next_action: string;
+            /** Original Idea */
+            original_idea: string;
+            /** Outstanding Questions */
+            outstanding_questions: string[];
+            phase: components["schemas"]["ResearchPhaseValue"];
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            scorecard: components["schemas"]["ResearchScorecard"];
+        };
+        /** HubRobustness */
+        HubRobustness: {
+            /** Findings */
+            findings: components["schemas"]["HubFinding"][];
+            /** Status */
+            status: string;
+        };
+        /** HubSource */
+        HubSource: {
+            /** Access Mode */
+            access_mode: string;
+            /** Locator */
+            locator: string;
+            /** Provider */
+            provider: string;
+            /** Screening */
+            screening: string | null;
+            /** Source Id */
+            source_id: string;
+            /** Title */
+            title: string;
+        };
+        /** HypothesisCard */
+        HypothesisCard: {
+            analysis_plan?: components["schemas"]["HypothesisCardPlan"] | null;
+            /**
+             * Card Schema
+             * @constant
+             */
+            card_schema: "HypothesisCardV1";
+            /** Complete Fields */
+            complete_fields: number;
+            /** Fields */
+            fields: components["schemas"]["HypothesisCardField"][];
+            /**
+             * Total Fields
+             * @constant
+             */
+            total_fields: 14;
+        };
+        /** HypothesisCardField */
+        HypothesisCardField: {
+            /**
+             * Field Id
+             * @enum {string}
+             */
+            field_id: "research_question" | "phenomenon" | "population" | "condition_event" | "dependent_variable" | "horizon" | "expected_direction" | "economic_mechanism" | "null_hypothesis" | "alternative_hypothesis" | "baseline" | "confounders" | "falsification_criteria" | "success_criteria";
+            /** Label */
+            label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "partial" | "missing";
+            /** Value */
+            value: string | null;
+        };
+        /** HypothesisCardPlan */
+        HypothesisCardPlan: {
+            /** Families */
+            families: components["schemas"]["HypothesisCardPlanFamily"][];
+            /** Family Count */
+            family_count: number;
+        };
+        /** HypothesisCardPlanFamily */
+        HypothesisCardPlanFamily: {
+            /** Family */
+            family: string;
+            /** Multiplicity */
+            multiplicity: string;
         };
         /** JobDetail */
         JobDetail: {
@@ -5570,6 +5997,9 @@ export interface components {
             name: string;
             /** Project Id */
             project_id: string;
+            /** Research Gate Overrides */
+            research_gate_overrides: components["schemas"]["ResearchGateOverride"][];
+            research_gate_state: components["schemas"]["ResearchGateStateValue"];
             /** Stage Run Links */
             stage_run_links: components["schemas"]["StageRunLink"][];
             /** Stage States */
@@ -5610,6 +6040,7 @@ export interface components {
             name: string;
             /** Project Id */
             project_id: string;
+            research_gate_state: components["schemas"]["ResearchGateStateValue"];
             status: components["schemas"]["ProjectStatusValue"];
             /** Updated At */
             updated_at: string;
@@ -5626,6 +6057,8 @@ export interface components {
             holdout_audit: boolean;
             /** Holdouts */
             holdouts: boolean;
+            /** Research Gate Overrides */
+            research_gate_overrides: boolean;
             /** Stage Run Links */
             stage_run_links: boolean;
             /** Stage States */
@@ -5717,6 +6150,18 @@ export interface components {
             run_id: string | null;
             status: components["schemas"]["AttemptStatusValue"];
         };
+        /** ResearchBudgetProjection */
+        ResearchBudgetProjection: {
+            /** Approved Units */
+            approved_units: number;
+            /** Consumed Units */
+            consumed_units: number;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "minutes" | "compute_units";
+        };
         /** ResearchCaptureRequest */
         ResearchCaptureRequest: {
             /** Idea */
@@ -5747,6 +6192,7 @@ export interface components {
             completed_milestones: components["schemas"]["ResearchMilestone"][];
             /** Confirmation Contract Id */
             confirmation_contract_id: string | null;
+            confirmation_readiness?: components["schemas"]["ResearchReadinessProjection"] | null;
             confirmation_review: components["schemas"]["ResearchReviewSummary"];
             /** D2 Boundary Hash */
             d2_boundary_hash: string;
@@ -5762,6 +6208,7 @@ export interface components {
             exploration_contract_id: string;
             exploration_review: components["schemas"]["ResearchReviewSummary"];
             hashes: components["schemas"]["JsonObject"];
+            hypothesis_card?: components["schemas"]["HypothesisCard"] | null;
             /** Latest Attempt Id */
             latest_attempt_id: string | null;
             /** Latest Finding */
@@ -5783,6 +6230,7 @@ export interface components {
             project_id: string;
             /** Project Name */
             project_name: string;
+            promotion_readiness?: components["schemas"]["ResearchReadinessProjection"] | null;
             /** Recovery */
             recovery: string | null;
             remaining_budget: components["schemas"]["JsonObject"];
@@ -5801,6 +6249,7 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+            scorecard?: components["schemas"]["ResearchScorecard"] | null;
             /** Source Pack Id */
             source_pack_id: string | null;
             /** Terminal Attempt Count */
@@ -5808,9 +6257,103 @@ export interface components {
             /** Unfinalized Launch Count */
             unfinalized_launch_count: number;
         };
+        /** ResearchCasePage */
+        ResearchCasePage: {
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["ResearchCaseSummaryRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         ResearchCaseReport: components["schemas"]["ResearchProgressReport"] | components["schemas"]["ResearchGatePacket"];
+        /** ResearchCaseSummaryRow */
+        ResearchCaseSummaryRow: {
+            /** Blocker */
+            blocker: string | null;
+            budget: components["schemas"]["ResearchBudgetProjection"];
+            /** Case Id */
+            case_id: string;
+            /** Completed Milestones */
+            completed_milestones: number;
+            /** Disposition */
+            disposition: ("advance_to_strategy" | "revise" | "park" | "reject") | null;
+            execution_state: components["schemas"]["ResearchExecutionStateValue"];
+            /** Latest Finding */
+            latest_finding: string | null;
+            /** Next Action */
+            next_action: string;
+            /** Original Idea */
+            original_idea: string;
+            /** Outcome */
+            outcome: ("SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID") | null;
+            /** Owner Pinned */
+            owner_pinned: boolean;
+            phase: components["schemas"]["ResearchPhaseValue"];
+            priority: components["schemas"]["ResearchPriority"];
+            /** Recovery Action */
+            recovery_action: string | null;
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            /** Title */
+            title: string;
+            /** Total Milestones */
+            total_milestones: number;
+            /** Updated At */
+            updated_at: string;
+        };
         /** @constant */
         ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
+        /** ResearchChecklistQuestion */
+        ResearchChecklistQuestion: {
+            /** Answer */
+            answer: string;
+            /** Binding */
+            binding: string;
+            /** Number */
+            number: number;
+            /** Question */
+            question: string;
+            /** Question Id */
+            question_id: string;
+            /** Status */
+            status: string;
+        };
+        /** ResearchContextPacket */
+        ResearchContextPacket: {
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Packet Id */
+            packet_id: string;
+            /**
+             * Packet Kind
+             * @enum {string}
+             */
+            packet_kind: "asset" | "research_case" | "experiment" | "chart" | "validation" | "strategy_promotion";
+            payload: components["schemas"]["JsonObject"];
+            /** Project Id */
+            project_id: string;
+            /** Protocol Content Hash */
+            protocol_content_hash: string | null;
+            /** Protocol Id */
+            protocol_id: string | null;
+        };
+        /** ResearchContextPacketPage */
+        ResearchContextPacketPage: {
+            /** Items */
+            items: components["schemas"]["ResearchContextPacket"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** ResearchContract */
         ResearchContract: {
             author_kind: components["schemas"]["AuthorKindValue"];
@@ -5855,6 +6398,46 @@ export interface components {
         ResearchD2StateValue: "sealed" | "authorized" | "consumed" | "contaminated";
         /** @enum {string} */
         ResearchD3StateValue: "not_sealed" | "sealed" | "consumed" | "contaminated";
+        /** ResearchDatasetPage */
+        ResearchDatasetPage: {
+            /** Items */
+            items: components["schemas"]["ResearchDatasetRefRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** ResearchDatasetRefRow */
+        ResearchDatasetRefRow: {
+            /** Bar Duration Minutes */
+            bar_duration_minutes: number | null;
+            /**
+             * Dataset Kind
+             * @enum {string}
+             */
+            dataset_kind: "store_slice" | "snapshot" | "quantpad_receipt";
+            /** End Ts */
+            end_ts: string;
+            /** Instrument */
+            instrument: string;
+            latest_audit: components["schemas"]["JsonObject"] | null;
+            origin: components["schemas"]["JsonObject"];
+            /** Provider */
+            provider: string;
+            /** Ref Id */
+            ref_id: string;
+            /** Registered At */
+            registered_at: string;
+            /** Registered By */
+            registered_by: string;
+            /**
+             * Research Only
+             * @constant
+             */
+            research_only: true;
+            /** Start Ts */
+            start_ts: string;
+        };
         /** ResearchDecisionEvent */
         ResearchDecisionEvent: {
             /** Actor */
@@ -5881,8 +6464,90 @@ export interface components {
             /** Sequence */
             sequence: number;
         };
+        /** ResearchDecisionHistoryEvent */
+        ResearchDecisionHistoryEvent: {
+            /** Actor */
+            actor: string;
+            actor_kind: components["schemas"]["AuthorKindValue"];
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "advance_to_strategy" | "revise" | "park" | "reject";
+            /** Occurred At */
+            occurred_at: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE" | "INVALID";
+            /** Reason */
+            reason: string;
+            /** Sequence */
+            sequence: number;
+        };
+        /** ResearchDecisionView */
+        ResearchDecisionView: {
+            checklist: components["schemas"]["ResearchEdgeChecklist"];
+            confirmation_readiness: components["schemas"]["ResearchReadinessProjection"];
+            /** D2 State */
+            d2_state: string;
+            /** Decision History */
+            decision_history: components["schemas"]["ResearchDecisionHistoryEvent"][];
+            gate_packet: components["schemas"]["ResearchGatePacket"] | null;
+            /** Next Action */
+            next_action: string;
+            /** Phase */
+            phase: string;
+            /** Project Id */
+            project_id: string;
+            promotion_readiness: components["schemas"]["ResearchReadinessProjection"];
+            scorecard: components["schemas"]["ResearchScorecard"];
+            /**
+             * View Schema
+             * @constant
+             */
+            view_schema: "ResearchDecisionViewV1";
+        };
+        /** ResearchEdgeChecklist */
+        ResearchEdgeChecklist: {
+            /**
+             * Checklist Schema
+             * @constant
+             */
+            checklist_schema: "ResearchEdgeChecklistV1";
+            /** Questions */
+            questions: components["schemas"]["ResearchChecklistQuestion"][];
+        };
         /** @constant */
         ResearchEventAvailabilityValue: "second_trough_confirmable";
+        /** ResearchEvidenceHub */
+        ResearchEvidenceHub: {
+            /**
+             * Hub Schema
+             * @constant
+             */
+            hub_schema: "ResearchEvidenceHubV1";
+            /** Project Id */
+            project_id: string;
+            sections: components["schemas"]["ResearchEvidenceHubSections"];
+        };
+        /** ResearchEvidenceHubSections */
+        ResearchEvidenceHubSections: {
+            data: components["schemas"]["HubData"];
+            decision: components["schemas"]["HubDecision"];
+            evidence_against: components["schemas"]["HubFindings"];
+            evidence_for: components["schemas"]["HubFindings"];
+            experiments: components["schemas"]["HubExperiments"];
+            exploration: components["schemas"]["HubExploration"];
+            falsification: components["schemas"]["HubFalsification"];
+            literature: components["schemas"]["HubLiterature"];
+            mechanism: components["schemas"]["HubMechanism"];
+            overview: components["schemas"]["HubOverview"];
+            robustness: components["schemas"]["HubRobustness"];
+        };
         /** @enum {string} */
         ResearchExecutionStateValue: "idle" | "queued" | "running" | "paused" | "blocked" | "failed";
         /** ResearchGateAuditLedgers */
@@ -6056,6 +6721,19 @@ export interface components {
             /** Sources */
             sources: number;
         };
+        /** ResearchGateOverride */
+        ResearchGateOverride: {
+            /** Actor */
+            actor: string;
+            /** Project Id */
+            project_id: string;
+            /** Reason */
+            reason: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Sequence */
+            sequence: number;
+        };
         /** ResearchGatePacket */
         ResearchGatePacket: {
             /** Active Contract Id */
@@ -6132,6 +6810,8 @@ export interface components {
             temporal: components["schemas"]["ResearchGateFinding"];
             transportability: components["schemas"]["ResearchGateFinding"];
         };
+        /** @enum {string} */
+        ResearchGateStateValue: "not_required" | "open" | "passed" | "overridden";
         /** ResearchGateTechnicalAppendix */
         ResearchGateTechnicalAppendix: {
             /** Attempt Ledger */
@@ -6198,10 +6878,57 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ResearchNote */
+        ResearchNote: {
+            /** Author */
+            author: string;
+            /**
+             * Author Kind
+             * @enum {string}
+             */
+            author_kind: "owner" | "agent";
+            /** Body */
+            body: string;
+            /** Context Packet Id */
+            context_packet_id: string | null;
+            /** Created At */
+            created_at: string;
+            /** Note Id */
+            note_id: string;
+            /**
+             * Note Kind
+             * @enum {string}
+             */
+            note_kind: "critique" | "confounder_review" | "test_design" | "completeness_review" | "synthesis";
+            /** Project Id */
+            project_id: string;
+            /** Sequence */
+            sequence: number;
+        };
+        /** ResearchNotePage */
+        ResearchNotePage: {
+            /** Items */
+            items: components["schemas"]["ResearchNote"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** @enum {string} */
         ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
         /** @constant */
         ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp";
+        /** ResearchPriority */
+        ResearchPriority: {
+            /** Data Readiness */
+            data_readiness: number;
+            /** Falsifiability */
+            falsifiability: number;
+            /** Information Gain Per Cost */
+            information_gain_per_cost: number;
+            /** Novelty */
+            novelty: number;
+        };
         /** ResearchProgressReport */
         ResearchProgressReport: {
             case: components["schemas"]["ResearchCase"];
@@ -6218,6 +6945,19 @@ export interface components {
             /** Warning */
             warning: string;
         };
+        /** ResearchPromotionReference */
+        ResearchPromotionReference: {
+            /** Contract Id */
+            contract_id: string;
+            /** Gate Packet Hash */
+            gate_packet_hash: string | null;
+            /** Gate Packet Id */
+            gate_packet_id: string | null;
+            /** Packet Id */
+            packet_id: string;
+            /** Recorded At */
+            recorded_at: string;
+        };
         /** ResearchProposalRequest */
         ResearchProposalRequest: {
             answers: components["schemas"]["ResearchMaterialAnswers"];
@@ -6228,6 +6968,48 @@ export interface components {
         ResearchProposalResponse: {
             case: components["schemas"]["ResearchCase"];
             contract: components["schemas"]["ResearchContract"];
+        };
+        /** ResearchProtocolEntry */
+        ResearchProtocolEntry: {
+            /** File */
+            file: string;
+            /** Id */
+            id: string;
+            /** Output Contract */
+            output_contract: string;
+            /**
+             * Packet Kind
+             * @enum {string}
+             */
+            packet_kind: "asset" | "research_case" | "experiment" | "chart" | "validation" | "strategy_promotion";
+            /** Purpose */
+            purpose: string;
+            /** Sha256 */
+            sha256: string;
+            /** Title */
+            title: string;
+        };
+        /** ResearchProtocolLibrary */
+        ResearchProtocolLibrary: {
+            /** Protocols */
+            protocols: components["schemas"]["ResearchProtocolEntry"][];
+        };
+        /** ResearchReadinessBlocker */
+        ResearchReadinessBlocker: {
+            /** Code */
+            code: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /** ResearchReadinessProjection */
+        ResearchReadinessProjection: {
+            /** Blockers */
+            blockers: components["schemas"]["ResearchReadinessBlocker"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "blocked";
         };
         /** ResearchReport */
         ResearchReport: {
@@ -6285,6 +7067,51 @@ export interface components {
             strategy: string;
             /** Total Return */
             total_return: number | null;
+        };
+        /** ResearchScorecard */
+        ResearchScorecard: {
+            confirmation_readiness: components["schemas"]["ResearchReadinessProjection"];
+            /** Dimensions */
+            dimensions: components["schemas"]["ResearchScorecardDimension"][];
+            promotion_readiness: components["schemas"]["ResearchReadinessProjection"];
+            recommendation: components["schemas"]["ResearchScorecardRecommendation"];
+            /**
+             * Scorecard Schema
+             * @constant
+             */
+            scorecard_schema: "ResearchReadinessScorecardV1";
+            unresolved_questions: components["schemas"]["ResearchScorecardQuestions"];
+        };
+        /** ResearchScorecardDimension */
+        ResearchScorecardDimension: {
+            /** Basis */
+            basis: string;
+            /**
+             * Dimension Id
+             * @enum {string}
+             */
+            dimension_id: "hypothesis_definition" | "data_quality" | "sample_adequacy" | "effect_existence" | "effect_size" | "temporal_stability" | "cross_asset_stability" | "regime_robustness" | "falsification" | "mechanism" | "literature" | "data_mining_risk";
+            /** Label */
+            label: string;
+            /** State */
+            state: string;
+        };
+        /** ResearchScorecardQuestions */
+        ResearchScorecardQuestions: {
+            /** Count */
+            count: number;
+            /** Items */
+            items: string[];
+        };
+        /** ResearchScorecardRecommendation */
+        ResearchScorecardRecommendation: {
+            /** Reasons */
+            reasons: string[];
+            /**
+             * Value
+             * @enum {string}
+             */
+            value: "READY FOR STRATEGY RESEARCH" | "MORE RESEARCH REQUIRED" | "REFORMULATE HYPOTHESIS" | "EVIDENCE DOES NOT SUPPORT CONTINUATION";
         };
         /** RiskProvenance */
         RiskProvenance: {
@@ -6417,6 +7244,8 @@ export interface components {
             };
             /** Mtime */
             mtime: number;
+            /** Research Gate Watermark */
+            research_gate_watermark: string | null;
             /** Run Id */
             run_id: string;
         };
@@ -6439,6 +7268,8 @@ export interface components {
             mtime: number;
             /** Passed */
             passed: boolean | null;
+            /** Research Gate Watermark */
+            research_gate_watermark: string | null;
             /** Run Id */
             run_id: string;
             /** Snapshot Hash */
@@ -8768,6 +9599,70 @@ export interface operations {
             };
         };
     };
+    list_active_research_gate_overrides_api_research_gate_overrides_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveResearchGateOverride"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_cases_api_research_cases_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchCasePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     research_capture_api_research_cases_post: {
         parameters: {
             query?: never;
@@ -8832,6 +9727,102 @@ export interface operations {
             };
         };
     };
+    research_context_packets_api_research_cases__project_id__context_packets_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchContextPacketPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_decision_view_api_research_cases__project_id__decision_view_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchDecisionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_evidence_hub_api_research_cases__project_id__evidence_hub_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchEvidenceHub"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     research_launch_api_research_cases__project_id__launch_post: {
         parameters: {
             query?: never;
@@ -8854,6 +9845,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchLaunchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_notes_api_research_cases__project_id__notes_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchNotePage"];
                 };
             };
             /** @description Validation Error */
@@ -8933,6 +9958,37 @@ export interface operations {
             };
         };
     };
+    research_scorecard_api_research_cases__project_id__scorecard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchScorecard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     research_status_api_research_cases__project_id__status_get: {
         parameters: {
             query?: never;
@@ -8992,6 +10048,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_context_packet_api_research_context_packets__packet_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchContextPacket"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_datasets_api_research_datasets_get: {
+        parameters: {
+            query?: {
+                symbol?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchDatasetPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    research_protocols_api_research_protocols_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchProtocolLibrary"];
                 };
             };
         };
@@ -11182,6 +12322,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyVersion"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    v3_list_active_research_gate_overrides_api_v3_research_gate_overrides_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveResearchGateOverride"][];
                 };
             };
             /** @description Validation Error */

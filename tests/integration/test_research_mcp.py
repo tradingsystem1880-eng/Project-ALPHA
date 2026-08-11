@@ -53,6 +53,20 @@ _EXPECTED_MCP_TOOLS = frozenset(
         "propfirm_run",
         "reconcile_development_jobs",
         "record_project_attempt",
+        "get_data_inventory",
+        "get_data_quality",
+        "get_data_candles",
+        "list_snapshots",
+        "get_provider_registry",
+        "search_research_sources",
+        "get_research_source",
+        "draft_source_claim",
+        "add_research_note",
+        "build_research_context_packet",
+        "get_research_brief",
+        "get_research_context_packet",
+        "get_research_protocol",
+        "list_research_protocols",
         "research_capture",
         "research_get",
         "research_launch",
@@ -68,14 +82,15 @@ _EXPECTED_MCP_TOOLS = frozenset(
 )
 
 
-def test_research_mcp_surface_is_exactly_six_tools_without_owner_authority(
+def test_research_mcp_surface_is_pinned_without_owner_authority(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     names = {tool.name for tool in anyio.run(server.mcp.list_tools)}
 
     assert names == _EXPECTED_MCP_TOOLS
-    assert len(names) == 48  # the documented bounded-surface claim
+    # ADR-0022 budget: 48 + 6 Codex-seam (R2) + 5 data-inventory (R3) + 3 source-plane (R4).
+    assert len(names) == 62
     assert {name for name in names if name.startswith("research_")} == {
         "research_capture",
         "research_get",
@@ -84,6 +99,10 @@ def test_research_mcp_surface_is_exactly_six_tools_without_owner_authority(
         "research_status",
         "research_report",
     }
+    # Forever-absent authority (ADR-0022): no approval, decision, or D2 verbs — ever.
+    forbidden_markers = ("approve", "decide", "decision", "reveal", "d2", "order", "paper")
+    for name in names:
+        assert not any(marker in name for marker in forbidden_markers), name
 
 
 def test_research_mcp_capture_propose_status_and_report_round_trip(
@@ -173,3 +192,112 @@ def test_research_launch_uses_a_launch_class_timeout(
     timeout_seconds = captured["timeout_seconds"]
     assert isinstance(timeout_seconds, float)
     assert timeout_seconds >= web_launch_timeout
+
+
+def test_codex_seam_tools_record_packets_notes_and_briefs_with_agent_authorship(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = server.research_capture("SPY drifts upward into month-end rebalancing")
+    project_id = captured["project"]["project_id"]
+
+    protocols = server.list_research_protocols()
+    assert len(protocols["protocols"]) == 13
+    intake = server.get_research_protocol("new-idea-intake")
+    assert intake["id"] == "new-idea-intake"
+    assert isinstance(intake["content"], str) and intake["content"]
+
+    packet = server.build_research_context_packet(
+        project_id, kind="research_case", protocol_id="new-idea-intake"
+    )
+    packet_id = str(packet["packet_id"])
+    assert packet_id.startswith("cp_")
+    assert packet["created_by"] == "codex"
+    assert packet["protocol_content_hash"] == intake["sha256"]
+
+    fetched = server.get_research_context_packet(packet_id)
+    assert fetched["payload"] == packet["payload"]  # byte-identical visibility
+
+    note = server.add_research_note(
+        project_id,
+        note_kind="critique",
+        body="The volatility-regime confounder is not yet matched.",
+    )
+    assert note["author_kind"] == "agent"  # MCP notes can never claim owner authorship
+
+    brief = server.get_research_brief(project_id)
+    assert brief["brief_schema"] == "ResearchBriefV1"
+    assert str(brief["packet_id"]).startswith("cp_")
+    assert brief["case"]["project_id"] == project_id
+
+
+def test_data_inventory_tools_are_read_only_and_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.fixtures.cli_fixtures import seed_store
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=700)
+
+    inventory = server.get_data_inventory()
+    assert inventory["symbols"] == ["SPY"]
+
+    quality = server.get_data_quality("SPY")
+    assert quality["symbol"] == "SPY"
+
+    candles = server.get_data_candles("SPY", limit=100)
+    assert len(candles["bars"]) == 100
+    assert candles["truncated"] is True  # 700 stored bars, bounded to the last 100
+    with pytest.raises(ValueError, match="1..500"):
+        server.get_data_candles("SPY", limit=501)
+
+    snapshots = server.list_snapshots()
+    assert snapshots["snapshots"] == []
+
+    providers = server.get_provider_registry()
+    provider_ids = {row["id"] for row in providers["providers"]}
+    assert "quantpad" in provider_ids and "tiingo" in provider_ids
+
+
+def test_source_plane_tools_search_read_and_draft_but_never_screen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = server.research_capture("SPY drifts upward into month-end rebalancing")
+    project_id = captured["project"]["project_id"]
+    contract_id = captured["case"]["active_contract_id"]
+
+    store = ControlStore(AlphaSettings().data_dir)
+    source = store.create_research_source(
+        project_id,
+        title="Calendar effects in index returns",
+        locator="doi:10.0000/calendar",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/calendar",
+        year=2015,
+    )
+    source_id = str(source["source_id"])
+
+    found = server.search_research_sources("calendar effects")
+    assert [row["source_id"] for row in found["items"]] == [source_id]
+
+    fetched = server.get_research_source(source_id)
+    assert fetched["doi"] == "10.0000/calendar"
+
+    drafted = server.draft_source_claim(
+        project_id,
+        source_id=source_id,
+        contract_id=contract_id,
+        claim_text="Month-end drift exists pre-2010.",
+        direction="supports",
+        strength="moderate",
+        method_summary="Calendar regression.",
+        sample_summary="US 1970-2010.",
+        markets=["US_EQUITY"],
+        limitations="Decay unaddressed.",
+    )
+    assert drafted["status"] == "draft"
+    assert drafted["author_kind"] == "agent"  # MCP can never claim owner authorship
+    # And there is no screening tool: elevation stays trusted-local owner CLI.
+    assert not hasattr(server, "screen_source_claim")

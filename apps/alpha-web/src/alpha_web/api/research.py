@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _research
 from alpha_web.api._common import data_dir
@@ -12,12 +12,21 @@ from alpha_web.api.models import (
     ResearchCaptureRequest,
     ResearchCaptureResponse,
     ResearchCase,
+    ResearchCasePage,
     ResearchCaseReport,
+    ResearchContextPacket,
+    ResearchContextPacketPage,
+    ResearchDatasetPage,
+    ResearchDecisionView,
+    ResearchEvidenceHub,
     ResearchLaunchRequest,
     ResearchLaunchResponse,
+    ResearchNotePage,
     ResearchProposalRequest,
     ResearchProposalResponse,
+    ResearchProtocolLibrary,
     ResearchReport,
+    ResearchScorecard,
 )
 
 router = APIRouter(prefix="/api", tags=["research"])
@@ -38,6 +47,119 @@ def research_capture(body: ResearchCaptureRequest) -> dict[str, Any]:
     try:
         return _research.capture(data_dir=data_dir(), idea=body.idea, name=body.name)
     except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/research/cases", response_model=ResearchCasePage)
+def research_cases(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read the bounded backlog page, newest research activity first (ADR-0021)."""
+    try:
+        return _research.list_cases(data_dir=data_dir(), limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/evidence-hub",
+    response_model=ResearchEvidenceHub,
+)
+def research_evidence_hub(project_id: str) -> dict[str, Any]:
+    """Read the eleven-section Evidence Hub projection for one case."""
+    try:
+        return _research.evidence_hub(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/scorecard",
+    response_model=ResearchScorecard,
+)
+def research_scorecard(project_id: str) -> dict[str, Any]:
+    """Read the readiness scorecard: enumerated states, never a numeric aggregate."""
+    try:
+        return _research.scorecard(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/decision-view",
+    response_model=ResearchDecisionView,
+)
+def research_decision_view(project_id: str) -> dict[str, Any]:
+    """Read the owner decision view: checklist, full scorecard, packet, and history."""
+    try:
+        return _research.decision_view(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/context-packets",
+    response_model=ResearchContextPacketPage,
+)
+def research_context_packets(
+    project_id: str,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read this case's recorded Codex context packets — every byte Codex saw."""
+    try:
+        return _research.context_packets(
+            project_id, data_dir=data_dir(), limit=limit, offset=offset
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/context-packets/{packet_id}",
+    response_model=ResearchContextPacket,
+)
+def research_context_packet(packet_id: str) -> dict[str, Any]:
+    """Return one recorded packet byte-identically."""
+    try:
+        return _research.context_packet(packet_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/research/cases/{project_id}/notes", response_model=ResearchNotePage)
+def research_notes(
+    project_id: str,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read the commentary stream — badged as Codex commentary, never evidence."""
+    try:
+        return _research.notes(project_id, data_dir=data_dir(), limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/research/datasets", response_model=ResearchDatasetPage)
+def research_datasets(
+    symbol: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict[str, Any]:
+    """Read registered research-only dataset refs with their latest audits."""
+    try:
+        return _research.datasets(data_dir=data_dir(), symbol=symbol, limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/research/protocols", response_model=ResearchProtocolLibrary)
+def research_protocols() -> dict[str, Any]:
+    """Read the Git-owned protocol library index."""
+    try:
+        return _research.protocols(data_dir=data_dir())
+    except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 

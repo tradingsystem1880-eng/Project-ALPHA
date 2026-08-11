@@ -1,10 +1,12 @@
 # Research Scientist Program — Authoritative Design
 
 **Date:** 2026-08-06
-**State:** Gate 0 and the bounded Gate 1/D0 CLI/MCP/REST/Cockpit walking skeleton implemented;
-source-network worker, qualified real data, production empirical D1/D2 runners, verified
-owner-presence authentication, research ML, and autonomous analytical runtime not implemented
-**Authority:** `CLAUDE.md`, ADR-0011, ADR-0014, ADR-0015, ADR-0018, ADR-0019, and ADR-0020
+**State:** Historical Gate 0–1 foundation specification. R1–R6 empirical D1/D2 delivery and the
+2026-08-11 authority hardening are implemented under the research-first extension; owner real-case
+pilot, verified owner-presence authentication, empirical model-candidate validation, security
+review remain optional follow-up work, not private-local software release gates. Production and
+distribution are out of scope.
+**Authority:** `CLAUDE.md`, ADR-0011, ADR-0014, ADR-0015, ADR-0018 through ADR-0028
 
 ## 1. Outcome and present boundary
 
@@ -615,7 +617,8 @@ audit and recovery. The initial CLI slice provides `capture`, `sources add|scree
 `decide`, and `revise`; an owner may close an evidence-free or D0-only case only as
 `INCONCLUSIVE` or `INVALID` with a non-advance disposition. A pre-D2 `CONTRADICTED` outcome requires
 lineage-bound typed non-synthetic evidence.
-`run deep` and `run confirm` fail closed because production empirical D1/D2 is hard-disabled. Six
+In this initial Gate 0–1 slice, `run deep` and `run confirm` failed closed because production
+empirical D1/D2 had not yet been admitted; ADR-0025/0026 later supplied that authority. Six
 thin MCP tools provide `research_capture`, `research_get`, `research_propose`, `research_launch`,
 `research_status`, and `research_report` by subprocess CLI. The same six operations have strict
 REST/OpenAPI projections for the registered Cockpit. MCP and REST cannot approve, reject, decide,
@@ -627,14 +630,21 @@ consume D2, reveal D3, run deep research, start paper, or construct an order.
 |---|---|---|
 | 0 — Authority | Authoritative spec, ADR-0019/0020, risk/dependency updates, `CLAUDE.md`, repository skills; no unresolved critical contradiction | **Complete in initial slice** |
 | 1 — Synthetic case foundation | Additive schema-v2 migration; immutable source packs and exploration/confirmation contracts; independent phase/execution/D2/decision histories; deterministic capture-to-draft/dossier/terminal packet; bounded local CLI D0 pilot; six non-owner MCP tools and matching bounded REST/Cockpit operations; topology, detector, prospective-power, confirmation, and chart primitives | **Implemented CLI/MCP/REST/Cockpit walking skeleton and honest terminal packet; there is no case-list/source-pack UI, deep runner, or real-market run** |
-| 2 — Source plane | Approved metadata clients, lawful document resolution/storage, screening, retraction/version checks, immutable source packs, hostile-document tests | **Fail-closed URL/DNS/MIME/size/receipt validation primitives only; no network worker or download** |
-| 3 — Scientific engine | Broader matched controls, multiplicity and dependence-aware event-study runner, research run family, planted/null/confounder fixtures, and typed empirical Gate Packet sections | Point-in-time exact matching, overlap purge, cluster bootstrap, frozen Holm family, deterministic chart renderer, and D0/early-terminal packet projection implemented; production empirical D1/D2 admission is hard-disabled and its orchestrated engine remains open |
-| 4 — SPY intraday lane | Receipt-backed qualified research data for one owner-selected chart contract, causal aggregation and double-bottom case, session/DST/equal-duration acceptance | Not started; synthetic 60-minute proxy only |
-| 5 — Bounded autonomy and ML | Durable funnel, continuation/stop enforcement, fold-local bounded ML, skill-evaluation harness, teaching/decision views | Not started |
-| 6 — Connected workflow and hardening | Complete versioned REST/Cockpit workflow including backlog, sources, durable D1/D2 work, evidence charts and owner checkpoints; any later owner-gated MCP additions; full offline gates, future-poison suite, restore/tamper/security/license review, end-to-end owner pilot and dual review | Gate 1 safe vertical slice implemented; complete workflow not started |
+| 2 — Source plane | Approved metadata clients, lawful document resolution/storage, screening, retraction/version checks, immutable source packs, hostile-document tests | **Literature plane shipped (R4, ADR-0024):** the isolated stdlib-only acquisition worker (own lockfile; vendored primitives byte-pinned to `research_acquisition.py`) fetches with manual-redirect re-validation into content-addressed UNTRUSTED_SOURCE objects with tamper-detecting verification and the phase-gating hostile-document suite (incl. verbatim-stored prompt-injection text); typed DOI/year/authors columns, owner-invoked `sources fetch`, and claim-level draft→owner-screened revisions are live |
+| 3 — Scientific engine | Broader matched controls, multiplicity and dependence-aware event-study runner, research run family, planted/null/confounder fixtures, and typed empirical Gate Packet sections | **D1 shipped (R5, ADR-0025):** the preregistered analysis-plan runner (`alpha research run deep`) executes event-study/conditional-return/stability/falsification families on the discovery share as governed `research:event-study` jobs, with planted/null/confounder acceptance fixtures and mechanical `ResearchGateEvidenceV1` re-verification. **One-shot D2 shipped (R6d, ADR-0026):** owner `approve confirmation` authorizes the sealed share, the deterministic executor reads it exactly once (protocol-frozen seed-7 weekday-matched cluster bootstrap) under a REGISTERED CONFIRMATORY watermark, one mechanical classifier serves write and every admission/read, INVALID is reachable only through contamination, and the owner decision is bound to the mechanical classification |
+| 4 — SPY intraday lane | Receipt-backed qualified research data for one owner-selected chart contract, causal aggregation and double-bottom case, session/DST/equal-duration acceptance | **Tiingo-daily fallback lane shipped (R5):** registered `rd_` datasets load into research bars behind fail-closed origin re-verification and session/equal-duration acceptance, and the D1 executor runs the frozen plan on them end to end; the QuantPad intraday lane stays gated on retention/licensing evidence, and no chart contract has navigated the empirical lifecycle |
+| 5 — Bounded autonomy and ML | Durable funnel, continuation/stop enforcement, fold-local bounded ML, skill-evaluation harness, teaching/decision views | **Governed candidate capability shipped (ADR-0028):** causal `MarketStateV1`, frozen rolling-origin Kronos calibration, and Qlib `rank_ensemble_v1` publish research-only diagnostics; model hurdle evidence, the skill-evaluation harness, and real-case validation remain open |
+| 6 — Connected workflow and hardening | Complete versioned REST/Cockpit workflow including backlog, sources, durable D1/D2 work, evidence charts and owner checkpoints; any later owner-gated MCP additions; full offline gates, future-poison suite, restore/tamper checks, and end-to-end owner workflow | **Complete for private local use (R1-R6, ADR-0021..0026):** the research desk (backlog · cockpit · hub · data explorer · CodexBench), decision view with the fourteen-question checklist, promotion dossier into the strategy AgentBrief, research-gate state/override with permanent run watermarks, Develop-desk UI gating, and the program acceptance suite (spec-§13/§17 composites in `tests/integration/test_research_program_acceptance.py`) are live behind green full offline Python + frontend gates; a real-case owner pilot remains empirical validation, not a software release gate |
 
 No later gate is complete because a document, prompt, UI scaffold, or happy-path demo exists. Each
 Gate risk closes only with the specified machine evidence.
+
+> **Extended by** `2026-08-07-research-first-workstation-design.md` (proposed ADR-0021..0026),
+> which phases the remaining gates: Gate 2 → phase R4; Gate 3 → phases R5/R6; Gate 4 → phase R5;
+> Gate 5 → optional phase R7 (outside that program's critical path); Gate 6 → phases R1/R2/R3/R6.
+> That spec also narrows, by ADR-0021 and for read-only projections only, this document's Gate-1
+> statement that the REST/Cockpit slice "cannot list all cases." This document remains
+> authoritative for Gate 0-1 mechanics, the D0 fixture, and the schema-v2 control plane.
 
 ## 13. Acceptance scenarios
 

@@ -56,7 +56,8 @@ still sealed and never authorized; it cannot reseal or reuse a consumed/contamin
 The D2 boundary hash binds the allocation rule, ordered group membership, shares, chart, data, and
 event semantics. It is copied through every D2 state event so a changed boundary cannot inherit
 prior authorization. The Gate 1 CLI emits the canonical 60/20/20 commitment only; production
-empirical D1/D2 admission remains hard-disabled.
+empirical D1/D2 admission was intentionally unavailable at this decision point; ADR-0025/0026 later
+admitted it behind the governed phase and evidence-zone boundaries.
 
 The shipped D0 path is narrower than the future legal state machine: only the exact synthetic
 SPY-like 60-minute acceptance fixture is approval-ready. A passing D0 run requires a canonical

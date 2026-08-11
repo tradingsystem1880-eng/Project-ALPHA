@@ -19,6 +19,7 @@ from alpha_qlib_worker.contract import (
     sha256_file,
     validate_request,
 )
+from alpha_qlib_worker.rank_ensemble import rank_ensemble_v1
 
 
 def _stable_hash(value: object) -> str:
@@ -102,6 +103,37 @@ def _predictions(request: WorkerRequest) -> pl.DataFrame:
     return frame.sort(["fold", "split", "target_ts", "symbol", "origin_ts"])
 
 
+def _ridge_predictions(request: WorkerRequest, lightgbm: pl.DataFrame) -> pl.DataFrame:
+    """Deterministic fake ridge member with identical keys and distinct lineage."""
+    scores = [
+        _score(
+            config_hash=request.payload["config_hash"],
+            fold=int(row["fold"]),
+            symbol=str(row["symbol"]),
+            origin=f"ridge|{row['origin_ts'].isoformat()}",
+            seed=int(request.payload["seed"]),
+        )
+        for row in lightgbm.iter_rows(named=True)
+    ]
+    hashes = {
+        fold: _stable_hash(
+            {
+                "kind": "fake-ridge",
+                "recipe": "rank_ensemble_v1",
+                "fold": fold,
+                "config_hash": request.payload["config_hash"],
+                "seed": request.payload["seed"],
+                "ridge_alpha": 1.0,
+            }
+        )
+        for fold in lightgbm.get_column("fold").unique().to_list()
+    }
+    return lightgbm.with_columns(
+        pl.Series("score", scores, dtype=pl.Float64),
+        pl.col("fold").replace_strict(hashes).alias("model_hash"),
+    )
+
+
 def _publish(path: Path, writer: Callable[[Path], object]) -> None:
     fd, raw_temp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     os.close(fd)
@@ -117,6 +149,7 @@ def run_fake(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
     """Write deterministic predictions and a result completion record exactly once."""
     exchange_dir = Path(exchange_dir)
     predictions_path = exchange_dir / "predictions.parquet"
+    ensemble_path = exchange_dir / "ensemble_diagnostics.parquet"
     result_path = exchange_dir / "result.json"
     if predictions_path.exists() or result_path.exists():
         raise RuntimeError("worker output already exists; refusing to overwrite immutable exchange")
@@ -130,11 +163,20 @@ def run_fake(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
             "worker_lock_hash does not match the executing worker lock: "
             f"expected {actual_lock_hash}"
         )
-    predictions = _predictions(request)
+    lightgbm = _predictions(request)
+    ensemble_diagnostics: pl.DataFrame | None = None
+    if request.payload["schema_version"] == 2:
+        predictions, ensemble_diagnostics = rank_ensemble_v1(
+            lightgbm, _ridge_predictions(request, lightgbm)
+        )
+    else:
+        predictions = lightgbm
     _publish(predictions_path, predictions.write_parquet)
+    if ensemble_diagnostics is not None:
+        _publish(ensemble_path, ensemble_diagnostics.write_parquet)
     payload = request.payload
     result: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": payload["schema_version"],
         "status": "succeeded",
         "request_sha256": sha256_file(exchange_dir / "request.json"),
         "snapshot_hash": payload["snapshot_hash"],
@@ -154,5 +196,13 @@ def run_fake(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
         "diagnostic_only": True,
         "counterfactual_refit": False,
     }
+    if ensemble_diagnostics is not None:
+        result["ensemble_diagnostics"] = {
+            "schema": "QlibRankEnsembleDiagnosticsV1",
+            "schema_version": 1,
+            "path": "ensemble_diagnostics.parquet",
+            "sha256": sha256_file(ensemble_path),
+            "rows": ensemble_diagnostics.height,
+        }
     _publish(result_path, lambda path: path.write_bytes(canonical_json_bytes(result)))
     return result

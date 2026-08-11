@@ -18,29 +18,29 @@ import alpha_cli.control_store as control_store_module
 from alpha_cli import _artifacts
 from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import SCHEMA_VERSION, ControlStore
+from alpha_cli.research_d2 import _claim as _d2_claim
+from alpha_cli.research_d2 import derive_d2_findings
 from alpha_cli.research_intake import draft_exploration_contract
 from alpha_cli.research_runtime import (
+    _GENERATION_60M,
     _d0_acceptance_payload,
     _recomputed_d0_measurements,
     d0_execution_fingerprint,
     registered_d0_operator,
 )
 from alpha_core import DataError
-from alpha_research import ResearchChartFingerprintV1, ResearchD2BoundaryV1
+from alpha_research import (
+    ResearchChartFingerprintV1,
+    ResearchD2BoundaryV1,
+    build_research_gate_packet,
+)
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 PROJECT_ID = "9e4908b1-a9cd-4c13-a47e-740d92175680"
 LEGACY_PROJECT_ID = "bf09e202-a02a-45c5-904e-1dbda4bf298e"
 START = datetime(2026, 8, 6, 9, 0, tzinfo=UTC)
-
-
-@pytest.fixture(autouse=True)
-def _enable_future_empirical_state_machine_for_unit_tests(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Exercise future gates without exposing them through the production default."""
-
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", True)
+# The approval-frozen confirmation dataset bytes every fabricated D2 run must claim.
+_CONFIRMATION_DATA_SHA = hashlib.sha256(b"confirmation-dataset-bytes").hexdigest()
 
 
 def _project(store: ControlStore, project_id: str = PROJECT_ID) -> None:
@@ -210,7 +210,7 @@ def _payload(
             "code": "git:a1b2c3d4e5f60718",
             "environment": "uv-lock:1234abcd5678ef90",
             "evaluator": "event-study-v1.0.0",
-            "data": "sha256:1234abcd5678ef901234abcd5678ef90" if confirmation else None,
+            "data": _CONFIRMATION_DATA_SHA if confirmation else None,
         },
     }
     if confirmation:
@@ -349,29 +349,25 @@ def _approved_contracts(
         responsibility="codex",
         at=START + timedelta(minutes=12),
     )
-    store.transition_research_d2_state(
-        PROJECT_ID,
-        confirmation_id,
-        to_state=d2_state,  # type: ignore[arg-type]
-        actor="system",
-        reason=f"The sealed confirmation boundary became {d2_state}.",
-        at=START + timedelta(minutes=13),
-    )
+    if d2_state != "authorized":
+        # Owner confirmation approval already authorized D2; only the terminal
+        # consume/contaminate transitions go through the API.
+        store.transition_research_d2_state(
+            PROJECT_ID,
+            confirmation_id,
+            to_state=d2_state,  # type: ignore[arg-type]
+            actor="system",
+            reason=f"The sealed confirmation boundary became {d2_state}.",
+            at=START + timedelta(minutes=13),
+        )
     if record_confirmation_evidence and d2_state == "consumed":
-        gate_evidence = _confirmation_evidence(outcome)
-        gate_evidence_bytes = json.dumps(
-            gate_evidence,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
         run_id = _write_research_run(
             store._data_dir,
-            run_id=hashlib.sha256(confirmation_id.encode()).hexdigest()[:16],
+            run_id="ignored-content-derived-id",
             contract_id=confirmation_id,
             payload=confirmation_payload,
             evidence_zone="D2",
-            gate_evidence=gate_evidence,
+            d2_outcome=outcome,
         )
         store.record_research_attempt(
             PROJECT_ID,
@@ -383,10 +379,7 @@ def _approved_contracts(
             details={
                 "evidence_zone": "D2",
                 "real_market_evidence": True,
-                "gate_packet_evidence_ref": {
-                    "artifact": "research_gate_evidence.json",
-                    "content_sha256": hashlib.sha256(gate_evidence_bytes).hexdigest(),
-                },
+                "gate_packet_evidence_ref": _d2_evidence_ref(store._data_dir, run_id),
             },
             run_id=run_id,
             at=START + timedelta(minutes=13, seconds=30),
@@ -417,112 +410,14 @@ def _approved_contracts(
     return exploration_id, confirmation_id
 
 
-def _confirmation_evidence(outcome: str) -> dict[str, object]:
-    claim: dict[str, object] | None = {
-        "direction": "positive",
-        "minimum_effect": 0.0005,
-        "adjusted_p_value": 0.01,
-        "alpha": 0.05,
+def _d2_evidence_ref(data_dir: Path, run_id: str) -> dict[str, object]:
+    manifest = _artifacts.read_manifest(data_dir / "runs" / run_id)
+    artifacts = cast(dict[str, object], manifest["artifacts"])
+    metadata = cast(dict[str, object], artifacts["research_gate_evidence.json"])
+    return {
+        "artifact": "research_gate_evidence.json",
+        "content_sha256": metadata["sha256"],
     }
-    if outcome == "SUPPORTED":
-        primary: dict[str, object] = {
-            "status": "TESTED",
-            "estimate": 0.003,
-            "unit": "return",
-            "sample_size": 60,
-            "effective_sample_size": 45.0,
-            "uncertainty": {
-                "lower": 0.001,
-                "upper": 0.005,
-                "level": 0.95,
-                "method": "cluster bootstrap",
-            },
-            "practical_magnitude": {
-                "status": "CLEARS_HURDLE",
-                "value": 0.003,
-                "unit": "return",
-                "interpretation": "The interval clears the registered hurdle.",
-            },
-        }
-        checks = {
-            "corrected_primary_test_passed": True,
-            "interval_registered_direction": True,
-            "economic_hurdle_cleared": True,
-            "interval_wholly_against_direction": False,
-        }
-    elif outcome == "CONTRADICTED":
-        primary = {
-            "status": "TESTED",
-            "estimate": -0.003,
-            "unit": "return",
-            "sample_size": 60,
-            "effective_sample_size": 45.0,
-            "uncertainty": {
-                "lower": -0.005,
-                "upper": -0.001,
-                "level": 0.95,
-                "method": "cluster bootstrap",
-            },
-            "practical_magnitude": {
-                "status": "BELOW_HURDLE",
-                "value": -0.003,
-                "unit": "return",
-                "interpretation": "The interval lies against the registered direction.",
-            },
-        }
-        checks = {
-            "corrected_primary_test_passed": False,
-            "interval_registered_direction": False,
-            "economic_hurdle_cleared": False,
-            "interval_wholly_against_direction": True,
-        }
-        claim = dict(claim or {}, adjusted_p_value=0.6)
-    elif outcome == "INVALID":
-        primary = {"status": "NOT_TESTED"}
-        checks = {
-            "corrected_primary_test_passed": False,
-            "interval_registered_direction": False,
-            "economic_hurdle_cleared": False,
-            "interval_wholly_against_direction": False,
-        }
-        claim = None
-    else:
-        primary = {
-            "status": "TESTED",
-            "estimate": 0.001,
-            "unit": "return",
-            "sample_size": 60,
-            "effective_sample_size": 45.0,
-            "uncertainty": {
-                "lower": -0.001,
-                "upper": 0.003,
-                "level": 0.95,
-                "method": "cluster bootstrap",
-            },
-            "practical_magnitude": {
-                "status": "INCONCLUSIVE",
-                "value": 0.001,
-                "unit": "return",
-                "interpretation": "The interval does not clear the registered hurdle.",
-            },
-        }
-        checks = {
-            "corrected_primary_test_passed": False,
-            "interval_registered_direction": False,
-            "economic_hurdle_cleared": False,
-            "interval_wholly_against_direction": False,
-        }
-        claim = dict(claim or {}, adjusted_p_value=0.2)
-    evidence: dict[str, object] = {
-        "schema": "ResearchGateEvidenceV1",
-        "evidence_zone": "D2",
-        "primary_result": primary,
-        "confirmation_classification": outcome,
-        "confirmation_checks": checks,
-    }
-    if claim is not None:
-        evidence["confirmation_claim"] = claim
-    return evidence
 
 
 def _approved_pilot(store: ControlStore) -> tuple[str, dict[str, object]]:
@@ -574,6 +469,57 @@ def _approved_pilot(store: ControlStore) -> tuple[str, dict[str, object]]:
     return contract_id, payload
 
 
+def _d2_run_id(payload: dict[str, object], contract_id: str) -> str:
+    """The content-derived sealed-confirmation run identity the store recomputes."""
+    contract_hash = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    hashes = payload["hashes"]
+    assert isinstance(hashes, dict)
+    run_identity = {
+        "command": "research_confirm",
+        "project_id": PROJECT_ID,
+        "research_contract_id": contract_id,
+        "contract_hash": contract_hash,
+        "dataset_hash": str(hashes["data"]),
+        "execution_fingerprint": "a" * 64,
+    }
+    return hashlib.sha256(
+        json.dumps(run_identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:16]
+
+
+def _d2_matched_measurements(outcome: str) -> dict[str, object]:
+    """Raw matched measurements that mechanically classify to the requested outcome."""
+    numbers = {
+        "SUPPORTED": {"estimate": 0.004, "ci_lower": 0.003, "ci_upper": 0.005, "p_value": 0.01},
+        "CONTRADICTED": {
+            "estimate": -0.003,
+            "ci_lower": -0.005,
+            "ci_upper": -0.001,
+            "p_value": 0.6,
+        },
+        "INCONCLUSIVE": {
+            "estimate": 0.001,
+            "ci_lower": -0.001,
+            "ci_upper": 0.003,
+            "p_value": 0.2,
+        },
+    }[outcome]
+    return {
+        "counts": {"events": 60, "controls": 240},
+        "matched": {
+            **numbers,
+            "confidence": 0.95,
+            "sample_size": 60,
+            "effective_event_count": 45,
+            "low_cluster_count": False,
+        },
+        "matched_pairs": 60,
+        "unadjusted": None,
+    }
+
+
 def _write_research_run(
     data_dir: Path,
     *,
@@ -583,6 +529,7 @@ def _write_research_run(
     override: tuple[str, object] | None = None,
     evidence_zone: str = "D0",
     gate_evidence: dict[str, object] | None = None,
+    d2_outcome: str | None = None,
 ) -> str:
     contract_hash = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -609,6 +556,9 @@ def _write_research_run(
         run_id = hashlib.sha256(
             json.dumps(run_identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:16]
+    if evidence_zone == "D2":
+        dataset_hash = str(hashes["data"])
+        run_id = _d2_run_id(payload, contract_id)
     manifest: dict[str, object] = {
         "run_id": run_id,
         "run_identity_version": 3,
@@ -638,6 +588,13 @@ def _write_research_run(
         manifest["d0_operator"] = operator
         manifest["d0_operator_fingerprint"] = operator["fingerprint"]
         manifest["d0_acceptance_artifact"] = "d0_acceptance.json"
+    if evidence_zone == "D2":
+        assert dataset_hash is not None
+        manifest["dataset_hash"] = dataset_hash
+        manifest["watermark"] = "REGISTERED CONFIRMATORY"
+        manifest["real_market_evidence"] = True
+        manifest["d2_evidence_artifact"] = "research_gate_evidence.json"
+        manifest["d2_analyses_artifact"] = "d2_analyses.json"
     if override is not None:
         field, value = override
         if field.startswith("research_fingerprints."):
@@ -652,7 +609,7 @@ def _write_research_run(
         operator_fingerprint = manifest["d0_operator_fingerprint"]
         assert isinstance(operator_fingerprint, str)
         assert dataset_hash is not None
-        measurements = _recomputed_d0_measurements()
+        measurements = _recomputed_d0_measurements(_GENERATION_60M)
         sidecars: dict[str, bytes] = {
             "events.json": b'[{"confirmation_index":8,"second_trough_index":6}]',
             "topology.json": b'{"schema_version":2}',
@@ -662,6 +619,7 @@ def _write_research_run(
             "report.md": b"# D0 synthetic acceptance\n",
             "d0_acceptance.json": json.dumps(
                 _d0_acceptance_payload(
+                    generation=_GENERATION_60M,
                     run_id=run_id,
                     project_id=PROJECT_ID,
                     contract_id=contract_id,
@@ -682,6 +640,31 @@ def _write_research_run(
                 target.write_bytes(body)
 
             _artifacts.publish_artifact(rdir / filename, write_sidecar)
+    if d2_outcome is not None:
+        assert gate_evidence is None
+        measurements = _d2_matched_measurements(d2_outcome)
+        analyses_bytes = json.dumps(
+            {"schema": "ResearchD2AnalysesV1", "schema_version": 1, "measurements": measurements},
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+
+        def write_analyses(target: Path) -> None:
+            target.write_bytes(analyses_bytes)
+
+        _artifacts.publish_artifact(rdir / "d2_analyses.json", write_analyses)
+        gate_evidence = dict(
+            derive_d2_findings(measurements, claim=_d2_claim(payload)),
+            artifact_links=[
+                {
+                    "run_id": run_id,
+                    "artifact_id": "d2_analyses.json",
+                    "content_sha256": hashlib.sha256(analyses_bytes).hexdigest(),
+                    "media_type": "application/json",
+                }
+            ],
+        )
     if gate_evidence is not None:
         content = json.dumps(
             gate_evidence,
@@ -822,7 +805,12 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.close()
 
     assert SCHEMA_VERSION == 2
-    assert ControlStore(tmp_path).list_projects() == [post_launch, expected]
+    # The governance backfill drives the derived gate state: pre-launch rows are
+    # grandfathered while post-launch v1 rows stay research-governed and open.
+    assert ControlStore(tmp_path).list_projects() == [
+        {**post_launch, "research_gate_state": "open"},
+        {**expected, "research_gate_state": "not_required"},
+    ]
     migrated = sqlite3.connect(database)
     governance = {
         str(row[0]): (int(row[1]), str(row[2]))
@@ -1750,20 +1738,13 @@ def test_phase_confirmation_and_d2_state_machines_are_distinct(tmp_path: Path) -
         reason="The exact sealed confirmation job started.",
         at=START + timedelta(minutes=13),
     )
-    gate_evidence = _confirmation_evidence("SUPPORTED")
-    gate_evidence_bytes = json.dumps(
-        gate_evidence,
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")
     run_id = _write_research_run(
         tmp_path,
-        run_id="e500000000000005",
+        run_id="ignored-content-derived-id",
         contract_id=confirmation_id,
         payload=confirmation_payload,
         evidence_zone="D2",
-        gate_evidence=gate_evidence,
+        d2_outcome="SUPPORTED",
     )
     store.record_research_attempt(
         PROJECT_ID,
@@ -1775,10 +1756,7 @@ def test_phase_confirmation_and_d2_state_machines_are_distinct(tmp_path: Path) -
         details={
             "evidence_zone": "D2",
             "real_market_evidence": True,
-            "gate_packet_evidence_ref": {
-                "artifact": "research_gate_evidence.json",
-                "content_sha256": hashlib.sha256(gate_evidence_bytes).hexdigest(),
-            },
+            "gate_packet_evidence_ref": _d2_evidence_ref(tmp_path, run_id),
         },
         run_id=run_id,
         at=START + timedelta(minutes=13, seconds=30),
@@ -2101,76 +2079,299 @@ def test_approval_recomputes_canonical_d2_boundary_semantics(tmp_path: Path, mut
         )
 
 
-def test_production_gate_hard_disables_unreleased_empirical_research(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(control_store_module, "_UNRELEASED_EMPIRICAL_RESEARCH_ENABLED", False)
+@pytest.mark.parametrize("mutation", ["unregistered_family", "over_budget_grid", "not_object"])
+def test_approval_validates_a_declared_analysis_plan(tmp_path: Path, mutation: str) -> None:
+    """A frozen analysis_plan is validated at approval; invalid plans fail closed."""
+    from alpha_cli.research_analysis_plan import default_analysis_plan
+
     store = ControlStore(tmp_path)
     _project(store)
-    contract_id, payload = _approved_pilot(store)
-    _record_completed_d0(
-        store,
-        contract_id,
-        payload,
-        at=START + timedelta(minutes=7, seconds=30),
+    payload = _payload(_source_pack(store))
+    plan = default_analysis_plan(horizon_bars=4)
+    if mutation == "unregistered_family":
+        families = cast(list[dict[str, object]], plan["families"])
+        families[0] = {**families[0], "family": "kitchen_sink_scan"}
+        payload["analysis_plan"] = plan
+    elif mutation == "over_budget_grid":
+        families = cast(list[dict[str, object]], plan["families"])
+        families[0] = {
+            **families[0],
+            "grid": {"horizon_bars": list(range(1, 13)), "window": list(range(1, 13))},
+        }
+        payload["analysis_plan"] = plan
+    else:
+        payload["analysis_plan"] = "run everything"
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
     )
+    contract_id = str(contract["contract_id"])
+    for minute, phase in ((4, "triage"), (5, "exploration_review")):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance to {phase}.",
+            next_action="Validate the frozen analysis plan.",
+            responsibility="owner" if phase == "exploration_review" else "codex",
+            at=START + timedelta(minutes=minute),
+        )
+    with pytest.raises(DataError, match="unregistered|budget|analysis_plan"):
+        store.review_research_contract(
+            PROJECT_ID,
+            contract_id,
+            scope="exploration",
+            decision="approve",
+            actor="owner",
+            actor_kind="human",
+            reason="An invalid analysis plan must fail closed.",
+        )
+
+
+def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -> None:
+    from alpha_cli.research_analysis_plan import default_analysis_plan
+
+    store = ControlStore(tmp_path)
+    _project(store)
+    payload = _payload(_source_pack(store))
+    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    protocol = cast(dict[str, object], payload["protocol"])
+    protocol["d0_operator"] = registered_d0_operator(payload)
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
+    )
+    contract_id = str(contract["contract_id"])
+    for minute, phase in ((4, "triage"), (5, "exploration_review")):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance to {phase}.",
+            next_action="Approve the plan-bearing contract.",
+            responsibility="owner" if phase == "exploration_review" else "codex",
+            at=START + timedelta(minutes=minute),
+        )
+    review = store.review_research_contract(
+        PROJECT_ID,
+        contract_id,
+        scope="exploration",
+        decision="approve",
+        actor="owner",
+        actor_kind="human",
+        reason="The registered default analysis plan is approvable.",
+        at=START + timedelta(minutes=6),
+    )
+    assert review["decision"] == "approve"
+
+
+def _approved_deep_case(store: ControlStore) -> tuple[str, dict[str, object]]:
+    """Approve a plan-bearing exploration contract and advance it into deep_research."""
+    from alpha_cli.research_analysis_plan import default_analysis_plan
+
+    pack_id = _source_pack(store)
+    payload = _payload(pack_id)
+    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
+    )
+    contract_id = str(contract["contract_id"])
+    for minute, phase, responsibility in (
+        (4, "triage", "codex"),
+        (5, "exploration_review", "owner"),
+    ):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance the deep fixture to {phase}.",
+            next_action="Continue toward deep research.",
+            responsibility=responsibility,  # type: ignore[arg-type]
+            at=START + timedelta(minutes=minute),
+        )
+    store.review_research_contract(
+        PROJECT_ID,
+        contract_id,
+        scope="exploration",
+        decision="approve",
+        actor="owner",
+        actor_kind="human",
+        reason="The plan-bearing exploration contract is approvable.",
+        at=START + timedelta(minutes=6),
+    )
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="pilot",
+        contract_id=contract_id,
+        actor="codex",
+        reason="Exploration was approved.",
+        next_action="Run the bounded pilot.",
+        responsibility="codex",
+        at=START + timedelta(minutes=7),
+    )
+    _record_completed_d0(store, contract_id, payload, at=START + timedelta(minutes=8))
     store.transition_research_phase(
         PROJECT_ID,
         to_phase="deep_research",
         contract_id=contract_id,
         actor="codex",
-        reason="D0 is complete.",
-        next_action="Stop because D1 is not shipped.",
+        reason="D0 is complete and the analysis plan is frozen.",
+        next_action="Launch the registered deep-research plan.",
         responsibility="codex",
-        at=START + timedelta(minutes=8),
+        at=START + timedelta(minutes=9),
     )
-    with pytest.raises(DataError, match="empirical D1/D2 attempts remain hard-disabled"):
+    return contract_id, payload
+
+
+def _published_d1_run(
+    store: ControlStore, contract_id: str, payload: dict[str, object]
+) -> dict[str, object]:
+    from datetime import UTC as _UTC
+
+    from alpha_cli.research_d1 import research_bars_from_lows, run_deep_research
+
+    motif = (105.0, 103.0, 100.0, 95.0, 99.0, 101.0, 100.0, 95.5, 99.0, 101.0)
+    lows: list[float] = []
+    for _week in range(8):
+        for day in range(7):
+            if day == 0:
+                lows.extend(motif)
+                level = motif[-1]
+                for hour in range(14):
+                    level = level + 1.5 if hour < 6 else level
+                    lows.append(level)
+            else:
+                lows.extend([100.0] * 24)
+    bars = research_bars_from_lows(
+        lows,
+        dataset_id="d1-store-fixture",
+        content_sha256="c" * 64,
+        start=datetime(2020, 1, 6, tzinfo=_UTC),
+    )
+    return run_deep_research(
+        store._data_dir,
+        project_id=PROJECT_ID,
+        contract_id=contract_id,
+        contract=payload,
+        bars=bars,
+    )
+
+
+def _d1_evidence_ref(store: ControlStore, manifest: dict[str, object]) -> dict[str, object]:
+    artifacts = cast(dict[str, object], manifest["artifacts"])
+    metadata = cast(dict[str, object], artifacts["research_gate_evidence.json"])
+    return {"artifact": "research_gate_evidence.json", "content_sha256": metadata["sha256"]}
+
+
+def test_d1_attempt_admission_reverifies_evidence_mechanically(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, payload = _approved_deep_case(store)
+    manifest = _published_d1_run(store, contract_id, payload)
+    attempt = store.record_research_attempt(
+        PROJECT_ID,
+        contract_id,
+        kind="d1-deep-research",
+        status="completed",
+        config_fingerprint=str(manifest["execution_fingerprint"]),
+        budget_used={"variants": 6},
+        details={
+            "evidence_zone": "D1",
+            "finding": "The registered plan executed on the discovery share.",
+            "gate_packet_evidence_ref": _d1_evidence_ref(store, manifest),
+        },
+        run_id=str(manifest["run_id"]),
+        at=START + timedelta(minutes=10),
+    )
+    assert attempt["status"] == "completed"
+    verified = store.verified_research_attempt(PROJECT_ID, str(attempt["attempt_id"]))
+    assert cast("dict[str, object]", verified["manifest"])["evidence_zone"] == "D1"
+
+    # Rewrite a finding status with a consistent manifest hash: the mechanical
+    # recomputation from raw measurements must still fail closed.
+    run_dir = store._data_dir / "runs" / str(manifest["run_id"])
+    evidence_path = run_dir / "research_gate_evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["negative_controls"] = {"status": "PASSED", "summary": "forged"}
+    forged = json.dumps(evidence, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    evidence_path.write_text(forged, encoding="utf-8")
+    manifest_path = run_dir / "manifest.json"
+    stored_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entry = stored_manifest["artifacts"]["research_gate_evidence.json"]
+    entry["sha256"] = hashlib.sha256(forged.encode("utf-8")).hexdigest()
+    entry["size_bytes"] = len(forged.encode("utf-8"))
+    manifest_path.write_text(
+        json.dumps(stored_manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    with pytest.raises(DataError, match="recomputation|manifest"):
+        store.verified_research_attempt(PROJECT_ID, str(attempt["attempt_id"]))
+
+
+def test_d1_attempts_pin_kind_and_require_typed_evidence(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, payload = _approved_deep_case(store)
+    manifest = _published_d1_run(store, contract_id, payload)
+    with pytest.raises(DataError, match="d1-deep-research"):
         store.record_research_attempt(
             PROJECT_ID,
             contract_id,
             kind="event-study",
             status="completed",
-            config_fingerprint="a" * 64,
-            budget_used={"wall_seconds": 1},
+            config_fingerprint=str(manifest["execution_fingerprint"]),
+            budget_used={},
+            details={"evidence_zone": "D1"},
+            run_id=str(manifest["run_id"]),
+            at=START + timedelta(minutes=10),
         )
-    with pytest.raises(DataError, match="D2 access remains hard-disabled"):
-        store.transition_research_d2_state(
+    with pytest.raises(DataError, match="typed gate evidence"):
+        store.record_research_attempt(
             PROJECT_ID,
             contract_id,
-            to_state="consumed",
-            actor="system",
-            reason="This must never open D2 in Gate 1.",
+            kind="d1-deep-research",
+            status="completed",
+            config_fingerprint=str(manifest["execution_fingerprint"]),
+            budget_used={},
+            details={"evidence_zone": "D1"},
+            run_id=str(manifest["run_id"]),
+            at=START + timedelta(minutes=10),
         )
 
-    confirmation = store.create_research_contract(
+
+def test_research_job_creation_is_governed_and_capacity_bound(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    with pytest.raises(DataError, match="governed internal executor"):
+        store.create_job(kind="research:event-study", request={"stage": "deep"})
+    contract_id, _payload_unused = _approved_deep_case(store)
+    job = store.create_research_job(
         PROJECT_ID,
-        scope="confirmation",
-        payload=_payload(str(payload["source_pack_id"]), confirmation=True),
-        created_by="codex",
-        author_kind="agent",
-        parent_contract_id=contract_id,
-        at=START + timedelta(minutes=9),
-    )
-    confirmation_id = str(confirmation["contract_id"])
-    store.transition_research_phase(
-        PROJECT_ID,
-        to_phase="confirmation_review",
-        contract_id=confirmation_id,
-        actor="codex",
-        reason="Present the frozen child while Gate 3 remains disabled.",
-        next_action="Do not approve until the empirical authority exists.",
-        responsibility="owner",
+        contract_id=contract_id,
+        request={"stage": "deep", "contract_id": contract_id},
         at=START + timedelta(minutes=10),
     )
-    with pytest.raises(DataError, match="confirmation approval remains hard-disabled"):
-        store.review_research_contract(
+    assert job["kind"] == "research:event-study"
+    with pytest.raises(DataError, match="capacity"):
+        store.create_research_job(
             PROJECT_ID,
-            confirmation_id,
-            scope="confirmation",
-            decision="approve",
-            actor="owner",
-            actor_kind="human",
-            reason="This production-disabled action must fail.",
+            contract_id=contract_id,
+            request={"stage": "deep", "second": True},
             at=START + timedelta(minutes=11),
         )
 
@@ -2379,6 +2580,316 @@ def test_contaminated_confirmation_can_close_only_as_invalid(tmp_path: Path) -> 
         at=START + timedelta(minutes=15),
     )
     assert decision["outcome"] == "INVALID"
+
+
+def _promotion_packets(store: ControlStore) -> list[dict[str, object]]:
+    return [
+        packet
+        for packet in store.list_research_context_packets(PROJECT_ID)
+        if packet["packet_kind"] == "strategy_promotion"
+    ]
+
+
+def _close_decided_case(store: ControlStore, confirmation_id: str) -> None:
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="closed",
+        contract_id=confirmation_id,
+        actor="owner",
+        reason="owner recorded the terminal research disposition",
+        next_action="Research case is closed; any revision starts a new contract lineage.",
+        responsibility="owner",
+        at=START + timedelta(minutes=16),
+    )
+
+
+def test_advance_decision_records_lossless_promotion_packet_atomically(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store)
+    assert _promotion_packets(store) == []  # decision alone is not yet the terminal state
+    _close_decided_case(store, confirmation_id)
+
+    packets = _promotion_packets(store)
+    assert len(packets) == 1
+    payload = packets[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["packet_schema"] == "StrategyPromotionPacketV1"
+
+    decision = payload["decision"]
+    assert isinstance(decision, dict)
+    assert decision["contract_id"] == confirmation_id
+    assert decision["outcome"] == "SUPPORTED"
+    assert decision["disposition"] == "advance_to_strategy"
+
+    # The reference binds the exact deterministic terminal gate packet, byte for byte.
+    terminal = build_research_gate_packet(store.research_gate_packet_inputs(PROJECT_ID)).to_dict()
+    assert payload["gate_packet_reference"] == {
+        "packet_id": terminal["packet_id"],
+        "packet_hash": terminal["packet_hash"],
+    }
+
+    card = payload["hypothesis_card"]
+    assert isinstance(card, dict)
+    assert card["card_schema"] == "HypothesisCardV1"
+    for section in (
+        "registered_datasets",
+        "screened_source_claims",
+        "confounder_ledger",
+        "falsification",
+        "stability_findings",
+        "known_failure_conditions",
+        "assumptions_limitations",
+        "headline_chart_references",
+        "negative_attempt_summary",
+        "open_questions",
+    ):
+        assert section in payload
+
+    charts = payload["headline_chart_references"]
+    assert isinstance(charts, list)
+    expected_chart_sha = hashlib.sha256(b'{"watermark":"EXPLORATORY"}').hexdigest()
+    assert any(
+        chart["artifact"] == "chart-data.json" and chart["content_sha256"] == expected_chart_sha
+        for chart in charts
+        if isinstance(chart, dict)
+    )
+
+    summary = payload["negative_attempt_summary"]
+    assert isinstance(summary, dict)
+    assert summary["total_attempts"] == 2  # the completed D0 pilot plus the sealed D2 attempt
+    assert summary["by_status"] == {"completed": 2}
+    assert summary["non_completed_attempt_ids"] == []
+
+    fetched = store.get_research_context_packet(str(packets[0]["packet_id"]))
+    assert fetched["payload"] == payload
+
+
+def test_non_advance_decisions_record_no_promotion_packet(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store, outcome="INCONCLUSIVE", disposition="park")
+    _close_decided_case(store, confirmation_id)
+
+    assert _promotion_packets(store) == []
+
+
+def test_promotion_packet_is_idempotent_across_decision_replay(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store)
+
+    # Crash-between-decide-and-close recovery: the decision replay returns the stored row
+    # without a packet, and exactly one close records exactly one promotion dossier.
+    replay = store.record_research_decision(
+        PROJECT_ID,
+        confirmation_id,
+        outcome="SUPPORTED",
+        disposition="advance_to_strategy",
+        actor="owner",
+        actor_kind="human",
+        reason="The owner accepts the mechanical frozen-confirmation classification.",
+        at=START + timedelta(minutes=20),
+    )
+    assert replay["outcome"] == "SUPPORTED"
+    assert _promotion_packets(store) == []
+
+    _close_decided_case(store, confirmation_id)
+    first = _promotion_packets(store)
+    assert len(first) == 1
+    with pytest.raises(DataError, match="invalid research phase transition"):
+        _close_decided_case(store, confirmation_id)
+    packets = _promotion_packets(store)
+    assert len(packets) == 1
+    assert packets[0]["packet_id"] == first[0]["packet_id"]
+
+
+def test_agent_brief_embeds_promotion_reference_and_survives_as_of(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _, confirmation_id = _approved_contracts(store)
+    _close_decided_case(store, confirmation_id)
+    store.create_strategy_version(
+        PROJECT_ID,
+        strategy_name="double_bottom",
+        source_fingerprint="git:3333333",
+        definition={"detector": "causal-double-bottom-v1"},
+        parameter_space={"tolerance": [0.005, 0.01]},
+        research_contract_id=confirmation_id,
+        at=START + timedelta(minutes=17),
+    )
+
+    context = store.get_agent_brief_context(PROJECT_ID)
+    promotion = context["research_promotion"]
+    assert isinstance(promotion, dict)
+    assert promotion["contract_id"] == confirmation_id
+    assert str(promotion["packet_id"]).startswith("cp_")
+    terminal = build_research_gate_packet(store.research_gate_packet_inputs(PROJECT_ID)).to_dict()
+    assert promotion["gate_packet_id"] == terminal["packet_id"]
+    assert promotion["gate_packet_hash"] == terminal["packet_hash"]
+
+    # Point-in-time reads never inherit a later strategy selection or its promotion packet.
+    before = store.get_agent_brief_context(
+        PROJECT_ID, as_of=START + timedelta(minutes=16, seconds=30)
+    )
+    assert before["research_promotion"] is None
+    after = store.get_agent_brief_context(PROJECT_ID, as_of=START + timedelta(minutes=17))
+    assert after["research_promotion"] == promotion
+
+
+def _legacy_project(store: ControlStore) -> None:
+    store.create_project(
+        name="Pre-program momentum project",
+        hypothesis="A grandfathered strategy project predating the research program.",
+        falsification_criterion="Reject when the legacy edge stops clearing costs.",
+        project_id=LEGACY_PROJECT_ID,
+        at=datetime(2026, 8, 5, 23, 59, tzinfo=UTC),
+    )
+    mark_project_as_migrated_legacy(store, LEGACY_PROJECT_ID)
+
+
+def test_research_gate_state_derivation_covers_all_states(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _legacy_project(store)
+    assert store.research_gate_state(LEGACY_PROJECT_ID) == "not_required"
+
+    _project(store)
+    assert store.research_gate_state(PROJECT_ID) == "open"
+
+    store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+        at=START + timedelta(minutes=1),
+    )
+    assert store.research_gate_state(PROJECT_ID) == "overridden"
+
+    # A completed research pass supersedes any earlier override.
+    _approved_contracts(store)
+    assert store.research_gate_state(PROJECT_ID) == "passed"
+
+    states = {row["project_id"]: row["research_gate_state"] for row in store.list_projects()}
+    assert states[PROJECT_ID] == "passed"
+    assert states[LEGACY_PROJECT_ID] == "not_required"
+    assert store.get_project(PROJECT_ID)["research_gate_state"] == "passed"
+    assert store.get_project(LEGACY_PROJECT_ID)["research_gate_state"] == "not_required"
+
+    with pytest.raises(DataError, match="unknown strategy project"):
+        store.research_gate_state("11111111-2222-4333-8444-555555555555")
+
+
+def test_research_gate_override_is_append_only_and_fails_closed(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _legacy_project(store)
+    with pytest.raises(DataError, match="no research gate"):
+        store.record_research_gate_override(
+            LEGACY_PROJECT_ID,
+            actor="owner",
+            reason="A grandfathered project has nothing to override.",
+        )
+
+    _project(store)
+    first = store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+        at=START + timedelta(minutes=1),
+    )
+    second = store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Re-affirmed after the adversarial review of the open case.",
+        at=START + timedelta(minutes=2),
+    )
+    assert (first["sequence"], second["sequence"]) == (1, 2)
+
+    overrides = store.get_project(PROJECT_ID)["research_gate_overrides"]
+    assert isinstance(overrides, list)
+    assert [row["sequence"] for row in overrides] == [1, 2]
+    assert overrides[0]["actor"] == "owner"
+    assert overrides[0]["reason"] == (
+        "Owner accepts exploratory-only engine work before research completes."
+    )
+    assert overrides[1]["recorded_at"] == "2026-08-06T09:02:00.000000Z"
+
+    active = store.list_active_research_gate_overrides()
+    assert [(row["project_id"], row["sequence"]) for row in active] == [
+        (PROJECT_ID, 2),
+        (PROJECT_ID, 1),
+    ]
+    assert active[0]["project_name"] == "SPY four-hour double bottom"
+
+    with pytest.raises(DataError, match="reason"):
+        store.record_research_gate_override(PROJECT_ID, actor="owner", reason="   ")
+
+    # A passed gate can no longer be overridden, and its overrides go inactive.
+    _approved_contracts(store)
+    with pytest.raises(DataError, match="already passed"):
+        store.record_research_gate_override(
+            PROJECT_ID,
+            actor="owner",
+            reason="An override after the pass would only muddy the ledger.",
+        )
+    assert store.list_active_research_gate_overrides() == []
+    recorded = store.get_project(PROJECT_ID)["research_gate_overrides"]
+    assert isinstance(recorded, list)
+    assert [row["sequence"] for row in recorded] == [1, 2]
+
+
+def test_overridden_gate_permits_unlinked_strategy_version(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    with pytest.raises(DataError, match="research_contract_id"):
+        store.create_strategy_version(
+            PROJECT_ID,
+            strategy_name="premature_probe",
+            source_fingerprint="git:blocked-before-override",
+            definition={},
+            parameter_space={},
+            at=START + timedelta(minutes=1),
+        )
+
+    store.record_research_gate_override(
+        PROJECT_ID,
+        actor="owner",
+        reason="Owner accepts exploratory-only engine work before research completes.",
+        at=START + timedelta(minutes=1),
+    )
+    version = store.create_strategy_version(
+        PROJECT_ID,
+        strategy_name="exploratory_probe",
+        source_fingerprint="git:override-watermarked",
+        definition={"detector": "exploratory-probe-v1"},
+        parameter_space={"lookback": [20, 60]},
+        at=START + timedelta(minutes=2),
+    )
+    version_id = str(version["version_id"])
+    assert version_id.startswith("sv_")
+    # The overridden path never forges research linkage.
+    assert "research_contract_id" not in version
+    spec = store.create_experiment_spec(
+        PROJECT_ID,
+        strategy_version_id=version_id,
+        snapshot_id="snap-override",
+        universe=["SPY"],
+        split_policy={"train": 504, "test": 63},
+        costs={"fee_bps": 1.0},
+        seeds={"root": 7},
+        at=START + timedelta(minutes=2, seconds=30),
+    )
+    assert str(spec["experiment_id"]).startswith("ex_")
+
+    # Once research passes, unlinked versions re-lock: linkage becomes mandatory.
+    _approved_contracts(store)
+    with pytest.raises(DataError, match="research_contract_id"):
+        store.create_strategy_version(
+            PROJECT_ID,
+            strategy_name="post_pass_unlinked",
+            source_fingerprint="git:must-link-after-pass",
+            definition={},
+            parameter_space={},
+            at=START + timedelta(minutes=30),
+        )
 
 
 def test_research_attempt_accepts_only_exact_contract_bound_run(tmp_path: Path) -> None:
@@ -2743,15 +3254,16 @@ def test_confirmation_attempt_rejects_inline_or_missing_evidence_artifacts(
     )
     contract = store.get_research_contract(confirmation_id)
     payload = cast(dict[str, object], contract["payload"])
-    evidence = _confirmation_evidence("SUPPORTED")
+    # One immutable D2 run with NO published evidence artifacts serves both rejections:
+    # the inline check fires before any run read, and the selector then finds nothing.
     run_id = _write_research_run(
         tmp_path,
-        run_id="c300000000000003",
+        run_id="ignored-content-derived-id",
         contract_id=confirmation_id,
         payload=payload,
         evidence_zone="D2",
-        gate_evidence=evidence,
     )
+    inline_evidence = {"schema": "ResearchGateEvidenceV1", "evidence_zone": "D2"}
     with pytest.raises(DataError, match="inline gate_packet_evidence"):
         store.record_research_attempt(
             PROJECT_ID,
@@ -2760,18 +3272,11 @@ def test_confirmation_attempt_rejects_inline_or_missing_evidence_artifacts(
             status="completed",
             config_fingerprint="a" * 64,
             budget_used={"wall_seconds": 1, "source_requests": 0, "variants": 1},
-            details={"evidence_zone": "D2", "gate_packet_evidence": evidence},
+            details={"evidence_zone": "D2", "gate_packet_evidence": inline_evidence},
             run_id=run_id,
             at=START + timedelta(minutes=14),
         )
 
-    missing_run_id = _write_research_run(
-        tmp_path,
-        run_id="d400000000000004",
-        contract_id=confirmation_id,
-        payload=payload,
-        evidence_zone="D2",
-    )
     with pytest.raises(DataError, match="declared immutable artifact"):
         store.record_research_attempt(
             PROJECT_ID,
@@ -2787,7 +3292,7 @@ def test_confirmation_attempt_rejects_inline_or_missing_evidence_artifacts(
                     "content_sha256": "f" * 64,
                 },
             },
-            run_id=missing_run_id,
+            run_id=run_id,
             at=START + timedelta(minutes=14),
         )
 
@@ -2796,7 +3301,9 @@ def test_confirmation_decision_reverifies_evidence_artifact_bytes(tmp_path: Path
     store = ControlStore(tmp_path)
     _project(store)
     _, confirmation_id = _approved_contracts(store, record_decision=False)
-    run_id = hashlib.sha256(confirmation_id.encode()).hexdigest()[:16]
+    contract = store.get_research_contract(confirmation_id)
+    payload = cast(dict[str, object], contract["payload"])
+    run_id = _d2_run_id(payload, confirmation_id)
     evidence_path = tmp_path / "runs" / run_id / "research_gate_evidence.json"
     evidence_path.write_text("{}", encoding="utf-8")
 
@@ -3302,3 +3809,675 @@ def test_revise_reopens_with_new_d2_boundary_without_erasing_consumed_history(
             next_action="Do not reopen.",
             at=START + timedelta(minutes=18),
         )
+
+
+def _captured_case(store: ControlStore, index: int, *, at: datetime) -> str:
+    """Capture one distinct research case and return its project id."""
+
+    result = store.capture_research_case(
+        name=f"Backlog case {index}",
+        hypothesis=f"Observation {index} may precede positive four-hour returns.",
+        falsification_criterion="Reject when registered controls do not support the claim.",
+        draft_payload=draft_exploration_contract(
+            f"Observation {index} may precede positive four-hour returns."
+        ),
+        created_by="codex",
+        next_action="Owner answers the material question batch.",
+        responsibility="owner",
+        blocker="The chart, event time, and outcome are unresolved.",
+        recovery="Answer the bounded question batch.",
+        at=at,
+    )
+    case = result["case"]
+    assert isinstance(case, dict)
+    return str(case["project_id"])
+
+
+def test_list_research_cases_is_bounded_newest_activity_first(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_ids = [
+        _captured_case(store, index, at=START + timedelta(minutes=index)) for index in range(3)
+    ]
+    # A strategy-only project without a research case never appears in the backlog.
+    store.create_project(
+        name="Strategy-only project",
+        hypothesis="Not a research case.",
+        falsification_criterion="Not applicable.",
+        project_id=LEGACY_PROJECT_ID,
+        at=START + timedelta(minutes=30),
+    )
+
+    rows = store.list_research_cases()
+    assert [cast(dict[str, object], row["case"])["project_id"] for row in rows] == list(
+        reversed(project_ids)
+    )
+    for row in rows:
+        assert set(row) == {"case", "updated_at"}
+        case = row["case"]
+        assert isinstance(case, dict)
+        # The per-case shape is byte-identical to the canonical single-case summary.
+        assert case == store.research_case_summary(str(case["project_id"]))
+        assert isinstance(row["updated_at"], str) and row["updated_at"]
+
+    # Later research activity (an execution transition) moves that case to the front.
+    oldest = project_ids[0]
+    summary = store.research_case_summary(oldest)
+    store.transition_research_execution(
+        oldest,
+        to_state="blocked",
+        contract_id=str(summary["active_contract_id"]),
+        actor="owner",
+        reason="Owner paused triage pending data access.",
+        next_action="Restore data access before continuing triage.",
+        responsibility="owner",
+        blocker="Data access is unavailable.",
+        recovery="Restore data access.",
+        at=START + timedelta(hours=1),
+    )
+    reordered = store.list_research_cases()
+    assert str(cast(dict[str, object], reordered[0]["case"])["project_id"]) == oldest
+
+    # Bounded paging with the documented research limit.
+    assert store.list_research_cases(limit=1) == reordered[:1]
+    assert store.list_research_cases(limit=1, offset=1) == reordered[1:2]
+    assert store.list_research_cases(limit=1, offset=99) == []
+    with pytest.raises(DataError, match="limit"):
+        store.list_research_cases(limit=0)
+    with pytest.raises(DataError, match="limit"):
+        store.list_research_cases(limit=201)
+    with pytest.raises(DataError, match="offset"):
+        store.list_research_cases(offset=-1)
+
+
+def test_context_packet_build_is_content_addressed_append_only_and_deterministic(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+
+    first = store.build_research_context_packet(
+        project_id,
+        kind="research_case",
+        created_by="codex",
+        at=START + timedelta(minutes=5),
+    )
+    packet_id = str(first["packet_id"])
+    assert packet_id.startswith("cp_") and len(packet_id) == 3 + 64
+    assert first["packet_kind"] == "research_case"
+    assert first["protocol_id"] is None and first["protocol_content_hash"] is None
+    payload = first["payload"]
+    assert isinstance(payload, dict)
+    assert payload["packet_schema"] == "ResearchContextPacketV1"
+    assert payload["project_id"] == project_id
+    assert payload["packet_kind"] == "research_case"
+    # Bounded collections carry explicit truncation flags — no invisible context dumps.
+    assert payload["attempts_truncated"] is False
+    assert payload["sources_truncated"] is False
+    assert payload["notes_truncated"] is False
+    # Identical inputs produce the identical content-addressed packet (idempotent record).
+    replay = store.build_research_context_packet(
+        project_id,
+        kind="research_case",
+        created_by="codex",
+        at=START + timedelta(minutes=9),
+    )
+    assert replay["packet_id"] == packet_id
+    assert replay["payload"] == payload
+    assert len(store.list_research_context_packets(project_id)) == 1
+
+    # A different kind is a different packet; recording is visibility.
+    validation = store.build_research_context_packet(
+        project_id,
+        kind="validation",
+        created_by="codex",
+        protocol_id="research-critic",
+        protocol_content_hash="c" * 64,
+        at=START + timedelta(minutes=10),
+    )
+    assert validation["packet_id"] != packet_id
+    assert validation["protocol_id"] == "research-critic"
+    assert validation["protocol_content_hash"] == "c" * 64
+    listed = store.list_research_context_packets(project_id)
+    assert [row["packet_id"] for row in listed] == [validation["packet_id"], packet_id]
+    fetched = store.get_research_context_packet(str(validation["packet_id"]))
+    assert fetched == validation
+
+    with pytest.raises(DataError, match="packet kind"):
+        store.build_research_context_packet(project_id, kind="chat", created_by="codex")
+    with pytest.raises(DataError, match="symbol"):
+        store.build_research_context_packet(project_id, kind="asset", created_by="codex")
+    with pytest.raises(DataError, match="unknown research context packet"):
+        store.get_research_context_packet("cp_" + "0" * 64)
+
+
+def test_research_notes_are_append_only_and_structurally_outside_evidence(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    packet = store.build_research_context_packet(
+        project_id, kind="research_case", created_by="codex", at=START + timedelta(minutes=1)
+    )
+    before = json.dumps(
+        store.research_gate_packet_inputs(project_id), sort_keys=True, allow_nan=False
+    )
+
+    critique = store.add_research_note(
+        project_id,
+        note_kind="critique",
+        body="The volatility-regime confounder is not yet matched.",
+        author="codex",
+        author_kind="agent",
+        context_packet_id=str(packet["packet_id"]),
+        at=START + timedelta(minutes=2),
+    )
+    assert str(critique["note_id"]).startswith("rn_")
+    assert critique["author_kind"] == "agent"
+    assert critique["context_packet_id"] == packet["packet_id"]
+    synthesis = store.add_research_note(
+        project_id,
+        note_kind="synthesis",
+        body="Established: nothing. Speculative: everything pre-D1.",
+        author="owner",
+        author_kind="owner",
+        at=START + timedelta(minutes=3),
+    )
+    notes = store.list_research_notes(project_id)
+    assert [row["note_id"] for row in notes] == [synthesis["note_id"], critique["note_id"]]
+
+    # Structural evidence exclusion: the gate-packet inputs are byte-identical with notes.
+    after = json.dumps(
+        store.research_gate_packet_inputs(project_id), sort_keys=True, allow_nan=False
+    )
+    assert after == before
+
+    with pytest.raises(DataError, match="note kind"):
+        store.add_research_note(
+            project_id, note_kind="evidence", body="x", author="codex", author_kind="agent"
+        )
+    with pytest.raises(DataError, match="author kind"):
+        store.add_research_note(
+            project_id, note_kind="critique", body="x", author="codex", author_kind="human"
+        )
+    with pytest.raises(DataError, match="unknown research context packet"):
+        store.add_research_note(
+            project_id,
+            note_kind="critique",
+            body="x",
+            author="codex",
+            author_kind="agent",
+            context_packet_id="cp_" + "1" * 64,
+        )
+
+
+def test_research_brief_reports_only_deltas_since_the_previous_brief(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+
+    first = store.research_brief(project_id, created_by="codex", at=START + timedelta(minutes=4))
+    assert first["brief_schema"] == "ResearchBriefV1"
+    case = first["case"]
+    assert isinstance(case, dict) and case["project_id"] == project_id
+    changes = first["changes"]
+    assert isinstance(changes, dict)
+    # The first brief reports the complete history as new.
+    assert len(cast(list[object], changes["phase_events"])) == 2  # captured + triage
+    assert len(cast(list[object], changes["execution_events"])) == 1  # initial idle
+    assert changes["attempts"] == [] and changes["decisions"] == []
+    assert isinstance(first["packet_id"], str) and str(first["packet_id"]).startswith("cp_")
+
+    summary = store.research_case_summary(project_id)
+    store.transition_research_execution(
+        project_id,
+        to_state="blocked",
+        contract_id=str(summary["active_contract_id"]),
+        actor="owner",
+        reason="Owner paused triage pending data access.",
+        next_action="Restore data access before continuing triage.",
+        responsibility="owner",
+        blocker="Data access is unavailable.",
+        recovery="Restore data access.",
+        at=START + timedelta(minutes=6),
+    )
+    second = store.research_brief(project_id, created_by="codex", at=START + timedelta(minutes=7))
+    second_changes = second["changes"]
+    assert isinstance(second_changes, dict)
+    assert second_changes["phase_events"] == []
+    execution_events = cast(list[dict[str, object]], second_changes["execution_events"])
+    assert len(execution_events) == 1
+    assert execution_events[0]["state"] == "blocked"
+    assert second["packet_id"] != first["packet_id"]
+
+    third = store.research_brief(project_id, created_by="codex", at=START + timedelta(minutes=8))
+    third_changes = third["changes"]
+    assert isinstance(third_changes, dict)
+    assert all(third_changes[key] == [] for key in third_changes)
+
+
+def test_research_dataset_registration_is_fail_closed_and_content_addressed(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    ref = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-08-28",
+        end_ts="2020-09-02",
+        bar_duration_minutes=None,
+        origin={"snapshot_id": "snap-a", "manifest_sha256": "a" * 64},
+        registered_by="owner",
+        at=START,
+    )
+    ref_id = str(ref["ref_id"])
+    assert ref_id.startswith("rd_") and len(ref_id) == 3 + 64
+    assert ref["research_only"] is True
+    assert ref["dataset_kind"] == "snapshot"
+    # Idempotent re-registration of identical bytes.
+    replay = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-08-28",
+        end_ts="2020-09-02",
+        bar_duration_minutes=None,
+        origin={"snapshot_id": "snap-a", "manifest_sha256": "a" * 64},
+        registered_by="owner",
+        at=START + timedelta(minutes=5),
+    )
+    assert replay["ref_id"] == ref_id
+    rows = store.list_research_datasets()
+    assert [row["ref_id"] for row in rows] == [ref_id]
+    assert rows[0]["latest_audit"] is None
+    assert store.get_research_dataset(ref_id)["origin"] == {
+        "snapshot_id": "snap-a",
+        "manifest_sha256": "a" * 64,
+    }
+    assert store.list_research_datasets(instrument="AAPL") == rows
+    assert store.list_research_datasets(instrument="SPY") == []
+
+    # Fail-closed origins: a registration without its exact binding is refused.
+    with pytest.raises(DataError, match="manifest_sha256"):
+        store.register_research_dataset(
+            dataset_kind="snapshot",
+            instrument="AAPL",
+            provider="fake",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=None,
+            origin={"snapshot_id": "snap-a"},
+            registered_by="owner",
+        )
+    with pytest.raises(DataError, match="provenance_sha256"):
+        store.register_research_dataset(
+            dataset_kind="store_slice",
+            instrument="AAPL",
+            provider="fake",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=None,
+            origin={},
+            registered_by="owner",
+        )
+    with pytest.raises(DataError, match="receipt"):
+        store.register_research_dataset(
+            dataset_kind="quantpad_receipt",
+            instrument="AAPL",
+            provider="quantpad",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=60,
+            origin={"response_sha256": "b" * 64},
+            registered_by="owner",
+        )
+    with pytest.raises(DataError, match="dataset kind"):
+        store.register_research_dataset(
+            dataset_kind="csv_upload",
+            instrument="AAPL",
+            provider="fake",
+            start_ts="2020-08-28",
+            end_ts="2020-09-02",
+            bar_duration_minutes=None,
+            origin={},
+            registered_by="owner",
+        )
+
+
+def test_research_dataset_audits_bind_ref_project_and_run(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    ref = store.register_research_dataset(
+        dataset_kind="store_slice",
+        instrument="AAPL",
+        provider="fake",
+        start_ts="2020-08-28",
+        end_ts="2020-09-02",
+        bar_duration_minutes=None,
+        origin={"provenance_sha256": "c" * 64},
+        registered_by="owner",
+        at=START,
+    )
+    ref_id = str(ref["ref_id"])
+    audit = store.record_research_dataset_audit(
+        ref_id,
+        project_id=project_id,
+        run_id="deadbeefdeadbeef",
+        summary={
+            "audit_schema": "ResearchDataAuditV1",
+            "blocking_count": 0,
+            "limiting_count": 1,
+            "notes": ["One calendar gap over a holiday."],
+        },
+        at=START + timedelta(minutes=10),
+    )
+    assert audit["ref_id"] == ref_id and audit["project_id"] == project_id
+    listed = store.list_research_dataset_audits(ref_id)
+    assert [row["run_id"] for row in listed] == ["deadbeefdeadbeef"]
+    enriched = store.list_research_datasets()
+    latest = enriched[0]["latest_audit"]
+    assert isinstance(latest, dict)
+    assert latest["summary"]["limiting_count"] == 1
+
+    with pytest.raises(DataError, match="unknown research dataset"):
+        store.record_research_dataset_audit(
+            "rd_" + "0" * 64,
+            project_id=project_id,
+            run_id="deadbeefdeadbeef",
+            summary={
+                "audit_schema": "ResearchDataAuditV1",
+                "blocking_count": 0,
+                "limiting_count": 0,
+                "notes": [],
+            },
+        )
+    with pytest.raises(DataError, match="audit summary"):
+        store.record_research_dataset_audit(
+            ref_id,
+            project_id=project_id,
+            run_id="deadbeefdeadbeef",
+            summary={"blocking_count": 0},
+        )
+
+
+def test_data_audit_refuses_drifted_bytes_and_unsupported_kinds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The audit loader is fail-closed: registered hashes must still match the disk."""
+    from alpha_cli.research_data_audit import run_data_audit
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _captured_case(ControlStore(tmp_path), 0, at=START)
+
+    def _ref(kind: str, origin: dict[str, object]) -> dict[str, object]:
+        return {
+            "ref_id": "rd_" + "1" * 64,
+            "dataset_kind": kind,
+            "instrument": "AAPL",
+            "provider": "fake",
+            "start_ts": "2020-01-01",
+            "end_ts": "2020-06-01",
+            "bar_duration_minutes": None,
+            "origin": origin,
+        }
+
+    with pytest.raises(DataError, match="canonical project_id"):
+        run_data_audit(tmp_path, project_id="not-a-uuid", ref=_ref("snapshot", {}))
+    with pytest.raises(DataError, match="registered dataset ref"):
+        run_data_audit(tmp_path, project_id=project_id, ref={"ref_id": "nope"})
+    with pytest.raises(DataError, match="missing its manifest"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("snapshot", {"snapshot_id": "ghost", "manifest_sha256": "a" * 64}),
+        )
+    snapshot_dir = tmp_path / "snapshots" / "snap-x"
+    snapshot_dir.mkdir(parents=True)
+    (snapshot_dir / "manifest.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="no longer matches its registered manifest hash"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("snapshot", {"snapshot_id": "snap-x", "manifest_sha256": "a" * 64}),
+        )
+    with pytest.raises(DataError, match="no provenance sidecar"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("store_slice", {"provenance_sha256": "b" * 64}),
+        )
+    with pytest.raises(DataError, match="qualified-loading lane"):
+        run_data_audit(
+            tmp_path,
+            project_id=project_id,
+            ref=_ref("quantpad_receipt", {"receipt_id": "c" * 32, "response_sha256": "d" * 64}),
+        )
+    with pytest.raises(DataError, match="end at or after"):
+        bad_range = _ref("snapshot", {"snapshot_id": "snap-x", "manifest_sha256": "a" * 64})
+        bad_range["start_ts"] = "2021-01-01"
+        bad_range["end_ts"] = "2020-01-01"
+        run_data_audit(tmp_path, project_id=project_id, ref=bad_range)
+
+
+def test_source_records_gain_typed_doi_year_authors_columns(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    source = store.create_research_source(
+        PROJECT_ID,
+        title="Technical patterns and subsequent returns",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/EXAMPLE",
+        year=2019,
+        authors=["A. Author", "B. Author"],
+        at=START,
+    )
+    # The DOI normalizes to lowercase; authors round-trip as a typed list.
+    assert source["doi"] == "10.0000/example"
+    assert source["year"] == 2019
+    assert source["authors"] == ["A. Author", "B. Author"]
+    fetched = store.get_research_source(str(source["source_id"]))
+    assert fetched["doi"] == "10.0000/example"
+    assert fetched["year"] == 2019
+    assert fetched["authors"] == ["A. Author", "B. Author"]
+
+    with pytest.raises(DataError, match="year"):
+        store.create_research_source(
+            PROJECT_ID,
+            title="Bad year",
+            locator="doi:10.0000/bad",
+            provider="crossref",
+            access_mode="metadata_only",
+            year=99,
+        )
+    with pytest.raises(DataError, match="authors"):
+        store.create_research_source(
+            PROJECT_ID,
+            title="Bad authors",
+            locator="doi:10.0000/bad2",
+            provider="crossref",
+            access_mode="metadata_only",
+            authors=["", "ok"],
+        )
+
+
+def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    summary = store.research_case_summary(project_id)
+    contract_id = str(summary["active_contract_id"])
+    source = store.create_research_source(
+        project_id,
+        title="Technical patterns and subsequent returns",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/example",
+        year=2019,
+        at=START + timedelta(minutes=1),
+    )
+    source_id = str(source["source_id"])
+
+    claim = store.draft_source_claim(
+        project_id,
+        source_id=source_id,
+        contract_id=contract_id,
+        claim_text="Double-bottom patterns show small positive drift pre-2005 that decays.",
+        direction="supports",
+        strength="weak",
+        method_summary="Event study over daily US equities with matched controls.",
+        sample_summary="1962-2004, ~2,000 events.",
+        markets=["US_EQUITY"],
+        limitations="Pre-decimalization microstructure; publication-era decay likely.",
+        author="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=2),
+    )
+    claim_id = str(claim["claim_id"])
+    assert claim_id.startswith("sc_")
+    assert claim["status"] == "draft"
+    assert claim["revision"] == 1
+
+    # Screening appends a new revision; the draft row survives unchanged (append-only).
+    screened = store.screen_source_claim(
+        project_id,
+        claim_id=claim_id,
+        actor="owner",
+        at=START + timedelta(minutes=3),
+    )
+    assert screened["status"] == "screened"
+    assert screened["revision"] == 2
+    assert screened["screened_by"] == "owner"
+    rows = store.list_source_claims(project_id)
+    assert [(row["claim_id"], row["revision"], row["status"]) for row in rows] == [
+        (claim_id, 2, "screened"),
+    ]
+    history = store.list_source_claims(project_id, include_history=True)
+    assert [(row["revision"], row["status"]) for row in history if row["claim_id"] == claim_id] == [
+        (2, "screened"),
+        (1, "draft"),
+    ]
+
+    with pytest.raises(DataError, match="already screened"):
+        store.screen_source_claim(project_id, claim_id=claim_id, actor="owner")
+    with pytest.raises(DataError, match="claim direction"):
+        store.draft_source_claim(
+            project_id,
+            source_id=source_id,
+            contract_id=contract_id,
+            claim_text="x",
+            direction="proves",
+            strength="weak",
+            method_summary="m",
+            sample_summary="s",
+            markets=[],
+            limitations="l",
+            author="codex",
+            author_kind="agent",
+        )
+    with pytest.raises(DataError, match="unknown research source"):
+        store.draft_source_claim(
+            project_id,
+            source_id="rs_" + "0" * 64,
+            contract_id=contract_id,
+            claim_text="x",
+            direction="supports",
+            strength="weak",
+            method_summary="m",
+            sample_summary="s",
+            markets=[],
+            limitations="l",
+            author="codex",
+            author_kind="agent",
+        )
+
+
+def test_source_search_is_bounded_and_local_only(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    for index, title in enumerate(
+        ("Momentum everywhere", "Double bottoms revisited", "Double tops and bottoms")
+    ):
+        store.create_research_source(
+            PROJECT_ID,
+            title=title,
+            locator=f"doi:10.0000/s{index}",
+            provider="crossref",
+            access_mode="metadata_only",
+            doi=f"10.0000/s{index}",
+            at=START + timedelta(minutes=index),
+        )
+    hits = store.search_research_sources("double bottom")
+    assert [row["title"] for row in hits] == [
+        "Double bottoms revisited",
+        "Double tops and bottoms",
+    ]
+    by_doi = store.search_research_sources("10.0000/s0")
+    assert [row["title"] for row in by_doi] == ["Momentum everywhere"]
+    assert store.search_research_sources("nonexistent topic") == []
+    with pytest.raises(DataError, match="query"):
+        store.search_research_sources("")
+
+
+def test_source_record_columns_heal_on_a_pre_r4_store(tmp_path: Path) -> None:
+    """A schema-v2 store predating the typed columns gains them idempotently on open."""
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        for column in ("doi", "year", "authors_json"):
+            connection.execute(f"ALTER TABLE research_source_records DROP COLUMN {column}")
+        connection.commit()
+        present = {
+            str(row[1]) for row in connection.execute("PRAGMA table_info(research_source_records)")
+        }
+        assert "doi" not in present
+    finally:
+        connection.close()
+
+    healed = ControlStore(tmp_path)
+    source = healed.create_research_source(
+        PROJECT_ID,
+        title="Post-heal typed source",
+        locator="doi:10.0000/healed",
+        provider="crossref",
+        access_mode="metadata_only",
+        doi="10.0000/healed",
+        year=2020,
+        authors=["A. Author"],
+        at=START,
+    )
+    assert source["doi"] == "10.0000/healed"
+    assert healed.get_research_source(str(source["source_id"]))["year"] == 2020
+
+
+def test_list_research_decisions_returns_append_only_history(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    assert store.list_research_decisions(PROJECT_ID) == []
+    _, confirmation_id = _approved_contracts(store, outcome="INCONCLUSIVE", disposition="park")
+    history = store.list_research_decisions(PROJECT_ID)
+    assert len(history) == 1
+    event = history[0]
+    assert event["contract_id"] == confirmation_id
+    assert event["outcome"] == "INCONCLUSIVE"
+    assert event["disposition"] == "park"
+    assert event["actor"] == "owner"
+    assert event["actor_kind"] == "human"
+    assert isinstance(event["sequence"], int)
+    assert isinstance(event["occurred_at"], str) and event["occurred_at"]
+    assert isinstance(event["reason"], str) and event["reason"]
+    # The reader is bounded to recorded decision columns; no payloads ride along.
+    assert set(event) == {
+        "sequence",
+        "contract_id",
+        "outcome",
+        "disposition",
+        "actor",
+        "actor_kind",
+        "occurred_at",
+        "reason",
+    }
+    with pytest.raises(DataError, match="unknown"):
+        store.list_research_decisions("00000000-0000-4000-8000-00000000ffff")

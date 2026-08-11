@@ -22,6 +22,7 @@ from typing import Any, NoReturn
 import polars as pl
 
 CONTRACT_SCHEMA_VERSION = 1
+SUPPORTED_CONTRACT_SCHEMA_VERSIONS = frozenset({1, 2})
 INPUT_ANCHOR_FILENAME = "input_anchor.json"
 MIN_SYMBOLS = 20
 MIN_ALIGNED_SESSIONS = 756
@@ -47,6 +48,26 @@ PREDICTION_COLUMNS = [
     "fold",
     "split",
     "model_hash",
+    "config_hash",
+    "worker_lock_hash",
+    "seed",
+]
+ENSEMBLE_DIAGNOSTIC_COLUMNS = [
+    "symbol",
+    "origin_ts",
+    "available_at",
+    "target_ts",
+    "fold",
+    "split",
+    "lightgbm_score",
+    "ridge_score",
+    "lightgbm_rank",
+    "ridge_rank",
+    "ensemble_score",
+    "disagreement",
+    "lightgbm_model_hash",
+    "ridge_model_hash",
+    "ensemble_model_hash",
     "config_hash",
     "worker_lock_hash",
     "seed",
@@ -114,6 +135,7 @@ _RESULT_FIELDS = {
     "diagnostic_only",
     "counterfactual_refit",
 }
+_RESULT_V2_FIELDS = _RESULT_FIELDS | {"ensemble_diagnostics"}
 _INPUT_ANCHOR_FIELDS = {"schema_version", "request_sha256", "panel_sha256"}
 
 
@@ -134,6 +156,7 @@ class ValidatedResult:
     request: ValidatedRequest
     result: dict[str, Any]
     predictions: pl.DataFrame
+    ensemble_diagnostics: pl.DataFrame | None
 
 
 @dataclass(frozen=True)
@@ -281,8 +304,14 @@ def _validate_portable_files(exchange_dir: Path) -> None:
 
 
 def _input_anchor_payload(exchange_dir: Path) -> dict[str, object]:
+    request = _load_json(exchange_dir / "request.json", canonical=True)
+    schema_version = _require_int(
+        request.get("schema_version"), "request schema_version", minimum=1
+    )
+    if schema_version not in SUPPORTED_CONTRACT_SCHEMA_VERSIONS:
+        raise MLContractError(f"unsupported request schema_version {schema_version}")
     return {
-        "schema_version": CONTRACT_SCHEMA_VERSION,
+        "schema_version": schema_version,
         "request_sha256": sha256_file(exchange_dir / "request.json"),
         "panel_sha256": sha256_file(exchange_dir / "panel.parquet"),
     }
@@ -294,6 +323,9 @@ def _write_input_anchor(exchange_dir: Path) -> InputAnchor:
     return InputAnchor(
         request_sha256=str(payload["request_sha256"]),
         panel_sha256=str(payload["panel_sha256"]),
+        schema_version=_require_int(
+            payload["schema_version"], "input anchor schema_version", minimum=1
+        ),
     )
 
 
@@ -305,11 +337,14 @@ def validate_input_anchor(exchange_dir: Path) -> InputAnchor:
         _INPUT_ANCHOR_FIELDS,
         "input anchor",
     )
-    if payload["schema_version"] != CONTRACT_SCHEMA_VERSION:
+    if payload["schema_version"] not in SUPPORTED_CONTRACT_SCHEMA_VERSIONS:
         raise MLContractError("input anchor schema_version is unsupported")
     anchor = InputAnchor(
         request_sha256=_require_hash(payload["request_sha256"], "input anchor request_sha256"),
         panel_sha256=_require_hash(payload["panel_sha256"], "input anchor panel_sha256"),
+        schema_version=_require_int(
+            payload["schema_version"], "input anchor schema_version", minimum=1
+        ),
     )
     actual = _input_anchor_payload(exchange_dir)
     if anchor.request_sha256 != actual["request_sha256"]:
@@ -447,8 +482,14 @@ def _validate_recipe_objects(request: dict[str, Any]) -> None:
         )
 
     model = _require_exact_keys(request["model"], {"name", "parameters"}, "model")
-    if model["name"] != "lightgbm" or not isinstance(model["parameters"], dict):
+    if request["schema_version"] == 1 and (
+        model["name"] != "lightgbm" or not isinstance(model["parameters"], dict)
+    ):
         raise MLContractError("starter model must be lightgbm with a parameters object")
+    if request["schema_version"] == 2 and (
+        model["name"] != "rank_ensemble_v1" or not isinstance(model["parameters"], dict)
+    ):
+        raise MLContractError("schema v2 model must be rank_ensemble_v1 with a parameters object")
     unknown_parameters = sorted(set(model["parameters"]) - set(_MODEL_PARAMETER_RULES))
     if unknown_parameters:
         raise MLContractError(f"unsupported LightGBM parameters: {unknown_parameters}")
@@ -547,10 +588,10 @@ def _validate_request_payload(
     request: dict[str, Any], panel: pl.DataFrame, *, verify_config_hash: bool = True
 ) -> ValidatedRequest:
     _require_exact_keys(request, _REQUEST_FIELDS, "request")
-    if request["schema_version"] != CONTRACT_SCHEMA_VERSION:
+    if request["schema_version"] not in SUPPORTED_CONTRACT_SCHEMA_VERSIONS:
         raise MLContractError(
             f"unsupported request schema_version {request['schema_version']!r}; "
-            f"expected {CONTRACT_SCHEMA_VERSION}"
+            f"expected one of {sorted(SUPPORTED_CONTRACT_SCHEMA_VERSIONS)}"
         )
     _require_hash(request["snapshot_hash"], "snapshot_hash")
     _require_hash(request["worker_lock_hash"], "worker_lock_hash")
@@ -676,8 +717,10 @@ def _validate_result_payload(
     *,
     exchange_dir: Path,
 ) -> None:
-    _require_exact_keys(result, _RESULT_FIELDS, "result")
-    if result["schema_version"] != CONTRACT_SCHEMA_VERSION:
+    request_schema = int(validated_request.request["schema_version"])
+    expected_fields = _RESULT_FIELDS if request_schema == 1 else _RESULT_V2_FIELDS
+    _require_exact_keys(result, expected_fields, "result")
+    if result["schema_version"] != request_schema:
         raise MLContractError("result schema_version is unsupported")
     if result["status"] != "succeeded":
         raise MLContractError("result status must be 'succeeded'")
@@ -714,6 +757,92 @@ def _validate_result_payload(
         raise MLContractError(
             "worker results must remain diagnostic_only with counterfactual_refit=false"
         )
+
+
+def _expected_ensemble_diagnostic_schema() -> dict[str, Any]:
+    utc = pl.Datetime("us", "UTC")
+    return {
+        "symbol": pl.String,
+        "origin_ts": utc,
+        "available_at": utc,
+        "target_ts": utc,
+        "fold": pl.Int64,
+        "split": pl.String,
+        "lightgbm_score": pl.Float64,
+        "ridge_score": pl.Float64,
+        "lightgbm_rank": pl.Float64,
+        "ridge_rank": pl.Float64,
+        "ensemble_score": pl.Float64,
+        "disagreement": pl.Float64,
+        "lightgbm_model_hash": pl.String,
+        "ridge_model_hash": pl.String,
+        "ensemble_model_hash": pl.String,
+        "config_hash": pl.String,
+        "worker_lock_hash": pl.String,
+        "seed": pl.Int64,
+    }
+
+
+def _validate_ensemble_diagnostics(
+    validated: ValidatedRequest,
+    result: dict[str, Any],
+    predictions: pl.DataFrame,
+    diagnostics: pl.DataFrame,
+    *,
+    exchange_dir: Path,
+) -> None:
+    metadata = _require_exact_keys(
+        result["ensemble_diagnostics"],
+        {"schema", "schema_version", "path", "sha256", "rows"},
+        "result.ensemble_diagnostics",
+    )
+    if metadata["schema"] != "QlibRankEnsembleDiagnosticsV1" or metadata["schema_version"] != 1:
+        raise MLContractError("unsupported ensemble diagnostic schema")
+    if metadata["path"] != "ensemble_diagnostics.parquet":
+        raise MLContractError("ensemble diagnostic path must be ensemble_diagnostics.parquet")
+    path = exchange_dir / "ensemble_diagnostics.parquet"
+    if metadata["sha256"] != sha256_file(path) or metadata["rows"] != diagnostics.height:
+        raise MLContractError("ensemble diagnostic hash or row count mismatch")
+    if diagnostics.columns != ENSEMBLE_DIAGNOSTIC_COLUMNS:
+        raise MLContractError("ensemble diagnostics columns do not match v1")
+    if diagnostics.schema != _expected_ensemble_diagnostic_schema():
+        raise MLContractError("ensemble diagnostics schema does not match v1")
+    if diagnostics.height != predictions.height or any(
+        count > 0 for count in diagnostics.null_count().row(0)
+    ):
+        raise MLContractError("ensemble diagnostics must align one-for-one without nulls")
+    numeric = [
+        "lightgbm_score",
+        "ridge_score",
+        "lightgbm_rank",
+        "ridge_rank",
+        "ensemble_score",
+        "disagreement",
+    ]
+    if not all(diagnostics.get_column(name).is_finite().all() for name in numeric):
+        raise MLContractError("ensemble diagnostic scores must be finite")
+    if diagnostics.filter(
+        (pl.col("lightgbm_rank") < 0)
+        | (pl.col("lightgbm_rank") > 1)
+        | (pl.col("ridge_rank") < 0)
+        | (pl.col("ridge_rank") > 1)
+        | (pl.col("disagreement") < 0)
+        | (pl.col("disagreement") > 1)
+    ).height:
+        raise MLContractError("ensemble ranks and disagreement must lie in [0, 1]")
+    keys = ["symbol", "origin_ts", "available_at", "target_ts", "fold", "split"]
+    if not diagnostics.select(keys).equals(predictions.select(keys)):
+        raise MLContractError("ensemble diagnostic keys must match canonical predictions")
+    if not diagnostics.get_column("ensemble_score").equals(predictions.get_column("score")):
+        raise MLContractError("ensemble_score must equal canonical prediction score")
+    if not diagnostics.get_column("ensemble_model_hash").equals(
+        predictions.get_column("model_hash")
+    ):
+        raise MLContractError("ensemble model hash must equal canonical prediction model_hash")
+    if diagnostics.get_column("config_hash").unique().to_list() != [
+        validated.request["config_hash"]
+    ]:
+        raise MLContractError("ensemble diagnostic config_hash mismatch")
 
 
 def _validate_predictions(validated: ValidatedRequest, predictions: pl.DataFrame) -> None:
@@ -844,10 +973,23 @@ def validate_result_bundle(
     predictions = _read_parquet(exchange_dir / "predictions.parquet", "predictions")
     _validate_result_payload(validated_request, result, predictions, exchange_dir=exchange_dir)
     _validate_predictions(validated_request, predictions)
+    ensemble_diagnostics: pl.DataFrame | None = None
+    if validated_request.request["schema_version"] == 2:
+        ensemble_diagnostics = _read_parquet(
+            exchange_dir / "ensemble_diagnostics.parquet", "ensemble diagnostics"
+        )
+        _validate_ensemble_diagnostics(
+            validated_request,
+            result,
+            predictions,
+            ensemble_diagnostics,
+            exchange_dir=exchange_dir,
+        )
     return ValidatedResult(
         request=validated_request,
         result=result,
         predictions=predictions,
+        ensemble_diagnostics=ensemble_diagnostics,
     )
 
 
@@ -860,7 +1002,7 @@ def evaluate_result_bundle(exchange_dir: Path) -> dict[str, Any]:
     score_mean = _as_finite_float(scores.mean(), "prediction score mean")
     score_std = _as_finite_float(scores.std(ddof=0), "prediction score standard deviation")
     return {
-        "schema_version": CONTRACT_SCHEMA_VERSION,
+        "schema_version": validated.request.request["schema_version"],
         "authority": "diagnostic_only",
         "rows": validated.predictions.height,
         "symbols": validated.predictions.get_column("symbol").n_unique(),

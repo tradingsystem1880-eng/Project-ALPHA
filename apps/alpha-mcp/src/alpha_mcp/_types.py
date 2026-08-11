@@ -6,7 +6,7 @@ bounded, named output schemas instead of an opaque ``dict[str, Any]`` contract.
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 type JsonObject = dict[str, Any]
 type BoundedJsonValue = (
@@ -14,6 +14,7 @@ type BoundedJsonValue = (
 )
 type LegacyRunManifestOut = dict[str, BoundedJsonValue]
 type ProjectStatus = Literal["active", "accepted", "rejected", "archived"]
+type ResearchGateState = Literal["not_required", "open", "passed", "overridden"]
 type StageState = Literal[
     "not_started", "ready", "queued", "running", "pass", "warning", "fail", "stale"
 ]
@@ -61,6 +62,15 @@ class ProjectSummaryOut(TypedDict):
     current_experiment_id: str | None
     created_at: str
     updated_at: str
+    research_gate_state: ResearchGateState
+
+
+class ResearchGateOverrideOut(TypedDict):
+    project_id: str
+    sequence: int
+    actor: str
+    reason: str
+    recorded_at: str
 
 
 class ProjectPageOut(TypedDict):
@@ -111,6 +121,101 @@ class ResearchCaseOut(TypedDict):
     d2_boundary_hash: str
     d2_history: list[JsonObject]
     d3_state: str
+    # Additive status-read projections; capture/proposal/launch case payloads omit them.
+    hypothesis_card: NotRequired[JsonObject]
+    scorecard: NotRequired[JsonObject]
+
+
+class SourceSearchOut(TypedDict):
+    items: list[JsonObject]
+    limit: int
+    offset: int
+
+
+class SourceClaimOut(TypedDict):
+    claim_id: str
+    revision: int
+    project_id: str
+    source_id: str
+    contract_id: str
+    claim_text: str
+    direction: str
+    strength: str
+    method_summary: str
+    sample_summary: str
+    markets: list[str]
+    limitations: str
+    status: str
+    author: str
+    author_kind: str
+    screened_by: str | None
+    created_at: str
+
+
+class DataInventoryOut(TypedDict):
+    symbols: list[str]
+
+
+class DataCandlesOut(TypedDict):
+    symbol: str
+    snapshot_id: str | None
+    provenance: JsonObject
+    bars: list[JsonObject]
+    truncated: bool
+
+
+class SnapshotListOut(TypedDict):
+    snapshots: list[JsonObject]
+
+
+class ProviderRegistryOut(TypedDict):
+    providers: list[JsonObject]
+
+
+class ResearchContextPacketOut(TypedDict):
+    packet_id: str
+    project_id: str
+    packet_kind: str
+    protocol_id: str | None
+    protocol_content_hash: str | None
+    payload: JsonObject
+    created_by: str
+    created_at: str
+
+
+class ResearchNoteOut(TypedDict):
+    note_id: str
+    project_id: str
+    sequence: int
+    note_kind: str
+    body: str
+    author: str
+    author_kind: str
+    context_packet_id: str | None
+    created_at: str
+
+
+class ResearchProtocolListOut(TypedDict):
+    protocols: list[JsonObject]
+
+
+class ResearchProtocolOut(TypedDict):
+    id: str
+    title: str
+    purpose: str
+    packet_kind: str
+    output_contract: str
+    file: str
+    sha256: str
+    content: str
+
+
+class ResearchBriefOut(TypedDict):
+    brief_schema: str
+    case: JsonObject
+    changes: JsonObject
+    next_action: str
+    packet_id: str
 
 
 class ResearchCaptureOut(TypedDict):
@@ -272,6 +377,7 @@ class ProjectTruncationOut(TypedDict):
     holdouts: bool
     holdout_audit: bool
     decision_packets: bool
+    research_gate_overrides: bool
 
 
 class ProjectDetailOut(ProjectSummaryOut):
@@ -284,6 +390,7 @@ class ProjectDetailOut(ProjectSummaryOut):
     holdout_audit: list[HoldoutAuditEventOut]
     decision_packets: list[DecisionPacketOut]
     truncated: ProjectTruncationOut
+    research_gate_overrides: list[ResearchGateOverrideOut]
 
 
 class SuiteStepOut(TypedDict):
@@ -358,6 +465,14 @@ class EvidenceRecordOut(TypedDict):
     interpretation_label: Literal["association, not causation"] | None
 
 
+class ResearchPromotionReferenceOut(TypedDict):
+    packet_id: str
+    contract_id: str
+    gate_packet_id: str | None
+    gate_packet_hash: str | None
+    recorded_at: str
+
+
 class AgentBriefOut(TypedDict):
     schema_version: Literal[1]
     project_id: str
@@ -367,6 +482,7 @@ class AgentBriefOut(TypedDict):
     allowed_scope: AgentScopeOut
     strategy_version: StrategyVersionOut | None
     experiment: ExperimentSpecOut | None
+    research_promotion: ResearchPromotionReferenceOut | None
     stage_statuses: list[AgentStageStatusOut]
     evidence: list[EvidenceRecordOut]
     evidence_truncated: bool

@@ -112,6 +112,7 @@ def project_detail(project_id: str, *, data_dir: Path, lineage_limit: int) -> di
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "research_gate_overrides",
     ):
         rows = _objects(project.get(key), f"project {key}")
         truncation[key] = bool(upstream_truncation.get(key, False)) or len(rows) > lineage_limit
@@ -134,6 +135,26 @@ def project_detail(project_id: str, *, data_dir: Path, lineage_limit: int) -> di
     project["stage_states"] = stages
     project["truncated"] = truncation
     return project
+
+
+def active_research_gate_overrides(
+    *, data_dir: Path, limit: int, offset: int
+) -> list[dict[str, object]]:
+    return _objects(
+        _run_json(
+            [
+                "project",
+                "research-gate-overrides",
+                "--limit",
+                str(limit),
+                "--offset",
+                str(offset),
+                "--json",
+            ],
+            data_dir=data_dir,
+        ),
+        "active research gate overrides",
+    )
 
 
 def strategy_version(project_id: str, version_id: str, *, data_dir: Path) -> dict[str, object]:

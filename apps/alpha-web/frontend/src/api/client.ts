@@ -1,6 +1,7 @@
 // Thin typed client over the FastAPI JSON layer. Same-origin (loopback), so no base URL.
 
 import type {
+  ActiveResearchGateOverride,
   AgentBrief,
   Candles,
   ChartBundle,
@@ -37,7 +38,16 @@ import type {
   ResearchCaptureRequest,
   ResearchCaptureResponse,
   ResearchCase,
+  ResearchCasePage,
   ResearchCaseReport,
+  ResearchContextPacket,
+  ResearchContextPacketPage,
+  ResearchDatasetPage,
+  ResearchDecisionView,
+  ResearchEvidenceHub,
+  ResearchNotePage,
+  ResearchProtocolLibrary,
+  ResearchScorecard,
   ResearchLaunchResponse,
   ResearchProposalRequest,
   ResearchProposalResponse,
@@ -228,6 +238,45 @@ export const api = {
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/status`),
   researchProgressReport: (projectId: string): Promise<ResearchCaseReport> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/report`),
+  researchCases: (query: { limit?: number; offset?: number } = {}): Promise<ResearchCasePage> =>
+    getJSON(`/api/research/cases?limit=${query.limit ?? 50}&offset=${query.offset ?? 0}`),
+  researchEvidenceHub: (projectId: string): Promise<ResearchEvidenceHub> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/evidence-hub`),
+  researchScorecard: (projectId: string): Promise<ResearchScorecard> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/scorecard`),
+  researchDecisionView: (projectId: string): Promise<ResearchDecisionView> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/decision-view`),
+  researchContextPackets: (
+    projectId: string,
+    query: { limit?: number; offset?: number } = {},
+  ): Promise<ResearchContextPacketPage> =>
+    getJSON(
+      `/api/research/cases/${encodeURIComponent(projectId)}/context-packets`
+        + `?limit=${query.limit ?? 50}&offset=${query.offset ?? 0}`,
+    ),
+  researchContextPacket: (packetId: string): Promise<ResearchContextPacket> =>
+    getJSON(`/api/research/context-packets/${encodeURIComponent(packetId)}`),
+  researchNotes: (
+    projectId: string,
+    query: { limit?: number; offset?: number } = {},
+  ): Promise<ResearchNotePage> =>
+    getJSON(
+      `/api/research/cases/${encodeURIComponent(projectId)}/notes`
+        + `?limit=${query.limit ?? 100}&offset=${query.offset ?? 0}`,
+    ),
+  researchProtocols: (): Promise<ResearchProtocolLibrary> => getJSON('/api/research/protocols'),
+  researchDatasets: (
+    query: { symbol?: string; limit?: number; offset?: number } = {},
+  ): Promise<ResearchDatasetPage> => {
+    const params = new URLSearchParams({
+      limit: String(query.limit ?? 100),
+      offset: String(query.offset ?? 0),
+    })
+    if (query.symbol) params.set('symbol', query.symbol)
+    return getJSON(`/api/research/datasets?${params.toString()}`)
+  },
+  researchGateOverrides: (): Promise<ActiveResearchGateOverride[]> =>
+    getJSON('/api/research-gate-overrides'),
   projects: (limit = 50, offset = 0): Promise<ProjectPage> =>
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>

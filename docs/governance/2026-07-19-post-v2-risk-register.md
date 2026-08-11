@@ -15,9 +15,9 @@
 
 **Implementation checkpoint (2026-07-19):** the provider/paper controls and Workstation v3
 identity, causal evidence, control-plane, agent, ML, surface, migration, and browser controls are
-implemented and passed the final full root/frontend/worker offline acceptance run. R-22 remains an
-owner-decision blocker; R-14's opt-in real Binance connectivity smoke and R-24's reviewed
-UTC-rollover sandbox soak remain pending evidence.
+implemented and passed the final full root/frontend/worker offline acceptance run. R-22 is retired
+under the owner's permanent private/local-only scope; R-14's opt-in real Binance connectivity smoke
+and R-24's reviewed UTC-rollover sandbox soak remain pending evidence.
 
 **Daily-data/IBKR checkpoint (2026-08-03):** Tiingo receipt qualification, correction/quarantine
 promotion recovery, exchange-calendar scheduling, immutable Nautilus decision intents, native
@@ -97,8 +97,8 @@ ten intentional viewport-specific skips. All six desks were checked at 1280x720,
 1920x1080; twelve 1440/1920 pixel baselines passed; axe found zero serious/critical WCAG 2.2 A/AA
 violations. Target Mac mini (`Mac16,10`, Apple M4, 10 cores, 16 GB) probes met the 1.5-second cold
 shell, 100 ms cached-switch, and 60 Hz 25,000-bar/200-annotation budgets. Generated contracts and
-committed SPA assets were clean. This evidence does not close R-22, R-14's network acceptance, or
-R-24's UTC-rollover acceptance.
+committed SPA assets were clean. R-22 was later retired by the permanent private/local-only scope;
+this evidence does not close R-14's network acceptance or R-24's UTC-rollover acceptance.
 
 ## Register
 
@@ -125,7 +125,7 @@ R-24's UTC-rollover acceptance.
 | R-19 | Disk exhaustion prevents heartbeat/event publication | Medium | Medium | Report free space in system panel; atomic failures transition/error where possible; never delete research/session data automatically | Low-space/write-failure tests with typed error; monitor surfaces terminal publication failure | System/paper-store owners — Open operational risk |
 | R-20 | Web/OpenAPI/frontend drift makes safety state invisible or cancellation wrong | Medium | Medium | Strict Pydantic models, generated TypeScript freshness, panel error/disabled/stale/cancel tests, committed asset check | Full frontend gate plus generated OpenAPI check and clean built assets | Web/frontend owners — **Gate** |
 | R-21 | An upstream recommendation expands scope or compromises deterministic authority | Medium | High | ADR-0011 evidence gate; standalone spec for each Ambitious integration; immutable worker boundary; ALPHA validation remains authoritative | Dependency diff matches approved matrix; no prohibited new runtime package | Architecture/build owners — **Gate** |
-| R-22 | ALPHA is distributed without a root license decision or required notices | Medium | High | No implicit license; matrix and README warning; distribution/release blocked pending owner selection and legal review | Root license decision, exact SBOM/notices, reviewed release checklist | Owner — **Owner decision / blocker** |
+| R-22 | ALPHA is distributed or made available to others despite its private local-only scope | Low | High | No sale, publication, sharing, hosting, or multi-user access; preserve third-party notices and service/data terms locally; reopen distribution governance before any scope change | Owner's 2026-08-11 permanent private, single-owner, local-device scope decision recorded in `CLAUDE.md`, architecture, and dependency matrix | Owner — **Retired for current scope; reopen on scope change** |
 | R-23 | "SANDBOX" is mistaken for profitable, validated, testnet, or real execution evidence | Medium | High | Permanent SANDBOX banner; session plane separate from validation; no passed/verdict field; docs distinguish local fills from exchange execution | API schema lacks validation status; frontend copy tests; ADR-0012 | Product/owner — **Gate** |
 | R-24 | Crypto 24/7 cadence or UTC rollover exposes a timestamp/session bug | Medium | High | Calendar-day cadence; UTC timestamps; separately opted-in soak crossing UTC midnight; inspect heartbeat/position/events | Reviewed soak record with no stale heartbeat, duplicate decision, precision, reconciliation, or shutdown defect | Owner + paper owner — Phase-4 completion gate |
 | R-25 | Parameter-only IDs alias runs from different strategy source revisions | Medium | High | Manifest/run identity v3 includes execution fingerprint; completed directories immutable; conflicting bytes fail | Identity sensitivity, legacy-read, and immutable-rerun tests | CLI/artifact owner — **Verified offline 2026-07-19** |
@@ -200,8 +200,9 @@ The following remain accepted only within the stated personal sandbox scope:
 - The reviewed gateway digest, paper permissions, market-data subscriptions, and account operation
   remain owner prerequisites; a digest alone does not establish image trust or license suitability.
 
-Any move to live capital, exchange testnet execution, remote hosting, multiple users/hosts, or
-automated recovery reopens R-01, R-09, R-11, R-14, R-19, R-22, R-23, R-24, and R-43–R-48 and
+Any move to live capital, exchange testnet execution, remote hosting, multiple users/hosts, sharing,
+sale, publication, distribution, or automated recovery reopens R-01, R-09, R-11, R-14, R-19, R-22,
+R-23, R-24, and R-43–R-48 and
 requires a separate ADR and threat/risk model.
 
 ## Review Cadence

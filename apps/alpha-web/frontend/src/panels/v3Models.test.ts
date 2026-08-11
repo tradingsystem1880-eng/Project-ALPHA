@@ -230,6 +230,7 @@ describe('run workspace capabilities', () => {
       has_propfirm_paths: false,
       has_origins: false,
       has_portfolio_analytics: false,
+      research_gate_watermark: null,
     }
   }
 
@@ -341,6 +342,8 @@ describe('development lifecycle projection', () => {
       holdouts: [],
       holdout_audit: [],
       decision_packets: [],
+      research_gate_state: 'not_required',
+      research_gate_overrides: [],
       truncated: {
         versions: false,
         experiments: false,
@@ -350,6 +353,7 @@ describe('development lifecycle projection', () => {
         holdouts: false,
         holdout_audit: false,
         decision_packets: false,
+        research_gate_overrides: false,
       },
     } satisfies ProjectDetail
 
