@@ -83,4 +83,5 @@ class Forecaster(Protocol):
         top_p: float = 0.9,
         top_k: int = 0,
         seed: int = 0,
+        step_ts: Sequence[datetime] | None = None,
     ) -> ForecastResult: ...

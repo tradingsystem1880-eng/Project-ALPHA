@@ -17,6 +17,7 @@ _SUITE_ACTIONS = frozenset(
         "baseline",
         "inner_oos",
         "three_null_families",
+        "monte_carlo",
         "optimize_grid",
         "fixed_stress",
         "portfolio_cross_asset",
@@ -395,6 +396,7 @@ def get_project(project_id: str, *, data_dir: Path, lineage_limit: int) -> dict[
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "monte_carlo_reviews",
         "research_gate_overrides",
     ):
         values = _objects(row.get(key), f"project {key}")

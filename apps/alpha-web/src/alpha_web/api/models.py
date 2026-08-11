@@ -619,6 +619,7 @@ type DevelopmentStageValue = Literal[
     "baseline",
     "oos",
     "robustness",
+    "monte_carlo",
     "optimization",
     "portfolio",
     "candidate",
@@ -648,6 +649,7 @@ type SuiteActionValue = Literal[
     "baseline",
     "inner_oos",
     "three_null_families",
+    "monte_carlo",
     "optimize_grid",
     "fixed_stress",
     "portfolio_cross_asset",
@@ -885,6 +887,19 @@ class DecisionPacket(StrictModel):
     created_at: str
 
 
+class MonteCarloReview(StrictModel):
+    review_id: str
+    schema_version: Literal[1]
+    project_id: str
+    experiment_id: str
+    decision: Literal["continue", "revise", "reject"]
+    actor: str
+    rationale: str
+    evidence_hashes_json: str
+    evidence_hashes: list[tuple[str, str]]
+    recorded_at: str
+
+
 class ProjectTruncation(StrictModel):
     versions: bool
     experiments: bool
@@ -894,6 +909,7 @@ class ProjectTruncation(StrictModel):
     holdouts: bool
     holdout_audit: bool
     decision_packets: bool
+    monte_carlo_reviews: bool
     research_gate_overrides: bool
 
 
@@ -906,6 +922,7 @@ class ProjectDetail(ProjectSummary):
     holdouts: list[HoldoutState]
     holdout_audit: list[HoldoutAuditEvent]
     decision_packets: list[DecisionPacket]
+    monte_carlo_reviews: list[MonteCarloReview]
     truncated: ProjectTruncation
     research_gate_overrides: list[ResearchGateOverride]
 

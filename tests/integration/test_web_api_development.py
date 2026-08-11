@@ -78,6 +78,17 @@ def _experiment(client: TestClient, project_id: str, version_id: str) -> dict[st
     return cast(dict[str, object], response.json())
 
 
+def test_monte_carlo_owner_review_has_no_rest_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    response = client.post(
+        "/api/projects/project/experiments/experiment/monte-carlo-review",
+        json={"decision": "continue", "actor": "owner", "reason": "reviewed"},
+    )
+    assert response.status_code == 404
+
+
 def test_project_version_experiment_stage_and_agent_brief_round_trip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -133,7 +144,7 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
     initialized = client.get(f"/api/projects/{project_id}?lineage_limit=25")
     assert initialized.status_code == 200, initialized.text
     initial_stages = initialized.json()["stage_states"]
-    assert len(initial_stages) == 14
+    assert len(initial_stages) == 15
     assert next(row for row in initial_stages if row["stage"] == "baseline")["state"] == "ready"
     queued_baseline = client.post(
         f"/api/projects/{project_id}/experiments/{experiment['experiment_id']}"
@@ -184,7 +195,7 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
     body = detail.json()
     assert body["current_version_id"] == version["version_id"]
     assert body["current_experiment_id"] == experiment["experiment_id"]
-    assert len(body["stage_states"]) == 14
+    assert len(body["stage_states"]) == 15
     assert next(row for row in body["stage_states"] if row["stage"] == "baseline")["state"] == (
         "queued"
     )
@@ -200,6 +211,7 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
         "holdouts": False,
         "holdout_audit": False,
         "decision_packets": False,
+        "monte_carlo_reviews": False,
         "research_gate_overrides": False,
     }
     assert body["decision_packets"] == []
@@ -208,7 +220,7 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
     assert brief.status_code == 200, brief.text
     brief_body = brief.json()
     assert brief_body["allowed_scope"]["snapshot_id"] == "snap-aapl-2026q2"
-    assert len(brief_body["stage_statuses"]) == 14
+    assert len(brief_body["stage_statuses"]) == 15
     assert next(row for row in brief_body["stage_statuses"] if row["stage"] == "baseline") == {
         "run_id": None,
         "stage": "baseline",

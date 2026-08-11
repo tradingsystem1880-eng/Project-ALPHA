@@ -75,6 +75,14 @@ def _worse(a: str, b: str) -> str:
     return a if _GPA[a] <= _GPA[b] else b
 
 
+def grade_tail_risk(*, maximum_drawdown: float, risk_of_ruin: float) -> str:
+    """Grade a positive drawdown depth and ruin probability on ALPHA's existing risk bands."""
+    return _worse(
+        _grade_at_most(maximum_drawdown, _DRAWDOWN_BANDS),
+        _grade_at_most(risk_of_ruin, _RUIN_BANDS),
+    )
+
+
 def grade_verdict(
     *,
     oos_sharpe: float,
@@ -96,10 +104,7 @@ def grade_verdict(
     checks = sum((null_tiers_passed, dsr_passed, cpcv_passed, ci_lower_positive))
     robustness = _ROBUSTNESS_BY_COUNT[checks]
     drawdown_depth = abs(max_drawdown) if math.isfinite(max_drawdown) else math.nan
-    risk = _worse(
-        _grade_at_most(drawdown_depth, _DRAWDOWN_BANDS),
-        _grade_at_most(risk_of_ruin, _RUIN_BANDS),
-    )
+    risk = grade_tail_risk(maximum_drawdown=drawdown_depth, risk_of_ruin=risk_of_ruin)
     sample = _grade_at_least(float(n_oos), _SAMPLE_BANDS)
 
     gpa = sum(_GPA[g] for g in (edge, robustness, risk, sample)) / 4.0

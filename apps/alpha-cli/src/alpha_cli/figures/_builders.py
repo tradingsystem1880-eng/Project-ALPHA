@@ -16,6 +16,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from alpha_cli.figures import _sources as src
 from alpha_core import DataError
 from alpha_research.figures import (
@@ -1680,6 +1682,329 @@ def portfolio_correlations(ctx: BuildContext) -> FigureSpec:
     )
 
 
+# --------------------------------------------------------------------------- Monte Carlo
+_MONTE_CARLO_LABELS = {
+    "iid_empirical": "IID empirical",
+    "regime_switching": "Causal regime Markov",
+    "student_t": "Student-t",
+    "kronos_synthetic": "Kronos synthetic OHLCV",
+}
+_MONTE_CARLO_ASSUMPTIONS = {
+    "iid_empirical": "IID draws with replacement from OOS account returns",
+    "regime_switching": "two-state first-order Markov chain with empirical state emissions",
+    "student_t": "IID Student-t log-account returns mapped back to simple returns",
+    "kronos_synthetic": "pinned autoregressive OHLCV generation plus fresh full-engine replay",
+}
+
+
+def _mc_families(frame: Any) -> tuple[str, ...]:
+    available = {str(value) for value in frame["family"].unique().to_list()}
+    return tuple(family for family in _MONTE_CARLO_LABELS if family in available)
+
+
+def _hist(values: np.ndarray, *, bins: int = 31) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    counts, edges = np.histogram(values, bins=bins)
+    return tuple(float(value) for value in edges), tuple(float(value) for value in counts)
+
+
+def _mc_path_count(ctx: BuildContext) -> int:
+    value = ctx.field("paths")
+    return int(value) if isinstance(value, int | float) else 0
+
+
+def monte_carlo_equity_fans(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "paths.parquet", "family", "path_index", "step")
+    observed = src.require(ctx.rdir, "observed_oos.parquet", "step")
+    observed_x = tuple(float(value) for value in observed["step"].to_list())
+    observed_equity = src.floats(observed["equity"], name="observed equity")
+    panels: list[Panel] = []
+    total_paths = 0
+    for family in _mc_families(frame):
+        rows = frame.filter(frame["family"] == family).sort("path_index", "step")
+        n_paths = int(rows["path_index"].n_unique())
+        horizon = int(rows["step"].n_unique())
+        matrix = np.asarray(rows["account_return"].to_list(), dtype=np.float64).reshape(
+            n_paths, horizon
+        )
+        equity = np.concatenate((np.ones((n_paths, 1)), np.cumprod(1.0 + matrix, axis=1)), axis=1)
+        x = tuple(float(value) for value in range(horizon + 1))
+        q05, q25, q50, q75, q95 = np.quantile(equity, (0.05, 0.25, 0.5, 0.75, 0.95), axis=0)
+        panels.append(
+            Panel(
+                panel_id=f"fan_{family}",
+                y_label=f"{_MONTE_CARLO_LABELS[family]} equity (x)",
+                y_unit="multiple",
+                note=_MONTE_CARLO_ASSUMPTIONS[family],
+                marks=(
+                    BandMark(
+                        x=x,
+                        lower=tuple(q05),
+                        upper=tuple(q95),
+                        role="substrate",
+                        alpha=0.35,
+                        label="5-95%",
+                    ),
+                    BandMark(
+                        x=x,
+                        lower=tuple(q25),
+                        upper=tuple(q75),
+                        role="neutral",
+                        alpha=0.45,
+                        label="25-75%",
+                    ),
+                    LineMark(x=x, y=tuple(q50), role="subject", label="Median"),
+                    LineMark(
+                        x=observed_x,
+                        y=observed_equity,
+                        role="feature",
+                        label="Observed OOS",
+                    ),
+                ),
+            )
+        )
+        total_paths += n_paths
+    return ctx.spec(
+        "monte_carlo_equity_fans",
+        x_label="OOS account-return step",
+        x_kind="numeric",
+        artifacts=("paths.parquet", "observed_oos.parquet"),
+        answer=(
+            f"This run contributes {len(panels)} of four required family panels and "
+            f"contains {total_paths:,} simulated account paths; observed OOS equity is overlaid."
+        ),
+        panels=tuple(panels),
+    )
+
+
+def monte_carlo_terminal_returns(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "path_metrics.parquet", "family", "path_index")
+    panels: list[Panel] = []
+    medians: list[float] = []
+    families = _mc_families(frame)
+    for family in families:
+        values = np.asarray(
+            frame.filter(frame["family"] == family)["terminal_return"].to_list(),
+            dtype=np.float64,
+        )
+        edges, counts = _hist(values)
+        median = float(np.median(values))
+        medians.append(median)
+        panels.append(
+            Panel(
+                panel_id=f"terminal_{family}",
+                y_label=f"{_MONTE_CARLO_LABELS[family]} paths",
+                y_unit="count",
+                note=f"{len(values):,} paths · {_MONTE_CARLO_ASSUMPTIONS[family]}",
+                marks=(
+                    HistogramMark(edges=edges, counts=counts, role="subject", alpha=0.8),
+                    RuleMark(
+                        orientation="vertical",
+                        position=0.0,
+                        role="reference",
+                        annotate=ValueLabel(text="break-even"),
+                    ),
+                    RuleMark(
+                        orientation="vertical",
+                        position=median,
+                        role="feature",
+                        annotate=ValueLabel(text=f"median {pct(median)}"),
+                    ),
+                ),
+            )
+        )
+    return ctx.spec(
+        "monte_carlo_terminal_returns",
+        x_label="Terminal account return",
+        x_kind="numeric",
+        artifacts=("path_metrics.parquet",),
+        answer="; ".join(
+            f"{_MONTE_CARLO_LABELS[family]} median {pct(median)}"
+            for family, median in zip(families, medians, strict=True)
+        )
+        + f" across {frame['path_index'].n_unique():,} paths per available family.",
+        panels=tuple(panels),
+    )
+
+
+def monte_carlo_drawdown_ruin(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "path_metrics.parquet", "family", "path_index")
+    panels: list[Panel] = []
+    ruin_rates: list[float] = []
+    families = _mc_families(frame)
+    for family in families:
+        rows = frame.filter(frame["family"] == family)
+        values = np.asarray(rows["maximum_drawdown"].to_list(), dtype=np.float64)
+        ruined = [bool(value) for value in rows["ruined"].to_list()]
+        ruin_rate = sum(ruined) / len(ruined)
+        ruin_rates.append(ruin_rate)
+        edges, counts = _hist(values)
+        panels.append(
+            Panel(
+                panel_id=f"drawdown_{family}",
+                y_label=f"{_MONTE_CARLO_LABELS[family]} paths",
+                y_unit="count",
+                note=(
+                    f"{len(values):,} paths · 50% drawdown ruin rate {pct(ruin_rate)} · "
+                    f"{_MONTE_CARLO_ASSUMPTIONS[family]}"
+                ),
+                marks=(
+                    HistogramMark(edges=edges, counts=counts, role="down", alpha=0.8),
+                    RuleMark(
+                        orientation="vertical",
+                        position=0.5,
+                        role="feature",
+                        annotate=ValueLabel(text="50% ruin boundary"),
+                    ),
+                ),
+            )
+        )
+    return ctx.spec(
+        "monte_carlo_drawdown_ruin",
+        x_label="Maximum peak-to-trough account drawdown",
+        x_kind="numeric",
+        artifacts=("path_metrics.parquet",),
+        answer="; ".join(
+            f"{_MONTE_CARLO_LABELS[family]} ruin {pct(rate)}"
+            for family, rate in zip(families, ruin_rates, strict=True)
+        )
+        + ".",
+        panels=tuple(panels),
+    )
+
+
+def monte_carlo_regimes(ctx: BuildContext) -> FigureSpec:
+    emissions = src.require(ctx.rdir, "regime_emissions.parquet", "step")
+    diagnostics = src.require(ctx.rdir, "regime_diagnostics.parquet", "from_state", "to_state")
+    all_returns = np.asarray(emissions["account_return"].to_list(), dtype=np.float64)
+    edges = np.histogram_bin_edges(all_returns, bins=31)
+    emission_marks: list[Mark] = []
+    labels = ("Calm", "Volatile")
+    for state, label in enumerate(labels):
+        values = np.asarray(
+            emissions.filter(emissions["state"] == state)["account_return"].to_list(),
+            dtype=np.float64,
+        )
+        counts, _ = np.histogram(values, bins=edges)
+        emission_marks.append(
+            HistogramMark(
+                edges=tuple(float(value) for value in edges),
+                counts=tuple(float(value) for value in counts),
+                role="categorical",
+                palette_index=state,
+                alpha=0.55,
+                label=label,
+            )
+        )
+    matrix = [[0.0, 0.0], [0.0, 0.0]]
+    for row in diagnostics.iter_rows(named=True):
+        probability = row["transition_probability"]
+        matrix[int(row["from_state"])][int(row["to_state"])] = (
+            0.0 if probability is None else float(probability)
+        )
+    return ctx.spec(
+        "monte_carlo_regimes",
+        x_label="Account return (emissions) / destination state (matrix)",
+        x_kind="numeric",
+        artifacts=("regime_emissions.parquet", "regime_diagnostics.parquet"),
+        answer=(
+            f"The frozen causal classifier assigned {(emissions['state'] == 0).sum()} calm and "
+            f"{(emissions['state'] == 1).sum()} volatile OOS observations; the linked run "
+            f"simulates {_mc_path_count(ctx):,} first-order Markov paths."
+        ),
+        panels=(
+            Panel(
+                panel_id="emissions",
+                y_label="OOS observations",
+                y_unit="count",
+                note="Trailing volatility is prior-known; the state boundary is training-frozen.",
+                marks=tuple(emission_marks),
+            ),
+            Panel(
+                panel_id="transition_matrix",
+                y_label="Origin state",
+                y_unit="category",
+                note="Rows are origin states; each row sums to one when estimable.",
+                marks=(
+                    HeatmapMark(
+                        rows=labels,
+                        columns=labels,
+                        values=tuple(tuple(row) for row in matrix),
+                        cell_text=tuple(tuple(f"{value:.2f}" for value in row) for row in matrix),
+                        colorbar_label="Transition probability",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def kronos_monte_carlo_calibration(ctx: BuildContext) -> FigureSpec:
+    frame = src.require(ctx.rdir, "calibration_origins.parquet", "origin_index")
+    x = tuple(float(value) for value in frame["origin_index"].to_list())
+    crps = src.floats(frame["crps"], name="Kronos CRPS")
+    crps_rw = src.floats(frame["crps_rw"], name="random-walk CRPS")
+    crps_bootstrap = src.floats(frame["crps_bootstrap"], name="bootstrap CRPS")
+    nominal = (0.5, 0.8, 0.9)
+    realised = tuple(
+        sum(bool(value) for value in frame[column].to_list()) / frame.height
+        for column in ("cover50", "cover80", "cover90")
+    )
+    return ctx.spec(
+        "kronos_monte_carlo_calibration",
+        x_label="Rolling origin index / nominal coverage",
+        x_kind="numeric",
+        artifacts=("calibration_origins.parquet",),
+        answer=(
+            f"Mean Kronos CRPS is {sum(crps) / len(crps):.4f} versus random-walk "
+            f"{sum(crps_rw) / len(crps_rw):.4f} and bootstrap "
+            f"{sum(crps_bootstrap) / len(crps_bootstrap):.4f}; realised 80% coverage is "
+            f"{pct(realised[1])} across {frame.height:,} rolling origins and "
+            f"{_mc_path_count(ctx):,} synthetic full-engine paths."
+        ),
+        panels=(
+            Panel(
+                panel_id="crps_skill",
+                y_label="CRPS (lower is better)",
+                y_unit="ratio",
+                note="Pinned Kronos samples versus random-walk and stationary-bootstrap baselines.",
+                marks=(
+                    LineMark(x=x, y=crps, role="subject", label="Kronos"),
+                    LineMark(x=x, y=crps_rw, role="neutral", label="Random walk"),
+                    LineMark(
+                        x=x,
+                        y=crps_bootstrap,
+                        role="reference",
+                        label="Stationary bootstrap",
+                    ),
+                ),
+            ),
+            Panel(
+                panel_id="coverage",
+                y_label="Realised coverage",
+                y_unit="probability",
+                y_limits=(0.0, 1.0),
+                note="Empirical coverage is calibration evidence, not a guarantee of future paths.",
+                marks=(
+                    LineMark(
+                        x=(0.0, 1.0),
+                        y=(0.0, 1.0),
+                        role="reference",
+                        dashed=True,
+                        label="Perfect calibration",
+                    ),
+                    ScatterMark(
+                        x=nominal,
+                        y=realised,
+                        role="subject",
+                        size=48.0,
+                        label="Observed",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
 # --------------------------------------------------------------------------- prop firm
 def propfirm_outcomes(ctx: BuildContext) -> FigureSpec:
     frame = src.require(ctx.rdir, "propfirm_paths.parquet", "path_index")
@@ -2206,6 +2531,11 @@ BUILDERS.update(
     {
         "portfolio_weights": portfolio_weights,
         "portfolio_correlations": portfolio_correlations,
+        "monte_carlo_equity_fans": monte_carlo_equity_fans,
+        "monte_carlo_terminal_returns": monte_carlo_terminal_returns,
+        "monte_carlo_drawdown_ruin": monte_carlo_drawdown_ruin,
+        "monte_carlo_regimes": monte_carlo_regimes,
+        "kronos_monte_carlo_calibration": kronos_monte_carlo_calibration,
         "propfirm_outcomes": propfirm_outcomes,
         "forecast_fan": forecast_fan,
         "forecast_skill": forecast_skill,

@@ -119,6 +119,21 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: 'Resampling in random-length blocks to keep autocorrelation.',
     long: 'Resamples a return series in geometric-length blocks (mean ~5 days here) instead of single draws, preserving short-range dependence. Used by the CIs, the Tier-1 null, risk-of-ruin, and the prop-firm Monte Carlo.',
   },
+  monte_carlo_path_risk: {
+    name: 'Monte Carlo path risk',
+    short: 'How alternate sequencing, regimes, tails, or synthetic markets change outcomes.',
+    long: 'A required post-robustness stage over the canonical OOS strategy. IID empirical, causal regime-Markov, and Student-t families simulate account returns; Kronos generates OHLCV and reruns the full engine. Each family is graded independently. These scenarios describe fragility and drawdown risk; they do not prove edge and are never majority-voted.',
+  },
+  regime_markov_bootstrap: {
+    name: 'Regime Markov bootstrap',
+    short: 'Resamples state-specific returns while preserving estimated regime persistence.',
+    long: 'Each OOS account return is tagged calm or volatile using prior-known trailing market volatility and a boundary frozen from training. A two-state transition matrix chooses the next regime, then an empirical return is drawn from that state. Sparse emissions or outbound transitions make the family non-estimable rather than inviting a fallback.',
+  },
+  kronos_synthetic_path: {
+    name: 'Kronos synthetic path',
+    short: 'Model-generated OHLCV replayed through a fresh canonical strategy engine.',
+    long: 'Kronos starts from the real training prefix and generates the source snapshot\'s exact future timestamps. ALPHA retains raw candles, rejects invalid values, minimally encloses open/close with high/low when needed, recomputes signals, and runs a fresh cost-aware portfolio. Post-cutoff CRPS and coverage calibrate adequacy; pretraining overlap remains a permanent warning.',
+  },
   coverage: {
     name: 'Interval coverage',
     short: 'How often the realized value lands inside a forecast band.',

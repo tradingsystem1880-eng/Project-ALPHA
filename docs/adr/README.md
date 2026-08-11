@@ -34,6 +34,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0026](0026-d2-confirmation-readiness-gate-promotion-override.md) | D2 confirmation authority, readiness gate, promotion packet, exploratory override | Accepted | 2026-08-07 |
 | [0027](0027-tiered-research-readiness-semantics.md) | Tiered research readiness is Python-authoritative and non-numeric | Accepted | 2026-08-11 |
 | [0028](0028-governed-market-state-and-model-candidates.md) | Govern market state, calibrated Kronos, and Qlib rank ensembles as separate candidates | Accepted | 2026-08-11 |
+| [0029](0029-four-family-monte-carlo-validation.md) | Require four-family Monte Carlo path-risk validation | Accepted | 2026-08-12 |
 
 ## Conventions
 
@@ -54,4 +55,3 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`CLAUDE.md`](../../CLAUDE.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
 
 - **Polars as the default dataframe** (pandas confined to the yfinance adapter/parser, tear-sheet rendering edge, and Kronos facade — see ADR-0008).
-- **Fat-tailed null generators** (`student_t` / `garch`) as selectable alternatives to the block-bootstrap null.

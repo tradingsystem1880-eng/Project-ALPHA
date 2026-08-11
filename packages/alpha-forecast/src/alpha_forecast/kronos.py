@@ -15,12 +15,13 @@ Only cpu is bit-exact; mps/cuda are best-effort (recorded via ``provenance()``).
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from importlib.metadata import version as _dist_version
 from pathlib import Path
 from typing import Any
 
 from alpha_core import Bar, DataError
-from alpha_forecast.timestamps import future_session_ts
+from alpha_forecast.timestamps import resolve_forecast_timestamps
 from alpha_forecast.types import ForecastResult, SampledPath
 
 VENDORED_KRONOS_SHA = "67b630e67f6a18c9e9be918d9b4337c960db1e9a"
@@ -121,6 +122,7 @@ class KronosForecaster:
         top_p: float = 0.9,
         top_k: int = 0,
         seed: int = 0,
+        step_ts: Sequence[datetime] | None = None,
     ) -> ForecastResult:
         if len(bars) < 2:
             raise DataError(f"KronosForecaster needs >= 2 context bars, got {len(bars)}")
@@ -148,8 +150,8 @@ class KronosForecaster:
             }
         )
         x_ts = pd.Series(pd.to_datetime(ts))
-        step_ts = future_session_ts(ts[-_RECENT_TS_WINDOW:], horizon)
-        y_ts = pd.Series(pd.to_datetime(step_ts))
+        resolved_step_ts = resolve_forecast_timestamps(ts[-_RECENT_TS_WINDOW:], horizon, step_ts)
+        y_ts = pd.Series(pd.to_datetime(resolved_step_ts))
 
         seed_seq = np.random.SeedSequence([seed & 0xFFFFFFFF, 0x4B524F53])  # "KROS"
         chunk_seeds = seed_seq.generate_state((sample_count + _CHUNK - 1) // _CHUNK)
@@ -186,6 +188,6 @@ class KronosForecaster:
             symbol=bars[-1].symbol,
             origin_ts=bars[-1].ts,
             horizon=horizon,
-            step_ts=tuple(step_ts),
+            step_ts=resolved_step_ts,
             samples=samples,
         )

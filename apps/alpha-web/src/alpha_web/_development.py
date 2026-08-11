@@ -112,6 +112,7 @@ def project_detail(project_id: str, *, data_dir: Path, lineage_limit: int) -> di
         "holdouts",
         "holdout_audit",
         "decision_packets",
+        "monte_carlo_reviews",
         "research_gate_overrides",
     ):
         rows = _objects(project.get(key), f"project {key}")

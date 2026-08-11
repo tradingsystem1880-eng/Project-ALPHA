@@ -124,6 +124,8 @@ def _publish_suite(
         manifest["passed"] = passed
     if null_model is not None:
         manifest["metadata"] = {"null_model": null_model}
+    if command.startswith("monte_carlo_"):
+        manifest["status"] = "clear"
     if holdout_spec_hash is not None:
         manifest["holdout_spec_hash"] = holdout_spec_hash
     if null_outcome is not None:
@@ -173,6 +175,13 @@ def _pass_stage(
                 ("3000000000000003", "validate", "pass", True, "bootstrap"),
                 ("3000000000000004", "validate", "warning", None, "student_t"),
                 ("3000000000000005", "validate", "warning", None, "garch"),
+            ],
+        ),
+        "monte_carlo": (
+            "monte_carlo",
+            [
+                ("3000000000000009", "monte_carlo_classical", "pass", None, None),
+                ("300000000000000a", "monte_carlo_kronos", "pass", None, None),
             ],
         ),
         "optimization": (
@@ -565,7 +574,15 @@ def test_three_null_execution_links_sensitivities_as_warnings(tmp_path: Path) ->
 
 def test_holdout_execution_performs_the_audited_reveal_before_evaluation(tmp_path: Path) -> None:
     store, project_id, _version_id, experiment_id = _experiment(tmp_path)
-    for stage in ("baseline", "oos", "robustness", "optimization", "portfolio", "candidate"):
+    for stage in (
+        "baseline",
+        "oos",
+        "robustness",
+        "monte_carlo",
+        "optimization",
+        "portfolio",
+        "candidate",
+    ):
         _pass_stage(store, tmp_path, project_id, experiment_id, stage)
     plan = _suite.build_suite_plan(
         store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path

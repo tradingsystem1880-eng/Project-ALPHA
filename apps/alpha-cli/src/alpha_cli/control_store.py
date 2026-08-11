@@ -26,6 +26,7 @@ import polars as pl
 from alpha_cli.artifact_contract import (
     ARTIFACT_CONTRACT_VERSION,
     MANIFEST_SCHEMA_VERSION,
+    sha256_file,
     verify_manifest_artifacts,
 )
 from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KINDS
@@ -49,6 +50,7 @@ type AttemptStatus = Literal[
     "rejected",
     "cancelled",
 ]
+type MonteCarloReviewDecision = Literal["continue", "revise", "reject"]
 type JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 type EvidenceStatus = Literal["draft", "corroborated", "rejected", "superseded"]
 type AuthorKind = Literal["human", "agent"]
@@ -87,6 +89,7 @@ DEVELOPMENT_STAGE_ORDER: Final = (
     "baseline",
     "oos",
     "robustness",
+    "monte_carlo",
     "optimization",
     "portfolio",
     "candidate",
@@ -152,6 +155,7 @@ RESEARCH_D2_REVISION_RELATIONS: Final = frozenset(
 )
 RESEARCH_SOURCE_ACCESS_MODES: Final = frozenset({"metadata_only", "open_access", "owner_provided"})
 PROJECT_RESEARCH_ORIGINS: Final = frozenset({"strategy_development", "research_capture"})
+_MONTE_CARLO_COMMANDS: Final = frozenset({"monte_carlo_classical", "monte_carlo_kronos"})
 
 _ASSOCIATION_TOKEN_MARKERS: Final = ("associat", "correlat", "kendall", "pearson", "spearman")
 _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
@@ -168,6 +172,7 @@ _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
         "propfirm_run",
         "forecast_run",
         "forecast_eval",
+        *_MONTE_CARLO_COMMANDS,
         "ml_replay",
     }
 )
@@ -194,6 +199,7 @@ _SUITE_JOB_KINDS: Final = frozenset(
         "suite:baseline",
         "suite:inner_oos",
         "suite:three_null_families",
+        "suite:monte_carlo",
         "suite:optimize_grid",
         "suite:fixed_stress",
         "suite:portfolio_cross_asset",
@@ -207,6 +213,10 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
     "baseline": ("baseline", frozenset({"backtest_run"})),
     "inner_oos": ("oos", frozenset({"backtest_oos"})),
     "three_null_families": ("robustness", frozenset({"validate"})),
+    "monte_carlo": (
+        "monte_carlo",
+        _MONTE_CARLO_COMMANDS,
+    ),
     "optimize_grid": ("optimization", frozenset({"optim_grid"})),
     "portfolio_cross_asset": (
         "portfolio",
@@ -217,13 +227,23 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
     "holdout_reveal": ("holdout", frozenset({"backtest_holdout"})),
 }
 _PRE_REVEAL_RESEARCH_STAGES: Final = frozenset(
-    {"baseline", "oos", "robustness", "optimization", "portfolio", "kronos", "ml"}
+    {
+        "baseline",
+        "oos",
+        "robustness",
+        "monte_carlo",
+        "optimization",
+        "portfolio",
+        "kronos",
+        "ml",
+    }
 )
 _PRE_REVEAL_RESEARCH_JOB_KINDS: Final = frozenset(
     {
         "suite:baseline",
         "suite:inner_oos",
         "suite:three_null_families",
+        "suite:monte_carlo",
         "suite:optimize_grid",
         "suite:fixed_stress",
         "suite:portfolio_cross_asset",
@@ -808,6 +828,21 @@ CREATE TABLE IF NOT EXISTS research_dataset_audits (
     PRIMARY KEY (ref_id, sequence)
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS monte_carlo_reviews (
+    review_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
+    decision TEXT NOT NULL CHECK (decision IN ('continue', 'revise', 'reject')),
+    actor TEXT NOT NULL,
+    rationale TEXT NOT NULL,
+    evidence_hashes_json TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE (project_id, experiment_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_monte_carlo_reviews_project
+    ON monte_carlo_reviews(project_id, recorded_at, review_id);
+
 CREATE INDEX IF NOT EXISTS idx_research_dataset_refs_instrument
     ON research_dataset_refs(instrument, registered_at, ref_id);
 CREATE INDEX IF NOT EXISTS idx_research_dataset_audits_project
@@ -1170,6 +1205,65 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
         raise
 
 
+def _heal_missing_development_stage_rows(connection: sqlite3.Connection) -> None:
+    """Add newly declared stage rows without rewriting any existing stage history."""
+    experiment_count = int(
+        connection.execute("SELECT COUNT(*) FROM project_experiments").fetchone()[0]
+    )
+    if experiment_count == 0:
+        return
+    distinct_stage_count = int(
+        connection.execute(
+            """SELECT COUNT(*) FROM (
+            SELECT DISTINCT project_id, experiment_id, stage FROM experiment_stage_events
+            )"""
+        ).fetchone()[0]
+    )
+    if distinct_stage_count == experiment_count * len(DEVELOPMENT_STAGE_ORDER):
+        return
+    experiment_rows = connection.execute(
+        """SELECT project_id, experiment_id, linked_at
+        FROM project_experiments ORDER BY linked_at, project_id, experiment_id"""
+    ).fetchall()
+    existing = {
+        (str(row["project_id"]), str(row["experiment_id"]), str(row["stage"]))
+        for row in connection.execute(
+            "SELECT DISTINCT project_id, experiment_id, stage FROM experiment_stage_events"
+        ).fetchall()
+    }
+    missing = [
+        (str(row["project_id"]), str(row["experiment_id"]), stage, str(row["linked_at"]))
+        for row in experiment_rows
+        for stage in DEVELOPMENT_STAGE_ORDER
+        if (str(row["project_id"]), str(row["experiment_id"]), stage) not in existing
+    ]
+    if not missing:
+        return
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        for project_id, experiment_id, stage, linked_at in missing:
+            if stage in {"hypothesis", "data", "strategy"}:
+                state = "pass"
+                reason = "immutable experiment specification created"
+            elif stage == "baseline":
+                state = "ready"
+                reason = "immutable experiment specification is ready for baseline"
+            else:
+                state = "not_started"
+                reason = "stage added additively; awaiting prerequisite stages"
+            connection.execute(
+                """INSERT OR IGNORE INTO experiment_stage_events
+                (project_id, experiment_id, stage, sequence, state, occurred_at, reason)
+                VALUES (?, ?, ?, 1, ?, ?, ?)""",
+                (project_id, experiment_id, stage, state, linked_at, reason),
+            )
+        connection.commit()
+    except sqlite3.Error:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
 def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
     """Serialize backup and migration so the retained v1 snapshot cannot become stale."""
 
@@ -1320,6 +1414,7 @@ class ControlStore:
                 # fail loud, never regenerate from the created_at date rule). Idempotent
                 # DDL healing runs only when a declared object is actually missing.
                 _heal_missing_schema_objects(connection)
+            _heal_missing_development_stage_rows(connection)
             return connection
         except (OSError, sqlite3.Error) as exc:
             if connection is not None:
@@ -2892,6 +2987,11 @@ class ControlStore:
                 WHERE project_id = ? ORDER BY created_at, packet_id""",
                 (project_id,),
             ).fetchall()
+            monte_carlo_reviews = connection.execute(
+                """SELECT * FROM monte_carlo_reviews
+                WHERE project_id = ? ORDER BY recorded_at, review_id""",
+                (project_id,),
+            ).fetchall()
             gate_state = self._research_gate_state(connection, project_id)
             gate_overrides = connection.execute(
                 """SELECT * FROM research_gate_override_events
@@ -2939,9 +3039,181 @@ class ControlStore:
         project["holdouts"] = [dict(row) for row in holdouts]
         project["holdout_audit"] = [dict(row) for row in audit]
         project["decision_packets"] = [self._decision_packet_view(row) for row in decisions]
+        project["monte_carlo_reviews"] = [
+            {
+                **dict(row),
+                "schema_version": 1,
+                "evidence_hashes": _decode_json(
+                    row["evidence_hashes_json"], "Monte Carlo review evidence hashes"
+                ),
+            }
+            for row in monte_carlo_reviews
+        ]
         project["research_gate_state"] = gate_state
         project["research_gate_overrides"] = [dict(row) for row in gate_overrides]
         return project
+
+    def _monte_carlo_evidence_hashes(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        experiment_id: str,
+    ) -> tuple[tuple[str, str], ...]:
+        rows = connection.execute(
+            """SELECT * FROM stage_run_links
+            WHERE project_id = ? AND experiment_id = ? AND stage = 'monte_carlo'
+            ORDER BY linked_at, link_id""",
+            (project_id, experiment_id),
+        ).fetchall()
+        evidence: list[tuple[str, str, str, str]] = []
+        for row in rows:
+            view = self._stage_link_view(connection, row)
+            if view["state"] not in {"pass", "warning"}:
+                continue
+            run_id = str(row["run_id"])
+            rdir, manifest = self._verified_run(run_id)
+            command = str(manifest.get("command"))
+            if command not in _MONTE_CARLO_COMMANDS:
+                continue
+            evidence.append(
+                (
+                    command,
+                    run_id,
+                    sha256_file(rdir / "manifest.json"),
+                    str(manifest.get("source_run_id")),
+                )
+            )
+        commands = {command for command, _, _, _ in evidence}
+        if commands != _MONTE_CARLO_COMMANDS:
+            raise DataError(
+                "Monte Carlo review requires verified classical and Kronos run evidence"
+            )
+        source_runs = {source_run_id for _, _, _, source_run_id in evidence}
+        if len(source_runs) != 1:
+            raise DataError("Monte Carlo family evidence does not share one source validation run")
+        return tuple((run_id, digest) for _, run_id, digest, _ in sorted(evidence))
+
+    def _encoded_monte_carlo_evidence_hashes(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        experiment_id: str,
+    ) -> str:
+        evidence_hashes = self._monte_carlo_evidence_hashes(
+            connection,
+            project_id=project_id,
+            experiment_id=experiment_id,
+        )
+        return _canonical_json(
+            [[run_id, digest] for run_id, digest in evidence_hashes],
+            "Monte Carlo review evidence hashes",
+        )
+
+    def review_monte_carlo(
+        self,
+        project_id: str,
+        experiment_id: str,
+        *,
+        decision: MonteCarloReviewDecision,
+        actor: str,
+        rationale: str,
+        review_id: str | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append the CLI-only owner disposition for one exact warning evidence set."""
+        if decision not in {"continue", "revise", "reject"}:
+            raise DataError("Monte Carlo decision must be continue, revise, or reject")
+        clean_actor = _required_text(actor, "Monte Carlo review actor", max_length=200)
+        clean_rationale = _required_text(rationale, "Monte Carlo review rationale")
+        rid = _new_uuid(review_id, "review_id")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            self._require_project_experiment(connection, project_id, experiment_id)
+            stage_state = self._latest_experiment_stage_state(
+                connection,
+                project_id=project_id,
+                experiment_id=experiment_id,
+                stage="monte_carlo",
+            )
+            if stage_state != "warning":
+                raise DataError("owner Monte Carlo review is allowed only for a warning stage")
+            encoded = self._encoded_monte_carlo_evidence_hashes(
+                connection, project_id=project_id, experiment_id=experiment_id
+            )
+            existing = connection.execute(
+                """SELECT * FROM monte_carlo_reviews
+                WHERE project_id = ? AND experiment_id = ?""",
+                (project_id, experiment_id),
+            ).fetchone()
+            if existing is not None:
+                if (
+                    existing["decision"] == decision
+                    and existing["actor"] == clean_actor
+                    and existing["rationale"] == clean_rationale
+                    and existing["evidence_hashes_json"] == encoded
+                ):
+                    row = existing
+                else:
+                    raise DataError("Monte Carlo evidence already has an append-only owner review")
+            else:
+                connection.execute(
+                    """INSERT INTO monte_carlo_reviews (
+                    review_id, project_id, experiment_id, decision, actor, rationale,
+                    evidence_hashes_json, recorded_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        rid,
+                        project_id,
+                        experiment_id,
+                        decision,
+                        clean_actor,
+                        clean_rationale,
+                        encoded,
+                        timestamp,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM monte_carlo_reviews WHERE review_id = ?", (rid,)
+                ).fetchone()
+            if row is None:  # pragma: no cover - insert/select invariant.
+                raise DataError("control store failed to persist Monte Carlo review")
+            return {
+                **dict(row),
+                "schema_version": 1,
+                "evidence_hashes": _decode_json(
+                    row["evidence_hashes_json"], "Monte Carlo review evidence hashes"
+                ),
+            }
+
+    def monte_carlo_review_allows_progression(self, project_id: str, experiment_id: str) -> bool:
+        """Return true for a clear stage or an untampered warning explicitly continued by owner."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            self._require_project_experiment(connection, project_id, experiment_id)
+            state = self._latest_experiment_stage_state(
+                connection,
+                project_id=project_id,
+                experiment_id=experiment_id,
+                stage="monte_carlo",
+            )
+            if state == "pass":
+                return True
+            if state != "warning":
+                return False
+            review = connection.execute(
+                """SELECT * FROM monte_carlo_reviews
+                WHERE project_id = ? AND experiment_id = ?""",
+                (project_id, experiment_id),
+            ).fetchone()
+            if review is None or review["decision"] != "continue":
+                return False
+            expected = self._encoded_monte_carlo_evidence_hashes(
+                connection, project_id=project_id, experiment_id=experiment_id
+            )
+            return bool(review["evidence_hashes_json"] == expected)
 
     def create_research_source(
         self,
@@ -7128,6 +7400,7 @@ class ControlStore:
                     "baseline",
                     "inner_oos",
                     "three_null_families",
+                    "monte_carlo",
                     "optimize_grid",
                     "portfolio_cross_asset",
                     "qlib",
@@ -7179,6 +7452,14 @@ class ControlStore:
                         raise DataError(
                             "robustness warning links are reserved for Student-t/GARCH sensitivity"
                         )
+                if suite_action == "monte_carlo":
+                    run_status = manifest.get("status")
+                    if clean_state == "pass" and run_status != "clear":
+                        raise DataError("Monte Carlo pass link requires a clear family run")
+                    if clean_state == "warning" and run_status != "warning":
+                        raise DataError("Monte Carlo warning link requires warning family evidence")
+                    if clean_state == "fail" and run_status != "fail":
+                        raise DataError("Monte Carlo fail link requires failed family evidence")
             existing = connection.execute(
                 """SELECT * FROM stage_run_links
                 WHERE project_id = ? AND experiment_id = ? AND stage = ? AND run_id = ?""",
@@ -7332,6 +7613,15 @@ class ControlStore:
                     "Student-t and GARCH sensitivity runs"
                 )
             return
+        if suite_action == "monte_carlo":
+            if commands != _MONTE_CARLO_COMMANDS:
+                raise DataError(
+                    "Monte Carlo completion requires classical and Kronos canonical runs"
+                )
+            source_runs = {str(manifest.get("source_run_id")) for _, manifest in evidence}
+            if len(source_runs) != 1:
+                raise DataError("Monte Carlo families must cite one source validation run")
+            return
         if suite_action == "portfolio_cross_asset":
             required = (
                 {"backtest_portfolio"},
@@ -7389,7 +7679,14 @@ class ControlStore:
                 "the frozen experiment snapshot is unavailable"
             ) from exc
         by_stage: dict[str, list[dict[str, object]]] = {}
-        for stage in ("baseline", "oos", "robustness", "optimization", "portfolio"):
+        for stage in (
+            "baseline",
+            "oos",
+            "robustness",
+            "monte_carlo",
+            "optimization",
+            "portfolio",
+        ):
             for view, manifest in self._terminal_stage_runs(
                 connection,
                 project_id=project_id,
@@ -7412,6 +7709,7 @@ class ControlStore:
                         "command": manifest.get("command"),
                         "passed": manifest.get("passed"),
                         "metadata": manifest.get("metadata"),
+                        "status": manifest.get("status"),
                     }
                 )
 
@@ -7436,6 +7734,34 @@ class ControlStore:
         )
         if families != {"bootstrap", "student_t", "garch"} or not headline:
             problems.append("three-family robustness evidence with a passing bootstrap headline")
+        monte_carlo = by_stage.get("monte_carlo", [])
+        monte_carlo_commands = {str(row["command"]) for row in monte_carlo}
+        monte_carlo_clear = monte_carlo_commands == _MONTE_CARLO_COMMANDS and all(
+            row["status"] == "clear" for row in monte_carlo
+        )
+        if not monte_carlo_clear:
+            review = connection.execute(
+                """SELECT decision, evidence_hashes_json FROM monte_carlo_reviews
+                WHERE project_id = ? AND experiment_id = ?""",
+                (project_id, experiment_id),
+            ).fetchone()
+            expected_review_hashes: str | None = None
+            if monte_carlo_commands == _MONTE_CARLO_COMMANDS:
+                try:
+                    expected_review_hashes = self._encoded_monte_carlo_evidence_hashes(
+                        connection,
+                        project_id=project_id,
+                        experiment_id=experiment_id,
+                    )
+                except DataError:
+                    expected_review_hashes = None
+            if (
+                monte_carlo_commands != _MONTE_CARLO_COMMANDS
+                or review is None
+                or review["decision"] != "continue"
+                or review["evidence_hashes_json"] != expected_review_hashes
+            ):
+                problems.append("four-family Monte Carlo evidence and owner warning disposition")
         if not any(
             row["command"] == "optim_grid" and row["passed"] is True
             for row in by_stage.get("optimization", [])
@@ -8051,6 +8377,10 @@ class ControlStore:
             "baseline": (frozenset({"backtest_run"}),),
             "oos": (frozenset({"backtest_oos"}),),
             "robustness": (frozenset({"validate"}),),
+            "monte_carlo": (
+                frozenset({"monte_carlo_classical"}),
+                frozenset({"monte_carlo_kronos"}),
+            ),
             "optimization": (frozenset({"optim_grid"}),),
             "portfolio": (
                 frozenset({"backtest_portfolio"}),
@@ -8170,6 +8500,7 @@ class ControlStore:
                     "baseline",
                     "oos",
                     "robustness",
+                    "monte_carlo",
                     "optimization",
                     "portfolio",
                     "candidate",
@@ -9584,6 +9915,7 @@ __all__ = [
     "ControlStore",
     "EvidenceStatus",
     "JobStatus",
+    "MonteCarloReviewDecision",
     "ProjectStatus",
     "ResearchContractScope",
     "ResearchD2State",

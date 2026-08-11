@@ -1010,6 +1010,7 @@ function projectDetail(
     holdouts: [],
     holdout_audit: [],
     decision_packets: [],
+    monte_carlo_reviews: [],
     research_gate_overrides: [],
     truncated: {
       versions: false,
@@ -1020,6 +1021,7 @@ function projectDetail(
       holdouts: false,
       holdout_audit: false,
       decision_packets: false,
+      monte_carlo_reviews: false,
       research_gate_overrides: false,
     },
   }

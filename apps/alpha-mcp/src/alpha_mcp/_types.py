@@ -36,6 +36,7 @@ type SuiteAction = Literal[
     "baseline",
     "inner_oos",
     "three_null_families",
+    "monte_carlo",
     "optimize_grid",
     "fixed_stress",
     "portfolio_cross_asset",
@@ -357,6 +358,19 @@ class DecisionPacketOut(TypedDict):
     created_at: str
 
 
+class MonteCarloReviewOut(TypedDict):
+    review_id: str
+    schema_version: Literal[1]
+    project_id: str
+    experiment_id: str
+    decision: Literal["continue", "revise", "reject"]
+    actor: str
+    rationale: str
+    evidence_hashes_json: str
+    evidence_hashes: list[tuple[str, str]]
+    recorded_at: str
+
+
 class HoldoutAuditEventOut(TypedDict):
     audit_id: int
     project_id: str
@@ -377,6 +391,7 @@ class ProjectTruncationOut(TypedDict):
     holdouts: bool
     holdout_audit: bool
     decision_packets: bool
+    monte_carlo_reviews: bool
     research_gate_overrides: bool
 
 
@@ -389,6 +404,7 @@ class ProjectDetailOut(ProjectSummaryOut):
     holdouts: list[HoldoutStateOut]
     holdout_audit: list[HoldoutAuditEventOut]
     decision_packets: list[DecisionPacketOut]
+    monte_carlo_reviews: list[MonteCarloReviewOut]
     truncated: ProjectTruncationOut
     research_gate_overrides: list[ResearchGateOverrideOut]
 

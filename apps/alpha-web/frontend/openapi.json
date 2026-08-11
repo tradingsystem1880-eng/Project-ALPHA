@@ -2061,6 +2061,7 @@
           "baseline",
           "oos",
           "robustness",
+          "monte_carlo",
           "optimization",
           "portfolio",
           "candidate",
@@ -7438,6 +7439,84 @@
         "title": "MlWorkerResult",
         "type": "object"
       },
+      "MonteCarloReview": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "continue",
+              "revise",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "evidence_hashes": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Evidence Hashes",
+            "type": "array"
+          },
+          "evidence_hashes_json": {
+            "title": "Evidence Hashes Json",
+            "type": "string"
+          },
+          "experiment_id": {
+            "title": "Experiment Id",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "review_id": {
+            "title": "Review Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "review_id",
+          "schema_version",
+          "project_id",
+          "experiment_id",
+          "decision",
+          "actor",
+          "rationale",
+          "evidence_hashes_json",
+          "evidence_hashes",
+          "recorded_at"
+        ],
+        "title": "MonteCarloReview",
+        "type": "object"
+      },
       "NativeBenchmarkComparison": {
         "additionalProperties": false,
         "properties": {
@@ -9346,6 +9425,13 @@
             "title": "Hypothesis",
             "type": "string"
           },
+          "monte_carlo_reviews": {
+            "items": {
+              "$ref": "#/components/schemas/MonteCarloReview"
+            },
+            "title": "Monte Carlo Reviews",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -9415,6 +9501,7 @@
           "holdouts",
           "holdout_audit",
           "decision_packets",
+          "monte_carlo_reviews",
           "truncated",
           "research_gate_overrides"
         ],
@@ -9556,6 +9643,10 @@
             "title": "Holdouts",
             "type": "boolean"
           },
+          "monte_carlo_reviews": {
+            "title": "Monte Carlo Reviews",
+            "type": "boolean"
+          },
           "research_gate_overrides": {
             "title": "Research Gate Overrides",
             "type": "boolean"
@@ -9582,6 +9673,7 @@
           "holdouts",
           "holdout_audit",
           "decision_packets",
+          "monte_carlo_reviews",
           "research_gate_overrides"
         ],
         "title": "ProjectTruncation",
@@ -13892,6 +13984,7 @@
           "baseline",
           "inner_oos",
           "three_null_families",
+          "monte_carlo",
           "optimize_grid",
           "fixed_stress",
           "portfolio_cross_asset",
@@ -17462,6 +17555,7 @@
                 "baseline",
                 "oos",
                 "robustness",
+                "monte_carlo",
                 "optimization",
                 "portfolio",
                 "candidate",
@@ -17546,6 +17640,7 @@
                 "baseline",
                 "inner_oos",
                 "three_null_families",
+                "monte_carlo",
                 "optimize_grid",
                 "fixed_stress",
                 "portfolio_cross_asset",
@@ -17619,6 +17714,7 @@
                 "baseline",
                 "inner_oos",
                 "three_null_families",
+                "monte_carlo",
                 "optimize_grid",
                 "fixed_stress",
                 "portfolio_cross_asset",
@@ -22122,6 +22218,7 @@
                 "baseline",
                 "oos",
                 "robustness",
+                "monte_carlo",
                 "optimization",
                 "portfolio",
                 "candidate",
@@ -22207,6 +22304,7 @@
                 "baseline",
                 "inner_oos",
                 "three_null_families",
+                "monte_carlo",
                 "optimize_grid",
                 "fixed_stress",
                 "portfolio_cross_asset",
@@ -22281,6 +22379,7 @@
                 "baseline",
                 "inner_oos",
                 "three_null_families",
+                "monte_carlo",
                 "optimize_grid",
                 "fixed_stress",
                 "portfolio_cross_asset",
