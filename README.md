@@ -309,7 +309,7 @@ The keychain and routing procedure is in the [operations runbook](docs/operation
 
 ## ALPHA Workstation (web terminal)
 
-`uv run alpha-web` serves the **ALPHA Workstation** at **http://127.0.0.1:8800** (loopback only, no
+`uv run alpha-web` serves the **ALPHA Workstation** at **http://localhost:8801** (loopback only, no
 auth): a dark, dockable, single-user research terminal that unifies every capability behind one
 interface — Bloomberg/OpenBB-class, but $0.
 

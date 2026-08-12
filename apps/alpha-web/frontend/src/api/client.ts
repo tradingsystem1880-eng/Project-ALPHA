@@ -147,6 +147,42 @@ export function clearImmutableApiCache(): void {
   immutableCache.clear()
 }
 
+export type OwnerActionType =
+  | 'screen_source_claim'
+  | 'reject_source_claim'
+  | 'revise_source_claim'
+  | 'freeze_source_pack'
+  | 'approve_exploration'
+  | 'reject_exploration'
+  | 'revise_exploration'
+  | 'launch_d1'
+  | 'approve_confirmation'
+  | 'reject_confirmation'
+  | 'launch_d2'
+  | 'record_final_disposition'
+
+export interface OwnerCredentialOptions {
+  challenge_id: string
+  expires_at: string
+  binding?: Record<string, unknown>
+  public_key: Record<string, unknown>
+}
+
+export interface OwnerActionChallengeRequest {
+  action_type: OwnerActionType
+  project_id: string
+  artifact_hash: string
+  expected_case_revision: string
+  consequence_summary: string
+  reason: string
+  payload: Record<string, unknown>
+}
+
+export interface OwnerActionResult {
+  authorization: Record<string, unknown>
+  result: Record<string, unknown>
+}
+
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -158,6 +194,30 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
 }
 
 export const api = {
+  ownerRegistrationOptions: (token: string): Promise<OwnerCredentialOptions> =>
+    postJSON('/api/owner-auth/enrollment/options', { token }),
+  ownerRegistrationFinish: (
+    token: string,
+    challengeId: string,
+    credential: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> =>
+    postJSON('/api/owner-auth/enrollment/finish', {
+      token,
+      challenge_id: challengeId,
+      credential,
+    }),
+  ownerActionChallenge: (
+    body: OwnerActionChallengeRequest,
+  ): Promise<OwnerCredentialOptions> => postJSON('/api/owner-auth/actions/challenge', body),
+  ownerActionPerform: (
+    challengeId: string,
+    credential: Record<string, unknown>,
+    payload: Record<string, unknown>,
+  ): Promise<OwnerActionResult> => postJSON('/api/owner-auth/actions/perform', {
+    challenge_id: challengeId,
+    credential,
+    payload,
+  }),
   runs: (query = ''): Promise<RunList> => getJSON(`/api/runs${query}`),
   run: (id: string): Promise<RunDetail> => getImmutableJSON(`/api/runs/${id}`),
   chartBundle(id: string, limit = 2_000, start?: string | null, end?: string | null): Promise<ChartBundle> {

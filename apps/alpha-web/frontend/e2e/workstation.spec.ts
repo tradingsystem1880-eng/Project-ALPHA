@@ -84,15 +84,17 @@ const RESEARCH_QUESTIONS: components['schemas']['ResearchMaterialQuestionV1'][] 
 
 // Typed against the generated contract so ANY future ResearchCase drift fails the
 // frontend type gate instead of silently passing a stale mocked shape to e2e.
+const RESEARCH_CONTRACT_ID = `rc_${'a'.repeat(64)}`
+
 const RESEARCH_CASE: components['schemas']['ResearchCase'] = {
   schema_version: 1,
   project_id: 'research-project-1',
   project_name: 'SPY double bottom',
   phase: 'triage',
   execution_state: 'idle',
-  active_contract_id: 'research-contract-1',
+  active_contract_id: RESEARCH_CONTRACT_ID,
   active_contract: {
-    contract_id: 'research-contract-1',
+    contract_id: RESEARCH_CONTRACT_ID,
     project_id: 'research-project-1',
     scope: 'exploration',
     parent_contract_id: null,
@@ -115,7 +117,7 @@ const RESEARCH_CASE: components['schemas']['ResearchCase'] = {
     review_state: 'pending',
     latest_review: null,
   },
-  exploration_contract_id: 'research-contract-1',
+  exploration_contract_id: RESEARCH_CONTRACT_ID,
   confirmation_contract_id: null,
   exploration_review: { state: 'pending', event: null },
   confirmation_review: { state: 'pending', event: null },
@@ -155,6 +157,7 @@ const RESEARCH_CLOSED_CASE: components['schemas']['ResearchCase'] = {
   phase: 'closed',
   active_contract: { ...RESEARCH_CASE.active_contract, review_state: 'approved' },
   exploration_review: { state: 'approved', event: null },
+  confirmation_review: { state: 'approved', event: null },
   research_decision: {
     project_id: RESEARCH_CASE.project_id,
     sequence: 1,
@@ -1126,6 +1129,7 @@ interface MockOptions {
   researchGateLock?: boolean
   /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
   runs?: unknown[]
+  capturedOwnerAction?: (body: Record<string, unknown>) => void
 }
 
 const LIBRARY_RUN = {
@@ -1166,6 +1170,23 @@ async function openHeavyPrice(page: Page): Promise<void> {
 
 function responseFor(route: Route, options: MockOptions): unknown {
   const url = new URL(route.request().url())
+  if (url.pathname === '/api/owner-auth/actions/challenge') {
+    options.capturedOwnerAction?.(route.request().postDataJSON() as Record<string, unknown>)
+    return {
+      challenge_id: '00000000-0000-4000-8000-000000000001',
+      expires_at: '2026-08-13T02:01:00Z',
+      public_key: {
+        challenge: 'AQID',
+        rpId: 'localhost',
+        timeout: 60_000,
+        allowCredentials: [],
+        userVerification: 'required',
+      },
+    }
+  }
+  if (url.pathname === '/api/owner-auth/actions/perform') {
+    return { authorization: { receipt_id: 'receipt-1' }, result: { status: 'recorded' } }
+  }
   if (url.pathname === '/api/research/cases' && route.request().method() === 'POST') {
     return {
       project: { project_id: RESEARCH_CASE.project_id },
@@ -1181,6 +1202,9 @@ function responseFor(route: Route, options: MockOptions): unknown {
     url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}`
     && route.request().method() === 'GET'
   ) return RESEARCH_CLOSED_CASE
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/status`) {
+    return RESEARCH_CASE
+  }
   if (
     url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/report`
     && route.request().method() === 'GET'
@@ -1450,6 +1474,39 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
       configurable: true,
       value: DeterministicEventSource,
     })
+
+    class DeterministicAssertionResponse {
+      readonly authenticatorData = new Uint8Array([1, 2, 3]).buffer
+      readonly clientDataJSON = new Uint8Array([4, 5, 6]).buffer
+      readonly signature = new Uint8Array([7, 8, 9]).buffer
+      readonly userHandle = null
+    }
+
+    class DeterministicPublicKeyCredential {
+      readonly id = 'test-owner-credential'
+      readonly type = 'public-key'
+      readonly rawId = new Uint8Array([10, 11, 12]).buffer
+      readonly authenticatorAttachment = 'platform'
+      readonly response = new DeterministicAssertionResponse()
+      getClientExtensionResults(): AuthenticationExtensionsClientOutputs {
+        return {}
+      }
+    }
+
+    Object.defineProperty(window, 'AuthenticatorAssertionResponse', {
+      configurable: true,
+      value: DeterministicAssertionResponse,
+    })
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      configurable: true,
+      value: DeterministicPublicKeyCredential,
+    })
+    Object.defineProperty(navigator, 'credentials', {
+      configurable: true,
+      value: {
+        get: async () => new DeterministicPublicKeyCredential(),
+      },
+    })
   })
 
   await page.route('**/*', async (route) => {
@@ -1589,7 +1646,7 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   await page.getByRole('button', { name: 'capture · no compute' }).click()
 
   await expect(page.getByText('TRIAGE', { exact: true }).first()).toBeVisible()
-  await expect(page.getByText('GATE 1 OPERATOR UNAVAILABLE', { exact: true })).toBeVisible()
+  await expect(page.getByText('APPROVAL UNAVAILABLE', { exact: true })).toBeVisible()
   await expect(page.getByText(RESEARCH_QUESTIONS[0].prompt, { exact: true })).toBeVisible()
   await expect(page.getByText(RESEARCH_QUESTIONS[1].prompt, { exact: true })).toBeVisible()
   await expect(page.getByText(RESEARCH_QUESTIONS[2].prompt, { exact: true })).toBeVisible()
@@ -1610,6 +1667,26 @@ test('all material questions and consequences stay visible at the supported view
   await expect(page.getByText(RESEARCH_QUESTIONS[1].prompt, { exact: true })).toBeInViewport()
   await expect(page.getByText(RESEARCH_QUESTIONS[2].prompt, { exact: true })).toBeInViewport()
   await expect(page.getByText(RESEARCH_QUESTIONS[2].choices[0].consequence, { exact: true })).toBeInViewport()
+})
+
+test('a research decision requires fresh Touch ID and sends no caller actor', async ({ page }) => {
+  let challenge: Record<string, unknown> | null = null
+  await preparePage(page, { capturedOwnerAction: (body) => { challenge = body } })
+  await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
+  await page.getByRole('button', { name: 'capture · no compute' }).click()
+
+  await page.getByLabel('Decision reason').fill('The proposed operator is unavailable.')
+  await page.getByRole('button', { name: 'Touch ID · reject exploration' }).click()
+
+  await expect.poll(() => challenge).not.toBeNull()
+  expect(challenge).toMatchObject({
+    action_type: 'reject_exploration',
+    project_id: RESEARCH_CASE.project_id,
+    artifact_hash: 'a'.repeat(64),
+    reason: 'The proposed operator is unavailable.',
+    payload: { contract_id: RESEARCH_CONTRACT_ID },
+  })
+  expect(challenge).not.toHaveProperty('actor')
 })
 
 test('guided mode defaults and advanced detail is remembered only for its project', async ({ page }, testInfo) => {

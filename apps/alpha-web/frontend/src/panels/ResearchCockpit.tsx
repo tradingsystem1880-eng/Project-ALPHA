@@ -1,6 +1,11 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
-import { api } from '../api/client'
+import { api, type OwnerActionType } from '../api/client'
+import {
+  contentAddressHash,
+  performOwnerAction,
+  researchCaseRevision,
+} from '../auth/ownerAuth'
 import type {
   ResearchCase,
   ResearchCaseReport,
@@ -217,36 +222,98 @@ function DecisionViewSection({
   )
 }
 
-function ApprovalBoundary({ researchCase }: { researchCase: ResearchCase }) {
-  if (researchCase.exploration_review.state !== 'pending') return null
+function ApprovalBoundary({
+  researchCase,
+  onComplete,
+}: {
+  researchCase: ResearchCase
+  onComplete: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [pending, setPending] = useState<OwnerActionType | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const contract = researchContractView(researchCase)
-  if (!contract.approval_ready) {
-    return (
-      <div className="workbench-notice" role="note">
-        <strong>GATE 1 OPERATOR UNAVAILABLE</strong>
-        <span>
-          This immutable proposal cannot be approved in Gate 1. Reject it through the owner-only
-          CLI, then close or revise the case without claiming empirical evidence.
-        </span>
-        <code className="mono advanced-only">
-          alpha research reject exploration {researchCase.project_id}{' '}
-          {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
-        </code>
-      </div>
-    )
+  const scope = researchCase.exploration_review.state === 'pending'
+    ? 'exploration'
+    : researchCase.confirmation_review.state === 'pending'
+      ? 'confirmation'
+      : null
+  if (scope === null) return null
+  const canApprove = scope === 'confirmation' || contract.approval_ready
+
+  async function decide(decision: 'approve' | 'reject'): Promise<void> {
+    const actionType = `${decision}_${scope}` as OwnerActionType
+    setPending(actionType)
+    setError(null)
+    try {
+      const expectedRevision = await researchCaseRevision(researchCase)
+      await performOwnerAction({
+        action_type: actionType,
+        project_id: researchCase.project_id,
+        artifact_hash: contentAddressHash(researchCase.active_contract_id),
+        expected_case_revision: expectedRevision,
+        consequence_summary: decision === 'approve'
+          ? `Approve the immutable ${scope} contract and permit only its next bounded research stage.`
+          : `Reject the immutable ${scope} contract; no empirical stage is launched.`,
+        reason: reason.trim(),
+        payload: { contract_id: researchCase.active_contract_id },
+      })
+      setReason('')
+      onComplete()
+    } catch (cause) {
+      setError(errorMessage(cause))
+    } finally {
+      setPending(null)
+    }
   }
+
   return (
-    <div className="workbench-notice" role="note">
-      <strong>HUMAN APPROVAL BOUNDARY</strong>
-      <span>
-        The Workstation can prepare and explain this contract, but cannot approve it. Review the
-        exact immutable contract with Codex, then use the owner-only CLI approval path if satisfied.
-      </span>
+    <section className="owner-action-boundary" aria-label={`${scope} owner decision`}>
+      <span className="eyebrow">Fresh owner presence required</span>
+      <strong>Review and decide this exact immutable {scope} contract</strong>
+      <p>
+        Touch ID binds one decision to this project, artifact, current case revision, consequence,
+        and your reason. It grants no gate override, holdout, paper, broker, or order authority.
+      </p>
+      {!canApprove ? (
+        <div className="workbench-notice" role="note">
+          <strong>APPROVAL UNAVAILABLE</strong>
+          <span>This proposal has no executable operator. Reject it or revise the research case.</span>
+        </div>
+      ) : null}
+      <label>
+        <span className="eyebrow">Decision reason</span>
+        <textarea
+          className="field"
+          value={reason}
+          maxLength={8192}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Explain why this exact contract should advance or stop."
+        />
+      </label>
+      <div className="owner-action-buttons">
+        <button
+          className="btn primary"
+          type="button"
+          disabled={!reason.trim() || !canApprove || pending !== null}
+          onClick={() => void decide('approve')}
+        >
+          {pending === `approve_${scope}` ? 'waiting for Touch ID…' : `Touch ID · approve ${scope}`}
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={!reason.trim() || pending !== null}
+          onClick={() => void decide('reject')}
+        >
+          {pending === `reject_${scope}` ? 'waiting for Touch ID…' : `Touch ID · reject ${scope}`}
+        </button>
+      </div>
+      {error ? <div className="workbench-notice" role="alert"><strong>ACTION BLOCKED</strong><span>{error}</span></div> : null}
       <code className="mono advanced-only">
-        alpha research approve exploration {researchCase.project_id}{' '}
-        {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
+        Trusted recovery: alpha owner-auth recover --reason &quot;&lt;credential recovery reason&gt;&quot;
       </code>
-    </div>
+    </section>
   )
 }
 
@@ -372,7 +439,7 @@ function CaseSummary({
         <TerminalGatePacket packet={report} />
       ) : null}
 
-      <ApprovalBoundary researchCase={researchCase} />
+      <ApprovalBoundary researchCase={researchCase} onComplete={onRefresh} />
 
       {researchCase.latest_finding ? (
         <div className="workbench-notice" role="status">
@@ -699,7 +766,7 @@ export function ResearchCockpit(props: PanelHandleProps) {
         <span className="chip kind">GUIDED RESEARCH</span>
         <span className="muted">question → sources → data → bounded test → decision</span>
         <span className="spacer" />
-        <span className="chip fail">NO APPROVAL · D2 · DEEP · TRADING</span>
+        <span className="chip fail">TOUCH ID REQUIRED · NO OVERRIDE · NO TRADING</span>
       </div>
       <div className="panel-body panel-pad workbench research-cockpit" tabIndex={0}>
         <div className="sandbox-banner">

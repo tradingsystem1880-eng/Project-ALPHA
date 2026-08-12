@@ -35,6 +35,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0027](0027-tiered-research-readiness-semantics.md) | Tiered research readiness is Python-authoritative and non-numeric | Accepted | 2026-08-11 |
 | [0028](0028-governed-market-state-and-model-candidates.md) | Govern market state, calibrated Kronos, and Qlib rank ensembles as separate candidates | Accepted | 2026-08-11 |
 | [0029](0029-four-family-monte-carlo-validation.md) | Require four-family Monte Carlo path-risk validation | Accepted | 2026-08-12 |
+| [0030](0030-touch-id-owner-presence-for-research-actions.md) | Require fresh Touch ID for Workstation research authority | Accepted | 2026-08-13 |
 
 ## Conventions
 

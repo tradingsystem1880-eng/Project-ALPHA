@@ -23,6 +23,7 @@ from alpha_cli.control_store import (
     ResearchOutcome,
     ResearchPhase,
     ResearchResponsibility,
+    research_case_revision,
 )
 from alpha_cli.research_d1 import (
     D1_ANALYSES_ARTIFACT,
@@ -134,21 +135,6 @@ def _answers(values: list[str]) -> dict[str, str]:
     return result
 
 
-def _case_revision(summary: Mapping[str, object]) -> str:
-    """Commit to proposal-relevant mutable case state for optimistic revalidation."""
-
-    return _sha_json(
-        {
-            "schema": "ResearchCaseRevisionV1",
-            "project_id": summary.get("project_id"),
-            "active_contract_id": summary.get("active_contract_id"),
-            "phase": summary.get("phase"),
-            "execution_state": summary.get("execution_state"),
-            "source_pack_id": summary.get("source_pack_id"),
-        }
-    )
-
-
 def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]:
     """Project the only proposal combinations the authoritative runtime can execute."""
 
@@ -220,7 +206,7 @@ def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]
     return {
         "proposal_schema": "ResearchProposalOptionsV1",
         "project_id": project_id,
-        "case_revision": _case_revision(case),
+        "case_revision": research_case_revision(case),
         "material_questions": intake.get("blocking_questions", []),
         "recommended_answer_bundle_id": intake.get("recommended_answer_bundle_id"),
         "valid_answer_bundles": bundles,
@@ -823,6 +809,52 @@ def claim_list(
     )
 
 
+@claim_app.command("reject")
+def claim_reject(
+    project_id: str,
+    claim_id: str,
+    actor: str = typer.Option(..., "--actor"),
+    reason: str = typer.Option(..., "--reason"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Append the owner's rejection of an unscreened claim; claim bytes remain immutable."""
+    try:
+        event = _store().record_source_claim_owner_direction(
+            project_id,
+            claim_id=claim_id,
+            decision="reject",
+            actor=actor,
+            reason=reason,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(event, json_out=json_out, fallback=f"rejected claim {claim_id}")
+
+
+@claim_app.command("revise")
+def claim_revise(
+    project_id: str,
+    claim_id: str,
+    actor: str = typer.Option(..., "--actor"),
+    reason: str = typer.Option(..., "--reason"),
+    revision_json: str = typer.Option("{}", "--revision-json"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Append an owner revision direction; a later draft remains a separate immutable record."""
+    try:
+        event = _store().record_source_claim_owner_direction(
+            project_id,
+            claim_id=claim_id,
+            decision="revise",
+            actor=actor,
+            reason=reason,
+            payload=_object(revision_json, "--revision-json"),
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(event, json_out=json_out, fallback=f"requested revision for claim {claim_id}")
+
+
 @sources_app.command("fetch")
 def sources_fetch(
     url: str,
@@ -972,7 +1004,7 @@ def draft(
         project = store.get_project(project_id)
         if expected_case_revision is not None:
             current_case = store.research_case_summary(project_id)
-            if _case_revision(current_case) != expected_case_revision:
+            if research_case_revision(current_case) != expected_case_revision:
                 raise DataError(
                     "research case changed after proposal preflight; refresh the case and options"
                 )

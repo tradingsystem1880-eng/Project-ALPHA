@@ -24,7 +24,7 @@ type GenericCommandClass = Literal["empirical", "owner_only", "safe", "unknown"]
 _EMPIRICAL_ROOTS = frozenset(
     {"backtest", "validate", "optim", "propfirm", "forecast", "ml", "monte-carlo"}
 )
-_OWNER_ONLY_ROOTS = frozenset({"project", "suite"})
+_OWNER_ONLY_ROOTS = frozenset({"owner-auth", "project", "suite"})
 _SAFE_ROOTS = frozenset({"info", "options", "screener", "risk", "report", "figures"})
 
 

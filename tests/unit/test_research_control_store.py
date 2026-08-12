@@ -233,6 +233,34 @@ def _payload(
     return payload
 
 
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("topology", "evidence_topology"),
+        ("boundary", "canonical boundary"),
+        ("d2", "sealed D2"),
+        ("hash", "boundary hash does not match"),
+        ("d0", "requires D0"),
+    ],
+)
+def test_research_topology_rejects_incomplete_boundary_contracts(case: str, message: str) -> None:
+    payload = _payload("sp_" + "1" * 64)
+    protocol = cast(dict[str, object], payload["protocol"])
+    topology = cast(dict[str, object], protocol["evidence_topology"])
+    if case == "topology":
+        protocol.pop("evidence_topology")
+    elif case == "boundary":
+        topology.pop("boundary")
+    elif case == "d2":
+        topology.pop("D2")
+    elif case == "hash":
+        cast(dict[str, object], topology["D2"])["boundary_hash"] = "different-boundary-fingerprint"
+    else:
+        topology.pop("D0")
+    with pytest.raises(DataError, match=message):
+        control_store_module._research_d2_topology(payload)
+
+
 def test_compact_v2_full_history_contract_persists_under_the_existing_json_limit(
     tmp_path: Path,
 ) -> None:
@@ -841,7 +869,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 2
+    assert SCHEMA_VERSION == 3
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -855,7 +883,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
             "SELECT project_id, research_required, origin FROM project_research_governance"
         )
     }
-    assert migrated.execute("PRAGMA user_version").fetchone() == (2,)
+    assert migrated.execute("PRAGMA user_version").fetchone() == (3,)
     tables = {
         str(row[0])
         for row in migrated.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -1158,11 +1186,11 @@ def test_static_schema_helpers_fail_closed_and_rollback(
 def test_locked_v1_migration_rejects_unsupported_version_and_rolls_back(tmp_path: Path) -> None:
     database = tmp_path / "unsupported.sqlite3"
     connection = sqlite3.connect(database, isolation_level=None)
-    connection.execute("PRAGMA user_version = 3")
-    with pytest.raises(DataError, match="unsupported control store schema version 3"):
+    connection.execute("PRAGMA user_version = 4")
+    with pytest.raises(DataError, match="unsupported control store schema version 4"):
         control_store_module._migrate_schema_v1(connection, database)
     assert connection.in_transaction is False
-    assert connection.execute("PRAGMA user_version").fetchone() == (3,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (4,)
     connection.close()
 
 
@@ -1310,7 +1338,7 @@ def test_existing_schema_v2_reopen_adds_launch_reservation_tables(tmp_path: Path
     _project(store)
     database = tmp_path / "control" / "workstation.sqlite3"
     connection = sqlite3.connect(database)
-    assert connection.execute("PRAGMA user_version").fetchone() == (2,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (3,)
     connection.execute("DROP TABLE research_launch_attempt_links")
     connection.execute("DROP TABLE research_launch_reservations")
     connection.commit()

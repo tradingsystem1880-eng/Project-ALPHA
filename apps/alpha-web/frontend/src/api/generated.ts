@@ -723,6 +723,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/owner-auth/actions/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Action */
+        post: operations["start_action_api_owner_auth_actions_challenge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/actions/perform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Perform Action
+         * @description Consume one fresh assertion, then execute only its server-derived closed action.
+         */
+        post: operations["perform_action_api_owner_auth_actions_perform_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/enrollment/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Registration */
+        post: operations["complete_registration_api_owner_auth_enrollment_finish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/enrollment/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Registration */
+        post: operations["start_registration_api_owner_auth_enrollment_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/paper/readiness": {
         parameters: {
             query?: never;
@@ -3061,6 +3132,26 @@ export interface paths {
         };
         /** Healthz */
         get: operations["healthz_healthz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/owner-auth/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Owner Enrollment
+         * @description SPA entry reached only through the trusted CLI's short-lived enrollment URL.
+         */
+        get: operations["owner_enrollment_owner_auth_enroll_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5777,6 +5868,57 @@ export interface components {
             vega: number;
             /** Vol */
             vol: number;
+        };
+        /** OwnerActionChallengeRequest */
+        OwnerActionChallengeRequest: {
+            /**
+             * Action Type
+             * @enum {string}
+             */
+            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition";
+            /** Artifact Hash */
+            artifact_hash: string;
+            /** Consequence Summary */
+            consequence_summary: string;
+            /** Expected Case Revision */
+            expected_case_revision: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Project Id */
+            project_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** OwnerActionPerformRequest */
+        OwnerActionPerformRequest: {
+            /** Challenge Id */
+            challenge_id: string;
+            /** Credential */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        /** OwnerRegistrationFinish */
+        OwnerRegistrationFinish: {
+            /** Challenge Id */
+            challenge_id: string;
+            /** Credential */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** Token */
+            token: string;
+        };
+        /** OwnerRegistrationStart */
+        OwnerRegistrationStart: {
+            /** Token */
+            token: string;
         };
         /** PaperCandleMarker */
         PaperCandleMarker: {
@@ -9323,6 +9465,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptionGreeks"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    start_action_api_owner_auth_actions_challenge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerActionChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    perform_action_api_owner_auth_actions_perform_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerActionPerformRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    complete_registration_api_owner_auth_enrollment_finish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerRegistrationFinish"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    start_registration_api_owner_auth_enrollment_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerRegistrationStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -13263,6 +13545,35 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    owner_enrollment_owner_auth_enroll_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Stable, redacted Workstation error */

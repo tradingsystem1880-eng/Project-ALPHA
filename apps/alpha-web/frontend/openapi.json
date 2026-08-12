@@ -8591,6 +8591,140 @@
         "title": "OptionGreeks",
         "type": "object"
       },
+      "OwnerActionChallengeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action_type": {
+            "enum": [
+              "screen_source_claim",
+              "reject_source_claim",
+              "revise_source_claim",
+              "freeze_source_pack",
+              "approve_exploration",
+              "reject_exploration",
+              "revise_exploration",
+              "launch_d1",
+              "approve_confirmation",
+              "reject_confirmation",
+              "launch_d2",
+              "record_final_disposition"
+            ],
+            "title": "Action Type",
+            "type": "string"
+          },
+          "artifact_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Hash",
+            "type": "string"
+          },
+          "consequence_summary": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Consequence Summary",
+            "type": "string"
+          },
+          "expected_case_revision": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Case Revision",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_type",
+          "project_id",
+          "artifact_hash",
+          "expected_case_revision",
+          "consequence_summary",
+          "reason",
+          "payload"
+        ],
+        "title": "OwnerActionChallengeRequest",
+        "type": "object"
+      },
+      "OwnerActionPerformRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge_id": {
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "credential": {
+            "additionalProperties": true,
+            "title": "Credential",
+            "type": "object"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "credential",
+          "payload"
+        ],
+        "title": "OwnerActionPerformRequest",
+        "type": "object"
+      },
+      "OwnerRegistrationFinish": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge_id": {
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "credential": {
+            "additionalProperties": true,
+            "title": "Credential",
+            "type": "object"
+          },
+          "token": {
+            "maxLength": 512,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "challenge_id",
+          "credential"
+        ],
+        "title": "OwnerRegistrationFinish",
+        "type": "object"
+      },
+      "OwnerRegistrationStart": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 512,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "OwnerRegistrationStart",
+        "type": "object"
+      },
       "PaperCandleMarker": {
         "additionalProperties": false,
         "properties": {
@@ -17661,6 +17795,179 @@
         ]
       }
     },
+    "/api/owner-auth/actions/challenge": {
+      "post": {
+        "operationId": "start_action_api_owner_auth_actions_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerActionChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start Action Api Owner Auth Actions Challenge Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Start Action",
+        "tags": [
+          "owner-auth"
+        ]
+      }
+    },
+    "/api/owner-auth/actions/perform": {
+      "post": {
+        "description": "Consume one fresh assertion, then execute only its server-derived closed action.",
+        "operationId": "perform_action_api_owner_auth_actions_perform_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerActionPerformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Perform Action Api Owner Auth Actions Perform Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Perform Action",
+        "tags": [
+          "owner-auth"
+        ]
+      }
+    },
+    "/api/owner-auth/enrollment/finish": {
+      "post": {
+        "operationId": "complete_registration_api_owner_auth_enrollment_finish_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerRegistrationFinish"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Complete Registration Api Owner Auth Enrollment Finish Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Complete Registration",
+        "tags": [
+          "owner-auth"
+        ]
+      }
+    },
+    "/api/owner-auth/enrollment/options": {
+      "post": {
+        "operationId": "start_registration_api_owner_auth_enrollment_options_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerRegistrationStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start Registration Api Owner Auth Enrollment Options Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Start Registration",
+        "tags": [
+          "owner-auth"
+        ]
+      }
+    },
     "/api/paper/readiness": {
       "get": {
         "description": "Machine-derived paper acceptance state; elapsed time cannot mark it passed.",
@@ -24264,6 +24571,33 @@
           }
         },
         "summary": "Healthz"
+      }
+    },
+    "/owner-auth/enroll": {
+      "get": {
+        "description": "SPA entry reached only through the trusted CLI's short-lived enrollment URL.",
+        "operationId": "owner_enrollment_owner_auth_enroll_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Owner Enrollment"
       }
     }
   }

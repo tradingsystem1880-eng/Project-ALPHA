@@ -3159,6 +3159,72 @@ select.field:focus {
   gap: 9px;
 }
 
+.owner-action-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(215, 166, 59, 0.55);
+  background: var(--gold-soft);
+}
+
+.owner-action-boundary p {
+  max-width: 82ch;
+  margin: 0;
+  color: var(--ink-dim);
+  line-height: 1.45;
+}
+
+.owner-action-boundary label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.owner-action-boundary textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.owner-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.owner-enrollment-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.owner-enrollment-card {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: var(--shadow-lg);
+}
+
+.owner-enrollment-card h1,
+.owner-enrollment-card p {
+  margin: 0;
+}
+
+.owner-enrollment-card p {
+  color: var(--ink-dim);
+  line-height: 1.55;
+}
+
+.owner-enrollment-card .btn {
+  align-self: flex-start;
+}
+
 .research-intake-grid {
   display: grid;
   grid-template-columns: minmax(360px, 1.25fr) minmax(280px, 0.75fr);

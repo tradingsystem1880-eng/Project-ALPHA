@@ -52,6 +52,7 @@ track; it is not a legal conclusion.
 | uvicorn | 0.49.0 | BSD-3-Clause | loopback server | retain |
 | sse-starlette | 3.4.5 | BSD-3-Clause | Workstation streams | retain |
 | anyio | 4.14.0 | MIT | async web support | retain |
+| webauthn | 3.0.0 | BSD-3-Clause package metadata | exact-origin platform-authenticator verification for closed local research owner actions | exact pin; no MCP, broker, order, holdout, paper-entry, risk-override, or research-gate-override authority |
 
 ### IB/Docker extra and external-service review
 

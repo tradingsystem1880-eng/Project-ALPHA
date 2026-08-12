@@ -4,7 +4,7 @@ A thin JSON+SSE backend over the run store that serves the built single-page wor
 (``static/app``). Every action subprocesses the ``alpha`` CLI and reads its byte-stable artifacts —
 the engine never runs in this process. Reads/writes go through ``AlphaSettings().data_dir`` so the
 web app, its subprocesses, and the CLI share one store. Binds loopback only (local single-user);
-the port comes from ``ALPHA_WEB_PORT`` (preferred) or ``PORT``, defaulting to 8800 — an invalid
+the port comes from ``ALPHA_WEB_PORT`` (preferred) or ``PORT``, defaulting to 8801 — an invalid
 value fails loud with :class:`alpha_core.AlphaError`.
 
 Routers include runs/jobs/catalog, candles, provider/system readiness, durable paper monitoring,
@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
@@ -37,6 +37,7 @@ from alpha_web.api import figures as figures_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import ml as ml_api
 from alpha_web.api import options as options_api
+from alpha_web.api import owner_auth as owner_auth_api
 from alpha_web.api import paper as paper_api
 from alpha_web.api import research as research_api
 from alpha_web.api import risk as risk_api
@@ -59,6 +60,16 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Project ALPHA — Workstation", responses=error_responses)
     app.add_middleware(GZipMiddleware, minimum_size=1_000, compresslevel=5)
     app.mount("/static", StaticFiles(directory=str(_PKG / "static")), name="static")
+
+    @app.middleware("http")
+    async def canonicalize_localhost(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Keep every WebAuthn ceremony on the exact enrolled localhost origin."""
+        if request.url.hostname == "127.0.0.1":
+            target = str(request.url).replace("://127.0.0.1", "://localhost", 1)
+            return RedirectResponse(target, status_code=307)
+        return await call_next(request)
 
     @app.middleware("http")
     async def attach_request_id(
@@ -108,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(figures_api.router)
     app.include_router(workspaces_api.router)
     app.include_router(options_api.router)
+    app.include_router(owner_auth_api.router)
     app.include_router(paper_api.router)
     app.include_router(risk_api.router)
     app.include_router(screener_api.router)
@@ -136,11 +148,16 @@ def create_app() -> FastAPI:
         """Alias for the workstation (same SPA as ``/``)."""
         return _spa()
 
+    @app.get("/owner-auth/enroll")
+    def owner_enrollment() -> FileResponse:
+        """SPA entry reached only through the trusted CLI's short-lived enrollment URL."""
+        return _spa()
+
     return app
 
 
 def _resolve_port() -> int:
-    """Resolve the serve port from ``ALPHA_WEB_PORT`` (preferred) then ``PORT``; default 8800.
+    """Resolve the serve port from ``ALPHA_WEB_PORT`` (preferred) then ``PORT``; default 8801.
 
     A set-but-invalid value (non-integer or outside [1, 65535]) raises
     :class:`alpha_core.AlphaError` naming the variable and value — never a silent fallback.
@@ -156,13 +173,13 @@ def _resolve_port() -> int:
         if not 1 <= port <= 65535:
             raise AlphaError(f"invalid {name}={raw!r}: expected an integer in [1, 65535]")
         return port
-    return 8800
+    return 8801
 
 
 def main() -> None:
     """Entry point: serve the workstation on http://127.0.0.1:<port> (loopback only).
 
-    The port comes from ``ALPHA_WEB_PORT`` (preferred) or ``PORT``, defaulting to 8800; the
+    The port comes from ``ALPHA_WEB_PORT`` (preferred) or ``PORT``, defaulting to 8801; the
     host is always ``127.0.0.1``. Invalid port values fail loud (:class:`alpha_core.AlphaError`).
     """
     import uvicorn

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
+import { OwnerEnrollment } from './auth/OwnerEnrollment'
 import { setLinked, useLinked } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
 import { onResearchCase } from './context/researchCase'
@@ -171,7 +172,7 @@ function Area({
   )
 }
 
-export function App() {
+function WorkstationApp() {
   const linked = useLinked()
   const [current, setCurrent] = useState<ScreenId>(() => {
     const stored = localStorage.getItem(SCREEN_KEY)
@@ -337,4 +338,9 @@ export function App() {
       />
     </div>
   )
+}
+
+export function App() {
+  if (window.location.pathname === '/owner-auth/enroll') return <OwnerEnrollment />
+  return <WorkstationApp />
 }
