@@ -719,9 +719,13 @@ type ResearchExecutionStateValue = Literal[
 ]
 type ResearchD2StateValue = Literal["sealed", "authorized", "consumed", "contaminated"]
 type ResearchD3StateValue = Literal["not_sealed", "sealed", "consumed", "contaminated"]
-type ResearchChartConstructionValue = Literal["spy_rth_60m_four_hour_window",]
+type ResearchChartConstructionValue = Literal[
+    "spy_rth_60m_four_hour_window", "tiingo_daily_fallback"
+]
 type ResearchEventAvailabilityValue = Literal["second_trough_confirmable"]
-type ResearchPrimaryOutcomeValue = Literal["four_trading_hour_return_25bp"]
+type ResearchPrimaryOutcomeValue = Literal[
+    "four_trading_hour_return_25bp", "next_regular_session_return_50bp"
+]
 
 
 class ProjectCreateRequest(StrictModel):
@@ -1395,7 +1399,62 @@ class ResearchMaterialAnswers(StrictModel):
 
 class ResearchProposalRequest(StrictModel):
     source_pack_id: str = Field(min_length=1, max_length=80)
+    answer_bundle_id: str = Field(min_length=1, max_length=80)
+    dataset_ref_id: str | None = Field(default=None, min_length=1, max_length=80)
+    expected_case_revision: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ResearchMaterialChoiceV1(StrictModel):
+    id: str
+    label: str
+    consequence: str
+    availability: Literal["available", "unavailable"]
+    blocked_reason: str | None
+
+
+class ResearchMaterialQuestionV1(StrictModel):
+    id: str
+    prompt: str
+    blocking_reason: str
+    choices: list[ResearchMaterialChoiceV1]
+    recommended_answer_bundle_id: str | None
+
+
+class ResearchAnswerBundleV1(StrictModel):
+    bundle_id: str
+    label: str
     answers: ResearchMaterialAnswers
+    requires_dataset: bool
+    compatible_dataset_ids: list[str]
+    available: bool
+    blocked_reason: str | None
+
+
+class ResearchSourcePackOptionV1(StrictModel):
+    pack_id: str
+    project_id: str
+    source_ids: list[str]
+    definition: JsonObject
+    created_at: str
+
+
+class ResearchProposalBlockerV1(StrictModel):
+    code: str
+    message: str
+    recovery_action: str
+
+
+class ResearchProposalOptionsV1(StrictModel):
+    proposal_schema: Literal["ResearchProposalOptionsV1"]
+    project_id: str
+    case_revision: str = Field(pattern=r"^[0-9a-f]{64}$")
+    material_questions: list[ResearchMaterialQuestionV1]
+    recommended_answer_bundle_id: str | None
+    valid_answer_bundles: list[ResearchAnswerBundleV1]
+    compatible_source_packs: list[ResearchSourcePackOptionV1]
+    compatible_datasets: list[ResearchDatasetRefRow]
+    blockers: list[ResearchProposalBlockerV1]
+    approval_ready: bool
 
 
 class ResearchLaunchRequest(StrictModel):

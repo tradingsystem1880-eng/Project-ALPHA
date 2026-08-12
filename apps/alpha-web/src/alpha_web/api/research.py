@@ -22,6 +22,7 @@ from alpha_web.api.models import (
     ResearchLaunchRequest,
     ResearchLaunchResponse,
     ResearchNotePage,
+    ResearchProposalOptionsV1,
     ResearchProposalRequest,
     ResearchProposalResponse,
     ResearchProtocolLibrary,
@@ -192,23 +193,33 @@ def research_get(project_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.get(
+    "/research/cases/{project_id}/proposal-options",
+    response_model=ResearchProposalOptionsV1,
+)
+def research_proposal_options(project_id: str) -> dict[str, Any]:
+    """Read executable answer bundles and current pack/data prerequisites."""
+
+    try:
+        return _research.proposal_options(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.post(
     "/research/cases/{project_id}/proposal",
     response_model=ResearchProposalResponse,
 )
 def research_propose(project_id: str, body: ResearchProposalRequest) -> dict[str, Any]:
     """Create an owner-reviewable contract; owner approval has no REST route."""
-    answers = {
-        "chart_construction": body.answers.chart_construction,
-        "event_availability": body.answers.event_availability,
-        "primary_outcome": body.answers.primary_outcome,
-    }
     try:
         return _research.propose(
             project_id,
             data_dir=data_dir(),
             source_pack_id=body.source_pack_id,
-            answers=answers,
+            answer_bundle_id=body.answer_bundle_id,
+            dataset_ref_id=body.dataset_ref_id,
+            expected_case_revision=body.expected_case_revision,
         )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

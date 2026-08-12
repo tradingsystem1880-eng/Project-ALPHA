@@ -38,19 +38,18 @@ describe('bounded Research Case API client', () => {
     )
   })
 
-  it('uses only the six Gate-1 capture/read/propose/pilot/status/report routes', async () => {
+  it('uses only the bounded Gate-1 capture/read/preflight/propose/pilot/status/report routes', async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
     vi.stubGlobal('fetch', fetchMock)
 
     await api.researchCapture({ idea: 'SPY may bounce after a point-in-time double bottom.' })
     await api.researchCase('project/id')
+    await api.researchProposalOptions('project/id')
     await api.researchProposal('project/id', {
       source_pack_id: 'sp_pack',
-      answers: {
-        chart_construction: 'spy_rth_60m_four_hour_window',
-        event_availability: 'second_trough_confirmable',
-        primary_outcome: 'four_trading_hour_return_25bp',
-      },
+      answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+      dataset_ref_id: null,
+      expected_case_revision: 'a'.repeat(64),
     })
     await api.researchPilot('project/id')
     await api.researchStatus('project/id')
@@ -64,16 +63,20 @@ describe('bounded Research Case API client', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/research/cases/project%2Fid')
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
+      '/api/research/cases/project%2Fid/proposal-options',
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
       '/api/research/cases/project%2Fid/proposal',
       expect.objectContaining({ method: 'POST' }),
     )
-    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/research/cases/project%2Fid/launch', {
+    expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/research/cases/project%2Fid/launch', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ stage: 'pilot' }),
     })
-    expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/research/cases/project%2Fid/status')
-    expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/research/cases/project%2Fid/report')
+    expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/research/cases/project%2Fid/status')
+    expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/research/cases/project%2Fid/report')
   })
 
   it('adds only the ADR-0021 read-plane routes: list, evidence hub, scorecard', async () => {

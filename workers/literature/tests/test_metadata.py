@@ -107,7 +107,7 @@ def test_arxiv_parser_reads_versions_and_refuses_entity_markup() -> None:
     records = parse_arxiv(atom)
     assert records[0]["version"] == "v2"
     assert records[0]["year"] == 2019
-    assert str(records[0]["open_access_url"]).endswith("/pdf/1234.5678v2")
+    assert records[0]["open_access_url"] == "https://arxiv.org/pdf/1234.5678v2"
     hostile = b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">]><feed/>'
     with pytest.raises(DataError, match="entity markup"):
         parse_arxiv(hostile)

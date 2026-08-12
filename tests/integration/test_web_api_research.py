@@ -101,15 +101,18 @@ def test_research_case_capture_propose_status_report_and_pilot_round_trip(
         source_ids=[str(source["source_id"])],
         definition={"screened": True},
     )
+    options_response = client.get(f"/api/research/cases/{project_id}/proposal-options")
+    assert options_response.status_code == 200, options_response.text
+    options = options_response.json()
+    assert options["proposal_schema"] == "ResearchProposalOptionsV1"
+    assert options["recommended_answer_bundle_id"] == "synthetic_spy_60m_four_hour_v1"
     proposal_response = client.post(
         f"/api/research/cases/{project_id}/proposal",
         json={
             "source_pack_id": pack["pack_id"],
-            "answers": {
-                "chart_construction": "spy_rth_60m_four_hour_window",
-                "event_availability": "second_trough_confirmable",
-                "primary_outcome": "four_trading_hour_return_25bp",
-            },
+            "answer_bundle_id": "synthetic_spy_60m_four_hour_v1",
+            "dataset_ref_id": None,
+            "expected_case_revision": options["case_revision"],
         },
     )
     assert proposal_response.status_code == 200, proposal_response.text
@@ -207,7 +210,7 @@ def test_research_report_route_validates_terminal_gate_packet_union(
     assert body["layers"]["guided_evidence"]["confirmation_classification"] == "SUPPORTED"
 
 
-def test_research_proposal_requires_exact_material_answer_vocabulary(
+def test_research_proposal_requires_an_atomic_registered_bundle(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client = _client(tmp_path, monkeypatch)
@@ -215,11 +218,26 @@ def test_research_proposal_requires_exact_material_answer_vocabulary(
         "/api/research/cases", json={"idea": "A generic synthetic research idea"}
     )
     project_id = captured.json()["project"]["project_id"]
+    store = ControlStore(AlphaSettings().data_dir)
+    source = store.create_research_source(
+        project_id,
+        title="Technical trading revisited",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id, source_ids=[str(source["source_id"])], definition={}
+    )
+    options = client.get(f"/api/research/cases/{project_id}/proposal-options").json()
 
     invalid = client.post(
         f"/api/research/cases/{project_id}/proposal",
         json={
-            "source_pack_id": "sp_deadbeef",
+            "source_pack_id": pack["pack_id"],
+            "answer_bundle_id": "invented_cross_pair",
+            "dataset_ref_id": None,
+            "expected_case_revision": options["case_revision"],
             "answers": {
                 "chart_construction": "mixed_240m_150m_bars",
                 "event_availability": "second_trough_confirmable",
@@ -230,24 +248,17 @@ def test_research_proposal_requires_exact_material_answer_vocabulary(
     )
     assert invalid.status_code == 422
 
-    canonical = {
-        "chart_construction": "spy_rth_60m_four_hour_window",
-        "event_availability": "second_trough_confirmable",
-        "primary_outcome": "four_trading_hour_return_25bp",
-    }
-    for field, unavailable in (
-        ("chart_construction", "spy_extended_fixed_4h"),
-        ("chart_construction", "synthetic_only"),
-        ("event_availability", "neckline_breakout_confirmed"),
-        ("primary_outcome", "next_regular_session_return_50bp"),
-        ("primary_outcome", "owner_specified_economic_hurdle"),
-    ):
-        answers = {**canonical, field: unavailable}
-        unavailable_response = client.post(
-            f"/api/research/cases/{project_id}/proposal",
-            json={"source_pack_id": "sp_deadbeef", "answers": answers},
-        )
-        assert unavailable_response.status_code == 422
+    stale = client.post(
+        f"/api/research/cases/{project_id}/proposal",
+        json={
+            "source_pack_id": pack["pack_id"],
+            "answer_bundle_id": "synthetic_spy_60m_four_hour_v1",
+            "dataset_ref_id": None,
+            "expected_case_revision": "0" * 64,
+        },
+    )
+    assert stale.status_code == 422
+    assert "changed after proposal preflight" in stale.json()["message"]
 
 
 def test_unknown_research_case_reads_are_404(

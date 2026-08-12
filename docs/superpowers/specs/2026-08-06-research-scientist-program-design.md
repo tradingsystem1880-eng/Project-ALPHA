@@ -167,10 +167,13 @@ owner-approved exploration contract before any D1 view, and leaves D3 at 20% or 
 Gate 1 draft path materializes the default 60/20/20 commitment; no empirical runner consumes either
 the default or an alternative allocation yet.
 
-The `ResearchD2BoundaryV1` hash binds the chronological group-allocation rule, group memberships,
-D2/D3 shares, chart fingerprint, data hash, and event definition. Authorization, consumption, and
-contamination events must retain that exact boundary hash; a changed boundary is a new lineage,
-never a reseal.
+The versioned research boundary hash binds the chronological group-allocation rule, exact ordered
+group membership, D2/D3 shares, chart fingerprint, data hash, and event definition. New contracts
+use compact `ResearchD2BoundaryV2`: sequence count/digest plus per-zone indices, endpoints, counts,
+and membership digests. Every D1/D2 read rederives those commitments from the complete dataset.
+Historical `ResearchD2BoundaryV1` payloads remain byte-identically readable and are never rewritten.
+Authorization, consumption, and contamination retain the exact boundary hash; a changed boundary is
+a new lineage, never a reseal.
 
 `pilot` first proves the proposed detector and evaluator on D0. Any bounded real-market pilot and
 all `deep_research` adaptation use D1 only. At `confirmation_review`, the D1-selected family is

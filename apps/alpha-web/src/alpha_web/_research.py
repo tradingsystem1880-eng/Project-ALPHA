@@ -7,17 +7,10 @@ arbitrary code, and trading capabilities intentionally have no wrapper.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
 
 from alpha_web._catalog import _run_json
-
-_RESEARCH_ANSWER_OPTIONS = {
-    "chart_construction": frozenset({"spy_rth_60m_four_hour_window"}),
-    "event_availability": frozenset({"second_trough_confirmable"}),
-    "primary_outcome": frozenset({"four_trading_hour_return_25bp"}),
-}
 
 
 def _object(value: object, label: str) -> dict[str, Any]:
@@ -69,19 +62,35 @@ def propose(
     *,
     data_dir: Path,
     source_pack_id: str,
-    answers: Mapping[str, str],
+    answer_bundle_id: str,
+    dataset_ref_id: str | None,
+    expected_case_revision: str,
 ) -> dict[str, Any]:
     """Materialize a reviewable contract; approval remains owner-only and CLI-only."""
-    if set(answers) != set(_RESEARCH_ANSWER_OPTIONS):
-        raise ValueError("research proposal requires exactly the three material answers")
-    args = ["research", "draft", project_id, "--source-pack-id", source_pack_id]
-    for key in sorted(_RESEARCH_ANSWER_OPTIONS):
-        value = answers[key]
-        if value not in _RESEARCH_ANSWER_OPTIONS[key]:
-            raise ValueError(f"unsupported {key} research answer {value!r}")
-        args += ["--answer", f"{key}={value}"]
+    args = [
+        "research",
+        "draft",
+        project_id,
+        "--source-pack-id",
+        source_pack_id,
+        "--answer-bundle",
+        answer_bundle_id,
+        "--expected-case-revision",
+        expected_case_revision,
+    ]
+    if dataset_ref_id is not None:
+        args += ["--dataset", dataset_ref_id]
     args += ["--json"]
     return _object(_run_json(args, data_dir=data_dir), "research proposal")
+
+
+def proposal_options(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read server-authoritative executable proposal choices and current blockers."""
+
+    return _object(
+        _run_json(["research", "proposal-options", project_id, "--json"], data_dir=data_dir),
+        "research proposal options",
+    )
 
 
 def launch(project_id: str, *, data_dir: Path, stage: str) -> dict[str, Any]:

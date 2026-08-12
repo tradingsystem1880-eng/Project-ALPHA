@@ -32,6 +32,7 @@ from alpha_core import DataError
 from alpha_research import (
     ResearchChartFingerprintV1,
     ResearchD2BoundaryV1,
+    ResearchD2BoundaryV2,
     build_research_gate_packet,
 )
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
@@ -230,6 +231,42 @@ def _payload(
         protocol = cast(dict[str, object], payload["protocol"])
         protocol["d0_operator"] = registered_d0_operator(payload)
     return payload
+
+
+def test_compact_v2_full_history_contract_persists_under_the_existing_json_limit(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    pack_id = _source_pack(store)
+    payload = _payload(pack_id)
+    baseline = _boundary("compact-full-history")
+    boundary = ResearchD2BoundaryV2.from_eligible_groups(
+        dataset_fingerprint=baseline.dataset_fingerprint,
+        eligible_groups=tuple(f"spy-session-{index:04d}" for index in range(3_774)),
+        chart_fingerprint=baseline.chart_fingerprint,
+        event_formula=baseline.event_formula,
+        event_availability_timestamp=baseline.event_availability_timestamp,
+        primary_endpoint=baseline.primary_endpoint,
+        primary_horizon=baseline.primary_horizon,
+        outcome_overlap_embargo_groups=baseline.outcome_overlap_embargo_groups,
+    )
+    protocol = cast(dict[str, object], payload["protocol"])
+    topology = cast(dict[str, object], protocol["evidence_topology"])
+    topology["boundary"] = boundary.to_dict()
+    d2 = cast(dict[str, object], topology["D2"])
+    d2["boundary_hash"] = boundary.boundary_sha256
+
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    assert len(encoded) < 65_536
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+    )
+    assert cast(dict[str, object], contract["payload"]) == payload
 
 
 def _approved_contracts(

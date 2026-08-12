@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError, replace
 from typing import Any
@@ -12,8 +13,10 @@ from alpha_core import DataError
 from alpha_research import (
     ResearchChartFingerprintV1,
     ResearchD2BoundaryV1,
+    ResearchD2BoundaryV2,
     ResearchEvidenceSharesV1,
     ResearchEvidenceZoneBoundaryV1,
+    research_d2_boundary_from_dict,
 )
 
 DATASET_SHA = "1" * 64
@@ -58,6 +61,121 @@ def _boundary(
         outcome_overlap_embargo_groups=outcome_overlap_embargo_groups,
         shares=shares or ResearchEvidenceSharesV1(),
     )
+
+
+def _boundary_v2(*, groups: tuple[str, ...] = GROUPS) -> ResearchD2BoundaryV2:
+    return ResearchD2BoundaryV2.from_eligible_groups(
+        dataset_fingerprint=DATASET_SHA,
+        eligible_groups=groups,
+        chart_fingerprint=_chart(),
+        event_formula="confirmable second trough within 0.5 percent of first trough",
+        event_availability_timestamp="second_trough_bar_close",
+        primary_endpoint="event_minus_matched_control_arithmetic_return",
+        primary_horizon="240_trading_minutes",
+        outcome_overlap_embargo_groups=1,
+    )
+
+
+def test_compact_v2_commits_full_history_below_the_control_store_limit() -> None:
+    groups = tuple(f"{2010 + index // 252:04d}-session-{index:04d}" for index in range(3_774))
+    boundary = _boundary_v2(groups=groups)
+    encoded = json.dumps(
+        boundary.to_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
+
+    assert len(encoded) < 65_536
+    eligible = boundary.to_dict()["eligible_groups"]
+    assert isinstance(eligible, dict)
+    assert eligible == {
+        "count": 3_774,
+        "ordered_groups_sha256": boundary.eligible_groups_sha256,
+    }
+    assert boundary.verify_eligible_groups(groups)
+    assert not boundary.verify_eligible_groups(groups[:-1] + ("tampered-session",))
+    assert ResearchD2BoundaryV2.from_dict(boundary.to_dict()) == boundary
+
+
+def test_versioned_boundary_reader_preserves_v1_bytes_without_migration() -> None:
+    payload = _boundary().to_dict()
+    before = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    loaded = research_d2_boundary_from_dict(payload)
+    after = json.dumps(loaded.to_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+    assert isinstance(loaded, ResearchD2BoundaryV1)
+    assert after == before
+    assert isinstance(
+        research_d2_boundary_from_dict(_boundary_v2().to_dict()), ResearchD2BoundaryV2
+    )
+    with pytest.raises(DataError, match="unsupported research D2 boundary schema"):
+        research_d2_boundary_from_dict({"schema": "ResearchD2BoundaryV99"})
+
+
+def test_compact_v2_rejects_invalid_construction_and_membership_inputs() -> None:
+    baseline = _boundary_v2()
+    with pytest.raises(DataError, match="chart_fingerprint has the wrong type"):
+        replace(baseline, chart_fingerprint={})  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="shares has the wrong type"):
+        replace(baseline, shares={})  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="D2 has the wrong type"):
+        replace(baseline, d2={})  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="D1 allocation is inconsistent"):
+        replace(baseline, d1=replace(baseline.d1, share_percent=59))
+    with pytest.raises(DataError, match="leaves D1, D2, or D3 empty"):
+        _boundary_v2(groups=GROUPS[:5]).__class__.from_eligible_groups(
+            dataset_fingerprint=DATASET_SHA,
+            eligible_groups=GROUPS[:5],
+            chart_fingerprint=_chart(),
+            event_formula="formula",
+            event_availability_timestamp="event close",
+            primary_endpoint="return",
+            primary_horizon="one session",
+            outcome_overlap_embargo_groups=0,
+            shares=ResearchEvidenceSharesV1(d1_percent=1, d2_percent=1, d3_percent=98),
+        )
+    with pytest.raises(DataError, match="ordered sequence"):
+        ResearchD2BoundaryV2.from_eligible_groups(
+            dataset_fingerprint=DATASET_SHA,
+            eligible_groups="not-a-sequence",
+            chart_fingerprint=_chart(),
+            event_formula="formula",
+            event_availability_timestamp="event close",
+            primary_endpoint="return",
+            primary_horizon="one session",
+            outcome_overlap_embargo_groups=0,
+        )
+    with pytest.raises(DataError, match="unique"):
+        _boundary_v2(groups=GROUPS[:-1] + (GROUPS[0],))
+    with pytest.raises(DataError, match="ordered sequence"):
+        baseline.verify_eligible_groups("not-a-sequence")
+
+    object.__setattr__(baseline.d2, "membership_sha256", "f" * 64)
+    assert not baseline.verify_eligible_groups(GROUPS)
+    assert baseline.contract_hash == baseline.boundary_sha256
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("schema", "unsupported ResearchD2BoundaryV2"),
+        ("allocation", "allocation_rule"),
+        ("overlap", "must be eligible_group"),
+        ("hash", "boundary_sha256 does not match"),
+    ],
+)
+def test_compact_v2_deserialization_fails_closed(mutation: str, message: str) -> None:
+    payload = _boundary_v2().to_dict()
+    if mutation == "schema":
+        payload["schema_version"] = 1
+    elif mutation == "allocation":
+        payload["allocation_rule"] = "caller_selected"
+    elif mutation == "overlap":
+        overlap = payload["outcome_overlap_embargo"]
+        assert isinstance(overlap, dict)
+        overlap["unit"] = "bar"
+    else:
+        payload["boundary_sha256"] = "f" * 64
+    with pytest.raises(DataError, match=message):
+        ResearchD2BoundaryV2.from_dict(payload)
 
 
 def test_default_boundary_binds_exact_chronological_60_20_20_membership() -> None:

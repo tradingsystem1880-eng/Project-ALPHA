@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Any, Final
 
 from alpha_cli.research_analysis_plan import default_analysis_plan
@@ -35,6 +36,43 @@ _OUTCOME_CHOICES: Final = frozenset(
         "next_regular_session_return_50bp",
     }
 )
+_ANSWER_BUNDLES: Final = (
+    {
+        "bundle_id": "synthetic_spy_60m_four_hour_v1",
+        "label": "SPY 60-minute synthetic detector validation",
+        "answers": {
+            "chart_construction": "spy_rth_60m_four_hour_window",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "four_trading_hour_return_25bp",
+        },
+        "requires_dataset": False,
+    },
+    {
+        "bundle_id": "tiingo_spy_daily_next_session_v1",
+        "label": "Qualified Tiingo daily SPY exploration",
+        "answers": {
+            "chart_construction": "tiingo_daily_fallback",
+            "event_availability": "second_trough_confirmable",
+            "primary_outcome": "next_regular_session_return_50bp",
+        },
+        "requires_dataset": True,
+    },
+)
+
+
+def registered_answer_bundles() -> list[dict[str, object]]:
+    """Return independent JSON-safe copies of every executable answer bundle."""
+
+    return deepcopy(list(_ANSWER_BUNDLES))
+
+
+def registered_answer_bundle(bundle_id: str) -> dict[str, object]:
+    """Resolve one closed answer bundle or fail without guessing across answer axes."""
+
+    for bundle in _ANSWER_BUNDLES:
+        if bundle["bundle_id"] == bundle_id:
+            return deepcopy(bundle)
+    raise DataError(f"unknown research answer bundle {bundle_id!r}")
 
 
 def _raw_idea(value: str) -> str:
@@ -71,11 +109,36 @@ def _choice(identifier: str, label: str, consequence: str) -> dict[str, str]:
     return {"id": identifier, "label": label, "consequence": consequence}
 
 
+def _recommended_bundle_id(raw: str) -> str | None:
+    lowered = raw.casefold()
+    names_sp500 = any(token in lowered for token in ("s&p", "sp500", "s and p 500"))
+    names_four_hour = re.search(r"\b(?:4h|4[- ]?hour)\b", lowered) is not None
+    return "synthetic_spy_60m_four_hour_v1" if names_sp500 and names_four_hour else None
+
+
+def _material_choice(
+    identifier: str,
+    label: str,
+    consequence: str,
+    *,
+    availability: str,
+    blocked_reason: str | None = None,
+) -> dict[str, object]:
+    return {
+        "id": identifier,
+        "label": label,
+        "consequence": consequence,
+        "availability": availability,
+        "blocked_reason": blocked_reason,
+    }
+
+
 def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, object]]:
     lowered = raw.casefold()
     sp500 = any(token in lowered for token in ("s&p", "sp500", "s and p 500"))
     four_hour = re.search(r"\b(?:4h|4[- ]?hour)\b", lowered) is not None
     result: list[dict[str, object]] = []
+    recommended = _recommended_bundle_id(raw)
     if "chart_construction" not in resolutions:
         if sp500 and four_hour:
             choices = [
@@ -122,49 +185,78 @@ def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, objec
         result.append(
             {
                 "id": "chart_construction",
-                "question": "Which exact instrument and equal-duration chart defines the claim?",
-                "why_blocking": "It changes the primary instrument and event population.",
-                "choices": choices,
+                "prompt": "Which exact instrument and equal-duration chart defines the claim?",
+                "blocking_reason": "It changes the primary instrument and event population.",
+                "choices": [
+                    _material_choice(
+                        str(choice["id"]),
+                        str(choice["label"]),
+                        str(choice["consequence"]),
+                        availability=(
+                            "available"
+                            if choice["id"]
+                            in {"spy_rth_60m_four_hour_window", "tiingo_daily_fallback"}
+                            else "unavailable"
+                        ),
+                        blocked_reason=(
+                            None
+                            if choice["id"]
+                            in {"spy_rth_60m_four_hour_window", "tiingo_daily_fallback"}
+                            else "No registered end-to-end research operator uses this choice."
+                        ),
+                    )
+                    for choice in choices
+                ],
+                "recommended_answer_bundle_id": recommended,
             }
         )
     if "event_availability" not in resolutions:
         result.append(
             {
                 "id": "event_availability",
-                "question": "When is the event knowable without future information?",
-                "why_blocking": "It changes event timing and prevents a look-ahead detector.",
+                "prompt": "When is the event knowable without future information?",
+                "blocking_reason": "It changes event timing and prevents a look-ahead detector.",
                 "choices": [
-                    _choice(
+                    _material_choice(
                         "second_trough_confirmable",
                         "Second trough confirmable",
                         "Fires only after any required right-pivot observations are available.",
+                        availability="available",
                     ),
-                    _choice(
+                    _material_choice(
                         "neckline_breakout_confirmed",
                         "Neckline breakout confirmed",
                         "Treats breakout confirmation as a different, later event variant.",
+                        availability="unavailable",
+                        blocked_reason=(
+                            "No registered end-to-end research operator uses this choice."
+                        ),
                     ),
                 ],
+                "recommended_answer_bundle_id": recommended,
             }
         )
     if "primary_outcome" not in resolutions:
         result.append(
             {
                 "id": "primary_outcome",
-                "question": "What single horizon and minimum useful move defines a bounce?",
-                "why_blocking": "It fixes the primary endpoint and economic hurdle.",
+                "prompt": "What single horizon and minimum useful move defines a bounce?",
+                "blocking_reason": "It fixes the primary endpoint and economic hurdle.",
                 "choices": [
-                    _choice(
+                    _material_choice(
                         "four_trading_hour_return_25bp",
                         "Four trading hours, 25 bp",
                         "Tests a positive 240-trading-minute return that clears 0.25%.",
+                        availability="available",
                     ),
-                    _choice(
+                    _material_choice(
                         "next_regular_session_return_50bp",
                         "Next session, 50 bp",
                         "Tests the next regular-session return against a 0.50% hurdle.",
+                        availability="available",
                     ),
                 ],
+                "recommended_answer_bundle_id": recommended,
             }
         )
     return result[:3]
@@ -291,6 +383,17 @@ def draft_exploration_contract(
         and chart is not None
         and (chart, outcome) in registered_d0_material_choices()
     )
+    capability_gaps = [
+        {
+            "id": identifier,
+            "availability": "unavailable",
+            "blocked_reason": "No registered end-to-end research operator uses this choice.",
+        }
+        for identifier in sorted(
+            (_CHART_CHOICES - {chart for chart, _outcome in registered_d0_material_choices()})
+            | (_EVENT_CHOICES - {"second_trough_confirmable"})
+        )
+    ]
     return {
         "schema": "ResearchContractV1",
         "schema_version": 1,
@@ -299,6 +402,9 @@ def draft_exploration_contract(
         "raw_idea": exact_idea,
         "approval_ready": not questions and gate1_supported,
         "blocking_questions": questions,
+        "valid_answer_bundles": registered_answer_bundles(),
+        "recommended_answer_bundle_id": _recommended_bundle_id(exact_idea),
+        "answer_capability_gaps": capability_gaps,
         "gate1_availability": {
             "state": "AVAILABLE" if gate1_supported else "UNAVAILABLE",
             "reason": _gate1_reason(gate1_supported, chart),

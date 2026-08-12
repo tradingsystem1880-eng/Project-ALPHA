@@ -185,6 +185,13 @@ def validate_source_response(
         raise DataError("research source response MIME does not match PDF bytes")
     if media_type == "application/pdf" and not raw.startswith(b"%PDF-"):
         raise DataError("research source response MIME does not match PDF bytes")
+    parsed_final = urlsplit(final_url)
+    if (
+        media_type == "application/pdf"
+        and parsed_final.hostname in {"arxiv.org", "export.arxiv.org"}
+        and not parsed_final.path.startswith("/pdf/")
+    ):
+        raise DataError("arxiv PDF response came from a landing-page URL")
     if media_type == "application/json":
         try:
             json.loads(raw)

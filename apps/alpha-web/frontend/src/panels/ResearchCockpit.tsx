@@ -7,6 +7,7 @@ import type {
   ResearchDecisionView,
   ResearchGatePacket,
   ResearchMaterialAnswers,
+  ResearchProposalOptionsV1,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { onNewIdea } from '../context/newIdea'
@@ -31,6 +32,7 @@ type CockpitView = 'overview' | 'decision'
 
 const CHART_OPTIONS: ReadonlyArray<{ value: ChartConstruction; label: string }> = [
   { value: 'spy_rth_60m_four_hour_window', label: 'Synthetic SPY-like 60m D0 · four-hour window' },
+  { value: 'tiingo_daily_fallback', label: 'Qualified Tiingo daily SPY · next-session lane' },
 ]
 
 const EVENT_OPTIONS: ReadonlyArray<{ value: EventAvailability; label: string }> = [
@@ -39,6 +41,7 @@ const EVENT_OPTIONS: ReadonlyArray<{ value: EventAvailability; label: string }> 
 
 const OUTCOME_OPTIONS: ReadonlyArray<{ value: PrimaryOutcome; label: string }> = [
   { value: 'four_trading_hour_return_25bp', label: 'Four trading hours · +25 bp' },
+  { value: 'next_regular_session_return_50bp', label: 'Next regular session · +50 bp' },
 ]
 
 function errorMessage(reason: unknown): string {
@@ -343,7 +346,22 @@ function CaseSummary({
           {contract.blocking_questions.length ? (
             <div className="research-question-list">
               <span className="eyebrow">Material questions requiring owner definition</span>
-              <ol>{contract.blocking_questions.map((item) => <li key={item}>{item}</li>)}</ol>
+              <ol>{contract.blocking_questions.map((question) => (
+                <li key={question.id}>
+                  <strong>{question.prompt}</strong>
+                  <p>{question.blocking_reason}</p>
+                  <ul>
+                    {question.choices.map((choice) => (
+                      <li key={choice.id}>
+                        <strong>{choice.label}</strong> — {choice.consequence}
+                        {choice.availability === 'unavailable' ? (
+                          <span className="chip fail"> UNAVAILABLE · {choice.blocked_reason}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}</ol>
             </div>
           ) : null}
         </section>
@@ -404,6 +422,10 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const [idea, setIdea] = useState('')
   const [caseName, setCaseName] = useState('')
   const [sourcePackId, setSourcePackId] = useState('')
+  const [datasetRefId, setDatasetRefId] = useState('')
+  const [proposalOptions, setProposalOptions] = useState<ResearchProposalOptionsV1 | null>(null)
+  const [proposalOptionsError, setProposalOptionsError] = useState<string | null>(null)
+  const [answerBundleId, setAnswerBundleId] = useState('')
   const [chartConstruction, setChartConstruction] = useState<ChartConstruction | ''>('')
   const [eventAvailability, setEventAvailability] = useState<EventAvailability | ''>('')
   const [primaryOutcome, setPrimaryOutcome] = useState<PrimaryOutcome | ''>('')
@@ -411,18 +433,70 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const [error, setError] = useState<string | null>(null)
 
   const proposalComplete = useMemo(
-    () => sourcePackId.trim() !== '' && chartConstruction !== ''
-      && eventAvailability !== '' && primaryOutcome !== '',
-    [chartConstruction, eventAvailability, primaryOutcome, sourcePackId],
+    () => {
+      const selected = proposalOptions?.valid_answer_bundles.find(
+        (bundle) => bundle.bundle_id === answerBundleId,
+      )
+      return sourcePackId !== '' && selected?.available === true
+        && (!selected.requires_dataset || datasetRefId !== '')
+    },
+    [answerBundleId, datasetRefId, proposalOptions, sourcePackId],
   )
 
   function acceptCase(next: ResearchCase): void {
     setResearchCase(next)
     setLookupId(next.project_id)
     setSourcePackId(next.source_pack_id ?? '')
+    setDatasetRefId('')
+    setProposalOptions(null)
+    setProposalOptionsError(null)
     setReport(null)
     setDecisionView(null)
+    setAnswerBundleId('')
+    setChartConstruction('')
+    setEventAvailability('')
+    setPrimaryOutcome('')
   }
+
+  function selectAnswerBundle(bundleId: string): void {
+    setAnswerBundleId(bundleId)
+    const bundle = proposalOptions?.valid_answer_bundles.find(
+      (candidate) => candidate.bundle_id === bundleId,
+    )
+    setChartConstruction((bundle?.answers.chart_construction ?? '') as ChartConstruction | '')
+    setEventAvailability((bundle?.answers.event_availability ?? '') as EventAvailability | '')
+    setPrimaryOutcome((bundle?.answers.primary_outcome ?? '') as PrimaryOutcome | '')
+    if (!bundle?.requires_dataset) setDatasetRefId('')
+  }
+
+  useEffect(() => {
+    if (!researchCase || !researchProposalAvailable(researchCase.phase)) return
+    const projectId = researchCase.project_id
+    let current = true
+    setProposalOptionsError(null)
+    void api.researchProposalOptions(projectId).then((options) => {
+      if (!current) return
+      setProposalOptions(options)
+      const recommended = options.valid_answer_bundles.find(
+        (bundle) => bundle.bundle_id === options.recommended_answer_bundle_id
+          && bundle.available,
+      )
+      if (recommended) {
+        setAnswerBundleId(recommended.bundle_id)
+        setChartConstruction(recommended.answers.chart_construction)
+        setEventAvailability(recommended.answers.event_availability)
+        setPrimaryOutcome(recommended.answers.primary_outcome)
+      }
+      setSourcePackId((selected) => (
+        options.compatible_source_packs.some((pack) => pack.pack_id === selected)
+          ? selected
+          : (options.compatible_source_packs[0]?.pack_id ?? '')
+      ))
+    }).catch((reason: unknown) => {
+      if (current) setProposalOptionsError(errorMessage(reason))
+    })
+    return () => { current = false }
+  }, [researchCase])
 
   async function loadCase(projectId: string, operation: 'load' | 'status' = 'load'): Promise<void> {
     const clean = projectId.trim()
@@ -487,18 +561,15 @@ export function ResearchCockpit(props: PanelHandleProps) {
 
   async function propose(event: FormEvent): Promise<void> {
     event.preventDefault()
-    if (!researchCase || !proposalComplete || !chartConstruction
-      || !eventAvailability || !primaryOutcome) return
+    if (!researchCase || !proposalOptions || !proposalComplete || !answerBundleId) return
     setBusy('proposal')
     setError(null)
     try {
       const response = await api.researchProposal(researchCase.project_id, {
         source_pack_id: sourcePackId.trim(),
-        answers: {
-          chart_construction: chartConstruction,
-          event_availability: eventAvailability,
-          primary_outcome: primaryOutcome,
-        },
+        answer_bundle_id: answerBundleId,
+        dataset_ref_id: datasetRefId || null,
+        expected_case_revision: proposalOptions.case_revision,
       })
       acceptCase(response.case)
     } catch (reason) {
@@ -660,15 +731,78 @@ export function ResearchCockpit(props: PanelHandleProps) {
             {view === 'overview' && researchProposalAvailable(researchCase.phase) ? (
               <form className="research-proposal" onSubmit={(event) => void propose(event)}>
                 <div className="rd-head">Materialize the exact exploration proposal</div>
-                <div className="workbench-notice">
-                  <strong>SOURCE PACK REQUIRED</strong>
-                  <span>Create and freeze the screened source pack through the trusted-local CLI, then paste its immutable ID. This REST surface cannot fetch sources or approve the proposal.</span>
-                </div>
+                {proposalOptionsError ? (
+                  <div className="workbench-notice" role="alert">
+                    <strong>PROPOSAL OPTIONS FAILED</strong><span>{proposalOptionsError}</span>
+                  </div>
+                ) : null}
+                {!proposalOptions ? (
+                  <div className="workbench-notice" role="status">
+                    <strong>LOADING CURRENT OPTIONS</strong>
+                    <span>Checking executable bundles, frozen packs, datasets, and case revision.</span>
+                  </div>
+                ) : null}
+                {proposalOptions?.blockers.map((blocker) => (
+                  <div className="workbench-notice" role="alert" key={blocker.code}>
+                    <strong>{blocker.message}</strong><span>{blocker.recovery_action}</span>
+                  </div>
+                ))}
+                <fieldset className="research-question-list">
+                  <legend className="eyebrow">Valid answer bundle</legend>
+                  {proposalOptions?.valid_answer_bundles.map((bundle) => (
+                    <label className="workbench-notice" key={bundle.bundle_id}>
+                      <input
+                        type="radio"
+                        name="research-answer-bundle"
+                        value={bundle.bundle_id}
+                        checked={answerBundleId === bundle.bundle_id}
+                        disabled={!bundle.available}
+                        onChange={() => selectAnswerBundle(bundle.bundle_id)}
+                      />
+                      <strong>
+                        {bundle.label}
+                        {bundle.bundle_id === proposalOptions.recommended_answer_bundle_id
+                          ? ' · RECOMMENDED'
+                          : ''}
+                      </strong>
+                      <span>
+                        {bundle.blocked_reason ?? (bundle.requires_dataset
+                          ? 'Requires an exact qualified dataset.'
+                          : 'Synthetic D0 only; never real-market evidence.')}
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
                 <div className="research-proposal-grid">
-                  <label><span className="eyebrow">Frozen source pack ID</span><input className="field mono" value={sourcePackId} onChange={(event) => setSourcePackId(event.target.value)} /></label>
-                  <label><span className="eyebrow">Equal-duration chart construction</span><select className="field" value={chartConstruction} onChange={(event) => setChartConstruction(event.target.value as ChartConstruction | '')}><option value="">Choose explicitly…</option>{CHART_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <label><span className="eyebrow">When the event becomes knowable</span><select className="field" value={eventAvailability} onChange={(event) => setEventAvailability(event.target.value as EventAvailability | '')}><option value="">Choose explicitly…</option>{EVENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <label><span className="eyebrow">Primary economic endpoint</span><select className="field" value={primaryOutcome} onChange={(event) => setPrimaryOutcome(event.target.value as PrimaryOutcome | '')}><option value="">Choose explicitly…</option>{OUTCOME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                  <label>
+                    <span className="eyebrow">Frozen source pack</span>
+                    <select className="field mono" value={sourcePackId} onChange={(event) => setSourcePackId(event.target.value)}>
+                      <option value="">Select a project source pack</option>
+                      {proposalOptions?.compatible_source_packs.map((pack) => (
+                        <option key={pack.pack_id} value={pack.pack_id}>
+                          {pack.source_ids.length} source{pack.source_ids.length === 1 ? '' : 's'} · {pack.pack_id.slice(0, 15)}…
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {proposalOptions?.valid_answer_bundles.find(
+                    (bundle) => bundle.bundle_id === answerBundleId,
+                  )?.requires_dataset ? (
+                    <label>
+                      <span className="eyebrow">Qualified dataset</span>
+                      <select className="field mono" value={datasetRefId} onChange={(event) => setDatasetRefId(event.target.value)}>
+                        <option value="">Select the exact dataset</option>
+                        {proposalOptions.compatible_datasets.map((dataset) => (
+                          <option key={dataset.ref_id} value={dataset.ref_id}>
+                            {dataset.instrument} · {dataset.provider} · {dataset.start_ts} to {dataset.end_ts}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <label><span className="eyebrow">Equal-duration chart construction</span><input className="field" value={CHART_OPTIONS.find((option) => option.value === chartConstruction)?.label ?? ''} readOnly /></label>
+                  <label><span className="eyebrow">When the event becomes knowable</span><input className="field" value={EVENT_OPTIONS.find((option) => option.value === eventAvailability)?.label ?? ''} readOnly /></label>
+                  <label><span className="eyebrow">Primary economic endpoint</span><input className="field" value={OUTCOME_OPTIONS.find((option) => option.value === primaryOutcome)?.label ?? ''} readOnly /></label>
                 </div>
                 <button className="btn primary" type="submit" disabled={!proposalComplete || busy !== null}>
                   {busy === 'proposal' ? 'materializing…' : 'materialize for owner review'}

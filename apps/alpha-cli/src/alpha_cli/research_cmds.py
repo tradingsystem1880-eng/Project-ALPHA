@@ -50,7 +50,11 @@ from alpha_cli.research_gate_packet import (
     research_report_projection,
     research_scorecard_projection,
 )
-from alpha_cli.research_intake import draft_exploration_contract
+from alpha_cli.research_intake import (
+    draft_exploration_contract,
+    registered_answer_bundle,
+    registered_answer_bundles,
+)
 from alpha_cli.research_protocols import load_research_protocols, read_research_protocol
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.research_runtime import (
@@ -65,8 +69,10 @@ from alpha_core.config import AlphaSettings
 from alpha_research import (
     EqualDurationResearchBars,
     ResearchChartFingerprintV1,
-    ResearchD2BoundaryV1,
+    ResearchD2Boundary,
+    ResearchD2BoundaryV2,
     projected_confirmation_power,
+    research_d2_boundary_from_dict,
 )
 
 _LITERATURE_DOCUMENT_HOSTS: Final = frozenset({"arxiv.org", "export.arxiv.org"})
@@ -126,6 +132,105 @@ def _answers(values: list[str]) -> dict[str, str]:
             raise typer.BadParameter(f"duplicate research answer {key!r}")
         result[key] = value
     return result
+
+
+def _case_revision(summary: Mapping[str, object]) -> str:
+    """Commit to proposal-relevant mutable case state for optimistic revalidation."""
+
+    return _sha_json(
+        {
+            "schema": "ResearchCaseRevisionV1",
+            "project_id": summary.get("project_id"),
+            "active_contract_id": summary.get("active_contract_id"),
+            "phase": summary.get("phase"),
+            "execution_state": summary.get("execution_state"),
+            "source_pack_id": summary.get("source_pack_id"),
+        }
+    )
+
+
+def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]:
+    """Project the only proposal combinations the authoritative runtime can execute."""
+
+    case = store.research_case_summary(project_id)
+    active = case.get("active_contract")
+    payload = active.get("payload") if isinstance(active, Mapping) else None
+    raw_idea = payload.get("raw_idea") if isinstance(payload, Mapping) else None
+    if not isinstance(raw_idea, str):
+        raise DataError("research case has no exact raw idea for proposal preflight")
+    intake = draft_exploration_contract(raw_idea)
+    packs = store.list_research_source_packs(project_id, limit=100)
+    datasets = store.list_research_datasets(instrument="SPY", limit=100)
+    registered_event = "double bottom" in raw_idea.casefold()
+    compatible_datasets: list[dict[str, object]] = []
+    for dataset in datasets:
+        audit = dataset.get("latest_audit")
+        summary = audit.get("summary") if isinstance(audit, Mapping) else None
+        blocking_count = summary.get("blocking_count") if isinstance(summary, Mapping) else None
+        if (
+            dataset.get("provider") == "tiingo"
+            and dataset.get("bar_duration_minutes") == 1_440
+            and blocking_count == 0
+        ):
+            compatible_datasets.append(dataset)
+    bundles: list[dict[str, object]] = []
+    for bundle in registered_answer_bundles():
+        requires_dataset = bundle.get("requires_dataset") is True
+        bundle["compatible_dataset_ids"] = (
+            [str(row["ref_id"]) for row in compatible_datasets] if requires_dataset else []
+        )
+        bundle["available"] = registered_event and (
+            not requires_dataset or bool(compatible_datasets)
+        )
+        bundle["blocked_reason"] = (
+            "No registered end-to-end research operator matches the idea's event."
+            if not registered_event
+            else (
+                "A qualified Tiingo SPY daily dataset with a zero-blocker audit is required."
+                if requires_dataset and not compatible_datasets
+                else None
+            )
+        )
+        bundles.append(bundle)
+    blockers: list[dict[str, str]] = []
+    if not packs:
+        blockers.append(
+            {
+                "code": "SOURCE_PACK_REQUIRED",
+                "message": "Freeze at least one project source pack before proposing.",
+                "recovery_action": "Open Literature, review sources, and freeze a pack.",
+            }
+        )
+    if case.get("phase") not in {"captured", "triage", "exploration_review"}:
+        blockers.append(
+            {
+                "code": "CASE_PHASE_INELIGIBLE",
+                "message": "The current case phase cannot accept an exploration proposal.",
+                "recovery_action": "Follow the canonical next action shown for this case.",
+            }
+        )
+    if not registered_event:
+        blockers.append(
+            {
+                "code": "RESEARCH_OPERATOR_UNAVAILABLE",
+                "message": "No registered empirical operator matches this idea's event.",
+                "recovery_action": "Revise the case or implement and review an exact operator.",
+            }
+        )
+    return {
+        "proposal_schema": "ResearchProposalOptionsV1",
+        "project_id": project_id,
+        "case_revision": _case_revision(case),
+        "material_questions": intake.get("blocking_questions", []),
+        "recommended_answer_bundle_id": intake.get("recommended_answer_bundle_id"),
+        "valid_answer_bundles": bundles,
+        "compatible_source_packs": packs,
+        "compatible_datasets": compatible_datasets,
+        "blockers": blockers,
+        "approval_ready": bool(packs)
+        and not blockers
+        and any(bundle.get("available") is True for bundle in bundles),
+    }
 
 
 def _sha_json(value: object) -> str:
@@ -287,7 +392,7 @@ def _empirical_dataset(store: ControlStore, ref_id: str) -> _EmpiricalDataset:
 
 def _empirical_d1_bars(
     store: ControlStore, payload: Mapping[str, object]
-) -> tuple[EqualDurationResearchBars, ResearchD2BoundaryV1]:
+) -> tuple[EqualDurationResearchBars, ResearchD2Boundary]:
     """Reload the approval-frozen dataset and sealed boundary, fail-closed on any drift.
 
     The frozen ``hashes.data`` and the protocol's ``empirical_dataset.content_sha256`` must
@@ -317,7 +422,13 @@ def _empirical_d1_bars(
     )
     if not isinstance(boundary_value, Mapping):
         raise DataError("the empirical contract carries no sealed evidence boundary")
-    return binding.bars, ResearchD2BoundaryV1.from_dict(boundary_value)
+    boundary = research_d2_boundary_from_dict(boundary_value)
+    groups = [bar.start.date().isoformat() for bar in binding.bars.bars]
+    if not boundary.verify_eligible_groups(groups):
+        raise DataError(
+            "registered dataset membership no longer reproduces the approval-frozen boundary"
+        )
+    return binding.bars, boundary
 
 
 def _approval_payload(
@@ -449,7 +560,7 @@ def _approval_payload(
                 "eligible_groups": list(eligible_groups),
             }
         )
-    boundary = ResearchD2BoundaryV1.from_eligible_groups(
+    boundary = ResearchD2BoundaryV2.from_eligible_groups(
         dataset_fingerprint=dataset_fingerprint,
         eligible_groups=eligible_groups,
         chart_fingerprint=chart,
@@ -822,6 +933,20 @@ def sources_freeze(
     _emit(row, json_out=json_out, fallback=f"research source pack {row['pack_id']}")
 
 
+@research_app.command("proposal-options")
+def proposal_options(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Show executable answer bundles, compatible packs/data, blockers, and case revision."""
+
+    try:
+        row = _proposal_options(_store(), project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(row, json_out=json_out, fallback=f"proposal options for {project_id}")
+
+
 @research_app.command("draft")
 def draft(
     project_id: str,
@@ -832,6 +957,12 @@ def draft(
     dataset: str | None = typer.Option(
         None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
     ),
+    answer_bundle: str | None = typer.Option(
+        None, "--answer-bundle", help="registered atomic material-answer bundle"
+    ),
+    expected_case_revision: str | None = typer.Option(
+        None, "--expected-case-revision", help="proposal-preflight optimistic revision"
+    ),
     created_by: str = typer.Option("codex"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
@@ -839,12 +970,50 @@ def draft(
     store = _store()
     try:
         project = store.get_project(project_id)
+        if expected_case_revision is not None:
+            current_case = store.research_case_summary(project_id)
+            if _case_revision(current_case) != expected_case_revision:
+                raise DataError(
+                    "research case changed after proposal preflight; refresh the case and options"
+                )
         source_pack = store.get_research_source_pack(source_pack_id)
         if source_pack.get("project_id") != project_id:
             raise DataError("research source pack must belong to the drafted project")
-        preview = draft_exploration_contract(
-            str(project["hypothesis"]), resolutions=_answers(answers)
-        )
+        if answer_bundle is not None and answers:
+            raise DataError("choose one answer bundle or individual CLI answers, not both")
+        resolutions = _answers(answers)
+        if answer_bundle is not None:
+            bundle = registered_answer_bundle(answer_bundle)
+            bundle_answers = bundle.get("answers")
+            if not isinstance(bundle_answers, Mapping):  # pragma: no cover - static registry
+                raise DataError("registered research answer bundle is malformed")
+            resolutions = {str(key): str(value) for key, value in bundle_answers.items()}
+            if bundle.get("requires_dataset") is True and dataset is None:
+                raise DataError("the selected research answer bundle requires an exact dataset")
+            if bundle.get("requires_dataset") is not True and dataset is not None:
+                raise DataError("the selected synthetic answer bundle cannot bind a dataset")
+            options = _proposal_options(store, project_id)
+            pack_ids = {
+                str(row.get("pack_id"))
+                for row in cast(list[dict[str, object]], options["compatible_source_packs"])
+            }
+            if source_pack_id not in pack_ids:
+                raise DataError("the selected source pack is not compatible with this case")
+            registered = next(
+                (
+                    row
+                    for row in cast(list[dict[str, object]], options["valid_answer_bundles"])
+                    if row.get("bundle_id") == answer_bundle
+                ),
+                None,
+            )
+            if registered is None or registered.get("available") is not True:
+                reason = None if registered is None else registered.get("blocked_reason")
+                raise DataError(str(reason or "the selected answer bundle is unavailable"))
+            compatible_ids = cast(list[str], registered["compatible_dataset_ids"])
+            if dataset is not None and dataset not in compatible_ids:
+                raise DataError("the selected dataset is not qualified for this answer bundle")
+        preview = draft_exploration_contract(str(project["hypothesis"]), resolutions=resolutions)
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
         binding = _empirical_dataset(store, dataset) if dataset is not None else None
@@ -1526,7 +1695,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
             None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
         )
         boundary_kind = None if not isinstance(authority, Mapping) else authority.get("kind")
-        sealed_boundary: ResearchD2BoundaryV1 | None = None
+        sealed_boundary: ResearchD2Boundary | None = None
         if boundary_kind == "synthetic_acceptance_fixture":
             bars = registered_synthetic_d1_bars()
         elif boundary_kind == "empirical_dataset":

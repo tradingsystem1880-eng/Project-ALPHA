@@ -33,7 +33,9 @@ still use the existing CLI flag and permanent override watermark; a surface may 
 different bypass.
 
 - **D2 runner.** `alpha research run confirm` executes the sealed one-shot confirmation under the
-  immutable `ResearchD2BoundaryV1` and the owner-approved child confirmation contract, emitting
+  immutable versioned research boundary. New contracts use compact exact-membership
+  `ResearchD2BoundaryV2`; historical V1 payloads remain byte-identically readable and are never
+  migrated. The owner-approved child confirmation contract emits
   `REGISTERED CONFIRMATORY` artifacts and the D2 `authorized → consumed` (or `contaminated`)
   events. Confirmation approval and D2 transitions are un-disabled in this phase; the mechanical
   classification remains the only source of the scientific outcome.

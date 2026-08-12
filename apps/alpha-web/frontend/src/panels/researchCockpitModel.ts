@@ -102,8 +102,37 @@ export interface ResearchContractView {
   prediction: string | null
   interpretation: string | null
   alternatives: string[]
-  blocking_questions: string[]
+  blocking_questions: ResearchMaterialQuestionV1[]
+  valid_answer_bundles: ResearchAnswerBundleV1[]
+  recommended_answer_bundle_id: string | null
   approval_ready: boolean
+}
+
+export interface ResearchMaterialChoiceV1 {
+  id: string
+  label: string
+  consequence: string
+  availability: 'available' | 'unavailable'
+  blocked_reason: string | null
+}
+
+export interface ResearchMaterialQuestionV1 {
+  id: string
+  prompt: string
+  blocking_reason: string
+  choices: ResearchMaterialChoiceV1[]
+  recommended_answer_bundle_id: string | null
+}
+
+export interface ResearchAnswerBundleV1 {
+  bundle_id: string
+  label: string
+  answers: {
+    chart_construction: string
+    event_availability: string
+    primary_outcome: string
+  }
+  requires_dataset: boolean
 }
 
 export interface ResearchBudgetRow {
@@ -211,6 +240,70 @@ function textList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 }
 
+function materialQuestions(value: unknown): ResearchMaterialQuestionV1[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const question = objectValue(item)
+    if (!question) return []
+    const id = textValue(question.id)
+    const prompt = textValue(question.prompt)
+    const blockingReason = textValue(question.blocking_reason)
+    if (!id || !prompt || !blockingReason || !Array.isArray(question.choices)) return []
+    const choices = question.choices.flatMap((rawChoice) => {
+      const choice = objectValue(rawChoice)
+      if (!choice) return []
+      const choiceId = textValue(choice.id)
+      const label = textValue(choice.label)
+      const consequence = textValue(choice.consequence)
+      const availability: ResearchMaterialChoiceV1['availability'] | null =
+        choice.availability === 'available' || choice.availability === 'unavailable'
+          ? choice.availability
+          : null
+      if (!choiceId || !label || !consequence
+        || (availability !== 'available' && availability !== 'unavailable')) return []
+      return [{
+        id: choiceId,
+        label,
+        consequence,
+        availability,
+        blocked_reason: textValue(choice.blocked_reason),
+      }]
+    })
+    return [{
+      id,
+      prompt,
+      blocking_reason: blockingReason,
+      choices,
+      recommended_answer_bundle_id: textValue(question.recommended_answer_bundle_id),
+    }]
+  })
+}
+
+function answerBundles(value: unknown): ResearchAnswerBundleV1[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const bundle = objectValue(item)
+    const answers = objectValue(bundle?.answers)
+    const bundleId = textValue(bundle?.bundle_id)
+    const label = textValue(bundle?.label)
+    const chart = textValue(answers?.chart_construction)
+    const event = textValue(answers?.event_availability)
+    const outcome = textValue(answers?.primary_outcome)
+    if (!bundleId || !label || !chart || !event || !outcome
+      || typeof bundle?.requires_dataset !== 'boolean') return []
+    return [{
+      bundle_id: bundleId,
+      label,
+      answers: {
+        chart_construction: chart,
+        event_availability: event,
+        primary_outcome: outcome,
+      },
+      requires_dataset: bundle.requires_dataset,
+    }]
+  })
+}
+
 /** Read only explanatory fields from the immutable active contract; never infer empirical results. */
 export function researchContractView(researchCase: ResearchCase): ResearchContractView {
   const payload = objectValue(researchCase.active_contract.payload) ?? {}
@@ -221,7 +314,9 @@ export function researchContractView(researchCase: ResearchCase): ResearchContra
     prediction: textValue(thesis.prediction),
     interpretation: textValue(thesis.interpretation),
     alternatives: textList(thesis.alternatives),
-    blocking_questions: textList(payload.blocking_questions),
+    blocking_questions: materialQuestions(payload.blocking_questions),
+    valid_answer_bundles: answerBundles(payload.valid_answer_bundles),
+    recommended_answer_bundle_id: textValue(payload.recommended_answer_bundle_id),
     approval_ready: payload.approval_ready === true,
   }
 }

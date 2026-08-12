@@ -19,9 +19,12 @@ from alpha_research.artifacts import (
 )
 from alpha_research.boundary import (
     ResearchChartFingerprintV1,
+    ResearchD2Boundary,
     ResearchD2BoundaryV1,
+    ResearchD2BoundaryV2,
     ResearchEvidenceSharesV1,
     ResearchEvidenceZoneBoundaryV1,
+    research_d2_boundary_from_dict,
 )
 from alpha_research.conditional_returns import (
     conditional_return_summary,
@@ -38,6 +41,7 @@ from alpha_research.confirmation import (
 )
 from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
 from alpha_research.descriptives import (
+    AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
     autocorrelation,
     coverage_summary,
     effective_sample_size,
@@ -107,6 +111,7 @@ from alpha_research.topology import (
 
 __version__ = version("alpha-research")
 __all__ = [
+    "AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION",
     "ArtifactKind",
     "ChartEvidencePhase",
     "ChartWatermark",
@@ -140,7 +145,9 @@ __all__ = [
     "ResearchChartFingerprintV1",
     "ResearchChartPoint",
     "ResearchChartSeries",
+    "ResearchD2Boundary",
     "ResearchD2BoundaryV1",
+    "ResearchD2BoundaryV2",
     "ResearchDatasetRef",
     "ResearchDisposition",
     "ResearchEvidenceSharesV1",
@@ -174,6 +181,7 @@ __all__ = [
     "render_research_line_chart",
     "required_observations_known_sigma",
     "return_distribution",
+    "research_d2_boundary_from_dict",
     "rolling_effect_size",
     "rolling_rank_ic",
     "seasonality_by_weekday",

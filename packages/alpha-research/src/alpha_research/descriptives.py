@@ -18,6 +18,7 @@ import numpy as np
 from alpha_core import DataError
 
 _WEEKDAY_BUCKETS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION = "ar1-conservative-cap-v2"
 
 
 def _finite_array(values: Sequence[float], label: str) -> np.ndarray:
@@ -188,7 +189,7 @@ def volatility_regime_tags(returns: Sequence[float], *, window: int) -> list[str
 
 
 def effective_sample_size(n: int, first_lag_autocorrelation: float) -> float:
-    """AR(1)-approximate effective sample size ``n * (1 - rho) / (1 + rho)``."""
+    """Conservative AR(1) effective sample size, capped at the observation count."""
     if isinstance(n, bool) or not isinstance(n, int) or n < 1:
         raise DataError("effective sample size requires a positive integer sample count")
     rho = first_lag_autocorrelation
@@ -199,10 +200,12 @@ def effective_sample_size(n: int, first_lag_autocorrelation: float) -> float:
         or not -1.0 < rho < 1.0
     ):
         raise DataError("effective sample size autocorrelation must lie in (-1, 1)")
-    return float(n) * (1.0 - rho) / (1.0 + rho)
+    raw = float(n) * (1.0 - rho) / (1.0 + rho)
+    return min(float(n), raw)
 
 
 __all__ = [
+    "AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION",
     "autocorrelation",
     "coverage_summary",
     "effective_sample_size",

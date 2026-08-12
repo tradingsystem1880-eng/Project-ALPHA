@@ -23,6 +23,7 @@ from alpha_data.pit import PointInTimeReader
 from alpha_data.snapshot import verify_snapshot
 from alpha_data.store import ParquetStore
 from alpha_research import (
+    AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
     ResearchChartData,
     ResearchChartPoint,
     ResearchChartSeries,
@@ -172,6 +173,9 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
             rho = float(rows[0]["autocorrelation"])
             descriptives["autocorrelation"] = rows
             descriptives["effective_sample_size"] = effective_sample_size(n_returns, rho)
+            descriptives["effective_sample_size_method_version"] = (
+                AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION
+            )
         returns = [b / a - 1.0 for a, b in zip(closes, closes[1:], strict=False)]
         descriptives["seasonality_by_weekday"] = seasonality_by_weekday(timestamps[1:], returns)
         if len(returns) >= _REGIME_WINDOW + 2:
@@ -186,6 +190,7 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
 
     summary = {
         "audit_schema": "ResearchDataAuditV1",
+        "method_version": AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
         "blocking_count": len(blocking),
         "limiting_count": len(limiting),
         "notes": [*blocking, *limiting, *notes],
@@ -201,6 +206,7 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
             dict(origin_value) if isinstance(origin_value := ref.get("origin"), Mapping) else {}
         ),
         "dataset_hash": dataset_hash,
+        "method_version": AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
     }
     run_id = _sha(run_identity)[:16]
     run_dir = _artifacts.run_dir(Path(data_dir), run_id)
@@ -264,6 +270,7 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
         "eligible_for_holdout_or_execution": False,
         "places_orders": False,
         "research_only": True,
+        "research_data_audit_method_version": AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
         "audit_summary": summary,
         "snapshot_id": None,
         "snapshot_hash": None,

@@ -50,6 +50,7 @@ import type {
   ResearchScorecard,
   ResearchLaunchResponse,
   ResearchProposalRequest,
+  ResearchProposalOptionsV1,
   ResearchProposalResponse,
   ResearchReport,
   FigureCatalogue,
@@ -240,6 +241,8 @@ export const api = {
     postJSON('/api/research/cases', body),
   researchCase: (projectId: string): Promise<ResearchCase> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}`),
+  researchProposalOptions: (projectId: string): Promise<ResearchProposalOptionsV1> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/proposal-options`),
   researchProposal: (
     projectId: string,
     body: ResearchProposalRequest,

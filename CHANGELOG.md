@@ -16,6 +16,14 @@ Paper acceptance scenario remain pending.
 
 ### Added
 
+- Repair-program Stage 1 research/data contracts: typed material questions now retain prompts,
+  blocking reasons, consequences, capability availability, and a complete recommendation bundle.
+  `ResearchProposalOptionsV1` projects only registered atomic answer bundles plus compatible frozen
+  packs, qualified datasets, current blockers, and an optimistic case revision; proposal submission
+  revalidates all selected inputs through the authoritative CLI.
+- Compact `ResearchD2BoundaryV2` commitments bind exact ordered membership by count/sequence digest
+  and retain derived zone indices, endpoints, counts, and membership digests. New contracts use V2;
+  V1 remains byte-identically readable and is never migrated.
 - Repair-program Stage 0 launch integrity: every Workstation empirical launch carries a validated
   governed-project or permanently unqualified standalone context through request, child process,
   run identity, immutable manifest, run history, and generated API contracts. Historical runs are
@@ -43,6 +51,9 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- The data-audit AR(1) effective sample size is conservatively capped at the observation count; the
+  versioned method is identity-bound and the raw lag-one autocorrelation remains visible. arXiv PDF
+  locators normalize to HTTPS and acquisition rejects PDF responses from abstract landing URLs.
 - The generic job API rejects research lifecycle, project, evidence mutation, data repair, and
   paper-operation commands; governed empirical work fails closed on missing/unreadable/open gates.
   Strategy comparison no longer names a preferred strategy for ties, zero-trade, incomplete, or

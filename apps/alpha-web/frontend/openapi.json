@@ -9960,6 +9960,59 @@
         ],
         "type": "string"
       },
+      "ResearchAnswerBundleV1": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "$ref": "#/components/schemas/ResearchMaterialAnswers"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Reason"
+          },
+          "bundle_id": {
+            "title": "Bundle Id",
+            "type": "string"
+          },
+          "compatible_dataset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Compatible Dataset Ids",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "requires_dataset": {
+            "title": "Requires Dataset",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bundle_id",
+          "label",
+          "answers",
+          "requires_dataset",
+          "compatible_dataset_ids",
+          "available",
+          "blocked_reason"
+        ],
+        "title": "ResearchAnswerBundleV1",
+        "type": "object"
+      },
       "ResearchAttempt": {
         "additionalProperties": false,
         "properties": {
@@ -10683,7 +10736,10 @@
         "type": "object"
       },
       "ResearchChartConstructionValue": {
-        "const": "spy_rth_60m_four_hour_window",
+        "enum": [
+          "spy_rth_60m_four_hour_window",
+          "tiingo_daily_fallback"
+        ],
         "type": "string"
       },
       "ResearchChecklistQuestion": {
@@ -12358,6 +12414,95 @@
         "title": "ResearchMaterialAnswers",
         "type": "object"
       },
+      "ResearchMaterialChoiceV1": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Reason"
+          },
+          "consequence": {
+            "title": "Consequence",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "consequence",
+          "availability",
+          "blocked_reason"
+        ],
+        "title": "ResearchMaterialChoiceV1",
+        "type": "object"
+      },
+      "ResearchMaterialQuestionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "blocking_reason": {
+            "title": "Blocking Reason",
+            "type": "string"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchMaterialChoiceV1"
+            },
+            "title": "Choices",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "recommended_answer_bundle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended Answer Bundle Id"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "blocking_reason",
+          "choices",
+          "recommended_answer_bundle_id"
+        ],
+        "title": "ResearchMaterialQuestionV1",
+        "type": "object"
+      },
       "ResearchMilestone": {
         "additionalProperties": false,
         "properties": {
@@ -12502,7 +12647,10 @@
         "type": "string"
       },
       "ResearchPrimaryOutcomeValue": {
-        "const": "four_trading_hour_return_25bp",
+        "enum": [
+          "four_trading_hour_return_25bp",
+          "next_regular_session_return_50bp"
+        ],
         "type": "string"
       },
       "ResearchPriority": {
@@ -12616,11 +12764,139 @@
         "title": "ResearchPromotionReference",
         "type": "object"
       },
+      "ResearchProposalBlockerV1": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "recovery_action": {
+            "title": "Recovery Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "recovery_action"
+        ],
+        "title": "ResearchProposalBlockerV1",
+        "type": "object"
+      },
+      "ResearchProposalOptionsV1": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_ready": {
+            "title": "Approval Ready",
+            "type": "boolean"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchProposalBlockerV1"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "case_revision": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Case Revision",
+            "type": "string"
+          },
+          "compatible_datasets": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchDatasetRefRow"
+            },
+            "title": "Compatible Datasets",
+            "type": "array"
+          },
+          "compatible_source_packs": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchSourcePackOptionV1"
+            },
+            "title": "Compatible Source Packs",
+            "type": "array"
+          },
+          "material_questions": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchMaterialQuestionV1"
+            },
+            "title": "Material Questions",
+            "type": "array"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "proposal_schema": {
+            "const": "ResearchProposalOptionsV1",
+            "title": "Proposal Schema",
+            "type": "string"
+          },
+          "recommended_answer_bundle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended Answer Bundle Id"
+          },
+          "valid_answer_bundles": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchAnswerBundleV1"
+            },
+            "title": "Valid Answer Bundles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "proposal_schema",
+          "project_id",
+          "case_revision",
+          "material_questions",
+          "recommended_answer_bundle_id",
+          "valid_answer_bundles",
+          "compatible_source_packs",
+          "compatible_datasets",
+          "blockers",
+          "approval_ready"
+        ],
+        "title": "ResearchProposalOptionsV1",
+        "type": "object"
+      },
       "ResearchProposalRequest": {
         "additionalProperties": false,
         "properties": {
-          "answers": {
-            "$ref": "#/components/schemas/ResearchMaterialAnswers"
+          "answer_bundle_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Answer Bundle Id",
+            "type": "string"
+          },
+          "dataset_ref_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Ref Id"
+          },
+          "expected_case_revision": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Case Revision",
+            "type": "string"
           },
           "source_pack_id": {
             "maxLength": 80,
@@ -12631,7 +12907,8 @@
         },
         "required": [
           "source_pack_id",
-          "answers"
+          "answer_bundle_id",
+          "expected_case_revision"
         ],
         "title": "ResearchProposalRequest",
         "type": "object"
@@ -13116,6 +13393,42 @@
           "reasons"
         ],
         "title": "ResearchScorecardRecommendation",
+        "type": "object"
+      },
+      "ResearchSourcePackOptionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "pack_id": {
+            "title": "Pack Id",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pack_id",
+          "project_id",
+          "source_ids",
+          "definition",
+          "created_at"
+        ],
+        "title": "ResearchSourcePackOptionV1",
         "type": "object"
       },
       "RiskProvenance": {
@@ -18790,6 +19103,49 @@
           }
         },
         "summary": "Research Propose",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/proposal-options": {
+      "get": {
+        "description": "Read executable answer bundles and current pack/data prerequisites.",
+        "operationId": "research_proposal_options_api_research_cases__project_id__proposal_options_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchProposalOptionsV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Proposal Options",
         "tags": [
           "research"
         ]

@@ -33,7 +33,7 @@ from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KIN
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
-from alpha_research import ResearchD2BoundaryV1, confirmation_classification_from_evidence
+from alpha_research import confirmation_classification_from_evidence, research_d2_boundary_from_dict
 
 type ProjectStatus = Literal["active", "accepted", "rejected", "archived"]
 type StageState = Literal[
@@ -1338,7 +1338,7 @@ def _research_d2_topology(payload: Mapping[str, object]) -> tuple[dict[str, obje
     raw_boundary = topology.get("boundary")
     if not isinstance(raw_boundary, dict):
         raise DataError("research contract evidence_topology requires a canonical boundary")
-    boundary = ResearchD2BoundaryV1.from_dict(raw_boundary)
+    boundary = research_d2_boundary_from_dict(raw_boundary)
     d2 = topology.get("D2")
     if not isinstance(d2, dict):
         raise DataError("research contract approval requires sealed D2 and D3 topology")
@@ -3633,6 +3633,21 @@ class ControlStore:
         if row is None:
             raise DataError(f"unknown research source pack {pid!r}")
         return self._research_source_pack_view(row)
+
+    def list_research_source_packs(
+        self, project_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return immutable source packs owned by one research case."""
+
+        clean_limit, clean_offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT * FROM research_source_packs WHERE project_id = ?
+                ORDER BY created_at DESC, pack_id LIMIT ? OFFSET ?""",
+                (project_id, clean_limit, clean_offset),
+            ).fetchall()
+        return [self._research_source_pack_view(row) for row in rows]
 
     def create_research_contract(
         self,

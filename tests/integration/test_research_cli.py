@@ -43,6 +43,78 @@ def _rewrite_d0_acceptance_and_manifest(data_dir: Path, run_id: str) -> None:
     manifest_path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
 
 
+def test_proposal_options_are_executable_atomic_bundles_with_exact_prerequisites(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke(
+        "capture", "I notice the S&P500 bounces after double bottoms on the 4h time frame"
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    empty = _invoke("proposal-options", project_id)
+    assert empty["recommended_answer_bundle_id"] == "synthetic_spy_60m_four_hour_v1"
+    assert empty["approval_ready"] is False
+    assert [row["code"] for row in cast(list[dict[str, object]], empty["blockers"])] == [
+        "SOURCE_PACK_REQUIRED"
+    ]
+
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Technical trading revisited",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id, source_ids=[str(source["source_id"])], definition={}
+    )
+    dataset = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="SPY",
+        provider="tiingo",
+        start_ts="2010-01-01",
+        end_ts="2024-12-31",
+        bar_duration_minutes=1_440,
+        origin={"snapshot_id": "spy-qualified", "manifest_sha256": "a" * 64},
+        registered_by="owner",
+    )
+    store.record_research_dataset_audit(
+        str(dataset["ref_id"]),
+        project_id=project_id,
+        run_id="deadbeefdeadbeef",
+        summary={
+            "audit_schema": "ResearchDataAuditV1",
+            "blocking_count": 0,
+            "limiting_count": 0,
+            "notes": [],
+        },
+    )
+
+    options = _invoke("proposal-options", project_id)
+    assert options["approval_ready"] is True
+    assert (
+        cast(list[dict[str, object]], options["compatible_source_packs"])[0]["pack_id"]
+        == pack["pack_id"]
+    )
+    assert (
+        cast(list[dict[str, object]], options["compatible_datasets"])[0]["ref_id"]
+        == dataset["ref_id"]
+    )
+    bundles = cast(list[dict[str, object]], options["valid_answer_bundles"])
+    assert {
+        (
+            str(bundle["bundle_id"]),
+            bool(bundle["available"]),
+            tuple(cast(list[str], bundle["compatible_dataset_ids"])),
+        )
+        for bundle in bundles
+    } == {
+        ("synthetic_spy_60m_four_hour_v1", True, ()),
+        ("tiingo_spy_daily_next_session_v1", True, (str(dataset["ref_id"]),)),
+    }
+
+
 def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1545,9 +1617,11 @@ def test_research_dataset_register_list_and_audit_round_trip(
     assert manifest["watermark"] == "EXPLORATORY"
     assert manifest["real_market_evidence"] is False
     assert manifest["eligible_for_holdout_or_execution"] is False
+    assert manifest["research_data_audit_method_version"] == "ar1-conservative-cap-v2"
     audit = cast(dict[str, object], audited["audit"])
     summary = cast(dict[str, object], audit["summary"])
     assert summary["audit_schema"] == "ResearchDataAuditV1"
+    assert summary["method_version"] == "ar1-conservative-cap-v2"
     # A four-bar dataset is honestly blocking: far below any usable sample.
     assert cast(int, summary["blocking_count"]) >= 1
     assert audit["project_id"] == project_id

@@ -31,6 +31,56 @@ const SYSTEM_STATUS = {
 }
 
 const RESEARCH_RAW_IDEA = 'SPY may bounce after a point-in-time double bottom.'
+const RESEARCH_QUESTIONS: components['schemas']['ResearchMaterialQuestionV1'][] = [
+  {
+    id: 'chart_construction',
+    prompt: 'Which exact instrument and equal-duration chart defines the claim?',
+    blocking_reason: 'It changes the primary instrument and event population.',
+    choices: [
+      {
+        id: 'spy_rth_60m_four_hour_window',
+        label: 'SPY 60-minute RTH proxy',
+        consequence: 'Uses equal 60-minute bars and a four-trading-hour pattern window.',
+        availability: 'available',
+        blocked_reason: null,
+      },
+      {
+        id: 'spy_extended_fixed_4h',
+        label: 'SPY fixed four-hour extended-hours bars',
+        consequence: 'Would require a separately registered extended-session operator.',
+        availability: 'unavailable',
+        blocked_reason: 'No registered end-to-end research operator uses this choice.',
+      },
+    ],
+    recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+  },
+  {
+    id: 'event_availability',
+    prompt: 'When is the event knowable without future information?',
+    blocking_reason: 'It changes event timing and prevents a look-ahead detector.',
+    choices: [{
+      id: 'second_trough_confirmable',
+      label: 'Second trough confirmable',
+      consequence: 'Fires only after required right-pivot observations are available.',
+      availability: 'available',
+      blocked_reason: null,
+    }],
+    recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+  },
+  {
+    id: 'primary_outcome',
+    prompt: 'What single horizon and minimum useful move defines a bounce?',
+    blocking_reason: 'It fixes the primary endpoint and economic hurdle.',
+    choices: [{
+      id: 'four_trading_hour_return_25bp',
+      label: 'Four trading hours, 25 bp',
+      consequence: 'Tests a positive 240-trading-minute return that clears 0.25%.',
+      availability: 'available',
+      blocked_reason: null,
+    }],
+    recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+  },
+]
 
 // Typed against the generated contract so ANY future ResearchCase drift fails the
 // frontend type gate instead of silently passing a stale mocked shape to e2e.
@@ -49,11 +99,9 @@ const RESEARCH_CASE: components['schemas']['ResearchCase'] = {
     payload: {
       raw_idea: RESEARCH_RAW_IDEA,
       approval_ready: false,
-      blocking_questions: [
-        'Which equal-duration chart construction is intended?',
-        'When does the event become knowable?',
-        'What is the primary economic endpoint?',
-      ],
+      blocking_questions: RESEARCH_QUESTIONS,
+      valid_answer_bundles: [],
+      recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
       thesis: {
         mechanism: 'Revisited support may concentrate demand or reduce selling pressure.',
         prediction: 'Point-in-time events have higher returns than matched controls.',
@@ -217,7 +265,7 @@ const RESEARCH_SCORECARD: components['schemas']['ResearchScorecard'] = {
     { dimension_id: 'literature', label: 'Literature', state: 'insufficient', basis: 'No screened claim-level literature evidence.' },
     { dimension_id: 'data_mining_risk', label: 'Data-mining risk', state: 'low', basis: 'All analysis families are contract-registered; unregistered attempts are impossible.' },
   ],
-  unresolved_questions: { count: 3, items: RESEARCH_CASE.active_contract.payload.blocking_questions as string[] },
+  unresolved_questions: { count: 3, items: RESEARCH_QUESTIONS.map((question) => question.prompt) },
   recommendation: {
     value: 'MORE RESEARCH REQUIRED',
     reasons: ['10 of 12 readiness dimensions are untested.', '3 unresolved questions remain.'],
@@ -237,7 +285,7 @@ const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
       next_action: RESEARCH_CASE.next_action,
       responsibility: 'owner',
       latest_finding: null,
-      outstanding_questions: RESEARCH_CASE.active_contract.payload.blocking_questions as string[],
+      outstanding_questions: RESEARCH_QUESTIONS.map((question) => question.prompt),
       hypothesis_card: RESEARCH_HYPOTHESIS_CARD,
       scorecard: RESEARCH_SCORECARD,
     },
@@ -325,6 +373,35 @@ const RESEARCH_PROTOCOLS: components['schemas']['ResearchProtocolLibrary'] = {
       sha256: 'e'.repeat(64),
     },
   ],
+}
+
+const RESEARCH_PROPOSAL_OPTIONS: components['schemas']['ResearchProposalOptionsV1'] = {
+  proposal_schema: 'ResearchProposalOptionsV1',
+  project_id: RESEARCH_CASE.project_id,
+  case_revision: 'a'.repeat(64),
+  material_questions: RESEARCH_QUESTIONS,
+  recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+  valid_answer_bundles: [{
+    bundle_id: 'synthetic_spy_60m_four_hour_v1',
+    label: 'SPY 60-minute synthetic detector validation',
+    answers: {
+      chart_construction: 'spy_rth_60m_four_hour_window',
+      event_availability: 'second_trough_confirmable',
+      primary_outcome: 'four_trading_hour_return_25bp',
+    },
+    requires_dataset: false,
+    compatible_dataset_ids: [],
+    available: true,
+    blocked_reason: null,
+  }],
+  compatible_source_packs: [],
+  compatible_datasets: [],
+  blockers: [{
+    code: 'SOURCE_PACK_REQUIRED',
+    message: 'Freeze at least one project source pack before proposing.',
+    recovery_action: 'Open Literature, review sources, and freeze a pack.',
+  }],
+  approval_ready: false,
 }
 
 const RESEARCH_PACKET: components['schemas']['ResearchContextPacket'] = {
@@ -1073,6 +1150,10 @@ function responseFor(route: Route, options: MockOptions): unknown {
     }
   }
   if (
+    url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/proposal-options`
+    && route.request().method() === 'GET'
+  ) return RESEARCH_PROPOSAL_OPTIONS
+  if (
     url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}`
     && route.request().method() === 'GET'
   ) return RESEARCH_CLOSED_CASE
@@ -1447,6 +1528,10 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
 
   await expect(page.getByText('TRIAGE', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('GATE 1 OPERATOR UNAVAILABLE', { exact: true })).toBeVisible()
+  await expect(page.getByText(RESEARCH_QUESTIONS[0].prompt, { exact: true })).toBeVisible()
+  await expect(page.getByText(RESEARCH_QUESTIONS[1].prompt, { exact: true })).toBeVisible()
+  await expect(page.getByText(RESEARCH_QUESTIONS[2].prompt, { exact: true })).toBeVisible()
+  await expect(page.getByText(/Uses equal 60-minute bars and a four-trading-hour pattern window/)).toBeVisible()
   await expect(page.getByText(/D2 SEALED: research confirmation remains governed/)).toBeVisible()
   await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
   await expectReleaseAccessibility(page)

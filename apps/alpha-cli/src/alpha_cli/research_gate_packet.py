@@ -366,7 +366,8 @@ def _question_texts(value: object) -> list[str]:
         if isinstance(item, str) and item.strip():
             texts.append(item)
             continue
-        question = _mapping(item).get("question")
+        mapping = _mapping(item)
+        question = mapping.get("prompt", mapping.get("question"))
         if isinstance(question, str) and question.strip():
             texts.append(question)
     return texts

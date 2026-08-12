@@ -1271,6 +1271,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/proposal-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Proposal Options
+         * @description Read executable answer bundles and current pack/data prerequisites.
+         */
+        get: operations["research_proposal_options_api_research_cases__project_id__proposal_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/report": {
         parameters: {
             query?: never;
@@ -6194,6 +6214,22 @@ export interface components {
         };
         /** @enum {string} */
         PublicStageStateValue: "not_started" | "ready" | "queued" | "running" | "stale";
+        /** ResearchAnswerBundleV1 */
+        ResearchAnswerBundleV1: {
+            answers: components["schemas"]["ResearchMaterialAnswers"];
+            /** Available */
+            available: boolean;
+            /** Blocked Reason */
+            blocked_reason: string | null;
+            /** Bundle Id */
+            bundle_id: string;
+            /** Compatible Dataset Ids */
+            compatible_dataset_ids: string[];
+            /** Label */
+            label: string;
+            /** Requires Dataset */
+            requires_dataset: boolean;
+        };
         /** ResearchAttempt */
         ResearchAttempt: {
             /** Attempt Id */
@@ -6376,8 +6412,8 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
-        /** @constant */
-        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
+        /** @enum {string} */
+        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window" | "tiingo_daily_fallback";
         /** ResearchChecklistQuestion */
         ResearchChecklistQuestion: {
             /** Answer */
@@ -6937,6 +6973,35 @@ export interface components {
             event_availability: components["schemas"]["ResearchEventAvailabilityValue"];
             primary_outcome: components["schemas"]["ResearchPrimaryOutcomeValue"];
         };
+        /** ResearchMaterialChoiceV1 */
+        ResearchMaterialChoiceV1: {
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "available" | "unavailable";
+            /** Blocked Reason */
+            blocked_reason: string | null;
+            /** Consequence */
+            consequence: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
+        /** ResearchMaterialQuestionV1 */
+        ResearchMaterialQuestionV1: {
+            /** Blocking Reason */
+            blocking_reason: string;
+            /** Choices */
+            choices: components["schemas"]["ResearchMaterialChoiceV1"][];
+            /** Id */
+            id: string;
+            /** Prompt */
+            prompt: string;
+            /** Recommended Answer Bundle Id */
+            recommended_answer_bundle_id: string | null;
+        };
         /** ResearchMilestone */
         ResearchMilestone: {
             /** Contract Id */
@@ -6985,8 +7050,8 @@ export interface components {
         };
         /** @enum {string} */
         ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
-        /** @constant */
-        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp";
+        /** @enum {string} */
+        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp" | "next_regular_session_return_50bp";
         /** ResearchPriority */
         ResearchPriority: {
             /** Data Readiness */
@@ -7027,9 +7092,49 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
         };
+        /** ResearchProposalBlockerV1 */
+        ResearchProposalBlockerV1: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+        };
+        /** ResearchProposalOptionsV1 */
+        ResearchProposalOptionsV1: {
+            /** Approval Ready */
+            approval_ready: boolean;
+            /** Blockers */
+            blockers: components["schemas"]["ResearchProposalBlockerV1"][];
+            /** Case Revision */
+            case_revision: string;
+            /** Compatible Datasets */
+            compatible_datasets: components["schemas"]["ResearchDatasetRefRow"][];
+            /** Compatible Source Packs */
+            compatible_source_packs: components["schemas"]["ResearchSourcePackOptionV1"][];
+            /** Material Questions */
+            material_questions: components["schemas"]["ResearchMaterialQuestionV1"][];
+            /** Project Id */
+            project_id: string;
+            /**
+             * Proposal Schema
+             * @constant
+             */
+            proposal_schema: "ResearchProposalOptionsV1";
+            /** Recommended Answer Bundle Id */
+            recommended_answer_bundle_id: string | null;
+            /** Valid Answer Bundles */
+            valid_answer_bundles: components["schemas"]["ResearchAnswerBundleV1"][];
+        };
         /** ResearchProposalRequest */
         ResearchProposalRequest: {
-            answers: components["schemas"]["ResearchMaterialAnswers"];
+            /** Answer Bundle Id */
+            answer_bundle_id: string;
+            /** Dataset Ref Id */
+            dataset_ref_id?: string | null;
+            /** Expected Case Revision */
+            expected_case_revision: string;
             /** Source Pack Id */
             source_pack_id: string;
         };
@@ -7190,6 +7295,18 @@ export interface components {
              * @enum {string}
              */
             value: "READY FOR STRATEGY RESEARCH" | "MORE RESEARCH REQUIRED" | "REFORMULATE HYPOTHESIS" | "EVIDENCE DOES NOT SUPPORT CONTINUATION";
+        };
+        /** ResearchSourcePackOptionV1 */
+        ResearchSourcePackOptionV1: {
+            /** Created At */
+            created_at: string;
+            definition: components["schemas"]["JsonObject"];
+            /** Pack Id */
+            pack_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Source Ids */
+            source_ids: string[];
         };
         /** RiskProvenance */
         RiskProvenance: {
@@ -10084,6 +10201,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchProposalResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_proposal_options_api_research_cases__project_id__proposal_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchProposalOptionsV1"];
                 };
             };
             /** @description Stable, redacted Workstation error */

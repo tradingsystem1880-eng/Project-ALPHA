@@ -106,7 +106,8 @@ def test_volatility_regime_tags_are_causal_expanding_terciles() -> None:
 def test_effective_sample_size_shrinks_under_positive_autocorrelation() -> None:
     assert effective_sample_size(100, 0.0) == pytest.approx(100.0)
     assert effective_sample_size(100, 0.5) == pytest.approx(100.0 / 3.0)
-    assert effective_sample_size(100, -0.5) == pytest.approx(300.0)
+    # Negative autocorrelation must not manufacture more independent observations than exist.
+    assert effective_sample_size(100, -0.5) == pytest.approx(100.0)
     with pytest.raises(DataError, match="autocorrelation"):
         effective_sample_size(100, 1.5)
     with pytest.raises(DataError, match="sample"):

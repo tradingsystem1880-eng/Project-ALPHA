@@ -511,7 +511,8 @@ existing event-study/matching/bootstrap/power/multiple-testing primitives.
 ### 9.4 D2 confirmation
 
 `alpha research run confirm` (Phase R6, ADR-0026): the one-shot sealed confirmation under the
-immutable `ResearchD2BoundaryV1` — approved child confirmation contract, frozen family, frozen
+immutable versioned research boundary (`ResearchD2BoundaryV2` for new contracts; V1 read-compatible)
+— approved child confirmation contract, frozen family, frozen
 alpha/power/minimum-effect, `REGISTERED CONFIRMATORY` watermark, D2 `authorized → consumed`
 (or `contaminated`) events, mechanical classification recomputed by every reader.
 

@@ -13,8 +13,10 @@ from alpha_research._canonical import canonical_sha256
 EvidenceZone = Literal["D0", "D1", "D2", "D3"]
 
 _SCHEMA = "ResearchD2BoundaryV1"
+_V2_SCHEMA = "ResearchD2BoundaryV2"
 _CHART_SCHEMA = "ResearchChartFingerprintV1"
 _ALLOCATION_RULE = "eligible_groups_chronological_cumulative_floor_remainder_to_D3_v1"
+_V2_ALLOCATION_RULE = "eligible_groups_chronological_cumulative_floor_remainder_to_D3_v2_compact"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _ZONES: tuple[EvidenceZone, ...] = ("D0", "D1", "D2", "D3")
 
@@ -300,6 +302,15 @@ def _membership_hash(zone: EvidenceZone, group_hashes: tuple[str, ...]) -> str:
     )
 
 
+def _sequence_hash(group_hashes: tuple[str, ...]) -> str:
+    return canonical_sha256(
+        {
+            "schema": "ResearchEligibleGroupSequenceV1",
+            "ordered_group_hashes": list(group_hashes),
+        }
+    )
+
+
 def _zone(
     zone: EvidenceZone,
     share_percent: int,
@@ -391,12 +402,7 @@ class ResearchD2BoundaryV1:
         object.__setattr__(
             self,
             "eligible_groups_sha256",
-            canonical_sha256(
-                {
-                    "schema": "ResearchEligibleGroupSequenceV1",
-                    "ordered_group_hashes": list(self.eligible_group_hashes),
-                }
-            ),
+            _sequence_hash(self.eligible_group_hashes),
         )
         object.__setattr__(self, "boundary_sha256", canonical_sha256(self._semantic_dict()))
 
@@ -584,3 +590,281 @@ class ResearchD2BoundaryV1:
         if supplied != result.boundary_sha256:
             raise DataError("boundary_sha256 does not match canonical ResearchD2BoundaryV1")
         return result
+
+
+@dataclass(frozen=True, slots=True)
+class ResearchD2BoundaryV2:
+    """Compact exact-membership commitment reverified against source groups on every read."""
+
+    dataset_fingerprint: str
+    eligible_group_count: int
+    eligible_groups_sha256: str
+    chart_fingerprint: ResearchChartFingerprintV1
+    event_formula: str
+    event_availability_timestamp: str
+    primary_endpoint: str
+    primary_horizon: str
+    outcome_overlap_embargo_groups: int
+    d0: ResearchEvidenceZoneBoundaryV1
+    d1: ResearchEvidenceZoneBoundaryV1
+    d2: ResearchEvidenceZoneBoundaryV1
+    d3: ResearchEvidenceZoneBoundaryV1
+    shares: ResearchEvidenceSharesV1 = field(default_factory=ResearchEvidenceSharesV1)
+    boundary_sha256: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _sha256(self.dataset_fingerprint, "ResearchD2BoundaryV2.dataset_fingerprint")
+        count = _integer(
+            self.eligible_group_count, "ResearchD2BoundaryV2.eligible_group_count", minimum=5
+        )
+        _sha256(self.eligible_groups_sha256, "ResearchD2BoundaryV2.eligible_groups_sha256")
+        if not isinstance(self.chart_fingerprint, ResearchChartFingerprintV1):
+            raise DataError("ResearchD2BoundaryV2.chart_fingerprint has the wrong type")
+        if not isinstance(self.shares, ResearchEvidenceSharesV1):
+            raise DataError("ResearchD2BoundaryV2.shares has the wrong type")
+        for name in (
+            "event_formula",
+            "event_availability_timestamp",
+            "primary_endpoint",
+            "primary_horizon",
+        ):
+            _text(getattr(self, name), f"ResearchD2BoundaryV2.{name}")
+        _integer(
+            self.outcome_overlap_embargo_groups,
+            "ResearchD2BoundaryV2.outcome_overlap_embargo_groups",
+        )
+        d0_stop = count * self.shares.d0_percent // 100
+        d1_stop = count * (self.shares.d0_percent + self.shares.d1_percent) // 100
+        d2_stop = (
+            count
+            * (self.shares.d0_percent + self.shares.d1_percent + self.shares.d2_percent)
+            // 100
+        )
+        boundaries = (0, d0_stop, d1_stop, d2_stop, count)
+        shares = self.shares.to_dict()
+        for index, (zone, value) in enumerate(
+            zip(_ZONES, (self.d0, self.d1, self.d2, self.d3), strict=True)
+        ):
+            if not isinstance(value, ResearchEvidenceZoneBoundaryV1):
+                raise DataError(f"ResearchD2BoundaryV2.{zone} has the wrong type")
+            if (
+                value.zone != zone
+                or value.share_percent != shares[zone]
+                or value.start_index != boundaries[index]
+                or value.stop_index != boundaries[index + 1]
+            ):
+                raise DataError(f"ResearchD2BoundaryV2 {zone} allocation is inconsistent")
+        if any(item.group_count == 0 for item in (self.d1, self.d2, self.d3)):
+            raise DataError("ResearchD2BoundaryV2 allocation leaves D1, D2, or D3 empty")
+        object.__setattr__(self, "boundary_sha256", canonical_sha256(self._semantic_dict()))
+
+    @classmethod
+    def from_eligible_groups(
+        cls,
+        *,
+        dataset_fingerprint: str,
+        eligible_groups: Sequence[str],
+        chart_fingerprint: ResearchChartFingerprintV1,
+        event_formula: str,
+        event_availability_timestamp: str,
+        primary_endpoint: str,
+        primary_horizon: str,
+        outcome_overlap_embargo_groups: int,
+        shares: ResearchEvidenceSharesV1 | None = None,
+    ) -> ResearchD2BoundaryV2:
+        if isinstance(eligible_groups, (str, bytes)):
+            raise DataError("eligible_groups must be an ordered sequence of group identifiers")
+        cleaned = tuple(
+            _text(group, f"eligible_groups[{index}]") for index, group in enumerate(eligible_groups)
+        )
+        hashes = tuple(_group_hash(group) for group in cleaned)
+        if len(set(hashes)) != len(hashes):
+            raise DataError("ResearchD2BoundaryV2 eligible groups must be unique")
+        selected_shares = shares or ResearchEvidenceSharesV1()
+        total = len(hashes)
+        stops = (
+            0,
+            total * selected_shares.d0_percent // 100,
+            total * (selected_shares.d0_percent + selected_shares.d1_percent) // 100,
+            total
+            * (selected_shares.d0_percent + selected_shares.d1_percent + selected_shares.d2_percent)
+            // 100,
+            total,
+        )
+        shares_by_zone = selected_shares.to_dict()
+        zones = tuple(
+            _zone(zone, shares_by_zone[zone], stops[index], stops[index + 1], hashes)
+            for index, zone in enumerate(_ZONES)
+        )
+        return cls(
+            dataset_fingerprint=dataset_fingerprint,
+            eligible_group_count=total,
+            eligible_groups_sha256=_sequence_hash(hashes),
+            chart_fingerprint=chart_fingerprint,
+            event_formula=event_formula,
+            event_availability_timestamp=event_availability_timestamp,
+            primary_endpoint=primary_endpoint,
+            primary_horizon=primary_horizon,
+            outcome_overlap_embargo_groups=outcome_overlap_embargo_groups,
+            d0=zones[0],
+            d1=zones[1],
+            d2=zones[2],
+            d3=zones[3],
+            shares=selected_shares,
+        )
+
+    def verify_eligible_groups(self, eligible_groups: Sequence[str]) -> bool:
+        """Rederive the sequence and every zone commitment from complete raw membership."""
+
+        if isinstance(eligible_groups, (str, bytes)):
+            raise DataError("eligible_groups must be an ordered sequence of group identifiers")
+        hashes = tuple(
+            _group_hash(_text(group, f"eligible_groups[{index}]"))
+            for index, group in enumerate(eligible_groups)
+        )
+        if len(hashes) != self.eligible_group_count or _sequence_hash(hashes) != (
+            self.eligible_groups_sha256
+        ):
+            return False
+        for zone in (self.d0, self.d1, self.d2, self.d3):
+            members = hashes[zone.start_index : zone.stop_index]
+            if (
+                _membership_hash(zone.zone, members) != zone.membership_sha256
+                or (members[0] if members else None) != zone.first_group_sha256
+                or (members[-1] if members else None) != zone.last_group_sha256
+            ):
+                return False
+        return True
+
+    def _semantic_dict(self) -> dict[str, object]:
+        return {
+            "schema": _V2_SCHEMA,
+            "schema_version": 2,
+            "allocation_rule": _V2_ALLOCATION_RULE,
+            "dataset_fingerprint": self.dataset_fingerprint,
+            "eligible_groups": {
+                "count": self.eligible_group_count,
+                "ordered_groups_sha256": self.eligible_groups_sha256,
+            },
+            "shares_percent": self.shares.to_dict(),
+            "zones": {
+                "D0": self.d0.to_dict(),
+                "D1": self.d1.to_dict(),
+                "D2": self.d2.to_dict(),
+                "D3": self.d3.to_dict(),
+            },
+            "chart_fingerprint": self.chart_fingerprint.to_dict(),
+            "event_definition": {
+                "formula": self.event_formula,
+                "availability_timestamp": self.event_availability_timestamp,
+            },
+            "primary_claim": {
+                "endpoint": self.primary_endpoint,
+                "horizon": self.primary_horizon,
+            },
+            "outcome_overlap_embargo": {
+                "groups": self.outcome_overlap_embargo_groups,
+                "unit": "eligible_group",
+            },
+        }
+
+    @property
+    def contract_hash(self) -> str:
+        return self.boundary_sha256
+
+    def to_dict(self) -> dict[str, object]:
+        payload = self._semantic_dict()
+        payload["boundary_sha256"] = self.boundary_sha256
+        return payload
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, object]) -> ResearchD2BoundaryV2:
+        _exact_keys(
+            value,
+            {
+                "schema",
+                "schema_version",
+                "allocation_rule",
+                "dataset_fingerprint",
+                "eligible_groups",
+                "shares_percent",
+                "zones",
+                "chart_fingerprint",
+                "event_definition",
+                "primary_claim",
+                "outcome_overlap_embargo",
+                "boundary_sha256",
+            },
+            _V2_SCHEMA,
+        )
+        if (
+            value["schema"] != _V2_SCHEMA
+            or _integer(value["schema_version"], "ResearchD2BoundaryV2.schema_version") != 2
+        ):
+            raise DataError("unsupported ResearchD2BoundaryV2 schema")
+        if value["allocation_rule"] != _V2_ALLOCATION_RULE:
+            raise DataError("unsupported ResearchD2BoundaryV2 allocation_rule")
+        eligible = _mapping(value["eligible_groups"], "eligible_groups")
+        _exact_keys(eligible, {"count", "ordered_groups_sha256"}, "eligible_groups")
+        event = _mapping(value["event_definition"], "event_definition")
+        _exact_keys(event, {"formula", "availability_timestamp"}, "event_definition")
+        primary = _mapping(value["primary_claim"], "primary_claim")
+        _exact_keys(primary, {"endpoint", "horizon"}, "primary_claim")
+        overlap = _mapping(value["outcome_overlap_embargo"], "outcome_overlap_embargo")
+        _exact_keys(overlap, {"groups", "unit"}, "outcome_overlap_embargo")
+        if overlap["unit"] != "eligible_group":
+            raise DataError("outcome_overlap_embargo.unit must be eligible_group")
+        serialized_zones = _mapping(value["zones"], "zones")
+        _exact_keys(serialized_zones, set(_ZONES), "zones")
+        zones = tuple(
+            ResearchEvidenceZoneBoundaryV1.from_dict(
+                _mapping(serialized_zones[zone], f"zones.{zone}")
+            )
+            for zone in _ZONES
+        )
+        result = cls(
+            dataset_fingerprint=_sha256(
+                value["dataset_fingerprint"], "ResearchD2BoundaryV2.dataset_fingerprint"
+            ),
+            eligible_group_count=_integer(eligible["count"], "eligible_groups.count", minimum=5),
+            eligible_groups_sha256=_sha256(
+                eligible["ordered_groups_sha256"], "eligible_groups.ordered_groups_sha256"
+            ),
+            chart_fingerprint=ResearchChartFingerprintV1.from_dict(
+                _mapping(value["chart_fingerprint"], "chart_fingerprint")
+            ),
+            event_formula=_text(event["formula"], "event_definition.formula"),
+            event_availability_timestamp=_text(
+                event["availability_timestamp"], "event_definition.availability_timestamp"
+            ),
+            primary_endpoint=_text(primary["endpoint"], "primary_claim.endpoint"),
+            primary_horizon=_text(primary["horizon"], "primary_claim.horizon"),
+            outcome_overlap_embargo_groups=_integer(
+                overlap["groups"], "outcome_overlap_embargo.groups"
+            ),
+            d0=zones[0],
+            d1=zones[1],
+            d2=zones[2],
+            d3=zones[3],
+            shares=ResearchEvidenceSharesV1.from_dict(
+                _mapping(value["shares_percent"], "shares_percent")
+            ),
+        )
+        supplied = _sha256(value["boundary_sha256"], "ResearchD2BoundaryV2.boundary_sha256")
+        if supplied != result.boundary_sha256:
+            raise DataError("boundary_sha256 does not match canonical ResearchD2BoundaryV2")
+        return result
+
+
+type ResearchD2Boundary = ResearchD2BoundaryV1 | ResearchD2BoundaryV2
+
+
+def research_d2_boundary_from_dict(value: Mapping[str, object]) -> ResearchD2Boundary:
+    """Load V1 byte-for-byte or the compact V2 contract without rewriting either."""
+
+    schema = value.get("schema")
+    if schema == _SCHEMA:
+        return ResearchD2BoundaryV1.from_dict(value)
+    if schema == _V2_SCHEMA:
+        return ResearchD2BoundaryV2.from_dict(value)
+    raise DataError("unsupported research D2 boundary schema")
