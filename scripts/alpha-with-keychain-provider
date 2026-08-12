@@ -1,0 +1,51 @@
+#!/bin/sh
+# Inject one named provider credential into exactly one ALPHA process. Never enable shell tracing.
+set -eu
+set +x
+
+if [ "$#" -ne 2 ]; then
+  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|finnhub> <check|workstation>" >&2
+  exit 64
+fi
+
+provider=$1
+action=$2
+case "$provider" in
+  tiingo)
+    service=project-alpha-tiingo
+    variable=ALPHA_TIINGO_API_KEY
+    ;;
+  quantpad)
+    service=project-alpha-quantpad
+    variable=QUANTPAD_API_KEY
+    ;;
+  finnhub)
+    service=project-alpha-finnhub
+    variable=ALPHA_FINNHUB_API_KEY
+    ;;
+  *)
+    echo "unsupported provider" >&2
+    exit 64
+    ;;
+esac
+
+secret=$(security find-generic-password -w -s "$service")
+if [ -z "$secret" ]; then
+  echo "the selected Keychain item is empty" >&2
+  exit 78
+fi
+export "$variable=$secret"
+unset secret
+
+case "$action" in
+  check)
+    exec alpha provider check "$provider"
+    ;;
+  workstation)
+    exec alpha-web
+    ;;
+  *)
+    echo "unsupported action" >&2
+    exit 64
+    ;;
+esac

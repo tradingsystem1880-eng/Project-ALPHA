@@ -553,6 +553,47 @@ class ProviderDefinition(StrictModel):
     budget_tier: str
     installed: bool
     configured: bool
+    configuration_state: Literal[
+        "not_installed",
+        "optional_disabled",
+        "needs_process_injection",
+        "process_injected_unverified",
+        "available_without_credentials",
+    ]
+    verification_state: Literal[
+        "verified",
+        "unverified",
+        "authentication_failed",
+        "entitlement_denied",
+        "rate_limited",
+        "connectivity_failed",
+        "schema_drift",
+        "optional_disabled",
+    ]
+    verified_at: str | None
+    last_receipt_id: str | None
+    granted_capabilities: list[str]
+    recovery_action: str
+
+
+class ProviderCheckReceipt(StrictModel):
+    schema_version: Literal[1]
+    provider_id: str
+    verification_state: Literal[
+        "verified",
+        "authentication_failed",
+        "entitlement_denied",
+        "rate_limited",
+        "connectivity_failed",
+        "schema_drift",
+        "optional_disabled",
+    ]
+    checked_at: str
+    granted_capabilities: list[str]
+    recovery_action: str
+    details: dict[str, object]
+    receipt_id: str
+    content_sha256: str
 
 
 class SystemDataDirectory(StrictModel):
@@ -1257,9 +1298,14 @@ class PaperReadinessBlocker(StrictModel):
 
 
 class PaperReadinessReport(StrictModel):
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     status: Literal["passed", "pending"]
     paper_passed: bool
+    plans: list[dict[str, object]]
+    predicates: dict[str, bool]
+    tamper_detected: bool
+    legacy_journals: Literal["monitoring_only"]
+    what_if_credit: Literal[False]
     requirements: list[PaperReadinessRequirement]
     blocking_events: list[PaperReadinessBlocker]
     futures_research_supported: Literal[False]

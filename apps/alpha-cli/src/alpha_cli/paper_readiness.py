@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Final
 
-from alpha_cli import paper_store
+from alpha_cli import paper_acceptance, paper_store
 
 _REQUIREMENTS: Final[dict[str, tuple[str, str, str, int]]] = {
     "binance.network_smoke": ("local_sandbox", "binance_network_smoke", "connection", 1),
@@ -142,14 +142,12 @@ def readiness_report(data_dir: Path) -> dict[str, object]:
                 "evidence": [],
             }
         )
+    typed = paper_acceptance.acceptance_report(data_dir)
     return {
-        "schema_version": 1,
-        "status": "pending",
-        "paper_passed": False,
+        **typed,
         "requirements": requirements,
         "blocking_events": blockers,
         "futures_research_supported": False,
-        "live_capital_routing": "absent",
         "derived_from_elapsed_time": False,
     }
 

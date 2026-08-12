@@ -1178,6 +1178,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/providers/{provider_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Provider
+         * @description Perform one explicit bounded check; ordinary provider reads never enter this path.
+         */
+        post: operations["check_provider_api_providers__provider_id__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research-gate-overrides": {
         parameters: {
             query?: never;
@@ -6086,24 +6106,44 @@ export interface components {
              */
             futures_research_supported: false;
             /**
+             * Legacy Journals
+             * @constant
+             */
+            legacy_journals: "monitoring_only";
+            /**
              * Live Capital Routing
              * @constant
              */
             live_capital_routing: "absent";
             /** Paper Passed */
             paper_passed: boolean;
+            /** Plans */
+            plans: {
+                [key: string]: unknown;
+            }[];
+            /** Predicates */
+            predicates: {
+                [key: string]: boolean;
+            };
             /** Requirements */
             requirements: components["schemas"]["PaperReadinessRequirement"][];
             /**
              * Schema Version
              * @constant
              */
-            schema_version: 1;
+            schema_version: 2;
             /**
              * Status
              * @enum {string}
              */
             status: "passed" | "pending";
+            /** Tamper Detected */
+            tamper_detected: boolean;
+            /**
+             * What If Credit
+             * @constant
+             */
+            what_if_credit: false;
         };
         /** PaperReadinessRequirement */
         PaperReadinessRequirement: {
@@ -6472,6 +6512,35 @@ export interface components {
         PropfirmPaths: {
             paths: components["schemas"]["PropfirmPathColumns"];
         };
+        /** ProviderCheckReceipt */
+        ProviderCheckReceipt: {
+            /** Checked At */
+            checked_at: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Granted Capabilities */
+            granted_capabilities: string[];
+            /** Provider Id */
+            provider_id: string;
+            /** Receipt Id */
+            receipt_id: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Verification State
+             * @enum {string}
+             */
+            verification_state: "verified" | "authentication_failed" | "entitlement_denied" | "rate_limited" | "connectivity_failed" | "schema_drift" | "optional_disabled";
+        };
         /** ProviderDefinition */
         ProviderDefinition: {
             /** Asset Classes */
@@ -6480,16 +6549,25 @@ export interface components {
             budget_tier: string;
             /** Capabilities */
             capabilities: string[];
+            /**
+             * Configuration State
+             * @enum {string}
+             */
+            configuration_state: "not_installed" | "optional_disabled" | "needs_process_injection" | "process_injected_unverified" | "available_without_credentials";
             /** Configured */
             configured: boolean;
             /** Credential Env */
             credential_env: components["schemas"]["CredentialStatus"][];
+            /** Granted Capabilities */
+            granted_capabilities: string[];
             /** Id */
             id: string;
             /** Installed */
             installed: boolean;
             /** Label */
             label: string;
+            /** Last Receipt Id */
+            last_receipt_id: string | null;
             /** Limitations */
             limitations: string[];
             /** Network Required */
@@ -6500,10 +6578,19 @@ export interface components {
             };
             /** Paper Execution */
             paper_execution: boolean;
+            /** Recovery Action */
+            recovery_action: string;
             /** Research Authority */
             research_authority: boolean;
             /** Timeframes */
             timeframes: string[];
+            /**
+             * Verification State
+             * @enum {string}
+             */
+            verification_state: "verified" | "unverified" | "authentication_failed" | "entitlement_denied" | "rate_limited" | "connectivity_failed" | "schema_drift" | "optional_disabled";
+            /** Verified At */
+            verified_at: string | null;
         };
         /** ProviderOption */
         ProviderOption: {
@@ -10347,6 +10434,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderDefinition"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_provider_api_providers__provider_id__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCheckReceipt"];
                 };
             };
             /** @description Stable, redacted Workstation error */

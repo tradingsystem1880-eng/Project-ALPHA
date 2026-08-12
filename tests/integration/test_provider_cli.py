@@ -71,8 +71,11 @@ def test_info_control_plane_has_human_readable_views(
     system = runner.invoke(app, ["info", "system"])
 
     assert providers.exit_code == 0, providers.output
-    assert "ccxt: configured (historical_bars)" in providers.stdout
-    assert "binance: configured (live_bars, live_quotes, sandbox_paper)" in providers.stdout
+    assert "ccxt: available_without_credentials; unverified (historical_bars)" in providers.stdout
+    assert (
+        "binance: available_without_credentials; unverified "
+        "(live_bars, live_quotes, sandbox_paper)" in providers.stdout
+    )
     assert system.exit_code == 0, system.output
     assert f"data_dir={tmp_path}" in system.stdout
     assert "symbols=0 snapshots=0" in system.stdout
@@ -192,3 +195,24 @@ def test_malformed_paper_enabled_fails_closed(
     result = runner.invoke(app, ["info", "system", "--json"])
 
     assert result.exit_code != 0
+
+
+def test_provider_check_cli_records_redacted_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli import provider_readiness
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        provider_readiness,
+        "_CHECKERS",
+        {"tiingo": lambda: (("historical_bars",), {"interface": "rest", "symbol": "SPY"})},
+    )
+
+    result = runner.invoke(app, ["provider", "check", "tiingo", "--json"])
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["verification_state"] == "verified"
+    assert receipt["granted_capabilities"] == ["historical_bars"]
+    assert list((tmp_path / "provider-checks" / "tiingo").glob("*.json"))

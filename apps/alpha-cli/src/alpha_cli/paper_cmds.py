@@ -20,6 +20,7 @@ from alpha_cli import (
     _runner,
     _strategies,
     daily_scheduler,
+    paper_acceptance,
     paper_readiness,
     paper_store,
 )
@@ -29,6 +30,37 @@ from alpha_core.config import AlphaSettings
 paper_app = typer.Typer(
     help="Nautilus paper trading: local crypto sandbox and fail-closed IBKR Paper."
 )
+
+
+@paper_app.command("ibkr-what-if-plan")
+def ibkr_what_if_plan(
+    limit_price: float = typer.Option(..., min=0.01),
+    collar_low: float = typer.Option(..., min=0.01),
+    collar_high: float = typer.Option(..., min=0.01),
+    expires_at: str = typer.Option(..., help="future ISO-8601 instant with timezone"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Freeze the exact offline SPY what-if contract; never connects or submits an order."""
+    try:
+        expiry = _utc_timestamp(expires_at, "expires_at")
+        plan = paper_acceptance.create_ibkr_what_if_plan(
+            AlphaSettings().data_dir,
+            account_id=_required_value(None, "ALPHA_IBKR_PAPER_ACCOUNT"),
+            gateway_image=_required_value(None, "ALPHA_IBKR_GATEWAY_IMAGE"),
+            limit_price=limit_price,
+            collar_low=collar_low,
+            collar_high=collar_high,
+            expires_at=expiry,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        typer.echo(json.dumps(plan, sort_keys=True, allow_nan=False))
+    else:
+        typer.echo(
+            f"IBKR what-if plan {plan['plan_hash']} frozen for SPY 1-share DAY LIMIT; "
+            "whatIf=true, transmit=false. No broker connection was made."
+        )
 
 
 def _spec(

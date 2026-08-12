@@ -20,10 +20,11 @@ session, run `/mcp`, and complete the QuantPad sign-in. Use MCP only for:
 
 Do not loop previews to build history. For bars beyond that bound, ticks, L1, L2/`mbp-10`,
 notebooks, or backtests, use QuantPad's official REST API/Python SDK. Load the API key into only the
-terminal process that needs it:
+process that needs it. The checked launcher retrieves one named item and replaces itself with the
+exact check or Workstation process:
 
 ```bash
-export QUANTPAD_API_KEY="$(security find-generic-password -w -s project-alpha-quantpad)"
+scripts/alpha-with-keychain-provider quantpad check
 ```
 
 Use `get_coverage` before every bulk request and project only required order-book columns. Store
@@ -61,6 +62,11 @@ paths private. A cycle crash is visible in `scheduler-status`; after diagnosing 
 clear only that exact cycle marker with
 `alpha paper scheduler-repair SYMBOL YYYY-MM-DD --config ... --acknowledge`.
 
+The Readiness Center and `alpha info providers --json` are local projections and never probe a
+provider. `scripts/alpha-with-keychain-provider tiingo check` performs one bounded SPY
+authentication/schema check and stores a redacted `ProviderCheckReceiptV1`. That receipt does not
+qualify data: ingestion, audit, and promotion remain separate steps.
+
 ## 3. Prepare IBKR Paper
 
 Owner prerequisites are an IBKR paper account, permissions/subscriptions, Docker, and an independently
@@ -77,6 +83,19 @@ Verify the boundary without enabling orders:
 ```bash
 uv run alpha paper ibkr-preflight SPY.ARCA --asset-class etf
 ```
+
+`alpha provider check ibkr` reports Docker CLI, daemon, reviewed image digest, masked DU account,
+loopback port 4002 reachability, permissions, and market-data state without starting or stopping
+Docker. Freeze a non-transmitting preview contract offline with:
+
+```bash
+uv run alpha paper ibkr-what-if-plan \
+  --limit-price 640 --collar-low 600 --collar-high 680 \
+  --expires-at YYYY-MM-DDTHH:MM:SS+00:00
+```
+
+This creates no broker connection and earns no paper-readiness credit. A real what-if preview is a
+separate operation requiring a new current owner checkpoint; it is not performed by this command.
 
 For one approved equity release, take the `intent_id`, snapshot, expected/next sessions, and cutoff
 from the immutable scheduler outcome/intent. Enable both flags only in that execution process:
@@ -121,7 +140,8 @@ recovery authority until a separate multi-host operations/threat-model review is
 
 ## 5. Acceptance
 
-Run `alpha paper readiness --json`. `paper_passed` must remain false until every required real
-Binance and IBKR scenario is present and no blocking event exists. IBKR Paper fills are simulator
-observations, not evidence of live fill quality. Futures always remain research-unsupported in this
-milestone. Live-capital routing does not exist.
+Run `alpha paper readiness --json`. `PaperAcceptanceV2` recomputes every predicate from immutable,
+plan-bound, hash-chained typed callback facts; producer `passed` fields and legacy journal scenarios
+earn no credit. `paper_passed` remains false until every separately authorized real paper scenario
+is mechanically present. IBKR Paper fills are simulator observations, not evidence of live fill
+quality. Futures remain research-unsupported and live-capital routing does not exist.

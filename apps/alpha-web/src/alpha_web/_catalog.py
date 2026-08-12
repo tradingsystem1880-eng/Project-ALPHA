@@ -109,6 +109,14 @@ def providers(*, data_dir: Path) -> list[dict[str, Any]]:
     return result
 
 
+def provider_check(*, data_dir: Path, provider_id: str) -> dict[str, Any]:
+    """Run one explicit CLI-owned provider check and return only its redacted receipt."""
+    result: dict[str, Any] = _run_json(
+        ["provider", "check", provider_id, "--json"], data_dir=data_dir, timeout_seconds=45.0
+    )
+    return result
+
+
 def system(*, data_dir: Path) -> dict[str, Any]:
     """Local system readiness (fresh because store, disk, and opt-in state can change)."""
     result: dict[str, Any] = _run_json(["info", "system", "--json"], data_dir=data_dir)

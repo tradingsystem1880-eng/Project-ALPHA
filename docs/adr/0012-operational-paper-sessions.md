@@ -19,13 +19,15 @@ class and a verified snapshot for warmup.
 
 ## Decision
 
-### 2026-08-12 acceptance-integrity addendum
+### 2026-08-13 acceptance-integrity addendum
 
 Generic paper journal events are monitoring history, not acceptance evidence. In particular,
 producer-supplied `scenario` or `passed` fields have no authority. Until a dedicated typed
 acceptance runner emits plan-bound, hash-chained causal facts and a reader mechanically re-verifies
 the complete closed evidence set, the aggregate readiness result remains `pending` and
-`paper_passed` remains false. Legacy v1/v2 journals stay readable but cannot satisfy acceptance.
+`paper_passed` remains false. `PaperAcceptanceV2` now provides that closed storage and verifier;
+facts can enter only through typed adapter, risk, reconciliation, and connection-guard callbacks.
+Legacy v1/v2 journals stay readable but cannot satisfy acceptance.
 
 The future acceptance format remains separate from research runs and grants no enable flag, paper
 entry, broker action, or live-capital route. A non-transmitting IBKR what-if preview is a separate
@@ -60,7 +62,8 @@ a separate immutable-ingestion specification and provenance contract.
 
 **Code anchors:** `apps/alpha-cli/src/alpha_cli/paper_store.py` (versioned operational store),
 `apps/alpha-cli/src/alpha_cli/_paper.py` and `_ibkr_paper.py` (node lifecycles),
-`apps/alpha-cli/src/alpha_cli/paper_readiness.py` (machine evidence gate),
+`apps/alpha-cli/src/alpha_cli/paper_acceptance.py` and `paper_readiness.py` (typed machine evidence
+and public report),
 `packages/alpha-core/src/alpha_core/protocols.py` (`ExecutionEventSink`),
 `apps/alpha-cli/src/alpha_cli/run_store.py` (`RUN_DIRS` research boundary), and
 `apps/alpha-web/src/alpha_web/_invoke.py` (known-child job lifecycle).

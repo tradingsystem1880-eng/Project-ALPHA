@@ -33,6 +33,7 @@ import type {
   OptionCurve,
   OptionGreeks,
   ProviderDefinition,
+  ProviderCheckReceipt,
   ProjectDetail,
   ProjectPage,
   ProjectSummary,
@@ -294,6 +295,8 @@ export const api = {
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
   providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
+  providerCheck: (providerId: string): Promise<ProviderCheckReceipt> =>
+    postJSON(`/api/providers/${encodeURIComponent(providerId)}/check`, {}),
   system: (): Promise<SystemStatus> => getJSON('/api/system'),
   jobs: (): Promise<PaperJobSummary[]> => getJSON('/api/jobs'),
   job: (id: string): Promise<JobDetail> => getJSON(`/api/jobs/${id}`),

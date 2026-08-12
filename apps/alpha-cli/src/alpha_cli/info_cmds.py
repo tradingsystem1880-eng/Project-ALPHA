@@ -153,13 +153,15 @@ def providers(json_out: bool = typer.Option(False, "--json", help="emit JSON")) 
     """List provider capabilities, limitations, and redacted local configuration state."""
     from alpha_cli.providers import provider_catalog
 
-    catalog = provider_catalog()
+    catalog = provider_catalog(data_dir=AlphaSettings().data_dir)
     if json_out:
         typer.echo(json.dumps(catalog))
         return
     for provider in catalog:
-        state = "configured" if provider["configured"] else "not configured"
-        typer.echo(f"{provider['id']}: {state} ({', '.join(provider['capabilities'])})")
+        typer.echo(
+            f"{provider['id']}: {provider['configuration_state']}; "
+            f"{provider['verification_state']} ({', '.join(provider['capabilities'])})"
+        )
 
 
 @info_app.command("system")

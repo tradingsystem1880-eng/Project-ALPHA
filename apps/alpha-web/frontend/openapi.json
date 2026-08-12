@@ -9095,6 +9095,11 @@
             "title": "Futures Research Supported",
             "type": "boolean"
           },
+          "legacy_journals": {
+            "const": "monitoring_only",
+            "title": "Legacy Journals",
+            "type": "string"
+          },
           "live_capital_routing": {
             "const": "absent",
             "title": "Live Capital Routing",
@@ -9104,6 +9109,21 @@
             "title": "Paper Passed",
             "type": "boolean"
           },
+          "plans": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "predicates": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Predicates",
+            "type": "object"
+          },
           "requirements": {
             "items": {
               "$ref": "#/components/schemas/PaperReadinessRequirement"
@@ -9112,7 +9132,7 @@
             "type": "array"
           },
           "schema_version": {
-            "const": 1,
+            "const": 2,
             "title": "Schema Version",
             "type": "integer"
           },
@@ -9123,12 +9143,26 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "tamper_detected": {
+            "title": "Tamper Detected",
+            "type": "boolean"
+          },
+          "what_if_credit": {
+            "const": false,
+            "title": "What If Credit",
+            "type": "boolean"
           }
         },
         "required": [
           "schema_version",
           "status",
           "paper_passed",
+          "plans",
+          "predicates",
+          "tamper_detected",
+          "legacy_journals",
+          "what_if_credit",
           "requirements",
           "blocking_events",
           "futures_research_supported",
@@ -10210,6 +10244,74 @@
         "title": "PropfirmPaths",
         "type": "object"
       },
+      "ProviderCheckReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "granted_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Granted Capabilities",
+            "type": "array"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "recovery_action": {
+            "title": "Recovery Action",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "verification_state": {
+            "enum": [
+              "verified",
+              "authentication_failed",
+              "entitlement_denied",
+              "rate_limited",
+              "connectivity_failed",
+              "schema_drift",
+              "optional_disabled"
+            ],
+            "title": "Verification State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "provider_id",
+          "verification_state",
+          "checked_at",
+          "granted_capabilities",
+          "recovery_action",
+          "details",
+          "receipt_id",
+          "content_sha256"
+        ],
+        "title": "ProviderCheckReceipt",
+        "type": "object"
+      },
       "ProviderDefinition": {
         "additionalProperties": false,
         "properties": {
@@ -10231,6 +10333,17 @@
             "title": "Capabilities",
             "type": "array"
           },
+          "configuration_state": {
+            "enum": [
+              "not_installed",
+              "optional_disabled",
+              "needs_process_injection",
+              "process_injected_unverified",
+              "available_without_credentials"
+            ],
+            "title": "Configuration State",
+            "type": "string"
+          },
           "configured": {
             "title": "Configured",
             "type": "boolean"
@@ -10240,6 +10353,13 @@
               "$ref": "#/components/schemas/CredentialStatus"
             },
             "title": "Credential Env",
+            "type": "array"
+          },
+          "granted_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Granted Capabilities",
             "type": "array"
           },
           "id": {
@@ -10253,6 +10373,17 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "last_receipt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Receipt Id"
           },
           "limitations": {
             "items": {
@@ -10276,6 +10407,10 @@
             "title": "Paper Execution",
             "type": "boolean"
           },
+          "recovery_action": {
+            "title": "Recovery Action",
+            "type": "string"
+          },
           "research_authority": {
             "title": "Research Authority",
             "type": "boolean"
@@ -10286,6 +10421,31 @@
             },
             "title": "Timeframes",
             "type": "array"
+          },
+          "verification_state": {
+            "enum": [
+              "verified",
+              "unverified",
+              "authentication_failed",
+              "entitlement_denied",
+              "rate_limited",
+              "connectivity_failed",
+              "schema_drift",
+              "optional_disabled"
+            ],
+            "title": "Verification State",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
           }
         },
         "required": [
@@ -10302,7 +10462,13 @@
           "paper_execution",
           "budget_tier",
           "installed",
-          "configured"
+          "configured",
+          "configuration_state",
+          "verification_state",
+          "verified_at",
+          "last_receipt_id",
+          "granted_capabilities",
+          "recovery_action"
         ],
         "title": "ProviderDefinition",
         "type": "object"
@@ -19194,6 +19360,49 @@
           }
         },
         "summary": "Get Providers",
+        "tags": [
+          "control-plane"
+        ]
+      }
+    },
+    "/api/providers/{provider_id}/check": {
+      "post": {
+        "description": "Perform one explicit bounded check; ordinary provider reads never enter this path.",
+        "operationId": "check_provider_api_providers__provider_id__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCheckReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Check Provider",
         "tags": [
           "control-plane"
         ]

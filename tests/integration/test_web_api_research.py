@@ -406,6 +406,8 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         "/api/research/cases": {"POST"},
         "/api/research/cases/{project_id}/proposal": {"POST"},
         "/api/research/cases/{project_id}/launch": {"POST"},
+        "/api/research/cases/{project_id}/literature/discover": {"POST"},
+        "/api/research/cases/{project_id}/literature/acquire": {"POST"},
     }
     read_only_paths = {
         "/api/research/cases/{project_id}/evidence-hub",

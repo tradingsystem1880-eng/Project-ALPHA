@@ -809,6 +809,42 @@ def test_paper_run_rejects_any_non_binance_provider(
     assert result.exit_code != 0 and "--provider must be 'binance'" in unstyle(result.output)
 
 
+def test_ibkr_what_if_plan_is_offline_redacted_and_non_transmitting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = "DU1234567"
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", account)
+    monkeypatch.setenv(
+        "ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/example/ibkr@sha256:" + "b" * 64
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-plan",
+            "--limit-price",
+            "640",
+            "--collar-low",
+            "600",
+            "--collar-high",
+            "680",
+            "--expires-at",
+            "2099-08-13T00:10:00+00:00",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    plan = json.loads(result.stdout)
+    assert plan["what_if"] is True and plan["transmit"] is False
+    assert plan["paper_acceptance_credit"] is False
+    assert account not in result.stdout
+    artifact = next((tmp_path / "ibkr-what-if-v1" / "plans").glob("*.json"))
+    assert account not in artifact.read_text(encoding="utf-8")
+
+
 def test_ibkr_preflight_requires_secret_sources(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ALPHA_IBKR_PAPER_ACCOUNT", raising=False)
     monkeypatch.delenv("ALPHA_IBKR_GATEWAY_IMAGE", raising=False)
