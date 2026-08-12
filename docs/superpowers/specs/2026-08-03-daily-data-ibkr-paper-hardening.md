@@ -87,6 +87,13 @@ DAY orders, no rolls, and no strategy generation are the v1 ceiling.
 
 ## Acceptance state
 
+**2026-08-12 correction:** the original scenario-field reader is not an acceptance authority. A
+generic journal event can carry arbitrary payload keys, and no shipped runtime path produces the
+complete required scenario set. Legacy events therefore remain monitoring history only and the
+aggregate readiness projection is forced pending. The replacement must freeze an immutable
+one-shot plan, admit closed typed facts only from the dedicated runner, hash-chain them to exact
+session heads, and mechanically recompute every predicate while ignoring producer pass flags.
+
 Offline unit/integration, schema, frontend, and deterministic gates validate the code boundary.
 Operational acceptance is separate. The readiness report can pass only from matching journal event
 types/scenario identifiers and fails in the presence of rejection, reconciliation warning, or failed

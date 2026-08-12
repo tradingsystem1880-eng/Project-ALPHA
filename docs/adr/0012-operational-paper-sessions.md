@@ -19,6 +19,18 @@ class and a verified snapshot for warmup.
 
 ## Decision
 
+### 2026-08-12 acceptance-integrity addendum
+
+Generic paper journal events are monitoring history, not acceptance evidence. In particular,
+producer-supplied `scenario` or `passed` fields have no authority. Until a dedicated typed
+acceptance runner emits plan-bound, hash-chained causal facts and a reader mechanically re-verifies
+the complete closed evidence set, the aggregate readiness result remains `pending` and
+`paper_passed` remains false. Legacy v1/v2 journals stay readable but cannot satisfy acceptance.
+
+The future acceptance format remains separate from research runs and grants no enable flag, paper
+entry, broker action, or live-capital route. A non-transmitting IBKR what-if preview is a separate
+connectivity artifact and never counts toward paper readiness.
+
 Keep the two planes separate:
 
 | Plane | Identity | Location | Time semantics | Authority |

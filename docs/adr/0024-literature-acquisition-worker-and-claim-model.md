@@ -16,6 +16,20 @@ contract's source policy already labels all external text `UNTRUSTED_SOURCE`.
 
 ## Decision
 
+### 2026-08-12 usability and isolation addendum
+
+The local Workstation may start an explicit owner-clicked, allowlisted literature discovery,
+open-access acquisition, or deterministic extraction job. Opening or refreshing a page never
+starts network work. These browser actions confer no evidence authority: external bytes and text
+remain `UNTRUSTED_SOURCE`, Codex output remains draft-only, and screened claims plus frozen packs
+still require a separately authenticated owner action.
+
+Every literature child receives a minimal explicit environment and closed argument vector rather
+than inheriting the Workstation process environment. It receives no provider credentials, shell
+state, arbitrary host override, or broker context. Search and acquisition receipts are
+content-addressed; extraction and anchored-claim contracts are introduced by the implementation
+that consumes this addendum.
+
 - **Claim-level evidence.** Add append-only `research_source_claims` linking a source to the
   hypothesis version it bears on: `claim_text`, `direction ∈ {supports, contradicts,
   contextualizes, method}`, `strength ∈ {weak, moderate, strong}`, `method_summary`,

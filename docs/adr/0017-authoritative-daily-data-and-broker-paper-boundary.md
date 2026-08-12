@@ -84,5 +84,9 @@ Live-capital routing is absent.
   review rather than fallback.
 - Operational status: offline implementation is testable without secrets. “Paper passed” remains
   pending until the machine-readable Binance and real IBKR Paper evidence requirements all pass.
+- As amended on 2026-08-12, legacy journal scenario labels and producer `passed` booleans are not
+  machine evidence. The aggregate remains pending until the versioned acceptance runner and
+  mechanical verifier bind causal facts to an immutable one-shot plan. A non-transmitting IBKR
+  what-if preview is connectivity evidence only and earns no paper-readiness credit.
 - Revisit live capital only through a separate ADR, threat model, cost model, kill-switch drill, and
   explicit owner approval.
