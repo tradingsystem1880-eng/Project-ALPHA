@@ -13,6 +13,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from alpha_cli.run_context import RUN_CONTEXT_ENV
+
 _ALPHA_BIN = "alpha"
 
 #: Bounded wall-clock ceiling for every synchronous ``alpha`` projection. A hung CLI child must
@@ -37,9 +39,20 @@ def _command(args: list[str]) -> list[str]:
 
 
 def _run_json(
-    args: list[str], *, data_dir: Path, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    args: list[str],
+    *,
+    data_dir: Path,
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+    run_context: dict[str, object] | None = None,
 ) -> Any:
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    if run_context is not None:
+        env[RUN_CONTEXT_ENV] = json.dumps(
+            run_context,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
     try:
         proc = subprocess.run(
             _command(args),

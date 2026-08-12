@@ -591,6 +591,8 @@ def run_identity_for(
             int(snapshot_hash, 16)
         except ValueError:
             raise DataError("snapshot_hash must be a 64-hex SHA-256 digest") from None
+    from alpha_cli.run_context import run_context_from_environment
+
     identity_payload = {
         "run_identity_version": RUN_IDENTITY_VERSION,
         "execution_fingerprint": execution,
@@ -599,6 +601,9 @@ def run_identity_for(
         "snapshot_hash": snapshot_hash,
         "payload": payload,
     }
+    run_context = run_context_from_environment()
+    if run_context is not None:
+        identity_payload["run_context"] = run_context
     canonical = json.dumps(
         identity_payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
     )

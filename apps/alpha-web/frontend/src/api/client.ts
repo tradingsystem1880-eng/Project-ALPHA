@@ -56,6 +56,7 @@ import type {
   RunComparison,
   FigureMetadata,
   RiskReport,
+  RunContextV1,
   RunDetail,
   RunList,
   ScreenerNews,
@@ -72,29 +73,37 @@ import type {
   WorkspaceMeta,
 } from './types'
 
+export function runContextForProject(projectId: string | null): RunContextV1 {
+  return projectId
+    ? { schema_version: 1, kind: 'governed_project', project_id: projectId }
+    : { schema_version: 1, kind: 'standalone_sandbox' }
+}
+
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url)
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    let detail = body
-    try {
-      const parsed: unknown = JSON.parse(body)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const value = (parsed as Record<string, unknown>).detail
-        if (typeof value === 'string') detail = value
-      }
-    } catch {
-      // Plain-text failures are valid for infrastructure endpoints.
-    }
-    detail = detail
-      .split('\n')
-      .map((line) => line.replace(/^[│┃]\s?/, '').trim())
-      .filter((line) => line && !/^usage:/i.test(line) && !/^try ['`]/i.test(line) && !/^[╭╰─━┄┅┈┉]+/.test(line))
-      .join(' ')
-    const status = `${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
-    throw new Error(`${status}${detail ? ` — ${detail}` : ''}`)
-  }
+  if (!res.ok) throw await responseError(res)
   return (await res.json()) as T
+}
+
+async function responseError(res: Response): Promise<Error> {
+  let message = 'The Workstation request failed.'
+  let recovery = ''
+  let requestId = res.headers.get('x-request-id') ?? ''
+  try {
+    const parsed: unknown = await res.json()
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const error = parsed as Record<string, unknown>
+      if (typeof error.message === 'string' && error.message) message = error.message
+      if (typeof error.recovery_action === 'string') recovery = error.recovery_action
+      if (typeof error.request_id === 'string') requestId = error.request_id
+    }
+  } catch {
+    // The stable API contract was unavailable; never relay an untrusted raw response to the DOM.
+  }
+  const status = `${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
+  return new Error(
+    `${status} — ${message}${recovery ? ` ${recovery}` : ''}${requestId ? ` [request ${requestId}]` : ''}`,
+  )
 }
 
 const IMMUTABLE_CACHE_LIMIT = 128
@@ -129,10 +138,7 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`)
-  }
+  if (!res.ok) throw await responseError(res)
   return (await res.json()) as T
 }
 
@@ -185,13 +191,14 @@ export const api = {
   async launch(
     command: string,
     args: string,
+    runContext?: RunContextV1,
   ): Promise<{ job_id: string; status: string; session_id?: string | null }> {
     const res = await fetch('/api/jobs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ command, args }),
+      body: JSON.stringify({ command, args, ...(runContext ? { run_context: runContext } : {}) }),
     })
-    if (!res.ok) throw new Error(await res.text())
+    if (!res.ok) throw await responseError(res)
     return (await res.json()) as { job_id: string; status: string; session_id?: string | null }
   },
   cancel: (id: string): Promise<Response> => fetch(`/api/jobs/${id}`, { method: 'DELETE' }),
@@ -208,7 +215,7 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) throw new Error(await res.text())
+    if (!res.ok) throw await responseError(res)
     return (await res.json()) as { slug: string; name: string }
   },
   deleteWorkspace: (slug: string): Promise<Response> =>
@@ -221,8 +228,14 @@ export const api = {
     getJSON(`/api/screener/quote?symbol=${encodeURIComponent(symbol)}`),
   screenerNews: (symbol: string, days = 7, limit = 20): Promise<ScreenerNews> =>
     getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
-  researchCompare: (symbol: string): Promise<ResearchReport> =>
-    getJSON(`/api/research/compare?symbol=${encodeURIComponent(symbol)}`),
+  researchCompare: (symbol: string, runContext: RunContextV1): Promise<ResearchReport> => {
+    const params = new URLSearchParams({
+      symbol,
+      context_kind: runContext.kind,
+    })
+    if (runContext.kind === 'governed_project') params.set('project_id', runContext.project_id)
+    return getJSON(`/api/research/compare?${params.toString()}`)
+  },
   researchCapture: (body: ResearchCaptureRequest): Promise<ResearchCaptureResponse> =>
     postJSON('/api/research/cases', body),
   researchCase: (projectId: string): Promise<ResearchCase> =>
@@ -322,7 +335,7 @@ export const api = {
     getJSON(`/api/development/suite-jobs/${encodeURIComponent(jobId)}?event_tail=true`),
   async cancelDevelopmentJob(jobId: string): Promise<SuiteCancelResponse> {
     const res = await fetch(`/api/development/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await res.text())
+    if (!res.ok) throw await responseError(res)
     return (await res.json()) as SuiteCancelResponse
   },
   sealHoldout: (

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { api } from './client'
+import { api, runContextForProject } from './client'
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -14,6 +14,30 @@ afterEach(() => {
 })
 
 describe('bounded Research Case API client', () => {
+  it('binds empirical launches and comparisons to explicit run context', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
+    vi.stubGlobal('fetch', fetchMock)
+    const governed = runContextForProject('project/id')
+
+    await api.launch('validate', 'SPY', governed)
+    await api.researchCompare('SPY', governed)
+    await api.researchCompare('SPY', runContextForProject(null))
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/jobs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'validate', args: 'SPY', run_context: governed }),
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/research/compare?symbol=SPY&context_kind=governed_project&project_id=project%2Fid',
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/research/compare?symbol=SPY&context_kind=standalone_sandbox',
+    )
+  })
+
   it('uses only the six Gate-1 capture/read/propose/pilot/status/report routes', async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
     vi.stubGlobal('fetch', fetchMock)

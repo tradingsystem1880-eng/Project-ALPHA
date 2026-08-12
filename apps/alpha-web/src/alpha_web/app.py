@@ -15,12 +15,17 @@ The SPA is served at ``/`` (and ``/app``); its assets ride the ``/static`` mount
 from __future__ import annotations
 
 import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
 
 from alpha_core import AlphaError
 from alpha_web.api import activity as activity_api
@@ -39,6 +44,8 @@ from alpha_web.api import runs as runs_api
 from alpha_web.api import screener as screener_api
 from alpha_web.api import v3 as v3_api
 from alpha_web.api import workspaces as workspaces_api
+from alpha_web.api.errors import api_error_response, request_id, validation_field_errors
+from alpha_web.api.models import ApiErrorV1
 
 _PKG = Path(__file__).resolve().parent
 _APP_INDEX = _PKG / "static" / "app" / "index.html"  # built SPA entry (Vite → static/app)
@@ -46,9 +53,49 @@ _APP_INDEX = _PKG / "static" / "app" / "index.html"  # built SPA entry (Vite →
 
 def create_app() -> FastAPI:
     """Build the FastAPI app (factory so tests can construct a fresh instance)."""
-    app = FastAPI(title="Project ALPHA — Workstation")
+    error_responses: dict[int | str, dict[str, Any]] = {
+        "default": {"model": ApiErrorV1, "description": "Stable, redacted Workstation error"}
+    }
+    app = FastAPI(title="Project ALPHA — Workstation", responses=error_responses)
     app.add_middleware(GZipMiddleware, minimum_size=1_000, compresslevel=5)
     app.mount("/static", StaticFiles(directory=str(_PKG / "static")), name="static")
+
+    @app.middleware("http")
+    async def attach_request_id(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        rid = request_id(request)
+        response = await call_next(request)
+        response.headers["x-request-id"] = rid
+        return response
+
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        return api_error_response(
+            request,
+            status_code=exc.status_code,
+            message=exc.detail,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation_error(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        return api_error_response(
+            request,
+            status_code=422,
+            message="One or more request fields are invalid.",
+            field_errors=validation_field_errors(exc.errors()),
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        del exc
+        return api_error_response(
+            request,
+            status_code=500,
+            message="The Workstation could not complete this request.",
+        )
 
     app.include_router(runs_api.router)
     app.include_router(jobs_api.router)

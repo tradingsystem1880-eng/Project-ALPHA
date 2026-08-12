@@ -273,7 +273,7 @@ export interface paths {
         put?: never;
         /**
          * Launch Job
-         * @description Launch a background CLI job, excluding governed Research Case commands.
+         * @description Launch a background CLI job after resolving its empirical run context.
          */
         post: operations["launch_job_api_jobs_post"];
         delete?: never;
@@ -3077,6 +3077,32 @@ export interface components {
             stage: string;
             state: components["schemas"]["StageStateValue"];
         };
+        /** ApiErrorV1 */
+        ApiErrorV1: {
+            /** Code */
+            code: string;
+            /** Field Errors */
+            field_errors: components["schemas"]["ApiFieldErrorV1"][];
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** ApiFieldErrorV1 */
+        ApiFieldErrorV1: {
+            /** Field */
+            field: string;
+            /** Message */
+            message: string;
+        };
         /** AttemptCreateRequest */
         AttemptCreateRequest: {
             /** Config Fingerprint */
@@ -4059,10 +4085,21 @@ export interface components {
             /** Q75 */
             q75: number[];
         };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+        /** GovernedRunContextV1 */
+        GovernedRunContextV1: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "governed_project";
+            /** Project Id */
+            project_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
         };
         /** HoldoutAuditEvent */
         HoldoutAuditEvent: {
@@ -4379,6 +4416,20 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** JobLaunchRequest */
+        JobLaunchRequest: {
+            /**
+             * Args
+             * @default
+             */
+            args: string;
+            /**
+             * Command
+             * @default
+             */
+            command: string;
+            run_context?: components["schemas"]["RunContextV1"] | null;
+        };
         /** JobReconcileResponse */
         JobReconcileResponse: {
             /** Count */
@@ -4450,24 +4501,6 @@ export interface components {
             local_only: boolean;
             /** Path */
             path: string | null;
-        };
-        /**
-         * LaunchRequest
-         * @description Launch body: a command path (e.g. ``"backtest run"``) + its remaining args, or a bare
-         *     ``args`` string (empty ``command``) for the free-form console. Governed research commands are
-         *     rejected here; only the legacy non-governance ``research compare`` command is admitted.
-         */
-        LaunchRequest: {
-            /**
-             * Args
-             * @default
-             */
-            args: string;
-            /**
-             * Command
-             * @default
-             */
-            command: string;
         };
         /** MlCosts */
         MlCosts: {
@@ -7049,8 +7082,17 @@ export interface components {
         };
         /** ResearchReport */
         ResearchReport: {
+            /**
+             * Comparison Status
+             * @enum {string}
+             */
+            comparison_status: "preferred" | "tie" | "no_trades" | "not_comparable";
             /** N Bars */
             n_bars: number;
+            /** Preference Reason */
+            preference_reason: string | null;
+            /** Preferred Strategy */
+            preferred_strategy: string | null;
             /** Ranked */
             ranked: components["schemas"]["ResearchRow"][];
             /** Symbol */
@@ -7250,6 +7292,7 @@ export interface components {
             /** Symbols */
             symbols: string[] | null;
         };
+        RunContextV1: components["schemas"]["GovernedRunContextV1"] | components["schemas"]["StandaloneRunContextV1"];
         /** RunDetail */
         RunDetail: {
             /** Has Equity */
@@ -7282,6 +7325,15 @@ export interface components {
             mtime: number;
             /** Research Gate Watermark */
             research_gate_watermark: string | null;
+            /**
+             * Run Context Kind
+             * @enum {string}
+             */
+            run_context_kind: "governed_project" | "standalone_sandbox" | "legacy_context_unknown";
+            /** Run Context Project Id */
+            run_context_project_id: string | null;
+            /** Run Context Watermark */
+            run_context_watermark: string | null;
             /** Run Id */
             run_id: string;
         };
@@ -7306,6 +7358,15 @@ export interface components {
             passed: boolean | null;
             /** Research Gate Watermark */
             research_gate_watermark: string | null;
+            /**
+             * Run Context Kind
+             * @enum {string}
+             */
+            run_context_kind: "governed_project" | "standalone_sandbox" | "legacy_context_unknown";
+            /** Run Context Project Id */
+            run_context_project_id: string | null;
+            /** Run Context Watermark */
+            run_context_watermark: string | null;
             /** Run Id */
             run_id: string;
             /** Snapshot Hash */
@@ -7424,6 +7485,20 @@ export interface components {
         };
         /** @enum {string} */
         StageStateValue: "not_started" | "ready" | "queued" | "running" | "pass" | "warning" | "fail" | "stale";
+        /** StandaloneRunContextV1 */
+        StandaloneRunContextV1: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "standalone_sandbox";
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
         /** StrategyDefinition */
         StrategyDefinition: {
             /** Has Tier1 Surrogate */
@@ -7558,19 +7633,6 @@ export interface components {
             nautilus: components["schemas"]["NautilusStatus"];
             /** Paper Enabled */
             paper_enabled: boolean;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
         };
         /**
          * WorkspaceBody
@@ -7717,6 +7779,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     stream_activity_api_activity_stream_get: {
@@ -7740,13 +7811,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7775,13 +7846,13 @@ export interface operations {
                     "application/json": components["schemas"]["Candles"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7802,6 +7873,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommandDefinition"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7827,13 +7907,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7860,13 +7940,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJob"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7895,13 +7975,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7926,13 +8006,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7957,13 +8037,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobReconcileResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7992,13 +8072,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8023,13 +8103,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8059,13 +8139,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidencePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8092,13 +8172,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8126,13 +8206,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8161,13 +8241,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8190,6 +8270,15 @@ export interface operations {
                     "application/json": components["schemas"]["JobSummary"][];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     launch_job_api_jobs_post: {
@@ -8201,7 +8290,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LaunchRequest"];
+                "application/json": components["schemas"]["JobLaunchRequest"];
             };
         };
         responses: {
@@ -8214,13 +8303,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8245,13 +8334,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8276,13 +8365,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8307,13 +8396,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8339,13 +8428,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8370,13 +8459,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangeDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8401,13 +8490,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlEvaluation"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8436,13 +8525,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8471,13 +8560,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8506,13 +8595,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8537,13 +8626,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlWorkerResult"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8573,13 +8662,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8608,13 +8697,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8641,13 +8730,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8674,13 +8763,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8706,13 +8795,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundlePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8739,13 +8828,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8770,13 +8859,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8803,13 +8892,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8830,6 +8919,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlReadiness"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8857,13 +8955,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlReplayTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8884,6 +8982,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlServiceStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8914,13 +9021,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptionCurve"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8950,13 +9057,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptionGreeks"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8986,13 +9093,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptionGreeks"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9015,6 +9122,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaperReadinessReport"];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     list_paper_sessions_api_paper_sessions_get: {
@@ -9033,6 +9149,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaperSession"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9057,13 +9182,13 @@ export interface operations {
                     "application/json": components["schemas"]["PaperSession"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9090,13 +9215,13 @@ export interface operations {
                     "application/json": components["schemas"]["PaperEvent"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9122,13 +9247,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9155,13 +9280,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectSummary"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9188,13 +9313,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9222,13 +9347,13 @@ export interface operations {
                     "application/json": components["schemas"]["AgentBrief"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9257,13 +9382,13 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9292,13 +9417,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9324,13 +9449,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9360,13 +9485,13 @@ export interface operations {
                     "application/json": components["schemas"]["DecisionPacket"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9397,13 +9522,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentStageState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9430,13 +9555,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuitePlan"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9467,13 +9592,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteLaunch"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9502,13 +9627,13 @@ export interface operations {
                     "application/json": components["schemas"]["HoldoutState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9537,13 +9662,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9572,13 +9697,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9604,13 +9729,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9631,6 +9756,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderDefinition"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9656,13 +9790,13 @@ export interface operations {
                     "application/json": components["schemas"]["ActiveResearchGateOverride"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9688,13 +9822,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCasePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9721,13 +9855,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCaptureResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9752,13 +9886,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCase"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9786,13 +9920,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchContextPacketPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9817,13 +9951,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchDecisionView"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9848,13 +9982,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchEvidenceHub"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9883,13 +10017,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchLaunchResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9917,13 +10051,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchNotePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9952,13 +10086,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchProposalResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9983,13 +10117,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCaseReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10014,13 +10148,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchScorecard"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10045,13 +10179,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCase"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10061,6 +10195,8 @@ export interface operations {
             query: {
                 symbol: string;
                 strategies?: string;
+                context_kind?: ("governed_project" | "standalone_sandbox") | null;
+                project_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -10077,13 +10213,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10108,13 +10244,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchContextPacket"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10141,13 +10277,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchDatasetPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10168,6 +10304,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchProtocolLibrary"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10193,13 +10338,13 @@ export interface operations {
                     "application/json": components["schemas"]["RiskReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10229,13 +10374,13 @@ export interface operations {
                     "application/json": components["schemas"]["RunList"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10260,13 +10405,13 @@ export interface operations {
                     "application/json": components["schemas"]["RunDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10296,13 +10441,13 @@ export interface operations {
                     "application/json": components["schemas"]["ChartBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10327,13 +10472,13 @@ export interface operations {
                     "application/json": components["schemas"]["EquitySeries"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10358,13 +10503,13 @@ export interface operations {
                     "application/json": components["schemas"]["FigureCatalogue"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10393,13 +10538,13 @@ export interface operations {
                     "application/json": components["schemas"]["FigureMetadata"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10432,13 +10577,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10463,13 +10608,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastSeries"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10496,13 +10641,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastPaths"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10529,13 +10674,13 @@ export interface operations {
                     "application/json": components["schemas"]["NativeTearSheetResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10560,13 +10705,13 @@ export interface operations {
                     "application/json": components["schemas"]["NullTiers"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10591,13 +10736,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastOrigins"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10625,13 +10770,13 @@ export interface operations {
                     "application/json": components["schemas"]["PortfolioAnalyticsResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10656,13 +10801,13 @@ export interface operations {
                     "application/json": components["schemas"]["PropfirmPaths"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10687,13 +10832,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10720,13 +10865,13 @@ export interface operations {
                     }[];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10751,13 +10896,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptimTrials"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10784,13 +10929,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScreenerNews"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10815,13 +10960,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScreenerQuote"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10850,13 +10995,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10879,6 +11024,15 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyDefinition"][];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     symbols_api_symbols_get: {
@@ -10899,6 +11053,15 @@ export interface operations {
                     "application/json": components["schemas"]["Symbols"];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     get_system_api_system_get: {
@@ -10917,6 +11080,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10942,13 +11114,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10975,13 +11147,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJob"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11010,13 +11182,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11041,13 +11213,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11072,13 +11244,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobReconcileResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11107,13 +11279,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11138,13 +11310,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11174,13 +11346,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidencePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11207,13 +11379,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11241,13 +11413,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11276,13 +11448,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11308,13 +11480,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11339,13 +11511,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangeDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11370,13 +11542,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlEvaluation"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11405,13 +11577,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11440,13 +11612,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11475,13 +11647,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11506,13 +11678,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlWorkerResult"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11542,13 +11714,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11577,13 +11749,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11610,13 +11782,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11643,13 +11815,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11675,13 +11847,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundlePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11708,13 +11880,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11739,13 +11911,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11772,13 +11944,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11799,6 +11971,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlReadiness"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11826,13 +12007,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlReplayTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11853,6 +12034,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlServiceStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11878,13 +12068,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11911,13 +12101,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectSummary"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11944,13 +12134,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11978,13 +12168,13 @@ export interface operations {
                     "application/json": components["schemas"]["AgentBrief"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12013,13 +12203,13 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12048,13 +12238,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12080,13 +12270,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12116,13 +12306,13 @@ export interface operations {
                     "application/json": components["schemas"]["DecisionPacket"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12153,13 +12343,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentStageState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12186,13 +12376,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuitePlan"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12223,13 +12413,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteLaunch"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12258,13 +12448,13 @@ export interface operations {
                     "application/json": components["schemas"]["HoldoutState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12293,13 +12483,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12328,13 +12518,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12360,13 +12550,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12392,13 +12582,13 @@ export interface operations {
                     "application/json": components["schemas"]["ActiveResearchGateOverride"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12425,13 +12615,13 @@ export interface operations {
                     "application/json": components["schemas"]["RunComparisonResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12461,13 +12651,13 @@ export interface operations {
                     "application/json": components["schemas"]["ChartBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12494,13 +12684,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastPaths"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12527,13 +12717,13 @@ export interface operations {
                     "application/json": components["schemas"]["NativeTearSheetResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12561,13 +12751,13 @@ export interface operations {
                     "application/json": components["schemas"]["PortfolioAnalyticsResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12596,13 +12786,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12623,6 +12813,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceMeta"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12649,13 +12848,13 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceSaved"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12680,13 +12879,13 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceDocument"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12711,13 +12910,13 @@ export interface operations {
                     "application/json": components["schemas"]["Deleted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12740,6 +12939,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     healthz_healthz_get: {
@@ -12760,6 +12968,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };

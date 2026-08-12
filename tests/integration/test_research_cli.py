@@ -2437,7 +2437,10 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     import subprocess
 
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "SECRET_SENTINEL")
+    monkeypatch.setenv("SHELL", "/secret/interactive-shell")
     captured_argv: list[list[str]] = []
+    captured_kwargs: list[dict[str, object]] = []
 
     class _Completed:
         returncode = 0
@@ -2455,8 +2458,8 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
         stderr = ""
 
     def fake_run(argv: list[str], **kwargs: object) -> _Completed:
-        del kwargs
         captured_argv.append(argv)
+        captured_kwargs.append(kwargs)
         return _Completed()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -2469,6 +2472,13 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     assert argv[4:7] == ["literature-worker", "fetch", "--url"]
     assert argv[7] == "https://arxiv.org/pdf/1234v1"
     assert "--objects-dir" in argv
+    child_env = cast(dict[str, str], captured_kwargs[0]["env"])
+    assert "ALPHA_TIINGO_API_KEY" not in child_env
+    assert "SHELL" not in child_env
+    assert "HOME" not in child_env
+    assert set(child_env) == {"LANG", "LC_ALL", "PATH", "UV_NO_CONFIG", "UV_OFFLINE"}
+    assert captured_kwargs[0]["start_new_session"] is True
+    assert callable(captured_kwargs[0]["preexec_fn"])
 
     class _Failed(_Completed):
         returncode = 1

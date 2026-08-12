@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -28,15 +28,35 @@ from alpha_web.api.models import (
     ResearchReport,
     ResearchScorecard,
 )
+from alpha_web.run_authority import RunContextDenied, resolve_run_context
 
 router = APIRouter(prefix="/api", tags=["research"])
 
 
 @router.get("/research/compare", response_model=ResearchReport)
-def research_compare(symbol: str, strategies: str = "") -> dict[str, Any]:
+def research_compare(
+    symbol: str,
+    strategies: str = "",
+    context_kind: Literal["governed_project", "standalone_sandbox"] | None = None,
+    project_id: str | None = None,
+) -> dict[str, Any]:
     """Backtest each strategy on ``symbol`` and rank by total return (slow — runs the engine)."""
+    if context_kind is None:
+        raise HTTPException(status_code=422, detail="research comparison requires a run context")
     try:
-        return _research.compare(data_dir=data_dir(), symbol=symbol, strategies=strategies)
+        run_context = resolve_run_context(
+            kind=context_kind,
+            project_id=project_id,
+            data_dir=data_dir(),
+        )
+        return _research.compare(
+            data_dir=data_dir(),
+            symbol=symbol,
+            strategies=strategies,
+            run_context=run_context,
+        )
+    except RunContextDenied as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

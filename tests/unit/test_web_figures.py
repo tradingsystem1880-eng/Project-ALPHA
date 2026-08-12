@@ -187,7 +187,7 @@ class TestImage:
             f"/api/runs/{_RUN}/figures/equity_underwater/image", params={"key": "0" * 16}
         )
         assert response.status_code == 409
-        assert "current key is" in response.json()["detail"]
+        assert "current key is" in response.json()["message"]
 
 
 class TestErrors:

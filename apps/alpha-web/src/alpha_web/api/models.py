@@ -11,6 +11,43 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ApiFieldErrorV1(StrictModel):
+    field: str
+    message: str
+
+
+class ApiErrorV1(StrictModel):
+    schema_version: Literal[1] = 1
+    code: str
+    message: str
+    recovery_action: str
+    field_errors: list[ApiFieldErrorV1]
+    request_id: str
+
+
+class GovernedRunContextV1(StrictModel):
+    schema_version: Literal[1] = 1
+    kind: Literal["governed_project"]
+    project_id: str = Field(min_length=1)
+
+
+class StandaloneRunContextV1(StrictModel):
+    schema_version: Literal[1] = 1
+    kind: Literal["standalone_sandbox"]
+
+
+type RunContextV1 = Annotated[
+    GovernedRunContextV1 | StandaloneRunContextV1,
+    Field(discriminator="kind"),
+]
+
+
+class JobLaunchRequest(StrictModel):
+    command: str = ""
+    args: str = ""
+    run_context: RunContextV1 | None = None
+
+
 class RunListItem(StrictModel):
     run_id: str
     kind: str
@@ -24,6 +61,9 @@ class RunListItem(StrictModel):
     verdict: str | None
     # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
     research_gate_watermark: str | None
+    run_context_kind: Literal["governed_project", "standalone_sandbox", "legacy_context_unknown"]
+    run_context_project_id: str | None
+    run_context_watermark: str | None
     mtime: float
 
 
@@ -39,6 +79,9 @@ class RunDetail(StrictModel):
     manifest: dict[str, Any]
     # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
     research_gate_watermark: str | None
+    run_context_kind: Literal["governed_project", "standalone_sandbox", "legacy_context_unknown"]
+    run_context_project_id: str | None
+    run_context_watermark: str | None
     has_equity: bool
     has_trades: bool
     has_tearsheet: bool
@@ -1334,6 +1377,9 @@ class ResearchReport(StrictModel):
     symbol: str
     n_bars: int
     ranked: list[ResearchRow]
+    comparison_status: Literal["preferred", "tie", "no_trades", "not_comparable"]
+    preferred_strategy: str | None
+    preference_reason: str | None
 
 
 class ResearchCaptureRequest(StrictModel):

@@ -940,6 +940,9 @@ const WATERMARKED_RUN_ITEM: components['schemas']['RunListItem'] = {
   passed: null,
   verdict: null,
   research_gate_watermark: RESEARCH_GATE_WATERMARK,
+  run_context_kind: 'governed_project',
+  run_context_project_id: 'project-overridden',
+  run_context_watermark: RESEARCH_GATE_WATERMARK,
   mtime: 1,
 }
 
@@ -951,8 +954,18 @@ const WATERMARKED_RUN_DETAIL: components['schemas']['RunDetail'] = {
     command: 'backtest_portfolio',
     symbols: ['SPY', 'TLT'],
     research_gate: { state: 'overridden', watermark: RESEARCH_GATE_WATERMARK },
+    run_context: {
+      schema_version: 1,
+      kind: 'governed_project',
+      project_id: 'project-overridden',
+      research_gate_state: 'overridden',
+      watermark: 'EXPLORATORY',
+    },
   },
   research_gate_watermark: RESEARCH_GATE_WATERMARK,
+  run_context_kind: 'governed_project',
+  run_context_project_id: 'project-overridden',
+  run_context_watermark: RESEARCH_GATE_WATERMARK,
   has_equity: false,
   has_trades: false,
   has_tearsheet: false,

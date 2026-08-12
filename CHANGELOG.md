@@ -16,6 +16,13 @@ Paper acceptance scenario remain pending.
 
 ### Added
 
+- Repair-program Stage 0 launch integrity: every Workstation empirical launch carries a validated
+  governed-project or permanently unqualified standalone context through request, child process,
+  run identity, immutable manifest, run history, and generated API contracts. Historical runs are
+  labeled `LEGACY_CONTEXT_UNKNOWN` without rewriting them.
+- A single redacted `ApiErrorV1` response contract for REST and SSE entry points, with request IDs,
+  recovery guidance, bounded field errors, and secret/path/account/terminal traceback suppression.
+
 - Python-authoritative tiered research readiness with stable blocker codes and evidence references,
   conservative required-control aggregation, a low-cluster D2 reliability floor, and promotion
   admission that requires both mechanical `SUPPORTED` evidence and promotion readiness.
@@ -36,6 +43,12 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- The generic job API rejects research lifecycle, project, evidence mutation, data repair, and
+  paper-operation commands; governed empirical work fails closed on missing/unreadable/open gates.
+  Strategy comparison no longer names a preferred strategy for ties, zero-trade, incomplete, or
+  otherwise non-comparable results. Legacy paper journal scenario flags remain monitoring-only and
+  can no longer satisfy readiness. The literature fetch worker now receives a minimal environment,
+  fixed hosts, closed argv, and OS resource limits.
 - Simplified project governance around the permanent private/local-only scope: no root project
   license or distribution-release review is required unless the owner explicitly changes that
   scope. Third-party notices, service terms, and data-retention restrictions remain enforced.

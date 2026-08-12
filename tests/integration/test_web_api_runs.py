@@ -112,6 +112,53 @@ def test_runs_index_lists_all_kinds_newest_first(
     assert first["command"] == "backtest_run"
     assert first["snapshot_id"] == "snapshot-2020-01"
     assert first["snapshot_hash"] == "a" * 64
+    assert first["run_context_kind"] == "legacy_context_unknown"
+    assert first["run_context_project_id"] is None
+    assert first["run_context_watermark"] == "LEGACY_CONTEXT_UNKNOWN"
+
+
+def test_run_context_projects_standalone_and_governed_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_run(
+        tmp_path,
+        "runs",
+        "dddd000000000004",
+        {
+            "command": "validate",
+            "symbol": "SPY",
+            "run_context": {
+                "schema_version": 1,
+                "kind": "standalone_sandbox",
+                "watermark": "STANDALONE_UNQUALIFIED",
+            },
+        },
+    )
+    _write_run(
+        tmp_path,
+        "runs",
+        "eeee000000000005",
+        {
+            "command": "validate",
+            "symbol": "SPY",
+            "run_context": {
+                "schema_version": 1,
+                "kind": "governed_project",
+                "project_id": "project-1",
+                "research_gate_state": "passed",
+            },
+        },
+    )
+    client = _client(tmp_path, monkeypatch)
+
+    standalone = client.get("/api/runs/dddd000000000004").json()
+    assert standalone["run_context_kind"] == "standalone_sandbox"
+    assert standalone["run_context_project_id"] is None
+    assert standalone["run_context_watermark"] == "STANDALONE_UNQUALIFIED"
+    governed = client.get("/api/runs/eeee000000000005").json()
+    assert governed["run_context_kind"] == "governed_project"
+    assert governed["run_context_project_id"] == "project-1"
+    assert governed["run_context_watermark"] is None
 
 
 def test_runs_index_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

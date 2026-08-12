@@ -68,6 +68,10 @@ def test_launch_lists_and_gets(monkeypatch: pytest.MonkeyPatch) -> None:
         ("", "research decide project-1 INCONCLUSIVE park --actor owner"),
         ("research run", "deep project-1"),
         ("", "research run confirm project-1"),
+        ("evidence add", "project-1 --claim unsupported"),
+        ("data repair", "tiingo SPY --reason owner-only"),
+        ("paper run", "BTC/USDT"),
+        ("paper", "ibkr-run --plan plan.json"),
     ],
 )
 def test_generic_job_route_rejects_governed_research_commands_before_launch(
@@ -77,8 +81,15 @@ def test_generic_job_route_rejects_governed_research_commands_before_launch(
 ) -> None:
     launched: list[list[str]] = []
 
-    def fake_launch(argv: list[str], *, data_dir: Path, run_type: str | None) -> _invoke.Job:
+    def fake_launch(
+        argv: list[str],
+        *,
+        data_dir: Path,
+        run_type: str | None,
+        run_context: dict[str, object] | None = None,
+    ) -> _invoke.Job:
         del data_dir
+        del run_context
         launched.append(argv)
         return _invoke.Job(argv, run_type)
 
@@ -86,7 +97,7 @@ def test_generic_job_route_rejects_governed_research_commands_before_launch(
     response = TestClient(create_app()).post("/api/jobs", json={"command": command, "args": args})
 
     assert response.status_code == 422
-    assert response.json()["detail"] == (
+    assert response.json()["message"] == (
         "governed research commands are unavailable through the generic job API; "
         "use the bounded research API or trusted-local CLI"
     )
@@ -101,23 +112,126 @@ def test_generic_job_route_rejects_governed_research_commands_before_launch(
         ("", "research compare SPY"),
     ],
 )
-def test_generic_job_route_retains_legacy_research_compare(
+def test_generic_job_route_requires_context_for_research_compare(
     command: str,
     args: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    launched: list[list[str]] = []
+    launched: list[tuple[list[str], dict[str, object] | None]] = []
 
-    def fake_launch(argv: list[str], *, data_dir: Path, run_type: str | None) -> _invoke.Job:
+    def fake_launch(
+        argv: list[str],
+        *,
+        data_dir: Path,
+        run_type: str | None,
+        run_context: dict[str, object] | None = None,
+    ) -> _invoke.Job:
         del data_dir
-        launched.append(argv)
+        launched.append((argv, run_context))
         return _invoke.Job(argv, run_type)
 
     monkeypatch.setattr(_invoke, "launch", fake_launch)
     response = TestClient(create_app()).post("/api/jobs", json={"command": command, "args": args})
 
+    assert response.status_code == 422, response.text
+    assert launched == []
+
+
+def test_standalone_empirical_job_passes_canonical_context_to_child(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    launched: list[dict[str, object] | None] = []
+
+    def fake_launch(
+        argv: list[str],
+        *,
+        data_dir: Path,
+        run_type: str | None,
+        run_context: dict[str, object] | None = None,
+    ) -> _invoke.Job:
+        del data_dir, argv
+        launched.append(run_context)
+        return _invoke.Job(["validate", "SPY"], run_type)
+
+    monkeypatch.setattr(_invoke, "launch", fake_launch)
+    response = TestClient(create_app()).post(
+        "/api/jobs",
+        json={
+            "command": "validate",
+            "args": "SPY",
+            "run_context": {"schema_version": 1, "kind": "standalone_sandbox"},
+        },
+    )
+
     assert response.status_code == 200, response.text
-    assert launched == [["research", "compare", "SPY"]]
+    assert launched == [
+        {
+            "schema_version": 1,
+            "kind": "standalone_sandbox",
+            "watermark": "STANDALONE_UNQUALIFIED",
+        }
+    ]
+
+
+def test_open_governed_project_blocks_empirical_child_before_launch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    launched: list[list[str]] = []
+    monkeypatch.setattr(
+        "alpha_web.run_authority._development.project_detail",
+        lambda project_id, *, data_dir, lineage_limit: {
+            "project_id": project_id,
+            "research_gate_state": "open",
+        },
+    )
+    monkeypatch.setattr(
+        _invoke,
+        "launch",
+        lambda argv, **kwargs: launched.append(argv),
+    )
+
+    response = TestClient(create_app()).post(
+        "/api/jobs",
+        json={
+            "command": "backtest run",
+            "args": "SPY --strategy ma_crossover",
+            "run_context": {
+                "schema_version": 1,
+                "kind": "governed_project",
+                "project_id": "project-1",
+            },
+        },
+    )
+
+    assert response.status_code == 409, response.text
+    assert "research gate is open" in response.json()["message"]
+    assert launched == []
+
+
+def test_unknown_free_form_command_fails_closed_with_project_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "alpha_web.run_authority._development.project_detail",
+        lambda project_id, *, data_dir, lineage_limit: {
+            "project_id": project_id,
+            "research_gate_state": "passed",
+        },
+    )
+    response = TestClient(create_app()).post(
+        "/api/jobs",
+        json={
+            "args": "mystery empirical-command SPY",
+            "run_context": {
+                "schema_version": 1,
+                "kind": "governed_project",
+                "project_id": "project-1",
+            },
+        },
+    )
+
+    assert response.status_code == 422, response.text
+    assert "unknown command" in response.json()["message"]
 
 
 def test_running_job_estimate_uses_only_comparable_successful_session_history(
@@ -158,13 +272,11 @@ def test_running_job_without_history_is_indeterminate_and_names_current_work(
     assert summary["current_step"] == "loading causal artifacts"
 
 
-def test_job_projects_paper_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_job_projects_paper_session_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     session_id = "7e19841c-8bb3-4ab8-aeed-388f56ecfcf8"
     _fake(monkeypatch, f"print('paper BTC/USDT -> session {session_id}: SANDBOX')")
     client = TestClient(create_app())
-    job_id = client.post("/api/jobs", json={"command": "paper run", "args": "BTC/USDT"}).json()[
-        "job_id"
-    ]
+    job_id = _invoke.launch(["paper", "run", "BTC/USDT"], data_dir=tmp_path, run_type=None).job_id
     assert _wait_status(client, job_id, "done") == "done"
     assert client.get(f"/api/jobs/{job_id}").json()["session_id"] == session_id
 
@@ -172,7 +284,14 @@ def test_job_projects_paper_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_launch_maps_run_type_and_parses_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake(monkeypatch, "print('validate SPY -> run 0123456789abcdef: PASS')")
     client = TestClient(create_app())
-    job_id = client.post("/api/jobs", json={"command": "validate", "args": "SPY"}).json()["job_id"]
+    job_id = client.post(
+        "/api/jobs",
+        json={
+            "command": "validate",
+            "args": "SPY",
+            "run_context": {"schema_version": 1, "kind": "standalone_sandbox"},
+        },
+    ).json()["job_id"]
     _wait_status(client, job_id, "done")
     assert client.get(f"/api/jobs/{job_id}").json()["run_id"] == "0123456789abcdef"
 
@@ -213,7 +332,14 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     _fake(monkeypatch, "import time; print('started', flush=True); time.sleep(10)")
     client = TestClient(create_app())
 
-    first = client.post("/api/jobs", json={"command": "forecast run", "args": "SPY --model fake"})
+    first = client.post(
+        "/api/jobs",
+        json={
+            "command": "forecast run",
+            "args": "SPY --model fake",
+            "run_context": {"schema_version": 1, "kind": "standalone_sandbox"},
+        },
+    )
     assert first.status_code == 200, first.text
     job_id = first.json()["job_id"]
     durable = ControlStore(tmp_path).get_job(job_id)
@@ -223,15 +349,27 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     assert process is not None
     assert priorities == [(os.PRIO_PROCESS, process.pid, 10)]
 
-    blocked = client.post("/api/jobs", json={"args": "forecast eval SPY --model fake"})
+    blocked = client.post(
+        "/api/jobs",
+        json={
+            "args": "forecast eval SPY --model fake",
+            "run_context": {"schema_version": 1, "kind": "standalone_sandbox"},
+        },
+    )
     assert blocked.status_code == 409, blocked.text
-    assert "heavyweight job capacity is occupied" in blocked.json()["detail"]
+    assert "heavyweight job capacity is occupied" in blocked.json()["message"]
 
     assert client.delete(f"/api/jobs/{job_id}").status_code == 200
     assert _wait_status(client, job_id, "cancelled") == "cancelled"
     assert ControlStore(tmp_path).get_job(job_id)["status"] == "cancelled"
 
-    released = client.post("/api/jobs", json={"args": "forecast eval SPY --model fake"})
+    released = client.post(
+        "/api/jobs",
+        json={
+            "args": "forecast eval SPY --model fake",
+            "run_context": {"schema_version": 1, "kind": "standalone_sandbox"},
+        },
+    )
     assert released.status_code == 200, released.text
     released_job_id = released.json()["job_id"]
     assert client.delete(f"/api/jobs/{released_job_id}").status_code == 200

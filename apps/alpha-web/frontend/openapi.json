@@ -244,6 +244,68 @@
         "title": "AgentStageStatus",
         "type": "object"
       },
+      "ApiErrorV1": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "field_errors": {
+            "items": {
+              "$ref": "#/components/schemas/ApiFieldErrorV1"
+            },
+            "title": "Field Errors",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "recovery_action": {
+            "title": "Recovery Action",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "recovery_action",
+          "field_errors",
+          "request_id"
+        ],
+        "title": "ApiErrorV1",
+        "type": "object"
+      },
+      "ApiFieldErrorV1": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "ApiFieldErrorV1",
+        "type": "object"
+      },
       "AttemptCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -3636,17 +3698,31 @@
         "title": "ForecastSeries",
         "type": "object"
       },
-      "HTTPValidationError": {
+      "GovernedRunContextV1": {
+        "additionalProperties": false,
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
+          "kind": {
+            "const": "governed_project",
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
           }
         },
-        "title": "HTTPValidationError",
+        "required": [
+          "kind",
+          "project_id"
+        ],
+        "title": "GovernedRunContextV1",
         "type": "object"
       },
       "HoldoutAuditEvent": {
@@ -4714,6 +4790,33 @@
         "title": "JobDetail",
         "type": "object"
       },
+      "JobLaunchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "default": "",
+            "title": "Args",
+            "type": "string"
+          },
+          "command": {
+            "default": "",
+            "title": "Command",
+            "type": "string"
+          },
+          "run_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunContextV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "JobLaunchRequest",
+        "type": "object"
+      },
       "JobReconcileResponse": {
         "additionalProperties": false,
         "properties": {
@@ -4975,23 +5078,6 @@
           "local_only"
         ],
         "title": "KronosCacheStatus",
-        "type": "object"
-      },
-      "LaunchRequest": {
-        "description": "Launch body: a command path (e.g. ``\"backtest run\"``) + its remaining args, or a bare\n``args`` string (empty ``command``) for the free-form console. Governed research commands are\nrejected here; only the legacy non-governance ``research compare`` command is admitted.",
-        "properties": {
-          "args": {
-            "default": "",
-            "title": "Args",
-            "type": "string"
-          },
-          "command": {
-            "default": "",
-            "title": "Command",
-            "type": "string"
-          }
-        },
-        "title": "LaunchRequest",
         "type": "object"
       },
       "MlCosts": {
@@ -12689,9 +12775,41 @@
       "ResearchReport": {
         "additionalProperties": false,
         "properties": {
+          "comparison_status": {
+            "enum": [
+              "preferred",
+              "tie",
+              "no_trades",
+              "not_comparable"
+            ],
+            "title": "Comparison Status",
+            "type": "string"
+          },
           "n_bars": {
             "title": "N Bars",
             "type": "integer"
+          },
+          "preference_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preference Reason"
+          },
+          "preferred_strategy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Strategy"
           },
           "ranked": {
             "items": {
@@ -12708,7 +12826,10 @@
         "required": [
           "symbol",
           "n_bars",
-          "ranked"
+          "ranked",
+          "comparison_status",
+          "preferred_strategy",
+          "preference_reason"
         ],
         "title": "ResearchReport",
         "type": "object"
@@ -13347,6 +13468,23 @@
         "title": "RunComparisonRow",
         "type": "object"
       },
+      "RunContextV1": {
+        "discriminator": {
+          "mapping": {
+            "governed_project": "#/components/schemas/GovernedRunContextV1",
+            "standalone_sandbox": "#/components/schemas/StandaloneRunContextV1"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GovernedRunContextV1"
+          },
+          {
+            "$ref": "#/components/schemas/StandaloneRunContextV1"
+          }
+        ]
+      },
       "RunDetail": {
         "additionalProperties": false,
         "properties": {
@@ -13414,6 +13552,37 @@
             ],
             "title": "Research Gate Watermark"
           },
+          "run_context_kind": {
+            "enum": [
+              "governed_project",
+              "standalone_sandbox",
+              "legacy_context_unknown"
+            ],
+            "title": "Run Context Kind",
+            "type": "string"
+          },
+          "run_context_project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Context Project Id"
+          },
+          "run_context_watermark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Context Watermark"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -13425,6 +13594,9 @@
           "mtime",
           "manifest",
           "research_gate_watermark",
+          "run_context_kind",
+          "run_context_project_id",
+          "run_context_watermark",
           "has_equity",
           "has_trades",
           "has_tearsheet",
@@ -13516,6 +13688,37 @@
             ],
             "title": "Research Gate Watermark"
           },
+          "run_context_kind": {
+            "enum": [
+              "governed_project",
+              "standalone_sandbox",
+              "legacy_context_unknown"
+            ],
+            "title": "Run Context Kind",
+            "type": "string"
+          },
+          "run_context_project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Context Project Id"
+          },
+          "run_context_watermark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Context Watermark"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -13591,6 +13794,9 @@
           "passed",
           "verdict",
           "research_gate_watermark",
+          "run_context_kind",
+          "run_context_project_id",
+          "run_context_watermark",
           "mtime"
         ],
         "title": "RunListItem",
@@ -13880,6 +14086,27 @@
           "stale"
         ],
         "type": "string"
+      },
+      "StandaloneRunContextV1": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "standalone_sandbox",
+            "title": "Kind",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "StandaloneRunContextV1",
+        "type": "object"
       },
       "StrategyDefinition": {
         "additionalProperties": false,
@@ -14286,46 +14513,6 @@
         "title": "SystemStatus",
         "type": "object"
       },
-      "ValidationError": {
-        "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      },
       "WorkspaceBody": {
         "description": "A workspace to save: a display name and the research context it was saved from.\n\n``dockview`` is retired. A workspace used to be a window arrangement, and the shell that\nproduced those arrangements is gone -- but an old client may still post one, so the field\nis accepted and stored verbatim rather than rejected.",
         "properties": {
@@ -14712,6 +14899,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Index"
@@ -14758,15 +14955,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Stream Activity",
@@ -14849,15 +15046,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Candles",
@@ -14884,6 +15081,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Commands",
@@ -14932,15 +15139,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Development Jobs",
@@ -14972,15 +15179,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Create Development Job",
@@ -15015,15 +15222,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Cancel Development Job",
@@ -15089,15 +15296,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Development Job",
@@ -15135,15 +15342,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Reconcile Suite Jobs",
@@ -15178,15 +15385,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Cancel Suite Action",
@@ -15252,15 +15459,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Suite Action Status",
@@ -15373,15 +15580,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Search Evidence",
@@ -15415,15 +15622,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Draft Evidence",
@@ -15481,15 +15688,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Evidence",
@@ -15534,15 +15741,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Review Evidence",
@@ -15569,6 +15776,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Jobs",
@@ -15577,13 +15794,13 @@
         ]
       },
       "post": {
-        "description": "Launch a background CLI job, excluding governed Research Case commands.",
+        "description": "Launch a background CLI job after resolving its empirical run context.",
         "operationId": "launch_job_api_jobs_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LaunchRequest"
+                "$ref": "#/components/schemas/JobLaunchRequest"
               }
             }
           },
@@ -15600,15 +15817,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Launch Job",
@@ -15643,15 +15860,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Cancel Job",
@@ -15684,15 +15901,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Job",
@@ -15725,15 +15942,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Stream Job",
@@ -15782,15 +15999,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Exchanges",
@@ -15825,15 +16042,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Exchange",
@@ -15869,15 +16086,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Evaluation",
@@ -15922,15 +16139,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Import Exchange",
@@ -15975,15 +16192,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Prepare Replay",
@@ -16028,15 +16245,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Replay Exchange",
@@ -16072,15 +16289,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Exchange Result",
@@ -16163,15 +16380,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Exchange Tearsheet",
@@ -16216,15 +16433,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Train Exchange",
@@ -16290,15 +16507,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Experiments",
@@ -16330,15 +16547,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Generate Experiment",
@@ -16388,15 +16605,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Inputs",
@@ -16430,15 +16647,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Generate Input",
@@ -16473,15 +16690,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Input",
@@ -16514,15 +16731,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Prepare Exchange",
@@ -16545,6 +16762,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Readiness",
@@ -16603,15 +16830,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Replay Tearsheet",
@@ -16634,6 +16861,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Service Status",
@@ -16729,15 +16966,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Options Curve",
@@ -16820,15 +17057,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Options Greeks",
@@ -16911,15 +17148,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Options Iv",
@@ -16942,6 +17179,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Paper Readiness",
@@ -16968,6 +17215,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Paper Sessions",
@@ -17002,15 +17259,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Paper Session",
@@ -17060,15 +17317,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Paper Events",
@@ -17117,15 +17374,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Projects",
@@ -17157,15 +17414,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Create Project",
@@ -17212,15 +17469,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Project",
@@ -17283,15 +17540,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Agent Brief",
@@ -17336,15 +17593,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Record Attempt",
@@ -17389,15 +17646,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Create Experiment",
@@ -17441,15 +17698,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Experiment Spec",
@@ -17503,15 +17760,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Freeze Decision Packet",
@@ -17591,15 +17848,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Update Experiment Stage State",
@@ -17665,15 +17922,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Plan Suite Action",
@@ -17749,15 +18006,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Suite Action",
@@ -17802,15 +18059,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Seal Holdout",
@@ -17855,15 +18112,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Link Stage Run",
@@ -17908,15 +18165,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Create Version",
@@ -17960,15 +18217,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Strategy Version",
@@ -17995,6 +18252,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Providers",
@@ -18047,15 +18314,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Active Research Gate Overrides",
@@ -18104,15 +18371,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Cases",
@@ -18144,15 +18411,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Capture",
@@ -18187,15 +18454,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Get",
@@ -18253,15 +18520,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Context Packets",
@@ -18296,15 +18563,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Decision View",
@@ -18339,15 +18606,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Evidence Hub",
@@ -18392,15 +18659,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Launch",
@@ -18458,15 +18725,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Notes",
@@ -18511,15 +18778,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Propose",
@@ -18554,15 +18821,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Report",
@@ -18597,15 +18864,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Scorecard",
@@ -18640,15 +18907,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Status",
@@ -18680,6 +18947,42 @@
               "title": "Strategies",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "context_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "governed_project",
+                    "standalone_sandbox"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Context Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
           }
         ],
         "responses": {
@@ -18693,15 +18996,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Compare",
@@ -18736,15 +19039,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Context Packet",
@@ -18809,15 +19112,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Datasets",
@@ -18840,6 +19143,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Research Protocols",
@@ -18886,15 +19199,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Risk Scenario",
@@ -19008,15 +19321,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Runs",
@@ -19051,15 +19364,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Detail",
@@ -19150,15 +19463,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Chart Bundle",
@@ -19193,15 +19506,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Equity",
@@ -19236,15 +19549,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Figures",
@@ -19304,15 +19617,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Figure Metadata",
@@ -19404,15 +19717,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Figure Image",
@@ -19447,15 +19760,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Forecast",
@@ -19502,15 +19815,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Forecast Paths",
@@ -19557,15 +19870,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Native Tearsheet",
@@ -19600,15 +19913,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Nulls",
@@ -19643,15 +19956,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Origins",
@@ -19710,15 +20023,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Portfolio Analytics",
@@ -19753,15 +20066,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Propfirm Paths",
@@ -19794,15 +20107,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Tearsheet",
@@ -19842,15 +20155,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Trades",
@@ -19885,15 +20198,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Run Trials",
@@ -19952,15 +20265,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Screener News",
@@ -19995,15 +20308,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Screener Quote",
@@ -20048,15 +20361,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Update Stage State",
@@ -20083,6 +20396,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Strategies",
@@ -20105,6 +20428,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Symbols",
@@ -20127,6 +20460,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get System",
@@ -20175,15 +20518,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 List Development Jobs",
@@ -20216,15 +20559,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Create Development Job",
@@ -20260,15 +20603,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Cancel Development Job",
@@ -20335,15 +20678,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Development Job",
@@ -20382,15 +20725,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Reconcile Suite Jobs",
@@ -20426,15 +20769,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Cancel Suite Action",
@@ -20501,15 +20844,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Suite Action Status",
@@ -20623,15 +20966,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Search Evidence",
@@ -20666,15 +21009,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Draft Evidence",
@@ -20733,15 +21076,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Evidence",
@@ -20787,15 +21130,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Review Evidence",
@@ -20846,15 +21189,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Exchanges",
@@ -20891,15 +21234,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Exchange",
@@ -20936,15 +21279,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Evaluation",
@@ -20991,15 +21334,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Import Exchange",
@@ -21046,15 +21389,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Prepare Replay",
@@ -21101,15 +21444,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Replay Exchange",
@@ -21146,15 +21489,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Exchange Result",
@@ -21239,15 +21582,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Exchange Tearsheet",
@@ -21294,15 +21637,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Train Exchange",
@@ -21369,15 +21712,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Experiments",
@@ -21410,15 +21753,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Generate Experiment",
@@ -21469,15 +21812,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Inputs",
@@ -21512,15 +21855,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Generate Input",
@@ -21557,15 +21900,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Input",
@@ -21600,15 +21943,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Prepare Exchange",
@@ -21632,6 +21975,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Readiness",
@@ -21691,15 +22044,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Replay Tearsheet",
@@ -21723,6 +22076,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Service Status",
@@ -21772,15 +22135,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 List Projects",
@@ -21813,15 +22176,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Create Project",
@@ -21869,15 +22232,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Project",
@@ -21941,15 +22304,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Agent Brief",
@@ -21995,15 +22358,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Record Attempt",
@@ -22049,15 +22412,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Create Experiment",
@@ -22102,15 +22465,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Experiment Spec",
@@ -22165,15 +22528,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Freeze Decision Packet",
@@ -22254,15 +22617,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Update Experiment Stage State",
@@ -22329,15 +22692,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Plan Suite Action",
@@ -22414,15 +22777,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Run Suite Action",
@@ -22468,15 +22831,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Seal Holdout",
@@ -22522,15 +22885,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Link Stage Run",
@@ -22576,15 +22939,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Create Version",
@@ -22629,15 +22992,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Get Strategy Version",
@@ -22691,15 +23054,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 List Active Research Gate Overrides",
@@ -22734,15 +23097,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Compare Runs",
@@ -22833,15 +23196,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Run Chart Bundle",
@@ -22889,15 +23252,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Run Forecast Paths",
@@ -22945,15 +23308,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Run Native Tearsheet",
@@ -23013,15 +23376,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Run Portfolio Analytics",
@@ -23067,15 +23430,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "V3 Update Stage State",
@@ -23103,6 +23466,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "List Workspaces",
@@ -23134,15 +23507,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Save Workspace",
@@ -23177,15 +23550,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Delete Workspace",
@@ -23218,15 +23591,15 @@
             },
             "description": "Successful Response"
           },
-          "422": {
+          "default": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorV1"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Get Workspace",
@@ -23247,6 +23620,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Workstation"
@@ -23269,6 +23652,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
           }
         },
         "summary": "Healthz"

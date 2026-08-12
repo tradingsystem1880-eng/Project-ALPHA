@@ -24,17 +24,52 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def test_compare_endpoint_single_strategy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seed_store(tmp_path, symbol="SPY", n=400)
     resp = _client(tmp_path, monkeypatch).get(
-        "/api/research/compare", params={"symbol": "SPY", "strategies": "ma_crossover"}
+        "/api/research/compare",
+        params={
+            "symbol": "SPY",
+            "strategies": "ma_crossover",
+            "context_kind": "standalone_sandbox",
+        },
     )
     assert resp.status_code == 200
     body = resp.json()
     assert body["symbol"] == "SPY"
     assert body["ranked"][0]["strategy"] == "ma_crossover"
+    assert body["comparison_status"] == "not_comparable"
+    assert body["preferred_strategy"] is None
 
 
 def test_compare_no_bars_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    resp = _client(tmp_path, monkeypatch).get("/api/research/compare", params={"symbol": "NOPE"})
+    resp = _client(tmp_path, monkeypatch).get(
+        "/api/research/compare",
+        params={"symbol": "NOPE", "context_kind": "standalone_sandbox"},
+    )
     assert resp.status_code == 422
+
+
+def test_compare_requires_explicit_run_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called = False
+
+    def fake_compare(**kwargs: object) -> dict[str, object]:
+        nonlocal called
+        del kwargs
+        called = True
+        return {
+            "symbol": "SPY",
+            "n_bars": 0,
+            "ranked": [],
+            "comparison_status": "not_comparable",
+            "preferred_strategy": None,
+            "preference_reason": "no comparable results",
+        }
+
+    monkeypatch.setattr(_research, "compare", fake_compare)
+    response = _client(tmp_path, monkeypatch).get("/api/research/compare", params={"symbol": "SPY"})
+
+    assert response.status_code == 422
+    assert called is False
 
 
 def test_research_case_capture_propose_status_report_and_pilot_round_trip(
@@ -231,7 +266,7 @@ def test_option_shaped_project_id_maps_to_a_typed_error_not_a_500(
     """``--help`` makes the CLI print help with exit 0; non-JSON output must not crash the route."""
     resp = _client(tmp_path, monkeypatch).get("/api/research/cases/--help")
     assert resp.status_code == 404
-    assert "did not return valid JSON" in resp.json()["detail"]
+    assert "did not return valid JSON" in resp.json()["message"]
 
 
 def test_research_case_list_evidence_hub_and_scorecard_read_plane(

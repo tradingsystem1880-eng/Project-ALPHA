@@ -4,6 +4,10 @@ import type { components } from './generated'
 
 type Schema = components['schemas']
 
+export type RunContextV1 =
+  | { schema_version: 1; kind: 'governed_project'; project_id: string }
+  | { schema_version: 1; kind: 'standalone_sandbox' }
+
 export type RunListItem = Schema['RunListItem']
 export type RunList = Schema['RunList']
 export type RunDetail = Schema['RunDetail']

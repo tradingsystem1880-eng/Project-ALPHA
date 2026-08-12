@@ -26,14 +26,25 @@ def _object(value: object, label: str) -> dict[str, Any]:
     return cast(dict[str, Any], value)
 
 
-def compare(*, data_dir: Path, symbol: str, strategies: str = "") -> dict[str, Any]:
+def compare(
+    *,
+    data_dir: Path,
+    symbol: str,
+    strategies: str = "",
+    run_context: dict[str, object],
+) -> dict[str, Any]:
     """Rank the registered strategies on ``symbol`` by a full backtest of each."""
     args = ["research", "compare", symbol, "--json"]
     if strategies:
         args += ["--strategies", strategies]
     # compare runs a full engine backtest per registered strategy — allow well past the default
     # projection bound, but stay finite so a hung CLI can never pin the request thread.
-    result: dict[str, Any] = _run_json(args, data_dir=data_dir, timeout_seconds=600.0)
+    result: dict[str, Any] = _run_json(
+        args,
+        data_dir=data_dir,
+        timeout_seconds=600.0,
+        run_context=run_context,
+    )
     return result
 
 

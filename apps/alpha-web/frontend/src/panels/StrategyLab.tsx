@@ -4,10 +4,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { api } from '../api/client'
+import { api, runContextForProject } from '../api/client'
 import type { CommandDef, StrategyDef } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
+import { useLinked } from '../context/linked'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { onLabPrefill, openRunDetail, takeLabPrefill, type LabPrefill } from './actions'
 import { livePaperStrategies } from './controlPlane'
@@ -27,6 +28,7 @@ export function StrategyLab(_props: PanelHandleProps) {
   const [extra, setExtra] = useState('')
   const [jobId, setJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const linked = useLinked()
   // R6h (spec §15): while the linked project's research gate is open, launching is disabled
   // with the reason and a link to the case; non-research contexts (no linked project,
   // passed/overridden/grandfathered gates) are unaffected.
@@ -114,7 +116,7 @@ export function StrategyLab(_props: PanelHandleProps) {
       const parts = [symbols.trim(), extra.trim()].filter(Boolean)
       setError(null)
       api
-        .launch(cmdId, parts.join(' '))
+        .launch(cmdId, parts.join(' '), runContextForProject(linked.projectId))
         .then((r) => setJobId(r.job_id))
         .catch((e: unknown) => setError(String(e)))
       return
@@ -140,7 +142,7 @@ export function StrategyLab(_props: PanelHandleProps) {
     if (extra.trim()) parts.push(extra.trim())
     setError(null)
     api
-      .launch(cmd.id, parts.join(' '))
+      .launch(cmd.id, parts.join(' '), runContextForProject(linked.projectId))
       .then((r) => setJobId(r.job_id))
       .catch((e: unknown) => setError(String(e)))
   }

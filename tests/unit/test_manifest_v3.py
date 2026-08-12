@@ -81,6 +81,43 @@ def test_v3_reader_detects_artifact_tampering(tmp_path: Path) -> None:
         _artifacts.read_manifest(rdir)
 
 
+def test_web_run_context_is_persisted_in_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(
+        "ALPHA_RUN_CONTEXT_JSON",
+        '{"kind":"standalone_sandbox","schema_version":1,"watermark":"STANDALONE_UNQUALIFIED"}',
+    )
+    rdir = tmp_path / "runs" / "0123456789abcdef"
+    rdir.mkdir(parents=True)
+    _artifacts.write_manifest(
+        rdir,
+        {"run_id": rdir.name, "command": "test_fixture", **_identity()},
+    )
+
+    manifest = _artifacts.read_manifest(rdir)
+    assert manifest["run_context"] == {
+        "kind": "standalone_sandbox",
+        "schema_version": 1,
+        "watermark": "STANDALONE_UNQUALIFIED",
+    }
+
+
+def test_invalid_web_run_context_fails_before_manifest_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_RUN_CONTEXT_JSON", '{"kind":"standalone_sandbox"}')
+    rdir = tmp_path / "runs" / "0123456789abcdef"
+    rdir.mkdir(parents=True)
+
+    with pytest.raises(DataError, match="run context"):
+        _artifacts.write_manifest(
+            rdir,
+            {"run_id": rdir.name, "command": "test_fixture", **_identity()},
+        )
+    assert not (rdir / "manifest.json").exists()
+
+
 def test_v3_contract_hashes_non_parquet_exports_and_prevents_replacement(tmp_path: Path) -> None:
     rdir = tmp_path / "runs" / "0123456789abcdef"
     report = rdir / "tearsheet.html"

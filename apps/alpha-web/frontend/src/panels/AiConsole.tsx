@@ -4,15 +4,18 @@
 
 import { useState } from 'react'
 
-import { api } from '../api/client'
+import { api, runContextForProject } from '../api/client'
 import type { ResearchRow } from '../api/types'
-import { useLinkedField } from '../context/linked'
+import { useLinked, useLinkedField } from '../context/linked'
 import { JobConsole } from '../components/JobConsole'
 import { fmtNum, fmtPct } from '../util/format'
 
 export function AiConsole() {
+  const linked = useLinked()
   const [symbol, setSymbol] = useLinkedField('symbol', 'SPY')
   const [ranked, setRanked] = useState<ResearchRow[] | null>(null)
+  const [preferredStrategy, setPreferredStrategy] = useState<string | null>(null)
+  const [comparisonReason, setComparisonReason] = useState<string | null>(null)
   const [researching, setResearching] = useState(false)
   const [researchErr, setResearchErr] = useState<string | null>(null)
   const [args, setArgs] = useState('')
@@ -23,10 +26,16 @@ export function AiConsole() {
     if (!s || researching) return
     setResearching(true)
     setRanked(null)
+    setPreferredStrategy(null)
+    setComparisonReason(null)
     setResearchErr(null)
     api
-      .researchCompare(s)
-      .then((r) => setRanked(r.ranked))
+      .researchCompare(s, runContextForProject(linked.projectId))
+      .then((r) => {
+        setRanked(r.ranked)
+        setPreferredStrategy(r.preferred_strategy)
+        setComparisonReason(r.preference_reason)
+      })
       .catch((e: unknown) => setResearchErr(String(e)))
       .finally(() => setResearching(false))
   }
@@ -34,7 +43,9 @@ export function AiConsole() {
   function run(): void {
     const a = args.trim()
     if (!a) return
-    api.launch('', a).then((r) => setJobId(r.job_id))
+    api
+      .launch('', a, runContextForProject(linked.projectId))
+      .then((r) => setJobId(r.job_id))
   }
 
   return (
@@ -59,7 +70,11 @@ export function AiConsole() {
         </div>
         {researchErr ? <div className="leak">⚠ {researchErr}</div> : null}
         {ranked ? (
-          <table className="blotter">
+          <>
+            {comparisonReason ? (
+              <div className="ai-note">No preferred strategy: {comparisonReason}.</div>
+            ) : null}
+            <table className="blotter">
             <thead>
               <tr>
                 <th>Strategy</th>
@@ -68,8 +83,8 @@ export function AiConsole() {
               </tr>
             </thead>
             <tbody>
-              {ranked.map((r, i) => (
-                <tr key={r.strategy} className={i === 0 && !r.error ? 'sel' : ''}>
+              {ranked.map((r) => (
+                <tr key={r.strategy} className={r.strategy === preferredStrategy ? 'sel' : ''}>
                   <td className="mono">{r.strategy}</td>
                   <td className="num">
                     {r.error ? (
@@ -84,7 +99,8 @@ export function AiConsole() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </>
         ) : null}
 
         <div className="ai-note">

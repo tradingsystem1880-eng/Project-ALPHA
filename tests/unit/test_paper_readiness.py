@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from alpha_cli import paper_readiness, paper_store
 
@@ -47,8 +48,9 @@ def test_legacy_scenario_fields_never_satisfy_acceptance(tmp_path: Path) -> None
     report = paper_readiness.readiness_report(tmp_path)
     assert report["paper_passed"] is False
     assert report["status"] == "pending"
-    assert all(requirement["passed"] is False for requirement in report["requirements"])
-    assert all(requirement["evidence"] == [] for requirement in report["requirements"])
+    requirements = cast(list[dict[str, object]], report["requirements"])
+    assert all(requirement["passed"] is False for requirement in requirements)
+    assert all(requirement["evidence"] == [] for requirement in requirements)
     assert report["futures_research_supported"] is False
 
     paper_store.append_event(

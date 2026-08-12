@@ -231,6 +231,9 @@ describe('run workspace capabilities', () => {
       has_origins: false,
       has_portfolio_analytics: false,
       research_gate_watermark: null,
+      run_context_kind: 'legacy_context_unknown',
+      run_context_project_id: null,
+      run_context_watermark: 'LEGACY_CONTEXT_UNKNOWN',
     }
   }
 

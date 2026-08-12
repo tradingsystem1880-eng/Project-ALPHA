@@ -12,32 +12,25 @@ import shlex
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from alpha_cli.catalog import classify_generic_command
 from alpha_web import _invoke
 from alpha_web.api._common import data_dir
-from alpha_web.api.models import JobDetail, JobStatus, JobSummary
+from alpha_web.api.models import JobDetail, JobLaunchRequest, JobStatus, JobSummary
+from alpha_web.run_authority import RunContextDenied, resolve_run_context
 
 router = APIRouter(prefix="/api", tags=["jobs"])
 
 
-class LaunchRequest(BaseModel):
-    """Launch body: a command path (e.g. ``"backtest run"``) + its remaining args, or a bare
-    ``args`` string (empty ``command``) for the free-form console. Governed research commands are
-    rejected here; only the legacy non-governance ``research compare`` command is admitted."""
-
-    command: str = ""
-    args: str = ""
-
-
 @router.post("/jobs", response_model=JobStatus)
-def launch_job(req: LaunchRequest) -> dict[str, Any]:
-    """Launch a background CLI job, excluding governed Research Case commands."""
+def launch_job(req: JobLaunchRequest) -> dict[str, Any]:
+    """Launch a background CLI job after resolving its empirical run context."""
     argv = req.command.split() + shlex.split(req.args)
     if not argv:
         raise HTTPException(status_code=422, detail="empty command")
-    if argv[0] == "research" and (len(argv) < 2 or argv[1] != "compare"):
+    command_class = classify_generic_command(argv)
+    if command_class == "owner_only":
         raise HTTPException(
             status_code=422,
             detail=(
@@ -45,9 +38,39 @@ def launch_job(req: LaunchRequest) -> dict[str, Any]:
                 "use the bounded research API or trusted-local CLI"
             ),
         )
+    if req.run_context is not None and command_class == "unknown":
+        raise HTTPException(
+            status_code=422,
+            detail="unknown command cannot be launched in a governed or standalone run context",
+        )
+    if command_class == "empirical" and req.run_context is None:
+        raise HTTPException(
+            status_code=422,
+            detail="empirical commands require an explicit governed-project or standalone context",
+        )
+
+    run_context: dict[str, object] | None = None
+    if req.run_context is not None:
+        try:
+            run_context = resolve_run_context(
+                kind=req.run_context.kind,
+                project_id=(
+                    req.run_context.project_id
+                    if req.run_context.kind == "governed_project"
+                    else None
+                ),
+                data_dir=data_dir(),
+            )
+        except RunContextDenied as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     run_type = _invoke.RUN_TYPE.get(req.command)
     try:
-        job = _invoke.launch(argv, data_dir=data_dir(), run_type=run_type)
+        job = _invoke.launch(
+            argv,
+            data_dir=data_dir(),
+            run_type=run_type,
+            run_context=run_context,
+        )
     except RuntimeError as exc:
         if "heavyweight job capacity is occupied" in str(exc):
             raise HTTPException(status_code=409, detail=str(exc)) from exc

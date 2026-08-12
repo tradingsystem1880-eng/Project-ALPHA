@@ -9,6 +9,20 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+function apiError(message: string, status: number): Response {
+  return jsonResponse(
+    {
+      schema_version: 1,
+      code: status === 422 ? 'request_invalid' : 'service_unavailable',
+      message,
+      recovery_action: 'Retry after resolving the blocker.',
+      field_errors: [],
+      request_id: 'request-test',
+    },
+    status,
+  )
+}
+
 afterEach(() => {
   clearImmutableApiCache()
   vi.unstubAllGlobals()
@@ -78,7 +92,7 @@ describe('control-plane API client', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ run_id: 'run-cache' }))
-      .mockResolvedValueOnce(jsonResponse({ detail: 'temporary' }, 503))
+      .mockResolvedValueOnce(apiError('temporary', 503))
       .mockResolvedValueOnce(jsonResponse({ run_id: 'run-retry' }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -91,11 +105,11 @@ describe('control-plane API client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
-  it('extracts typed API details without leaking JSON response framing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ detail: 'run has no equity stream' }, 422)))
+  it('extracts ApiErrorV1 messages without leaking JSON response framing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(apiError('run has no equity stream', 422)))
 
     await expect(api.providers()).rejects.toThrow('422 — run has no equity stream')
-    await expect(api.providers()).rejects.not.toThrow('{"detail"')
+    await expect(api.providers()).rejects.not.toThrow('{"message"')
   })
 
   it('sends the linked date window with the causal chart bundle request', async () => {

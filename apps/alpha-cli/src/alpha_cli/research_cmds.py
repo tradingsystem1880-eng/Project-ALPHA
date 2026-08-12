@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
+import resource
 import sys
 from collections.abc import Mapping
 from dataclasses import asdict
@@ -49,10 +51,7 @@ from alpha_cli.research_gate_packet import (
     research_scorecard_projection,
 )
 from alpha_cli.research_intake import draft_exploration_contract
-from alpha_cli.research_protocols import (
-    load_research_protocols,
-    read_research_protocol,
-)
+from alpha_cli.research_protocols import load_research_protocols, read_research_protocol
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
@@ -69,6 +68,17 @@ from alpha_research import (
     ResearchD2BoundaryV1,
     projected_confirmation_power,
 )
+
+_LITERATURE_DOCUMENT_HOSTS: Final = frozenset({"arxiv.org", "export.arxiv.org"})
+
+
+def _apply_literature_worker_limits() -> None:
+    """Bound the isolated parser/fetch child before it executes any worker code."""
+    resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
+    resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (32 * 1024 * 1024, 32 * 1024 * 1024))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+
 
 research_app = typer.Typer(help="Governed research cases, contracts, sources, and bounded runs.")
 sources_app = typer.Typer(help="Immutable research-source records and frozen source packs.")
@@ -730,6 +740,12 @@ def sources_fetch(
     target_dir = (
         AlphaSettings().data_dir / "research" / "objects" if objects_dir is None else objects_dir
     )
+    requested_hosts = {host.strip().lower() for host in allow_host if host.strip()}
+    unsupported_hosts = sorted(requested_hosts - _LITERATURE_DOCUMENT_HOSTS)
+    if unsupported_hosts:
+        raise typer.BadParameter(
+            f"literature host is outside the fixed allowlist: {', '.join(unsupported_hosts)}"
+        )
     argv = [
         "uv",
         "run",
@@ -745,7 +761,20 @@ def sources_fetch(
     for host in allow_host:
         argv += ["--allow-host", host]
     completed = subprocess.run(  # noqa: S603 - closed argv, no shell
-        argv, capture_output=True, text=True, timeout=180, check=False
+        argv,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+        env={
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "PATH": os.defpath,
+            "UV_NO_CONFIG": "1",
+            "UV_OFFLINE": "1",
+        },
+        start_new_session=True,
+        preexec_fn=_apply_literature_worker_limits,
     )
     if completed.returncode != 0:
         raise typer.BadParameter(
@@ -2854,6 +2883,40 @@ def _spec(name: str) -> Any:
     )
 
 
+def _comparison_preference(
+    rows: list[dict[str, Any]],
+) -> tuple[str, str | None, str | None]:
+    """Name a preference only when every requested result is comparable and traded."""
+    comparable = [
+        row
+        for row in rows
+        if row.get("error") is None
+        and isinstance(row.get("total_return"), int | float)
+        and isinstance(row.get("n_trades"), int)
+    ]
+    if len(rows) < 2 or len(comparable) != len(rows):
+        return (
+            "not_comparable",
+            None,
+            "every requested strategy must produce a comparable result",
+        )
+    if any(int(row["n_trades"]) <= 0 for row in comparable):
+        return (
+            "no_trades",
+            None,
+            "at least one strategy produced no completed trades",
+        )
+    best_return = max(float(row["total_return"]) for row in comparable)
+    best_rows = [row for row in comparable if float(row["total_return"]) == best_return]
+    if len(best_rows) != 1:
+        return (
+            "tie",
+            None,
+            "top comparable strategies have equal total return",
+        )
+    return "preferred", str(best_rows[0]["strategy"]), None
+
+
 @research_app.command()
 def compare(
     symbol: str,
@@ -2896,7 +2959,15 @@ def compare(
     rows.sort(
         key=lambda r: (r["total_return"] is not None, r.get("total_return") or 0.0), reverse=True
     )
-    payload = {"symbol": symbol, "n_bars": len(bars), "ranked": rows}
+    comparison_status, preferred_strategy, preference_reason = _comparison_preference(rows)
+    payload = {
+        "symbol": symbol,
+        "n_bars": len(bars),
+        "ranked": rows,
+        "comparison_status": comparison_status,
+        "preferred_strategy": preferred_strategy,
+        "preference_reason": preference_reason,
+    }
     if json_out:
         typer.echo(json.dumps(payload))
         return

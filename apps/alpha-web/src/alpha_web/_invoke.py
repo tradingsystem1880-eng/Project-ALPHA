@@ -48,6 +48,7 @@ _DURABLE_HEARTBEAT_INTERVAL_S = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
 _DURABLE_HEARTBEAT_TIMEOUT_S = 5.0
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 _UI_HEAVYWEIGHT_NICE = 10
+_RUN_CONTEXT_ENV = "ALPHA_RUN_CONTEXT_JSON"
 
 
 def _command(args: list[str]) -> list[str]:
@@ -328,12 +329,25 @@ def _mark_durable_cancelled(job: Job, *, data_dir: Path) -> None:
     )
 
 
-def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
+def launch(
+    args: list[str],
+    *,
+    data_dir: Path,
+    run_type: str | None,
+    run_context: dict[str, object] | None = None,
+) -> Job:
     """Spawn ``alpha <args>`` (sharing ``data_dir`` via the env) and tail its output in a thread."""
     durable_job_id = _reserve_heavyweight_job(args, data_dir=data_dir)
     job = Job(args, run_type, job_id=durable_job_id, durable=durable_job_id is not None)
     JOBS[job.job_id] = job
     env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    if run_context is not None:
+        env[_RUN_CONTEXT_ENV] = json.dumps(
+            run_context,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
     try:
         proc = subprocess.Popen(
             _command(args),

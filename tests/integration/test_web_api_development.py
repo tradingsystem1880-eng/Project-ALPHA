@@ -330,7 +330,7 @@ def test_evidence_draft_rejects_mismatched_version_experiment_lineage(
         json={**request, "strategy_version_id": second_version["version_id"]},
     )
     assert mismatched.status_code == 422
-    detail = " ".join(str(mismatched.json()["detail"]).split())
+    detail = " ".join(str(mismatched.json()["message"]).split())
     assert "evidence strategy version" in detail
     assert "does not match the experiment" in detail
     assert "lineage" in detail
