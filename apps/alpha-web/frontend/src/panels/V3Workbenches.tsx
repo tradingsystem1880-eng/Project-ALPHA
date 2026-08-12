@@ -5,6 +5,7 @@ import type {
   ControlJob,
   EvidencePage,
   MlExperimentPage,
+  MlExperimentPreflight,
   MlServiceStatus,
   ProjectDetail,
   ProjectSummary,
@@ -200,6 +201,8 @@ function ExperimentSummary({ project }: { project: ProjectDetail }) {
 export function DevelopmentCenter() {
   const linked = useLinked()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [projectHasMore, setProjectHasMore] = useState(false)
+  const [projectsLoading, setProjectsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(linked.projectId ?? '')
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
   const [jobs, setJobs] = useState<ControlJob[]>([])
@@ -225,8 +228,9 @@ export function DevelopmentCenter() {
   const [briefStatus, setBriefStatus] = useState<string | null>(null)
 
   const refreshProjects = () => {
-    api.projects().then((page) => {
+    api.projects(100, 0).then((page) => {
       setProjects(page.items)
+      setProjectHasMore(page.has_more)
       setSelectedId((current) => current || linked.projectId || page.items[0]?.project_id || '')
     }).catch((reason: unknown) => setError(String(reason)))
   }
@@ -236,6 +240,24 @@ export function DevelopmentCenter() {
     // Initial bounded projections; user mutations refresh explicitly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    setSelectedId(linked.projectId ?? '')
+  }, [linked.projectId])
+
+  async function loadMoreProjects(): Promise<void> {
+    if (projectsLoading || !projectHasMore) return
+    setProjectsLoading(true)
+    try {
+      const page = await api.projects(100, projects.length)
+      setProjects((current) => [...current, ...page.items])
+      setProjectHasMore(page.has_more)
+    } catch (reason) {
+      setError(String(reason))
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!selectedId) {
@@ -476,6 +498,7 @@ export function DevelopmentCenter() {
           {projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.name}</option>)}
         </select>
         <span className="spacer" />
+        {projectHasMore ? <button className="btn" disabled={projectsLoading} onClick={() => void loadMoreProjects()}>{projectsLoading ? 'Loading…' : 'Load more'}</button> : null}
         <span className="mono muted">{projects.length} PROJECTS</span>
       </div>
       <div className="panel-body panel-pad workbench">
@@ -580,6 +603,7 @@ export function MlResearch() {
   const linked = useLinked()
   const [status, setStatus] = useState<MlServiceStatus | null>(null)
   const [experiments, setExperiments] = useState<MlExperimentPage | null>(null)
+  const [preflight, setPreflight] = useState<MlExperimentPreflight | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -587,7 +611,7 @@ export function MlResearch() {
 
   useEffect(() => {
     let live = true
-    setStatus(null); setExperiments(null); setError(null)
+    setStatus(null); setExperiments(null); setPreflight(null); setError(null)
     api.mlStatus().then(async (next) => {
       if (!live) return
       setStatus(next)
@@ -596,8 +620,14 @@ export function MlResearch() {
         setBusy(true)
       }
       if (next.available) {
-        const page = await api.mlExperiments(linked.projectId)
-        if (live) setExperiments(page)
+        const [page, checks] = await Promise.all([
+          api.mlExperiments(linked.projectId),
+          linked.projectId ? api.mlExperimentPreflight(linked.projectId) : Promise.resolve(null),
+        ])
+        if (live) {
+          setExperiments(page)
+          setPreflight(checks)
+        }
       }
     }).catch((reason: unknown) => live && setError(String(reason)))
     return () => { live = false }
@@ -618,13 +648,15 @@ export function MlResearch() {
           if (job.status !== 'succeeded') {
             setError(job.terminal_error || `ML experiment job ${job.status}`)
           }
-          const [nextExperiments, nextStatus] = await Promise.all([
+          const [nextExperiments, nextStatus, nextPreflight] = await Promise.all([
             api.mlExperiments(projectId),
             api.mlStatus(),
+            projectId ? api.mlExperimentPreflight(projectId) : Promise.resolve(null),
           ])
           if (live) {
             setExperiments(nextExperiments)
             setStatus(nextStatus)
+            setPreflight(nextPreflight)
             setActiveJobId(null)
           }
           return
@@ -643,7 +675,7 @@ export function MlResearch() {
     }
   }, [activeJobId, linked.projectId])
 
-  const ready = status?.available === true && status.worker_ready && linked.projectId !== null
+  const ready = preflight?.ready === true && linked.projectId !== null
   async function createExperiment() {
     if (!ready || !linked.projectId) return
     setBusy(true)
@@ -664,6 +696,21 @@ export function MlResearch() {
         <ContextLine />
         {error ? <div className="workbench-notice"><strong>ML CONTROL ERROR</strong><span>{error}</span></div> : status?.message ? <div className="workbench-notice"><strong>{status.worker_ready ? 'READY' : 'BLOCKED'}</strong><span>{status.message}</span></div> : null}
         {activeJobId ? <div className="durable-job-banner"><span className={`chip ${jobState === 'failed' ? 'fail' : ''}`}>{jobState ?? 'queued'}</span><span>Durable ML journal</span><span className="mono">{shortId(activeJobId)}</span><span className="spacer" /><span className="muted mono">SAFE TO LEAVE THIS PANEL · POLLING CONTROL DB</span></div> : null}
+        {preflight ? (
+          <section className="ml-preflight" aria-label="ML experiment preflight">
+            <div className="rd-head">Server-verified launch preflight</div>
+            {preflight.checks.map((check) => (
+              <div className="governance-title" key={check.check_id}>
+                <span>{check.check_id.replaceAll('_', ' ')}</span>
+                <span className={`chip ${check.state === 'pass' ? 'pass' : 'fail'}`}>
+                  {check.state.toUpperCase()}
+                </span>
+                <span>{check.message}</span>
+                {check.recovery_action ? <span className="muted">{check.recovery_action}</span> : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
         <div className="ml-spec-grid">
           <div><span className="eyebrow">Recipe</span><span>Alpha158-style</span></div>
           <div><span className="eyebrow">Model</span><span>LightGBM · CPU</span></div>
@@ -697,7 +744,7 @@ export function MlResearch() {
             <div className="tear-gap"><div className="tear-gap-title">Feature importance</div><div className="tear-gap-state mono">NO VALIDATED ML ARTIFACT</div></div>
           </div>
         )}
-        <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate a locked experiment through the isolated worker service' : 'Validated ML worker service and selected project required'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate ML experiment'}</button>
+        <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate the exact preflighted experiment through the isolated worker service' : 'Every server-verified preflight check must pass'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate preflighted ML experiment'}</button>
         {status === null && !error ? <span className="muted mono">CHECKING ISOLATED WORKER READINESS…</span> : null}
         {status && !status.available ? <span className="muted mono">BUTTON DISABLED · {status.message ?? 'isolated worker service unavailable'}</span> : null}
         {status?.available && status.worker_ready && !linked.projectId ? <span className="muted mono">SELECT OR CREATE A STRATEGY PROJECT IN DEVELOPMENT CENTER TO ENABLE TRAINING</span> : null}
@@ -725,10 +772,13 @@ export function AssetMemory() {
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
-    if (!linked.symbol) return
-    setAssetInput(linked.symbol)
-    setAsset(linked.symbol)
+    setAssetInput(linked.symbol ?? '')
+    setAsset(linked.symbol ?? '')
   }, [linked.symbol])
+
+  useEffect(() => {
+    if (!linked.projectId) setProjectOnly(false)
+  }, [linked.projectId])
 
   useEffect(() => {
     const normalizedAsset = asset.trim().toUpperCase()

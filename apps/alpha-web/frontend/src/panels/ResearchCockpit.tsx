@@ -14,6 +14,7 @@ import { onNewIdea } from '../context/newIdea'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { findingChipClass } from './researchChipModel'
+import { openProviderCenter, openResearchData, openResearchSources } from './actions'
 import {
   researchBudgetRows,
   researchContractView,
@@ -46,6 +47,20 @@ const OUTCOME_OPTIONS: ReadonlyArray<{ value: PrimaryOutcome; label: string }> =
 
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason)
+}
+
+function blockerRecovery(code: string): { label: string; action: () => void } | null {
+  const normalized = code.toUpperCase()
+  if (normalized.includes('SOURCE') || normalized.includes('PACK')) {
+    return { label: 'Open Literature', action: openResearchSources }
+  }
+  if (normalized.includes('DATA')) {
+    return { label: 'Open Research Data', action: openResearchData }
+  }
+  if (normalized.includes('PROVIDER')) {
+    return { label: 'Open Provider Readiness', action: openProviderCenter }
+  }
+  return null
 }
 
 function budgetValue(value: number | null): string {
@@ -213,7 +228,7 @@ function ApprovalBoundary({ researchCase }: { researchCase: ResearchCase }) {
           This immutable proposal cannot be approved in Gate 1. Reject it through the owner-only
           CLI, then close or revise the case without claiming empirical evidence.
         </span>
-        <code className="mono">
+        <code className="mono advanced-only">
           alpha research reject exploration {researchCase.project_id}{' '}
           {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
         </code>
@@ -227,7 +242,7 @@ function ApprovalBoundary({ researchCase }: { researchCase: ResearchCase }) {
         The Workstation can prepare and explain this contract, but cannot approve it. Review the
         exact immutable contract with Codex, then use the owner-only CLI approval path if satisfied.
       </span>
-      <code className="mono">
+      <code className="mono advanced-only">
         alpha research approve exploration {researchCase.project_id}{' '}
         {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
       </code>
@@ -245,10 +260,48 @@ function CaseHeader({ researchCase }: { researchCase: ResearchCase }) {
         <span className={researchCase.responsibility === 'owner' ? 'chip fail' : 'chip kind'}>
           {researchCase.responsibility === 'owner' ? 'NEEDS YOU' : 'CODEX'}
         </span>
-        <span className="research-case-next">{researchCase.next_action}</span>
       </div>
       {researchCase.scorecard ? <ScorecardStrip scorecard={researchCase.scorecard} /> : null}
     </div>
+  )
+}
+
+function CanonicalNextAction({ researchCase }: { researchCase: ResearchCase }) {
+  return (
+    <section className="research-next-action" aria-label="Canonical next action">
+      <span className="eyebrow">Do this next</span>
+      <strong>{researchCase.next_action}</strong>
+      {researchCase.recovery ? <span>{researchCase.recovery}</span> : null}
+    </section>
+  )
+}
+
+function MaterialQuestions({ researchCase }: { researchCase: ResearchCase }) {
+  const contract = researchContractView(researchCase)
+  if (!contract.blocking_questions.length) return null
+  return (
+    <section className="research-material-questions" aria-label="Material research questions">
+      <div className="rd-head">Three decisions needed before this idea can be tested</div>
+      <ol>
+        {contract.blocking_questions.map((question) => (
+          <li key={question.id} className="research-material-question">
+            <strong>{question.prompt}</strong>
+            <p>{question.blocking_reason}</p>
+            <div className="research-choice-cards">
+              {question.choices.map((choice) => (
+                <div className="research-choice-card" key={choice.id}>
+                  <strong>{choice.label}</strong>
+                  <span>{choice.consequence}</span>
+                  {choice.availability === 'unavailable' ? (
+                    <span className="chip fail">UNAVAILABLE · {choice.blocked_reason}</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 
@@ -343,30 +396,9 @@ function CaseSummary({
               <ul>{contract.alternatives.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ) : null}
-          {contract.blocking_questions.length ? (
-            <div className="research-question-list">
-              <span className="eyebrow">Material questions requiring owner definition</span>
-              <ol>{contract.blocking_questions.map((question) => (
-                <li key={question.id}>
-                  <strong>{question.prompt}</strong>
-                  <p>{question.blocking_reason}</p>
-                  <ul>
-                    {question.choices.map((choice) => (
-                      <li key={choice.id}>
-                        <strong>{choice.label}</strong> — {choice.consequence}
-                        {choice.availability === 'unavailable' ? (
-                          <span className="chip fail"> UNAVAILABLE · {choice.blocked_reason}</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}</ol>
-            </div>
-          ) : null}
         </section>
 
-        <section>
+        <section className="advanced-only">
           <div className="rd-head">Governance · budget · lineage</div>
           <div className="research-lineage">
             <div><span className="eyebrow">Project ID</span><code>{researchCase.project_id}</code></div>
@@ -421,6 +453,9 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const [lookupId, setLookupId] = useState(initialProjectId)
   const [idea, setIdea] = useState('')
   const [caseName, setCaseName] = useState('')
+  const [showCapture, setShowCapture] = useState(
+    initialProjectId === '' && panelLink.linked.projectId === null,
+  )
   const [sourcePackId, setSourcePackId] = useState('')
   const [datasetRefId, setDatasetRefId] = useState('')
   const [proposalOptions, setProposalOptions] = useState<ResearchProposalOptionsV1 | null>(null)
@@ -431,6 +466,9 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const [primaryOutcome, setPrimaryOutcome] = useState<PrimaryOutcome | ''>('')
   const [busy, setBusy] = useState<BusyOperation | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const caseRequestSequence = useRef(0)
+  const activeProjectRef = useRef(panelLink.linked.projectId)
+  activeProjectRef.current = panelLink.linked.projectId
 
   const proposalComplete = useMemo(
     () => {
@@ -456,6 +494,8 @@ export function ResearchCockpit(props: PanelHandleProps) {
     setChartConstruction('')
     setEventAvailability('')
     setPrimaryOutcome('')
+    setShowCapture(false)
+    panelLink.setLinked({ projectId: next.project_id })
   }
 
   function selectAnswerBundle(bundleId: string): void {
@@ -501,16 +541,19 @@ export function ResearchCockpit(props: PanelHandleProps) {
   async function loadCase(projectId: string, operation: 'load' | 'status' = 'load'): Promise<void> {
     const clean = projectId.trim()
     if (!clean) return
+    const sequence = ++caseRequestSequence.current
     setBusy(operation)
     setError(null)
     try {
-      acceptCase(operation === 'status'
+      const next = operation === 'status'
         ? await api.researchStatus(clean)
-        : await api.researchCase(clean))
+        : await api.researchCase(clean)
+      if (sequence !== caseRequestSequence.current) return
+      acceptCase(next)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (sequence === caseRequestSequence.current) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (sequence === caseRequestSequence.current) setBusy(null)
     }
   }
 
@@ -524,7 +567,18 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const linkedProjectId = panelLink.linked.projectId
   useEffect(() => {
     if (linkedProjectId && linkedProjectId !== researchCase?.project_id) {
+      setResearchCase(null)
+      setReport(null)
+      setDecisionView(null)
+      setProposalOptions(null)
+      setError(null)
       void loadCase(linkedProjectId)
+    } else if (!linkedProjectId && researchCase) {
+      caseRequestSequence.current += 1
+      setResearchCase(null)
+      setReport(null)
+      setDecisionView(null)
+      setProposalOptions(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedProjectId])
@@ -533,8 +587,11 @@ export function ResearchCockpit(props: PanelHandleProps) {
   useEffect(
     () =>
       onNewIdea(() => {
-        ideaRef.current?.focus()
-        ideaRef.current?.scrollIntoView({ block: 'center' })
+        setShowCapture(true)
+        window.setTimeout(() => {
+          ideaRef.current?.focus()
+          ideaRef.current?.scrollIntoView({ block: 'center' })
+        }, 0)
       }),
     [],
   )
@@ -564,45 +621,49 @@ export function ResearchCockpit(props: PanelHandleProps) {
     if (!researchCase || !proposalOptions || !proposalComplete || !answerBundleId) return
     setBusy('proposal')
     setError(null)
+    const projectId = researchCase.project_id
     try {
-      const response = await api.researchProposal(researchCase.project_id, {
+      const response = await api.researchProposal(projectId, {
         source_pack_id: sourcePackId.trim(),
         answer_bundle_id: answerBundleId,
         dataset_ref_id: datasetRefId || null,
         expected_case_revision: proposalOptions.case_revision,
       })
-      acceptCase(response.case)
+      if (activeProjectRef.current === projectId) acceptCase(response.case)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
   async function launchPilot(): Promise<void> {
     if (!researchCase) return
+    const projectId = researchCase.project_id
     setBusy('pilot')
     setError(null)
     try {
-      const response = await api.researchPilot(researchCase.project_id)
-      acceptCase(response.case)
+      const response = await api.researchPilot(projectId)
+      if (activeProjectRef.current === projectId) acceptCase(response.case)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
   async function loadDecisionView(): Promise<void> {
     if (!researchCase) return
+    const projectId = researchCase.project_id
     setBusy('decision')
     setError(null)
     try {
-      setDecisionView(await api.researchDecisionView(researchCase.project_id))
+      const next = await api.researchDecisionView(projectId)
+      if (activeProjectRef.current === projectId) setDecisionView(next)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
@@ -616,25 +677,27 @@ export function ResearchCockpit(props: PanelHandleProps) {
 
   async function loadReport(): Promise<void> {
     if (!researchCase) return
+    const projectId = researchCase.project_id
     setBusy('report')
     setError(null)
     try {
-      const next = await api.researchProgressReport(researchCase.project_id)
+      const next = await api.researchProgressReport(projectId)
+      if (activeProjectRef.current !== projectId) return
       setReport(next)
       if (next.report_schema === 'ResearchProgressReportV1') setResearchCase(next.case)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
-        <span className="title">Research Cockpit</span>
-        <span className="chip kind">GATE 1 SAFE REST</span>
-        <span className="muted">capture · read · propose · D0 pilot · status · report</span>
+        <span className="title">Research Case</span>
+        <span className="chip kind">GUIDED RESEARCH</span>
+        <span className="muted">question → sources → data → bounded test → decision</span>
         <span className="spacer" />
         <span className="chip fail">NO APPROVAL · D2 · DEEP · TRADING</span>
       </div>
@@ -643,7 +706,7 @@ export function ResearchCockpit(props: PanelHandleProps) {
           RESEARCH SANDBOX · SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE OR A TRADING SIGNAL
         </div>
 
-        <div className="research-intake-grid">
+        {showCapture || !researchCase ? <div className="research-intake-grid">
           <form onSubmit={(event) => void capture(event)}>
             <span className="eyebrow">Capture a raw observation in your exact words</span>
             <textarea
@@ -685,13 +748,15 @@ export function ResearchCockpit(props: PanelHandleProps) {
             </div>
             <span className="muted">Or select a case in the Research Backlog — it drives this cockpit.</span>
           </form>
-        </div>
+        </div> : null}
 
         {error ? <div className="workbench-notice" role="alert"><strong>REQUEST FAILED</strong><span>{error}</span></div> : null}
 
         {researchCase ? (
           <>
             <CaseHeader researchCase={researchCase} />
+            <CanonicalNextAction researchCase={researchCase} />
+            <MaterialQuestions researchCase={researchCase} />
             <div className="research-view-tabs" role="tablist" aria-label="Cockpit views">
               <button
                 className={view === 'overview' ? 'btn primary' : 'btn'}
@@ -742,11 +807,15 @@ export function ResearchCockpit(props: PanelHandleProps) {
                     <span>Checking executable bundles, frozen packs, datasets, and case revision.</span>
                   </div>
                 ) : null}
-                {proposalOptions?.blockers.map((blocker) => (
-                  <div className="workbench-notice" role="alert" key={blocker.code}>
-                    <strong>{blocker.message}</strong><span>{blocker.recovery_action}</span>
-                  </div>
-                ))}
+                {proposalOptions?.blockers.map((blocker) => {
+                  const recovery = blockerRecovery(blocker.code)
+                  return (
+                    <div className="workbench-notice" role="alert" key={blocker.code}>
+                      <strong>{blocker.message}</strong><span>{blocker.recovery_action}</span>
+                      {recovery ? <button className="btn" type="button" onClick={recovery.action}>{recovery.label}</button> : null}
+                    </div>
+                  )
+                })}
                 <fieldset className="research-question-list">
                   <legend className="eyebrow">Valid answer bundle</legend>
                   {proposalOptions?.valid_answer_bundles.map((bundle) => (
@@ -811,8 +880,10 @@ export function ResearchCockpit(props: PanelHandleProps) {
             ) : null}
           </>
         ) : (
-          <Placeholder big="NO ACTIVE RESEARCH CASE">
-            Capture an idea or open a known project ID. Nothing launches automatically.
+          <Placeholder big={linkedProjectId || busy === 'load' ? 'LOADING RESEARCH CASE' : 'NO ACTIVE RESEARCH CASE'}>
+            {linkedProjectId || busy === 'load'
+              ? 'Loading the selected project and discarding any response from an older selection.'
+              : 'Capture an idea or select one from the Backlog. Nothing launches automatically.'}
           </Placeholder>
         )}
       </div>

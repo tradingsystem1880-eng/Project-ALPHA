@@ -17,6 +17,7 @@ import { FigureCard } from '../components/FigureCard'
 import type { FigureCatalogueItem } from '../api/types'
 import { useActivityField } from '../state/activity'
 import { fmtNum, shortId } from '../util/format'
+import { uniqueComparisonMaximum } from './compareRunsModel'
 
 const MAX_RUNS = 8
 
@@ -46,6 +47,7 @@ export function CompareRuns(_props: PanelHandleProps) {
   useEffect(() => {
     if (selected.length < 2) {
       setComparison(null)
+      setError(null)
       return
     }
     let live = true
@@ -59,12 +61,18 @@ export function CompareRuns(_props: PanelHandleProps) {
     }
   }, [selected])
 
+  const visibleComparison = comparison
+    && comparison.run_ids.length === selected.length
+    && comparison.run_ids.every((runId, index) => runId === selected[index])
+    ? comparison
+    : null
+
   const metricNames = useMemo(() => {
-    if (!comparison) return []
+    if (!visibleComparison) return []
     const names = new Set<string>()
-    for (const row of comparison.rows) for (const metric of row.metrics) names.add(metric.name)
+    for (const row of visibleComparison.rows) for (const metric of row.metrics) names.add(metric.name)
     return [...names].sort()
-  }, [comparison])
+  }, [visibleComparison])
 
   const toggle = (runId: string) =>
     setSelected((current) =>
@@ -116,9 +124,9 @@ export function CompareRuns(_props: PanelHandleProps) {
             </Placeholder>
           ) : null}
 
-          {comparison ? (
+          {visibleComparison ? (
             <>
-              {!comparison.same_snapshot_hash ? (
+              {!visibleComparison.same_snapshot_hash ? (
                 <p className="compare-warning">
                   These runs used different data snapshots, so differences may come from the data
                   rather than the strategies.
@@ -130,7 +138,7 @@ export function CompareRuns(_props: PanelHandleProps) {
                 <thead>
                   <tr>
                     <th scope="col">Metric</th>
-                    {comparison.rows.map((row) => (
+                    {visibleComparison.rows.map((row) => (
                       <th key={row.run_id} scope="col" className="mono">
                         {shortId(row.run_id)}
                         <span className="library-row-sub">{row.symbol ?? row.command}</span>
@@ -140,18 +148,17 @@ export function CompareRuns(_props: PanelHandleProps) {
                 </thead>
                 <tbody>
                   {metricNames.map((name) => {
-                    const values = comparison.rows.map(
+                    const values = visibleComparison.rows.map(
                       (row) => row.metrics.find((metric) => metric.name === name)?.value ?? null,
                     )
-                    const numeric = values.filter((value): value is number => value !== null)
-                    const best = numeric.length ? Math.max(...numeric) : null
+                    const uniqueBest = uniqueComparisonMaximum(values)
                     return (
                       <tr key={name}>
                         <th scope="row">{name}</th>
                         {values.map((value, index) => (
                           <td
-                            key={comparison.rows[index].run_id}
-                            className={`num${value !== null && value === best && numeric.length > 1 ? ' best' : ''}`}
+                            key={visibleComparison.rows[index].run_id}
+                            className={`num${value !== null && value === uniqueBest ? ' best' : ''}`}
                           >
                             {value === null ? '—' : fmtNum(value, 4)}
                           </td>
@@ -177,7 +184,7 @@ export function CompareRuns(_props: PanelHandleProps) {
                     <option value="return_distribution">Return distribution</option>
                   </select>
                 </label>
-                {comparison.rows.map((row) => (
+                {visibleComparison.rows.map((row) => (
                   <FigureCard
                     key={`${row.run_id}-${figureId}`}
                     runId={row.run_id}

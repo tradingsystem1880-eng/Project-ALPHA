@@ -103,7 +103,7 @@ function SectionBody({
           {claims.length === 0 ? (
             <Placeholder big="NO CLAIMS RECORDED">
               Claim-level literature evidence is drafted by Codex and elevated only by owner
-              screening; screened sources are listed below in the meantime.
+              screening. Recorded sources are listed below with their actual screening state.
             </Placeholder>
           ) : (
             <div className="research-findings" aria-label="Claims map">
@@ -278,11 +278,19 @@ function SectionBody({
 }
 
 export function EvidenceHub(props: PanelHandleProps) {
+  const params = (props.params ?? {}) as {
+    initialSection?: unknown
+    compactLiterature?: unknown
+  }
+  const initialSection = SECTION_ORDER.some((section) => section.id === params.initialSection)
+    ? (params.initialSection as SectionId)
+    : 'overview'
+  const compactLiterature = params.compactLiterature === true
   const panelLink = usePanelLinked(props)
   const projectId = panelLink.linked.projectId
   const [hub, setHub] = useState<ResearchEvidenceHub | null>(null)
   const [scorecardOpen, setScorecardOpen] = useState(false)
-  const [active, setActive] = useState<SectionId>('overview')
+  const [active, setActive] = useState<SectionId>(initialSection)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -307,15 +315,20 @@ export function EvidenceHub(props: PanelHandleProps) {
       live = false
     }
   }, [projectId])
+  const visibleHub = hub?.project_id === projectId ? hub : null
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
-        <span className="title">Evidence Hub</span>
+        <span className="title">{compactLiterature ? 'Literature' : 'Evidence'}</span>
         <span className="chip kind">READ-ONLY</span>
-        <span className="muted">for & against · equal prominence · nothing disappears</span>
+        <span className="muted">
+          {compactLiterature
+            ? 'sources · claims · screening state · pack membership'
+            : 'for & against · equal prominence · nothing disappears'}
+        </span>
         <span className="spacer" />
-        {hub ? (
+        {visibleHub ? (
           <button className="kbd" type="button" onClick={() => setScorecardOpen((open) => !open)}>
             {scorecardOpen ? 'sections' : 'full scorecard'}
           </button>
@@ -334,13 +347,18 @@ export function EvidenceHub(props: PanelHandleProps) {
             evidence.
           </Placeholder>
         ) : null}
-        {hub && scorecardOpen ? (
-          <ScorecardDetail scorecard={hub.sections.overview.scorecard} />
+        {projectId && !visibleHub && !error ? (
+          <Placeholder big="LOADING EVIDENCE">
+            Loading only the selected project's current evidence projection.
+          </Placeholder>
         ) : null}
-        {hub && !scorecardOpen ? (
+        {visibleHub && scorecardOpen ? (
+          <ScorecardDetail scorecard={visibleHub.sections.overview.scorecard} />
+        ) : null}
+        {visibleHub && !scorecardOpen ? (
           <>
-            <div className="scorecard-strip" aria-label="Headline evidence board">
-              {headlineBoard(hub.sections).map((category) => (
+            {!compactLiterature ? <div className="scorecard-strip" aria-label="Headline evidence board">
+              {headlineBoard(visibleHub.sections).map((category) => (
                 <span
                   key={category.id}
                   className={stateChipClass(category.status.toLowerCase().replaceAll(' ', '_'))}
@@ -349,8 +367,8 @@ export function EvidenceHub(props: PanelHandleProps) {
                   {category.label} · {category.status}
                 </span>
               ))}
-            </div>
-            <div className="evidence-hub-tabs" role="tablist" aria-label="Evidence sections">
+            </div> : null}
+            {!compactLiterature ? <div className="evidence-hub-tabs" role="tablist" aria-label="Evidence sections">
               {SECTION_ORDER.map((section) => (
                 <button
                   key={section.id}
@@ -363,9 +381,9 @@ export function EvidenceHub(props: PanelHandleProps) {
                   {section.label}
                 </button>
               ))}
-            </div>
+            </div> : null}
             <div className="evidence-hub-body">
-              <SectionBody section={active} sections={hub.sections} />
+              <SectionBody section={active} sections={visibleHub.sections} />
             </div>
           </>
         ) : null}

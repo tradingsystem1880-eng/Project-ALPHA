@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
-import { setLinked } from './context/linked'
+import { setLinked, useLinked } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
 import { onResearchCase } from './context/researchCase'
 import { registerNavigator } from './panels/actions'
@@ -20,7 +20,7 @@ import { LibraryRail } from './shell/LibraryRail'
 import { PanelHost } from './shell/PanelHost'
 import { areasOf, RESULTS_SCREEN, SCREENS, screen, type ScreenId } from './shell/screens'
 import { initActivity, useActivityField } from './state/activity'
-import { setSettings, useSettings } from './state/settings'
+import { setSettings, useSettings, workspaceModeFor } from './state/settings'
 
 const SCREEN_KEY = 'alpha.shell.screen'
 const RAIL_KEY = 'alpha.shell.rail'
@@ -73,6 +73,52 @@ function SettingsMenu() {
   )
 }
 
+function WorkspaceModeControl() {
+  const linked = useLinked()
+  const settings = useSettings()
+  const mode = workspaceModeFor(settings, linked.projectId)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-workspace-mode', mode)
+  }, [mode])
+
+  function choose(next: 'guided' | 'advanced'): void {
+    if (!linked.projectId || next === 'guided') {
+      if (linked.projectId) {
+        const projectModes = { ...settings.projectModes }
+        delete projectModes[linked.projectId]
+        setSettings({ projectModes })
+      }
+      return
+    }
+    setSettings({ projectModes: { ...settings.projectModes, [linked.projectId]: next } })
+  }
+
+  return (
+    <div className="workspace-mode" role="group" aria-label="Workspace detail mode">
+      <button
+        type="button"
+        className={`kbd${mode === 'guided' ? ' active' : ''}`}
+        aria-pressed={mode === 'guided'}
+        onClick={() => choose('guided')}
+        title="One next action with plain-language evidence and recovery"
+      >
+        Guided
+      </button>
+      <button
+        type="button"
+        className={`kbd${mode === 'advanced' ? ' active' : ''}`}
+        aria-pressed={mode === 'advanced'}
+        disabled={!linked.projectId}
+        onClick={() => choose('advanced')}
+        title="Show immutable contracts, hashes, receipts, and command previews; authority is unchanged"
+      >
+        Advanced
+      </button>
+    </div>
+  )
+}
+
 /** A request from the shell to bring one named pane to the front. */
 interface PaneFocus {
   pane: string
@@ -85,10 +131,12 @@ function Area({
   areaName,
   panes,
   focus,
+  contextKey,
 }: {
   areaName: string
   panes: ReturnType<typeof areasOf>[number][1]
   focus: PaneFocus | null
+  contextKey: string
 }) {
   const [active, setActive] = useState(0)
 
@@ -117,13 +165,14 @@ function Area({
         </nav>
       ) : null}
       <div className="area-body">
-        <PanelHost key={pane.name} name={pane.name} component={pane.component} />
+        <PanelHost key={`${pane.name}:${contextKey}`} name={pane.name} component={pane.component} params={pane.params} />
       </div>
     </section>
   )
 }
 
 export function App() {
+  const linked = useLinked()
   const [current, setCurrent] = useState<ScreenId>(() => {
     const stored = localStorage.getItem(SCREEN_KEY)
     return SCREENS.some((item) => item.id === stored) ? (stored as ScreenId) : 'explore'
@@ -163,7 +212,10 @@ export function App() {
     registerNavigator({
       showRun: openRun,
       showStrategyLab: () => showPane('build', 'StrategyLab'),
-      showProjects: () => showPane('operate', 'DevelopmentCenter'),
+      showProjects: () => showPane('build', 'DevelopmentCenter'),
+      showResearchSources: () => showPane('explore', 'Literature'),
+      showResearchData: () => showPane('explore', 'ResearchDataExplorer'),
+      showProviders: () => showPane('operate', 'ProviderSystem'),
     })
   }, [openRun, showPane])
 
@@ -185,7 +237,7 @@ export function App() {
   // New Idea opens the research case pane and then asks the cockpit to focus its
   // natural-language capture field. No strategy parameters are requested here.
   const newIdea = useCallback(() => {
-    showPane('build', 'ResearchCockpit')
+    showPane('explore', 'ResearchCockpit')
     window.setTimeout(requestNewIdea, 50)
   }, [showPane])
 
@@ -195,7 +247,7 @@ export function App() {
     () =>
       onResearchCase((projectId) => {
         setLinked({ projectId })
-        showPane('build', 'ResearchCockpit')
+        showPane('explore', 'ResearchCockpit')
       }),
     [showPane],
   )
@@ -245,6 +297,7 @@ export function App() {
           ＋ New Idea
         </button>
         <div className="spacer" />
+        <WorkspaceModeControl />
         <ContextBar />
         <button className="kbd" onClick={() => setPaletteOpen(true)}>
           Search <kbd>⌘K</kbd>
@@ -268,6 +321,7 @@ export function App() {
               areaName={areaName}
               panes={panes}
               focus={focus}
+              contextKey={linked.projectId ?? 'no-project'}
             />
           ))}
         </main>

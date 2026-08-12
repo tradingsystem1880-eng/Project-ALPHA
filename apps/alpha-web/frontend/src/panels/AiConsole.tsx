@@ -1,17 +1,15 @@
-// AI Research — a $0 research desk over the CLI: a one-click multi-strategy "analyst lanes"
-// leaderboard, a bridge to the MCP server (the real conversational path), and a free-form console.
-// No in-app LLM / API key — the AI lives in the MCP + Claude client.
+// Permanently unqualified standalone research. Nothing launched here is linked to a governed case
+// or admissible as research evidence; advanced mode only reveals additional command detail.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { api, runContextForProject } from '../api/client'
 import type { ResearchRow } from '../api/types'
-import { useLinked, useLinkedField } from '../context/linked'
+import { useLinkedField } from '../context/linked'
 import { JobConsole } from '../components/JobConsole'
 import { fmtNum, fmtPct } from '../util/format'
 
 export function AiConsole() {
-  const linked = useLinked()
   const [symbol, setSymbol] = useLinkedField('symbol', 'SPY')
   const [ranked, setRanked] = useState<ResearchRow[] | null>(null)
   const [preferredStrategy, setPreferredStrategy] = useState<string | null>(null)
@@ -20,6 +18,7 @@ export function AiConsole() {
   const [researchErr, setResearchErr] = useState<string | null>(null)
   const [args, setArgs] = useState('')
   const [jobId, setJobId] = useState<string | null>(null)
+  const requestSequence = useRef(0)
 
   function research(): void {
     const s = symbol.trim()
@@ -29,31 +28,42 @@ export function AiConsole() {
     setPreferredStrategy(null)
     setComparisonReason(null)
     setResearchErr(null)
+    const sequence = ++requestSequence.current
     api
-      .researchCompare(s, runContextForProject(linked.projectId))
+      .researchCompare(s, runContextForProject(null))
       .then((r) => {
+        if (sequence !== requestSequence.current) return
         setRanked(r.ranked)
         setPreferredStrategy(r.preferred_strategy)
         setComparisonReason(r.preference_reason)
       })
-      .catch((e: unknown) => setResearchErr(String(e)))
-      .finally(() => setResearching(false))
+      .catch((e: unknown) => {
+        if (sequence === requestSequence.current) setResearchErr(String(e))
+      })
+      .finally(() => {
+        if (sequence === requestSequence.current) setResearching(false)
+      })
   }
 
   function run(): void {
     const a = args.trim()
     if (!a) return
     api
-      .launch('', a, runContextForProject(linked.projectId))
+      .launch('', a, runContextForProject(null))
       .then((r) => setJobId(r.job_id))
+      .catch((e: unknown) => setResearchErr(String(e)))
   }
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
-        <span className="title">AI Research</span>
+        <span className="title">Standalone Sandbox</span>
+        <span className="chip fail">STANDALONE_UNQUALIFIED</span>
       </div>
       <div className="panel-body panel-pad ai">
+        <div className="sandbox-banner" role="note">
+          STANDALONE_UNQUALIFIED · THESE RUNS CAN NEVER COUNT AS GOVERNED RESEARCH EVIDENCE
+        </div>
         <div className="rd-head">Strategy comparison</div>
         <div className="ai-input">
           <input
@@ -104,18 +114,17 @@ export function AiConsole() {
         ) : null}
 
         <div className="ai-note">
-          For true conversational, multi-agent research, pair the <strong>alpha MCP server</strong>{' '}
-          with a Claude client (<code>uv run alpha-mcp</code>; the repo ships <code>.mcp.json</code>
-          ) — it drives the same CLI tools in plain language, $0 and no API key.
+          For conversational research, use the read/draft-only <strong>alpha MCP server</strong>{' '}
+          through a supported client. It cannot approve evidence or change a research gate.
         </div>
 
-        <div className="rd-head">Command console</div>
-        <div className="ai-note">
+        <div className="rd-head advanced-only">Advanced Command Console</div>
+        <div className="ai-note advanced-only">
           Governed Research Case approvals, rejections, decisions, and empirical runs are blocked
           from this console. Use the Research Cockpit for bounded case actions and the trusted-local
           CLI for owner-only decisions.
         </div>
-        <div className="ai-input">
+        <div className="ai-input advanced-only">
           <span className="ai-prompt mono">alpha</span>
           <input
             className="field"
@@ -129,7 +138,7 @@ export function AiConsole() {
             Run
           </button>
         </div>
-        {jobId ? <JobConsole jobId={jobId} /> : null}
+        {jobId ? <div className="advanced-only"><JobConsole jobId={jobId} /></div> : null}
       </div>
     </div>
   )

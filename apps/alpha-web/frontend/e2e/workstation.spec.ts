@@ -6,7 +6,7 @@ import type { components } from '../src/api/generated'
 // The desk presets are gone: each of these is now a screen laid out for one job, reached
 // from the top-bar tabs rather than assembled by the user.
 const SCREENS = [
-  { label: 'Explore', id: 'explore' },
+  { label: 'Research', id: 'explore' },
   { label: 'Build', id: 'build' },
   { label: 'Results', id: 'results' },
   { label: 'Compare', id: 'compare' },
@@ -1140,6 +1140,30 @@ const LIBRARY_RUN = {
   verdict: null,
 }
 
+const HEAVY_LIBRARY_RUN: components['schemas']['RunListItem'] = {
+  run_id: HEAVY_RUN_ID,
+  kind: 'runs',
+  command: 'backtest_run',
+  label: 'AAPL · causal trace fixture',
+  symbol: 'AAPL',
+  symbols: null,
+  snapshot_id: 'causal-fixture',
+  snapshot_hash: 'f'.repeat(64),
+  passed: null,
+  verdict: null,
+  research_gate_watermark: null,
+  run_context_kind: 'standalone_sandbox',
+  run_context_project_id: null,
+  run_context_watermark: 'STANDALONE_UNQUALIFIED',
+  mtime: 1_700_000_100,
+}
+
+async function openHeavyPrice(page: Page): Promise<void> {
+  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
+  await page.getByRole('tab', { name: 'Research', exact: true }).click()
+  await page.getByRole('tab', { name: 'Price', exact: true }).click()
+}
+
 function responseFor(route: Route, options: MockOptions): unknown {
   const url = new URL(route.request().url())
   if (url.pathname === '/api/research/cases' && route.request().method() === 'POST') {
@@ -1216,6 +1240,9 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}/chart-bundle`) {
     return options.chartBundle
+  }
+  if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}/figures`) {
+    return { run_id: HEAVY_RUN_ID, kind: 'runs', figures: [] }
   }
   if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}`) {
     return {
@@ -1353,6 +1380,26 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === '/api/development/jobs') return EMPTY_PAGE
   if (url.pathname === '/api/evidence') return EMPTY_PAGE
   if (url.pathname === '/api/ml/experiments') return EMPTY_PAGE
+  if (url.pathname === '/api/ml/experiments/preflight') {
+    return {
+      schema_version: 1,
+      project_id: url.searchParams.get('project_id') ?? 'project-1',
+      experiment_id: null,
+      snapshot_id: null,
+      universe_count: 0,
+      aligned_sessions: 0,
+      active_job_id: null,
+      ready: false,
+      checks: [
+        {
+          check_id: 'experiment',
+          state: 'blocked',
+          message: 'No current immutable experiment is selected.',
+          recovery_action: 'Create or select an experiment in Development Center.',
+        },
+      ],
+    }
+  }
   if (url.pathname === '/api/ml/status') {
     return {
       available: true,
@@ -1413,8 +1460,24 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
     }
     await route.continue()
   })
+  let capturedInThisPage = false
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname === '/api/research/cases' && route.request().method() === 'POST') {
+      capturedInThisPage = true
+    }
+    if (
+      capturedInThisPage
+      && url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}`
+      && route.request().method() === 'GET'
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(RESEARCH_CASE),
+      })
+      return
+    }
     if (
       options.researchGateLock
       && route.request().method() === 'GET'
@@ -1489,9 +1552,9 @@ for (const item of SCREENS) {
 
 test('screen tabs are keyboard operable', async ({ page }) => {
   await preparePage(page)
-  const explore = page.getByRole('tab', { name: 'Explore', exact: true })
-  await explore.focus()
-  await expect(explore).toBeFocused()
+  const research = page.getByRole('tab', { name: 'Research', exact: true })
+  await research.focus()
+  await expect(research).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(page.getByRole('tab', { name: 'Build', exact: true })).toBeFocused()
   await page.keyboard.press('Enter')
@@ -1519,10 +1582,9 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport Cockpit gate')
   await preparePage(page)
 
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
-  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
 
-  await expect(page.locator('.panel-toolbar .title').filter({ hasText: 'Research Cockpit' })).toBeVisible()
+  await expect(page.locator('.panel-toolbar .title').filter({ hasText: 'Research Case' })).toBeVisible()
   await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
   await page.getByRole('button', { name: 'capture · no compute' }).click()
 
@@ -1537,12 +1599,50 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   await expectReleaseAccessibility(page)
 })
 
+test('all material questions and consequences stay visible at the supported viewport', async ({ page }) => {
+  await preparePage(page)
+  await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
+  await page.getByRole('button', { name: 'capture · no compute' }).click()
+
+  const questions = page.getByLabel('Material research questions')
+  await expect(questions).toBeVisible()
+  await expect(page.getByText(RESEARCH_QUESTIONS[0].prompt, { exact: true })).toBeInViewport()
+  await expect(page.getByText(RESEARCH_QUESTIONS[1].prompt, { exact: true })).toBeInViewport()
+  await expect(page.getByText(RESEARCH_QUESTIONS[2].prompt, { exact: true })).toBeInViewport()
+  await expect(page.getByText(RESEARCH_QUESTIONS[2].choices[0].consequence, { exact: true })).toBeInViewport()
+})
+
+test('guided mode defaults and advanced detail is remembered only for its project', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport persistence gate')
+  await preparePage(page)
+  await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
+  await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
+  const guided = page.getByRole('button', { name: 'Guided', exact: true })
+  const advanced = page.getByRole('button', { name: 'Advanced', exact: true })
+  await expect(guided).toHaveAttribute('aria-pressed', 'true')
+  await advanced.click()
+  await expect(advanced).toHaveAttribute('aria-pressed', 'true')
+
+  await page.locator('.context-chip').click()
+  await page.getByPlaceholder('project id').fill('')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Guided', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
+  await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
+  await expect(page.getByRole('button', { name: 'Advanced', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+})
+
 test('Research Cockpit teaches the bounded terminal Gate Packet without upgrading evidence', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport terminal-packet gate')
   await preparePage(page)
 
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
-  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
   await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
   await page.getByRole('button', { name: 'open case' }).click()
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
@@ -1559,8 +1659,7 @@ test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and 
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport decision-view gate')
   await preparePage(page)
 
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
-  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
   await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
   await page.getByRole('button', { name: 'open case' }).click()
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
@@ -1582,19 +1681,17 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport command-center gate')
   await preparePage(page)
 
-  await page.getByRole('tab', { name: 'Research backlog', exact: true }).click()
+  await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
   await expect(page.getByText('Needs you (1)')).toBeVisible()
 
   await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
-  await page.getByRole('tab', { name: 'Research case', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
   await expect(page.getByText('CLOSED', { exact: true }).first()).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Explore', exact: true }).click()
   await page.getByRole('tab', { name: 'Evidence', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Evidence for', exact: true })).toBeVisible()
   // Literature claims render screened vs draft distinctly, claims map before bibliography.
-  await page.getByRole('tab', { name: 'Literature', exact: true }).click()
+  await page.getByLabel('Evidence sections').getByRole('tab', { name: 'Literature' }).click()
   await expect(page.getByText('SCREENED', { exact: true })).toBeVisible()
   await expect(page.getByText('DRAFT — UNSCREENED', { exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Falsification', exact: true }).click()
@@ -1605,8 +1702,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await expect(page.getByText(/No typed findings of this direction exist yet/)).toBeVisible()
 
   // The linked case follows into the Codex panel, which fences commentary as never-evidence.
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
-  await page.getByRole('tab', { name: 'Codex research', exact: true }).click()
+  await page.getByRole('tab', { name: 'Codex Research', exact: true }).click()
   await expect(page.getByText('MCP-ATTACHED · NO CHAT · NO API KEY', { exact: true })).toBeVisible()
   await expect(page.getByText(/RECORDING HAPPENS ON THE GOVERNED SEAMS/)).toBeVisible()
   await expect(page.getByText('CODEX COMMENTARY — NOT EVIDENCE', { exact: true })).toBeVisible()
@@ -1614,8 +1710,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
 
   // The Research data panel serves registered refs with audit badges and the forever badge.
-  await page.getByRole('tab', { name: 'Explore', exact: true }).click()
-  await page.getByRole('tab', { name: 'Research data', exact: true }).click()
+  await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
   await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
   await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
   await expect(page.getByText(/snapshot snap1 · manifest/)).toBeVisible()
@@ -1627,11 +1722,11 @@ test('New Idea opens natural-language capture with zero trading-rule inputs', as
   await preparePage(page)
 
   await page.getByRole('button', { name: 'New Idea' }).click()
-  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Research', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )
-  await expect(page.getByRole('tab', { name: 'Research case', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Research Case', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )
@@ -1723,10 +1818,12 @@ test('causal chart paginates evidence, selects an event, and exports exact OHLCV
   testInfo,
 ) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport interaction gate')
-  await preparePage(page, { chartBundle: causalChartBundle(), trades: CAUSAL_TRADES })
-  await page.locator('.context-chip').click()
-  await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
-  await page.getByRole('button', { name: 'done' }).click()
+  await preparePage(page, {
+    chartBundle: causalChartBundle(),
+    trades: CAUSAL_TRADES,
+    runs: [HEAVY_LIBRARY_RUN],
+  })
+  await openHeavyPrice(page)
 
   await expect(page.getByText('205 bars', { exact: true })).toBeVisible()
   await expect(page.getByText(/1–80 \/ 91 RETURNED EVENTS/)).toBeVisible()
@@ -1766,10 +1863,8 @@ test('causal chart paginates evidence, selects an event, and exports exact OHLCV
 
 test('dense causal chart layers cap visuals without hiding returned evidence', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport interaction gate')
-  await preparePage(page, { chartBundle: denseCausalChartBundle() })
-  await page.locator('.context-chip').click()
-  await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
-  await page.getByRole('button', { name: 'done' }).click()
+  await preparePage(page, { chartBundle: denseCausalChartBundle(), runs: [HEAVY_LIBRARY_RUN] })
+  await openHeavyPrice(page)
 
   const executions = page.getByRole('button', { name: 'executions', exact: true })
   const decisions = page.getByRole('button', { name: 'decisions', exact: true })
@@ -1791,13 +1886,13 @@ test('a screen mounts only what it shows', async ({ page }, testInfo) => {
   page.on('request', (request) => requested.push(new URL(request.url()).pathname))
   await preparePage(page)
 
-  // Explore is the opening screen. Its side area shows Symbols & data; the Quotes & news
-  // pane behind that tab must not be fetching, and neither must any other screen's panels.
+  // Research is the opening screen. Hidden panes and other screens must not fetch.
   expect(requested).not.toContain('/api/screener/quote')
   expect(requested).not.toContain('/api/screener/news')
   expect(requested).not.toContain('/api/paper/sessions')
 
-  await page.getByRole('tab', { name: 'Quotes & news', exact: true }).click()
+  await page.getByRole('tab', { name: 'Studios', exact: true }).click()
+  await page.getByRole('tab', { name: 'Market Overview', exact: true }).click()
   await expect
     .poll(() => requested.filter((path) => path === '/api/screener/quote').length)
     .toBeGreaterThan(0)
@@ -1805,15 +1900,13 @@ test('a screen mounts only what it shows', async ({ page }, testInfo) => {
 
 test('legacy trace rerun opens the governed Development Center', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
-  await preparePage(page, { chartBundle: causalChartBundle(false) })
-  await page.locator('.context-chip').click()
-  await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
-  await page.getByRole('button', { name: 'done' }).click()
+  await preparePage(page, { chartBundle: causalChartBundle(false), runs: [HEAVY_LIBRARY_RUN] })
+  await openHeavyPrice(page)
 
   await expect(page.getByText('TRACE UNAVAILABLE', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Rerun for causal trace' }).click()
   // The intent has to reach the shell: switch screens *and* surface the governed panel.
-  await expect(page.getByRole('tab', { name: 'Operate', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )
@@ -1871,25 +1964,26 @@ test('open research gates lock strategy affordances on Develop and link to the c
 
   // The case link lands on the Research desk with the holding case in focus.
   await page.getByRole('button', { name: /Open research case/ }).first().click()
-  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Research', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )
-  await expect(page.getByRole('tab', { name: 'Research case', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Research Case', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )
-  await expect(page.getByText('Research Cockpit', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('Research Case', { exact: true }).first()).toBeVisible()
 
   // Non-research context — the grandfathered project re-enables every affordance.
-  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   await page.getByLabel('Strategy project').selectOption(UNGATED_PROJECT.project_id)
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
   await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeEnabled()
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Strategy Development', exact: true }).click()
   await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeEnabled()
-  await page.getByRole('tab', { name: 'What next', exact: true }).click()
+  await page.getByRole('tab', { name: 'Development Next Step', exact: true }).click()
   await expect(preps.nth(1)).toBeEnabled()
 })
 
@@ -1925,12 +2019,10 @@ test('25k bars and 200 annotations remain interactively responsive', async ({ pa
   test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport performance gate')
   test.setTimeout(45_000)
   const bundle = heavyChartBundle()
-  await preparePage(page, { chartBundle: bundle })
+  await preparePage(page, { chartBundle: bundle, runs: [HEAVY_LIBRARY_RUN] })
 
   const renderStarted = Date.now()
-  await page.locator('.context-chip').click()
-  await page.getByPlaceholder('run id').fill(HEAVY_RUN_ID)
-  await page.getByRole('button', { name: 'done' }).click()
+  await openHeavyPrice(page)
 
   await expect(page.getByText(`${HEAVY_BAR_COUNT} bars`, { exact: true })).toBeVisible({
     timeout: 12_000,

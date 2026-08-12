@@ -112,6 +112,21 @@ describe('control-plane API client', () => {
     await expect(api.providers()).rejects.not.toThrow('{"message"')
   })
 
+  it('turns typed 422 field errors into actionable labels', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({
+      schema_version: 1,
+      code: 'request_invalid',
+      message: 'The request fields are invalid.',
+      recovery_action: 'Correct the named fields and retry.',
+      field_errors: [{ field: 'dataset_ref_id', message: 'Select a qualified dataset.' }],
+      request_id: 'request-fields',
+    }, 422)))
+
+    await expect(api.providers()).rejects.toThrow(
+      'Fields: dataset_ref_id: Select a qualified dataset.',
+    )
+  })
+
   it('sends the linked date window with the causal chart bundle request', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ trace_status: 'available' }))
     vi.stubGlobal('fetch', fetchMock)

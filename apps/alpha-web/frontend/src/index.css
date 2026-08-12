@@ -4238,6 +4238,25 @@ select.field:focus {
 .area-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
 .area-body { flex: 1; min-height: 0; overflow: hidden; }
 
+.workspace-mode { display: inline-flex; gap: 1px; }
+.workspace-mode .kbd.active { color: var(--ink); border-color: var(--accent); }
+html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
+
+.research-next-action {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+}
+.research-next-action strong { font-size: calc(var(--font-size) + 2px); }
+.research-material-questions { padding: 8px 0; }
+.research-material-questions > ol { display: grid; gap: 8px; margin: 0; padding-left: 24px; }
+.research-material-question { padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); }
+.research-material-question > p { margin: 4px 0 8px; color: var(--ink-dim); }
+.research-choice-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+.research-choice-card { display: grid; gap: 4px; padding: 7px; border: 1px solid var(--line); background: var(--bg); }
+
 /* Results is one full-bleed column: a figure needs the width. */
 .screen--results { grid-template-areas: 'main'; grid-template-columns: minmax(0, 1fr); }
 .screen--compare { grid-template-areas: 'main'; grid-template-columns: minmax(0, 1fr); }
@@ -4276,6 +4295,16 @@ select.field:focus {
   border-left: 2px solid var(--gold); background: var(--panel);
   color: var(--gold); font-size: calc(var(--font-size) - 1px);
 }
+.run-outcome-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1px;
+  margin: var(--pad);
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+.run-outcome-summary > div { padding: var(--pad-sm); background: var(--panel); }
+.run-outcome-summary p { margin: 4px 0 0; }
 .compare-table td.best { color: var(--up); }
 .compare-figures { margin-top: var(--pad); }
 .compare-figure-pick { display: flex; align-items: center; gap: var(--pad-sm); margin-bottom: var(--pad); }

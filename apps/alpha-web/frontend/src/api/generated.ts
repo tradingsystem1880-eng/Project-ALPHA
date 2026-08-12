@@ -509,6 +509,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ml/experiments/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Experiment Preflight
+         * @description Recompute project, data, gate, worker, and capacity prerequisites without launching.
+         */
+        get: operations["get_experiment_preflight_api_ml_experiments_preflight_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ml/inputs": {
         parameters: {
             query?: never;
@@ -2320,6 +2340,28 @@ export interface paths {
          *     Versioned Workstation-v3 alias of `/api/ml/experiments`.
          */
         post: operations["v3_generate_experiment_api_v3_ml_experiments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v3/ml/experiments/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 Get Experiment Preflight
+         * @description Recompute project, data, gate, worker, and capacity prerequisites without launching.
+         *
+         *     Versioned Workstation-v3 alias of `/api/ml/experiments/preflight`.
+         */
+        get: operations["v3_get_experiment_preflight_api_v3_ml_experiments_preflight_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4800,6 +4842,30 @@ export interface components {
             /** Offset */
             offset: number;
         };
+        /** MlExperimentPreflight */
+        MlExperimentPreflight: {
+            /** Active Job Id */
+            active_job_id: string | null;
+            /** Aligned Sessions */
+            aligned_sessions: number;
+            /** Checks */
+            checks: components["schemas"]["MlPreflightCheck"][];
+            /** Experiment Id */
+            experiment_id: string | null;
+            /** Project Id */
+            project_id: string;
+            /** Ready */
+            ready: boolean;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Universe Count */
+            universe_count: number;
+        };
         /** MlExperimentSummary */
         MlExperimentSummary: {
             /** Aligned Sessions */
@@ -5097,6 +5163,23 @@ export interface components {
              * @constant
              */
             weighting: "equal";
+        };
+        /** MlPreflightCheck */
+        MlPreflightCheck: {
+            /**
+             * Check Id
+             * @enum {string}
+             */
+            check_id: "experiment" | "snapshot" | "research_gate" | "worker" | "universe" | "aligned_history" | "active_job";
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pass" | "blocked";
         };
         /** MlPrepareRequest */
         MlPrepareRequest: {
@@ -8891,6 +8974,38 @@ export interface operations {
             };
         };
     };
+    get_experiment_preflight_api_ml_experiments_preflight_get: {
+        parameters: {
+            query: {
+                project_id: string;
+                experiment_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MlExperimentPreflight"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     get_inputs_api_ml_inputs_get: {
         parameters: {
             query?: {
@@ -11961,6 +12076,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlExperimentJobAccepted"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_get_experiment_preflight_api_v3_ml_experiments_preflight_get: {
+        parameters: {
+            query: {
+                project_id: string;
+                experiment_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MlExperimentPreflight"];
                 };
             };
             /** @description Stable, redacted Workstation error */

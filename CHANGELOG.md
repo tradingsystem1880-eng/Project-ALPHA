@@ -16,6 +16,12 @@ Paper acceptance scenario remain pending.
 
 ### Added
 
+- Repair-program Stage 2 guided workspace: Research is the six-screen shell's front door, Guided
+  mode is remembered per project, Advanced mode reveals lineage without extra authority, and the
+  owner receives one canonical next action plus direct source, dataset, and provider recovery links.
+- A server-authoritative ML experiment preflight verifies the experiment, frozen snapshot,
+  research gate, isolated worker, universe, aligned history, and active-job capacity before any job
+  is created.
 - Repair-program Stage 1 research/data contracts: typed material questions now retain prompts,
   blocking reasons, consequences, capability availability, and a complete recommendation bundle.
   `ResearchProposalOptionsV1` projects only registered atomic answer bundles plus compatible frozen
@@ -51,6 +57,15 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- Mounted panels now share one active project workspace context. Project changes clear dependent
+  symbol/run/snapshot/version state, remount visible panels, and discard stale asynchronous
+  responses. Research Data separates contract-bound and global datasets; run history defaults to
+  the current project and distinctly labels standalone and legacy work.
+- Build now separates governed strategy development from the permanently
+  `STANDALONE_UNQUALIFIED` sandbox. Material questions are accessible cards above the fold;
+  comparisons do not highlight ties; options clear stale results; project lists use supported
+  pagination; results explain supporting and contradictory evidence, uncertainty, and the valid
+  next action.
 - The data-audit AR(1) effective sample size is conservatively capped at the observation count; the
   versioned method is identity-bound and the raw lag-one autocorrelation remains visible. arXiv PDF
   locators normalize to HTTPS and acquisition rejects PDF responses from abstract landing URLs.

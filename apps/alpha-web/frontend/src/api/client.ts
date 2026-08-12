@@ -17,6 +17,7 @@ import type {
   ForecastSeries,
   JobDetail,
   MlExperimentPage,
+  MlExperimentPreflight,
   MlExperimentJobAccepted,
   MlServiceStatus,
   MlTearSheetProjection,
@@ -89,6 +90,7 @@ async function getJSON<T>(url: string): Promise<T> {
 async function responseError(res: Response): Promise<Error> {
   let message = 'The Workstation request failed.'
   let recovery = ''
+  let fields = ''
   let requestId = res.headers.get('x-request-id') ?? ''
   try {
     const parsed: unknown = await res.json()
@@ -97,13 +99,25 @@ async function responseError(res: Response): Promise<Error> {
       if (typeof error.message === 'string' && error.message) message = error.message
       if (typeof error.recovery_action === 'string') recovery = error.recovery_action
       if (typeof error.request_id === 'string') requestId = error.request_id
+      if (Array.isArray(error.field_errors)) {
+        fields = error.field_errors
+          .flatMap((item) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return []
+            const field = (item as Record<string, unknown>).field
+            const fieldMessage = (item as Record<string, unknown>).message
+            return typeof field === 'string' && typeof fieldMessage === 'string'
+              ? [`${field}: ${fieldMessage}`]
+              : []
+          })
+          .join('; ')
+      }
     }
   } catch {
     // The stable API contract was unavailable; never relay an untrusted raw response to the DOM.
   }
   const status = `${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
   return new Error(
-    `${status} — ${message}${recovery ? ` ${recovery}` : ''}${requestId ? ` [request ${requestId}]` : ''}`,
+    `${status} — ${message}${fields ? ` Fields: ${fields}.` : ''}${recovery ? ` ${recovery}` : ''}${requestId ? ` [request ${requestId}]` : ''}`,
   )
 }
 
@@ -397,6 +411,8 @@ export const api = {
     const query = projectId ? `?project_id=${encodeURIComponent(projectId)}` : ''
     return getJSON(`/api/ml/experiments${query}`)
   },
+  mlExperimentPreflight: (projectId: string): Promise<MlExperimentPreflight> =>
+    getJSON(`/api/ml/experiments/preflight?project_id=${encodeURIComponent(projectId)}`),
   mlTearsheet(exchangeId: string, timelineOffset = 0): Promise<MlTearSheetProjection> {
     if (!Number.isInteger(timelineOffset) || timelineOffset < 0 || timelineOffset > 1_000_000) {
       throw new RangeError('ML tear-sheet timeline offset must be an integer from 0 to 1,000,000')

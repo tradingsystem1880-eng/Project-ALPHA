@@ -5924,6 +5924,88 @@
         "title": "MlExperimentPage",
         "type": "object"
       },
+      "MlExperimentPreflight": {
+        "additionalProperties": false,
+        "properties": {
+          "active_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Job Id"
+          },
+          "aligned_sessions": {
+            "minimum": 0.0,
+            "title": "Aligned Sessions",
+            "type": "integer"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/MlPreflightCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "experiment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Id"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "universe_count": {
+            "maximum": 512.0,
+            "minimum": 0.0,
+            "title": "Universe Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "project_id",
+          "experiment_id",
+          "snapshot_id",
+          "universe_count",
+          "aligned_sessions",
+          "active_job_id",
+          "ready",
+          "checks"
+        ],
+        "title": "MlExperimentPreflight",
+        "type": "object"
+      },
       "MlExperimentSummary": {
         "additionalProperties": false,
         "properties": {
@@ -6672,6 +6754,48 @@
           "long_only"
         ],
         "title": "MlPortfolioRecipe",
+        "type": "object"
+      },
+      "MlPreflightCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "check_id": {
+            "enum": [
+              "experiment",
+              "snapshot",
+              "research_gate",
+              "worker",
+              "universe",
+              "aligned_history",
+              "active_job"
+            ],
+            "title": "Check Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "recovery_action": {
+            "title": "Recovery Action",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pass",
+              "blocked"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "state",
+          "message",
+          "recovery_action"
+        ],
+        "title": "MlPreflightCheck",
         "type": "object"
       },
       "MlPrepareRequest": {
@@ -16877,6 +17001,65 @@
         ]
       }
     },
+    "/api/ml/experiments/preflight": {
+      "get": {
+        "description": "Recompute project, data, gate, worker, and capacity prerequisites without launching.",
+        "operationId": "get_experiment_preflight_api_ml_experiments_preflight_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "experiment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Experiment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlExperimentPreflight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Get Experiment Preflight",
+        "tags": [
+          "ml-research"
+        ]
+      }
+    },
     "/api/ml/inputs": {
       "get": {
         "description": "Opaque prepared input bundles; no filesystem paths are returned.",
@@ -22121,6 +22304,66 @@
           }
         },
         "summary": "V3 Generate Experiment",
+        "tags": [
+          "workstation-v3",
+          "ml-research"
+        ]
+      }
+    },
+    "/api/v3/ml/experiments/preflight": {
+      "get": {
+        "description": "Recompute project, data, gate, worker, and capacity prerequisites without launching.\n\nVersioned Workstation-v3 alias of `/api/ml/experiments/preflight`.",
+        "operationId": "v3_get_experiment_preflight_api_v3_ml_experiments_preflight_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "experiment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Experiment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlExperimentPreflight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "V3 Get Experiment Preflight",
         "tags": [
           "workstation-v3",
           "ml-research"

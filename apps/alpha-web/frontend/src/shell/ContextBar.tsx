@@ -96,7 +96,7 @@ export function ContextBar() {
               />
             </label>
           </div>
-          <label>
+          <label className="advanced-only">
             <span className="eyebrow">Project</span>
             <input
               className="field mono"
@@ -105,7 +105,7 @@ export function ContextBar() {
               onChange={(event) => setLinked({ projectId: event.target.value || null })}
             />
           </label>
-          <label>
+          <label className="advanced-only">
             <span className="eyebrow">Strategy version</span>
             <input
               className="field mono"
@@ -114,7 +114,7 @@ export function ContextBar() {
               onChange={(event) => setLinked({ versionId: event.target.value || null })}
             />
           </label>
-          <label>
+          <label className="advanced-only">
             <span className="eyebrow">Data snapshot</span>
             <input
               className="field mono"
@@ -126,7 +126,7 @@ export function ContextBar() {
           {/* The run is part of what you are looking at -- the price chart overlays its
               causal trace -- and the chip already shows it, so this is where you set or
               clear one without going back to the Library. */}
-          <label>
+          <label className="advanced-only">
             <span className="eyebrow">Run</span>
             <input
               className="field mono"

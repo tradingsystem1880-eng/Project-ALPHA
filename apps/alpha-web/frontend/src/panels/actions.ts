@@ -16,6 +16,9 @@ export interface Navigator {
   showRun(runId: string): void
   showStrategyLab(prefill?: LabPrefill): void
   showProjects(): void
+  showResearchSources(): void
+  showResearchData(): void
+  showProviders(): void
 }
 
 /** Until the shell registers, intents are no-ops rather than crashes. */
@@ -23,6 +26,9 @@ let active: Navigator = {
   showRun: () => undefined,
   showStrategyLab: () => undefined,
   showProjects: () => undefined,
+  showResearchSources: () => undefined,
+  showResearchData: () => undefined,
+  showProviders: () => undefined,
 }
 
 let pendingPrefill: LabPrefill | null = null
@@ -84,4 +90,16 @@ export function onLabPrefill(listener: () => void): () => void {
 /** Open the governed lifecycle surface used to resolve and launch a legacy trace rerun. */
 export function openDevelopmentCenter(): void {
   active.showProjects()
+}
+
+export function openResearchSources(): void {
+  active.showResearchSources()
+}
+
+export function openResearchData(): void {
+  active.showResearchData()
+}
+
+export function openProviderCenter(): void {
+  active.showProviders()
 }

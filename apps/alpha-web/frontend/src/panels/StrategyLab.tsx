@@ -110,7 +110,7 @@ export function StrategyLab(_props: PanelHandleProps) {
   }, [isPaper, strategy, symbols, visibleStrategies])
 
   function launch(): void {
-    if (gate.lock) return
+    if (gate.lock || !linked.projectId) return
     if (!cmd) {
       // non-run-producing prefill (e.g. `data pull`, `forecast eval`): free-form launch
       const parts = [symbols.trim(), extra.trim()].filter(Boolean)
@@ -170,6 +170,12 @@ export function StrategyLab(_props: PanelHandleProps) {
             projectId={gate.projectId}
             projectName={gate.projectName}
           />
+        ) : null}
+        {!linked.projectId ? (
+          <div className="workbench-notice" role="note">
+            <strong>SELECT A PROMOTED PROJECT</strong>
+            <span>Governed strategy development requires a linked project. Use the separate Standalone Sandbox for permanently unqualified experiments.</span>
+          </div>
         ) : null}
         <div className="lab-row">
           <label className="field-row">
@@ -232,7 +238,7 @@ export function StrategyLab(_props: PanelHandleProps) {
           </label>
         ) : null}
 
-        <details className="lab-advanced">
+        <details className="lab-advanced advanced-only">
           <summary>Options ({shownOpts.length})</summary>
           <div className="lab-grid">
             {shownOpts.map((o) => (
@@ -271,7 +277,7 @@ export function StrategyLab(_props: PanelHandleProps) {
           </div>
         </details>
 
-        <label className="field-row">
+        <label className="field-row advanced-only">
           <span className="field-label">Additional flags</span>
           <input
             className="field"
@@ -284,13 +290,13 @@ export function StrategyLab(_props: PanelHandleProps) {
         <div className="lab-actions">
           <button
             className="btn primary"
-            disabled={Boolean(gate.lock)}
-            title={gate.lock?.reason}
+            disabled={Boolean(gate.lock) || !linked.projectId}
+            title={gate.lock?.reason ?? (!linked.projectId ? 'Select a promoted project or use Standalone Sandbox' : undefined)}
             onClick={launch}
           >
             ▶ Launch {cmdId}
           </button>
-          <span className="mono muted">alpha {cmdId} {symbols} …</span>
+          <span className="mono muted advanced-only">alpha {cmdId} {symbols} …</span>
         </div>
         {error ? <div className="leak">⚠ {error}</div> : null}
         {jobId ? <JobConsole jobId={jobId} onRun={openRun} /> : null}

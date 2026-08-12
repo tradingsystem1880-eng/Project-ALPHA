@@ -22,6 +22,16 @@ screens. The accepted read-plane and authority decision remains unchanged; the R
 Center panels are now placed on the Explore and Build screens rather than in a seventh dockable
 desk.
 
+**Guided-workspace amendment (2026-08-13):** The stable `explore` screen ID is presented as
+**Research**. Research Case, Evidence, and Price are its primary panes; Backlog, Literature,
+Research Data, Market Data, and Codex Research remain secondary panes. Guided mode is the
+per-project default and exposes one canonical next action. Advanced mode reveals identifiers,
+frozen contracts, artifacts, and command previews but uses the same server gates and grants no
+additional authority. All mounted panels follow one active project workspace context; a project
+transition clears dependent symbol/run/snapshot/version state and stale asynchronous responses are
+discarded. Build is reserved for promoted strategy development plus a separately labeled,
+permanently `STANDALONE_UNQUALIFIED` sandbox.
+
 Split read visibility from mutation authority, and supersede the Gate-1 "no list-all" scope
 statement **for read-only projections only**.
 
@@ -30,11 +40,9 @@ statement **for read-only projections only**.
   `GET /api/research/cases/{id}/scorecard`, each backed by a closed-argv subprocess of a new
   `alpha research list --json` / existing status projections. The web process still never opens
   the research database.
-- Add a seventh Workstation desk, preset id `research`, display name **Research Command Center**,
-  containing `ResearchBacklog` (serving the existing unserved model), the existing
-  `ResearchCockpit`, `EvidenceHub`, and (from later phases) `CodexBench` and
-  `ResearchDataExplorer`. The **New Idea** action is the desk's primary entry point and contains
-  no entry-rule, stop, target, indicator, or optimisation input.
+- Present those panels through the stable six-screen shell described by the integration amendments.
+  The **New Idea** action is Research's primary entry point and contains no entry-rule, stop,
+  target, indicator, or optimisation input.
 - Mutation authority is unchanged and re-affirmed: approve, reject, decide, revise, D2
   transitions, D3 reveal, pause/resume/cancel, source-pack freezing, and the exploratory-gate
   override remain trusted-local owner CLI operations, absent from MCP, REST, and the Cockpit.
@@ -49,11 +57,11 @@ statement **for read-only projections only**.
 - Phase plan: `docs/superpowers/plans/2026-08-07-research-first-R1-command-center.md`
 - Unserved model: `apps/alpha-web/frontend/src/panels/researchCockpitModel.ts`
 - Router: `apps/alpha-web/src/alpha_web/api/research.py`; seam `apps/alpha-web/src/alpha_web/_research.py`
-- Desk presets: `apps/alpha-web/frontend/src/layouts/presets.ts`
+- Screen composition: `apps/alpha-web/frontend/src/shell/screens.tsx`
 
 ## Consequences
 
-- The research backlog, evidence hub, and scorecard become first-class, and the research desk —
+- The research backlog, evidence hub, and scorecard become first-class, and the Research screen —
   not a strategy form — is the application's front door.
 - The Gate-1 scope statement in the 2026-08-06 spec is narrowed, not violated: every mutation
   listed there remains impossible from agent-reachable surfaces, and the change is recorded here

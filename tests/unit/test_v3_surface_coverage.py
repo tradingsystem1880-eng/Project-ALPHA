@@ -326,6 +326,7 @@ def test_ml_api_wrappers_cover_happy_paths_and_typed_error_mapping(
         monkeypatch.setattr(_ml, name, record(name))
     monkeypatch.setattr(_ml, "new_input_id", lambda: input_id)
     monkeypatch.setattr(_ml, "new_exchange_id", lambda: exchange_id)
+    monkeypatch.setattr(_ml, "experiment_preflight", lambda **_: {"ready": True})
 
     assert ml_api.get_readiness()["name"] == "readiness"
     assert ml_api.get_service_status()["name"] == "service_status"

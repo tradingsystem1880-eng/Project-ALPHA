@@ -4,6 +4,7 @@ import {
   DEFAULT_LINKED,
   getLinked,
   getLinkedWorkspace,
+  applyLinkedPatch,
   migrateLinked,
   migrateLinkedWorkspace,
   restoreLinked,
@@ -94,6 +95,63 @@ describe('linked context migration', () => {
       linkGroup: 'C',
       symbol: 'BTC-USD',
       snapshotId: 'snap-c',
+    })
+  })
+
+  it('clears project-dependent state before applying a new project context', () => {
+    expect(applyLinkedPatch(
+      {
+        ...DEFAULT_LINKED,
+        projectId: 'old-project',
+        symbol: 'AAPL',
+        versionId: 'old-version',
+        snapshotId: 'old-snapshot',
+        runId: '0123456789abcdef',
+      },
+      { projectId: 'new-project' },
+    )).toMatchObject({
+      projectId: 'new-project',
+      symbol: null,
+      versionId: null,
+      snapshotId: null,
+      runId: null,
+    })
+
+    setLinked({
+      projectId: 'old-project',
+      symbol: 'AAPL',
+      versionId: 'old-version',
+      snapshotId: 'old-snapshot',
+      runId: '0123456789abcdef',
+    })
+    setLinked({ projectId: 'new-project' })
+    expect(getLinked()).toMatchObject({
+      projectId: 'new-project',
+      symbol: null,
+      versionId: null,
+      snapshotId: null,
+      runId: null,
+    })
+  })
+
+  it('accepts an atomic authoritative replacement without retaining old dependent values', () => {
+    const next = applyLinkedPatch(
+      {
+        ...DEFAULT_LINKED,
+        projectId: 'old-project',
+        symbol: 'AAPL',
+        versionId: 'old-version',
+        snapshotId: 'old-snapshot',
+        runId: '0123456789abcdef',
+      },
+      { projectId: 'new-project', versionId: 'new-version', symbol: 'SPY' },
+    )
+    expect(next).toMatchObject({
+      projectId: 'new-project',
+      symbol: 'SPY',
+      versionId: 'new-version',
+      snapshotId: null,
+      runId: null,
     })
   })
 })

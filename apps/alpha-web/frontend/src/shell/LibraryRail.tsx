@@ -11,11 +11,12 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../api/client'
 import type { RunListItem, WorkspaceMeta } from '../api/types'
-import { setLinked, useLinked } from '../context/linked'
+import { restoreLinked, setLinked, useLinked } from '../context/linked'
 import { useActivityField } from '../state/activity'
 import { shortId } from '../util/format'
 
 type SectionId = 'runs' | 'symbols' | 'projects' | 'workspaces'
+type RunScope = 'project' | 'standalone' | 'historical' | 'all'
 
 const SECTIONS: { id: SectionId; label: string; hint: string }[] = [
   { id: 'runs', label: 'Runs', hint: 'every completed run' },
@@ -43,8 +44,11 @@ export function LibraryRail({
   const [section, setSection] = useState<SectionId>('runs')
   const [query, setQuery] = useState('')
   const [runs, setRuns] = useState<RunListItem[]>([])
+  const [runScope, setRunScope] = useState<RunScope>(linked.projectId ? 'project' : 'all')
   const [symbols, setSymbols] = useState<string[]>([])
   const [projects, setProjects] = useState<{ project_id: string; name?: string | null }[]>([])
+  const [projectHasMore, setProjectHasMore] = useState(false)
+  const [projectsLoading, setProjectsLoading] = useState(false)
   const [workspaces, setWorkspaces] = useState<WorkspaceMeta[]>([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +56,10 @@ export function LibraryRail({
   // The activity stream ticks whenever the store changes, so a run launched from the CLI
   // or an agent appears here without a reload — the rail is a live view, not a snapshot.
   const storeRevision = useActivityField('runsVersion')
+
+  useEffect(() => {
+    setRunScope(linked.projectId ? 'project' : 'all')
+  }, [linked.projectId])
 
   useEffect(() => {
     let live = true
@@ -65,8 +73,11 @@ export function LibraryRail({
           const list = await api.symbols()
           if (live) setSymbols(list.symbols)
         } else if (section === 'projects') {
-          const page = await api.projects(200)
-          if (live) setProjects(page.items as { project_id: string; name?: string | null }[])
+          const page = await api.projects(100, 0)
+          if (live) {
+            setProjects(page.items as { project_id: string; name?: string | null }[])
+            setProjectHasMore(page.has_more)
+          }
         } else {
           const list = await api.workspaces()
           if (live) setWorkspaces(list)
@@ -86,17 +97,48 @@ export function LibraryRail({
     () =>
       runs.filter(
         (item) =>
-          !needle ||
-          item.run_id.includes(needle) ||
-          (item.label ?? '').toLowerCase().includes(needle) ||
-          (item.command ?? '').toLowerCase().includes(needle),
+          (runScope === 'all'
+            || (runScope === 'project'
+              && item.run_context_kind === 'governed_project'
+              && item.run_context_project_id === linked.projectId)
+            || (runScope === 'standalone' && item.run_context_kind === 'standalone_sandbox')
+            || (runScope === 'historical' && item.run_context_kind === 'legacy_context_unknown'))
+          && (!needle ||
+            item.run_id.includes(needle) ||
+            (item.label ?? '').toLowerCase().includes(needle) ||
+            (item.command ?? '').toLowerCase().includes(needle)),
       ),
-    [runs, needle],
+    [linked.projectId, needle, runScope, runs],
   )
   const visibleSymbols = useMemo(
     () => symbols.filter((symbol) => !needle || symbol.toLowerCase().includes(needle)),
     [symbols, needle],
   )
+  const visibleProjects = useMemo(
+    () => projects.filter((project) =>
+      !needle
+      || project.project_id.toLowerCase().includes(needle)
+      || (project.name ?? '').toLowerCase().includes(needle)),
+    [projects, needle],
+  )
+
+  async function loadMoreProjects(): Promise<void> {
+    if (projectsLoading || !projectHasMore) return
+    setProjectsLoading(true)
+    setError(null)
+    try {
+      const page = await api.projects(100, projects.length)
+      setProjects((current) => [
+        ...current,
+        ...(page.items as { project_id: string; name?: string | null }[]),
+      ])
+      setProjectHasMore(page.has_more)
+    } catch (cause) {
+      setError(String(cause))
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
 
   if (collapsed) {
     return (
@@ -143,6 +185,22 @@ export function LibraryRail({
 
       {error ? <p className="library-error">{error}</p> : null}
 
+      {section === 'runs' ? (
+        <label className="library-run-scope">
+          <span className="eyebrow">Show</span>
+          <select
+            className="field"
+            value={runScope}
+            onChange={(event) => setRunScope(event.target.value as RunScope)}
+          >
+            <option value="project" disabled={!linked.projectId}>Current project</option>
+            <option value="standalone">Standalone · non-evidence</option>
+            <option value="historical">Historical · context unknown</option>
+            <option value="all">All runs</option>
+          </select>
+        </label>
+      ) : null}
+
       <div className="library-list">
         {section === 'runs'
           ? visibleRuns.map((item) => (
@@ -156,6 +214,11 @@ export function LibraryRail({
                   <span className="mono">{shortId(item.run_id)}</span>
                   <span className="library-row-sub">{item.label ?? item.command ?? item.kind}</span>
                 </span>
+                {item.run_context_kind === 'standalone_sandbox' ? (
+                  <span className="chip warn">STANDALONE</span>
+                ) : item.run_context_kind === 'legacy_context_unknown' ? (
+                  <span className="chip">HISTORICAL</span>
+                ) : null}
                 {item.verdict ? (
                   <span className={`grade ${verdictClass(item)}`}>{item.verdict}</span>
                 ) : null}
@@ -176,7 +239,7 @@ export function LibraryRail({
           : null}
 
         {section === 'projects'
-          ? projects.map((project) => (
+          ? visibleProjects.map((project) => (
               <button
                 key={project.project_id}
                 className={`library-row${linked.projectId === project.project_id ? ' active' : ''}`}
@@ -189,6 +252,16 @@ export function LibraryRail({
               </button>
             ))
           : null}
+        {section === 'projects' && projectHasMore && !needle ? (
+          <button
+            type="button"
+            className="btn library-load-more"
+            disabled={projectsLoading}
+            onClick={() => void loadMoreProjects()}
+          >
+            {projectsLoading ? 'Loading…' : 'Load more projects'}
+          </button>
+        ) : null}
 
         {section === 'workspaces' ? (
           <>
@@ -227,7 +300,7 @@ export function LibraryRail({
                 className="library-row"
                 onClick={() => {
                   void api.getWorkspace(workspace.slug).then((doc) => {
-                    if (doc.linked_context) setLinked(doc.linked_context as never)
+                    if (doc.linked_context) restoreLinked(doc.linked_context)
                   })
                 }}
               >
