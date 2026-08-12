@@ -261,6 +261,7 @@ def source_claim_draft(
     sample_summary: str,
     markets: Sequence[str],
     limitations: str,
+    source_anchor: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     """Draft one claim; MCP claims are always agent-authored and never screened here."""
     args = [
@@ -292,6 +293,8 @@ def source_claim_draft(
     ]
     for market in markets:
         args += ["--market", market]
+    if source_anchor is not None:
+        args += ["--anchor-json", _json(source_anchor)]
     args += ["--json"]
     return _object(_invoke.run_json(args, data_dir=data_dir), "research source claim")
 

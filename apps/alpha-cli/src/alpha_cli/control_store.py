@@ -89,8 +89,9 @@ type OwnerActionType = Literal[
 ]
 
 LEGACY_SCHEMA_VERSION: Final = 1
-PREVIOUS_SCHEMA_VERSION: Final = 2
-SCHEMA_VERSION: Final = 3
+OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
+PREVIOUS_SCHEMA_VERSION: Final = 3
+SCHEMA_VERSION: Final = 4
 DATABASE_NAME: Final = "workstation.sqlite3"
 PROJECT_STATUSES: Final = frozenset({"active", "accepted", "rejected", "archived"})
 STAGE_STATES: Final = frozenset(
@@ -313,7 +314,7 @@ _RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
     "quantpad_receipt": ("receipt_id", "response_sha256"),
 }
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc)_[0-9a-f]{64}")
+_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc|ld|rx)_[0-9a-f]{64}")
 _SOURCE_CLAIM_DIRECTIONS: Final = frozenset({"supports", "contradicts", "contextualizes", "method"})
 _SOURCE_CLAIM_STRENGTHS: Final = frozenset({"weak", "moderate", "strong"})
 # Columns added to research_source_records after schema v2 shipped (ADR-0024).  The heal
@@ -1000,6 +1001,73 @@ BEFORE DELETE ON research_source_claim_owner_events
 BEGIN SELECT RAISE(ABORT, 'source claim owner events are append-only'); END;
 """
 
+_SCHEMA_V4 = """
+CREATE TABLE IF NOT EXISTS literature_discoveries (
+    discovery_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    query TEXT NOT NULL,
+    artifact_sha256 TEXT NOT NULL,
+    artifact_relpath TEXT NOT NULL,
+    budget_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_document_texts (
+    extraction_id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL UNIQUE REFERENCES research_source_records(source_id),
+    source_sha256 TEXT NOT NULL,
+    artifact_sha256 TEXT NOT NULL,
+    artifact_relpath TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN (
+        'extracted', 'encrypted', 'image_only', 'truncated', 'parser_failed'
+    )),
+    page_count INTEGER NOT NULL CHECK (page_count >= 0),
+    character_count INTEGER NOT NULL CHECK (character_count >= 0),
+    parser_version TEXT NOT NULL,
+    config_hash TEXT NOT NULL,
+    warnings_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_source_claim_anchors (
+    claim_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    extraction_id TEXT NOT NULL REFERENCES research_document_texts(extraction_id),
+    page INTEGER NOT NULL CHECK (page >= 1),
+    char_start INTEGER NOT NULL CHECK (char_start >= 0),
+    char_end INTEGER NOT NULL CHECK (char_end > char_start),
+    exact_text_sha256 TEXT NOT NULL,
+    PRIMARY KEY (claim_id, revision),
+    FOREIGN KEY (claim_id, revision) REFERENCES research_source_claims(claim_id, revision)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_literature_discoveries_project
+    ON literature_discoveries(project_id, created_at, discovery_id);
+CREATE INDEX IF NOT EXISTS idx_research_document_texts_source
+    ON research_document_texts(source_id, created_at, extraction_id);
+CREATE INDEX IF NOT EXISTS idx_research_claim_anchors_extraction
+    ON research_source_claim_anchors(extraction_id, claim_id, revision);
+
+CREATE TRIGGER IF NOT EXISTS literature_discoveries_no_update
+BEFORE UPDATE ON literature_discoveries
+BEGIN SELECT RAISE(ABORT, 'literature discoveries are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS literature_discoveries_no_delete
+BEFORE DELETE ON literature_discoveries
+BEGIN SELECT RAISE(ABORT, 'literature discoveries are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_document_texts_no_update
+BEFORE UPDATE ON research_document_texts
+BEGIN SELECT RAISE(ABORT, 'research document texts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_document_texts_no_delete
+BEFORE DELETE ON research_document_texts
+BEGIN SELECT RAISE(ABORT, 'research document texts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_source_claim_anchors_no_update
+BEFORE UPDATE ON research_source_claim_anchors
+BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_source_claim_anchors_no_delete
+BEFORE DELETE ON research_source_claim_anchors
+BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
+"""
+
 # Executed exactly once, inside the schema-v2 writer transaction (migration or fresh creation).
 # It must never run on a steady-state open: a re-executed backfill would silently re-derive a
 # lost governance row from the caller-controlled ``created_at`` date rule, and the write lock it
@@ -1024,6 +1092,7 @@ _EXPECTED_SCHEMA_OBJECTS: Final = frozenset(
     _DDL_OBJECT_NAME.findall(_SCHEMA)
     + _DDL_OBJECT_NAME.findall(_SCHEMA_V2)
     + _DDL_OBJECT_NAME.findall(_SCHEMA_V3)
+    + _DDL_OBJECT_NAME.findall(_SCHEMA_V4)
 )
 
 
@@ -1269,7 +1338,7 @@ def _verified_v2_backup(connection: sqlite3.Connection, database: Path) -> None:
         try:
             integrity = existing.execute("PRAGMA integrity_check").fetchone()
             version = existing.execute("PRAGMA user_version").fetchone()
-            if integrity != ("ok",) or version != (PREVIOUS_SCHEMA_VERSION,):
+            if integrity != ("ok",) or version != (OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,):
                 raise DataError("existing control store v2 migration backup is invalid")
             existing_fingerprint = _logical_database_fingerprint(existing)
         finally:
@@ -1294,7 +1363,7 @@ def _verified_v2_backup(connection: sqlite3.Connection, database: Path) -> None:
         snapshot.backup(target)
         integrity = target.execute("PRAGMA integrity_check").fetchone()
         version = target.execute("PRAGMA user_version").fetchone()
-        if integrity != ("ok",) or version != (PREVIOUS_SCHEMA_VERSION,):
+        if integrity != ("ok",) or version != (OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,):
             raise DataError("cannot verify control store v2 migration backup")
         target_fingerprint = _logical_database_fingerprint(target)
         target.close()
@@ -1323,6 +1392,59 @@ def _logical_database_fingerprint(connection: sqlite3.Connection) -> str:
     return digest.hexdigest()
 
 
+def _verified_v3_backup(connection: sqlite3.Connection, database: Path) -> None:
+    """Create one atomic, integrity-checked backup before the v3->v4 migration."""
+    backup = database.with_name(f"{database.name}.v3.bak")
+    if backup.is_symlink():
+        raise DataError(f"control store migration backup must not be a symlink: {backup}")
+    if backup.exists():
+        if not backup.is_file():
+            raise DataError(f"control store migration backup is not a file: {backup}")
+        existing = sqlite3.connect(backup)
+        try:
+            integrity = existing.execute("PRAGMA integrity_check").fetchone()
+            version = existing.execute("PRAGMA user_version").fetchone()
+            fingerprint = _logical_database_fingerprint(existing)
+        finally:
+            existing.close()
+        if integrity != ("ok",) or version != (PREVIOUS_SCHEMA_VERSION,):
+            raise DataError("existing control store v3 migration backup is invalid")
+        if fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("existing control store v3 migration backup does not match")
+        return
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
+    os.close(fd)
+    temporary = Path(raw_tmp)
+    snapshot: sqlite3.Connection | None = None
+    target: sqlite3.Connection | None = None
+    try:
+        snapshot = sqlite3.connect(database, timeout=5.0, isolation_level=None)
+        snapshot.execute("PRAGMA query_only = ON")
+        snapshot.execute("PRAGMA busy_timeout = 5000")
+        snapshot.execute("BEGIN")
+        target = sqlite3.connect(temporary)
+        snapshot.backup(target)
+        if target.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+            raise DataError("cannot verify control store v3 migration backup")
+        if target.execute("PRAGMA user_version").fetchone() != (PREVIOUS_SCHEMA_VERSION,):
+            raise DataError("cannot verify control store v3 migration backup version")
+        target_fingerprint = _logical_database_fingerprint(target)
+        target.close()
+        target = None
+        if target_fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("control store v3 migration backup does not match")
+        os.replace(temporary, backup)
+    finally:
+        if target is not None:
+            target.close()
+        if snapshot is not None:
+            if snapshot.in_transaction:
+                snapshot.rollback()
+            snapshot.close()
+        if temporary.exists():
+            temporary.unlink()
+
+
 def _execute_static_sql_script(connection: sqlite3.Connection, script: str) -> None:
     """Execute trusted static DDL without ``executescript`` committing the caller's transaction."""
 
@@ -1347,6 +1469,7 @@ def _apply_schema_v2_locked(
         _execute_static_sql_script(connection, _SCHEMA)
     _execute_static_sql_script(connection, _SCHEMA_V2)
     _execute_static_sql_script(connection, _SCHEMA_V3)
+    _execute_static_sql_script(connection, _SCHEMA_V4)
     _execute_static_sql_script(connection, _GOVERNANCE_BACKFILL)
     connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
@@ -1402,6 +1525,7 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
             _execute_static_sql_script(connection, _SCHEMA)
             _execute_static_sql_script(connection, _SCHEMA_V2)
             _execute_static_sql_script(connection, _SCHEMA_V3)
+            _execute_static_sql_script(connection, _SCHEMA_V4)
         for name, column_type in _SOURCE_RECORD_ADDITIVE_COLUMNS:
             if name in _missing_source_record_columns(connection):
                 connection.execute(
@@ -1504,10 +1628,32 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
         if locked_version == SCHEMA_VERSION:
             connection.commit()
             return
-        if locked_version != PREVIOUS_SCHEMA_VERSION:
+        if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
             raise DataError(f"unsupported control store schema version {locked_version}")
         _verified_v2_backup(connection, database)
         _execute_static_sql_script(connection, _SCHEMA_V3)
+        _execute_static_sql_script(connection, _SCHEMA_V4)
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
+    """Serialize the exact v3 backup and additive literature-artifact migration."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != PREVIOUS_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _verified_v3_backup(connection, database)
+        _execute_static_sql_script(connection, _SCHEMA_V4)
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         connection.commit()
     except Exception:
@@ -1647,14 +1793,17 @@ class ControlStore:
             if version not in {
                 0,
                 LEGACY_SCHEMA_VERSION,
+                OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,
                 PREVIOUS_SCHEMA_VERSION,
                 SCHEMA_VERSION,
             }:
                 raise DataError(f"unsupported control store schema version {version}")
             if version == LEGACY_SCHEMA_VERSION:
                 _migrate_schema_v1(connection, database)
-            elif version == PREVIOUS_SCHEMA_VERSION:
+            elif version == OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
                 _migrate_schema_v2(connection, database)
+            elif version == PREVIOUS_SCHEMA_VERSION:
+                _migrate_schema_v3(connection, database)
             elif version < SCHEMA_VERSION:
                 connection.executescript(_SCHEMA)
                 _apply_schema_v2(connection)
@@ -3575,6 +3724,339 @@ class ControlStore:
             raise DataError(f"unknown research source {sid!r}")
         return self._research_source_view(row)
 
+    def get_research_source_context(
+        self, source_id: str, *, excerpt_limit: int = 4_000
+    ) -> dict[str, object]:
+        """Return one source plus bounded untrusted extracted-page previews for review/Codex."""
+        if isinstance(excerpt_limit, bool) or not 1 <= excerpt_limit <= 8_000:
+            raise DataError("research source excerpt limit must be in 1..8000")
+        source = self.get_research_source(source_id)
+        with self._transaction(write=False) as connection:
+            document = connection.execute(
+                "SELECT extraction_id FROM research_document_texts WHERE source_id = ?",
+                (source["source_id"],),
+            ).fetchone()
+        if document is None:
+            return {**source, "document": None, "page_previews": []}
+        record = self.get_research_document_text(str(document["extraction_id"]))
+        artifact = record.pop("artifact")
+        pages = artifact.get("pages") if isinstance(artifact, dict) else None
+        previews: list[dict[str, object]] = []
+        remaining = excerpt_limit
+        for page in pages if isinstance(pages, list) else []:
+            if remaining <= 0 or not isinstance(page, dict):
+                break
+            text = page.get("text")
+            page_number = page.get("page")
+            if not isinstance(text, str) or not isinstance(page_number, int):
+                continue
+            excerpt = text[:remaining]
+            remaining -= len(excerpt)
+            previews.append(
+                {
+                    "page": page_number,
+                    "excerpt": excerpt,
+                    "excerpt_truncated": len(excerpt) < len(text),
+                    "text_sha256": page.get("text_sha256"),
+                    "trust_label": "UNTRUSTED_SOURCE",
+                }
+            )
+        return {**source, "document": record, "page_previews": previews}
+
+    def _store_literature_artifact(
+        self, *, category: str, artifact_id: str, payload: Mapping[str, object]
+    ) -> tuple[str, str]:
+        """Write one immutable JSON artifact below the fixed literature root."""
+        if category not in {"discoveries", "extractions"}:
+            raise DataError("unsupported literature artifact category")
+        encoded = (
+            json.dumps(
+                _json_object(payload, "literature artifact"),
+                sort_keys=True,
+                indent=2,
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode()
+        digest = hashlib.sha256(encoded).hexdigest()
+        relative = Path("research") / "literature" / category / f"{artifact_id}.json"
+        target = self._data_dir / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_symlink():
+            raise DataError("literature artifact path must not be a symlink")
+        if target.exists():
+            if not target.is_file() or target.read_bytes() != encoded:
+                raise DataError("literature artifact identifier collision")
+        else:
+            descriptor, raw_temporary = tempfile.mkstemp(
+                prefix=f".{artifact_id}.", suffix=".tmp", dir=target.parent
+            )
+            temporary = Path(raw_temporary)
+            try:
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(encoded)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, target)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
+        return relative.as_posix(), digest
+
+    def record_literature_discovery(
+        self,
+        project_id: str,
+        *,
+        artifact: Mapping[str, object],
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Record one bounded worker discovery without granting evidence authority."""
+        payload = _json_object(artifact, "literature discovery")
+        if payload.get("schema") != "LiteratureDiscoveryV1":
+            raise DataError("literature discovery has an unsupported schema")
+        raw_discovery_id = payload.get("discovery_id")
+        if not isinstance(raw_discovery_id, str):
+            raise DataError("literature discovery identifier is missing")
+        discovery_id = _require_content_id(
+            raw_discovery_id, "literature discovery_id", prefix="ld"
+        )
+        query = _required_text(payload.get("query"), "literature discovery query", max_length=500)
+        receipt = payload.get("receipt")
+        if not isinstance(receipt, Mapping) or receipt.get("receipt_id") != discovery_id:
+            raise DataError("literature discovery receipt does not match its identifier")
+        raw_budget = receipt.get("budget")
+        if not isinstance(raw_budget, Mapping):
+            raise DataError("literature discovery budget is missing")
+        budget = _json_object(raw_budget, "literature discovery budget")
+        relative, artifact_sha256 = self._store_literature_artifact(
+            category="discoveries", artifact_id=discovery_id, payload=payload
+        )
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            connection.execute(
+                """INSERT OR IGNORE INTO literature_discoveries
+                (discovery_id, project_id, query, artifact_sha256, artifact_relpath,
+                    budget_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    discovery_id,
+                    project_id,
+                    query,
+                    artifact_sha256,
+                    relative,
+                    _canonical_json(budget, "literature discovery budget"),
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM literature_discoveries WHERE discovery_id = ?", (discovery_id,)
+            ).fetchone()
+        if row is None or row["project_id"] != project_id:
+            raise DataError("literature discovery belongs to another project")
+        return {**dict(row), "budget": budget, "artifact": payload}
+
+    def get_literature_discovery(self, project_id: str, discovery_id: str) -> dict[str, object]:
+        did = _require_content_id(discovery_id, "literature discovery_id", prefix="ld")
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            row = connection.execute(
+                "SELECT * FROM literature_discoveries WHERE discovery_id = ? AND project_id = ?",
+                (did, project_id),
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown literature discovery {did!r}")
+        path = self._data_dir / str(row["artifact_relpath"])
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != row["artifact_sha256"]:
+            raise DataError("literature discovery artifact failed integrity verification")
+        payload = _decode_json(raw.decode(), "literature discovery artifact")
+        if not isinstance(payload, dict) or payload.get("discovery_id") != did:
+            raise DataError("literature discovery artifact identity is corrupt")
+        result = dict(row)
+        result["budget"] = _decode_json(result.pop("budget_json"), "literature discovery budget")
+        result.pop("artifact_relpath", None)
+        result["artifact"] = payload
+        return result
+
+    def record_research_document_text(
+        self,
+        source_id: str,
+        *,
+        artifact: Mapping[str, object],
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Bind an immutable ResearchDocumentTextV1 artifact to its acquired source."""
+        payload = _json_object(artifact, "research document text")
+        if payload.get("schema") != "ResearchDocumentTextV1":
+            raise DataError("research document text has an unsupported schema")
+        raw_extraction_id = payload.get("extraction_id")
+        if not isinstance(raw_extraction_id, str):
+            raise DataError("research extraction identifier is missing")
+        extraction_id = _require_content_id(
+            raw_extraction_id, "research extraction_id", prefix="rx"
+        )
+        source_sha = _required_text(
+            payload.get("source_sha256"), "research document source_sha256", max_length=64
+        )
+        config_hash = _required_text(
+            payload.get("config_hash"), "research document config_hash", max_length=64
+        )
+        if _SHA256_RE.fullmatch(source_sha) is None or _SHA256_RE.fullmatch(config_hash) is None:
+            raise DataError("research document hashes must be lowercase SHA-256 digests")
+        status = _enum_value(
+            payload.get("status"),
+            "research document status",
+            frozenset({"extracted", "encrypted", "image_only", "truncated", "parser_failed"}),
+        )
+        pages = payload.get("pages")
+        warnings = payload.get("warnings")
+        if not isinstance(pages, list) or not isinstance(warnings, list) or any(
+            not isinstance(warning, str) for warning in warnings
+        ):
+            raise DataError("research document pages or warnings are invalid")
+        page_count = payload.get("page_count")
+        character_count = payload.get("character_count")
+        if (
+            isinstance(page_count, bool)
+            or not isinstance(page_count, int)
+            or page_count != len(pages)
+            or isinstance(character_count, bool)
+            or not isinstance(character_count, int)
+            or character_count < 0
+        ):
+            raise DataError("research document counts are inconsistent")
+        relative, artifact_sha256 = self._store_literature_artifact(
+            category="extractions", artifact_id=extraction_id, payload=payload
+        )
+        sid = _require_content_id(source_id, "research source_id", prefix="rs")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            source = connection.execute(
+                "SELECT content_hash FROM research_source_records WHERE source_id = ?", (sid,)
+            ).fetchone()
+            if source is None:
+                raise DataError(f"unknown research source {sid!r}")
+            if source["content_hash"] != source_sha:
+                raise DataError("research document source digest does not match source receipt")
+            connection.execute(
+                """INSERT OR IGNORE INTO research_document_texts
+                (extraction_id, source_id, source_sha256, artifact_sha256, artifact_relpath,
+                    status, page_count, character_count, parser_version, config_hash,
+                    warnings_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    extraction_id,
+                    sid,
+                    source_sha,
+                    artifact_sha256,
+                    relative,
+                    status,
+                    page_count,
+                    character_count,
+                    _required_text(
+                        payload.get("parser_version"),
+                        "research document parser_version",
+                        max_length=64,
+                    ),
+                    config_hash,
+                    _canonical_json(warnings, "research document warnings"),
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM research_document_texts WHERE extraction_id = ?", (extraction_id,)
+            ).fetchone()
+        if row is None or row["source_id"] != sid:
+            raise DataError("research document extraction belongs to another source")
+        return self.get_research_document_text(extraction_id)
+
+    def get_research_document_text(self, extraction_id: str) -> dict[str, object]:
+        eid = _require_content_id(extraction_id, "research extraction_id", prefix="rx")
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM research_document_texts WHERE extraction_id = ?", (eid,)
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research extraction {eid!r}")
+        raw = (self._data_dir / str(row["artifact_relpath"])).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != row["artifact_sha256"]:
+            raise DataError("research document text failed integrity verification")
+        artifact = _decode_json(raw.decode(), "research document text artifact")
+        if not isinstance(artifact, dict) or artifact.get("extraction_id") != eid:
+            raise DataError("research document text identity is corrupt")
+        result = dict(row)
+        result.pop("artifact_relpath", None)
+        result["warnings"] = _decode_json(result.pop("warnings_json"), "document warnings")
+        result["artifact"] = artifact
+        return result
+
+    def _verified_source_anchor(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        source_id: str,
+        anchor: Mapping[str, object],
+    ) -> dict[str, object]:
+        raw_extraction_id = anchor.get("extraction_id")
+        if not isinstance(raw_extraction_id, str):
+            raise DataError("source anchor extraction identifier is missing")
+        extraction_id = _require_content_id(
+            raw_extraction_id, "source anchor extraction_id", prefix="rx"
+        )
+        page = anchor.get("page")
+        char_start = anchor.get("char_start")
+        char_end = anchor.get("char_end")
+        exact_hash = _required_text(
+            anchor.get("exact_text_sha256"), "source anchor exact_text_sha256", max_length=64
+        )
+        if (
+            isinstance(page, bool)
+            or not isinstance(page, int)
+            or page < 1
+            or isinstance(char_start, bool)
+            or not isinstance(char_start, int)
+            or char_start < 0
+            or isinstance(char_end, bool)
+            or not isinstance(char_end, int)
+            or char_end <= char_start
+            or char_end - char_start > 2_000
+            or _SHA256_RE.fullmatch(exact_hash) is None
+        ):
+            raise DataError("source anchor coordinates or hash are invalid")
+        document = connection.execute(
+            "SELECT * FROM research_document_texts WHERE extraction_id = ? AND source_id = ?",
+            (extraction_id, source_id),
+        ).fetchone()
+        if document is None or document["status"] != "extracted":
+            raise DataError("source anchor requires an extracted document for this source")
+        raw = (self._data_dir / str(document["artifact_relpath"])).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != document["artifact_sha256"]:
+            raise DataError("source anchor document failed integrity verification")
+        artifact = _decode_json(raw.decode(), "source anchor document")
+        if not isinstance(artifact, dict) or not isinstance(artifact.get("pages"), list):
+            raise DataError("source anchor document is corrupt")
+        pages = artifact["pages"]
+        if page > len(pages) or not isinstance(pages[page - 1], dict):
+            raise DataError("source anchor page is outside the extracted document")
+        text = pages[page - 1].get("text")
+        if not isinstance(text, str) or char_end > len(text):
+            raise DataError("source anchor span is outside the extracted page")
+        excerpt = text[char_start:char_end]
+        if not excerpt or hashlib.sha256(excerpt.encode()).hexdigest() != exact_hash:
+            raise DataError("source anchor exact text hash does not match the extracted page")
+        return {
+            "schema": "SourceAnchorV1",
+            "extraction_id": extraction_id,
+            "page": page,
+            "char_start": char_start,
+            "char_end": char_end,
+            "exact_text_sha256": exact_hash,
+            "excerpt": excerpt,
+            "trust_label": "UNTRUSTED_SOURCE",
+        }
+
     @staticmethod
     def _source_claim_view(row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
         result = dict(row)
@@ -3582,6 +4064,34 @@ class ControlStore:
         if not isinstance(markets, list) or any(not isinstance(item, str) for item in markets):
             raise DataError("corrupt research claim markets")
         result["markets"] = markets
+        return result
+
+    def _source_claim_with_anchor(
+        self, connection: sqlite3.Connection, row: sqlite3.Row | dict[str, object]
+    ) -> dict[str, object]:
+        result = self._source_claim_view(row)
+        anchor = connection.execute(
+            """SELECT extraction_id, page, char_start, char_end, exact_text_sha256
+            FROM research_source_claim_anchors WHERE claim_id = ? AND revision = ?""",
+            (result["claim_id"], result["revision"]),
+        ).fetchone()
+        if anchor is not None:
+            verified = self._verified_source_anchor(
+                connection, source_id=str(result["source_id"]), anchor=dict(anchor)
+            )
+            result["source_anchor"] = verified
+            result["anchor_state"] = "verified"
+            return result
+        source = connection.execute(
+            "SELECT content_hash FROM research_source_records WHERE source_id = ?",
+            (result["source_id"],),
+        ).fetchone()
+        result["source_anchor"] = None
+        result["anchor_state"] = (
+            "LEGACY — NO TEXT ANCHOR"
+            if source is not None and source["content_hash"] is not None
+            else "metadata_only"
+        )
         return result
 
     def draft_source_claim(
@@ -3599,6 +4109,7 @@ class ControlStore:
         limitations: str,
         author: str,
         author_kind: str,
+        source_anchor: Mapping[str, object] | None = None,
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Draft one claim-level literature statement (spec §7.2, ADR-0024).
@@ -3637,19 +4148,28 @@ class ControlStore:
         with self._transaction(write=True) as connection:
             self._require_project(connection, project_id)
             source = connection.execute(
-                "SELECT project_id FROM research_source_records WHERE source_id = ?",
+                "SELECT project_id, content_hash FROM research_source_records WHERE source_id = ?",
                 (clean_source,),
             ).fetchone()
             if source is None or source["project_id"] != identity["project_id"]:
                 raise DataError(f"unknown research source {clean_source!r} for this project")
             self._require_research_contract(connection, project_id, clean_contract)
+            verified_anchor = (
+                None
+                if source_anchor is None
+                else self._verified_source_anchor(
+                    connection, source_id=clean_source, anchor=source_anchor
+                )
+            )
+            if source["content_hash"] is not None and verified_anchor is None:
+                raise DataError("new full-text claims require a verified SourceAnchorV1")
             existing = connection.execute(
                 "SELECT * FROM research_source_claims WHERE claim_id = ? ORDER BY revision DESC "
                 "LIMIT 1",
                 (claim_id,),
             ).fetchone()
             if existing is not None:
-                return self._source_claim_view(existing)
+                return self._source_claim_with_anchor(connection, existing)
             connection.execute(
                 """INSERT INTO research_source_claims (
                     claim_id, revision, project_id, source_id, contract_id, claim_text,
@@ -3673,6 +4193,21 @@ class ControlStore:
                     timestamp,
                 ),
             )
+            if verified_anchor is not None:
+                connection.execute(
+                    """INSERT INTO research_source_claim_anchors
+                    (claim_id, revision, extraction_id, page, char_start, char_end,
+                        exact_text_sha256)
+                    VALUES (?, 1, ?, ?, ?, ?, ?)""",
+                    (
+                        claim_id,
+                        verified_anchor["extraction_id"],
+                        verified_anchor["page"],
+                        verified_anchor["char_start"],
+                        verified_anchor["char_end"],
+                        verified_anchor["exact_text_sha256"],
+                    ),
+                )
         return {
             "claim_id": claim_id,
             "revision": 1,
@@ -3691,6 +4226,8 @@ class ControlStore:
             "author_kind": clean_author_kind,
             "screened_by": None,
             "created_at": timestamp,
+            "source_anchor": verified_anchor,
+            "anchor_state": "verified" if verified_anchor is not None else "metadata_only",
         }
 
     def screen_source_claim(
@@ -3716,6 +4253,26 @@ class ControlStore:
                 raise DataError(f"unknown research claim {clean_claim!r}")
             if latest["status"] == "screened":
                 raise DataError(f"research claim {clean_claim!r} is already screened")
+            source = connection.execute(
+                "SELECT content_hash FROM research_source_records WHERE source_id = ?",
+                (latest["source_id"],),
+            ).fetchone()
+            anchor_row = connection.execute(
+                """SELECT extraction_id, page, char_start, char_end, exact_text_sha256
+                FROM research_source_claim_anchors WHERE claim_id = ? AND revision = ?""",
+                (clean_claim, latest["revision"]),
+            ).fetchone()
+            verified_anchor = None
+            if anchor_row is not None:
+                verified_anchor = self._verified_source_anchor(
+                    connection, source_id=str(latest["source_id"]), anchor=dict(anchor_row)
+                )
+            if (
+                source is not None
+                and source["content_hash"] is not None
+                and verified_anchor is None
+            ):
+                raise DataError("full-text claim screening requires a verified SourceAnchorV1")
             revision = int(latest["revision"]) + 1
             connection.execute(
                 """INSERT INTO research_source_claims (
@@ -3742,13 +4299,38 @@ class ControlStore:
                     timestamp,
                 ),
             )
+            if verified_anchor is not None:
+                connection.execute(
+                    """INSERT INTO research_source_claim_anchors
+                    (claim_id, revision, extraction_id, page, char_start, char_end,
+                        exact_text_sha256)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        clean_claim,
+                        revision,
+                        verified_anchor["extraction_id"],
+                        verified_anchor["page"],
+                        verified_anchor["char_start"],
+                        verified_anchor["char_end"],
+                        verified_anchor["exact_text_sha256"],
+                    ),
+                )
             row = connection.execute(
                 "SELECT * FROM research_source_claims WHERE claim_id = ? AND revision = ?",
                 (clean_claim, revision),
             ).fetchone()
         if row is None:  # pragma: no cover - written in this transaction.
             raise DataError("control store failed to persist research claim screening")
-        return self._source_claim_view(row)
+        result = self._source_claim_view(row)
+        result["source_anchor"] = verified_anchor
+        result["anchor_state"] = (
+            "verified"
+            if verified_anchor is not None
+            else "LEGACY — NO TEXT ANCHOR"
+            if source is not None and source["content_hash"] is not None
+            else "metadata_only"
+        )
+        return result
 
     def record_source_claim_owner_direction(
         self,
@@ -3844,7 +4426,7 @@ class ControlStore:
                     ORDER BY claims.created_at DESC, claims.claim_id LIMIT ? OFFSET ?""",
                     (project_id, limit, offset),
                 ).fetchall()
-        return [self._source_claim_view(row) for row in rows]
+            return [self._source_claim_with_anchor(connection, row) for row in rows]
 
     def list_research_decisions(self, project_id: str) -> list[dict[str, object]]:
         """Return the append-only owner decision history for one case, oldest first."""
@@ -3881,6 +4463,39 @@ class ControlStore:
                 [*params, limit, offset],
             ).fetchall()
         return [self._research_source_view(row) for row in rows]
+
+    def list_research_sources(
+        self, project_id: str, *, limit: int = 200, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """List project sources with honest acquisition/extraction state."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT sources.*, documents.extraction_id, documents.status AS extraction_status,
+                    documents.page_count, documents.character_count, documents.warnings_json
+                FROM research_source_records AS sources
+                LEFT JOIN research_document_texts AS documents
+                    ON documents.source_id = sources.source_id
+                WHERE sources.project_id = ?
+                ORDER BY sources.created_at DESC, sources.source_id LIMIT ? OFFSET ?""",
+                (project_id, limit, offset),
+            ).fetchall()
+        results: list[dict[str, object]] = []
+        for row in rows:
+            source = self._research_source_view(row)
+            source["extraction_id"] = source.pop("extraction_id", None)
+            source["extraction_status"] = source.pop("extraction_status", None)
+            source["page_count"] = source.pop("page_count", None)
+            source["character_count"] = source.pop("character_count", None)
+            warnings_raw = source.pop("warnings_json", None)
+            source["extraction_warnings"] = (
+                []
+                if warnings_raw is None
+                else _decode_json(warnings_raw, "research source extraction warnings")
+            )
+            results.append(source)
+        return results
 
     def create_research_source_pack(
         self,
@@ -5859,6 +6474,7 @@ class ControlStore:
                 FROM research_case_notes WHERE project_id = ? ORDER BY sequence""",
                 (pid,),
             )
+            screened_claims, screened_claims_truncated = self._screened_claims(connection, pid)
             payload_contract = contract_view["payload"]
             if not isinstance(payload_contract, dict):
                 raise DataError("corrupt research contract payload")
@@ -5909,6 +6525,8 @@ class ControlStore:
                 "attempts_truncated": attempts_truncated,
                 "sources": sources,
                 "sources_truncated": sources_truncated,
+                "screened_source_claims": screened_claims,
+                "screened_source_claims_truncated": screened_claims_truncated,
                 "notes": notes,
                 "notes_truncated": notes_truncated,
                 "kind_specific": kind_specific,
@@ -5921,7 +6539,6 @@ class ControlStore:
                 # Honest availability: planes that have not shipped are named, not faked.
                 "unavailable_context": {
                     "dataset_refs": "registered research datasets arrive with the data plane",
-                    "source_claims": "claim-level literature arrives with the source plane",
                 },
             }
             packet_id = _content_id("cp", payload)
@@ -6683,7 +7300,10 @@ class ControlStore:
             ORDER BY claims.created_at, claims.claim_id LIMIT ?""",
             (project_id, _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
         ).fetchall()
-        views = [self._source_claim_view(row) for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]]
+        views = [
+            self._source_claim_with_anchor(connection, row)
+            for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]
+        ]
         return views, len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT
 
     def _verified_chart_references(

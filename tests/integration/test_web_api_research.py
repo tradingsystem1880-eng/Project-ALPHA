@@ -194,6 +194,62 @@ def test_research_rest_surface_cannot_approve_decide_reveal_or_confirm(
     )
 
 
+def test_literature_routes_are_explicit_bounded_and_non_authoritative(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured_calls: list[tuple[str, dict[str, object]]] = []
+
+    def fake_discover(project_id: str, **kwargs: object) -> dict[str, object]:
+        captured_calls.append((project_id, dict(kwargs)))
+        return {
+            "discovery_id": "ld_" + "a" * 64,
+            "query": kwargs["query"],
+            "candidates": [],
+            "receipt": {"trust_label": "UNTRUSTED_SOURCE"},
+        }
+
+    def fake_acquire(project_id: str, **kwargs: object) -> dict[str, object]:
+        captured_calls.append((project_id, dict(kwargs)))
+        return {
+            "source": {"source_id": "rs_" + "b" * 64},
+            "document": {"status": "image_only", "trust_label": "UNTRUSTED_SOURCE"},
+            "acquisition": {"sha256": "c" * 64},
+        }
+
+    monkeypatch.setattr(_research, "discover_literature", fake_discover)
+    monkeypatch.setattr(_research, "acquire_literature", fake_acquire)
+    client = _client(tmp_path, monkeypatch)
+    project_id = "00000000-0000-4000-8000-000000000001"
+    discovered = client.post(
+        f"/api/research/cases/{project_id}/literature/discover",
+        json={
+            "query": "double bottom returns",
+            "unpaywall_email": "owner@example.com",
+            "max_candidates": 20,
+            "max_full_texts": 5,
+        },
+    )
+    assert discovered.status_code == 200
+    assert discovered.json()["receipt"]["trust_label"] == "UNTRUSTED_SOURCE"
+    acquired = client.post(
+        f"/api/research/cases/{project_id}/literature/acquire",
+        json={"discovery_id": "ld_" + "a" * 64, "candidate_id": "lc_" + "d" * 64},
+    )
+    assert acquired.status_code == 200
+    assert acquired.json()["document"]["status"] == "image_only"
+    assert [call[0] for call in captured_calls] == [project_id, project_id]
+
+    assert client.post(
+        f"/api/research/cases/{project_id}/literature/discover",
+        json={
+            "query": "x",
+            "unpaywall_email": "owner@example.com",
+            "max_candidates": 21,
+            "max_full_texts": 5,
+        },
+    ).status_code == 422
+
+
 def test_research_report_route_validates_terminal_gate_packet_union(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

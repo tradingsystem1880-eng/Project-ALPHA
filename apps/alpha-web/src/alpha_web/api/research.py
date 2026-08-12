@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 from alpha_web import _research
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
+    LiteratureAcquisitionRequest,
+    LiteratureDiscoveryRequest,
     ResearchCaptureRequest,
     ResearchCaptureResponse,
     ResearchCase,
@@ -93,6 +95,40 @@ def research_evidence_hub(project_id: str) -> dict[str, Any]:
         return _research.evidence_hub(project_id, data_dir=data_dir())
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/literature/discover")
+def research_literature_discover(
+    project_id: str, body: LiteratureDiscoveryRequest
+) -> dict[str, Any]:
+    """Explicitly search approved scholarly services; candidates remain untrusted."""
+    try:
+        return _research.discover_literature(
+            project_id,
+            data_dir=data_dir(),
+            query=body.query,
+            unpaywall_email=body.unpaywall_email,
+            max_candidates=body.max_candidates,
+            max_full_texts=body.max_full_texts,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/literature/acquire")
+def research_literature_acquire(
+    project_id: str, body: LiteratureAcquisitionRequest
+) -> dict[str, Any]:
+    """Acquire and extract one recorded direct-PDF candidate without evidence authority."""
+    try:
+        return _research.acquire_literature(
+            project_id,
+            data_dir=data_dir(),
+            discovery_id=body.discovery_id,
+            candidate_id=body.candidate_id,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get(

@@ -218,9 +218,10 @@ occurs:
 
 ## Literature acquisition worker (`workers/literature`, ADR-0024)
 
-The isolated literature worker introduces **zero third-party runtime dependencies**: it is
-Python-stdlib-only (urllib, json, hashlib, xml.etree with DOCTYPE/ENTITY markup refused).
-Its dev group pins the same ruff/mypy/pytest tools already reviewed for the Qlib worker.
+The isolated literature worker has one runtime dependency: `pypdf==6.14.2` (BSD-3-Clause)
+for bounded PDF text extraction. Discovery, transport, validation, hashing, and XML/JSON parsing
+remain stdlib-only; arXiv XML refuses DOCTYPE/ENTITY markup. Its dev group pins the same
+ruff/mypy/pytest tools already reviewed for the Qlib worker.
 `workers/literature/uv.lock` is the exact resolution input for that optional process. Network
 access is limited to the ADR-0024 approved metadata services (OpenAlex, Crossref, Unpaywall,
 arXiv) and open-access/owner-provided documents; every stored object carries an

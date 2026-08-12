@@ -869,7 +869,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 3
+    assert SCHEMA_VERSION == 4
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -883,7 +883,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
             "SELECT project_id, research_required, origin FROM project_research_governance"
         )
     }
-    assert migrated.execute("PRAGMA user_version").fetchone() == (3,)
+    assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
     tables = {
         str(row[0])
         for row in migrated.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -1186,11 +1186,11 @@ def test_static_schema_helpers_fail_closed_and_rollback(
 def test_locked_v1_migration_rejects_unsupported_version_and_rolls_back(tmp_path: Path) -> None:
     database = tmp_path / "unsupported.sqlite3"
     connection = sqlite3.connect(database, isolation_level=None)
-    connection.execute("PRAGMA user_version = 4")
-    with pytest.raises(DataError, match="unsupported control store schema version 4"):
+    connection.execute("PRAGMA user_version = 5")
+    with pytest.raises(DataError, match="unsupported control store schema version 5"):
         control_store_module._migrate_schema_v1(connection, database)
     assert connection.in_transaction is False
-    assert connection.execute("PRAGMA user_version").fetchone() == (4,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (5,)
     connection.close()
 
 
@@ -1338,7 +1338,7 @@ def test_existing_schema_v2_reopen_adds_launch_reservation_tables(tmp_path: Path
     _project(store)
     database = tmp_path / "control" / "workstation.sqlite3"
     connection = sqlite3.connect(database)
-    assert connection.execute("PRAGMA user_version").fetchone() == (3,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
     connection.execute("DROP TABLE research_launch_attempt_links")
     connection.execute("DROP TABLE research_launch_reservations")
     connection.commit()
@@ -4440,6 +4440,96 @@ def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> Non
             author="codex",
             author_kind="agent",
         )
+
+
+def test_full_text_claim_requires_and_reverifies_source_anchor(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    contract_id = str(store.research_case_summary(project_id)["active_contract_id"])
+    source_sha = hashlib.sha256(b"acquired-pdf").hexdigest()
+    source = store.create_research_source(
+        project_id,
+        title="Anchored paper",
+        locator="https://arxiv.org/pdf/1234.5678",
+        provider="arxiv",
+        access_mode="open_access",
+        content_hash=source_sha,
+        at=START + timedelta(minutes=1),
+    )
+    text = "The event study reports a small positive effect with wide uncertainty."
+    extraction_id = "rx_" + hashlib.sha256(b"extraction").hexdigest()
+    artifact = {
+        "extraction_id": extraction_id,
+        "schema": "ResearchDocumentTextV1",
+        "source_sha256": source_sha,
+        "parser": "pypdf",
+        "parser_version": "6.14.2",
+        "config_hash": hashlib.sha256(b"config").hexdigest(),
+        "normalization": "NFC_LF_RSTRIP_V1",
+        "status": "extracted",
+        "pages": [
+            {
+                "page": 1,
+                "text": text,
+                "character_count": len(text),
+                "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            }
+        ],
+        "page_count": 1,
+        "character_count": len(text),
+        "warnings": [],
+        "trust_label": "UNTRUSTED_SOURCE",
+    }
+    store.record_research_document_text(str(source["source_id"]), artifact=artifact)
+
+    with pytest.raises(DataError, match="SourceAnchorV1"):
+        store.draft_source_claim(
+            project_id,
+            source_id=str(source["source_id"]),
+            contract_id=contract_id,
+            claim_text="Small positive effect with uncertainty.",
+            direction="supports",
+            strength="weak",
+            method_summary="Event study.",
+            sample_summary="Reported sample.",
+            markets=["US_EQUITY"],
+            limitations="Wide uncertainty.",
+            author="codex",
+            author_kind="agent",
+        )
+
+    excerpt = "small positive effect"
+    start = text.index(excerpt)
+    claim = store.draft_source_claim(
+        project_id,
+        source_id=str(source["source_id"]),
+        contract_id=contract_id,
+        claim_text="Small positive effect with uncertainty.",
+        direction="supports",
+        strength="weak",
+        method_summary="Event study.",
+        sample_summary="Reported sample.",
+        markets=["US_EQUITY"],
+        limitations="Wide uncertainty.",
+        author="codex",
+        author_kind="agent",
+        source_anchor={
+            "extraction_id": extraction_id,
+            "page": 1,
+            "char_start": start,
+            "char_end": start + len(excerpt),
+            "exact_text_sha256": hashlib.sha256(excerpt.encode()).hexdigest(),
+        },
+    )
+    assert claim["anchor_state"] == "verified"
+    assert claim["source_anchor"]["excerpt"] == excerpt
+    screened = store.screen_source_claim(project_id, claim_id=str(claim["claim_id"]), actor="owner")
+    assert screened["anchor_state"] == "verified"
+
+    extraction_path = next((tmp_path / "research" / "literature" / "extractions").glob("*.json"))
+    extraction_path.write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="integrity"):
+        store.list_source_claims(project_id)
     with pytest.raises(DataError, match="unknown research source"):
         store.draft_source_claim(
             project_id,

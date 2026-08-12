@@ -134,6 +134,66 @@ def evidence_hub(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     )
 
 
+def discover_literature(
+    project_id: str,
+    *,
+    data_dir: Path,
+    query: str,
+    unpaywall_email: str,
+    max_candidates: int,
+    max_full_texts: int,
+) -> dict[str, Any]:
+    """Run one explicit bounded discovery through the isolated worker."""
+    return _object(
+        _run_json(
+            [
+                "research",
+                "sources",
+                "discover",
+                project_id,
+                "--query",
+                query,
+                "--unpaywall-email",
+                unpaywall_email,
+                "--max-candidates",
+                str(max_candidates),
+                "--max-full-texts",
+                str(max_full_texts),
+                "--json",
+            ],
+            data_dir=data_dir,
+            timeout_seconds=240.0,
+        ),
+        "literature discovery",
+    )
+
+
+def acquire_literature(
+    project_id: str,
+    *,
+    data_dir: Path,
+    discovery_id: str,
+    candidate_id: str,
+) -> dict[str, Any]:
+    """Acquire and extract one exact candidate; this grants no evidence authority."""
+    return _object(
+        _run_json(
+            [
+                "research",
+                "sources",
+                "acquire",
+                project_id,
+                discovery_id,
+                candidate_id,
+                "--json",
+            ],
+            data_dir=data_dir,
+            timeout_seconds=240.0,
+        ),
+        "literature acquisition",
+    )
+
+
 def context_packets(
     project_id: str, *, data_dir: Path, limit: int = 50, offset: int = 0
 ) -> dict[str, Any]:

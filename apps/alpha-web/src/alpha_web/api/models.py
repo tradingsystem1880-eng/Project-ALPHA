@@ -1737,6 +1737,11 @@ class HubSource(StrictModel):
     provider: str
     access_mode: str
     screening: str | None
+    extraction_id: str | None
+    extraction_status: str | None
+    page_count: int | None
+    character_count: int | None
+    extraction_warnings: list[str]
 
 
 class HubFinding(StrictModel):
@@ -1780,7 +1785,21 @@ class HubData(StrictModel):
 class HubLiterature(StrictModel):
     claims: list[JsonObject]
     sources: list[HubSource]
+    source_packs: list[JsonObject]
+    recommendation: JsonObject
     status: str
+
+
+class LiteratureDiscoveryRequest(StrictModel):
+    query: str = Field(min_length=1, max_length=500)
+    unpaywall_email: str = Field(min_length=3, max_length=320)
+    max_candidates: int = Field(default=20, ge=1, le=20)
+    max_full_texts: int = Field(default=5, ge=0, le=5)
+
+
+class LiteratureAcquisitionRequest(StrictModel):
+    discovery_id: str = Field(pattern=r"^ld_[0-9a-f]{64}$")
+    candidate_id: str = Field(pattern=r"^lc_[0-9a-f]{64}$")
 
 
 class HubMechanism(StrictModel):

@@ -180,6 +180,45 @@ def test_schema_v2_migrates_once_with_exact_backup(tmp_path: Path) -> None:
         backup.close()
 
 
+def test_schema_v3_migrates_literature_tables_with_exact_backup(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    database = tmp_path / "control" / "workstation.sqlite3"
+    connection = sqlite3.connect(database)
+    for trigger in (
+        "literature_discoveries_no_update",
+        "literature_discoveries_no_delete",
+        "research_document_texts_no_update",
+        "research_document_texts_no_delete",
+        "research_source_claim_anchors_no_update",
+        "research_source_claim_anchors_no_delete",
+    ):
+        connection.execute(f"DROP TRIGGER {trigger}")
+    for table in (
+        "research_source_claim_anchors",
+        "research_document_texts",
+        "literature_discoveries",
+    ):
+        connection.execute(f"DROP TABLE {table}")
+    connection.execute("PRAGMA user_version = 3")
+    connection.commit()
+    expected_rows = connection.execute("SELECT * FROM projects").fetchall()
+    connection.close()
+
+    assert store.list_projects()[0]["project_id"] == PROJECT_ID
+    migrated = sqlite3.connect(database)
+    backup = sqlite3.connect(database.with_name("workstation.sqlite3.v3.bak"))
+    try:
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        assert backup.execute("PRAGMA user_version").fetchone() == (3,)
+        assert backup.execute("SELECT * FROM projects").fetchall() == expected_rows
+        assert migrated.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'research_document_texts'"
+        ).fetchone() == (1,)
+    finally:
+        migrated.close()
+        backup.close()
+
+
 def test_owner_store_rejects_invalid_enrollment_and_challenge_shapes(tmp_path: Path) -> None:
     store = _store(tmp_path)
     with pytest.raises(DataError, match="token hash"):

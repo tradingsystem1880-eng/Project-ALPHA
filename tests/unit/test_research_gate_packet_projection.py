@@ -53,6 +53,20 @@ class _FakeStore:
         del project_id, include_history, limit, offset
         return []
 
+    def list_research_sources(
+        self, project_id: str, *, limit: int = 200, offset: int = 0
+    ) -> list[dict[str, object]]:
+        del project_id, limit, offset
+        rows = self.inputs.get("sources")
+        return rows if isinstance(rows, list) else []
+
+    def list_research_source_packs(
+        self, project_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        del project_id, limit, offset
+        rows = self.inputs.get("source_packs")
+        return rows if isinstance(rows, list) else []
+
 
 def test_active_case_preserves_progress_report_and_does_not_read_terminal_inputs() -> None:
     summary: dict[str, object] = {

@@ -1322,6 +1322,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/literature/acquire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Literature Acquire
+         * @description Acquire and extract one recorded direct-PDF candidate without evidence authority.
+         */
+        post: operations["research_literature_acquire_api_research_cases__project_id__literature_acquire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/literature/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Literature Discover
+         * @description Explicitly search approved scholarly services; candidates remain untrusted.
+         */
+        post: operations["research_literature_discover_api_research_cases__project_id__literature_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/notes": {
         parameters: {
             query?: never;
@@ -4420,6 +4460,9 @@ export interface components {
         HubLiterature: {
             /** Claims */
             claims: components["schemas"]["JsonObject"][];
+            recommendation: components["schemas"]["JsonObject"];
+            /** Source Packs */
+            source_packs: components["schemas"]["JsonObject"][];
             /** Sources */
             sources: components["schemas"]["HubSource"][];
             /** Status */
@@ -4467,8 +4510,18 @@ export interface components {
         HubSource: {
             /** Access Mode */
             access_mode: string;
+            /** Character Count */
+            character_count: number | null;
+            /** Extraction Id */
+            extraction_id: string | null;
+            /** Extraction Status */
+            extraction_status: string | null;
+            /** Extraction Warnings */
+            extraction_warnings: string[];
             /** Locator */
             locator: string;
+            /** Page Count */
+            page_count: number | null;
             /** Provider */
             provider: string;
             /** Screening */
@@ -4654,6 +4707,30 @@ export interface components {
             local_only: boolean;
             /** Path */
             path: string | null;
+        };
+        /** LiteratureAcquisitionRequest */
+        LiteratureAcquisitionRequest: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Discovery Id */
+            discovery_id: string;
+        };
+        /** LiteratureDiscoveryRequest */
+        LiteratureDiscoveryRequest: {
+            /**
+             * Max Candidates
+             * @default 20
+             */
+            max_candidates: number;
+            /**
+             * Max Full Texts
+             * @default 5
+             */
+            max_full_texts: number;
+            /** Query */
+            query: string;
+            /** Unpaywall Email */
+            unpaywall_email: string;
         };
         /** MlCosts */
         MlCosts: {
@@ -10529,6 +10606,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchLaunchResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_literature_acquire_api_research_cases__project_id__literature_acquire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiteratureAcquisitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_literature_discover_api_research_cases__project_id__literature_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiteratureDiscoveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Stable, redacted Workstation error */

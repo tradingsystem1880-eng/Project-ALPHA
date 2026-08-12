@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import resource
+import shutil
 import sys
 from collections.abc import Mapping
 from dataclasses import asdict
@@ -113,6 +114,39 @@ def _emit(value: object, *, json_out: bool, fallback: str) -> None:
         typer.echo(fallback)
 
 
+def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> dict[str, object]:
+    """Run the isolated worker with no inherited credential or shell environment."""
+    import subprocess
+
+    worker_dir = Path(__file__).resolve().parents[4] / "workers" / "literature"
+    if not (worker_dir / "pyproject.toml").is_file():
+        raise DataError("literature worker is unavailable outside a checked-out repository")
+    uv_executable = shutil.which("uv")
+    if uv_executable is None or not Path(uv_executable).is_absolute():
+        raise DataError("the pinned literature worker runtime is unavailable")
+    completed = subprocess.run(  # noqa: S603 - fixed executable and closed argument vector
+        [uv_executable, "run", "--project", str(worker_dir), "literature-worker", *argv],
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds,
+        check=False,
+        env={
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "PATH": os.defpath,
+            "UV_NO_CONFIG": "1",
+            "UV_OFFLINE": "1",
+        },
+        start_new_session=True,
+        preexec_fn=_apply_literature_worker_limits,
+    )
+    if completed.returncode != 0:
+        raise DataError(
+            completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
+        )
+    return _object(completed.stdout, "literature worker output")
+
+
 def _object(raw: str, label: str) -> dict[str, object]:
     try:
         value: object = json.loads(raw)
@@ -121,6 +155,13 @@ def _object(raw: str, label: str) -> dict[str, object]:
     if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
         raise typer.BadParameter(f"{label} must be a valid JSON object")
     return cast(dict[str, object], value)
+
+
+def _required_candidate_text(candidate: Mapping[str, object], field: str) -> str:
+    value = candidate.get(field)
+    if not isinstance(value, str) or not value.strip() or "\x00" in value:
+        raise DataError(f"literature candidate {field} is missing")
+    return value.strip()
 
 
 def _answers(values: list[str]) -> dict[str, str]:
@@ -745,6 +786,9 @@ def claim_add(
     limitations: str = typer.Option(..., "--limitations", help="known limitations"),
     author: str = typer.Option("codex", "--author", help="drafting actor"),
     author_kind: str = typer.Option("agent", "--author-kind", help="owner or agent"),
+    anchor_json: str | None = typer.Option(
+        None, "--anchor-json", help="SourceAnchorV1 coordinates from an extracted page"
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Draft one claim-level literature statement; a paper is never auto-trusted."""
@@ -762,6 +806,9 @@ def claim_add(
             limitations=limitations,
             author=author,
             author_kind=author_kind,
+            source_anchor=(
+                None if anchor_json is None else _object(anchor_json, "--anchor-json")
+            ),
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -872,14 +919,6 @@ def sources_fetch(
     acquisition primitives; the stored object is content-addressed and labelled
     UNTRUSTED_SOURCE. The worker never sees credentials or shell context.
     """
-    import subprocess
-
-    worker_dir = Path(__file__).resolve().parents[4] / "workers" / "literature"
-    if not (worker_dir / "pyproject.toml").is_file():
-        raise typer.BadParameter(
-            f"literature worker missing at {worker_dir}; it is repository content and is "
-            "unavailable outside a checked-out working tree"
-        )
     target_dir = (
         AlphaSettings().data_dir / "research" / "objects" if objects_dir is None else objects_dir
     )
@@ -890,11 +929,6 @@ def sources_fetch(
             f"literature host is outside the fixed allowlist: {', '.join(unsupported_hosts)}"
         )
     argv = [
-        "uv",
-        "run",
-        "--project",
-        str(worker_dir),
-        "literature-worker",
         "fetch",
         "--url",
         url,
@@ -903,32 +937,194 @@ def sources_fetch(
     ]
     for host in allow_host:
         argv += ["--allow-host", host]
-    completed = subprocess.run(  # noqa: S603 - closed argv, no shell
-        argv,
-        capture_output=True,
-        text=True,
-        timeout=180,
-        check=False,
-        env={
-            "LANG": "C.UTF-8",
-            "LC_ALL": "C.UTF-8",
-            "PATH": os.defpath,
-            "UV_NO_CONFIG": "1",
-            "UV_OFFLINE": "1",
-        },
-        start_new_session=True,
-        preexec_fn=_apply_literature_worker_limits,
-    )
-    if completed.returncode != 0:
-        raise typer.BadParameter(
-            completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
-        )
-    result = _object(completed.stdout, "literature worker output")
+    try:
+        result = _run_literature_worker(argv)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    safe_result = {
+        key: result[key]
+        for key in ("final_url", "media_type", "byte_count", "sha256", "trust_label")
+        if key in result
+    }
     _emit(
-        result,
+        safe_result,
         json_out=json_out,
         fallback=f"stored {result.get('sha256')} ({result.get('trust_label')})",
     )
+
+
+@sources_app.command("discover")
+def sources_discover(
+    project_id: str,
+    query: str = typer.Option(..., "--query"),
+    unpaywall_email: str = typer.Option(..., "--unpaywall-email"),
+    max_candidates: int = typer.Option(20, min=1, max=20),
+    max_full_texts: int = typer.Option(5, min=0, max=5),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Explicit owner-clickable discovery; results remain untrusted candidates."""
+    try:
+        artifact = _run_literature_worker(
+            [
+                "discover",
+                "--query",
+                query,
+                "--email",
+                unpaywall_email,
+                "--max-candidates",
+                str(max_candidates),
+                "--max-full-texts",
+                str(max_full_texts),
+            ]
+        )
+        recorded = _store().record_literature_discovery(project_id, artifact=artifact)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    result = {
+        "discovery_id": recorded["discovery_id"],
+        "query": recorded["query"],
+        "candidates": artifact.get("candidates", []),
+        "receipt": artifact.get("receipt", {}),
+    }
+    candidates = artifact.get("candidates")
+    candidate_count = len(candidates) if isinstance(candidates, list) else 0
+    _emit(result, json_out=json_out, fallback=f"discovered {candidate_count} candidates")
+
+
+@sources_app.command("acquire")
+def sources_acquire(
+    project_id: str,
+    discovery_id: str,
+    candidate_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Acquire one recorded direct-PDF candidate, extract it, and idempotently link a source."""
+    settings = AlphaSettings()
+    store = ControlStore(settings.data_dir)
+    try:
+        discovery = store.get_literature_discovery(project_id, discovery_id)
+        artifact = discovery.get("artifact")
+        candidates = artifact.get("candidates") if isinstance(artifact, dict) else None
+        candidate = next(
+            (
+                row
+                for row in candidates or []
+                if isinstance(row, dict) and row.get("candidate_id") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise DataError("literature candidate is not part of the recorded discovery")
+        if candidate.get("access_state") != "direct_pdf":
+            raise DataError("literature candidate has no validated direct PDF to acquire")
+        url = candidate.get("open_access_url")
+        if not isinstance(url, str):
+            raise DataError("literature candidate direct PDF URL is missing")
+        budget = discovery.get("budget")
+        max_full_texts = budget.get("max_full_texts") if isinstance(budget, dict) else None
+        if isinstance(max_full_texts, bool) or not isinstance(max_full_texts, int):
+            raise DataError("literature discovery full-text budget is corrupt")
+        existing_sources = store.list_research_sources(project_id)
+        def belongs_to_candidate(row: Mapping[str, object]) -> bool:
+            metadata = row.get("metadata")
+            return (
+                isinstance(metadata, dict)
+                and metadata.get("candidate_id") == candidate_id
+                and metadata.get("discovery_id") == discovery_id
+            )
+
+        existing_source = next(
+            (row for row in existing_sources if belongs_to_candidate(row)), None
+        )
+        if existing_source is not None:
+            extraction_id = existing_source.get("extraction_id")
+            if not isinstance(extraction_id, str):
+                raise DataError("existing literature source has no extraction record")
+            document = store.get_research_document_text(extraction_id)
+            result = {
+                "source": existing_source,
+                "document": document,
+                "acquisition": {
+                    "sha256": existing_source.get("content_hash"),
+                    "trust_label": "UNTRUSTED_SOURCE",
+                    "idempotent_reuse": True,
+                },
+            }
+            _emit(
+                result,
+                json_out=json_out,
+                fallback=f"reused source {existing_source['source_id']}",
+            )
+            return
+        discovery_source_count = 0
+        for row in existing_sources:
+            metadata = row.get("metadata")
+            if isinstance(metadata, dict) and metadata.get("discovery_id") == discovery_id:
+                discovery_source_count += 1
+        if discovery_source_count >= max_full_texts:
+            raise DataError("literature discovery full-text budget is exhausted")
+        fetch = _run_literature_worker(
+            [
+                "fetch",
+                "--url",
+                url,
+                "--objects-dir",
+                str(settings.data_dir / "research" / "objects"),
+            ]
+        )
+        object_path = fetch.get("object_path")
+        source_sha = fetch.get("sha256")
+        if not isinstance(object_path, str) or not isinstance(source_sha, str):
+            raise DataError("literature worker fetch receipt is incomplete")
+        extraction = _run_literature_worker(
+            [
+                "extract",
+                "--object-path",
+                object_path,
+                "--source-sha256",
+                source_sha,
+                "--extractions-dir",
+                str(settings.data_dir / "research" / "literature" / "worker-extractions"),
+            ]
+        )
+        source = store.create_research_source(
+            project_id,
+            title=_required_candidate_text(candidate, "title"),
+            locator=url,
+            provider=_required_candidate_text(candidate, "provider"),
+            access_mode="open_access",
+            metadata={
+                "discovery_id": discovery_id,
+                "candidate_id": candidate_id,
+                "access_state": candidate["access_state"],
+                "relevance_explanation": candidate.get("relevance_explanation"),
+                "trust_label": "UNTRUSTED_SOURCE",
+            },
+            content_hash=source_sha,
+            doi=candidate.get("doi") if isinstance(candidate.get("doi"), str) else None,
+            year=candidate.get("year") if isinstance(candidate.get("year"), int) else None,
+            authors=(
+                cast(list[str], candidate["authors"])
+                if isinstance(candidate.get("authors"), list)
+                and all(isinstance(item, str) for item in candidate["authors"])
+                else None
+            ),
+        )
+        document = store.record_research_document_text(
+            str(source["source_id"]), artifact=extraction
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    result = {
+        "source": source,
+        "document": document,
+        "acquisition": {
+            key: fetch[key]
+            for key in ("final_url", "media_type", "byte_count", "sha256", "trust_label")
+            if key in fetch
+        },
+    }
+    _emit(result, json_out=json_out, fallback=f"acquired source {source['source_id']}")
 
 
 @sources_app.command("screen")
@@ -938,7 +1134,7 @@ def sources_screen(
 ) -> None:
     """Show one immutable source for manual screening; Gate 1 records no screening mutation."""
     try:
-        row = _store().get_research_source(source_id)
+        row = _store().get_research_source_context(source_id)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"research source {row['source_id']}")

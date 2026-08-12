@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from pathlib import Path
@@ -2539,9 +2540,11 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     monkeypatch.setattr(subprocess, "run", fake_run)
     fetched = _invoke("sources", "fetch", "https://arxiv.org/pdf/1234v1")
     assert fetched["trust_label"] == "UNTRUSTED_SOURCE"
+    assert "object_path" not in fetched and "receipt_path" not in fetched
     assert len(captured_argv) == 1
     argv = captured_argv[0]
-    assert argv[:4] == ["uv", "run", "--project", argv[3]]
+    assert Path(argv[0]).name == "uv"
+    assert argv[1:4] == ["run", "--project", argv[3]]
     assert argv[3].endswith("workers/literature")
     assert argv[4:7] == ["literature-worker", "fetch", "--url"]
     assert argv[7] == "https://arxiv.org/pdf/1234v1"
@@ -2565,6 +2568,115 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     )
     assert rejected.exit_code != 0
     assert "not allowlisted" in rejected.output
+
+
+def test_literature_discovery_acquisition_and_extraction_link_end_to_end_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = str(
+        cast(dict[str, object], _invoke("capture", "SPY pattern literature workflow")["project"])[
+            "project_id"
+        ]
+    )
+    discovery_id = "ld_" + "1" * 64
+    candidate_id = "lc_" + "2" * 64
+    source_sha = hashlib.sha256(b"%PDF-offline-fixture").hexdigest()
+    extraction_id = "rx_" + "3" * 64
+    discovery = {
+        "schema": "LiteratureDiscoveryV1",
+        "discovery_id": discovery_id,
+        "query": "SPY pattern",
+        "candidates": [
+            {
+                "candidate_id": candidate_id,
+                "provider": "arxiv",
+                "title": "SPY pattern evidence",
+                "doi": None,
+                "year": 2024,
+                "authors": ["A. Author"],
+                "open_access_url": "https://arxiv.org/pdf/1234.5678",
+                "access_state": "direct_pdf",
+                "relevance_explanation": "matched title concepts: pattern.",
+                "matched_concepts": ["pattern"],
+                "retracted": None,
+                "dedup_key": "content:" + "4" * 32,
+                "trust_label": "UNTRUSTED_SOURCE",
+            }
+        ],
+        "receipt": {
+            "receipt_id": discovery_id,
+            "budget": {"max_candidates": 20, "max_full_texts": 5},
+            "trust_label": "UNTRUSTED_SOURCE",
+        },
+    }
+    extraction = {
+        "schema": "ResearchDocumentTextV1",
+        "extraction_id": extraction_id,
+        "source_sha256": source_sha,
+        "parser": "pypdf",
+        "parser_version": "6.14.2",
+        "config_hash": "5" * 64,
+        "normalization": "NFC_LF_RSTRIP_V1",
+        "status": "image_only",
+        "pages": [
+            {
+                "page": 1,
+                "text": "",
+                "character_count": 0,
+                "text_sha256": hashlib.sha256(b"").hexdigest(),
+            }
+        ],
+        "page_count": 1,
+        "character_count": 0,
+        "warnings": ["No extractable text; OCR is out of scope."],
+        "trust_label": "UNTRUSTED_SOURCE",
+    }
+    outputs = iter(
+        [
+            discovery,
+            {
+                "final_url": "https://arxiv.org/pdf/1234.5678",
+                "media_type": "application/pdf",
+                "byte_count": 20,
+                "sha256": source_sha,
+                "trust_label": "UNTRUSTED_SOURCE",
+                "object_path": str(tmp_path / "research" / "objects" / source_sha),
+                "receipt_path": str(
+                    tmp_path / "research" / "objects" / f"{source_sha}.receipt.json"
+                ),
+            },
+            extraction,
+        ]
+    )
+
+    class _Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, payload: dict[str, object]) -> None:
+            self.stdout = json.dumps(payload)
+
+    monkeypatch.setattr(
+        subprocess, "run", lambda argv, **kwargs: _Completed(next(outputs))
+    )
+    discovered = _invoke(
+        "sources",
+        "discover",
+        project_id,
+        "--query",
+        "SPY pattern",
+        "--unpaywall-email",
+        "owner@example.com",
+    )
+    assert discovered["discovery_id"] == discovery_id
+    acquired = _invoke("sources", "acquire", project_id, discovery_id, candidate_id)
+    assert cast(dict[str, object], acquired["document"])["status"] == "image_only"
+    assert "artifact_relpath" not in cast(dict[str, object], acquired["document"])
+    sources = ControlStore(tmp_path).list_research_sources(project_id)
+    assert sources[0]["extraction_status"] == "image_only"
 
 
 def _approved_deep_ready_project() -> str:

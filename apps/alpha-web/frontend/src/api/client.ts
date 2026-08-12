@@ -183,6 +183,40 @@ export interface OwnerActionResult {
   result: Record<string, unknown>
 }
 
+export interface LiteratureCandidate {
+  candidate_id: string
+  title: string
+  provider: string
+  doi: string | null
+  year: number | null
+  authors: string[]
+  open_access_url: string | null
+  access_state: 'direct_pdf' | 'landing_page' | 'metadata_only' | 'unavailable'
+  relevance_explanation: string
+  matched_concepts: string[]
+  retracted: boolean | null
+}
+
+export interface LiteratureDiscoveryResult {
+  discovery_id: string
+  query: string
+  candidates: LiteratureCandidate[]
+  receipt: Record<string, unknown>
+}
+
+export interface LiteratureAcquisitionResult {
+  source: Record<string, unknown>
+  document: {
+    extraction_id: string
+    status: 'extracted' | 'encrypted' | 'image_only' | 'truncated' | 'parser_failed'
+    page_count: number
+    character_count: number
+    warnings: string[]
+    artifact: Record<string, unknown>
+  }
+  acquisition: Record<string, unknown>
+}
+
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -332,6 +366,21 @@ export const api = {
     getJSON(`/api/research/cases?limit=${query.limit ?? 50}&offset=${query.offset ?? 0}`),
   researchEvidenceHub: (projectId: string): Promise<ResearchEvidenceHub> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/evidence-hub`),
+  researchLiteratureDiscover: (
+    projectId: string,
+    body: {
+      query: string
+      unpaywall_email: string
+      max_candidates?: number
+      max_full_texts?: number
+    },
+  ): Promise<LiteratureDiscoveryResult> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/literature/discover`, body),
+  researchLiteratureAcquire: (
+    projectId: string,
+    body: { discovery_id: string; candidate_id: string },
+  ): Promise<LiteratureAcquisitionResult> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/literature/acquire`, body),
   researchScorecard: (projectId: string): Promise<ResearchScorecard> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/scorecard`),
   researchDecisionView: (projectId: string): Promise<ResearchDecisionView> =>

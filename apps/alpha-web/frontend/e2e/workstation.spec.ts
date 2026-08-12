@@ -308,6 +308,7 @@ const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
           source_id: `rs_${'c'.repeat(64)}`,
           author_kind: 'agent',
           limitations: 'Post-publication decay is not addressed.',
+          anchor_state: 'LEGACY — NO TEXT ANCHOR',
         },
         {
           claim_id: `sc_${'d'.repeat(64)}`,
@@ -318,9 +319,20 @@ const RESEARCH_EVIDENCE_HUB: components['schemas']['ResearchEvidenceHub'] = {
           source_id: `rs_${'c'.repeat(64)}`,
           author_kind: 'agent',
           limitations: 'Single-market sample.',
+          anchor_state: 'LEGACY — NO TEXT ANCHOR',
         },
       ],
       sources: [],
+      source_packs: [],
+      recommendation: {
+        schema: 'ResearchRecommendationV1',
+        status: 'DRAFT — UNSCREENED',
+        allowed_next_actions: [
+          { rank: 1, action: 'screen_reject_or_revise_claims', reason: 'One draft needs review.' },
+        ],
+        uncertainty: 'Contradictory coverage remains incomplete.',
+        authority: 'Decision support only; it cannot screen, freeze, approve, or launch.',
+      },
       status: 'SUPPORTING',
     },
     mechanism: {
@@ -1771,6 +1783,10 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await page.getByLabel('Evidence sections').getByRole('tab', { name: 'Literature' }).click()
   await expect(page.getByText('SCREENED', { exact: true })).toBeVisible()
   await expect(page.getByText('DRAFT — UNSCREENED', { exact: true })).toBeVisible()
+  await expect(page.getByText('Search concepts', { exact: true })).toBeVisible()
+  await expect(page.getByText('Budget: 20 candidates · 5 full texts · explicit click only')).toBeVisible()
+  await expect(page.getByText(/Decision support only/)).toBeVisible()
+  await expect(page.getByText(/LEGACY — NO TEXT ANCHOR/).first()).toBeVisible()
   await page.getByRole('tab', { name: 'Falsification', exact: true }).click()
   await expect(page.getByText('Shuffled-label control shows no effect')).toBeVisible()
   await expect(page.getByText('NOT_TESTED', { exact: true }).first()).toBeVisible()

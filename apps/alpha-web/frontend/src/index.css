@@ -561,7 +561,8 @@ button.btn:disabled {
 }
 
 input.field,
-select.field {
+select.field,
+textarea.field {
   width: 100%;
   padding: 6px 9px;
   border-radius: var(--r);
@@ -572,10 +573,30 @@ select.field {
   font-size: 12px;
 }
 input.field:focus,
-select.field:focus {
+select.field:focus,
+textarea.field:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.literature-workflow { display: flex; flex-direction: column; gap: 14px; }
+.literature-search { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(220px, 1fr) auto; gap: 10px; align-items: end; }
+.literature-search label, .literature-owner-reason { display: flex; flex-direction: column; gap: 5px; }
+.literature-search > .muted { grid-column: 1 / -1; }
+.literature-candidates { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+.literature-candidate { border: 1px solid var(--line); background: var(--panel-2); padding: 11px; display: flex; flex-direction: column; gap: 7px; }
+.literature-candidate h4, .literature-candidate p { margin: 0; }
+.literature-owner-reason textarea { min-height: 68px; resize: vertical; }
+.literature-claim-detail { display: grid; grid-template-columns: 80px 1fr; gap: 4px 10px; margin: 8px 0; }
+.literature-claim-detail dt { color: var(--muted); }
+.literature-claim-detail dd { margin: 0; }
+.literature-claim-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.literature-source-row { display: flex; gap: 10px; align-items: start; cursor: pointer; }
+.literature-source-row > span { display: flex; flex-direction: column; gap: 3px; }
+
+@media (max-width: 900px) {
+  .literature-search { grid-template-columns: 1fr; }
 }
 
 /* ==========================================================================

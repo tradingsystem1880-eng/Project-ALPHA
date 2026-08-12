@@ -4289,6 +4289,16 @@
             "title": "Claims",
             "type": "array"
           },
+          "recommendation": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "source_packs": {
+            "items": {
+              "$ref": "#/components/schemas/JsonObject"
+            },
+            "title": "Source Packs",
+            "type": "array"
+          },
           "sources": {
             "items": {
               "$ref": "#/components/schemas/HubSource"
@@ -4304,6 +4314,8 @@
         "required": [
           "claims",
           "sources",
+          "source_packs",
+          "recommendation",
           "status"
         ],
         "title": "HubLiterature",
@@ -4451,9 +4463,60 @@
             "title": "Access Mode",
             "type": "string"
           },
+          "character_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Count"
+          },
+          "extraction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Id"
+          },
+          "extraction_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Status"
+          },
+          "extraction_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Extraction Warnings",
+            "type": "array"
+          },
           "locator": {
             "title": "Locator",
             "type": "string"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
           },
           "provider": {
             "title": "Provider",
@@ -4485,7 +4548,12 @@
           "locator",
           "provider",
           "access_mode",
-          "screening"
+          "screening",
+          "extraction_id",
+          "extraction_status",
+          "page_count",
+          "character_count",
+          "extraction_warnings"
         ],
         "title": "HubSource",
         "type": "object"
@@ -5078,6 +5146,64 @@
           "local_only"
         ],
         "title": "KronosCacheStatus",
+        "type": "object"
+      },
+      "LiteratureAcquisitionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "pattern": "^lc_[0-9a-f]{64}$",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "discovery_id": {
+            "pattern": "^ld_[0-9a-f]{64}$",
+            "title": "Discovery Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "discovery_id",
+          "candidate_id"
+        ],
+        "title": "LiteratureAcquisitionRequest",
+        "type": "object"
+      },
+      "LiteratureDiscoveryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "max_candidates": {
+            "default": 20,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Candidates",
+            "type": "integer"
+          },
+          "max_full_texts": {
+            "default": 5,
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Max Full Texts",
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "unpaywall_email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Unpaywall Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "unpaywall_email"
+        ],
+        "title": "LiteratureDiscoveryRequest",
         "type": "object"
       },
       "MlCosts": {
@@ -19474,6 +19600,116 @@
           }
         },
         "summary": "Research Launch",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/literature/acquire": {
+      "post": {
+        "description": "Acquire and extract one recorded direct-PDF candidate without evidence authority.",
+        "operationId": "research_literature_acquire_api_research_cases__project_id__literature_acquire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteratureAcquisitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Research Literature Acquire Api Research Cases  Project Id  Literature Acquire Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Literature Acquire",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/literature/discover": {
+      "post": {
+        "description": "Explicitly search approved scholarly services; candidates remain untrusted.",
+        "operationId": "research_literature_discover_api_research_cases__project_id__literature_discover_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteratureDiscoveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Research Literature Discover Api Research Cases  Project Id  Literature Discover Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Literature Discover",
         "tags": [
           "research"
         ]

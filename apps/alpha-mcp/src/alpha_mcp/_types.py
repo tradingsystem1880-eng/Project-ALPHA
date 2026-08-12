@@ -151,6 +151,8 @@ class SourceClaimOut(TypedDict):
     author_kind: str
     screened_by: str | None
     created_at: str
+    source_anchor: NotRequired[JsonObject | None]
+    anchor_state: NotRequired[str]
 
 
 class DataInventoryOut(TypedDict):

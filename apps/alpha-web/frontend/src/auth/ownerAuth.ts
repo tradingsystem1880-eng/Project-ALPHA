@@ -158,6 +158,11 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value)
 }
 
+export async function payloadHash(value: unknown): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJson(value)))
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 export async function researchCaseRevision(researchCase: ResearchCase): Promise<string> {
   const payload = {
     schema: 'ResearchCaseRevisionV1',
