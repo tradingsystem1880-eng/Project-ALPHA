@@ -32,7 +32,7 @@ def test_empty_or_elapsed_history_never_passes(tmp_path: Path) -> None:
     assert report["derived_from_elapsed_time"] is False
 
 
-def test_every_scenario_requires_a_machine_journal_event(tmp_path: Path) -> None:
+def test_legacy_scenario_fields_never_satisfy_acceptance(tmp_path: Path) -> None:
     sandbox = _session(tmp_path, ibkr=False)
     ibkr = _session(tmp_path, ibkr=True)
     for mode, scenario, event_type, minimum_count in paper_readiness.required_scenarios().values():
@@ -45,7 +45,10 @@ def test_every_scenario_requires_a_machine_journal_event(tmp_path: Path) -> None
             )
 
     report = paper_readiness.readiness_report(tmp_path)
-    assert report["paper_passed"] is True
+    assert report["paper_passed"] is False
+    assert report["status"] == "pending"
+    assert all(requirement["passed"] is False for requirement in report["requirements"])
+    assert all(requirement["evidence"] == [] for requirement in report["requirements"])
     assert report["futures_research_supported"] is False
 
     paper_store.append_event(

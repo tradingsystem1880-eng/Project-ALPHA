@@ -1,7 +1,7 @@
-"""Machine-derived operational paper acceptance report.
+"""Fail-closed operational paper acceptance report.
 
-Elapsed time and operator assertions are deliberately absent. A requirement is satisfied only by
-an immutable journal event emitted by the corresponding integration path.
+Legacy journal events remain monitor history. Their open payload cannot prove an acceptance
+requirement, so readiness stays pending until the typed V2 acceptance runner is available.
 """
 
 from __future__ import annotations
@@ -113,27 +113,15 @@ def required_scenarios() -> dict[str, tuple[str, str, str, int]]:
 
 
 def readiness_report(data_dir: Path) -> dict[str, object]:
-    """Evaluate every required scenario from durable journal evidence."""
-    observed: dict[str, list[dict[str, object]]] = {}
+    """Report legacy blockers without treating open journal payloads as acceptance evidence."""
     blockers: list[dict[str, object]] = []
     sessions = paper_store.list_sessions(data_dir)
     for session in sessions:
         session_id = str(session["session_id"])
-        mode = str(session["execution_mode"])
         for event in paper_store.read_events(data_dir, session_id):
             payload = event["payload"]
             if not isinstance(payload, dict):
                 continue
-            scenario = payload.get("scenario")
-            if isinstance(scenario, str) and payload.get("passed") is True:
-                observed.setdefault(scenario, []).append(
-                    {
-                        "session_id": session_id,
-                        "sequence": event["sequence"],
-                        "event_type": event["event_type"],
-                        "execution_mode": mode,
-                    }
-                )
             if event["event_type"] in {"reconciliation_warning", "rejection"} or (
                 event["event_type"] == "risk_check" and payload.get("passed") is False
             ):
@@ -146,24 +134,18 @@ def readiness_report(data_dir: Path) -> dict[str, object]:
                 )
 
     requirements: list[dict[str, object]] = []
-    for requirement, (mode, scenario, event_type, minimum_count) in _REQUIREMENTS.items():
-        evidence = [
-            item
-            for item in observed.get(scenario, [])
-            if item["execution_mode"] == mode and item["event_type"] == event_type
-        ]
+    for requirement in _REQUIREMENTS:
         requirements.append(
             {
                 "id": requirement,
-                "passed": len(evidence) >= minimum_count,
-                "evidence": evidence,
+                "passed": False,
+                "evidence": [],
             }
         )
-    passed = all(bool(requirement["passed"]) for requirement in requirements) and not blockers
     return {
         "schema_version": 1,
-        "status": "passed" if passed else "pending",
-        "paper_passed": passed,
+        "status": "pending",
+        "paper_passed": False,
         "requirements": requirements,
         "blocking_events": blockers,
         "futures_research_supported": False,
