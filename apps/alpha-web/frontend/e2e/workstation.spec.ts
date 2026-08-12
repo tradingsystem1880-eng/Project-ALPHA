@@ -1523,7 +1523,7 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
 
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url())
-    if (url.hostname !== '127.0.0.1') {
+    if (!['127.0.0.1', 'localhost'].includes(url.hostname)) {
       await route.abort('blockedbyclient')
       return
     }
@@ -1647,8 +1647,7 @@ test('the library rail lists runs and opens one into the report', async ({ page 
   )
 })
 
-test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport Cockpit gate')
+test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }) => {
   await preparePage(page)
 
   await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
@@ -1701,8 +1700,7 @@ test('a research decision requires fresh Touch ID and sends no caller actor', as
   expect(challenge).not.toHaveProperty('actor')
 })
 
-test('guided mode defaults and advanced detail is remembered only for its project', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport persistence gate')
+test('guided mode defaults and advanced detail is remembered only for its project', async ({ page }) => {
   await preparePage(page)
   await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
   await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
@@ -1727,8 +1725,7 @@ test('guided mode defaults and advanced detail is remembered only for its projec
   )
 })
 
-test('Research Cockpit teaches the bounded terminal Gate Packet without upgrading evidence', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport terminal-packet gate')
+test('Research Cockpit teaches the bounded terminal Gate Packet without upgrading evidence', async ({ page }) => {
   await preparePage(page)
 
   await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
@@ -1744,8 +1741,7 @@ test('Research Cockpit teaches the bounded terminal Gate Packet without upgradin
   await expectReleaseAccessibility(page)
 })
 
-test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and history', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport decision-view gate')
+test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and history', async ({ page }) => {
   await preparePage(page)
 
   await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
@@ -1766,8 +1762,7 @@ test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and 
   await expectReleaseAccessibility(page)
 })
 
-test('research workflow links the backlog, cockpit, evidence, and Codex panels', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport command-center gate')
+test('research workflow links the backlog, cockpit, evidence, and Codex panels', async ({ page }) => {
   await preparePage(page)
 
   await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
@@ -1810,8 +1805,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await expectReleaseAccessibility(page)
 })
 
-test('New Idea opens natural-language capture with zero trading-rule inputs', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport new-idea gate')
+test('New Idea opens natural-language capture with zero trading-rule inputs', async ({ page }) => {
   await preparePage(page)
 
   await page.getByRole('button', { name: 'New Idea' }).click()
@@ -1846,11 +1840,7 @@ test('New Idea opens natural-language capture with zero trading-rule inputs', as
   await expectReleaseAccessibility(page)
 })
 
-test('running jobs expose exact runtime, bounded ETA, progress, and live output', async (
-  { page },
-  testInfo,
-) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport job progress gate')
+test('running jobs expose exact runtime, bounded ETA, progress, and live output', async ({ page }) => {
   await preparePage(page, {
     jobs: [
       {
@@ -1888,11 +1878,7 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
   await expectReleaseAccessibility(page)
 })
 
-test('ML diagnostics render bounded Qlib evidence and the permanent authority warning', async (
-  { page },
-  testInfo,
-) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport projection gate')
+test('ML diagnostics render bounded Qlib evidence and the permanent authority warning', async ({ page }) => {
   await preparePage(page, { mlDiagnostics: true })
   await page.getByRole('tab', { name: 'Studios', exact: true }).click()
   await page.getByRole('tab', { name: 'ML diagnostics', exact: true }).click()
@@ -1906,11 +1892,7 @@ test('ML diagnostics render bounded Qlib evidence and the permanent authority wa
   await expectReleaseAccessibility(page)
 })
 
-test('causal chart paginates evidence, selects an event, and exports exact OHLCV', async (
-  { page },
-  testInfo,
-) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport interaction gate')
+test('causal chart paginates evidence, selects an event, and exports exact OHLCV', async ({ page }) => {
   await preparePage(page, {
     chartBundle: causalChartBundle(),
     trades: CAUSAL_TRADES,
@@ -1954,8 +1936,7 @@ test('causal chart paginates evidence, selects an event, and exports exact OHLCV
   await expectReleaseAccessibility(page)
 })
 
-test('dense causal chart layers cap visuals without hiding returned evidence', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport interaction gate')
+test('dense causal chart layers cap visuals without hiding returned evidence', async ({ page }) => {
   await preparePage(page, { chartBundle: denseCausalChartBundle(), runs: [HEAVY_LIBRARY_RUN] })
   await openHeavyPrice(page)
 
@@ -1973,8 +1954,7 @@ test('dense causal chart layers cap visuals without hiding returned evidence', a
   await expect(page.getByText(/1–80 \/ 180 RETURNED EVENTS/)).toBeVisible()
 })
 
-test('a screen mounts only what it shows', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport request gate')
+test('a screen mounts only what it shows', async ({ page }) => {
   const requested: string[] = []
   page.on('request', (request) => requested.push(new URL(request.url()).pathname))
   await preparePage(page)
@@ -1991,8 +1971,7 @@ test('a screen mounts only what it shows', async ({ page }, testInfo) => {
     .toBeGreaterThan(0)
 })
 
-test('legacy trace rerun opens the governed Development Center', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
+test('legacy trace rerun opens the governed Development Center', async ({ page }) => {
   await preparePage(page, { chartBundle: causalChartBundle(false), runs: [HEAVY_LIBRARY_RUN] })
   await openHeavyPrice(page)
 
@@ -2007,11 +1986,7 @@ test('legacy trace rerun opens the governed Development Center', async ({ page }
   await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
 })
 
-test('research-gate override watermark reaches provider governance and run results', async (
-  { page },
-  testInfo,
-) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
+test('research-gate override watermark reaches provider governance and run results', async ({ page }) => {
   await preparePage(page, { researchGateOverride: true })
 
   // Provider governance lists every active override with actor + recorded reason (spec §15).
@@ -2032,11 +2007,7 @@ test('research-gate override watermark reaches provider governance and run resul
   await expectReleaseAccessibility(page)
 })
 
-test('open research gates lock strategy affordances on Develop and link to the case', async (
-  { page },
-  testInfo,
-) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport governance gate')
+test('open research gates lock strategy affordances on Develop and link to the case', async ({ page }) => {
   await preparePage(page, { researchGateLock: true })
   await page.getByRole('tab', { name: 'Operate', exact: true }).click()
 
@@ -2080,11 +2051,7 @@ test('open research gates lock strategy affordances on Develop and link to the c
   await expect(preps.nth(1)).toBeEnabled()
 })
 
-test('cold shell and screen switch meet workstation latency budgets', async (
-  { page },
-  testInfo,
-) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport performance gate')
+test('@reference-only cold shell and screen switch meet workstation latency budgets', async ({ page }) => {
   await preparePage(page)
 
   const coldShellMs = await page.evaluate(() => performance.now())
@@ -2108,8 +2075,7 @@ test('cold shell and screen switch meet workstation latency budgets', async (
   expect(switchMs).toBeLessThan(100)
 })
 
-test('25k bars and 200 annotations remain interactively responsive', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-reference', 'reference viewport performance gate')
+test('@reference-only 25k bars and 200 annotations remain interactively responsive', async ({ page }) => {
   test.setTimeout(45_000)
   const bundle = heavyChartBundle()
   await preparePage(page, { chartBundle: bundle, runs: [HEAVY_LIBRARY_RUN] })

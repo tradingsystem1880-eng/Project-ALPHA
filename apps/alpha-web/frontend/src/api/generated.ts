@@ -6539,7 +6539,7 @@ export interface components {
              * Verification State
              * @enum {string}
              */
-            verification_state: "verified" | "authentication_failed" | "entitlement_denied" | "rate_limited" | "connectivity_failed" | "schema_drift" | "optional_disabled";
+            verification_state: "verified" | "unverified" | "authentication_failed" | "entitlement_denied" | "rate_limited" | "connectivity_failed" | "schema_drift" | "optional_disabled";
         };
         /** ProviderDefinition */
         ProviderDefinition: {

@@ -36,6 +36,7 @@ type VerificationState = Literal[
 _STATES: Final = frozenset(
     {
         "verified",
+        "unverified",
         "authentication_failed",
         "entitlement_denied",
         "rate_limited",
@@ -225,13 +226,16 @@ def _ibkr_check() -> tuple[tuple[str, ...], dict[str, object]]:
     docker_daemon = False
     if docker_cli:
         try:
-            docker_daemon = subprocess.run(
-                ["docker", "info", "--format", "{{.ServerVersion}}"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            ).returncode == 0
+            docker_daemon = (
+                subprocess.run(
+                    ["docker", "info", "--format", "{{.ServerVersion}}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
+                ).returncode
+                == 0
+            )
         except (OSError, subprocess.TimeoutExpired):
             docker_daemon = False
     reachable = False
@@ -258,7 +262,7 @@ def _ibkr_check() -> tuple[tuple[str, ...], dict[str, object]]:
         raise ProviderCheckFailure("connectivity_failed", details)
     # A socket cannot prove broker permissions or market-data entitlement. The separately
     # checkpointed what-if executor will replace these unknowns with broker callback facts.
-    raise ProviderCheckFailure("schema_drift", details)
+    raise ProviderCheckFailure("unverified", details)
 
 
 class ProviderCheckFailure(Exception):
@@ -295,6 +299,9 @@ def run_explicit_check(data_dir: Path, provider_id: str) -> dict[str, object]:
         state = "verified"
     recovery = {
         "verified": "No action required.",
+        "unverified": (
+            "Run the separately checkpointed paper what-if preview to verify broker callbacks."
+        ),
         "authentication_failed": (
             "Rotate the credential, reinject it into the process, and run one new explicit check."
         ),

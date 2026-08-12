@@ -806,9 +806,7 @@ def claim_add(
             limitations=limitations,
             author=author,
             author_kind=author_kind,
-            source_anchor=(
-                None if anchor_json is None else _object(anchor_json, "--anchor-json")
-            ),
+            source_anchor=(None if anchor_json is None else _object(anchor_json, "--anchor-json")),
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -1025,6 +1023,7 @@ def sources_acquire(
         if isinstance(max_full_texts, bool) or not isinstance(max_full_texts, int):
             raise DataError("literature discovery full-text budget is corrupt")
         existing_sources = store.list_research_sources(project_id)
+
         def belongs_to_candidate(row: Mapping[str, object]) -> bool:
             metadata = row.get("metadata")
             return (
@@ -1033,9 +1032,7 @@ def sources_acquire(
                 and metadata.get("discovery_id") == discovery_id
             )
 
-        existing_source = next(
-            (row for row in existing_sources if belongs_to_candidate(row)), None
-        )
+        existing_source = next((row for row in existing_sources if belongs_to_candidate(row)), None)
         if existing_source is not None:
             extraction_id = existing_source.get("extraction_id")
             if not isinstance(extraction_id, str):

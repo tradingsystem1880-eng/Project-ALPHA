@@ -52,9 +52,7 @@ _EVIDENCE_KEYS: Final = {
     "risk_observation": frozenset(
         {"duplicate_orders", "unexplained_positions", "unresolved_fills", "secret_sentinels_found"}
     ),
-    "reconciliation": frozenset(
-        {"duplicate_orders", "unexplained_positions", "unresolved_fills"}
-    ),
+    "reconciliation": frozenset({"duplicate_orders", "unexplained_positions", "unresolved_fills"}),
 }
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _IMAGE = re.compile(r"^[A-Za-z0-9._/:+-]+@sha256:[0-9a-f]{64}$")
@@ -197,8 +195,6 @@ def record_callback_fact(
     allowed = _EVIDENCE_KEYS[fact_type]
     if set(raw_evidence) != set(allowed):
         raise DataError("paper fact raw evidence does not match the closed typed schema")
-    if "passed" in raw_evidence:
-        raise DataError("paper producer passed flags are forbidden")
     root = Path(data_dir) / "paper-acceptance-v2" / "facts" / plan_hash
     with _lock(root):
         facts = _read_facts(data_dir, plan_hash)
@@ -236,23 +232,63 @@ def _zero(facts: list[dict[str, object]], field: str) -> bool:
     return bool(values) and all(value == 0 for value in values)
 
 
+def _evidence_for(facts: list[dict[str, object]], fact_type: str) -> list[dict[str, object]]:
+    return [
+        evidence
+        for fact in facts
+        if fact.get("fact_type") == fact_type
+        and isinstance((evidence := fact.get("raw_evidence")), dict)
+    ]
+
+
+def _positive_number(value: object) -> bool:
+    return (
+        isinstance(value, int | float)
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value > 0
+    )
+
+
 def _plan_report(data_dir: Path, plan_hash: str) -> dict[str, object]:
     plan = _read_plan(data_dir, plan_hash)
     facts = _read_facts(data_dir, plan_hash)
     types = {str(fact["fact_type"]) for fact in facts}
-    connection_evidence = [
-        fact["raw_evidence"] for fact in facts if fact["fact_type"] == "connection"
-    ]
+    connection_evidence = _evidence_for(facts, "connection")
+    cancellations = _evidence_for(facts, "cancellation")
+    entries = _evidence_for(facts, "entry")
+    exits = _evidence_for(facts, "exit")
+    restarts = _evidence_for(facts, "restart")
     no_live_port = bool(connection_evidence) and all(
-        isinstance(item, dict)
-        and item.get("paper_port") == 4002
-        and item.get("live_port_attempted") is False
+        item.get("paper_port") == 4002 and item.get("live_port_attempted") is False
         for item in connection_evidence
     )
+    cancellation_acknowledged = bool(cancellations) and all(
+        isinstance(item.get("requested_order_id"), str)
+        and bool(item["requested_order_id"])
+        and item.get("acknowledged_order_id") == item["requested_order_id"]
+        for item in cancellations
+    )
+    entry_exit = (
+        bool(entries)
+        and bool(exits)
+        and all(
+            isinstance(item.get("order_id"), str)
+            and bool(item["order_id"])
+            and isinstance(item.get("fill_id"), str)
+            and bool(item["fill_id"])
+            and _positive_number(item.get("quantity"))
+            for item in [*entries, *exits]
+        )
+    )
+    restart_reconciled = bool(restarts) and all(
+        item.get("reconnected") is True and item.get("state_reconciled") is True
+        for item in restarts
+    )
     predicates = {
-        "acknowledged_cancellation": "cancellation" in types,
-        "entry_exit": {"entry", "exit"} <= types,
-        "restart_reconciled": "restart" in types,
+        "acknowledged_cancellation": cancellation_acknowledged,
+        "entry_exit": entry_exit,
+        "restart_reconciled": restart_reconciled,
         "zero_duplicate_orders": _zero(facts, "duplicate_orders"),
         "zero_unexplained_positions": _zero(facts, "unexplained_positions"),
         "zero_unresolved_fills": _zero(facts, "unresolved_fills"),
@@ -279,9 +315,7 @@ def acceptance_report(data_dir: Path) -> dict[str, object]:
         except DataError:
             tampered = True
     passed = (
-        bool(reports)
-        and all(bool(report["paper_passed"]) for report in reports)
-        and not tampered
+        bool(reports) and all(bool(report["paper_passed"]) for report in reports) and not tampered
     )
     merged_predicates: dict[str, bool] = {}
     for report in reports:

@@ -207,6 +207,7 @@ def provider_definitions(
                 "recovery_action": "Run an explicit provider check from the Readiness Center.",
             }
         return last_check_status(data_dir, provider_id)
+
     providers = (
         _definition(
             provider_id="yfinance",

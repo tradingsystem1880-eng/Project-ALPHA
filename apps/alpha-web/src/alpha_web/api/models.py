@@ -581,6 +581,7 @@ class ProviderCheckReceipt(StrictModel):
     provider_id: str
     verification_state: Literal[
         "verified",
+        "unverified",
         "authentication_failed",
         "entitlement_denied",
         "rate_limited",

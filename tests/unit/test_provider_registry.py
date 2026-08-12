@@ -6,7 +6,11 @@ import json
 
 import pytest
 
-from alpha_cli.providers import provider_definitions, providers_with_capability
+from alpha_cli.providers import (
+    provider_definitions,
+    provider_option_choices,
+    providers_with_capability,
+)
 from alpha_core import DataError
 from alpha_data.adapters.ccxt_adapter import CCXTAdapter
 
@@ -117,3 +121,8 @@ def test_quantpad_is_registered_as_research_only_without_canonical_pull_authorit
     # its capability is `research_bars`, structurally outside the historical_bars invariant.
     assert quantpad.capabilities == ("research_bars",)
     assert "quantpad" not in historical_adapter_factories()
+
+
+def test_unknown_provider_option_fails_loud() -> None:
+    with pytest.raises(RuntimeError, match="unknown provider option"):
+        provider_option_choices("missing", "exchange")

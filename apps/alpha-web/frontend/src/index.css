@@ -3189,6 +3189,10 @@ textarea.field:focus {
   background: var(--gold-soft);
 }
 
+.owner-action-boundary > .eyebrow {
+  color: var(--ink-dim);
+}
+
 .owner-action-boundary p {
   max-width: 82ch;
   margin: 0;

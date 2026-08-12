@@ -4522,7 +4522,7 @@ def test_full_text_claim_requires_and_reverifies_source_anchor(tmp_path: Path) -
         },
     )
     assert claim["anchor_state"] == "verified"
-    assert claim["source_anchor"]["excerpt"] == excerpt
+    assert cast(dict[str, object], claim["source_anchor"])["excerpt"] == excerpt
     screened = store.screen_source_claim(project_id, claim_id=str(claim["claim_id"]), actor="owner")
     assert screened["anchor_state"] == "verified"
 

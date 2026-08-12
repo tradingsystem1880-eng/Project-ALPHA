@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 from typing import cast
 
@@ -2634,9 +2635,9 @@ def test_literature_discovery_acquisition_and_extraction_link_end_to_end_offline
         "warnings": ["No extractable text; OCR is out of scope."],
         "trust_label": "UNTRUSTED_SOURCE",
     }
-    outputs = iter(
+    outputs: Iterator[dict[str, object]] = iter(
         [
-            discovery,
+            cast(dict[str, object], discovery),
             {
                 "final_url": "https://arxiv.org/pdf/1234.5678",
                 "media_type": "application/pdf",
@@ -2659,9 +2660,7 @@ def test_literature_discovery_acquisition_and_extraction_link_end_to_end_offline
         def __init__(self, payload: dict[str, object]) -> None:
             self.stdout = json.dumps(payload)
 
-    monkeypatch.setattr(
-        subprocess, "run", lambda argv, **kwargs: _Completed(next(outputs))
-    )
+    monkeypatch.setattr(subprocess, "run", lambda argv, **kwargs: _Completed(next(outputs)))
     discovered = _invoke(
         "sources",
         "discover",

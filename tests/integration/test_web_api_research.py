@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from alpha_cli.control_store import ControlStore
 from alpha_core.config import AlphaSettings
 from alpha_research import build_research_gate_packet
 from alpha_web import _research
+from alpha_web.api import research as research_api
+from alpha_web.api.models import (
+    LiteratureAcquisitionRequest,
+    LiteratureDiscoveryRequest,
+    ResearchCaptureRequest,
+    ResearchLaunchRequest,
+    ResearchProposalRequest,
+)
 from alpha_web.app import create_app
+from alpha_web.run_authority import RunContextDenied
 from tests.fixtures.cli_fixtures import seed_store
 from tests.unit.test_research_gate_packet import _inputs_with_evidence
 
@@ -37,6 +48,94 @@ def test_compare_endpoint_single_strategy(tmp_path: Path, monkeypatch: pytest.Mo
     assert body["ranked"][0]["strategy"] == "ma_crossover"
     assert body["comparison_status"] == "not_comparable"
     assert body["preferred_strategy"] is None
+
+
+def test_research_read_routes_translate_backend_failures_without_raw_500s(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise RuntimeError("safe recovery detail")
+
+    calls: tuple[tuple[str, Callable[[], object], int], ...] = (
+        ("list_cases", lambda: research_api.research_cases(), 422),
+        ("evidence_hub", lambda: research_api.research_evidence_hub("project"), 404),
+        ("scorecard", lambda: research_api.research_scorecard("project"), 404),
+        ("decision_view", lambda: research_api.research_decision_view("project"), 404),
+        ("context_packets", lambda: research_api.research_context_packets("project"), 404),
+        ("context_packet", lambda: research_api.research_context_packet("packet"), 404),
+        ("notes", lambda: research_api.research_notes("project"), 404),
+        ("datasets", lambda: research_api.research_datasets(), 422),
+        ("protocols", research_api.research_protocols, 422),
+        ("get", lambda: research_api.research_get("project"), 404),
+        ("proposal_options", lambda: research_api.research_proposal_options("project"), 422),
+        ("status", lambda: research_api.research_status("project"), 404),
+        ("report", lambda: research_api.research_report("project"), 404),
+    )
+    for seam, call, expected_status in calls:
+        monkeypatch.setattr(_research, seam, fail)
+        with pytest.raises(HTTPException) as raised:
+            call()
+        assert raised.value.status_code == expected_status
+        assert raised.value.detail == "safe recovery detail"
+
+
+def test_research_mutation_routes_translate_backend_failures_without_raw_500s(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise ValueError("actionable validation detail")
+
+    calls: tuple[tuple[str, Callable[[], object]], ...] = (
+        (
+            "capture",
+            lambda: research_api.research_capture(ResearchCaptureRequest(idea="bounded idea")),
+        ),
+        (
+            "discover_literature",
+            lambda: research_api.research_literature_discover(
+                "project",
+                LiteratureDiscoveryRequest(
+                    query="bounded query", unpaywall_email="owner@example.com"
+                ),
+            ),
+        ),
+        (
+            "acquire_literature",
+            lambda: research_api.research_literature_acquire(
+                "project",
+                LiteratureAcquisitionRequest(
+                    discovery_id="ld_" + "a" * 64,
+                    candidate_id="lc_" + "b" * 64,
+                ),
+            ),
+        ),
+        (
+            "propose",
+            lambda: research_api.research_propose(
+                "project",
+                ResearchProposalRequest(
+                    source_pack_id="rsp_" + "c" * 64,
+                    answer_bundle_id="bundle",
+                    dataset_ref_id=None,
+                    expected_case_revision="d" * 64,
+                ),
+            ),
+        ),
+        (
+            "launch",
+            lambda: research_api.research_launch("project", ResearchLaunchRequest(stage="pilot")),
+        ),
+    )
+    for seam, call in calls:
+        monkeypatch.setattr(_research, seam, fail)
+        with pytest.raises(HTTPException) as raised:
+            call()
+        assert raised.value.status_code == 422
+        assert raised.value.detail == "actionable validation detail"
 
 
 def test_compare_no_bars_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,6 +169,21 @@ def test_compare_requires_explicit_run_context(
 
     assert response.status_code == 422
     assert called is False
+
+
+def test_compare_translates_fail_closed_run_context_denial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+
+    def deny(**kwargs: object) -> dict[str, object]:
+        raise RunContextDenied(409, "gate unreadable; no job was launched")
+
+    monkeypatch.setattr(research_api, "resolve_run_context", deny)
+    with pytest.raises(HTTPException) as raised:
+        research_api.research_compare("SPY", context_kind="governed_project", project_id="project")
+    assert raised.value.status_code == 409
+    assert raised.value.detail == "gate unreadable; no job was launched"
 
 
 def test_research_case_capture_propose_status_report_and_pilot_round_trip(
@@ -239,15 +353,18 @@ def test_literature_routes_are_explicit_bounded_and_non_authoritative(
     assert acquired.json()["document"]["status"] == "image_only"
     assert [call[0] for call in captured_calls] == [project_id, project_id]
 
-    assert client.post(
-        f"/api/research/cases/{project_id}/literature/discover",
-        json={
-            "query": "x",
-            "unpaywall_email": "owner@example.com",
-            "max_candidates": 21,
-            "max_full_texts": 5,
-        },
-    ).status_code == 422
+    assert (
+        client.post(
+            f"/api/research/cases/{project_id}/literature/discover",
+            json={
+                "query": "x",
+                "unpaywall_email": "owner@example.com",
+                "max_candidates": 21,
+                "max_full_texts": 5,
+            },
+        ).status_code
+        == 422
+    )
 
 
 def test_research_report_route_validates_terminal_gate_packet_union(

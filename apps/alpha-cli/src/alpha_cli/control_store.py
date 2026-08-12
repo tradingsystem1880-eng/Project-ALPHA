@@ -3818,9 +3818,7 @@ class ControlStore:
         raw_discovery_id = payload.get("discovery_id")
         if not isinstance(raw_discovery_id, str):
             raise DataError("literature discovery identifier is missing")
-        discovery_id = _require_content_id(
-            raw_discovery_id, "literature discovery_id", prefix="ld"
-        )
+        discovery_id = _require_content_id(raw_discovery_id, "literature discovery_id", prefix="ld")
         query = _required_text(payload.get("query"), "literature discovery query", max_length=500)
         receipt = payload.get("receipt")
         if not isinstance(receipt, Mapping) or receipt.get("receipt_id") != discovery_id:
@@ -3912,8 +3910,10 @@ class ControlStore:
         )
         pages = payload.get("pages")
         warnings = payload.get("warnings")
-        if not isinstance(pages, list) or not isinstance(warnings, list) or any(
-            not isinstance(warning, str) for warning in warnings
+        if (
+            not isinstance(pages, list)
+            or not isinstance(warnings, list)
+            or any(not isinstance(warning, str) for warning in warnings)
         ):
             raise DataError("research document pages or warnings are invalid")
         page_count = payload.get("page_count")

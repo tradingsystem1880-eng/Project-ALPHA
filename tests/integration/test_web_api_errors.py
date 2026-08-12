@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from alpha_web import _invoke
+from alpha_web.api import errors
 from alpha_web.app import create_app
 
 
@@ -70,3 +71,9 @@ def test_unhandled_errors_redact_secret_path_terminal_and_account_sentinels(
     assert "Traceback" not in rendered
     assert "\x1b" not in rendered
     assert body["message"] == "The Workstation could not complete this request."
+
+
+def test_error_helpers_fallback_for_non_text_payloads_and_ignore_invalid_field_rows() -> None:
+    assert errors.safe_message({"vendor": "body"}, fallback="safe") == "safe"
+    assert errors.safe_message("<html>raw vendor page", fallback="safe") == "safe"
+    assert errors.validation_field_errors(["not-a-field-error"]) == []

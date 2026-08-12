@@ -15,7 +15,7 @@ import pytest
 from click import unstyle
 from typer.testing import CliRunner
 
-from alpha_cli import _ibkr_paper, _paper, daily_scheduler, paper_store
+from alpha_cli import _ibkr_paper, _paper, daily_scheduler, paper_readiness, paper_store
 from alpha_cli._runner import RunSpec
 from alpha_cli.main import app
 from alpha_core import Bar, DataError
@@ -815,9 +815,7 @@ def test_ibkr_what_if_plan_is_offline_redacted_and_non_transmitting(
     account = "DU1234567"
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", account)
-    monkeypatch.setenv(
-        "ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/example/ibkr@sha256:" + "b" * 64
-    )
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/example/ibkr@sha256:" + "b" * 64)
 
     result = runner.invoke(
         app,
@@ -843,6 +841,61 @@ def test_ibkr_what_if_plan_is_offline_redacted_and_non_transmitting(
     assert account not in result.stdout
     artifact = next((tmp_path / "ibkr-what-if-v1" / "plans").glob("*.json"))
     assert account not in artifact.read_text(encoding="utf-8")
+
+    human = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-plan",
+            "--limit-price",
+            "640",
+            "--collar-low",
+            "600",
+            "--collar-high",
+            "680",
+            "--expires-at",
+            "2099-08-13T00:10:00+00:00",
+        ],
+    )
+    assert human.exit_code == 0
+    assert "whatIf=true, transmit=false" in human.stdout
+
+
+def test_ibkr_what_if_plan_reports_missing_scoped_injection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("ALPHA_IBKR_PAPER_ACCOUNT", raising=False)
+    monkeypatch.delenv("ALPHA_IBKR_GATEWAY_IMAGE", raising=False)
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-plan",
+            "--limit-price",
+            "640",
+            "--collar-low",
+            "600",
+            "--collar-high",
+            "680",
+            "--expires-at",
+            "2099-08-13T00:10:00+00:00",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "ALPHA_IBKR_PAPER_ACCOUNT" in result.output
+
+
+def test_paper_readiness_cli_translates_corrupt_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise DataError("paper evidence is unreadable")
+
+    monkeypatch.setattr(paper_readiness, "readiness_report", fail)
+    result = runner.invoke(app, ["paper", "readiness"])
+    assert result.exit_code != 0
+    assert "paper evidence is unreadable" in result.output
 
 
 def test_ibkr_preflight_requires_secret_sources(monkeypatch: pytest.MonkeyPatch) -> None:

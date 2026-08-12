@@ -10287,6 +10287,7 @@
           "verification_state": {
             "enum": [
               "verified",
+              "unverified",
               "authentication_failed",
               "entitlement_denied",
               "rate_limited",

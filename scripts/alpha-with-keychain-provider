@@ -10,6 +10,12 @@ fi
 
 provider=$1
 action=$2
+case "$provider:$action" in
+  finnhub:check)
+    echo "Finnhub is optional-disabled when absent; no explicit readiness check is implemented" >&2
+    exit 64
+    ;;
+esac
 case "$provider" in
   tiingo)
     service=project-alpha-tiingo
@@ -29,6 +35,9 @@ case "$provider" in
     ;;
 esac
 
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$script_dir/.."
+
 secret=$(security find-generic-password -w -s "$service")
 if [ -z "$secret" ]; then
   echo "the selected Keychain item is empty" >&2
@@ -39,10 +48,10 @@ unset secret
 
 case "$action" in
   check)
-    exec alpha provider check "$provider"
+    exec uv run alpha provider check "$provider"
     ;;
   workstation)
-    exec alpha-web
+    exec uv run alpha-web
     ;;
   *)
     echo "unsupported action" >&2

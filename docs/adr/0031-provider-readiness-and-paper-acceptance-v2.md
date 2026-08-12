@@ -1,6 +1,6 @@
 # ADR-0031: Provider readiness and paper acceptance V2
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-13
 
 ## Decision
@@ -43,4 +43,3 @@ creates an order, fill, cancellation, position change, or paper-acceptance fact.
 - A forged journal event can never satisfy readiness.
 - A successful what-if preview demonstrates bounded connectivity only; `paper_passed` remains
   false until separately authorized real paper scenarios are mechanically completed.
-

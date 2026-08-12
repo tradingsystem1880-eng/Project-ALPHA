@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+import pytest
+
 from alpha_cli import paper_readiness, paper_store
 
 
@@ -62,3 +64,16 @@ def test_legacy_scenario_fields_never_satisfy_acceptance(tmp_path: Path) -> None
     blocked = paper_readiness.readiness_report(tmp_path)
     assert blocked["paper_passed"] is False
     assert blocked["blocking_events"]
+
+
+def test_malformed_legacy_event_payload_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(paper_store, "list_sessions", lambda _: [{"session_id": "session"}])
+    monkeypatch.setattr(
+        paper_store,
+        "read_events",
+        lambda *_: [{"event_type": "risk_check", "payload": [], "sequence": 1}],
+    )
+    report = paper_readiness.readiness_report(tmp_path)
+    assert report["blocking_events"] == []

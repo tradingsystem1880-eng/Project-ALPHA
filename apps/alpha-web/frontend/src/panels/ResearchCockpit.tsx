@@ -821,9 +821,9 @@ export function ResearchCockpit(props: PanelHandleProps) {
 
         {researchCase ? (
           <>
+            <MaterialQuestions researchCase={researchCase} />
             <CaseHeader researchCase={researchCase} />
             <CanonicalNextAction researchCase={researchCase} />
-            <MaterialQuestions researchCase={researchCase} />
             <div className="research-view-tabs" role="tablist" aria-label="Cockpit views">
               <button
                 className={view === 'overview' ? 'btn primary' : 'btn'}

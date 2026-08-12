@@ -267,6 +267,7 @@ def test_one_valid_assertion_is_consumed_exactly_once(
         now=NOW + timedelta(seconds=2),
     )
     assert receipt["action_type"] == "approve_exploration"
+    assert receipt["outcome"] == {"status": "assertion_consumed"}
     with pytest.raises(DataError, match="already used"):
         owner_auth.verify_action_assertion(
             data_dir=tmp_path,

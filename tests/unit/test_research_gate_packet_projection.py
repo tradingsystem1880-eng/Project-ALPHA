@@ -680,6 +680,16 @@ def test_evidence_hub_data_section_lists_registered_datasets_without_touching_ef
                 project_id, include_history=include_history, limit=limit, offset=offset
             )
 
+        def list_research_sources(
+            self, project_id: str, *, limit: int = 200, offset: int = 0
+        ) -> list[dict[str, object]]:
+            return store.list_research_sources(project_id, limit=limit, offset=offset)
+
+        def list_research_source_packs(
+            self, project_id: str, *, limit: int = 100, offset: int = 0
+        ) -> list[dict[str, object]]:
+            return store.list_research_source_packs(project_id, limit=limit, offset=offset)
+
         def research_case_summary(self, pid: str) -> dict[str, object]:
             row = store.research_case_summary(pid)
             active = _cast(dict[str, object], row["active_contract"])

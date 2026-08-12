@@ -348,7 +348,7 @@ def verify_action_assertion(
         previous_sign_count=current_sign_count,
         new_sign_count=verification.new_sign_count,
         assertion_hash=assertion_hash,
-        outcome={"status": "authorized"},
+        outcome={"status": "assertion_consumed"},
         now=verified_at,
     )
     return {**receipt, "binding": binding}
