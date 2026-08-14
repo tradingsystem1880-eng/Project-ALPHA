@@ -16,7 +16,8 @@ from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
 from alpha_data.adapters.ccxt_adapter import parse_ccxt_ohlcv
-from alpha_data.crypto.contracts import FAMILY_AUTHORITIES
+from alpha_data.crypto.contracts import FAMILY_AUTHORITIES, CryptoDatasetIdentityV1
+from alpha_data.crypto.ingestion import ingest_provider_payload
 from alpha_data.crypto.profiles import CryptoCoverageProfileV1, CryptoCoverageTaskV1
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
@@ -1343,6 +1344,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
                 "quote_asset": ["USD" if category == "inverse" else "USDT"],
                 "onboard_time": [None],
                 "delivery_time": [None],
+                "contract_size": [100.0 if category == "inverse" else None],
             }
         )
         for category in ("spot", "linear", "inverse")
@@ -1374,6 +1376,9 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
         def verify_ready(self, *, required_bytes: int) -> None:
             assert required_bytes == 0
 
+        def inventory(self) -> tuple[dict[str, object], ...]:
+            return ()
+
     def latest_source(
         _store: object,
         *,
@@ -1404,6 +1409,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     created_payload = json.loads(created.stdout)
     assert created_payload["task_count"] == 30
     assert created_payload["counts_by_provider"]["binance"] == 6
+    assert len(created_payload["binance_hourly_missing_scopes"]) == 3
     assert created_payload["counts_by_cadence"]["five_minute"] == 1
     assert created_payload["execution_authority"] is False
 
@@ -1432,6 +1438,190 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     rejected = runner.invoke(app, ["crypto-data", "profile-show", profile_id, "--json"])
     assert rejected.exit_code != 0
     assert "identity" in rejected.output
+
+
+def test_liquidity_freeze_requires_complete_exact_daily_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    fetched_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    membership_payload = json.dumps(
+        {
+            "symbols": [
+                {
+                    "symbol": symbol,
+                    "status": "TRADING",
+                    "baseAsset": base,
+                    "quoteAsset": "USDT",
+                    "isSpotTradingAllowed": True,
+                }
+                for symbol, base in (("AAAUSDT", "AAA"), ("BBBUSDT", "BBB"))
+            ]
+        }
+    ).encode()
+    membership = ingest_provider_payload(
+        store,
+        dataset=CryptoDatasetIdentityV1(
+            provider="binance",
+            venue="binance",
+            market_type="spot",
+            family="market_membership",
+            instrument="spot",
+            base_asset=None,
+            quote_asset=None,
+            frequency="catalog_snapshot",
+            units="provider_native_market_identity",
+            timestamp_convention="provider_observation_utc",
+        ),
+        payload=membership_payload,
+        request=(),
+        fetched_at=fetched_at,
+        provider_schema="fixture",
+        parser_version="fixture-v1",
+        logical_name="membership.json",
+        parser=lambda payload: crypto_data_cmds.parse_binance_exchange_info(
+            payload, category="spot", fetched_at=fetched_at
+        ),
+        observed_column="fetched_at",
+        key_columns=("category", "symbol"),
+        availability_column="fetched_at",
+    )
+    bar_manifest_ids: list[str] = []
+    for index, (symbol, base, quote_volume) in enumerate(
+        (("AAAUSDT", "AAA", 10.0), ("BBBUSDT", "BBB", 20.0))
+    ):
+        payload = json.dumps(
+            [
+                [
+                    1_786_665_600_000,
+                    "1",
+                    "2",
+                    "0.5",
+                    "1.5",
+                    str(quote_volume),
+                    1_786_751_999_999,
+                    str(quote_volume),
+                    10 + index,
+                    "1",
+                    "1",
+                ]
+            ]
+        ).encode()
+        result = ingest_provider_payload(
+            store,
+            dataset=CryptoDatasetIdentityV1(
+                provider="binance",
+                venue="binance",
+                market_type="spot",
+                family="market_bars",
+                instrument=symbol,
+                base_asset=base,
+                quote_asset="USDT",
+                frequency="1d",
+                units="provider_native_ohlcv",
+                timestamp_convention="interval_start_utc",
+            ),
+            payload=payload,
+            request=(("symbol", symbol),),
+            fetched_at=fetched_at,
+            provider_schema="fixture",
+            parser_version="fixture-v1",
+            logical_name="bars.json",
+            parser=lambda value: crypto_data_cmds.parse_binance_klines(value, source="rest_json"),
+            observed_column="open_time",
+            key_columns=("open_time",),
+            period_start_timestamps=True,
+        )
+        bar_manifest_ids.append(str(result.normalized_manifest["manifest_id"]))
+    tasks = (
+        CryptoCoverageTaskV1(
+            provider="binance",
+            family="market_membership",
+            instrument="spot",
+            base_asset=None,
+            quote_asset=None,
+            category="spot",
+            frequency="catalog_snapshot",
+            cadence="daily",
+        ),
+        *tuple(
+            CryptoCoverageTaskV1(
+                provider="binance",
+                family="market_bars",
+                instrument=symbol,
+                base_asset=base,
+                quote_asset="USDT",
+                category="spot",
+                frequency="1d",
+                cadence="daily",
+            )
+            for symbol, base in (("AAAUSDT", "AAA"), ("BBBUSDT", "BBB"))
+        ),
+    )
+    profile = CryptoCoverageProfileV1.create(
+        as_of=fetched_at,
+        source_manifest_ids=(str(membership.normalized_manifest["manifest_id"]),),
+        tasks=tasks,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_coverage_profile_root", lambda: tmp_path / "profiles")
+    crypto_data_cmds._write_coverage_profile(profile)
+
+    frozen = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "liquidity-freeze",
+            profile.profile_id,
+            "--category",
+            "spot",
+            "--quote-asset",
+            "USDT",
+            "--session",
+            "2026-08-14",
+            "--limit",
+            "1",
+            "--json",
+        ],
+    )
+    assert frozen.exit_code == 0, frozen.output
+    payload = json.loads(frozen.stdout)
+    assert payload["universe_count"] == 2
+    assert payload["selected_count"] == 1
+    derived = store.verify_manifest(payload["manifest_id"])
+    assert derived["metadata"]["method_version"] == "binance-prior-day-liquidity-v1"
+    assert pl.read_parquet(store.bulk_root / derived["artifact_key"])["symbol"].to_list() == [
+        "BBBUSDT"
+    ]
+
+    (store.manifest_root / f"{payload['manifest_id']}.json").unlink()
+    (store.manifest_root / f"{bar_manifest_ids[1]}.json").unlink()
+    incomplete = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "liquidity-freeze",
+            profile.profile_id,
+            "--category",
+            "spot",
+            "--quote-asset",
+            "USDT",
+            "--session",
+            "2026-08-14",
+            "--json",
+        ],
+    )
+    assert incomplete.exit_code != 0
+    assert "incomplete for 1 of 2" in incomplete.output
 
 
 def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
@@ -1566,6 +1756,23 @@ def test_binance_daily_profile_task_uses_only_previous_complete_utc_day(
 
     assert captured["kwargs"]["start"] == "2026-08-14T00:00:00+00:00"  # type: ignore[index]
     assert captured["kwargs"]["end"] == "2026-08-14T23:59:59.999000+00:00"  # type: ignore[index]
+
+    hourly = CryptoCoverageTaskV1(
+        provider="binance",
+        family="market_bars",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        category="spot",
+        frequency="1h",
+        cadence="hourly",
+    )
+    crypto_data_cmds._run_profile_task(
+        hourly,
+        run_at=datetime.fromisoformat("2026-08-15T13:45:00+00:00"),
+    )
+    assert captured["kwargs"]["start"] == "2026-08-15T12:00:00+00:00"  # type: ignore[index]
+    assert captured["kwargs"]["end"] == "2026-08-15T12:59:59.999000+00:00"  # type: ignore[index]
 
 
 @pytest.mark.parametrize(

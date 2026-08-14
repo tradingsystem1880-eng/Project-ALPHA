@@ -56,6 +56,12 @@ membership receipts define daily coverage point-in-time. Active spot markets and
 included; dated, inactive, and future-launched contracts are excluded. Provider-native Unicode
 symbols remain exact identities and are percent-encoded only at URL path boundaries. Each scheduled
 daily bar task requests only the immediately previous complete UTC day.
+Hourly liquidity membership freezes only after every active market in one exact category/quote
+scope has one qualified observation for the complete prior UTC day. Spot and USD-M rank the native
+quote-volume field; COIN-M ranks exact contract count multiplied by the catalog contract size.
+USD, USDT, and other quote scopes are never cross-ranked. Each immutable selection is capped at 250,
+commits to the complete input universe, and becomes a source of the next content-addressed profile;
+hourly tasks then request only the previous complete UTC hour.
 
 The internal data root stores control state, manifests, qualification records, provider-check
 receipts, and sensitive research metadata. Bulk public bytes live beneath the configured external

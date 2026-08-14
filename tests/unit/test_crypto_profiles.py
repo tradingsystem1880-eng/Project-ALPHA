@@ -30,6 +30,7 @@ def _binance_memberships(as_of: datetime) -> tuple[pl.DataFrame, ...]:
                 "quote_asset": quotes,
                 "onboard_time": onboard,
                 "delivery_time": delivery,
+                "contract_size": [100.0 if category == "inverse" else None] * len(symbols),
             }
         )
 
@@ -98,6 +99,18 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
         ("BTC", "USDT"): 100.0,
         ("ETH", "USDT"): 200.0,
     }
+    hourly_membership = pl.DataFrame(
+        {
+            "session": [as_of - timedelta(days=1)],
+            "rank": [1],
+            "category": ["spot"],
+            "symbol": ["BTCUSDT"],
+            "base_asset": ["BTC"],
+            "quote_asset": ["USDT"],
+            "liquidity_score": [1_000_000.0],
+            "liquidity_units": ["USDT_quote_volume"],
+        }
+    )
 
     tasks = build_default_coverage_tasks(
         linear_catalog=linear,
@@ -106,6 +119,7 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
         option_open_interest=option_open_interest,
         as_of=as_of,
         binance_memberships=_binance_memberships(as_of),
+        binance_hourly_memberships=(hourly_membership,),
     )
 
     by_id = {task.task_id: task for task in tasks}
@@ -142,13 +156,20 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
     assert {
         (task.instrument, task.category, task.frequency)
         for task in tasks
-        if task.provider == "binance" and task.family == "market_bars"
+        if task.provider == "binance" and task.family == "market_bars" and task.frequency == "1d"
     } == {
         ("BTCUSDT", "spot", "1d"),
         ("ETHUSDT", "linear", "1d"),
         ("BTCUSD_PERP", "inverse", "1d"),
     }
     assert sum(task.family == "market_membership" for task in tasks) == 3
+    assert any(
+        task.provider == "binance"
+        and task.instrument == "BTCUSDT"
+        and task.frequency == "1h"
+        and task.cadence == "hourly"
+        for task in tasks
+    )
 
 
 def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> None:

@@ -343,6 +343,7 @@ def parse_binance_exchange_info(
             contract_type: str = "SPOT"
             onboard_time = None
             delivery_time = None
+            contract_size = None
             active = status == "TRADING" and allowed
         else:
             raw_contract_type = item.get("contractType")
@@ -351,6 +352,19 @@ def parse_binance_exchange_info(
             contract_type = raw_contract_type
             onboard_time = _optional_timestamp(item.get("onboardDate"), label="onboard")
             delivery_time = _optional_timestamp(item.get("deliveryDate"), label="delivery")
+            contract_size = None
+            if category == "inverse":
+                raw_contract_size = item.get("contractSize")
+                if isinstance(raw_contract_size, bool) or not isinstance(
+                    raw_contract_size, str | int | float
+                ):
+                    raise DataError("Binance inverse contract size is malformed")
+                try:
+                    contract_size = float(raw_contract_size)
+                except (TypeError, ValueError) as exc:
+                    raise DataError("Binance inverse contract size is malformed") from exc
+                if not math.isfinite(contract_size) or contract_size <= 0:
+                    raise DataError("Binance inverse contract size is malformed")
             active = (
                 status == "TRADING"
                 and contract_type == "PERPETUAL"
@@ -368,6 +382,7 @@ def parse_binance_exchange_info(
                     "quote_asset": quote_asset,
                     "onboard_time": onboard_time,
                     "delivery_time": delivery_time,
+                    "contract_size": contract_size,
                 }
             )
     if not parsed:
@@ -793,3 +808,88 @@ def point_in_time_liquid_universe(
     if ranked["symbol"].n_unique() != ranked.height:
         raise DataError("Binance liquidity session contains duplicate symbols")
     return tuple(ranked["symbol"].to_list())
+
+
+def point_in_time_liquid_markets(
+    observations: pl.DataFrame,
+    *,
+    as_of: datetime,
+    category: BinanceCategory,
+    quote_asset: str,
+    limit: int,
+) -> pl.DataFrame:
+    """Rank one exact category/quote scope without equating incompatible native units."""
+    required = {
+        "session",
+        "category",
+        "symbol",
+        "base_asset",
+        "quote_asset",
+        "base_volume",
+        "quote_volume",
+        "contract_size",
+    }
+    if not required.issubset(observations.columns):
+        raise DataError("Binance liquidity observations have an invalid schema")
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise DataError("Binance liquidity as_of must be timezone-aware")
+    if category not in {"spot", "linear", "inverse"}:
+        raise DataError("Binance liquidity category is invalid")
+    if not _provider_symbol(quote_asset):
+        raise DataError("Binance liquidity quote asset is invalid")
+    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 250:
+        raise DataError("Binance liquidity limit must be between 1 and 250")
+    scoped = observations.filter(
+        (pl.col("session") < as_of.astimezone(UTC))
+        & (pl.col("category") == category)
+        & (pl.col("quote_asset") == quote_asset)
+    )
+    if scoped.is_empty():
+        raise DataError("Binance liquidity scope is unavailable before as_of")
+    latest = scoped["session"].max()
+    scoped = scoped.filter(pl.col("session") == latest)
+    if scoped.select("symbol").n_unique() != scoped.height:
+        raise DataError("Binance liquidity scope contains duplicate symbols")
+    numeric_columns = ("base_volume", "quote_volume")
+    if any(
+        value is None
+        or isinstance(value, bool)
+        or not isinstance(value, int | float)
+        or not math.isfinite(float(value))
+        or float(value) < 0
+        for column in numeric_columns
+        for value in scoped[column].to_list()
+    ):
+        raise DataError("Binance liquidity volume is invalid")
+    if category == "inverse":
+        if any(
+            value is None
+            or isinstance(value, bool)
+            or not isinstance(value, int | float)
+            or not math.isfinite(float(value))
+            or float(value) <= 0
+            for value in scoped["contract_size"].to_list()
+        ):
+            raise DataError("Binance inverse liquidity contract size is invalid")
+        score = pl.col("base_volume") * pl.col("contract_size")
+        units = "USD_contract_notional"
+    else:
+        score = pl.col("quote_volume")
+        units = f"{quote_asset}_quote_volume"
+    return (
+        scoped.with_columns(score.alias("liquidity_score"))
+        .sort(["liquidity_score", "symbol"], descending=[True, False])
+        .head(limit)
+        .with_row_index("rank", offset=1)
+        .with_columns(pl.lit(units).alias("liquidity_units"))
+        .select(
+            "session",
+            "rank",
+            "category",
+            "symbol",
+            "base_asset",
+            "quote_asset",
+            "liquidity_score",
+            "liquidity_units",
+        )
+    )

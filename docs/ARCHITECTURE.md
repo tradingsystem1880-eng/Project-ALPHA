@@ -201,7 +201,10 @@ each successful normalized manifest, re-verifies all source manifests on executi
 retries only unfinished membership. A completed resume is offline and idempotent.
 Binance daily tasks cover every active spot/perpetual identity and deterministically request only
 the previous complete UTC day. Dated, future-launched, inactive, and duplicate membership fails or
-is excluded before task construction; Unicode provider symbols retain exact identity.
+is excluded before task construction; Unicode provider symbols retain exact identity. A
+`binance-liquidity-membership` derived artifact is available only when an exact category/quote scope
+has complete qualified prior-day observations. It commits to all universe inputs, ranks at most 250
+without mixing USD/USDT or contract units, and supplies the following profile's one-hour tasks.
 Coinbase comparison bars are acquired through the existing venue-qualified CCXT seam at exact
 1m/5m/1h/1d intervals. Bybit spot bars may be stored only as diagnostics and fail snapshot authority
 checks. A derived market-comparison artifact commits to the authoritative Binance input, every

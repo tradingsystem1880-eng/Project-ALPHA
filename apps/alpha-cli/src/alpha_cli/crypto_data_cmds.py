@@ -10,7 +10,7 @@ import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Final, Literal, cast
@@ -54,6 +54,7 @@ from alpha_data.crypto.providers.binance import (
     parse_binance_book_snapshot,
     parse_binance_exchange_info,
     parse_binance_klines,
+    point_in_time_liquid_markets,
     reconcile_archive_tail,
     verify_archive_checksum,
 )
@@ -2595,6 +2596,58 @@ def _latest_profile_source(
     return manifest_id, dataset, frame
 
 
+_DEFAULT_BINANCE_HOURLY_SCOPES: Final = (
+    ("spot", "USDT"),
+    ("linear", "USDT"),
+    ("inverse", "USD"),
+)
+
+
+def _latest_binance_liquidity_sources(
+    store: CryptoBulkStore, *, as_of: datetime
+) -> tuple[tuple[str, tuple[str, str], pl.DataFrame], ...]:
+    candidates: dict[tuple[str, str], list[tuple[date, str, dict[str, object]]]] = {
+        scope: [] for scope in _DEFAULT_BINANCE_HOURLY_SCOPES
+    }
+    for manifest in store.inventory():
+        if (
+            manifest.get("artifact_kind") != "derived"
+            or manifest.get("derived_kind") != "binance-liquidity-membership"
+            or not isinstance(manifest.get("metadata"), dict)
+        ):
+            continue
+        metadata = cast(dict[str, object], manifest["metadata"])
+        scope = (metadata.get("category"), metadata.get("quote_asset"))
+        if scope not in candidates:
+            continue
+        if (
+            metadata.get("schema_version") != 1
+            or metadata.get("method_version") != "binance-prior-day-liquidity-v1"
+            or metadata.get("execution_authority") is not False
+            or not isinstance(metadata.get("session"), str)
+        ):
+            raise DataError("Binance liquidity-membership metadata is invalid")
+        try:
+            session = date.fromisoformat(cast(str, metadata["session"]))
+        except ValueError as exc:
+            raise DataError("Binance liquidity-membership session is invalid") from exc
+        if datetime.combine(session + timedelta(days=1), datetime.min.time(), tzinfo=UTC) > as_of:
+            continue
+        manifest_id = manifest.get("manifest_id")
+        if not isinstance(manifest_id, str):
+            raise DataError("Binance liquidity-membership manifest id is invalid")
+        candidates[scope].append((session, manifest_id, manifest))
+    selected: list[tuple[str, tuple[str, str], pl.DataFrame]] = []
+    for scope in _DEFAULT_BINANCE_HOURLY_SCOPES:
+        if not candidates[scope]:
+            continue
+        _session, manifest_id, manifest = max(
+            candidates[scope], key=lambda item: (item[0], item[1])
+        )
+        selected.append((manifest_id, scope, _parquet_frame(store, manifest)))
+    return tuple(selected)
+
+
 def _profile_summary(profile: CryptoCoverageProfileV1) -> dict[str, object]:
     providers: dict[str, int] = {}
     cadences: dict[str, int] = {}
@@ -2668,6 +2721,7 @@ def profile_create(
             )
             for category in ("spot", "linear", "inverse")
         )
+        hourly_sources = _latest_binance_liquidity_sources(store, as_of=instant)
         tasks = build_default_coverage_tasks(
             linear_catalog=linear,
             inverse_catalog=inverse,
@@ -2675,6 +2729,7 @@ def profile_create(
             option_open_interest=option_oi,
             as_of=instant,
             binance_memberships=tuple(source[2] for source in binance_sources),
+            binance_hourly_memberships=tuple(source[2] for source in hourly_sources),
         )
         profile = CryptoCoverageProfileV1.create(
             as_of=instant,
@@ -2682,6 +2737,7 @@ def profile_create(
                 [source[0] for source in catalog_sources]
                 + [source[0] for source in option_sources]
                 + [source[0] for source in binance_sources]
+                + [source[0] for source in hourly_sources]
             ),
             tasks=tasks,
         )
@@ -2692,7 +2748,17 @@ def profile_create(
         _profile_summary(profile)
         | {
             "state": "frozen",
-            "next_action": "Inspect a bounded task page before running one cadence batch.",
+            "binance_hourly_scopes": [list(source[1]) for source in hourly_sources],
+            "binance_hourly_missing_scopes": [
+                list(scope)
+                for scope in _DEFAULT_BINANCE_HOURLY_SCOPES
+                if scope not in {source[1] for source in hourly_sources}
+            ],
+            "next_action": (
+                "Acquire the complete prior-day daily scope, then freeze hourly membership."
+                if len(hourly_sources) < len(_DEFAULT_BINANCE_HOURLY_SCOPES)
+                else "Inspect a bounded task page before running one cadence batch."
+            ),
         },
         json_out=json_out,
     )
@@ -2749,6 +2815,196 @@ def profiles(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -
         },
         json_out=json_out,
     )
+
+
+def _parquet_frame(store: CryptoBulkStore, manifest: dict[str, object]) -> pl.DataFrame:
+    artifact_key = manifest.get("artifact_key")
+    if not isinstance(artifact_key, str):
+        raise DataError("crypto normalized artifact key is invalid")
+    try:
+        return pl.read_parquet(store.bulk_root / artifact_key)
+    except (OSError, pl.exceptions.PolarsError) as exc:
+        raise DataError("crypto normalized artifact is unreadable") from exc
+
+
+def _freeze_binance_liquidity(
+    profile: CryptoCoverageProfileV1,
+    *,
+    category: Literal["spot", "linear", "inverse"],
+    quote_asset: str,
+    session: date,
+    limit: int,
+) -> dict[str, object]:
+    store = _bulk_store()
+    store.verify_ready(required_bytes=0)
+    for manifest_id in profile.source_manifest_ids:
+        store.verify_manifest(manifest_id)
+    expected = tuple(
+        task
+        for task in profile.tasks
+        if task.provider == "binance"
+        and task.family == "market_bars"
+        and task.category == category
+        and task.quote_asset == quote_asset
+        and task.frequency == "1d"
+    )
+    if not expected:
+        raise DataError("Binance liquidity profile scope has no daily market membership")
+    membership_id: str | None = None
+    contract_sizes: dict[str, float | None] = {}
+    for source_id in profile.source_manifest_ids:
+        source = store.verify_manifest(source_id)
+        if source.get("artifact_kind") != "normalized":
+            continue
+        dataset = CryptoDatasetIdentityV1.from_dict(source.get("dataset"))
+        if (
+            dataset.provider == "binance"
+            and dataset.family == "market_membership"
+            and dataset.instrument == category
+        ):
+            if membership_id is not None:
+                raise DataError("Binance liquidity profile has duplicate membership sources")
+            membership_id = source_id
+            membership = _parquet_frame(store, source)
+            if not {"symbol", "contract_size"}.issubset(membership.columns):
+                raise DataError("Binance liquidity membership lacks contract units")
+            contract_sizes = {
+                str(row["symbol"]): (
+                    float(row["contract_size"]) if row["contract_size"] is not None else None
+                )
+                for row in membership.select("symbol", "contract_size").iter_rows(named=True)
+            }
+    if membership_id is None:
+        raise DataError("Binance liquidity profile membership source is unavailable")
+    session_at = datetime.combine(session, datetime.min.time(), tzinfo=UTC)
+    expected_by_symbol = {task.instrument: task for task in expected}
+    candidates: dict[str, list[tuple[str, dict[str, object]]]] = {
+        symbol: [] for symbol in expected_by_symbol
+    }
+    for manifest in store.inventory():
+        if manifest.get("artifact_kind") != "normalized":
+            continue
+        dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+        task = expected_by_symbol.get(dataset.instrument)
+        if (
+            task is None
+            or dataset.provider != "binance"
+            or dataset.family != "market_bars"
+            or dataset.market_type != category
+            or dataset.base_asset != task.base_asset
+            or dataset.quote_asset != quote_asset
+            or dataset.frequency != "1d"
+        ):
+            continue
+        quality = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+        if quality.state != "qualified" or quality.failures or quality.warnings:
+            continue
+        frame = _parquet_frame(store, manifest)
+        if not {"open_time", "base_volume", "quote_volume"}.issubset(frame.columns):
+            raise DataError("Binance daily liquidity artifact schema is incomplete")
+        row = frame.filter(pl.col("open_time") == session_at)
+        if row.height != 1:
+            continue
+        values = row.select("base_volume", "quote_volume").row(0, named=True)
+        candidate_id = manifest.get("manifest_id")
+        if not isinstance(candidate_id, str):
+            raise DataError("Binance daily liquidity manifest id is invalid")
+        candidates[dataset.instrument].append((candidate_id, values))
+    missing = tuple(symbol for symbol, items in candidates.items() if not items)
+    if missing:
+        raise DataError(
+            f"Binance liquidity scope is incomplete for {len(missing)} of {len(expected)} markets"
+        )
+    observations: list[dict[str, object]] = []
+    input_ids: list[str] = [membership_id]
+    for symbol, task in expected_by_symbol.items():
+        items = candidates[symbol]
+        distinct = {
+            (
+                float(cast(float, values["base_volume"])),
+                float(cast(float, values["quote_volume"])),
+            )
+            for _manifest_id, values in items
+        }
+        if len(distinct) != 1:
+            raise DataError("Binance liquidity scope contains conflicting qualified daily bytes")
+        selected_id, values = min(items, key=lambda item: item[0])
+        input_ids.append(selected_id)
+        observations.append(
+            {
+                "session": session_at,
+                "category": category,
+                "symbol": symbol,
+                "base_asset": task.base_asset,
+                "quote_asset": quote_asset,
+                "base_volume": float(cast(float, values["base_volume"])),
+                "quote_volume": float(cast(float, values["quote_volume"])),
+                "contract_size": contract_sizes.get(symbol),
+            }
+        )
+    selected = point_in_time_liquid_markets(
+        pl.DataFrame(observations),
+        as_of=session_at + timedelta(days=1),
+        category=category,
+        quote_asset=quote_asset,
+        limit=limit,
+    )
+    output = io.BytesIO()
+    selected.write_parquet(output, compression="zstd", statistics=True)
+    derived = store.publish_derived(
+        output.getvalue(),
+        derived_kind="binance-liquidity-membership",
+        input_manifest_ids=tuple(input_ids),
+        metadata={
+            "schema_version": 1,
+            "profile_id": profile.profile_id,
+            "session": session.isoformat(),
+            "category": category,
+            "quote_asset": quote_asset,
+            "universe_count": len(expected),
+            "selected_count": selected.height,
+            "limit": limit,
+            "method_version": "binance-prior-day-liquidity-v1",
+            "execution_authority": False,
+        },
+    )
+    return {
+        "manifest_id": derived["manifest_id"],
+        "profile_id": profile.profile_id,
+        "session": session.isoformat(),
+        "category": category,
+        "quote_asset": quote_asset,
+        "universe_count": len(expected),
+        "selected_count": selected.height,
+        "state": "frozen",
+        "execution_authority": False,
+        "next_action": "Create a fresh profile to admit this exact hourly membership.",
+    }
+
+
+@crypto_data_app.command("liquidity-freeze")
+def liquidity_freeze(
+    profile_id: str,
+    category: str = typer.Option(..., help="exact spot, linear, or inverse unit scope"),
+    quote_asset: str = typer.Option(..., help="exact quote asset; never cross-ranked"),
+    session: str = typer.Option(..., help="complete UTC session YYYY-MM-DD"),
+    limit: int = typer.Option(250, min=1, max=250),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Freeze one complete prior-day top-liquidity scope without cross-unit ranking."""
+    if category not in {"spot", "linear", "inverse"}:
+        raise typer.BadParameter("liquidity category must be spot, linear, or inverse")
+    try:
+        result = _freeze_binance_liquidity(
+            _read_coverage_profile(profile_id),
+            category=cast(Literal["spot", "linear", "inverse"], category),
+            quote_asset=quote_asset.strip().upper(),
+            session=date.fromisoformat(session),
+            limit=limit,
+        )
+    except (ValueError, DataError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result, json_out=json_out)
 
 
 def _batch_digest(body: dict[str, object]) -> str:
@@ -2896,11 +3152,20 @@ def _run_profile_task(task: CryptoCoverageTaskV1, *, run_at: datetime) -> dict[s
     start: str | None = None
     end: str | None = None
     if task.provider == "binance" and task.family == "market_bars":
-        end_day = run_at.astimezone(UTC).date()
-        start_at = datetime.combine(end_day - timedelta(days=1), datetime.min.time(), tzinfo=UTC)
-        end_at = datetime.combine(end_day, datetime.min.time(), tzinfo=UTC) - timedelta(
-            milliseconds=1
-        )
+        if task.frequency == "1d":
+            end_day = run_at.astimezone(UTC).date()
+            start_at = datetime.combine(
+                end_day - timedelta(days=1), datetime.min.time(), tzinfo=UTC
+            )
+            end_at = datetime.combine(end_day, datetime.min.time(), tzinfo=UTC) - timedelta(
+                milliseconds=1
+            )
+        elif task.frequency in {"1h", "1m"}:
+            completed_at = run_at.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+            start_at = completed_at - timedelta(hours=1)
+            end_at = completed_at - timedelta(milliseconds=1)
+        else:
+            raise DataError("Binance profile market-bar frequency is unsupported")
         start, end = start_at.isoformat(), end_at.isoformat()
     if task.provider == "coinmetrics":
         if task.lookback_days is None:

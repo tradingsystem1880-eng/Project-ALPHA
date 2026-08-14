@@ -23,6 +23,7 @@ from alpha_data.crypto.providers.binance import (
     parse_binance_exchange_info,
     parse_binance_klines,
     parse_binance_trades,
+    point_in_time_liquid_markets,
     point_in_time_liquid_universe,
     reconcile_archive_tail,
     verify_archive_checksum,
@@ -93,6 +94,7 @@ def test_exchange_info_parses_active_spot_and_perpetual_membership() -> None:
                     "quoteAsset": "USD",
                     "onboardDate": 1_600_000_000_000,
                     "deliveryDate": 4_133_980_800_000,
+                    "contractSize": 100,
                 }
             ]
         }
@@ -108,6 +110,7 @@ def test_exchange_info_parses_active_spot_and_perpetual_membership() -> None:
     ]
     assert linear_frame.select("symbol", "contract_type").rows() == [("BTCUSDT", "PERPETUAL")]
     assert inverse_frame.select("symbol", "contract_type").rows() == [("BTCUSD_PERP", "PERPETUAL")]
+    assert inverse_frame["contract_size"].to_list() == [100.0]
     assert spot_frame["fetched_at"].to_list() == [fetched_at, fetched_at]
 
 
@@ -533,3 +536,62 @@ def test_liquid_universe_uses_only_the_prior_available_day() -> None:
 
     assert selected == ("AAA",)
     assert point_in_time_liquid_universe(poisoned, as_of=as_of, limit=1) == selected
+
+
+@pytest.mark.bias_guard
+def test_liquid_markets_rank_within_one_exact_unit_scope() -> None:
+    as_of = datetime(2026, 1, 3, tzinfo=UTC)
+    frame = pl.DataFrame(
+        {
+            "session": [
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 3, tzinfo=UTC),
+            ],
+            "category": ["inverse", "inverse", "inverse"],
+            "symbol": ["BTCUSD_PERP", "ETHUSD_PERP", "FUTUREUSD_PERP"],
+            "base_asset": ["BTC", "ETH", "FUTURE"],
+            "quote_asset": ["USD", "USD", "USD"],
+            "base_volume": [10.0, 50.0, 1_000_000.0],
+            "quote_volume": [0.1, 1.0, 1_000_000.0],
+            "contract_size": [100.0, 10.0, 100.0],
+        }
+    )
+
+    selected = point_in_time_liquid_markets(
+        frame,
+        as_of=as_of,
+        category="inverse",
+        quote_asset="USD",
+        limit=2,
+    )
+
+    assert selected.select("rank", "symbol", "liquidity_score").rows() == [
+        (1, "BTCUSD_PERP", 1_000.0),
+        (2, "ETHUSD_PERP", 500.0),
+    ]
+    assert selected["liquidity_units"].unique().to_list() == ["USD_contract_notional"]
+
+
+def test_liquid_markets_reject_cross_quote_or_incomplete_contract_units() -> None:
+    as_of = datetime(2026, 1, 3, tzinfo=UTC)
+    frame = pl.DataFrame(
+        {
+            "session": [datetime(2026, 1, 2, tzinfo=UTC)],
+            "category": ["inverse"],
+            "symbol": ["BTCUSD_PERP"],
+            "base_asset": ["BTC"],
+            "quote_asset": ["USD"],
+            "base_volume": [10.0],
+            "quote_volume": [0.1],
+            "contract_size": [None],
+        }
+    )
+    with pytest.raises(DataError, match="contract size"):
+        point_in_time_liquid_markets(
+            frame, as_of=as_of, category="inverse", quote_asset="USD", limit=1
+        )
+    with pytest.raises(DataError, match="scope"):
+        point_in_time_liquid_markets(
+            frame, as_of=as_of, category="inverse", quote_asset="USDT", limit=1
+        )

@@ -243,6 +243,7 @@ def _family_checks(
         values("base_asset")
         values("quote_asset")
         values("contract_type")
+        values("contract_size")
     elif dataset.family == "derivative_trades":
         values("trade_id")
         if any(value <= 0 for value in numbers("price")):

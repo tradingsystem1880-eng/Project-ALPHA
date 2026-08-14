@@ -338,6 +338,7 @@ def active_binance_markets(
             "quote_asset",
             "onboard_time",
             "delivery_time",
+            "contract_size",
         }
     )
     if len(frames) != 3 or any(not required.issubset(frame.columns) for frame in frames):
@@ -415,6 +416,7 @@ def build_default_coverage_tasks(
     option_open_interest: dict[tuple[str, str], float],
     as_of: datetime,
     binance_memberships: tuple[pl.DataFrame, ...] = (),
+    binance_hourly_memberships: tuple[pl.DataFrame, ...] = (),
 ) -> tuple[CryptoCoverageTaskV1, ...]:
     """Build the fixed public-data profile without fetching or granting authority."""
     if as_of.tzinfo is None or as_of.utcoffset() is None:
@@ -487,6 +489,7 @@ def build_default_coverage_tasks(
     )
 
     if binance_memberships:
+        active_binance = active_binance_markets(binance_memberships, as_of=as_of)
         tasks.extend(
             _task(
                 "binance",
@@ -511,10 +514,59 @@ def build_default_coverage_tasks(
                 frequency="1d",
                 cadence="daily",
             )
-            for symbol, base, quote, category in active_binance_markets(
-                binance_memberships, as_of=as_of
-            )
+            for symbol, base, quote, category in active_binance
         )
+        active_ids = set(active_binance)
+        seen_scopes: set[tuple[str, str]] = set()
+        for membership in binance_hourly_memberships:
+            required = {
+                "session",
+                "rank",
+                "category",
+                "symbol",
+                "base_asset",
+                "quote_asset",
+                "liquidity_score",
+                "liquidity_units",
+            }
+            if not required.issubset(membership.columns) or not 1 <= membership.height <= 250:
+                raise DataError("Binance hourly membership schema is invalid")
+            categories = set(membership["category"].to_list())
+            quotes = set(membership["quote_asset"].to_list())
+            if len(categories) != 1 or len(quotes) != 1:
+                raise DataError("Binance hourly membership mixes unit scopes")
+            scope = (str(next(iter(categories))), str(next(iter(quotes))))
+            if scope in seen_scopes:
+                raise DataError("Binance hourly membership scope is duplicated")
+            seen_scopes.add(scope)
+            if membership["rank"].to_list() != list(range(1, membership.height + 1)):
+                raise DataError("Binance hourly membership ranks are invalid")
+            sessions = membership["session"].to_list()
+            if len(set(sessions)) != 1 or any(
+                not isinstance(session, datetime) or session >= as_of for session in sessions
+            ):
+                raise DataError("Binance hourly membership session is not point-in-time")
+            for row in membership.iter_rows(named=True):
+                identity = (
+                    str(row["symbol"]),
+                    str(row["base_asset"]),
+                    str(row["quote_asset"]),
+                    str(row["category"]),
+                )
+                if identity not in active_ids:
+                    raise DataError("Binance hourly membership is outside active venue membership")
+                tasks.append(
+                    _task(
+                        "binance",
+                        "market_bars",
+                        identity[0],
+                        base=identity[1],
+                        quote=identity[2],
+                        category=identity[3],
+                        frequency="1h",
+                        cadence="hourly",
+                    )
+                )
 
     perpetuals = (
         *_active_perpetuals(linear_catalog, category="linear", as_of=as_of),
