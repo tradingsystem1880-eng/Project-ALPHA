@@ -29,6 +29,209 @@
       "reason": "Safe read exercised against an isolated temporary store."
     },
     {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "acquire_api_crypto_data_acquisitions_post",
+      "path": "/api/crypto-data/acquisitions",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "asset_masters_api_crypto_data_asset_masters_get",
+      "path": "/api/crypto-data/asset-masters",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "asset_master_create_api_crypto_data_asset_masters_post",
+      "path": "/api/crypto-data/asset-masters",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post",
+      "path": "/api/crypto-data/asset-masters/{asset_master_version}/verify",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "asset_contract_api_crypto_data_assets_contracts__network___contract_address__get",
+      "path": "/api/crypto-data/assets/contracts/{network}/{contract_address}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "asset_api_crypto_data_assets__symbol__get",
+      "path": "/api/crypto-data/assets/{symbol}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "profile_batches_api_crypto_data_batches_get",
+      "path": "/api/crypto-data/batches",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "profile_resume_api_crypto_data_batches__batch_id__resume_post",
+      "path": "/api/crypto-data/batches/{batch_id}/resume",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "capabilities_api_crypto_data_capabilities_get",
+      "path": "/api/crypto-data/capabilities",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "catalog_api_crypto_data_catalog_get",
+      "path": "/api/crypto-data/catalog",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "coverage_api_crypto_data_coverage_get",
+      "path": "/api/crypto-data/coverage",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "estimate_api_crypto_data_estimate_post",
+      "path": "/api/crypto-data/estimate",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "features_api_crypto_data_features_get",
+      "path": "/api/crypto-data/features",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "feature_create_api_crypto_data_features_post",
+      "path": "/api/crypto-data/features",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "feature_show_api_crypto_data_features__manifest_id__get",
+      "path": "/api/crypto-data/features/{manifest_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "profiles_api_crypto_data_profiles_get",
+      "path": "/api/crypto-data/profiles",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "profile_create_api_crypto_data_profiles_post",
+      "path": "/api/crypto-data/profiles",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "profile_show_api_crypto_data_profiles__profile_id__get",
+      "path": "/api/crypto-data/profiles/{profile_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "profile_run_api_crypto_data_profiles__profile_id__batches_post",
+      "path": "/api/crypto-data/profiles/{profile_id}/batches",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post",
+      "path": "/api/crypto-data/profiles/{profile_id}/liquidity-membership",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post",
+      "path": "/api/crypto-data/profiles/{profile_id}/one-minute-selection",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "quality_api_crypto_data_quality__manifest_id__get",
+      "path": "/api/crypto-data/quality/{manifest_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "snapshot_create_api_crypto_data_snapshots_post",
+      "path": "/api/crypto-data/snapshots",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post",
+      "path": "/api/crypto-data/snapshots/{snapshot_id}/register",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post",
+      "path": "/api/crypto-data/snapshots/{snapshot_id}/verify",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "storage_api_crypto_data_storage_get",
+      "path": "/api/crypto-data/storage",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "cache_clean_api_crypto_data_storage_cache_clean_post",
+      "path": "/api/crypto-data/storage/cache/clean",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "storage_inventory_api_crypto_data_storage_inventory_get",
+      "path": "/api/crypto-data/storage/inventory",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "storage_verify_api_crypto_data_storage_verify_post",
+      "path": "/api/crypto-data/storage/verify",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
       "method": "GET",
       "mode": "automatic",
       "operation_id": "list_development_jobs_api_development_jobs_get",

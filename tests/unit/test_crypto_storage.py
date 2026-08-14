@@ -43,7 +43,9 @@ def test_macos_volume_uuid_queries_containing_mount_point(
     volume = tmp_path / "Expansion"
     nested = volume / "Project-ALPHA" / "crypto-data"
     nested.mkdir(parents=True)
-    monkeypatch.setattr(storage.os.path, "ismount", lambda path: Path(path) == volume)
+    monkeypatch.setattr(
+        "alpha_data.crypto.storage.os.path.ismount", lambda path: Path(path) == volume
+    )
     observed: list[list[str]] = []
 
     def fake_run(args: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
@@ -55,7 +57,7 @@ def test_macos_volume_uuid_queries_containing_mount_point(
             stderr=b"",
         )
 
-    monkeypatch.setattr(storage.subprocess, "run", fake_run)
+    monkeypatch.setattr("alpha_data.crypto.storage.subprocess.run", fake_run)
 
     assert storage.macos_volume_uuid(nested) == UUID
     assert observed == [["diskutil", "info", "-plist", str(volume)]]
@@ -206,6 +208,88 @@ def test_staging_metadata_resumes_exact_offset(tmp_path: Path) -> None:
     assert resumed.bytes_written == 3
     store.append_staging(resumed, b"def")
     assert store.resume_staging(first.staging_id).bytes_written == 6
+
+
+def test_storage_contract_rejects_invalid_configuration_and_staging_state(tmp_path: Path) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    common = {
+        "bulk_root": bulk,
+        "manifest_root": tmp_path / "manifests",
+        "expected_volume_uuid": UUID,
+        "volume_uuid": lambda _: UUID,
+        "capacity": lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        "minimum_free_bytes": 100,
+    }
+    for change, message in (
+        ({"expected_volume_uuid": ""}, "UUID"),
+        ({"reserve_fraction": 1.0}, "reserve fraction"),
+        ({"minimum_free_bytes": -1}, "minimum free"),
+    ):
+        with pytest.raises(DataError, match=message):
+            CryptoBulkStore(**(common | change))  # type: ignore[arg-type]
+    store = CryptoBulkStore(**common)  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="required bulk bytes"):
+        store.verify_ready(required_bytes=-1)
+    for field, value in (("provider", "../bad"), ("receipt_id", ".."), ("logical_name", "a/b")):
+        kwargs = {"provider": "bybit", "receipt_id": "r1", "logical_name": "data.json"}
+        kwargs[field] = value
+        with pytest.raises(DataError, match="invalid crypto storage"):
+            store.begin_staging(expected_bytes=1, **kwargs)
+
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="r1", logical_name="data.json", expected_bytes=3
+    )
+    with pytest.raises(DataError, match="non-empty"):
+        store.append_staging(handle, b"")
+    with pytest.raises(DataError, match="exceeds"):
+        store.append_staging(handle, b"four")
+    with pytest.raises(DataError, match="byte count"):
+        store.resume_payload(handle, b"no")
+    partial = store.append_staging(handle, b"a")
+    with pytest.raises(DataError, match="prefix"):
+        store.resume_payload(partial, b"bad")
+    complete = store.resume_payload(partial, b"abc")
+    assert store.resume_payload(complete, b"abc") == complete
+    with pytest.raises(DataError, match="hash"):
+        store.publish_staging(complete, expected_sha256="f" * 64)
+
+
+def test_storage_manifest_and_derived_tamper_boundaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = _store(tmp_path)
+    with pytest.raises(DataError, match="manifest id"):
+        store.verify_manifest(None)
+    with pytest.raises(DataError, match="unavailable"):
+        store.verify_manifest("a" * 64)
+
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="r_raw", logical_name="raw.json", expected_bytes=3
+    )
+    complete = store.append_staging(handle, b"raw")
+    raw = store.publish_staging(complete, expected_sha256=hashlib.sha256(b"raw").hexdigest())
+    with pytest.raises(DataError, match="non-empty"):
+        store.publish_derived(
+            b"", derived_kind="feature", input_manifest_ids=(str(raw["manifest_id"]),), metadata={}
+        )
+    with pytest.raises(DataError, match="normalized provider"):
+        store.publish_derived(
+            b"derived",
+            derived_kind="feature",
+            input_manifest_ids=(str(raw["manifest_id"]),),
+            metadata={},
+        )
+    monkeypatch.setattr(
+        store, "verify_manifest", lambda _manifest_id: {"artifact_kind": "normalized"}
+    )
+    with pytest.raises(DataError, match="finite JSON"):
+        store.publish_derived(
+            b"derived",
+            derived_kind="feature",
+            input_manifest_ids=(str(raw["manifest_id"]),),
+            metadata={"bad": float("nan")},
+        )
 
 
 def test_derivative_event_publication_requires_immutable_case_scope(tmp_path: Path) -> None:

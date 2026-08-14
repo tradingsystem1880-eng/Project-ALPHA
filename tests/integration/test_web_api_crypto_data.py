@@ -5,9 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from alpha_web import _catalog, _invoke, _research
+from alpha_web.api import crypto_data as crypto_api
+from alpha_web.api.models import (
+    CryptoAcquisitionRequest,
+    CryptoAssetMasterCreateRequest,
+    CryptoCoverageBatchRequest,
+    CryptoCoverageBatchResumeRequest,
+    CryptoCoverageProfileCreateRequest,
+    CryptoSnapshotCreateRequest,
+    CryptoSnapshotRegisterRequest,
+    CryptoSnapshotVerifyRequest,
+)
 from alpha_web.app import create_app
 
 
@@ -33,6 +45,84 @@ def test_crypto_catalog_route_uses_authoritative_cli_projection(
     assert response.status_code == 200
     assert response.json()["families"][0]["provider"] == "bybit"
     assert calls == [["crypto-data", "catalog", "--json"]]
+
+
+def test_crypto_route_functions_cover_closed_validation_and_recovery_edges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def project(args: list[str]) -> list[str]:
+        calls.append(args)
+        return args
+
+    monkeypatch.setattr(crypto_api, "_project", project)
+    assert crypto_api.storage()[1] == "storage"
+    assert crypto_api.coverage()[1] == "coverage"
+    crypto_api.profile_create(CryptoCoverageProfileCreateRequest(as_of="2026-08-15T00:00:00Z"))
+    crypto_api.asset("btc", "2026-08-15T00:00:00Z")
+    for symbol, as_of, message in (
+        ("../btc", "2026-08-15", "symbol"),
+        ("BTC", "", "as-of"),
+    ):
+        with pytest.raises(HTTPException, match=message):
+            crypto_api.asset(symbol, as_of)
+    with pytest.raises(HTTPException, match="contract identity"):
+        crypto_api.asset_contract("../eth", "0xabc", "a" * 64, "2026-08-15")
+    with pytest.raises(HTTPException, match="asset-master"):
+        crypto_api.asset_contract("ethereum", "0xabc", "bad", "2026-08-15")
+    with pytest.raises(HTTPException, match="as-of"):
+        crypto_api.asset_contract("ethereum", "0xabc", "a" * 64, "")
+    with pytest.raises(HTTPException, match="asset-master"):
+        crypto_api.asset_master_verify("bad")
+    with pytest.raises(HTTPException, match="manifest id"):
+        crypto_api.quality("bad")
+    with pytest.raises(HTTPException, match="feature manifest"):
+        crypto_api.feature_show("bad")
+    with pytest.raises(HTTPException, match="snapshot id"):
+        crypto_api.snapshot_verify(
+            "bad", CryptoSnapshotVerifyRequest(required_families=[], purpose="research")
+        )
+    with pytest.raises(HTTPException, match="snapshot id"):
+        crypto_api.snapshot_register("bad", CryptoSnapshotRegisterRequest(symbol="BTC"))
+
+    with pytest.raises(HTTPException, match="unique"):
+        crypto_api.snapshot_create(CryptoSnapshotCreateRequest(manifest_ids=["a" * 64, "a" * 64]))
+    with pytest.raises(HTTPException, match="manifest id"):
+        crypto_api.snapshot_create(CryptoSnapshotCreateRequest(manifest_ids=["bad"]))
+    with pytest.raises(HTTPException, match="unique"):
+        crypto_api.asset_master_create(
+            CryptoAssetMasterCreateRequest(
+                coingecko_manifest_id="a" * 64,
+                geckoterminal_manifest_ids=["b" * 64, "b" * 64],
+            )
+        )
+
+    request = CryptoAcquisitionRequest(
+        provider="bybit",
+        family="funding",
+        instrument="BTCUSDT",
+        base="BTC",
+        quote="USDT",
+        case_id="f03802b8-df35-4f19-a90c-0b3437aa587d",
+        expected_case_revision="a" * 64,
+        reason="Not valid for this family.",
+    )
+    with pytest.raises(HTTPException, match="only valid"):
+        crypto_api.acquire(request)
+
+    class FailedLaunch:
+        def __call__(self, *_args: object, **_kwargs: object) -> object:
+            raise RuntimeError("fixture launch conflict")
+
+    monkeypatch.setattr(_invoke, "launch", FailedLaunch())
+    with pytest.raises(HTTPException, match="fixture launch conflict"):
+        crypto_api.profile_run(
+            "a" * 64,
+            CryptoCoverageBatchRequest(cadence="daily", offset=0, limit=1, confirm=True),
+        )
+    with pytest.raises(HTTPException, match="fixture launch conflict"):
+        crypto_api.profile_resume("b" * 64, CryptoCoverageBatchResumeRequest(confirm=True))
 
 
 def test_crypto_capabilities_route_preserves_readiness_dimensions(

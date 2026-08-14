@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+from email.message import Message
 
 import pytest
 
@@ -182,8 +183,10 @@ def test_keyless_fetch_retries_a_bounded_rate_limit_without_exposing_body(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     url = geckoterminal_public_url("top_pools", network="bsc", params={"page": 2})
+    headers = Message()
+    headers["Retry-After"] = "0"
     responses: list[object] = [
-        urllib.error.HTTPError(url, 429, "vendor body sentinel", {"Retry-After": "0"}, None),
+        urllib.error.HTTPError(url, 429, "vendor body sentinel", headers, None),
         _Response(b'{"data":[]}'),
     ]
     sleeps: list[float] = []
@@ -209,7 +212,7 @@ def test_keyless_fetch_rate_limit_backoff_is_bounded(monkeypatch: pytest.MonkeyP
     def always_limited(*_args: object, **_kwargs: object) -> object:
         nonlocal calls
         calls += 1
-        raise urllib.error.HTTPError(url, 429, "vendor body sentinel", {}, None)
+        raise urllib.error.HTTPError(url, 429, "vendor body sentinel", Message(), None)
 
     monkeypatch.setattr("urllib.request.urlopen", always_limited)
     monkeypatch.setattr("time.sleep", sleeps.append)

@@ -23,7 +23,7 @@ Assign exactly one primary acquisition authority to each dataset family:
 
 | Dataset family | Authority | Boundary |
 |---|---|---|
-| CEX spot and futures membership and market history | Binance exchange-info, native archives, and public REST tail | Active membership plus venue-native bars/trades; spot, USD-M, and COIN-M remain distinct |
+| CEX spot and futures market history and membership | Binance exchange-info, native archives, and public REST tail | Active membership plus venue-native bars/trades; spot, USD-M, and COIN-M remain distinct |
 | advanced derivatives and options | Bybit public V5 interfaces | Complete instrument catalogs, funding, OI, ratios, trade/mark/index/premium bars, recent executions, exact books, volatility, chains, IV, and Greeks retain native units and clocks |
 | asset identity and broad market reference | CoinGecko | Identity and reference statistics only; never execution-price evidence |
 | DEX pools, liquidity, and pool OHLCV | GeckoTerminal | Network-plus-contract/pool identity; manipulation and thin-liquidity warnings remain explicit |

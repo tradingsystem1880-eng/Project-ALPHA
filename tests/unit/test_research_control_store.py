@@ -4403,6 +4403,26 @@ def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> Non
     assert claim["status"] == "draft"
     assert claim["revision"] == 1
 
+    direction = store.record_source_claim_owner_direction(
+        project_id,
+        claim_id=claim_id,
+        decision="revise",
+        actor="owner",
+        reason="Clarify the sample-period limitation.",
+        payload={"requested_field": "limitations"},
+        at=START + timedelta(minutes=2, seconds=30),
+    )
+    assert direction["sequence"] == 1
+    assert direction["decision"] == "revise"
+    with pytest.raises(DataError, match="unknown research claim"):
+        store.record_source_claim_owner_direction(
+            project_id,
+            claim_id="sc_" + "f" * 64,
+            decision="reject",
+            actor="owner",
+            reason="Unknown claim fixture.",
+        )
+
     # Screening appends a new revision; the draft row survives unchanged (append-only).
     screened = store.screen_source_claim(
         project_id,
@@ -4413,6 +4433,14 @@ def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> Non
     assert screened["status"] == "screened"
     assert screened["revision"] == 2
     assert screened["screened_by"] == "owner"
+    with pytest.raises(DataError, match="screened claim"):
+        store.record_source_claim_owner_direction(
+            project_id,
+            claim_id=claim_id,
+            decision="reject",
+            actor="owner",
+            reason="Cannot rewrite screened evidence.",
+        )
     rows = store.list_source_claims(project_id)
     assert [(row["claim_id"], row["revision"], row["status"]) for row in rows] == [
         (claim_id, 2, "screened"),
@@ -4481,6 +4509,14 @@ def test_full_text_claim_requires_and_reverifies_source_anchor(tmp_path: Path) -
         "trust_label": "UNTRUSTED_SOURCE",
     }
     store.record_research_document_text(str(source["source_id"]), artifact=artifact)
+    context = store.get_research_source_context(str(source["source_id"]), excerpt_limit=24)
+    assert context["document"] is not None
+    previews = cast(list[dict[str, object]], context["page_previews"])
+    assert previews[0]["excerpt"] == text[:24]
+    assert previews[0]["excerpt_truncated"] is True
+    assert previews[0]["trust_label"] == "UNTRUSTED_SOURCE"
+    with pytest.raises(DataError, match="excerpt limit"):
+        store.get_research_source_context(str(source["source_id"]), excerpt_limit=0)
 
     with pytest.raises(DataError, match="SourceAnchorV1"):
         store.draft_source_claim(

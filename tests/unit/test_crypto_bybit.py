@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import urllib.error
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -843,3 +844,180 @@ def test_perpetual_and_option_receipts_freeze_verify_and_replay_exactly(
         receipts["option-chain.json"], fetched_at_ms=1_787_878_400_000
     )
     assert replayed.equals(original)
+
+
+def test_bybit_transport_and_scalar_edge_contracts(monkeypatch: pytest.MonkeyPatch) -> None:
+    def offline(*_args: object, **_kwargs: object) -> object:
+        raise urllib.error.URLError("offline")
+
+    monkeypatch.setattr("urllib.request.urlopen", offline)
+    with pytest.raises(DataError, match="request failed"):
+        fetch_bybit_public("funding", {"category": "linear"})
+
+    malformed_integer = _payload(
+        {
+            "category": "linear",
+            "symbol": "BTCUSDT",
+            "list": [{"timestamp": "bad", "openInterest": "1"}],
+        }
+    )
+    with pytest.raises(DataError, match="timestamp"):
+        parse_open_interest(malformed_integer)
+    overflow = _payload(
+        {
+            "category": "linear",
+            "symbol": "BTCUSDT",
+            "list": [{"timestamp": str(10**30), "openInterest": "1"}],
+        }
+    )
+    with pytest.raises(DataError, match="supported range"):
+        parse_open_interest(overflow)
+    bad_strike = _payload(
+        {
+            "category": "option",
+            "list": [
+                {
+                    "symbol": "BTC-29AUG26-NOTNUM-C",
+                    "baseCoin": "BTC",
+                    "quoteCoin": "USDT",
+                    "settleCoin": "USDT",
+                    "optionsType": "Call",
+                    "status": "Trading",
+                    "launchTime": "1",
+                    "deliveryTime": "2",
+                    "priceFilter": {"tickSize": "1"},
+                    "lotSizeFilter": {"qtyStep": "1"},
+                }
+            ],
+        }
+    )
+    with pytest.raises(DataError, match="strike"):
+        parse_instruments(bad_strike, category="option", fetched_at_ms=3)
+
+
+def test_bybit_remaining_market_boundaries_fail_closed() -> None:
+    ratio = _payload(
+        {
+            "list": [
+                {
+                    "symbol": "BTCUSDT",
+                    "buyRatio": "0.5",
+                    "sellRatio": "0.5",
+                    "timestamp": "1787875200000",
+                }
+            ]
+        }
+    )
+    with pytest.raises(DataError, match="ratio category"):
+        parse_long_short_ratio(ratio, category="spot")  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="price family"):
+        parse_price_klines(ratio, family="bad")  # type: ignore[arg-type]
+
+    mark = pl.DataFrame(
+        {
+            "timestamp": [datetime(2026, 8, 15, tzinfo=UTC)],
+            "category": ["linear"],
+            "symbol": ["BTCUSDT"],
+            "family": ["mark"],
+            "close": [10.0],
+        }
+    )
+    with pytest.raises(DataError, match="input"):
+        price_bundle_diagnostics(mark=pl.DataFrame(), index=mark, premium=mark)
+    with pytest.raises(DataError, match="family"):
+        price_bundle_diagnostics(
+            mark=mark.with_columns(pl.lit("index").alias("family")), index=mark, premium=mark
+        )
+    with pytest.raises(DataError, match="duplicated"):
+        price_bundle_diagnostics(mark=pl.concat([mark, mark]), index=mark, premium=mark)
+    index = mark.with_columns(pl.lit("index").alias("family"))
+    premium = pl.DataFrame(
+        {
+            "timestamp": [datetime(2026, 8, 16, tzinfo=UTC)],
+            "category": ["linear"],
+            "symbol": ["BTCUSDT"],
+            "family": ["premium"],
+            "close": [0.01],
+        }
+    )
+    with pytest.raises(DataError, match="exactly aligned"):
+        price_bundle_diagnostics(mark=mark, index=index, premium=premium)
+
+    bad_volatility = _payload(["bad"])
+    with pytest.raises(DataError, match="result is invalid"):
+        parse_historical_volatility(bad_volatility, base_coin="BTC", quote_coin="USD")
+    with pytest.raises(DataError, match="result is invalid"):
+        parse_historical_volatility(_payload("bad"), base_coin="BTC", quote_coin="USD")
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    (
+        ({"time": "1787875300000"}, "later than"),
+        ({"price": "0"}, "positive"),
+        ({"side": "Hold"}, "side"),
+        ({"isBlockTrade": "false"}, "flags"),
+    ),
+)
+def test_recent_trade_rejects_impossible_provider_state(
+    change: dict[str, object], message: str
+) -> None:
+    record: dict[str, object] = {
+        "execId": "trade-1",
+        "symbol": "BTCUSDT",
+        "price": "10",
+        "size": "1",
+        "side": "Buy",
+        "time": "1787875200000",
+    }
+    record.update(change)
+    with pytest.raises(DataError, match=message):
+        parse_recent_trades(
+            _payload({"category": "linear", "list": [record]}, time=1_787_875_200_000),
+            fetched_at_ms=1_787_875_200_000,
+        )
+
+
+@pytest.mark.parametrize(
+    ("result", "category", "message"),
+    (
+        ({"s": "BTCUSDT", "ts": 1, "u": 1, "seq": 1, "b": [], "a": [["2", "1"]]}, "linear", "side"),
+        (
+            {"s": "BTCUSDT", "ts": 1, "u": 1, "seq": 1, "b": [["1"]], "a": [["2", "1"]]},
+            "linear",
+            "level",
+        ),
+        (
+            {"s": "BTCUSDT", "ts": 1, "u": 1, "seq": 1, "b": [["1", "0"]], "a": [["2", "1"]]},
+            "linear",
+            "positive",
+        ),
+        (
+            {
+                "s": "BTCUSDT",
+                "ts": 2,
+                "cts": 3,
+                "u": 1,
+                "seq": 1,
+                "b": [["1", "1"]],
+                "a": [["2", "1"]],
+            },
+            "linear",
+            "engine",
+        ),
+        (
+            {"s": "BTCUSDT", "ts": 1, "u": 1, "seq": 1, "b": [["1", "1"]], "a": [["2", "1"]]},
+            "bad",
+            "category",
+        ),
+    ),
+)
+def test_orderbook_rejects_malformed_provider_state(
+    result: dict[str, object], category: str, message: str
+) -> None:
+    with pytest.raises(DataError, match=message):
+        parse_orderbook_snapshot(
+            _payload(result, time=1),
+            category=category,  # type: ignore[arg-type]
+            fetched_at_ms=10,
+        )

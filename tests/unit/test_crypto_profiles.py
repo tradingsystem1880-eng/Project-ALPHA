@@ -6,7 +6,13 @@ import polars as pl
 import pytest
 
 from alpha_core import DataError
-from alpha_data.crypto.profiles import CryptoCoverageProfileV1, build_default_coverage_tasks
+from alpha_data.crypto.profiles import (
+    CryptoCoverageProfileV1,
+    CryptoCoverageTaskV1,
+    active_binance_markets,
+    active_option_markets,
+    build_default_coverage_tasks,
+)
 
 
 def _coinmetrics_catalog(as_of: datetime) -> pl.DataFrame:
@@ -247,3 +253,121 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
             coinmetrics_catalog=_coinmetrics_catalog(as_of),
             as_of=as_of,
         )
+
+
+def test_coverage_task_and_profile_contracts_reject_malformed_state() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    valid = {
+        "provider": "bybit",
+        "family": "funding",
+        "instrument": "BTCUSDT",
+        "base_asset": "BTC",
+        "quote_asset": "USDT",
+        "category": "linear",
+        "frequency": "1h",
+        "cadence": "hourly",
+        "network": None,
+        "metrics": (),
+        "lookback_days": None,
+    }
+    for change, message in (
+        ({"provider": ""}, "provider"),
+        ({"provider": "unknown"}, "unsupported"),
+        ({"cadence": "never"}, "cadence"),
+        ({"base_asset": ""}, "base asset"),
+        ({"lookback_days": 0}, "lookback"),
+        ({"metrics": ("",)}, "metric"),
+    ):
+        with pytest.raises(DataError, match=message):
+            CryptoCoverageTaskV1(**(valid | change))
+    task = CryptoCoverageTaskV1(**valid)  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="schema"):
+        CryptoCoverageTaskV1.from_dict({})
+    with pytest.raises(DataError, match="malformed"):
+        CryptoCoverageTaskV1.from_dict(task.to_dict() | {"extra": True})
+    with pytest.raises(DataError, match="identity"):
+        CryptoCoverageTaskV1.from_dict(task.to_dict() | {"task_id": "f" * 64})
+
+    for sources, tasks, message in (
+        ((), (task,), "source membership"),
+        (("bad",), (task,), "source membership"),
+        (("a" * 64, "a" * 64), (task,), "source membership"),
+        (("a" * 64,), (), "task membership"),
+        (("a" * 64,), (task, task), "task membership"),
+    ):
+        with pytest.raises(DataError, match=message):
+            CryptoCoverageProfileV1.create(as_of=now, source_manifest_ids=sources, tasks=tasks)
+    with pytest.raises(DataError, match="timezone"):
+        CryptoCoverageProfileV1.create(
+            as_of=datetime(2026, 8, 15), source_manifest_ids=("a" * 64,), tasks=(task,)
+        )
+    with pytest.raises(DataError, match="schema"):
+        CryptoCoverageProfileV1.from_dict({})
+    with pytest.raises(DataError, match="malformed"):
+        CryptoCoverageProfileV1.from_dict({"schema_version": 1})
+
+
+def test_coverage_catalog_and_membership_boundaries_fail_closed() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    with pytest.raises(DataError, match="option catalog schema"):
+        active_option_markets(pl.DataFrame({"bad": [1]}), as_of=now)
+    invalid_options = pl.DataFrame(
+        {
+            "status": ["Trading"],
+            "symbol": ["X"],
+            "base_coin": [None],
+            "quote_coin": ["USDT"],
+            "launch_time": [now - timedelta(days=1)],
+            "delivery_time": [now + timedelta(days=1)],
+        }
+    )
+    with pytest.raises(DataError, match="identity"):
+        active_option_markets(invalid_options, as_of=now)
+    memberships = _binance_memberships(now)
+    with pytest.raises(DataError, match="coverage"):
+        active_binance_markets(memberships[:2], as_of=now)
+    duplicated = (memberships[0], memberships[0], memberships[2])
+    with pytest.raises(DataError, match="duplicated"):
+        active_binance_markets(duplicated, as_of=now)
+    malformed = memberships[0].with_columns(pl.lit(None).cast(pl.String).alias("symbol"))
+    with pytest.raises(DataError, match="identity"):
+        active_binance_markets((malformed, memberships[1], memberships[2]), as_of=now)
+
+    empty_perpetual = pl.DataFrame(
+        schema={
+            "status": pl.String,
+            "contract_type": pl.String,
+            "symbol": pl.String,
+            "base_coin": pl.String,
+            "quote_coin": pl.String,
+            "launch_time": pl.Datetime(time_zone="UTC"),
+            "delivery_time": pl.Datetime(time_zone="UTC"),
+        }
+    )
+    empty_options = pl.DataFrame(
+        schema={
+            "status": pl.String,
+            "symbol": pl.String,
+            "base_coin": pl.String,
+            "quote_coin": pl.String,
+            "launch_time": pl.Datetime(time_zone="UTC"),
+            "delivery_time": pl.Datetime(time_zone="UTC"),
+        }
+    )
+
+    def build(coinmetrics: pl.DataFrame, as_of: datetime) -> tuple[CryptoCoverageTaskV1, ...]:
+        return build_default_coverage_tasks(
+            linear_catalog=empty_perpetual,
+            inverse_catalog=empty_perpetual,
+            option_catalog=empty_options,
+            option_open_interest={},
+            coinmetrics_catalog=coinmetrics,
+            as_of=as_of,
+        )
+
+    with pytest.raises(DataError, match="timezone"):
+        build(_coinmetrics_catalog(now), datetime(2026, 8, 15))
+    with pytest.raises(DataError, match="Coin Metrics.*schema"):
+        build(pl.DataFrame(), now)
+    with pytest.raises(DataError, match="no daily ETH"):
+        build(_coinmetrics_catalog(now).filter(pl.col("asset") == "btc"), now)

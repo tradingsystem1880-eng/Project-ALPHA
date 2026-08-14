@@ -6,6 +6,7 @@ import json
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, cast
 from urllib.request import Request
 
 import polars as pl
@@ -13,15 +14,22 @@ import pytest
 from typer.testing import CliRunner
 
 from alpha_cli import crypto_data_cmds
+from alpha_cli.control_store import research_case_revision
 from alpha_cli.main import app
 from alpha_core import DataError
-from alpha_data.adapters.ccxt_adapter import parse_ccxt_ohlcv
-from alpha_data.crypto.contracts import FAMILY_AUTHORITIES, CryptoDatasetIdentityV1
+from alpha_data.adapters.ccxt_adapter import CCXTAdapter, parse_ccxt_ohlcv
+from alpha_data.crypto.contracts import FAMILY_AUTHORITIES, CryptoDatasetIdentityV1, CryptoFamily
 from alpha_data.crypto.ingestion import ingest_provider_payload
 from alpha_data.crypto.profiles import CryptoCoverageProfileV1, CryptoCoverageTaskV1
+from alpha_data.crypto.providers.binance import parse_binance_exchange_info, parse_binance_klines
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 runner = CliRunner()
+
+
+def _manifest(value: object) -> dict[str, Any]:
+    assert isinstance(value, dict)
+    return cast(dict[str, Any], value)
 
 
 def test_coinmetrics_catalog_rejects_a_repeated_pagination_cursor(
@@ -341,7 +349,16 @@ def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
     )
     assert verified.exit_code == 0, verified.output
     assert snapshot.exit_code == 0, snapshot.output
-    assert json.loads(snapshot.stdout)["asset_master_version"] == master["asset_master_version"]
+    snapshot_payload = json.loads(snapshot.stdout)
+    assert snapshot_payload["asset_master_version"] == master["asset_master_version"]
+    integrity_snapshot, integrity_eligible = crypto_data_cmds._integrity_verified_snapshot(
+        snapshot_payload["snapshot_id"]
+    )
+    assert integrity_snapshot.snapshot_id == snapshot_payload["snapshot_id"]
+    assert integrity_eligible is True
+    listed_masters = runner.invoke(app, ["crypto-data", "asset-masters", "--json"])
+    assert listed_masters.exit_code == 0, listed_masters.output
+    assert json.loads(listed_masters.stdout)["count"] == 2
     contract = runner.invoke(
         app,
         [
@@ -407,7 +424,7 @@ def test_bybit_option_families_require_truthful_option_category() -> None:
     fetched_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
     for family in ("option_instruments", "option_quotes", "historical_volatility"):
         plan = crypto_data_cmds._bybit_plan(
-            family,  # type: ignore[arg-type]
+            family,
             "BTC-OPTIONS",
             base="BTC",
             quote="USDT",
@@ -421,7 +438,7 @@ def test_bybit_option_families_require_truthful_option_category() -> None:
         assert plan.params["category"] == "option"
         with pytest.raises(DataError, match="requires the option category"):
             crypto_data_cmds._bybit_plan(
-                family,  # type: ignore[arg-type]
+                family,
                 "BTC-OPTIONS",
                 base="BTC",
                 quote="USDT",
@@ -605,6 +622,7 @@ def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
     calls: list[tuple[str, dict[str, str | int]]] = []
 
     def fetch(endpoint: str, params: dict[str, str | int]) -> bytes:
+        result: dict[str, object]
         calls.append((endpoint, dict(params)))
         if endpoint == "instruments":
             if params["category"] == "option":
@@ -678,6 +696,19 @@ def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
                 "seq": 8,
                 "cts": 1_786_751_998_000,
             }
+        elif endpoint == "long_short_ratio":
+            result = {
+                "category": "linear",
+                "list": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "buyRatio": "0.55",
+                        "sellRatio": "0.45",
+                        "timestamp": "1786748400000",
+                    }
+                ],
+                "nextPageCursor": "",
+            }
         else:  # pragma: no cover - assertion below identifies unexpected routing
             raise AssertionError(endpoint)
         return json.dumps({"retCode": 0, "time": 1_786_752_000_000, "result": result}).encode()
@@ -697,7 +728,7 @@ def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
         "execution_state": "approved",
         "source_pack_id": "pack-1",
     }
-    revision = crypto_data_cmds.research_case_revision(case)
+    revision = research_case_revision(case)
     monkeypatch.setattr(
         crypto_data_cmds,
         "_control_store",
@@ -707,6 +738,7 @@ def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
     families = (
         ("instrument_catalog", "linear"),
         ("derivative_bars", "BTCUSDT"),
+        ("long_short_ratio", "BTCUSDT"),
         ("derivative_trades", "BTCUSDT"),
         ("derivative_book_snapshots", "BTCUSDT"),
     )
@@ -748,10 +780,11 @@ def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
     assert [endpoint for endpoint, _ in calls] == [
         "instruments",
         "trade_kline",
+        "long_short_ratio",
         "recent_trades",
         "orderbook",
     ]
-    assert len(store.inventory()) == 8
+    assert len(store.inventory()) == 10
 
     option_catalog = runner.invoke(
         app,
@@ -774,7 +807,7 @@ def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
     assert json.loads(option_catalog.stdout)["state"] == "qualified"
     assert calls[-1][0] == "instruments"
     assert calls[-1][1]["category"] == "option"
-    assert len(store.inventory()) == 10
+    assert len(store.inventory()) == 12
 
 
 def test_point_in_time_acquisition_uses_network_completion_as_knowledge_time(
@@ -822,7 +855,7 @@ def test_point_in_time_acquisition_uses_network_completion_as_knowledge_time(
         "execution_state": "approved",
         "source_pack_id": "pack-1",
     }
-    revision = crypto_data_cmds.research_case_revision(case)
+    revision = research_case_revision(case)
     monkeypatch.setattr(
         crypto_data_cmds,
         "_control_store",
@@ -952,7 +985,7 @@ def test_bybit_spot_bars_are_diagnostic_only_and_cannot_enter_a_snapshot(
 
     assert acquired.exit_code == 0, acquired.output
     receipt = json.loads(acquired.stdout)
-    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    manifest = _manifest(store.verify_manifest(receipt["normalized_manifest_id"]))
     assert manifest["dataset"]["provider"] == "bybit"
     assert manifest["dataset"]["family"] == "comparison_bars"
     rejected = runner.invoke(
@@ -1107,7 +1140,7 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
         "BTC/USDT",
     )
     monkeypatch.setattr(
-        crypto_data_cmds.CCXTAdapter,
+        CCXTAdapter,
         "fetch_timeframe",
         lambda _self, _symbol, _start, _end, *, timeframe: comparison_result,
     )
@@ -1203,7 +1236,7 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     assert receipts["onchain_catalog"]["raw_page_count"] == 2
     raw_manifest_ids = receipts["onchain_catalog"]["raw_manifest_ids"]
     assert isinstance(raw_manifest_ids, list)
-    raw_catalog_page = store.verify_manifest(str(raw_manifest_ids[0]))
+    raw_catalog_page = _manifest(store.verify_manifest(str(raw_manifest_ids[0])))
     request_pairs = raw_catalog_page["receipt"]["request"]
     assert isinstance(request_pairs, list)
     assert dict(request_pairs)["page_size"] == "1000"
@@ -1319,7 +1352,9 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
     coingecko_receipt = json.loads(coingecko.stdout)
     assert coin_pages == [1, 2]
     assert coingecko_receipt["raw_page_count"] == 2
-    coingecko_manifest = store.verify_manifest(coingecko_receipt["normalized_manifest_id"])
+    coingecko_manifest = _manifest(
+        store.verify_manifest(coingecko_receipt["normalized_manifest_id"])
+    )
     assert coingecko_manifest["quality"]["row_count"] == 251
     assert coingecko_manifest["dataset"]["instrument"] == "all"
     assert coingecko_manifest["dataset"]["base_asset"] is None
@@ -1385,7 +1420,7 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
     assert pool_pages == [1, 2, 3, 4, 5]
     assert page_pauses == [2.1, 2.1, 2.1, 2.1]
     assert gecko_receipt["raw_page_count"] == 5
-    gecko_manifest = store.verify_manifest(gecko_receipt["normalized_manifest_id"])
+    gecko_manifest = _manifest(store.verify_manifest(gecko_receipt["normalized_manifest_id"]))
     assert gecko_manifest["quality"]["row_count"] == 100
 
 
@@ -1435,14 +1470,17 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
             "fetched_at": [as_of - timedelta(minutes=1)] * 2,
         }
     )
+    binance_symbols: dict[str, str] = {
+        "spot": "BTCUSDT",
+        "linear": "ETHUSDT",
+        "inverse": "BTCUSD_PERP",
+    }
     binance_memberships = {
         category: pl.DataFrame(
             {
                 "fetched_at": [as_of - timedelta(minutes=1)],
                 "category": [category],
-                "symbol": [
-                    {"spot": "BTCUSDT", "linear": "ETHUSDT", "inverse": "BTCUSD_PERP"}[category]
-                ],
+                "symbol": [binance_symbols[category]],
                 "status": ["TRADING"],
                 "contract_type": ["SPOT" if category == "spot" else "PERPETUAL"],
                 "base_asset": ["ETH" if category == "linear" else "BTC"],
@@ -1454,7 +1492,10 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
         )
         for category in ("spot", "linear", "inverse")
     }
-    sources = {
+    sources: dict[
+        tuple[str, str, str | None, str | None, str | None],
+        tuple[str, object, pl.DataFrame],
+    ] = {
         ("bybit", "instrument_catalog", "linear", None, None): ("a" * 64, None, linear),
         ("bybit", "instrument_catalog", "inverse", None, None): (
             "b" * 64,
@@ -1555,6 +1596,9 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     assert len(shown_payload["items"]) == 2
     assert shown_payload["has_more"] is True
     assert shown_payload["next_offset"] == 2
+    listed_profiles = runner.invoke(app, ["crypto-data", "profiles", "--json"])
+    assert listed_profiles.exit_code == 0, listed_profiles.output
+    assert json.loads(listed_profiles.stdout)["count"] == 1
     filtered = runner.invoke(
         app,
         [
@@ -1636,7 +1680,7 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
         provider_schema="fixture",
         parser_version="fixture-v1",
         logical_name="membership.json",
-        parser=lambda payload: crypto_data_cmds.parse_binance_exchange_info(
+        parser=lambda payload: parse_binance_exchange_info(
             payload, category="spot", fetched_at=fetched_at
         ),
         observed_column="fetched_at",
@@ -1684,7 +1728,7 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
             provider_schema="fixture",
             parser_version="fixture-v1",
             logical_name="bars.json",
-            parser=lambda value: crypto_data_cmds.parse_binance_klines(value, source="rest_json"),
+            parser=lambda value: parse_binance_klines(value, source="rest_json"),
             observed_column="open_time",
             key_columns=("open_time",),
             period_start_timestamps=True,
@@ -1745,7 +1789,7 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
     payload = json.loads(frozen.stdout)
     assert payload["universe_count"] == 2
     assert payload["selected_count"] == 1
-    derived = store.verify_manifest(payload["manifest_id"])
+    derived = _manifest(store.verify_manifest(payload["manifest_id"]))
     assert derived["metadata"]["method_version"] == "binance-prior-day-liquidity-v1"
     assert pl.read_parquet(store.bulk_root / derived["artifact_key"])["symbol"].to_list() == [
         "BBBUSDT"
@@ -1759,7 +1803,7 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
         "execution_state": "approved",
         "source_pack_id": "pack-1",
     }
-    revision = crypto_data_cmds.research_case_revision(case)
+    revision = research_case_revision(case)
     monkeypatch.setattr(
         crypto_data_cmds,
         "_control_store",
@@ -1794,7 +1838,7 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
     assert any(
         task.instrument == "AAAUSDT" and task.frequency == "1m" for task in selected_profile.tasks
     )
-    selection_manifest = store.verify_manifest(selection["selection_manifest_id"])
+    selection_manifest = _manifest(store.verify_manifest(selection["selection_manifest_id"]))
     assert selection_manifest["metadata"]["project_id"] == case_id
     assert selection_manifest["metadata"]["execution_authority"] is False
 
@@ -1910,7 +1954,7 @@ def test_feature_create_persists_and_reverifies_exact_lineage(
     assert payload["state"] == "frozen"
     assert payload["research_authority"] is False
     assert payload["execution_authority"] is False
-    manifest = store.verify_manifest(payload["manifest_id"])
+    manifest = _manifest(store.verify_manifest(payload["manifest_id"]))
     assert manifest["derived_kind"] == "crypto-feature"
     assert manifest["input_manifest_ids"] == [source_id]
     assert manifest["metadata"]["feature"]["artifact_sha256"] == manifest["artifact_sha256"]
@@ -1945,6 +1989,7 @@ def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    families: tuple[CryptoFamily, ...] = ("asset_metadata", "market_reference")
     tasks = tuple(
         CryptoCoverageTaskV1(
             provider="coingecko",
@@ -1958,7 +2003,7 @@ def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
             else "catalog_snapshot",
             cadence="daily",
         )
-        for family in ("asset_metadata", "market_reference")
+        for family in families
     )
     profile = CryptoCoverageProfileV1.create(
         as_of=run_at,
@@ -2119,7 +2164,7 @@ def test_binance_daily_profile_task_uses_only_previous_complete_utc_day(
 def test_binance_trade_archive_families_acquire_with_exact_native_identity(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    family: str,
+    family: CryptoFamily,
     csv_name: str,
     csv_payload: bytes,
     expected_frequency: str,
@@ -2174,10 +2219,10 @@ def test_binance_trade_archive_families_acquire_with_exact_native_identity(
     assert result.exit_code == 0, result.output
     receipt = json.loads(result.stdout)
     assert receipt["state"] == "qualified"
-    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    manifest = _manifest(store.verify_manifest(receipt["normalized_manifest_id"]))
     assert manifest["dataset"]["family"] == family
     assert manifest["dataset"]["frequency"] == expected_frequency
-    raw_manifest = store.verify_manifest(receipt["raw_manifest_id"])
+    raw_manifest = _manifest(store.verify_manifest(receipt["raw_manifest_id"]))
     assert (
         raw_manifest["receipt"]["upstream_checksum"] == hashlib.sha256(archive_payload).hexdigest()
     )
@@ -2227,7 +2272,7 @@ def test_binance_book_snapshot_acquires_as_point_in_time_non_execution_evidence(
     receipt = json.loads(result.stdout)
     assert receipt["state"] == "qualified"
     assert receipt["execution_authority"] is False
-    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    manifest = _manifest(store.verify_manifest(receipt["normalized_manifest_id"]))
     assert manifest["dataset"]["family"] == "book_snapshots"
     assert manifest["dataset"]["frequency"] == "point_in_time_book"
     assert manifest["dataset"]["timestamp_convention"] == "fetch_knowledge_utc"
@@ -2285,7 +2330,7 @@ def test_binance_market_membership_acquires_active_venue_catalog(
     assert result.exit_code == 0, result.output
     receipt = json.loads(result.stdout)
     assert receipt["state"] == "qualified"
-    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    manifest = _manifest(store.verify_manifest(receipt["normalized_manifest_id"]))
     assert manifest["dataset"]["family"] == "market_membership"
     assert manifest["dataset"]["provider"] == "binance"
     frame = pl.read_parquet(store.bulk_root / manifest["artifact_key"])
@@ -2386,11 +2431,11 @@ def test_binance_archive_and_rest_tail_freeze_both_resources_and_reconcile(
     receipt = json.loads(result.stdout)
     assert receipt["state"] == "qualified"
     assert receipt["raw_page_count"] == 2
-    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    manifest = _manifest(store.verify_manifest(receipt["normalized_manifest_id"]))
     assert manifest["quality"]["row_count"] == 2
     assert manifest["input_manifest_ids"] == receipt["raw_manifest_ids"]
-    archive_raw = store.verify_manifest(receipt["raw_manifest_ids"][0])
-    tail_raw = store.verify_manifest(receipt["raw_manifest_ids"][1])
+    archive_raw = _manifest(store.verify_manifest(receipt["raw_manifest_ids"][0]))
+    tail_raw = _manifest(store.verify_manifest(receipt["raw_manifest_ids"][1]))
     assert (
         archive_raw["receipt"]["upstream_checksum"] == hashlib.sha256(archive_payload).hexdigest()
     )
@@ -2466,7 +2511,7 @@ def test_changed_binance_archive_is_versioned_and_quarantined_as_unexplained(
     assert second.exit_code == 0, second.output
     second_receipt = json.loads(second.stdout)
     assert second_receipt["state"] == "quarantined"
-    manifest = store.verify_manifest(second_receipt["normalized_manifest_id"])
+    manifest = _manifest(store.verify_manifest(second_receipt["normalized_manifest_id"]))
     assert manifest["quality"]["failures"] == ["unexplained_provider_revision"]
     assert manifest["quality"]["correction_lineage"] == [hashlib.sha256(first_payload).hexdigest()]
 

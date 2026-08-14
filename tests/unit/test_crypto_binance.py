@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import urllib.error
 import urllib.request
 import zipfile
 from datetime import UTC, datetime
@@ -16,6 +17,7 @@ from alpha_data.crypto.providers.binance import (
     archive_url,
     binance_public_api_url,
     fetch_binance_archive,
+    fetch_binance_checksum,
     fetch_binance_public_api,
     parse_binance_aggregate_trades,
     parse_binance_archive_zip,
@@ -594,4 +596,550 @@ def test_liquid_markets_reject_cross_quote_or_incomplete_contract_units() -> Non
     with pytest.raises(DataError, match="scope"):
         point_in_time_liquid_markets(
             frame, as_of=as_of, category="inverse", quote_asset="USDT", limit=1
+        )
+
+
+@pytest.mark.parametrize(
+    ("url", "timeout", "message"),
+    (
+        ("https://attacker.invalid/data.zip", 30, "host"),
+        ("https://data.binance.vision/data/file.zip", 0, "timeout"),
+        ("https://data.binance.vision/data/file.zip", 121, "timeout"),
+    ),
+)
+def test_archive_fetch_rejects_unbounded_inputs(url: str, timeout: int, message: str) -> None:
+    with pytest.raises(DataError, match=message):
+        fetch_binance_archive(url, timeout_seconds=timeout)
+
+
+def test_archive_and_checksum_fetch_validate_redirect_mime_and_size(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = "https://data.binance.vision/data/file.zip"
+    checksum = f"{archive}.CHECKSUM"
+    response: _ArchiveResponse
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        assert timeout == 30
+        return response
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    response = _ArchiveResponse(
+        [b"zip"], status=200, headers={"Content-Type": "application/zip"}, url=archive
+    )
+    assert fetch_binance_archive(archive, timeout_seconds=30) == b"zip"
+    response = _ArchiveResponse(
+        [b"digest file\n"], status=200, headers={"Content-Type": "text/plain"}, url=checksum
+    )
+    assert fetch_binance_checksum(checksum) == b"digest file\n"
+
+    response = _ArchiveResponse(
+        [b"zip"], status=200, headers={"Content-Type": "text/html"}, url=archive
+    )
+    with pytest.raises(DataError, match="MIME"):
+        fetch_binance_archive(archive, timeout_seconds=30)
+    response = _ArchiveResponse(
+        [b"zip"],
+        status=200,
+        headers={"Content-Type": "application/zip"},
+        url="https://attacker.invalid/file.zip",
+    )
+    with pytest.raises(DataError, match="redirect"):
+        fetch_binance_archive(archive, timeout_seconds=30)
+    response = _ArchiveResponse(
+        [b"x" * 4097], status=200, headers={"Content-Type": "text/plain"}, url=checksum
+    )
+    with pytest.raises(DataError, match="byte limit"):
+        fetch_binance_checksum(checksum)
+
+    def failed(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        raise urllib.error.URLError("offline")
+
+    monkeypatch.setattr(urllib.request, "urlopen", failed)
+    with pytest.raises(DataError, match="request failed"):
+        fetch_binance_checksum(checksum)
+
+
+def test_public_api_fetch_validates_boundary_and_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url = binance_public_api_url("spot", "depth", {"symbol": "BTCUSDT", "limit": 1})
+    response: _ArchiveResponse
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        assert timeout == 30
+        return response
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    response = _ArchiveResponse(
+        [b"{}"], status=200, headers={"Content-Type": "application/json; charset=utf-8"}, url=url
+    )
+    assert fetch_binance_public_api(url) == b"{}"
+    response = _ArchiveResponse([b"{}"], status=200, headers={"Content-Type": "text/html"}, url=url)
+    with pytest.raises(DataError, match="MIME"):
+        fetch_binance_public_api(url)
+    response = _ArchiveResponse(
+        [b"{}"],
+        status=200,
+        headers={"Content-Type": "application/json"},
+        url="https://attacker.invalid/data",
+    )
+    with pytest.raises(DataError, match="redirect"):
+        fetch_binance_public_api(url)
+    with pytest.raises(DataError, match="timeout"):
+        fetch_binance_public_api(url, timeout_seconds=0)
+    with pytest.raises(DataError, match="host"):
+        fetch_binance_public_api("https://attacker.invalid/data")
+
+
+def test_binance_parsers_reject_malformed_native_rows() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    trade_failures = (
+        (b"", "empty"),
+        (b"1,2,3\n", "six or seven"),
+        (b"x,2,3,6,1704067200000,true\n", "numeric"),
+        (b"1,2,3,6,1704067200000,maybe\n", "boolean"),
+        (b"1,0,3,6,1704067200000,true\n", "bounds"),
+        (
+            b"1,2,3,6,1704067200000,true\n1,2,3,6,1704067200001,true\n",
+            "duplicate",
+        ),
+    )
+    for payload, message in trade_failures:
+        with pytest.raises(DataError, match=message):
+            parse_binance_trades(payload)
+
+    aggregate_failures = (
+        (b"", "empty"),
+        (b"1,2,3\n", "seven or eight"),
+        (b"1,2,3,9,8,1704067200000,true\n", "inverted"),
+        (b"x,2,3,8,9,1704067200000,true\n", "numeric"),
+        (b"1,-2,3,8,9,1704067200000,true\n", "bounds"),
+        (
+            b"1,2,3,8,9,1704067200000,true\n1,2,3,8,9,1704067200001,true\n",
+            "duplicate",
+        ),
+    )
+    for payload, message in aggregate_failures:
+        with pytest.raises(DataError, match=message):
+            parse_binance_aggregate_trades(payload)
+
+    book_failures = (
+        (b"not-json", "malformed"),
+        (b"[]", "object"),
+        (b'{"lastUpdateId":1,"bids":"bad","asks":[]}', "bids"),
+        (b'{"lastUpdateId":1,"bids":[["1"]],"asks":[["2","1"]]}', "level"),
+        (
+            b'{"lastUpdateId":1,"bids":[["2","1"],["2","1"]],"asks":[["3","1"]]}',
+            "duplicate",
+        ),
+        (
+            b'{"lastUpdateId":1,"bids":[["1","1"],["2","1"]],"asks":[["3","1"]]}',
+            "descending",
+        ),
+        (
+            b'{"lastUpdateId":1,"bids":[["1","1"]],"asks":[["3","1"],["2","1"]]}',
+            "ascending",
+        ),
+    )
+    for payload, message in book_failures:
+        with pytest.raises(DataError, match=message):
+            parse_binance_book_snapshot(payload, symbol="BTCUSDT", category="spot", fetched_at=now)
+    with pytest.raises(DataError, match="identity"):
+        parse_binance_book_snapshot(b"{}", symbol="../BTC", category="spot", fetched_at=now)
+    with pytest.raises(DataError, match="timezone"):
+        parse_binance_book_snapshot(
+            b"{}", symbol="BTCUSDT", category="spot", fetched_at=datetime(2026, 8, 15)
+        )
+
+
+def test_exchange_info_and_archive_zip_reject_unsafe_provider_shapes() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    with pytest.raises(DataError, match="category"):
+        parse_binance_exchange_info(b"{}", category="bad", fetched_at=now)  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="timezone"):
+        parse_binance_exchange_info(b"{}", category="spot", fetched_at=datetime(2026, 8, 15))
+    for payload, message in (
+        (b"not-json", "malformed"),
+        (b'{"symbols":[1]}', "symbol"),
+        (
+            b'{"symbols":[{"symbol":"BTCUSDT","status":"TRADING","baseAsset":"BTC",'
+            b'"quoteAsset":"USDT","isSpotTradingAllowed":"yes"}]}',
+            "permission",
+        ),
+        (
+            b'{"symbols":[{"symbol":"BTCUSDT","status":"TRADING","baseAsset":"BTC",'
+            b'"quoteAsset":"USDT","isSpotTradingAllowed":false}]}',
+            "no active",
+        ),
+    ):
+        with pytest.raises(DataError, match=message):
+            parse_binance_exchange_info(payload, category="spot", fetched_at=now)
+
+    with pytest.raises(DataError, match="compressed"):
+        parse_binance_archive_zip(b"")
+    with pytest.raises(DataError, match="malformed"):
+        parse_binance_archive_zip(b"not-a-zip")
+    multiple = io.BytesIO()
+    with zipfile.ZipFile(multiple, "w") as archive:
+        archive.writestr("one.csv", b"1")
+        archive.writestr("two.csv", b"2")
+    with pytest.raises(DataError, match="exactly one"):
+        parse_binance_archive_zip(multiple.getvalue())
+
+
+def test_closed_binance_url_contract_rejects_unsupported_combinations() -> None:
+    with pytest.raises(DataError, match="family"):
+        archive_url("spot", "depth", "BTCUSDT", "", "2026-07")
+    with pytest.raises(DataError, match="interval"):
+        archive_url("spot", "trades", "BTCUSDT", "1d", "2026-07")
+    with pytest.raises(DataError, match="interval"):
+        archive_url("spot", "klines", "BTCUSDT", "../1d", "2026-07")
+    with pytest.raises(DataError, match="endpoint"):
+        binance_public_api_url("spot", "bad", {})  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="does not accept"):
+        binance_public_api_url("spot", "exchangeInfo", {"limit": 1})
+    with pytest.raises(DataError, match="symbol"):
+        binance_public_api_url("spot", "depth", {"symbol": "../BTC", "limit": 1})
+    with pytest.raises(DataError, match="interval"):
+        binance_public_api_url(
+            "spot", "klines", {"symbol": "BTCUSDT", "interval": "2h", "limit": 1}
+        )
+    with pytest.raises(DataError, match="time range"):
+        binance_public_api_url(
+            "spot",
+            "klines",
+            {"symbol": "BTCUSDT", "interval": "1h", "limit": 1, "startTime": -1},
+        )
+
+
+def test_resumable_archive_rejects_corrupt_cache_and_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    expected = hashlib.sha256(b"good").hexdigest()
+    staging = tmp_path / "staging"
+    cache = tmp_path / "cache" / "downloads" / f"{expected}.zip"
+    cache.parent.mkdir(parents=True)
+    cache.write_bytes(b"bad")
+    with pytest.raises(DataError, match="checksum identity"):
+        fetch_binance_archive(url, staging, expected)
+    cache.unlink()
+
+    def interrupted(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        raise OSError("offline")
+
+    monkeypatch.setattr(urllib.request, "urlopen", interrupted)
+    with pytest.raises(DataError, match="rerun to resume"):
+        fetch_binance_archive(url, staging, expected)
+    metadata = next(staging.rglob("download.json"))
+    metadata.write_text("not-json", encoding="utf-8")
+    with pytest.raises(DataError, match="metadata is unreadable"):
+        fetch_binance_archive(url, staging, expected)
+    metadata.write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="does not match"):
+        fetch_binance_archive(url, staging, expected)
+
+
+@pytest.mark.parametrize(
+    ("status", "headers", "response_url", "message"),
+    (
+        (200, {"Content-Type": "text/html"}, None, "MIME"),
+        (
+            200,
+            {"Content-Type": "application/zip", "Content-Encoding": "gzip"},
+            None,
+            "encoding",
+        ),
+        (201, {"Content-Type": "application/zip"}, None, "status"),
+        (200, {"Content-Type": "application/zip", "Content-Length": "bad"}, None, "length"),
+        (200, {"Content-Type": "application/zip", "Content-Length": "-1"}, None, "length"),
+        (200, {"Content-Type": "application/zip"}, "https://attacker.invalid/file", "redirect"),
+    ),
+)
+def test_resumable_initial_response_is_strictly_validated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    status: int,
+    headers: dict[str, str],
+    response_url: str | None,
+    message: str,
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    expected = hashlib.sha256(b"good").hexdigest()
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        return _ArchiveResponse([b"good"], status=status, headers=headers, url=response_url or url)
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(DataError, match=message):
+        fetch_binance_archive(url, tmp_path / "staging", expected)
+
+
+@pytest.mark.parametrize(
+    ("headers", "message"),
+    (
+        (
+            {
+                "Content-Type": "application/zip",
+                "Content-Length": "3",
+                "Content-Range": "invalid",
+            },
+            "range is invalid",
+        ),
+        (
+            {
+                "Content-Type": "application/zip",
+                "Content-Length": "3",
+                "Content-Range": "bytes 3-2/6",
+            },
+            "range is incomplete",
+        ),
+        (
+            {
+                "Content-Type": "application/zip",
+                "Content-Length": "2",
+                "Content-Range": "bytes 3-5/6",
+            },
+            "length is inconsistent",
+        ),
+    ),
+)
+def test_resumable_range_metadata_is_strictly_validated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    headers: dict[str, str],
+    message: str,
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    expected = hashlib.sha256(b"abcdef").hexdigest()
+    calls = 0
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return _ArchiveResponse(
+                [b"abc", OSError("offline")],
+                status=200,
+                headers={"Content-Type": "application/zip", "Content-Length": "6"},
+                url=url,
+            )
+        return _ArchiveResponse([b"def"], status=206, headers=headers, url=url)
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    staging = tmp_path / "staging"
+    with pytest.raises(DataError, match="rerun to resume"):
+        fetch_binance_archive(url, staging, expected)
+    with pytest.raises(DataError, match=message):
+        fetch_binance_archive(url, staging, expected)
+
+
+def test_resumable_archive_quarantines_checksum_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    expected = hashlib.sha256(b"expected").hexdigest()
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        return _ArchiveResponse(
+            [b"actual"],
+            status=200,
+            headers={"Content-Type": "application/zip", "Content-Length": "6"},
+            url=url,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(DataError, match="checksum does not match"):
+        fetch_binance_archive(url, tmp_path / "staging", expected)
+    assert tuple((tmp_path / "staging" / "downloads").glob("*.corrupt-*"))
+
+
+def test_liquidity_selection_rejects_invalid_contracts() -> None:
+    now = datetime(2026, 1, 3, tzinfo=UTC)
+    with pytest.raises(DataError, match="schema"):
+        point_in_time_liquid_universe(pl.DataFrame({"bad": [1]}), as_of=now, limit=1)
+    frame = pl.DataFrame(
+        {
+            "session": [datetime(2026, 1, 2, tzinfo=UTC)],
+            "symbol": ["BTCUSDT"],
+            "quote_volume": [1.0],
+        }
+    )
+    with pytest.raises(DataError, match="timezone"):
+        point_in_time_liquid_universe(frame, as_of=datetime(2026, 1, 3), limit=1)
+    with pytest.raises(DataError, match="limit"):
+        point_in_time_liquid_universe(frame, as_of=now, limit=0)
+    with pytest.raises(DataError, match="before as_of"):
+        point_in_time_liquid_universe(frame, as_of=datetime(2026, 1, 1, tzinfo=UTC), limit=1)
+    duplicated = pl.concat([frame, frame])
+    with pytest.raises(DataError, match="duplicate"):
+        point_in_time_liquid_universe(duplicated, as_of=now, limit=2)
+
+    market = frame.with_columns(
+        pl.lit("spot").alias("category"),
+        pl.lit("BTC").alias("base_asset"),
+        pl.lit("USDT").alias("quote_asset"),
+        pl.lit(1.0).alias("base_volume"),
+        pl.lit(None).alias("contract_size"),
+    )
+    for kwargs, message in (
+        ({"category": "bad", "quote_asset": "USDT", "limit": 1}, "category"),
+        ({"category": "spot", "quote_asset": "../USD", "limit": 1}, "quote asset"),
+        ({"category": "spot", "quote_asset": "USDT", "limit": 0}, "limit"),
+    ):
+        with pytest.raises(DataError, match=message):
+            point_in_time_liquid_markets(market, as_of=now, **kwargs)  # type: ignore[arg-type]
+    invalid_volume = market.with_columns(pl.lit(float("nan")).alias("quote_volume"))
+    with pytest.raises(DataError, match="volume"):
+        point_in_time_liquid_markets(
+            invalid_volume, as_of=now, category="spot", quote_asset="USDT", limit=1
+        )
+
+
+def test_remaining_binance_parser_edges_are_explicit() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    assert parse_binance_trades(b"1,2,3,6,1704067200000,false\n")["buyer_is_maker"][0] is False
+    with pytest.raises(DataError, match="supported range"):
+        parse_binance_klines(
+            b"999999999999999999999,1,2,0.5,1.5,1,2,1,1,1,1\n", source="archive_csv"
+        )
+    with pytest.raises(DataError, match="unsupported value"):
+        parse_binance_klines(b"[{}]", source="rest_json")
+    with pytest.raises(DataError, match="unsupported Binance kline source"):
+        parse_binance_klines(b"", source="bad")  # type: ignore[arg-type]
+    with pytest.raises(DataError, match="malformed"):
+        parse_binance_trades(b"\xff")
+    with pytest.raises(DataError, match="malformed"):
+        parse_binance_aggregate_trades(b"\xff")
+    with pytest.raises(DataError, match="level"):
+        parse_binance_book_snapshot(
+            b'{"lastUpdateId":1,"bids":[["bad","1"]],"asks":[["2","1"]]}',
+            symbol="BTCUSDT",
+            category="spot",
+            fetched_at=now,
+        )
+    with pytest.raises(DataError, match="timestamp"):
+        parse_binance_book_snapshot(
+            b'{"lastUpdateId":1,"E":true,"bids":[["1","1"]],"asks":[["2","1"]]}',
+            symbol="BTCUSDT",
+            category="spot",
+            fetched_at=now,
+        )
+    malformed_contracts = (
+        (
+            b'{"symbols":[{"symbol":"bad/symbol","status":"TRADING","baseAsset":"BTC",'
+            b'"quoteAsset":"USDT","isSpotTradingAllowed":true}]}',
+            "symbol",
+            "spot",
+        ),
+        (
+            b'{"symbols":[{"symbol":"BTCUSDT","status":"TRADING","baseAsset":"BTC",'
+            b'"quoteAsset":"USDT","contractType":"bad/type"}]}',
+            "contract type",
+            "linear",
+        ),
+        (
+            b'{"symbols":[{"symbol":"BTCUSD_PERP","contractStatus":"TRADING",'
+            b'"baseAsset":"BTC","quoteAsset":"USD","contractType":"PERPETUAL",'
+            b'"contractSize":true}]}',
+            "contract size",
+            "inverse",
+        ),
+        (
+            b'{"symbols":[{"symbol":"BTCUSD_PERP","contractStatus":"TRADING",'
+            b'"baseAsset":"BTC","quoteAsset":"USD","contractType":"PERPETUAL",'
+            b'"contractSize":"bad"}]}',
+            "contract size",
+            "inverse",
+        ),
+        (
+            b'{"symbols":[{"symbol":"BTCUSD_PERP","contractStatus":"TRADING",'
+            b'"baseAsset":"BTC","quoteAsset":"USD","contractType":"PERPETUAL",'
+            b'"contractSize":-1}]}',
+            "contract size",
+            "inverse",
+        ),
+    )
+    for payload, message, category in malformed_contracts:
+        with pytest.raises(DataError, match=message):
+            parse_binance_exchange_info(
+                payload,
+                category=category,  # type: ignore[arg-type]
+                fetched_at=now,
+            )
+
+    one = io.BytesIO()
+    with zipfile.ZipFile(one, "w") as archive:
+        archive.writestr("one.csv", b"1,2,3,4,5,6\n")
+    with pytest.raises(DataError, match="family"):
+        parse_binance_archive_zip(one.getvalue(), family="bad")  # type: ignore[arg-type]
+
+
+def test_remaining_binance_fetch_and_liquidity_edges(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    with pytest.raises(DataError, match="identify a ZIP"):
+        fetch_binance_archive("https://data.binance.vision/data/file")
+    with pytest.raises(DataError, match="resumability"):
+        fetch_binance_archive(url, tmp_path / "staging")
+    with pytest.raises(DataError, match="checksum URL"):
+        fetch_binance_checksum(url)
+    with pytest.raises(DataError, match="host"):
+        fetch_binance_checksum("https://attacker.invalid/file.zip.CHECKSUM")
+    with pytest.raises(DataError, match="timeout"):
+        fetch_binance_checksum(f"{url}.CHECKSUM", timeout_seconds=0)
+    with pytest.raises(DataError, match="expected checksum"):
+        fetch_binance_archive(url, tmp_path / "staging", "bad")
+
+    expected = hashlib.sha256(b"good").hexdigest()
+    cache = tmp_path / "cache" / "downloads" / f"{expected}.zip"
+    cache.mkdir(parents=True)
+    with pytest.raises(DataError, match="cache path is unsafe"):
+        fetch_binance_archive(url, tmp_path / "staging", expected)
+
+    def offline(*_args: object, **_kwargs: object) -> object:
+        raise urllib.error.URLError("offline")
+
+    monkeypatch.setattr(urllib.request, "urlopen", offline)
+    public_url = binance_public_api_url("spot", "depth", {"symbol": "BTCUSDT", "limit": 1})
+    with pytest.raises(DataError, match="request failed"):
+        fetch_binance_public_api(public_url)
+
+    market = pl.DataFrame(
+        {
+            "session": [datetime(2026, 1, 2, tzinfo=UTC)] * 2,
+            "category": ["spot"] * 2,
+            "symbol": ["BTCUSDT"] * 2,
+            "base_asset": ["BTC"] * 2,
+            "quote_asset": ["USDT"] * 2,
+            "base_volume": [1.0] * 2,
+            "quote_volume": [2.0] * 2,
+            "contract_size": [None] * 2,
+        }
+    )
+    with pytest.raises(DataError, match="duplicate"):
+        point_in_time_liquid_markets(
+            market,
+            as_of=datetime(2026, 1, 3, tzinfo=UTC),
+            category="spot",
+            quote_asset="USDT",
+            limit=2,
+        )
+    with pytest.raises(DataError, match="schema"):
+        point_in_time_liquid_markets(
+            pl.DataFrame({"bad": [1]}),
+            as_of=datetime(2026, 1, 3, tzinfo=UTC),
+            category="spot",
+            quote_asset="USDT",
+            limit=1,
+        )
+    with pytest.raises(DataError, match="timezone"):
+        point_in_time_liquid_markets(
+            market.head(1),
+            as_of=datetime(2026, 1, 3),
+            category="spot",
+            quote_asset="USDT",
+            limit=1,
         )
