@@ -354,13 +354,23 @@ def provider_definitions(
         ),
         _definition(
             provider_id="binance",
-            label="Binance Live Data (NautilusTrader)",
-            capabilities=("live_bars", "live_quotes", "sandbox_paper"),
+            label="Binance Native Market Data + Local Sandbox Paper",
+            capabilities=(
+                "crypto_market_bars",
+                "crypto_trades",
+                "crypto_aggregate_trades",
+                "crypto_book_snapshots",
+                "live_bars",
+                "live_quotes",
+                "sandbox_paper",
+            ),
             module="nautilus_trader.adapters.binance",
             network_required=True,
             credential_names=(),
             options={},
             limitations=(
+                "Native public archives/REST are the CEX spot/futures history authority; spot, "
+                "USD-M, and COIN-M identities remain distinct.",
                 "Public Binance market data only; ALPHA never constructs Binance execution.",
                 "Paper orders route exclusively to local Nautilus sandbox execution.",
             ),

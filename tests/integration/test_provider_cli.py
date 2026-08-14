@@ -74,7 +74,8 @@ def test_info_control_plane_has_human_readable_views(
     assert "ccxt: available_without_credentials; unverified (historical_bars)" in providers.stdout
     assert (
         "binance: available_without_credentials; unverified "
-        "(live_bars, live_quotes, sandbox_paper)" in providers.stdout
+        "(crypto_market_bars, crypto_trades, crypto_aggregate_trades, "
+        "crypto_book_snapshots, live_bars, live_quotes, sandbox_paper)" in providers.stdout
     )
     assert system.exit_code == 0, system.output
     assert f"data_dir={tmp_path}" in system.stdout

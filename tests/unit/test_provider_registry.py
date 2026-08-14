@@ -108,6 +108,20 @@ def test_ibkr_is_paper_only_and_never_a_research_authority() -> None:
     assert "paper_execution" in ibkr.capabilities
 
 
+def test_binance_native_history_capabilities_do_not_change_paper_authority() -> None:
+    binance = next(
+        provider for provider in provider_definitions(environ={}) if provider.id == "binance"
+    )
+    assert {
+        "crypto_market_bars",
+        "crypto_trades",
+        "crypto_aggregate_trades",
+        "crypto_book_snapshots",
+    }.issubset(binance.capabilities)
+    assert binance.research_authority is False
+    assert binance.paper_execution is True
+
+
 def test_quantpad_is_registered_as_research_only_without_canonical_pull_authority() -> None:
     from alpha_cli.providers import historical_adapter_factories, provider_definitions
 
