@@ -364,8 +364,9 @@ def create_ibkr_what_if_plan(
     if expires_at.tzinfo is None or expires_at.utcoffset() is None or expires_at <= current:
         raise DataError("IBKR what-if expiry must be a future timezone-aware instant")
     body: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "account_alias": f"DU…{account[-4:]}",
+        "account_fingerprint": hashlib.sha256(account.encode()).hexdigest(),
         "host": "127.0.0.1",
         "port": 4002,
         "gateway_image_digest": gateway_image.rsplit("@", 1)[1],
@@ -379,14 +380,15 @@ def create_ibkr_what_if_plan(
         "collar_low": collar_low,
         "collar_high": collar_high,
         "what_if": True,
-        "transmit": False,
+        "wire_transmit": True,
+        "broker_order_transmitted": False,
         "expires_at": _stamp(expires_at),
         "one_shot": True,
         "paper_acceptance_credit": False,
     }
     plan_hash = _digest(body)
     plan = {**body, "plan_hash": plan_hash}
-    root = Path(data_dir) / "ibkr-what-if-v1" / "plans"
+    root = Path(data_dir) / "ibkr-what-if-v2" / "plans"
     path = root / f"{plan_hash}.json"
     rendered = json.dumps(plan, sort_keys=True, indent=2, allow_nan=False) + "\n"
     with _lock(root):
@@ -397,9 +399,33 @@ def create_ibkr_what_if_plan(
     return plan
 
 
+def read_ibkr_what_if_plan(data_dir: Path, plan_hash: str) -> dict[str, object]:
+    """Read and content-verify one immutable what-if plan without rewriting it."""
+    if _SHA256.fullmatch(plan_hash) is None:
+        raise DataError("IBKR what-if plan hash is invalid")
+    paths = (
+        Path(data_dir) / "ibkr-what-if-v2" / "plans" / f"{plan_hash}.json",
+        Path(data_dir) / "ibkr-what-if-v1" / "plans" / f"{plan_hash}.json",
+    )
+    path = next((candidate for candidate in paths if candidate.exists()), None)
+    if path is None:
+        raise DataError("IBKR what-if plan is missing or unreadable")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DataError("IBKR what-if plan is missing or unreadable") from exc
+    if not isinstance(raw, dict) or raw.get("plan_hash") != plan_hash:
+        raise DataError("IBKR what-if plan failed identity verification")
+    body = {key: value for key, value in raw.items() if key != "plan_hash"}
+    if _digest(body) != plan_hash:
+        raise DataError("IBKR what-if plan failed content verification")
+    return raw
+
+
 __all__ = [
     "acceptance_report",
     "create_ibkr_what_if_plan",
     "freeze_acceptance_plan",
+    "read_ibkr_what_if_plan",
     "record_callback_fact",
 ]

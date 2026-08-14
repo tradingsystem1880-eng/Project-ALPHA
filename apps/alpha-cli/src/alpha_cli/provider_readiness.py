@@ -217,7 +217,48 @@ def _quantpad_check() -> tuple[tuple[str, ...], dict[str, object]]:
     }
 
 
-def _ibkr_check() -> tuple[tuple[str, ...], dict[str, object]]:
+def _verified_what_if_receipt(data_dir: Path, account_alias: str, account_fingerprint: str) -> bool:
+    roots = (
+        Path(data_dir) / "ibkr-what-if-v2" / "receipts",
+        Path(data_dir) / "ibkr-what-if-v1" / "receipts",
+    )
+    paths = [path for root in roots if root.exists() for path in root.glob("*.json")]
+    verified = False
+    for path in paths:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(raw, dict):
+            return False
+        receipt_hash = raw.get("receipt_hash")
+        body = {key: value for key, value in raw.items() if key != "receipt_hash"}
+        valid_hash = (
+            isinstance(receipt_hash, str)
+            and _SHA256.fullmatch(receipt_hash) is not None
+            and hashlib.sha256(_canonical(body)).hexdigest() == receipt_hash
+        )
+        if not valid_hash:
+            return False
+        if all(
+            (
+                raw.get("account_alias") == account_alias,
+                raw.get("account_fingerprint") == account_fingerprint,
+                raw.get("status") == "PREVIEW_VERIFIED",
+                raw.get("what_if") is True,
+                raw.get("wire_transmit") is True,
+                raw.get("broker_order_transmitted") is False,
+                raw.get("position_unchanged") is True,
+                raw.get("order_status_callbacks") == 0,
+                raw.get("execution_callbacks") == 0,
+                raw.get("paper_acceptance_credit") is False,
+            )
+        ):
+            verified = True
+    return verified
+
+
+def _ibkr_check(data_dir: Path | None = None) -> tuple[tuple[str, ...], dict[str, object]]:
     import os
 
     image = os.environ.get("ALPHA_IBKR_GATEWAY_IMAGE", "")
@@ -260,8 +301,15 @@ def _ibkr_check() -> tuple[tuple[str, ...], dict[str, object]]:
     }
     if not all((docker_cli, docker_daemon, reviewed, alias, reachable)):
         raise ProviderCheckFailure("connectivity_failed", details)
-    # A socket cannot prove broker permissions or market-data entitlement. The separately
-    # checkpointed what-if executor will replace these unknowns with broker callback facts.
+    if (
+        data_dir is not None
+        and isinstance(alias, str)
+        and _verified_what_if_receipt(data_dir, alias, hashlib.sha256(account.encode()).hexdigest())
+    ):
+        details["permissions"] = "what_if_preview_verified"
+        details["market_data"] = "not_verified_by_what_if"
+        return ("paper_what_if_preview",), details
+    # A socket cannot prove broker permissions or market-data entitlement.
     raise ProviderCheckFailure("unverified", details)
 
 
@@ -286,7 +334,7 @@ def run_explicit_check(data_dir: Path, provider_id: str) -> dict[str, object]:
     if checker is None:
         raise DataError("explicit checks are available only for tiingo, quantpad, and ibkr")
     try:
-        capabilities, details = checker()
+        capabilities, details = _ibkr_check(data_dir) if provider == "ibkr" else checker()
     except ProviderCheckFailure as exc:
         state = exc.state
         capabilities = ()

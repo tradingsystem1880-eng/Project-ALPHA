@@ -94,8 +94,17 @@ uv run alpha paper ibkr-what-if-plan \
   --expires-at YYYY-MM-DDTHH:MM:SS+00:00
 ```
 
-This creates no broker connection and earns no paper-readiness credit. A real what-if preview is a
-separate operation requiring a new current owner checkpoint; it is not performed by this command.
+This creates no broker connection and earns no paper-readiness credit. IBKR requires the API
+`transmit` field to be true to process a what-if request; `whatIf=true` prevents order placement,
+and the plan records `broker_order_transmitted=false` separately. Execute exactly once after a new
+current owner checkpoint:
+
+```bash
+uv run alpha paper ibkr-what-if-execute PLAN_HASH --confirm-non-transmitting-preview
+```
+
+The executor verifies the frozen account and contract, compares SPY position before and after,
+rejects order-status or execution callbacks, and writes only a redacted receipt.
 
 For one approved equity release, take the `intent_id`, snapshot, expected/next sessions, and cutoff
 from the immutable scheduler outcome/intent. Enable both flags only in that execution process:

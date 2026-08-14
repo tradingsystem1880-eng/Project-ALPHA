@@ -20,6 +20,7 @@ from alpha_cli import (
     _runner,
     _strategies,
     daily_scheduler,
+    ibkr_what_if,
     paper_acceptance,
     paper_readiness,
     paper_store,
@@ -59,7 +60,36 @@ def ibkr_what_if_plan(
     else:
         typer.echo(
             f"IBKR what-if plan {plan['plan_hash']} frozen for SPY 1-share DAY LIMIT; "
-            "whatIf=true, transmit=false. No broker connection was made."
+            "whatIf=true, wire transmit=true, broker order transmitted=false. "
+            "No broker connection was made."
+        )
+
+
+@paper_app.command("ibkr-what-if-execute")
+def ibkr_what_if_execute(
+    plan_hash: str,
+    confirm: bool = typer.Option(False, "--confirm-non-transmitting-preview"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Execute one SPY preview; never creates an order or earns paper credit."""
+    try:
+        if not confirm:
+            raise DataError(
+                "IBKR preview requires --confirm-non-transmitting-preview for this one-shot plan"
+            )
+        receipt = ibkr_what_if.execute_preview(
+            AlphaSettings().data_dir,
+            plan_hash=plan_hash,
+            account_id=_required_value(None, "ALPHA_IBKR_PAPER_ACCOUNT"),
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        typer.echo(json.dumps(receipt, sort_keys=True, allow_nan=False))
+    else:
+        typer.echo(
+            f"IBKR what-if {receipt['status']}: account {receipt['account_alias']}; "
+            "position unchanged; no order/fill callback; paper readiness remains pending."
         )
 
 

@@ -10,12 +10,15 @@ hardened as of 2026-08-11. ALPHA is permanently a private, single-owner applicat
 local device; production, sale, distribution, hosting, and multi-user release work are out of scope.
 The owner real-case pilot remains empirical validation rather than a software release gate.
 The R-14 public Binance quote smoke passed locally on 2026-08-04,
-while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. Daily-data/IBKR
-Paper hardening is implemented offline; current-universe Tiingo qualification and every real IBKR
-Paper acceptance scenario remain pending.
+while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. The bounded
+IBKR Paper what-if preview is verified against the real loopback gateway; current-universe Tiingo
+qualification and all separately authorized paper-acceptance scenarios remain pending.
 
 ### Added
 
+- A closed `IBKRWhatIfPlanV2` and CLI-only one-shot executor for the exact SPY one-share DAY limit
+  preview. It binds the masked account by fingerprint, verifies position before/after, rejects any
+  order-status or execution callback, and writes a redacted receipt with no paper-readiness credit.
 - Repair-program Stage 2 guided workspace: Research is the six-screen shell's front door, Guided
   mode is remembered per project, Advanced mode reveals lineage without extra authority, and the
   owner receives one canonical next action plus direct source, dataset, and provider recovery links.
@@ -57,6 +60,9 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- IBKR readiness now grants only `paper_what_if_preview` from a content-verified receipt. The
+  current TWS protocol requires wire `transmit=true` to process `whatIf=true`; the contract records
+  `broker_order_transmitted=false` separately, and V1 plans remain readable but non-executable.
 - Mounted panels now share one active project workspace context. Project changes clear dependent
   symbol/run/snapshot/version state, remount visible panels, and discard stale asynchronous
   responses. Research Data separates contract-bound and global datasets; run history defaults to

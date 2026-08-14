@@ -29,11 +29,14 @@ fingerprint. Readiness is recomputed from raw fact fields; producer `passed` val
 accepted nor stored. Legacy paper journals remain monitoring history only and cannot earn credit.
 There is no generic REST, MCP, or CLI fact-append route.
 
-`IBKRWhatIfPlanV1` is separate from paper acceptance. It permits only a SPY one-share DAY limit
+`IBKRWhatIfPlanV2` is separate from paper acceptance. It permits only a SPY one-share DAY limit
 preview on a masked DU paper account at `127.0.0.1:4002`, with a reviewed image digest,
-`whatIf=true`, `transmit=false`, a fixed price collar, expiry, and one-shot plan hash. Creating a
-plan is offline. Executing the real preview requires a separate current owner checkpoint and never
-creates an order, fill, cancellation, position change, or paper-acceptance fact.
+`whatIf=true`, the IBKR-required wire-level `transmit=true`, a fixed price collar, expiry, and a
+one-shot plan hash. The contract separately records `broker_order_transmitted=false`: IBKR requires
+the wire flag to process a what-if request, while `whatIf=true` prevents order placement. V1 plans
+remain readable but cannot be executed. Creating a plan is offline. Executing the real preview
+requires a separate current owner checkpoint and never creates an order, fill, cancellation,
+position change, or paper-acceptance fact.
 
 ## Consequences
 

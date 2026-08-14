@@ -13,7 +13,7 @@ from typing import Any, Self, cast
 
 import pytest
 
-from alpha_cli import provider_readiness
+from alpha_cli import ibkr_what_if, paper_acceptance, provider_readiness
 from alpha_core import DataError
 
 
@@ -110,6 +110,67 @@ def test_reachable_ibkr_gateway_stays_unverified_without_broker_callbacks(
     assert receipt["granted_capabilities"] == []
     details = cast(dict[str, object], receipt["details"])
     assert details["account_alias"] == "DU…3456"
+
+
+def test_ibkr_verified_what_if_receipt_grants_only_preview_capability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/docker")
+    monkeypatch.setattr(
+        subprocess, "run", lambda *args, **kwargs: type("Result", (), {"returncode": 0})()
+    )
+
+    class Connection:
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: Connection())
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "gateway@sha256:" + "a" * 64)
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", "DU123456")
+    now = datetime(2026, 8, 13, tzinfo=UTC)
+    plan = paper_acceptance.create_ibkr_what_if_plan(
+        tmp_path,
+        account_id="DU123456",
+        gateway_image="gateway@sha256:" + "a" * 64,
+        limit_price=640.0,
+        collar_low=600.0,
+        collar_high=680.0,
+        expires_at=datetime(2026, 8, 14, tzinfo=UTC),
+        now=now,
+    )
+
+    class Transport:
+        def preview(self, **kwargs: object) -> ibkr_what_if.PreviewEvidence:
+            return ibkr_what_if.PreviewEvidence(
+                broker_status="PreSubmitted",
+                commission=1.0,
+                commission_currency="USD",
+                initial_margin_change="640",
+                maintenance_margin_change="0",
+                equity_with_loan_change="-640",
+                position_before=0.0,
+                position_after=0.0,
+                order_status_callbacks=0,
+                execution_callbacks=0,
+            )
+
+    ibkr_what_if.execute_preview(
+        tmp_path,
+        plan_hash=str(plan["plan_hash"]),
+        account_id="DU123456",
+        transport=Transport(),
+        now=datetime(2026, 8, 13, 1, tzinfo=UTC),
+    )
+
+    receipt = provider_readiness.run_explicit_check(tmp_path, "ibkr")
+    assert receipt["verification_state"] == "verified"
+    assert receipt["granted_capabilities"] == ["paper_what_if_preview"]
+    details = cast(dict[str, object], receipt["details"])
+    assert details["permissions"] == "what_if_preview_verified"
+    assert details["market_data"] == "not_verified_by_what_if"
 
 
 @pytest.mark.parametrize(
