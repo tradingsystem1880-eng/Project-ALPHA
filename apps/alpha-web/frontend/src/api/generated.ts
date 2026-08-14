@@ -256,6 +256,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/storage/cache/clean": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cache Clean */
+        post: operations["cache_clean_api_crypto_data_storage_cache_clean_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storage Inventory */
+        get: operations["storage_inventory_api_crypto_data_storage_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Storage Verify */
+        post: operations["storage_verify_api_crypto_data_storage_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/development/jobs": {
         parameters: {
             query?: never;
@@ -4029,6 +4080,36 @@ export interface components {
              */
             role: "primary_acquisition" | "diagnostic_comparison";
         };
+        /** CryptoCacheCleanRequest */
+        CryptoCacheCleanRequest: {
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+        };
+        /** CryptoCacheCleanResponse */
+        CryptoCacheCleanResponse: {
+            /**
+             * Immutable Artifacts Removed
+             * @constant
+             */
+            immutable_artifacts_removed: 0;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Private Paths Exposed
+             * @constant
+             */
+            private_paths_exposed: false;
+            /** Removed Bytes */
+            removed_bytes: number;
+            /**
+             * State
+             * @constant
+             */
+            state: "cleaned";
+        };
         /** CryptoCatalogResponse */
         CryptoCatalogResponse: {
             /**
@@ -4324,12 +4405,40 @@ export interface components {
             /** Supplemental Families */
             supplemental_families: components["schemas"]["CryptoFamilyValue"][];
         };
+        /** CryptoStorageInventoryResponse */
+        CryptoStorageInventoryResponse: {
+            /** Bytes By Kind */
+            bytes_by_kind: {
+                [key: string]: number;
+            };
+            /** Cache Bytes */
+            cache_bytes: number;
+            /** Counts By Kind */
+            counts_by_kind: {
+                [key: string]: number;
+            };
+            /** Manifest Count */
+            manifest_count: number;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Private Paths Exposed
+             * @constant
+             */
+            private_paths_exposed: false;
+            /** Snapshot Count */
+            snapshot_count: number;
+            /** Staging Count */
+            staging_count: number;
+        };
         /** CryptoStorageResponse */
         CryptoStorageResponse: {
             /** Blocker */
             blocker: string | null;
             /** Bulk Root Label */
             bulk_root_label: string;
+            /** Cache Bytes */
+            cache_bytes: number;
             /** Free Bytes */
             free_bytes?: number | null;
             /** Manifest Count */
@@ -4347,6 +4456,29 @@ export interface components {
             state: "ready" | "blocked";
             /** Total Bytes */
             total_bytes?: number | null;
+        };
+        /** CryptoStorageVerifyResponse */
+        CryptoStorageVerifyResponse: {
+            /** Cache Bytes */
+            cache_bytes: number;
+            /** Manifest Count */
+            manifest_count: number;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Private Paths Exposed
+             * @constant
+             */
+            private_paths_exposed: false;
+            /** Research Eligible Snapshot Count */
+            research_eligible_snapshot_count: number;
+            /** Snapshot Count */
+            snapshot_count: number;
+            /**
+             * State
+             * @constant
+             */
+            state: "verified";
         };
         /** DecisionPacket */
         DecisionPacket: {
@@ -9261,6 +9393,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoStorageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    cache_clean_api_crypto_data_storage_cache_clean_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCacheCleanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCacheCleanResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    storage_inventory_api_crypto_data_storage_inventory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoStorageInventoryResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    storage_verify_api_crypto_data_storage_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoStorageVerifyResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

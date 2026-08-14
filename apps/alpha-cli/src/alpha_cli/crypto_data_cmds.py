@@ -451,6 +451,7 @@ def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
                 "blocker": "bulk_volume_uuid_not_configured",
                 "bulk_root_label": label,
                 "manifest_count": 0,
+                "cache_bytes": 0,
                 "next_action": "Configure the reviewed Expansion volume UUID.",
             },
             json_out=json_out,
@@ -471,6 +472,7 @@ def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
                 "blocker": _storage_blocker(str(exc)),
                 "bulk_root_label": label,
                 "manifest_count": 0,
+                "cache_bytes": 0,
                 "next_action": "Reconnect the reviewed Expansion volume and run this check again.",
             },
             json_out=json_out,
@@ -486,7 +488,103 @@ def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
             "reserve_fraction": store.reserve_fraction,
             "minimum_free_bytes": store.minimum_free_bytes,
             "manifest_count": len(inventory),
+            "cache_bytes": store.cache_size(),
             "next_action": "Estimate one bounded dataset acquisition.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("storage-inventory")
+def storage_inventory(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """Inventory immutable artifacts and removable cache without exposing private paths."""
+    try:
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
+        inventory = store.inventory()
+        counts: dict[str, int] = {}
+        artifact_bytes: dict[str, int] = {}
+        for manifest in inventory:
+            kind = str(manifest.get("artifact_kind", "unknown"))
+            counts[kind] = counts.get(kind, 0) + 1
+            size = manifest.get("artifact_bytes")
+            if isinstance(size, int) and not isinstance(size, bool):
+                artifact_bytes[kind] = artifact_bytes.get(kind, 0) + size
+        snapshots = (
+            tuple(sorted(_snapshot_root().glob("*.json")))
+            if _snapshot_root().exists()
+            else ()
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "manifest_count": len(inventory),
+            "snapshot_count": len(snapshots),
+            "counts_by_kind": counts,
+            "bytes_by_kind": artifact_bytes,
+            "cache_bytes": store.cache_size(),
+            "staging_count": len(tuple(store.staging_root.glob("*/staging.json"))),
+            "private_paths_exposed": False,
+            "next_action": "Run storage-verify before relying on frozen snapshots.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("storage-verify")
+def storage_verify(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """Re-hash every manifest artifact and rederive every frozen snapshot membership."""
+    try:
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
+        inventory = store.inventory()
+        snapshot_count = 0
+        eligible_count = 0
+        if _snapshot_root().exists():
+            for path in sorted(_snapshot_root().glob("*.json")):
+                snapshot, _, projection = _verified_snapshot(
+                    path.stem, required_families=(), purpose="research"
+                )
+                snapshot_count += 1
+                eligible_count += int(projection.eligible and snapshot.snapshot_id == path.stem)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "state": "verified",
+            "manifest_count": len(inventory),
+            "snapshot_count": snapshot_count,
+            "research_eligible_snapshot_count": eligible_count,
+            "cache_bytes": store.cache_size(),
+            "private_paths_exposed": False,
+            "next_action": "Continue with one bounded acquisition or exact snapshot selection.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("cache-clean")
+def cache_clean(
+    confirm: bool = typer.Option(False, "--confirm", help="confirm disposable cache deletion"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Delete only the explicitly disposable external cache; immutable data is untouched."""
+    if not confirm:
+        raise typer.BadParameter("--confirm is required to delete the removable cache")
+    try:
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
+        removed = store.clean_cache()
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "state": "cleaned",
+            "removed_bytes": removed,
+            "immutable_artifacts_removed": 0,
+            "private_paths_exposed": False,
+            "next_action": "Run storage-inventory to confirm current capacity.",
         },
         json_out=json_out,
     )

@@ -206,3 +206,49 @@ def test_crypto_routes_translate_cli_failure_to_actionable_api_error(
     body = response.json()
     assert body["code"] == "request_invalid"
     assert body["message"] == "review the exact data-family requirements"
+
+
+def test_crypto_storage_actions_use_closed_commands_and_confirm_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        if args[1] == "storage-inventory":
+            return {
+                "manifest_count": 2, "snapshot_count": 1,
+                "counts_by_kind": {"raw": 1, "normalized": 1},
+                "bytes_by_kind": {"raw": 10, "normalized": 20},
+                "cache_bytes": 5, "staging_count": 0,
+                "private_paths_exposed": False, "next_action": "Verify storage.",
+            }
+        if args[1] == "storage-verify":
+            return {
+                "state": "verified", "manifest_count": 2, "snapshot_count": 1,
+                "research_eligible_snapshot_count": 1, "cache_bytes": 5,
+                "private_paths_exposed": False, "next_action": "Continue.",
+            }
+        return {
+            "state": "cleaned", "removed_bytes": 5,
+            "immutable_artifacts_removed": 0, "private_paths_exposed": False,
+            "next_action": "Run inventory.",
+        }
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    client = TestClient(create_app())
+
+    assert client.get("/api/crypto-data/storage/inventory").status_code == 200
+    assert client.post("/api/crypto-data/storage/verify", json={}).status_code == 200
+    assert client.post(
+        "/api/crypto-data/storage/cache/clean", json={"confirm": True}
+    ).status_code == 200
+    assert client.post(
+        "/api/crypto-data/storage/cache/clean", json={"confirm": False}
+    ).status_code == 422
+    assert calls == [
+        ["crypto-data", "storage-inventory", "--json"],
+        ["crypto-data", "storage-verify", "--json"],
+        ["crypto-data", "cache-clean", "--confirm", "--json"],
+    ]

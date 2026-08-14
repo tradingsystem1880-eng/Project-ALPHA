@@ -104,6 +104,11 @@ uv run alpha data pull BTC/USD --source ccxt --exchange coinbase --start 2018-01
 # volume; CI and tests use the isolated `data/bulk` default without acquiring network data.
 # ALPHA_BULK_DATA_DIR=/Volumes/Expansion/Project-ALPHA/crypto-data
 # ALPHA_BULK_VOLUME_UUID=<mounted-volume-uuid>
+uv run alpha crypto-data storage-inventory --json
+uv run alpha crypto-data storage-verify --json
+# Cache cleanup is deliberately separate and confirmed; it never removes raw, normalized,
+# staged, snapshot, manifest, or control artifacts.
+uv run alpha crypto-data cache-clean --confirm --json
 
 # 2. (optional) Freeze an immutable, content-hashed snapshot for reproducibility
 uv run alpha data snapshot equities-2024 AAPL SPY --source tiingo

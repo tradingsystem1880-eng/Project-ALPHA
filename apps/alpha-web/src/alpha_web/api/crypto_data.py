@@ -11,6 +11,8 @@ from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
     CryptoAcquisitionRequest,
     CryptoAssetIdentityResponse,
+    CryptoCacheCleanRequest,
+    CryptoCacheCleanResponse,
     CryptoCatalogResponse,
     CryptoCoverageResponse,
     CryptoEstimateRequest,
@@ -22,7 +24,9 @@ from alpha_web.api.models import (
     CryptoSnapshotRegisterResponse,
     CryptoSnapshotVerifyRequest,
     CryptoSnapshotVerifyResponse,
+    CryptoStorageInventoryResponse,
     CryptoStorageResponse,
+    CryptoStorageVerifyResponse,
     JobStatus,
 )
 
@@ -44,6 +48,23 @@ def catalog() -> Any:
 @router.get("/storage", response_model=CryptoStorageResponse)
 def storage() -> Any:
     return _project(["crypto-data", "storage", "--json"])
+
+
+@router.get("/storage/inventory", response_model=CryptoStorageInventoryResponse)
+def storage_inventory() -> Any:
+    return _project(["crypto-data", "storage-inventory", "--json"])
+
+
+@router.post("/storage/verify", response_model=CryptoStorageVerifyResponse)
+def storage_verify() -> Any:
+    return _project(["crypto-data", "storage-verify", "--json"])
+
+
+@router.post("/storage/cache/clean", response_model=CryptoCacheCleanResponse)
+def cache_clean(req: CryptoCacheCleanRequest) -> Any:
+    if req.confirm is not True:  # pragma: no cover - Literal validation owns false inputs
+        raise HTTPException(status_code=422, detail="cache cleanup requires confirmation")
+    return _project(["crypto-data", "cache-clean", "--confirm", "--json"])
 
 
 @router.get("/coverage", response_model=CryptoCoverageResponse)

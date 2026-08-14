@@ -20,6 +20,9 @@ import type {
   CryptoSnapshotVerify,
   CryptoSnapshotVerifyRequest,
   CryptoStorage,
+  CryptoStorageInventory,
+  CryptoStorageVerify,
+  CryptoCacheClean,
   DecisionPacket,
   EvidencePage,
   EquitySeries,
@@ -309,6 +312,12 @@ export const api = {
   providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
   cryptoCatalog: (): Promise<CryptoCatalog> => getJSON('/api/crypto-data/catalog'),
   cryptoStorage: (): Promise<CryptoStorage> => getJSON('/api/crypto-data/storage'),
+  cryptoStorageInventory: (): Promise<CryptoStorageInventory> =>
+    getJSON('/api/crypto-data/storage/inventory'),
+  cryptoStorageVerify: (): Promise<CryptoStorageVerify> =>
+    postJSON('/api/crypto-data/storage/verify', {}),
+  cryptoCacheClean: (): Promise<CryptoCacheClean> =>
+    postJSON('/api/crypto-data/storage/cache/clean', { confirm: true }),
   cryptoCoverage: (): Promise<CryptoCoverage> => getJSON('/api/crypto-data/coverage'),
   cryptoAsset: (symbol: string, asOf: string): Promise<CryptoAssetIdentity> => {
     const params = new URLSearchParams({ as_of: asOf })

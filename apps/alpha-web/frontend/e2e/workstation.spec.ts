@@ -1357,7 +1357,32 @@ function responseFor(route: Route, options: MockOptions): unknown {
       total_bytes: 2_000_000_000_000,
       reserve_fraction: 0.15,
       minimum_free_bytes: 100_000_000_000,
+      cache_bytes: 25_000_000,
     } satisfies components['schemas']['CryptoStorageResponse']
+  }
+  if (url.pathname === '/api/crypto-data/storage/inventory') {
+    return {
+      manifest_count: 6, snapshot_count: 1,
+      counts_by_kind: { raw: 3, normalized: 3 },
+      bytes_by_kind: { raw: 10_000_000, normalized: 20_000_000 },
+      cache_bytes: 25_000_000, staging_count: 0,
+      private_paths_exposed: false,
+      next_action: 'Run storage-verify before relying on frozen snapshots.',
+    } satisfies components['schemas']['CryptoStorageInventoryResponse']
+  }
+  if (url.pathname === '/api/crypto-data/storage/verify') {
+    return {
+      state: 'verified', manifest_count: 6, snapshot_count: 1,
+      research_eligible_snapshot_count: 1, cache_bytes: 25_000_000,
+      private_paths_exposed: false, next_action: 'Continue.',
+    } satisfies components['schemas']['CryptoStorageVerifyResponse']
+  }
+  if (url.pathname === '/api/crypto-data/storage/cache/clean') {
+    return {
+      state: 'cleaned', removed_bytes: 25_000_000,
+      immutable_artifacts_removed: 0, private_paths_exposed: false,
+      next_action: 'Run storage-inventory to confirm current capacity.',
+    } satisfies components['schemas']['CryptoCacheCleanResponse']
   }
   if (url.pathname === '/api/crypto-data/coverage') return CRYPTO_COVERAGE
   if (url.pathname === '/api/crypto-data/estimate') {
@@ -2033,6 +2058,15 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await expect(center.getByText('READY', { exact: true })).toBeVisible()
   await expect(center.getByText('1.8 TB free of 2.0 TB')).toBeVisible()
   await expect(center.getByText(/\/Volumes\//)).toHaveCount(0)
+  await center.getByRole('button', { name: 'Inspect storage inventory', exact: true }).click()
+  await expect(center.getByText(/6 manifests · 1 snapshots · 0 staged downloads/)).toBeVisible()
+  await center.getByRole('button', { name: 'Verify all immutable data', exact: true }).click()
+  await expect(center.getByText(/6 manifests and 1 snapshots re-hashed/)).toBeVisible()
+  await center.getByRole('button', { name: 'Review cache cleanup', exact: true }).click()
+  await expect(center.getByText('CONFIRM CACHE CLEANUP', { exact: true })).toBeVisible()
+  await center.getByRole('button', { name: 'Confirm clean removable cache', exact: true }).click()
+  await expect(center.getByText('CACHE CLEANED', { exact: true })).toBeVisible()
+  await expect(center.getByText(/immutable artifacts removed: 0/)).toBeVisible()
 
   const overflow = await page.locator('.research-data-explorer').evaluate(
     (element) => element.scrollWidth - element.clientWidth,

@@ -243,6 +243,21 @@ def test_tampered_staging_metadata_fails_before_publication(tmp_path: Path) -> N
         store.resume_staging(handle.staging_id)
 
 
+def test_cache_inventory_and_cleanup_are_confined_to_removable_cache(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    cache = store.bulk_root / "cache"
+    cache.mkdir()
+    (cache / "download.tmp").write_bytes(b"cache")
+    protected = store.bulk_root / "raw" / "provider" / "receipt" / "data.json"
+    protected.parent.mkdir(parents=True)
+    protected.write_bytes(b"immutable")
+
+    assert store.cache_size() == 5
+    assert store.clean_cache() == 5
+    assert store.cache_size() == 0
+    assert protected.read_bytes() == b"immutable"
+
+
 @pytest.mark.parametrize(
     "values",
     [

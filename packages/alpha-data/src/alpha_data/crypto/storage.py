@@ -424,9 +424,17 @@ class CryptoBulkStore:
         )
 
     def clean_cache(self) -> int:
+        """Delete only the explicitly disposable cache tree and return removed bytes."""
+        total = self.cache_size()
         cache = self.bulk_root / "cache"
         if not cache.exists():
             return 0
-        total = sum(path.stat().st_size for path in cache.rglob("*") if path.is_file())
         shutil.rmtree(cache)
         return total
+
+    def cache_size(self) -> int:
+        """Return removable cache bytes without touching immutable or staged data."""
+        cache = self.bulk_root / "cache"
+        if not cache.exists():
+            return 0
+        return sum(path.stat().st_size for path in cache.rglob("*") if path.is_file())

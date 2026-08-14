@@ -176,6 +176,9 @@ its Guided and Advanced modes share identical server authority. An explicit type
 re-verifies every external member before recording the snapshot through the historical research
 `snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
 when a registered operator declares compatibility.
+Storage inventory and verification expose counts and hashes without private absolute paths.
+Cleanup is confined to `bulk/cache`, requires an explicit confirmation, and reports zero immutable
+artifacts removed; staging, raw, normalized, snapshot, manifest, and control roots are excluded.
 
 ### 4.3 Canonical strategy/validation flow
 

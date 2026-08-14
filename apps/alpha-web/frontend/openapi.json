@@ -2211,6 +2211,59 @@
         "title": "CryptoAuthorityRow",
         "type": "object"
       },
+      "CryptoCacheCleanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "const": true,
+            "title": "Confirm",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "title": "CryptoCacheCleanRequest",
+        "type": "object"
+      },
+      "CryptoCacheCleanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "immutable_artifacts_removed": {
+            "const": 0,
+            "title": "Immutable Artifacts Removed",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "private_paths_exposed": {
+            "const": false,
+            "title": "Private Paths Exposed",
+            "type": "boolean"
+          },
+          "removed_bytes": {
+            "minimum": 0.0,
+            "title": "Removed Bytes",
+            "type": "integer"
+          },
+          "state": {
+            "const": "cleaned",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "removed_bytes",
+          "immutable_artifacts_removed",
+          "private_paths_exposed",
+          "next_action"
+        ],
+        "title": "CryptoCacheCleanResponse",
+        "type": "object"
+      },
       "CryptoCatalogResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3036,6 +3089,66 @@
         "title": "CryptoSnapshotVerifyResponse",
         "type": "object"
       },
+      "CryptoStorageInventoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes_by_kind": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Bytes By Kind",
+            "type": "object"
+          },
+          "cache_bytes": {
+            "minimum": 0.0,
+            "title": "Cache Bytes",
+            "type": "integer"
+          },
+          "counts_by_kind": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Kind",
+            "type": "object"
+          },
+          "manifest_count": {
+            "minimum": 0.0,
+            "title": "Manifest Count",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "private_paths_exposed": {
+            "const": false,
+            "title": "Private Paths Exposed",
+            "type": "boolean"
+          },
+          "snapshot_count": {
+            "minimum": 0.0,
+            "title": "Snapshot Count",
+            "type": "integer"
+          },
+          "staging_count": {
+            "minimum": 0.0,
+            "title": "Staging Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "manifest_count",
+          "snapshot_count",
+          "counts_by_kind",
+          "bytes_by_kind",
+          "cache_bytes",
+          "staging_count",
+          "private_paths_exposed",
+          "next_action"
+        ],
+        "title": "CryptoStorageInventoryResponse",
+        "type": "object"
+      },
       "CryptoStorageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3053,6 +3166,11 @@
           "bulk_root_label": {
             "title": "Bulk Root Label",
             "type": "string"
+          },
+          "cache_bytes": {
+            "minimum": 0.0,
+            "title": "Cache Bytes",
+            "type": "integer"
           },
           "free_bytes": {
             "anyOf": [
@@ -3126,9 +3244,60 @@
           "blocker",
           "bulk_root_label",
           "manifest_count",
-          "next_action"
+          "next_action",
+          "cache_bytes"
         ],
         "title": "CryptoStorageResponse",
+        "type": "object"
+      },
+      "CryptoStorageVerifyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cache_bytes": {
+            "minimum": 0.0,
+            "title": "Cache Bytes",
+            "type": "integer"
+          },
+          "manifest_count": {
+            "minimum": 0.0,
+            "title": "Manifest Count",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "private_paths_exposed": {
+            "const": false,
+            "title": "Private Paths Exposed",
+            "type": "boolean"
+          },
+          "research_eligible_snapshot_count": {
+            "minimum": 0.0,
+            "title": "Research Eligible Snapshot Count",
+            "type": "integer"
+          },
+          "snapshot_count": {
+            "minimum": 0.0,
+            "title": "Snapshot Count",
+            "type": "integer"
+          },
+          "state": {
+            "const": "verified",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "manifest_count",
+          "snapshot_count",
+          "research_eligible_snapshot_count",
+          "cache_bytes",
+          "private_paths_exposed",
+          "next_action"
+        ],
+        "title": "CryptoStorageVerifyResponse",
         "type": "object"
       },
       "DecisionPacket": {
@@ -17535,6 +17704,109 @@
           }
         },
         "summary": "Storage",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/storage/cache/clean": {
+      "post": {
+        "operationId": "cache_clean_api_crypto_data_storage_cache_clean_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoCacheCleanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCacheCleanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Cache Clean",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/storage/inventory": {
+      "get": {
+        "operationId": "storage_inventory_api_crypto_data_storage_inventory_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoStorageInventoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Storage Inventory",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/storage/verify": {
+      "post": {
+        "operationId": "storage_verify_api_crypto_data_storage_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoStorageVerifyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Storage Verify",
         "tags": [
           "crypto-data"
         ]

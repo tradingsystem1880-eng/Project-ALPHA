@@ -14,6 +14,9 @@ import type {
   CryptoSnapshotRegister,
   CryptoSnapshotVerify,
   CryptoStorage,
+  CryptoStorageInventory,
+  CryptoStorageVerify,
+  CryptoCacheClean,
 } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { shortId } from '../util/format'
@@ -97,6 +100,10 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
   const [snapshot, setSnapshot] = useState<CryptoSnapshotCreate | null>(null)
   const [verification, setVerification] = useState<CryptoSnapshotVerify | null>(null)
   const [registration, setRegistration] = useState<CryptoSnapshotRegister | null>(null)
+  const [storageInventory, setStorageInventory] = useState<CryptoStorageInventory | null>(null)
+  const [storageVerification, setStorageVerification] = useState<CryptoStorageVerify | null>(null)
+  const [cacheResult, setCacheResult] = useState<CryptoCacheClean | null>(null)
+  const [cleanupArmed, setCleanupArmed] = useState(false)
   const [busyAction, setBusyAction] = useState<string | null>(null)
 
   const load = useCallback(async (refresh = false) => {
@@ -295,6 +302,51 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
     }
   }
 
+  async function inspectStorage(): Promise<void> {
+    setBusyAction('storage-inventory')
+    setError(null)
+    try {
+      setStorageInventory(await api.cryptoStorageInventory())
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function verifyStorage(): Promise<void> {
+    setBusyAction('storage-verify')
+    setError(null)
+    try {
+      setStorageVerification(await api.cryptoStorageVerify())
+    } catch (reason: unknown) {
+      setStorageVerification(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function cleanCache(): Promise<void> {
+    if (!cleanupArmed) {
+      setCleanupArmed(true)
+      return
+    }
+    setBusyAction('cache-clean')
+    setError(null)
+    try {
+      setCacheResult(await api.cryptoCacheClean())
+      setCleanupArmed(false)
+      await load(true)
+      await inspectStorage()
+    } catch (reason: unknown) {
+      setCacheResult(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   function toggleManifest(item: CryptoCoverageItem): void {
     if (item.state !== 'qualified') return
     setSelected((current) => {
@@ -438,8 +490,13 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
       {section === 'storage' && storage ? (
         <section className="provider-card">
           <div className="rd-head">Expansion storage</div>
-          <div className="crypto-storage-stats"><span className={storage.state === 'ready' ? 'chip pass' : 'chip fail'}>{storage.state.toUpperCase()}</span><span>{bytesLabel(storage.free_bytes)} free of {bytesLabel(storage.total_bytes)}</span><span>{storage.manifest_count} immutable manifests</span><span>Reserve {storage.reserve_fraction == null ? '—' : `${Math.round(storage.reserve_fraction * 100)}%`} · minimum {bytesLabel(storage.minimum_free_bytes)}</span></div>
+          <div className="crypto-storage-stats"><span className={storage.state === 'ready' ? 'chip pass' : 'chip fail'}>{storage.state.toUpperCase()}</span><span>{bytesLabel(storage.free_bytes)} free of {bytesLabel(storage.total_bytes)}</span><span>{storage.manifest_count} immutable manifests</span><span>{bytesLabel(storage.cache_bytes)} removable cache</span><span>Reserve {storage.reserve_fraction == null ? '—' : `${Math.round(storage.reserve_fraction * 100)}%`} · minimum {bytesLabel(storage.minimum_free_bytes)}</span></div>
           <p className="muted">The browser receives only the volume label and capacity—not the private absolute path. Missing or substituted media fails closed.</p>
+          <div className="crypto-actions"><button className="btn" type="button" disabled={busyAction !== null} onClick={() => void inspectStorage()}>{busyAction === 'storage-inventory' ? 'Inspecting…' : 'Inspect storage inventory'}</button><button className="btn" type="button" disabled={busyAction !== null} onClick={() => void verifyStorage()}>{busyAction === 'storage-verify' ? 'Verifying every artifact…' : 'Verify all immutable data'}</button><button className={cleanupArmed ? 'btn danger' : 'btn'} type="button" disabled={busyAction !== null || storage.cache_bytes === 0} onClick={() => void cleanCache()}>{busyAction === 'cache-clean' ? 'Cleaning cache…' : cleanupArmed ? 'Confirm clean removable cache' : 'Review cache cleanup'}</button></div>
+          {cleanupArmed ? <div className="workbench-notice fail" role="alert"><strong>CONFIRM CACHE CLEANUP</strong><span>Only {bytesLabel(storage.cache_bytes)} under the disposable cache tree will be deleted. Raw, normalized, staged, snapshot, and control artifacts are excluded.</span></div> : null}
+          {storageInventory ? <div className="crypto-detail"><strong>INVENTORY</strong><span>{storageInventory.manifest_count} manifests · {storageInventory.snapshot_count} snapshots · {storageInventory.staging_count} staged downloads</span><span>{bytesLabel(storageInventory.cache_bytes)} removable cache</span><span className="mono muted advanced-only">{JSON.stringify(storageInventory.counts_by_kind)}</span></div> : null}
+          {storageVerification ? <div className="workbench-notice" role="status"><strong>VERIFIED</strong><span>{storageVerification.manifest_count} manifests and {storageVerification.snapshot_count} snapshots re-hashed · {storageVerification.research_eligible_snapshot_count} research eligible</span></div> : null}
+          {cacheResult ? <div className="workbench-notice" role="status"><strong>CACHE CLEANED</strong><span>{bytesLabel(cacheResult.removed_bytes)} removed · immutable artifacts removed: 0</span></div> : null}
         </section>
       ) : null}
     </section>

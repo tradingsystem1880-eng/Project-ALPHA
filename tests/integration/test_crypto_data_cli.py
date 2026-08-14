@@ -89,6 +89,43 @@ def test_crypto_data_storage_projection_is_safe_when_not_configured(
     assert str(tmp_path) not in result.stdout
 
 
+def test_crypto_storage_inventory_verify_and_confirmed_cache_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = CryptoBulkStore(
+        bulk_root=tmp_path / "bulk",
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        minimum_free_bytes=100,
+    )
+    store.bulk_root.mkdir()
+    cache = store.bulk_root / "cache"
+    cache.mkdir()
+    (cache / "temporary.bin").write_bytes(b"cache")
+    protected = store.bulk_root / "normalized" / "protected.parquet"
+    protected.parent.mkdir()
+    protected.write_bytes(b"protected")
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_snapshot_root", lambda: tmp_path / "snapshots")
+
+    inventory = runner.invoke(app, ["crypto-data", "storage-inventory", "--json"])
+    verified = runner.invoke(app, ["crypto-data", "storage-verify", "--json"])
+    refused = runner.invoke(app, ["crypto-data", "cache-clean", "--json"])
+    cleaned = runner.invoke(app, ["crypto-data", "cache-clean", "--confirm", "--json"])
+
+    assert inventory.exit_code == 0, inventory.output
+    assert json.loads(inventory.stdout)["cache_bytes"] == 5
+    assert verified.exit_code == 0, verified.output
+    assert json.loads(verified.stdout)["manifest_count"] == 0
+    assert refused.exit_code != 0
+    assert "--confirm" in refused.output
+    assert cleaned.exit_code == 0, cleaned.output
+    assert json.loads(cleaned.stdout)["removed_bytes"] == 5
+    assert protected.read_bytes() == b"protected"
+
+
 def test_crypto_data_asset_identity_uses_reviewed_native_mapping_not_ticker_join() -> None:
     btc = runner.invoke(
         app,

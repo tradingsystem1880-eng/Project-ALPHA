@@ -742,6 +742,40 @@ class CryptoStorageResponse(StrictModel):
     total_bytes: int | None = Field(default=None, ge=0)
     reserve_fraction: float | None = Field(default=None, ge=0, lt=1)
     minimum_free_bytes: int | None = Field(default=None, ge=0)
+    cache_bytes: int = Field(ge=0)
+
+
+class CryptoStorageInventoryResponse(StrictModel):
+    manifest_count: int = Field(ge=0)
+    snapshot_count: int = Field(ge=0)
+    counts_by_kind: dict[str, int]
+    bytes_by_kind: dict[str, int]
+    cache_bytes: int = Field(ge=0)
+    staging_count: int = Field(ge=0)
+    private_paths_exposed: Literal[False]
+    next_action: str
+
+
+class CryptoStorageVerifyResponse(StrictModel):
+    state: Literal["verified"]
+    manifest_count: int = Field(ge=0)
+    snapshot_count: int = Field(ge=0)
+    research_eligible_snapshot_count: int = Field(ge=0)
+    cache_bytes: int = Field(ge=0)
+    private_paths_exposed: Literal[False]
+    next_action: str
+
+
+class CryptoCacheCleanRequest(StrictModel):
+    confirm: Literal[True]
+
+
+class CryptoCacheCleanResponse(StrictModel):
+    state: Literal["cleaned"]
+    removed_bytes: int = Field(ge=0)
+    immutable_artifacts_removed: Literal[0]
+    private_paths_exposed: Literal[False]
+    next_action: str
 
 
 class CryptoEstimateRequest(StrictModel):
