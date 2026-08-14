@@ -178,6 +178,32 @@ def test_option_and_dex_diagnostics_block_silent_research_admission() -> None:
     assert {"thin_dex_liquidity", "dex_volume_reserve_extreme"}.issubset(pool_report.warnings)
 
 
+def test_point_in_time_cross_section_allows_one_shared_observation_time() -> None:
+    options = pl.DataFrame(
+        {
+            "available_at": [NOW - timedelta(minutes=1)] * 2,
+            "symbol": ["BTC-30AUG26-100000-C-USDT", "BTC-30AUG26-100000-P-USDT"],
+            "mark_iv": [0.5, 0.6],
+            "open_interest": [10.0, 20.0],
+            "crossed_market": [False, False],
+            "stale_snapshot": [False, False],
+        }
+    )
+
+    report = qualify_crypto_frame(
+        _dataset("option_quotes", "option"),
+        options,
+        artifact_sha256=SHA,
+        observed_column="available_at",
+        key_columns=("available_at", "symbol"),
+        knowledge_time=NOW,
+        as_of=NOW,
+        availability_column="available_at",
+    )
+
+    assert report.state == "qualified"
+
+
 def test_null_onchain_observation_and_future_availability_never_qualify() -> None:
     frame = pl.DataFrame(
         {

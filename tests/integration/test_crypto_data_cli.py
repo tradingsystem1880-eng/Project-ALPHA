@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 
 from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
+from alpha_core import DataError
 from alpha_data.crypto.contracts import FAMILY_AUTHORITIES
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
@@ -105,6 +106,40 @@ def test_crypto_data_asset_identity_uses_reviewed_native_mapping_not_ticker_join
     )
     assert unknown.exit_code != 0
     assert "reviewed native mapping" in unknown.output
+
+
+def test_bybit_option_normalization_selects_exact_quote_asset() -> None:
+    payload = json.dumps(
+        {
+            "retCode": 0,
+            "time": 1_786_752_000_000,
+            "result": {
+                "category": "option",
+                "list": [
+                    {
+                        "symbol": "BTC-25JUN27-150000-C-USDT",
+                        "bid1Price": "1",
+                        "ask1Price": "2",
+                    }
+                ],
+            },
+        }
+    ).encode()
+
+    usdt = crypto_data_cmds._option_quote_frame(
+        payload,
+        fetched_at_ms=1_786_752_000_000,
+        base="BTC",
+        quote="USDT",
+    )
+    assert usdt.height == 1
+    with pytest.raises(DataError, match="requested base and quote"):
+        crypto_data_cmds._option_quote_frame(
+            payload,
+            fetched_at_ms=1_786_752_000_000,
+            base="BTC",
+            quote="USD",
+        )
 
 
 def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(

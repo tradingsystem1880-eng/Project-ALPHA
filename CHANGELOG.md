@@ -67,6 +67,10 @@ qualification and all separately authorized paper-acceptance scenarios remain pe
 
 ### Changed
 
+- Fixed Crypto Data House volume verification for nested directories on the reviewed Expansion
+  mount without weakening UUID enforcement. Live Bybit acceptance now preserves provider-native
+  premium-index tuples, permits valid same-time option cross-sections, filters option contracts by
+  exact base/quote identity, and freezes independently verifiable perpetual and option snapshots.
 - IBKR readiness now grants only `paper_what_if_preview` from a content-verified receipt. The
   current TWS protocol requires wire `transmit=true` to process `whatIf=true`; the contract records
   `broker_order_transmitted=false` separately, and V1 plans remain readable but non-executable.

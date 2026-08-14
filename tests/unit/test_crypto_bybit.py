@@ -238,6 +238,30 @@ def test_price_kline_families_and_hourly_volatility_are_distinct() -> None:
     assert volatility.row(0, named=True)["volatility"] == 0.45024716
 
 
+def test_negative_premium_candles_preserve_provider_values() -> None:
+    premium = parse_price_klines(
+        _payload(
+            {
+                "category": "linear",
+                "symbol": "BTCUSDT",
+                "list": [
+                    [
+                        "1786719600000",
+                        "-0.00038476",
+                        "-0.00045975",
+                        "-0.00047530",
+                        "-0.00045975",
+                    ]
+                ],
+            }
+        ),
+        family="premium",
+    )
+
+    assert premium.row(0, named=True)["open"] == -0.00038476
+    assert premium.row(0, named=True)["close"] == -0.00045975
+
+
 def test_mark_index_premium_diagnostics_preserve_reported_and_observed_values() -> None:
     def frame(family: Literal["mark", "index", "premium"], close: str) -> pl.DataFrame:
         return parse_price_klines(

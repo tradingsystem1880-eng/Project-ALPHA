@@ -305,7 +305,7 @@ def qualify_crypto_frame(
         observations = _times(frame, observed_column)
         if frame.select(pl.struct(key_columns).is_duplicated().any()).item():
             failures.add("duplicate_observation")
-        if any(right <= left for left, right in zip(observations, observations[1:], strict=False)):
+        if any(right < left for left, right in zip(observations, observations[1:], strict=False)):
             failures.add("non_monotonic_time")
         if any(value > min(knowledge, cutoff) for value in observations):
             failures.add("future_observation")

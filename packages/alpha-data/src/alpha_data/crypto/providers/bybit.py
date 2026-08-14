@@ -403,7 +403,9 @@ def parse_price_klines(payload: bytes, *, family: PriceFamily) -> pl.DataFrame:
         assert isinstance(high, float)
         assert isinstance(low, float)
         assert isinstance(close, float)
-        if not (low <= min(open_price, close) and high >= max(open_price, close) and high >= low):
+        if family != "premium" and not (
+            low <= min(open_price, close) and high >= max(open_price, close) and high >= low
+        ):
             raise DataError("Bybit kline violates OHLC invariants")
         if family != "premium" and min(open_price, high, low, close) <= 0:
             raise DataError("Bybit trade/mark/index kline prices must be positive")

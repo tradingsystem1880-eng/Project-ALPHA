@@ -33,6 +33,30 @@ def test_bulk_storage_settings_are_explicit_and_ci_safe(monkeypatch: pytest.Monk
     assert isolated.bulk_volume_uuid is None
 
 
+def test_macos_volume_uuid_queries_containing_mount_point(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    volume = tmp_path / "Expansion"
+    nested = volume / "Project-ALPHA" / "crypto-data"
+    nested.mkdir(parents=True)
+    monkeypatch.setattr(storage.os.path, "ismount", lambda path: Path(path) == volume)
+    observed: list[list[str]] = []
+
+    def fake_run(args: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
+        observed.append(args)
+        return subprocess.CompletedProcess(
+            args,
+            0,
+            stdout=plistlib.dumps({"VolumeUUID": UUID}),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(storage.subprocess, "run", fake_run)
+
+    assert storage.macos_volume_uuid(nested) == UUID
+    assert observed == [["diskutil", "info", "-plist", str(volume)]]
+
+
 def _store(tmp_path: Path, *, actual_uuid: str = UUID, free: int = 1_000_000) -> CryptoBulkStore:
     bulk = tmp_path / "bulk"
     bulk.mkdir(parents=True)

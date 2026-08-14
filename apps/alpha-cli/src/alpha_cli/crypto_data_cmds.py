@@ -142,12 +142,34 @@ def _long_short_frame(payload: bytes, *, category: Literal["linear", "inverse"])
     return parse_long_short_ratio(payload, category=category)[0]
 
 
-def _instrument_frame(payload: bytes, *, fetched_at_ms: int) -> pl.DataFrame:
-    return parse_instruments(payload, category="option", fetched_at_ms=fetched_at_ms)[0]
+def _instrument_frame(payload: bytes, *, fetched_at_ms: int, base: str, quote: str) -> pl.DataFrame:
+    frame = parse_instruments(payload, category="option", fetched_at_ms=fetched_at_ms)[0]
+    selected = frame.filter((pl.col("base_coin") == base) & (pl.col("quote_coin") == quote))
+    if selected.is_empty():
+        raise DataError("Bybit option page has no contracts for the requested base and quote")
+    return selected
 
 
-def _option_quote_frame(payload: bytes, *, fetched_at_ms: int) -> pl.DataFrame:
-    return parse_option_tickers(payload, fetched_at_ms=fetched_at_ms)[0]
+def _option_symbol_assets(symbol: str) -> tuple[str, str]:
+    parts = symbol.split("-")
+    if len(parts) == 4 and parts[0] and parts[3] in {"C", "P"}:
+        return parts[0], "USD"
+    if len(parts) == 5 and parts[0] and parts[3] in {"C", "P"} and parts[4]:
+        return parts[0], parts[4]
+    raise DataError("Bybit option symbol cannot establish exact base and quote identity")
+
+
+def _option_quote_frame(
+    payload: bytes, *, fetched_at_ms: int, base: str, quote: str
+) -> pl.DataFrame:
+    frame = parse_option_tickers(payload, fetched_at_ms=fetched_at_ms)[0]
+    identities = [_option_symbol_assets(symbol) for symbol in frame["symbol"].to_list()]
+    selected = frame.filter(
+        pl.Series([identity == (base, quote) for identity in identities], dtype=pl.Boolean)
+    )
+    if selected.is_empty():
+        raise DataError("Bybit option page has no contracts for the requested base and quote")
+    return selected
 
 
 def _asset_catalog_frame(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
@@ -448,7 +470,12 @@ def _bybit_plan(
         endpoint = "instruments"
         params = {"category": "option", "baseCoin": base_value, "limit": 1_000}
         fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(_instrument_frame, fetched_at_ms=fetched_at_ms)
+        parser = partial(
+            _instrument_frame,
+            fetched_at_ms=fetched_at_ms,
+            base=base_value,
+            quote=quote_value,
+        )
         observed_column = "fetched_at"
         key_columns = ("symbol",)
         market_type = "option"
@@ -457,7 +484,12 @@ def _bybit_plan(
         endpoint = "option_tickers"
         params = {"category": "option", "baseCoin": base_value}
         fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(_option_quote_frame, fetched_at_ms=fetched_at_ms)
+        parser = partial(
+            _option_quote_frame,
+            fetched_at_ms=fetched_at_ms,
+            base=base_value,
+            quote=quote_value,
+        )
         observed_column = "available_at"
         availability_column = "available_at"
         key_columns = ("available_at", "symbol")

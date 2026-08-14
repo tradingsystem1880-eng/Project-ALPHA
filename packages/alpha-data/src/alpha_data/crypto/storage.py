@@ -42,11 +42,22 @@ def _disk_capacity(path: Path) -> Capacity:
     return Capacity(total_bytes=usage.total, free_bytes=usage.free)
 
 
+def _containing_mount_point(path: Path) -> Path:
+    candidate = path.resolve(strict=True)
+    while not os.path.ismount(candidate):
+        parent = candidate.parent
+        if parent == candidate:
+            raise DataError("unable to resolve crypto bulk volume mount point")
+        candidate = parent
+    return candidate
+
+
 def macos_volume_uuid(path: Path) -> str:
     """Read a mounted volume UUID without parsing localized human output."""
     try:
+        mount_point = _containing_mount_point(path)
         completed = subprocess.run(
-            ["diskutil", "info", "-plist", str(path)],
+            ["diskutil", "info", "-plist", str(mount_point)],
             check=True,
             capture_output=True,
             timeout=10,
