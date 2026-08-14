@@ -16,6 +16,13 @@ qualification and all separately authorized paper-acceptance scenarios remain pe
 
 ### Added
 
+- Crypto data-house Stages 0–3: dataset-family authority and retention governance; additive
+  family/venue/unit-aware receipts, quality/snapshot contracts; UUID- and reserve-gated Expansion
+  storage with resumable external-first publication; native checksum-verified Binance
+  spot/USD-M/COIN-M history; and credential-free Bybit V5 instruments, funding, OI, holder ratios,
+  trade/mark/index/premium bars, hourly volatility, option chains, IV, and Greeks. Current four- and
+  five-part option symbols are identity-checked, native linear/inverse units remain distinct, and
+  real-network smoke tests are explicitly network-gated.
 - A closed `IBKRWhatIfPlanV2` and CLI-only one-shot executor for the exact SPY one-share DAY limit
   preview. It binds the masked account by fingerprint, verifies position before/after, rejects any
   order-status or execution callback, and writes a redacted receipt with no paper-readiness credit.

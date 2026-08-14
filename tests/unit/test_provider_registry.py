@@ -20,9 +20,17 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
     ids = [provider.id for provider in providers]
 
     assert len(ids) == len(set(ids))
-    assert {"yfinance", "ccxt", "stooq", "tiingo", "quantpad", "finnhub", "binance", "ibkr"} == set(
-        ids
-    )
+    assert {
+        "yfinance",
+        "ccxt",
+        "stooq",
+        "tiingo",
+        "quantpad",
+        "finnhub",
+        "binance",
+        "bybit",
+        "ibkr",
+    } == set(ids)
     historical_ids = {
         provider.id for provider in providers_with_capability("historical_bars", providers)
     }
@@ -120,6 +128,26 @@ def test_binance_native_history_capabilities_do_not_change_paper_authority() -> 
     }.issubset(binance.capabilities)
     assert binance.research_authority is False
     assert binance.paper_execution is True
+
+
+def test_bybit_is_family_scoped_public_research_data_without_execution() -> None:
+    bybit = next(
+        provider for provider in provider_definitions(environ={}) if provider.id == "bybit"
+    )
+    assert {
+        "crypto_funding",
+        "crypto_open_interest",
+        "crypto_long_short_ratio",
+        "crypto_mark_bars",
+        "crypto_index_bars",
+        "crypto_premium_bars",
+        "crypto_option_instruments",
+        "crypto_option_quotes",
+        "crypto_historical_volatility",
+    } == set(bybit.capabilities)
+    assert bybit.credential_env == ()
+    assert bybit.research_authority is True
+    assert bybit.paper_execution is False
 
 
 def test_quantpad_is_registered_as_research_only_without_canonical_pull_authority() -> None:

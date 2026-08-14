@@ -25,9 +25,17 @@ def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> Non
 
     assert result.exit_code == 0, result.output
     providers = {provider["id"]: provider for provider in json.loads(result.stdout)}
-    assert {"yfinance", "ccxt", "stooq", "tiingo", "quantpad", "finnhub", "binance", "ibkr"} == set(
-        providers
-    )
+    assert {
+        "yfinance",
+        "ccxt",
+        "stooq",
+        "tiingo",
+        "quantpad",
+        "finnhub",
+        "binance",
+        "bybit",
+        "ibkr",
+    } == set(providers)
     assert providers["finnhub"]["configured"] is True
     assert providers["ccxt"]["options"]["exchange"]["choices"] == ["coinbase", "binance"]
     assert providers["tiingo"]["research_authority"] is True
