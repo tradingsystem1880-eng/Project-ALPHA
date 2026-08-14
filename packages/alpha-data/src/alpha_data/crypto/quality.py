@@ -189,7 +189,7 @@ def _family_checks(
 
     if dataset.family in {"market_bars", "mark_bars", "index_bars", "dex_ohlcv"}:
         opens, highs, lows, closes = (values(name) for name in ("open", "high", "low", "close"))
-        for open_, high, low, close in zip(opens, highs, lows, closes, strict=True):
+        for open_, high, low, close in zip(opens, highs, lows, closes, strict=False):
             raw = (open_, high, low, close)
             if any(isinstance(item, bool) or not isinstance(item, int | float) for item in raw):
                 failures.add("invalid_ohlc")

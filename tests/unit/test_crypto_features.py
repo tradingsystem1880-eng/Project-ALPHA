@@ -8,6 +8,8 @@ import pytest
 from alpha_core import DataError
 from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
 from alpha_data.crypto.features import (
+    FEATURE_METHOD_VERSION,
+    CryptoFeatureArtifactV1,
     QualifiedCryptoFrame,
     basis_features,
     funding_features,
@@ -221,3 +223,88 @@ def test_features_fail_closed_for_warning_hash_mismatch_and_early_availability()
     qualified = _source("funding", "funding", frame, "d")
     with pytest.raises(DataError, match="availability precedes"):
         funding_features(qualified, available_at=NOW - timedelta(hours=2))
+
+
+def test_feature_contracts_and_input_boundary_reject_malformed_state() -> None:
+    frame = pl.DataFrame({"timestamp": [NOW - timedelta(hours=1)], "funding_rate": [0.001]})
+    source = _source("funding", "funding", frame, "a")
+    for attribute, value, message in (
+        ("name", "", "name"),
+        ("artifact_sha256", "bad", "hash"),
+        ("frame", pl.DataFrame(), "row count"),
+    ):
+        changed = _source("funding", "funding", frame, "a")
+        object.__setattr__(changed, attribute, value)
+        with pytest.raises(DataError, match=message):
+            changed.validate()
+
+    _, artifact = funding_features(source, available_at=NOW)
+    base = {
+        "feature_id": artifact.feature_id,
+        "feature_name": artifact.feature_name,
+        "method_version": FEATURE_METHOD_VERSION,
+        "input_sha256": artifact.input_sha256,
+        "available_at": NOW,
+        "row_count": 1,
+        "artifact_sha256": artifact.artifact_sha256,
+    }
+    for overrides, message in (
+        ({"feature_id": "bad"}, "artifact hash"),
+        ({"method_version": "future"}, "provenance"),
+        ({"input_sha256": (("", "a" * 64),)}, "inputs"),
+        ({"available_at": NOW.replace(tzinfo=None)}, "timezone-aware"),
+        ({"row_count": 0}, "row count"),
+    ):
+        with pytest.raises(DataError, match=message):
+            CryptoFeatureArtifactV1(**(base | overrides))  # type: ignore[arg-type]
+
+
+def test_feature_derivations_reject_wrong_shape_alignment_and_numeric_boundaries() -> None:
+    timestamp = NOW - timedelta(hours=1)
+    missing = _source("funding", "funding", pl.DataFrame({"timestamp": [timestamp]}), "a")
+    with pytest.raises(DataError, match="missing columns"):
+        funding_features(missing, available_at=NOW)
+
+    wrong_family = _source(
+        "funding",
+        "open_interest",
+        pl.DataFrame({"timestamp": [timestamp], "funding_rate": [0.1]}),
+        "b",
+    )
+    with pytest.raises(DataError, match="requires funding"):
+        funding_features(wrong_family, available_at=NOW)
+
+    common = {"timestamp": [timestamp], "category": ["linear"], "symbol": ["BTCUSDT"]}
+    mark = _source("mark", "mark_bars", pl.DataFrame(common | {"close": [101.0]}), "c")
+    index = _source("index", "index_bars", pl.DataFrame(common | {"close": [0.0]}), "d")
+    premium = _source("premium", "premium_bars", pl.DataFrame(common | {"close": [0.01]}), "e")
+    with pytest.raises(DataError, match="index values"):
+        basis_features(mark, index, premium, available_at=NOW)
+
+    unmatched_index = _source(
+        "index",
+        "index_bars",
+        pl.DataFrame(common | {"symbol": ["ETHUSDT"], "close": [100.0]}),
+        "f",
+    )
+    with pytest.raises(DataError, match="not exactly aligned"):
+        basis_features(mark, unmatched_index, premium, available_at=NOW)
+
+    zero_reserve = _source(
+        "pools",
+        "dex_pools",
+        pl.DataFrame(
+            {
+                "network": ["eth"],
+                "pool_address": ["0xpool"],
+                "reserve_usd": [0.0],
+                "h24_volume_usd": [0.0],
+                "h24_buys": [0],
+                "h24_sells": [0],
+            }
+        ),
+        "1",
+        market_type="dex",
+    )
+    with pytest.raises(DataError, match="reserve"):
+        liquidity_features(zero_reserve, available_at=NOW)

@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
+import pytest
 
+from alpha_core import DataError
 from alpha_data.crypto.contracts import CryptoDatasetIdentityV1
 from alpha_data.crypto.quality import QUALITY_METHOD_VERSION, qualify_crypto_frame
 
@@ -199,3 +201,125 @@ def test_null_onchain_observation_and_future_availability_never_qualify() -> Non
     assert report.state == "quarantined"
     assert "future_availability" in report.failures
     assert "missing_onchain_value" in report.warnings
+
+
+def test_common_quality_boundary_is_fail_closed_and_empty_is_honest() -> None:
+    empty = qualify_crypto_frame(
+        _dataset("funding"),
+        pl.DataFrame(),
+        artifact_sha256=SHA,
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+        knowledge_time=NOW,
+        as_of=NOW,
+    )
+    assert empty.state == "unavailable" and empty.failures == ("empty_dataset",)
+
+    missing = qualify_crypto_frame(
+        _dataset("funding"),
+        pl.DataFrame({"funding_rate": [0.1]}),
+        artifact_sha256=SHA,
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+        knowledge_time=NOW + timedelta(seconds=1),
+        as_of=NOW,
+        availability_column="available_at",
+    )
+    assert {
+        "missing_required_column:timestamp",
+        "missing_required_column:available_at",
+        "future_knowledge_time",
+    }.issubset(missing.failures)
+
+    naive = pl.DataFrame({"timestamp": [datetime(2026, 8, 14)], "funding_rate": [0.1]})
+    with pytest.raises(DataError, match="aware datetimes"):
+        qualify_crypto_frame(
+            _dataset("funding"),
+            naive,
+            artifact_sha256=SHA,
+            observed_column="timestamp",
+            key_columns=("timestamp",),
+            knowledge_time=NOW,
+            as_of=NOW,
+        )
+    with pytest.raises(DataError, match="timezone-aware"):
+        qualify_crypto_frame(
+            _dataset("funding"),
+            pl.DataFrame({"timestamp": [NOW], "funding_rate": [0.1]}),
+            artifact_sha256=SHA,
+            observed_column="timestamp",
+            key_columns=("timestamp",),
+            knowledge_time=NOW.replace(tzinfo=None),
+            as_of=NOW,
+        )
+    with pytest.raises(DataError, match="cadence must be positive"):
+        qualify_crypto_frame(
+            _dataset("funding"),
+            pl.DataFrame({"timestamp": [NOW - timedelta(hours=1)], "funding_rate": [0.1]}),
+            artifact_sha256=SHA,
+            observed_column="timestamp",
+            key_columns=("timestamp",),
+            knowledge_time=NOW,
+            as_of=NOW,
+            expected_cadence=timedelta(0),
+        )
+
+
+@pytest.mark.parametrize(
+    ("family", "market_type", "columns", "expected"),
+    (
+        ("market_bars", "linear", {"open": [1.0]}, "missing_required_column:high"),
+        (
+            "market_bars",
+            "linear",
+            {"open": ["bad"], "high": [2.0], "low": [0.5], "close": [1.0]},
+            "invalid_ohlc",
+        ),
+        (
+            "market_bars",
+            "linear",
+            {"open": [1.0], "high": [2.0], "low": [0.5], "close": [1.0], "volume": [-1.0]},
+            "negative_volume",
+        ),
+        ("premium_bars", "linear", {"value": [0.1]}, "missing_required_column:close"),
+        ("long_short_ratio", "linear", {"long_short_ratio": [0.0]}, "invalid_long_short_ratio"),
+        (
+            "option_quotes",
+            "option",
+            {
+                "mark_iv": [-0.1],
+                "open_interest": [-1.0],
+                "crossed_market": [False],
+                "stale_snapshot": [True],
+            },
+            "negative_implied_volatility",
+        ),
+        ("option_instruments", "option", {"strike_price": [0.0]}, "invalid_option_strike"),
+        ("historical_volatility", "option", {"volatility": [-0.1]}, "negative_volatility"),
+        (
+            "dex_pools",
+            "dex",
+            {"reserve_usd": [None], "h24_volume_usd": [-1.0]},
+            "invalid_dex_liquidity",
+        ),
+        ("onchain_metrics", "network", {"value": [-1.0]}, "negative_onchain_value"),
+        ("market_reference", "reference", {"current_price": [None]}, "missing_reference_price"),
+    ),
+)
+def test_family_quality_rules_surface_invalid_native_values(
+    family: str, market_type: str, columns: dict[str, list[object]], expected: str
+) -> None:
+    frame = pl.DataFrame(
+        {"timestamp": [NOW - timedelta(hours=1)]} | columns,
+        schema_overrides={name: pl.Float64 for name, values in columns.items() if values == [None]},
+    )
+    report = qualify_crypto_frame(
+        _dataset(family, market_type),
+        frame,
+        artifact_sha256=SHA,
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+        knowledge_time=NOW,
+        as_of=NOW,
+    )
+    assert expected in report.failures or expected in report.warnings
