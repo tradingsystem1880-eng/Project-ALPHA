@@ -1923,8 +1923,7 @@ def _fetch_non_bybit(
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
 
 
-@crypto_data_app.command("acquire")
-def acquire(
+def _acquire_result(
     provider: str,
     family: str,
     instrument: str,
@@ -1943,8 +1942,7 @@ def acquire(
         None, help="fresh research-case revision for derivative event capture"
     ),
     reason: str | None = typer.Option(None, help="bounded event-capture reason"),
-    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
-) -> None:
+) -> dict[str, object]:
     """Acquire one bounded public provider page; this grants no research or order authority."""
     dataset_family = _family(family)
     fetched_at = _now()
@@ -2137,24 +2135,65 @@ def acquire(
         next_action = "Review the quality warnings before selecting stronger evidence."
     else:
         next_action = "Review the quality blockers before using this dataset."
-    _emit(
-        {
-            "provider": provider,
-            "family": dataset_family,
-            "instrument": plan.dataset.instrument,
-            "state": quality.state,
-            "failures": list(quality.failures),
-            "warnings": list(quality.warnings),
-            "raw_manifest_id": raw_manifests[0]["manifest_id"],
-            "raw_manifest_ids": [item["manifest_id"] for item in raw_manifests],
-            "raw_page_count": len(raw_manifests),
-            "normalized_manifest_id": normalized_manifest["manifest_id"],
-            "artifact_sha256": normalized_manifest["artifact_sha256"],
-            "next_action": next_action,
-            "execution_authority": False,
-        },
-        json_out=json_out,
+    return {
+        "provider": provider,
+        "family": dataset_family,
+        "instrument": plan.dataset.instrument,
+        "state": quality.state,
+        "failures": list(quality.failures),
+        "warnings": list(quality.warnings),
+        "raw_manifest_id": raw_manifests[0]["manifest_id"],
+        "raw_manifest_ids": [item["manifest_id"] for item in raw_manifests],
+        "raw_page_count": len(raw_manifests),
+        "normalized_manifest_id": normalized_manifest["manifest_id"],
+        "artifact_sha256": normalized_manifest["artifact_sha256"],
+        "next_action": next_action,
+        "execution_authority": False,
+    }
+
+
+@crypto_data_app.command("acquire")
+def acquire(
+    provider: str,
+    family: str,
+    instrument: str,
+    base: str = typer.Option(..., help="exact base asset"),
+    quote: str = typer.Option(..., help="exact quote asset; USD, USDT, and USDC stay distinct"),
+    category: str = typer.Option("linear", help="spot, linear, inverse, or option market"),
+    frequency: str = typer.Option("1h", help="provider-native bounded frequency"),
+    period: str | None = typer.Option(None, help="Binance monthly archive period YYYY-MM"),
+    network: str | None = typer.Option(None, help="reviewed GeckoTerminal network id"),
+    pool_address: str | None = typer.Option(None, help="exact DEX pool address"),
+    metrics: str | None = typer.Option(None, help="comma-separated reviewed Coin Metrics metrics"),
+    start: str | None = typer.Option(None, help="provider-native bounded start time"),
+    end: str | None = typer.Option(None, help="provider-native bounded end time"),
+    case_id: str | None = typer.Option(None, help="research case for derivative event capture"),
+    expected_case_revision: str | None = typer.Option(
+        None, help="fresh research-case revision for derivative event capture"
+    ),
+    reason: str | None = typer.Option(None, help="bounded event-capture reason"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Acquire one bounded public provider page; this grants no research or order authority."""
+    result = _acquire_result(
+        provider,
+        family,
+        instrument,
+        base=base,
+        quote=quote,
+        category=category,
+        frequency=frequency,
+        period=period,
+        network=network,
+        pool_address=pool_address,
+        metrics=metrics,
+        start=start,
+        end=end,
+        case_id=case_id,
+        expected_case_revision=expected_case_revision,
+        reason=reason,
     )
+    _emit(result, json_out=json_out)
 
 
 def _normalized_member(
