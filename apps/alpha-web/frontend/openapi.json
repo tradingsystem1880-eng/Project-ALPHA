@@ -2725,6 +2725,17 @@
             "title": "Completed Count",
             "type": "integer"
           },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
           "execution_authority": {
             "const": false,
             "title": "Execution Authority",
@@ -2739,6 +2750,17 @@
             "minimum": 0.0,
             "title": "Profile Offset",
             "type": "integer"
+          },
+          "recovery_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Action"
           },
           "state": {
             "enum": [
@@ -2769,6 +2791,8 @@
           "task_count",
           "completed_count",
           "state",
+          "error",
+          "recovery_action",
           "updated_at",
           "execution_authority"
         ],

@@ -4515,6 +4515,8 @@ export interface components {
             cadence: components["schemas"]["CryptoCoverageCadenceValue"];
             /** Completed Count */
             completed_count: number;
+            /** Error */
+            error: string | null;
             /**
              * Execution Authority
              * @constant
@@ -4524,6 +4526,8 @@ export interface components {
             profile_id: string;
             /** Profile Offset */
             profile_offset: number;
+            /** Recovery Action */
+            recovery_action: string | null;
             /**
              * State
              * @enum {string}

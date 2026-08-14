@@ -457,6 +457,8 @@ def test_crypto_profile_routes_keep_batches_bounded_and_selections_case_bound(
                         "task_count": 1,
                         "completed_count": 0,
                         "state": "failed",
+                        "error": "fixture provider outage",
+                        "recovery_action": "Resolve the provider or data blocker, then resume.",
                         "updated_at": "2026-08-15T00:01:00Z",
                         "execution_authority": False,
                     }

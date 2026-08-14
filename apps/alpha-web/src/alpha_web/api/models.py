@@ -1032,6 +1032,8 @@ class CryptoCoverageBatchResponse(StrictModel):
     task_count: int = Field(ge=1, le=25)
     completed_count: int = Field(ge=0, le=25)
     state: Literal["pending", "running", "failed", "completed"]
+    error: str | None
+    recovery_action: str | None
     updated_at: str
     execution_authority: Literal[False]
 

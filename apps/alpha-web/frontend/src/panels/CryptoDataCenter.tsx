@@ -1086,7 +1086,7 @@ export function CryptoDataCenter({
           {failedBatches.length ? (
             <div className="crypto-detail">
               <strong>{failedBatches.length} failed bounded batch{failedBatches.length === 1 ? '' : 'es'}</strong>
-              {failedBatches.map((batch) => <button key={batch.batch_id} className="btn" type="button" disabled={busyAction !== null} onClick={() => void resumeProfileBatch(batch)}>{busyAction === `batch:${batch.batch_id}` ? 'Resuming…' : `Resume ${batch.cadence.replaceAll('_', ' ')} batch (${batch.completed_count}/${batch.task_count})`}</button>)}
+              {failedBatches.map((batch) => <div key={batch.batch_id} className="crypto-detail"><span><strong>{batch.error ?? 'Provider or data blocker'}</strong><span className="muted">{batch.recovery_action ?? 'Resolve the blocker, then resume.'}</span></span><button className="btn" type="button" disabled={busyAction !== null} onClick={() => void resumeProfileBatch(batch)}>{busyAction === `batch:${batch.batch_id}` ? 'Resuming…' : `Resume ${batch.cadence.replaceAll('_', ' ')} batch (${batch.completed_count}/${batch.task_count})`}</button></div>)}
             </div>
           ) : null}
         </section>

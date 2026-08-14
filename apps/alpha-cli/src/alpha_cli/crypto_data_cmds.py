@@ -8,6 +8,7 @@ import json
 import math
 import os
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
@@ -144,6 +145,13 @@ _ROW_BYTES: Final[dict[CryptoFamily, int]] = {
     "dex_transactions": 192,
     "comparison_bars": 128,
 }
+
+
+def _pause_geckoterminal_page() -> None:
+    """Stay within the keyless public rate before requesting the next catalog page."""
+    time.sleep(2.1)
+
+
 _OBSERVATIONS_PER_DAY: Final = {
     "1d": 1,
     "4h": 6,
@@ -1926,6 +1934,8 @@ def _fetch_non_bybit(
                     )
                 )
                 page_parsers_gt.append(page_parser_gt)
+                if page_number < 5:
+                    _pause_geckoterminal_page()
             return _FetchedPagedAcquisition(
                 plan=plan,
                 pages=tuple(pages_gt),
@@ -3753,8 +3763,9 @@ def _execute_coverage_batch(batch_id: str) -> dict[str, object]:
                 },
             )
             raise DataError(
-                f"crypto coverage batch {batch_id} stopped at task {task.task_id}; "
-                "resume after resolving the reported provider or data blocker"
+                "crypto coverage batch stopped on "
+                f"{task.provider} {task.family} {task.instrument}: {exc}. "
+                "Resolve the provider or data blocker, then resume the failed batch."
             ) from exc
         results.append({"task_id": task.task_id, **acquired})
         _write_batch_json(
@@ -3845,6 +3856,12 @@ def profile_batches(json_out: bool = typer.Option(False, "--json", help="emit JS
                     "task_count": len(tasks),
                     "completed_count": checkpoint["next_index"],
                     "state": checkpoint["state"],
+                    "error": checkpoint["error"],
+                    "recovery_action": (
+                        "Resolve the provider or data blocker, then resume."
+                        if checkpoint["state"] == "failed"
+                        else None
+                    ),
                     "updated_at": checkpoint["updated_at"],
                     "execution_authority": False,
                 }

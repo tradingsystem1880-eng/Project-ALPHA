@@ -192,7 +192,9 @@ re-verifies every external member before recording the snapshot through the hist
 when a registered operator declares compatibility.
 CoinGecko full-market reference uses ordered 250-row pages through one short terminal page, bounded
 to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
-is a separate immutable raw receipt and the combined normalized catalog preserves that order.
+is a separate immutable raw receipt and the combined normalized catalog preserves that order. The
+keyless DEX client paces those requests and applies bounded 429 backoff; failed batches expose a
+safe blocker and recovery action while retaining completed task checkpoints.
 A `CryptoCoverageProfileV1` freezes the exact qualified Bybit catalog and option-chain manifests
 plus exact qualified Binance spot/USD-M/COIN-M membership and Coin Metrics Community catalog
 manifests used to derive active venue,

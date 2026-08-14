@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from datetime import UTC, datetime
 from typing import Final
 from urllib.parse import urlencode
@@ -74,14 +75,29 @@ def fetch_geckoterminal_public(url: str, *, timeout_seconds: int = 30) -> bytes:
     request = urllib.request.Request(
         url, headers={"Accept": "application/json", "User-Agent": "Project-ALPHA/1.0"}
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-            if content_type not in {"application/json", "text/json"}:
-                raise DataError("GeckoTerminal response MIME is not JSON")
-            payload = bytes(response.read(8 * 1024 * 1024 + 1))
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
-        raise DataError("GeckoTerminal request failed") from exc
+    payload: bytes | None = None
+    max_attempts = 4
+    for attempt in range(max_attempts):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+                content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
+                if content_type not in {"application/json", "text/json"}:
+                    raise DataError("GeckoTerminal response MIME is not JSON")
+                payload = bytes(response.read(8 * 1024 * 1024 + 1))
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 or attempt == max_attempts - 1:
+                raise DataError("GeckoTerminal request failed") from exc
+            retry_header = exc.headers.get("Retry-After") if exc.headers is not None else None
+            try:
+                provider_delay = float(retry_header) if retry_header is not None else 0.0
+            except ValueError:
+                provider_delay = 0.0
+            time.sleep(min(10.0, max(2.1 * (2**attempt), provider_delay)))
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise DataError("GeckoTerminal request failed") from exc
+    if payload is None:
+        raise DataError("GeckoTerminal request failed")
     if len(payload) > 8 * 1024 * 1024:
         raise DataError("GeckoTerminal response exceeds the byte limit")
     return payload

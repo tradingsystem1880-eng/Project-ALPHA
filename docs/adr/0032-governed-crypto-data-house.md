@@ -100,7 +100,9 @@ the normalized identity.
 CoinGecko's daily `all` market-reference acquisition freezes every ordered 250-row page through
 the first bounded terminal page. GeckoTerminal top-pool catalogs freeze five exact 20-row pages per
 declared network. Each page has its own raw receipt and the normalized catalog commits to their
-ordered membership; incomplete pages or a CoinGecko universe beyond 100 pages fail closed.
+ordered membership; incomplete pages or a CoinGecko universe beyond 100 pages fail closed. The
+keyless GeckoTerminal client paces catalog pages and uses bounded exponential backoff only for HTTP
+429; it never loops indefinitely or records vendor response text.
 Default breadth is planned before acquisition in a content-addressed `CryptoCoverageProfileV1`
 bound to exact qualified Bybit catalog, option-chain, and Coin Metrics Community catalog manifests.
 On-chain tasks are derived only from exact qualified catalog rows known by the profile `as_of`;

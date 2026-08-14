@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 
 import pytest
 
@@ -175,6 +176,48 @@ def test_keyless_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPatc
     )
     with pytest.raises(DataError, match="request failed"):
         fetch_geckoterminal_public(url)
+
+
+def test_keyless_fetch_retries_a_bounded_rate_limit_without_exposing_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url = geckoterminal_public_url("top_pools", network="bsc", params={"page": 2})
+    responses: list[object] = [
+        urllib.error.HTTPError(url, 429, "vendor body sentinel", {"Retry-After": "0"}, None),
+        _Response(b'{"data":[]}'),
+    ]
+    sleeps: list[float] = []
+
+    def open_next(*_args: object, **_kwargs: object) -> object:
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr("urllib.request.urlopen", open_next)
+    monkeypatch.setattr("time.sleep", sleeps.append)
+
+    assert fetch_geckoterminal_public(url) == b'{"data":[]}'
+    assert sleeps == [2.1]
+
+
+def test_keyless_fetch_rate_limit_backoff_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    url = geckoterminal_public_url("top_pools", network="bsc", params={"page": 2})
+    calls = 0
+    sleeps: list[float] = []
+
+    def always_limited(*_args: object, **_kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        raise urllib.error.HTTPError(url, 429, "vendor body sentinel", {}, None)
+
+    monkeypatch.setattr("urllib.request.urlopen", always_limited)
+    monkeypatch.setattr("time.sleep", sleeps.append)
+
+    with pytest.raises(DataError, match="request failed"):
+        fetch_geckoterminal_public(url)
+    assert calls == 4
+    assert sleeps == [2.1, 4.2, 8.4]
 
 
 def test_keyless_url_variants_are_closed_and_bounded() -> None:

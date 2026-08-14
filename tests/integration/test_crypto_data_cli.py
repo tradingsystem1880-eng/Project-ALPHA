@@ -204,6 +204,7 @@ def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
         minimum_free_bytes=100,
     )
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_pause_geckoterminal_page", lambda: None)
     monkeypatch.setattr(crypto_data_cmds, "_asset_master_root", lambda: tmp_path / "masters")
     monkeypatch.setattr(crypto_data_cmds, "_snapshot_root", lambda: tmp_path / "snapshots")
     monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "fixture-key")
@@ -982,6 +983,7 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
         minimum_free_bytes=100,
     )
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_pause_geckoterminal_page", lambda: None)
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path / "control"))
     monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "injected-only-for-test")
     monkeypatch.setattr(
@@ -1350,6 +1352,7 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
         return json.dumps({"data": rows}).encode()
 
     pool_pages: list[int] = []
+    page_pauses: list[float] = []
 
     def fetch_gecko(url: str) -> bytes:
         page = int(url.split("page=")[1].split("&", 1)[0])
@@ -1357,6 +1360,9 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
         return pool_page(page)
 
     monkeypatch.setattr(crypto_data_cmds, "fetch_geckoterminal_public", fetch_gecko)
+    monkeypatch.setattr(
+        crypto_data_cmds, "_pause_geckoterminal_page", lambda: page_pauses.append(2.1)
+    )
     gecko = runner.invoke(
         app,
         [
@@ -1377,6 +1383,7 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
     assert gecko.exit_code == 0, gecko.output
     gecko_receipt = json.loads(gecko.stdout)
     assert pool_pages == [1, 2, 3, 4, 5]
+    assert page_pauses == [2.1, 2.1, 2.1, 2.1]
     assert gecko_receipt["raw_page_count"] == 5
     gecko_manifest = store.verify_manifest(gecko_receipt["normalized_manifest_id"])
     assert gecko_manifest["quality"]["row_count"] == 100
@@ -2002,6 +2009,7 @@ def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
         ],
     )
     assert failed.exit_code != 0
+    assert "stopped on" in failed.output
     batches = tuple((tmp_path / "batches").iterdir())
     assert len(batches) == 1
     batch_id = batches[0].name
@@ -2010,6 +2018,12 @@ def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
     assert checkpoint["next_index"] == 1
     assert len(checkpoint["results"]) == 1
     assert calls == ["asset_metadata", "market_reference"]
+
+    failed_list = runner.invoke(app, ["crypto-data", "profile-batches", "--json"])
+    assert failed_list.exit_code == 0, failed_list.output
+    failed_item = json.loads(failed_list.stdout)["items"][0]
+    assert failed_item["error"] == "fixture provider outage"
+    assert failed_item["recovery_action"] == "Resolve the provider or data blocker, then resume."
 
     fail_second = False
     resumed = runner.invoke(
