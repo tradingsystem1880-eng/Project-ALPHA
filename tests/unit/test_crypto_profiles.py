@@ -141,3 +141,11 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
     forged = profile.to_dict() | {"profile_id": "f" * 64}
     with pytest.raises(DataError, match="identity"):
         CryptoCoverageProfileV1.from_dict(forged)
+    with pytest.raises(DataError, match="open-interest coverage"):
+        build_default_coverage_tasks(
+            linear_catalog=empty_perpetual,
+            inverse_catalog=empty_perpetual,
+            option_catalog=options,
+            option_open_interest={("BTC", "USDT"): 100.0},
+            as_of=as_of,
+        )

@@ -36,6 +36,11 @@ from alpha_data.crypto.contracts import (
     CryptoSnapshotV1,
 )
 from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
+from alpha_data.crypto.profiles import (
+    CryptoCoverageProfileV1,
+    active_option_markets,
+    build_default_coverage_tasks,
+)
 from alpha_data.crypto.providers.binance import (
     archive_checksum_sha256,
     archive_url,
@@ -459,6 +464,36 @@ def _snapshot_root() -> Path:
 
 def _asset_master_root() -> Path:
     return AlphaSettings().data_dir / "crypto" / "asset-masters"
+
+
+def _coverage_profile_root() -> Path:
+    return AlphaSettings().data_dir / "crypto" / "coverage-profiles"
+
+
+def _write_coverage_profile(profile: CryptoCoverageProfileV1) -> None:
+    root = _coverage_profile_root()
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"{profile.profile_id}.json"
+    rendered = json.dumps(profile.to_dict(), sort_keys=True, indent=2, allow_nan=False) + "\n"
+    if path.exists():
+        if path.read_text(encoding="utf-8") != rendered:
+            raise DataError("crypto coverage-profile identity collision")
+        return
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(rendered, encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def _read_coverage_profile(profile_id: str) -> CryptoCoverageProfileV1:
+    if _SHA256.fullmatch(profile_id) is None:
+        raise DataError("crypto coverage-profile id is invalid")
+    try:
+        raw = json.loads(
+            (_coverage_profile_root() / f"{profile_id}.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DataError("crypto coverage profile is unavailable or corrupt") from exc
+    return CryptoCoverageProfileV1.from_dict(raw)
 
 
 def _write_asset_master(master: AssetMaster) -> None:
@@ -2412,6 +2447,199 @@ def _qualified_normalized_frame(
     except (OSError, pl.exceptions.PolarsError) as exc:
         raise DataError("crypto asset-master source artifact is unreadable") from exc
     return frame, quality_report
+
+
+def _latest_profile_source(
+    store: CryptoBulkStore,
+    *,
+    family: CryptoFamily,
+    as_of: datetime,
+    instrument: str | None = None,
+    base_asset: str | None = None,
+    quote_asset: str | None = None,
+) -> tuple[str, CryptoDatasetIdentityV1, pl.DataFrame]:
+    candidates: list[tuple[str, str, CryptoDatasetIdentityV1, dict[str, object]]] = []
+    for manifest in store.inventory():
+        if manifest.get("artifact_kind") != "normalized":
+            continue
+        dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+        quality_report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+        if (
+            dataset.provider != "bybit"
+            or dataset.family != family
+            or quality_report.state != "qualified"
+            or (instrument is not None and dataset.instrument != instrument)
+            or (base_asset is not None and dataset.base_asset != base_asset)
+            or (quote_asset is not None and dataset.quote_asset != quote_asset)
+        ):
+            continue
+        row = _coverage_row(manifest, store=store)
+        fetched_at = row.get("fetched_at")
+        if not isinstance(fetched_at, str):
+            continue
+        try:
+            fetched = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise DataError("crypto coverage-profile source time is invalid") from exc
+        if fetched > as_of:
+            continue
+        manifest_id = manifest.get("manifest_id")
+        if not isinstance(manifest_id, str):
+            raise DataError("crypto coverage-profile source id is invalid")
+        candidates.append((fetched.isoformat(), manifest_id, dataset, manifest))
+    if not candidates:
+        identity = instrument or f"{base_asset or '*'}:{quote_asset or '*'}"
+        raise DataError(f"no qualified Bybit {family} source is available for {identity}")
+    _, manifest_id, dataset, manifest = max(candidates, key=lambda item: (item[0], item[1]))
+    artifact_key = manifest.get("artifact_key")
+    if not isinstance(artifact_key, str):
+        raise DataError("crypto coverage-profile source artifact key is invalid")
+    try:
+        frame = pl.read_parquet(store.bulk_root / artifact_key)
+    except (OSError, pl.exceptions.PolarsError) as exc:
+        raise DataError("crypto coverage-profile source artifact is unreadable") from exc
+    return manifest_id, dataset, frame
+
+
+def _profile_summary(profile: CryptoCoverageProfileV1) -> dict[str, object]:
+    providers: dict[str, int] = {}
+    cadences: dict[str, int] = {}
+    families: dict[str, int] = {}
+    for task in profile.tasks:
+        providers[task.provider] = providers.get(task.provider, 0) + 1
+        cadences[task.cadence] = cadences.get(task.cadence, 0) + 1
+        families[task.family] = families.get(task.family, 0) + 1
+    return {
+        "profile_id": profile.profile_id,
+        "as_of": profile.as_of.isoformat(),
+        "source_manifest_ids": list(profile.source_manifest_ids),
+        "task_count": len(profile.tasks),
+        "counts_by_provider": providers,
+        "counts_by_cadence": cadences,
+        "counts_by_family": families,
+        "execution_authority": False,
+    }
+
+
+@crypto_data_app.command("profile-create")
+def profile_create(
+    as_of: str | None = typer.Option(None, help="point-in-time ISO-8601 membership clock"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Freeze the default coverage tasks from exact qualified Bybit catalogs."""
+    try:
+        instant = _now() if as_of is None else datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+        if instant.tzinfo is None or instant.utcoffset() is None:
+            raise DataError("crypto coverage-profile as_of must include a timezone")
+        instant = instant.astimezone(UTC)
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
+        catalog_sources = tuple(
+            _latest_profile_source(
+                store,
+                family="instrument_catalog",
+                instrument=category,
+                as_of=instant,
+            )
+            for category in ("linear", "inverse", "option")
+        )
+        linear, inverse, options = (source[2] for source in catalog_sources)
+        option_sources: list[tuple[str, tuple[str, str], pl.DataFrame]] = []
+        for base, quote in active_option_markets(options, as_of=instant):
+            manifest_id, _dataset, frame = _latest_profile_source(
+                store,
+                family="option_quotes",
+                base_asset=base,
+                quote_asset=quote,
+                as_of=instant,
+            )
+            option_sources.append((manifest_id, (base, quote), frame))
+        option_oi: dict[tuple[str, str], float] = {}
+        for _manifest_id, market, frame in option_sources:
+            if "open_interest" not in frame.columns:
+                raise DataError("Bybit option quote source has no open-interest observations")
+            total = frame.select(pl.col("open_interest").fill_null(0.0).sum()).item()
+            if not isinstance(total, int | float) or isinstance(total, bool):
+                raise DataError("Bybit aggregate option open interest is invalid")
+            option_oi[market] = float(total)
+        tasks = build_default_coverage_tasks(
+            linear_catalog=linear,
+            inverse_catalog=inverse,
+            option_catalog=options,
+            option_open_interest=option_oi,
+            as_of=instant,
+        )
+        profile = CryptoCoverageProfileV1.create(
+            as_of=instant,
+            source_manifest_ids=tuple(
+                [source[0] for source in catalog_sources] + [source[0] for source in option_sources]
+            ),
+            tasks=tasks,
+        )
+        _write_coverage_profile(profile)
+    except (ValueError, DataError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        _profile_summary(profile)
+        | {
+            "state": "frozen",
+            "next_action": "Inspect a bounded task page before running one cadence batch.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("profile-show")
+def profile_show(
+    profile_id: str,
+    offset: int = typer.Option(0, min=0),
+    limit: int = typer.Option(50, min=1, max=100),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Inspect a bounded page of one immutable coverage profile."""
+    try:
+        profile = _read_coverage_profile(profile_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    page = profile.tasks[offset : offset + limit]
+    _emit(
+        _profile_summary(profile)
+        | {
+            "offset": offset,
+            "limit": limit,
+            "items": [task.to_dict() for task in page],
+            "has_more": offset + len(page) < len(profile.tasks),
+            "next_offset": offset + len(page) if offset + len(page) < len(profile.tasks) else None,
+            "next_action": "Run only the intended bounded cadence batch.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("profiles")
+def profiles(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List immutable coverage profiles without exposing their full task membership."""
+    try:
+        root = _coverage_profile_root()
+        items = (
+            [
+                _profile_summary(_read_coverage_profile(path.stem))
+                for path in sorted(root.glob("*.json"))
+            ]
+            if root.exists()
+            else []
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "items": items,
+            "count": len(items),
+            "execution_authority": False,
+            "next_action": "Create a fresh profile after catalog membership changes.",
+        },
+        json_out=json_out,
+    )
 
 
 @crypto_data_app.command("asset-master-create")

@@ -190,6 +190,10 @@ when a registered operator declares compatibility.
 CoinGecko full-market reference uses ordered 250-row pages through one short terminal page, bounded
 to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
 is a separate immutable raw receipt and the combined normalized catalog preserves that order.
+A `CryptoCoverageProfileV1` freezes the exact qualified Bybit catalog and option-chain manifests
+used to derive active perpetual, option-underlying, and cadence-specific acquisition tasks. Its
+membership is content-addressed and bounded to 10,000 tasks; profile inspection is paginated and
+the profile itself has no provider, research-gate, paper, or execution authority.
 Coinbase comparison bars are acquired through the existing venue-qualified CCXT seam at exact
 1m/5m/1h/1d intervals. Bybit spot bars may be stored only as diagnostics and fail snapshot authority
 checks. A derived market-comparison artifact commits to the authoritative Binance input, every

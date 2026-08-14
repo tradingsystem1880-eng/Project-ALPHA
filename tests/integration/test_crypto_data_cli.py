@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.request import Request
 
+import polars as pl
 import pytest
 from typer.testing import CliRunner
 
@@ -1288,6 +1289,112 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
     assert gecko_receipt["raw_page_count"] == 5
     gecko_manifest = store.verify_manifest(gecko_receipt["normalized_manifest_id"])
     assert gecko_manifest["quality"]["row_count"] == 100
+
+
+def test_coverage_profile_create_pages_and_rejects_tamper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    as_of = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    empty_catalog = pl.DataFrame(
+        schema={
+            "status": pl.String,
+            "contract_type": pl.String,
+            "symbol": pl.String,
+            "base_coin": pl.String,
+            "quote_coin": pl.String,
+            "launch_time": pl.Datetime(time_zone="UTC"),
+            "delivery_time": pl.Datetime(time_zone="UTC"),
+        }
+    )
+    linear = pl.DataFrame(
+        {
+            "status": ["Trading"],
+            "contract_type": ["LinearPerpetual"],
+            "symbol": ["BTCUSDT"],
+            "base_coin": ["BTC"],
+            "quote_coin": ["USDT"],
+            "launch_time": [datetime.fromisoformat("2020-01-01T00:00:00+00:00")],
+            "delivery_time": [None],
+        }
+    )
+    options = pl.DataFrame(
+        {
+            "status": ["Trading"],
+            "symbol": ["BTC-30AUG26-100000-C-USDT"],
+            "base_coin": ["BTC"],
+            "quote_coin": ["USDT"],
+            "launch_time": [datetime.fromisoformat("2026-01-01T00:00:00+00:00")],
+            "delivery_time": [datetime.fromisoformat("2026-08-30T00:00:00+00:00")],
+        }
+    )
+    option_quotes = pl.DataFrame({"open_interest": [10.0, 20.0]})
+    sources = {
+        ("instrument_catalog", "linear", None, None): ("a" * 64, None, linear),
+        ("instrument_catalog", "inverse", None, None): ("b" * 64, None, empty_catalog),
+        ("instrument_catalog", "option", None, None): ("c" * 64, None, options),
+        ("option_quotes", None, "BTC", "USDT"): ("d" * 64, None, option_quotes),
+    }
+
+    class ProfileStore:
+        def verify_ready(self, *, required_bytes: int) -> None:
+            assert required_bytes == 0
+
+    def latest_source(
+        _store: object,
+        *,
+        family: str,
+        as_of: datetime,
+        instrument: str | None = None,
+        base_asset: str | None = None,
+        quote_asset: str | None = None,
+    ) -> tuple[str, object, pl.DataFrame]:
+        assert as_of == datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+        return sources[(family, instrument, base_asset, quote_asset)]
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", ProfileStore)
+    monkeypatch.setattr(crypto_data_cmds, "_latest_profile_source", latest_source)
+    monkeypatch.setattr(crypto_data_cmds, "_coverage_profile_root", lambda: tmp_path / "profiles")
+    created = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-create",
+            "--as-of",
+            as_of.isoformat(),
+            "--json",
+        ],
+    )
+    assert created.exit_code == 0, created.output
+    created_payload = json.loads(created.stdout)
+    assert created_payload["task_count"] == 24
+    assert created_payload["counts_by_cadence"]["five_minute"] == 1
+    assert created_payload["execution_authority"] is False
+
+    profile_id = created_payload["profile_id"]
+    shown = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-show",
+            profile_id,
+            "--offset",
+            "0",
+            "--limit",
+            "2",
+            "--json",
+        ],
+    )
+    assert shown.exit_code == 0, shown.output
+    shown_payload = json.loads(shown.stdout)
+    assert len(shown_payload["items"]) == 2
+    assert shown_payload["has_more"] is True
+    assert shown_payload["next_offset"] == 2
+
+    path = tmp_path / "profiles" / f"{profile_id}.json"
+    path.write_text(path.read_text().replace('"frequency": "1h"', '"frequency": "4h"', 1))
+    rejected = runner.invoke(app, ["crypto-data", "profile-show", profile_id, "--json"])
+    assert rejected.exit_code != 0
+    assert "identity" in rejected.output
 
 
 @pytest.mark.parametrize(

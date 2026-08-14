@@ -81,6 +81,13 @@ CoinGecko's daily `all` market-reference acquisition freezes every ordered 250-r
 the first bounded terminal page. GeckoTerminal top-pool catalogs freeze five exact 20-row pages per
 declared network. Each page has its own raw receipt and the normalized catalog commits to their
 ordered membership; incomplete pages or a CoinGecko universe beyond 100 pages fail closed.
+Default breadth is planned before acquisition in a content-addressed `CryptoCoverageProfileV1`
+bound to exact qualified Bybit catalog and option-chain manifests. Profile membership excludes
+future-launched and dated contracts, preserves native provider/category/quote/frequency identity,
+separates daily/hourly/five-minute/funding cadences, and limits the fast option tier to three
+underlyings ranked from complete aggregate-OI inputs. Missing rank inputs fail profile creation;
+creating or inspecting a profile performs no provider request and grants no evidence or execution
+authority.
 
 ## Provider retention and removal policy
 

@@ -305,7 +305,7 @@ def _active_perpetuals(
     return tuple(rows)
 
 
-def _active_option_markets(frame: pl.DataFrame, *, as_of: datetime) -> tuple[tuple[str, str], ...]:
+def active_option_markets(frame: pl.DataFrame, *, as_of: datetime) -> tuple[tuple[str, str], ...]:
     if not _OPTION_COLUMNS.issubset(frame.columns):
         raise DataError("Bybit option catalog schema is incomplete")
     selected = frame.filter(
@@ -456,7 +456,14 @@ def build_default_coverage_tasks(
             for family, frequency, cadence in families
         )
 
-    option_markets = _active_option_markets(option_catalog, as_of=as_of)
+    option_markets = active_option_markets(option_catalog, as_of=as_of)
+    if set(option_open_interest) != set(option_markets) or any(
+        not isinstance(value, int | float)
+        or isinstance(value, bool)
+        or not 0 <= float(value) < float("inf")
+        for value in option_open_interest.values()
+    ):
+        raise DataError("Bybit option open-interest coverage is incomplete")
     for base, quote in option_markets:
         instrument = f"{base}-OPTIONS"
         tasks.extend(
@@ -523,5 +530,6 @@ __all__ = [
     "CryptoCoverageProfileV1",
     "CryptoCoverageTaskV1",
     "CoverageCadence",
+    "active_option_markets",
     "build_default_coverage_tasks",
 ]
