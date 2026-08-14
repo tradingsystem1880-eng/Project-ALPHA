@@ -45,6 +45,11 @@ owns identity/reference, GeckoTerminal owns DEX pool data, Coin Metrics Communit
 on-chain metrics, and Coinbase/CCXT is comparison. Venue, market type, units, clocks, and USD,
 USDT, and USDC denominations remain distinct; automatic provider fallback is prohibited. Existing
 CCXT snapshots and the Binance sandbox-paper warmup contract remain unchanged.
+Provider-native observations are admitted to research only through exact mechanical qualification
+and frozen `CryptoSnapshotV1` membership. Coinbase/Bybit price comparisons are diagnostics, never
+fallbacks; derived funding, basis, OI, volatility, liquidity, and on-chain features retain exact
+input hashes and conservative availability times. CoinGecko metadata/reference observations are
+supplemental and cannot satisfy a venue-price validation requirement.
 
 ## Install
 
