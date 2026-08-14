@@ -18,7 +18,9 @@ from .contracts import (
 type CryptoResearchPurpose = Literal["research", "validation", "execution_price"]
 
 _PURPOSES: Final = frozenset({"research", "validation", "execution_price"})
-_SUPPLEMENTAL_FAMILIES: Final = frozenset({"asset_metadata", "market_reference"})
+_SUPPLEMENTAL_FAMILIES: Final = frozenset(
+    {"asset_metadata", "market_membership", "market_reference"}
+)
 _PROVIDER_NATIVE_PRICE_FAMILIES: Final = frozenset(
     {
         "market_bars",

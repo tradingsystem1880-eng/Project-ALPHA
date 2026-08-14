@@ -9,6 +9,53 @@ from alpha_core import DataError
 from alpha_data.crypto.profiles import CryptoCoverageProfileV1, build_default_coverage_tasks
 
 
+def _binance_memberships(as_of: datetime) -> tuple[pl.DataFrame, ...]:
+    def frame(
+        category: str,
+        symbols: list[str],
+        bases: list[str],
+        quotes: list[str],
+        contracts: list[str],
+        onboard: list[datetime | None],
+        delivery: list[datetime | None],
+    ) -> pl.DataFrame:
+        return pl.DataFrame(
+            {
+                "fetched_at": [as_of - timedelta(minutes=1)] * len(symbols),
+                "category": [category] * len(symbols),
+                "symbol": symbols,
+                "status": ["TRADING"] * len(symbols),
+                "contract_type": contracts,
+                "base_asset": bases,
+                "quote_asset": quotes,
+                "onboard_time": onboard,
+                "delivery_time": delivery,
+            }
+        )
+
+    return (
+        frame("spot", ["BTCUSDT"], ["BTC"], ["USDT"], ["SPOT"], [None], [None]),
+        frame(
+            "linear",
+            ["ETHUSDT", "FUTUREUSDT"],
+            ["ETH", "FUTURE"],
+            ["USDT", "USDT"],
+            ["PERPETUAL", "PERPETUAL"],
+            [as_of - timedelta(days=1_000), as_of + timedelta(days=1)],
+            [as_of + timedelta(days=10_000), as_of + timedelta(days=10_000)],
+        ),
+        frame(
+            "inverse",
+            ["BTCUSD_PERP"],
+            ["BTC"],
+            ["USD"],
+            ["PERPETUAL"],
+            [as_of - timedelta(days=1_000)],
+            [as_of + timedelta(days=10_000)],
+        ),
+    )
+
+
 def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
     as_of = datetime(2026, 8, 15, tzinfo=UTC)
     linear = pl.DataFrame(
@@ -58,6 +105,7 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
         option_catalog=options,
         option_open_interest=option_open_interest,
         as_of=as_of,
+        binance_memberships=_binance_memberships(as_of),
     )
 
     by_id = {task.task_id: task for task in tasks}
@@ -91,6 +139,16 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
         for task in tasks
     )
     assert all(task.execution_authority is False for task in tasks)
+    assert {
+        (task.instrument, task.category, task.frequency)
+        for task in tasks
+        if task.provider == "binance" and task.family == "market_bars"
+    } == {
+        ("BTCUSDT", "spot", "1d"),
+        ("ETHUSDT", "linear", "1d"),
+        ("BTCUSD_PERP", "inverse", "1d"),
+    }
+    assert sum(task.family == "market_membership" for task in tasks) == 3
 
 
 def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> None:

@@ -52,6 +52,7 @@ from alpha_data.crypto.providers.binance import (
     fetch_binance_public_api,
     parse_binance_archive_zip,
     parse_binance_book_snapshot,
+    parse_binance_exchange_info,
     parse_binance_klines,
     reconcile_archive_tail,
     verify_archive_checksum,
@@ -106,6 +107,7 @@ _ROW_BYTES: Final[dict[CryptoFamily, int]] = {
     "trades": 120,
     "aggregate_trades": 128,
     "book_snapshots": 1_600,
+    "market_membership": 256,
     "instrument_catalog": 256,
     "derivative_bars": 160,
     "derivative_trades": 160,
@@ -314,6 +316,14 @@ def _binance_book_parser_at(
         category=category,
         fetched_at=completed_at,
     )
+
+
+def _binance_membership_parser_at(
+    completed_at: datetime,
+    *,
+    category: Literal["spot", "linear", "inverse"],
+) -> Callable[[bytes], pl.DataFrame]:
+    return partial(parse_binance_exchange_info, category=category, fetched_at=completed_at)
 
 
 def _market_reference_parser_at(
@@ -1461,6 +1471,44 @@ def _fetch_non_bybit(
             raise DataError("Binance category must be spot, linear, or inverse")
         category_value = cast(Literal["spot", "linear", "inverse"], category)
         symbol = instrument_value.upper()
+        if family == "market_membership":
+            if any(value is not None for value in (period, start, end)):
+                raise DataError("Binance market membership does not accept a time range")
+            membership_params: dict[str, str | int] = {}
+            url = binance_public_api_url(category_value, "exchangeInfo", membership_params)
+            payload = fetch_binance_public_api(url)
+            plan = _AcquisitionPlan(
+                endpoint="exchangeInfo",
+                params=membership_params,
+                dataset=CryptoDatasetIdentityV1(
+                    provider="binance",
+                    venue="binance",
+                    market_type=category_value,
+                    family="market_membership",
+                    instrument=category_value,
+                    base_asset=None,
+                    quote_asset=None,
+                    frequency="catalog_snapshot",
+                    units="provider_native_market_identity",
+                    timestamp_convention="provider_observation_utc",
+                ),
+                parser=partial(
+                    parse_binance_exchange_info,
+                    category=category_value,
+                    fetched_at=fetched_at,
+                ),
+                observed_column="fetched_at",
+                key_columns=("category", "symbol"),
+                availability_column="fetched_at",
+                parser_at=partial(_binance_membership_parser_at, category=category_value),
+            )
+            return _FetchedAcquisition(
+                plan=plan,
+                payload=payload,
+                provider_schema="binance-public-exchange-info-v1",
+                parser_version="binance-market-membership-v1",
+                logical_name="market_membership.json",
+            )
         if family == "book_snapshots":
             if period is not None or start is not None or end is not None:
                 raise DataError("Binance book snapshots do not accept period or time ranges")
@@ -2497,6 +2545,7 @@ def _qualified_normalized_frame(
 def _latest_profile_source(
     store: CryptoBulkStore,
     *,
+    provider: str,
     family: CryptoFamily,
     as_of: datetime,
     instrument: str | None = None,
@@ -2510,7 +2559,7 @@ def _latest_profile_source(
         dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
         quality_report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
         if (
-            dataset.provider != "bybit"
+            dataset.provider != provider
             or dataset.family != family
             or quality_report.state != "qualified"
             or (instrument is not None and dataset.instrument != instrument)
@@ -2534,7 +2583,7 @@ def _latest_profile_source(
         candidates.append((fetched.isoformat(), manifest_id, dataset, manifest))
     if not candidates:
         identity = instrument or f"{base_asset or '*'}:{quote_asset or '*'}"
-        raise DataError(f"no qualified Bybit {family} source is available for {identity}")
+        raise DataError(f"no qualified {provider} {family} source is available for {identity}")
     _, manifest_id, dataset, manifest = max(candidates, key=lambda item: (item[0], item[1]))
     artifact_key = manifest.get("artifact_key")
     if not isinstance(artifact_key, str):
@@ -2582,6 +2631,7 @@ def profile_create(
         catalog_sources = tuple(
             _latest_profile_source(
                 store,
+                provider="bybit",
                 family="instrument_catalog",
                 instrument=category,
                 as_of=instant,
@@ -2593,6 +2643,7 @@ def profile_create(
         for base, quote in active_option_markets(options, as_of=instant):
             manifest_id, _dataset, frame = _latest_profile_source(
                 store,
+                provider="bybit",
                 family="option_quotes",
                 base_asset=base,
                 quote_asset=quote,
@@ -2607,17 +2658,30 @@ def profile_create(
             if not isinstance(total, int | float) or isinstance(total, bool):
                 raise DataError("Bybit aggregate option open interest is invalid")
             option_oi[market] = float(total)
+        binance_sources = tuple(
+            _latest_profile_source(
+                store,
+                provider="binance",
+                family="market_membership",
+                instrument=category,
+                as_of=instant,
+            )
+            for category in ("spot", "linear", "inverse")
+        )
         tasks = build_default_coverage_tasks(
             linear_catalog=linear,
             inverse_catalog=inverse,
             option_catalog=options,
             option_open_interest=option_oi,
             as_of=instant,
+            binance_memberships=tuple(source[2] for source in binance_sources),
         )
         profile = CryptoCoverageProfileV1.create(
             as_of=instant,
             source_manifest_ids=tuple(
-                [source[0] for source in catalog_sources] + [source[0] for source in option_sources]
+                [source[0] for source in catalog_sources]
+                + [source[0] for source in option_sources]
+                + [source[0] for source in binance_sources]
             ),
             tasks=tasks,
         )
@@ -2831,6 +2895,13 @@ def _read_coverage_batch(batch_id: str) -> tuple[dict[str, object], dict[str, ob
 def _run_profile_task(task: CryptoCoverageTaskV1, *, run_at: datetime) -> dict[str, object]:
     start: str | None = None
     end: str | None = None
+    if task.provider == "binance" and task.family == "market_bars":
+        end_day = run_at.astimezone(UTC).date()
+        start_at = datetime.combine(end_day - timedelta(days=1), datetime.min.time(), tzinfo=UTC)
+        end_at = datetime.combine(end_day, datetime.min.time(), tzinfo=UTC) - timedelta(
+            milliseconds=1
+        )
+        start, end = start_at.isoformat(), end_at.isoformat()
     if task.provider == "coinmetrics":
         if task.lookback_days is None:
             raise DataError("Coin Metrics coverage task has no lookback")

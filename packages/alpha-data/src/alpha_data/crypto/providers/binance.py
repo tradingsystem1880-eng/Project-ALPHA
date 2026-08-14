@@ -22,7 +22,7 @@ type BinanceArchiveMarket = Literal["spot", "um", "cm"]
 type BinanceKlineSource = Literal["archive_csv", "rest_json"]
 type BinanceArchiveFamily = Literal["klines", "trades", "aggTrades"]
 type BinanceCategory = Literal["spot", "linear", "inverse"]
-type BinancePublicResource = Literal["depth", "klines"]
+type BinancePublicResource = Literal["depth", "klines", "exchangeInfo"]
 type WireScalar = str | int | float
 
 _COLUMNS: Final = (
@@ -44,6 +44,14 @@ _PUBLIC_API_ROOTS: Final = {
     "linear": "https://fapi.binance.com/fapi/v1",
     "inverse": "https://dapi.binance.com/dapi/v1",
 }
+
+
+def _provider_symbol(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= 128
+        and all(character.isalnum() or character in {"_", "-"} for character in value)
+    )
 
 
 def _boolean(value: WireScalar, *, label: str) -> bool:
@@ -224,7 +232,7 @@ def parse_binance_book_snapshot(
     fetched_at: datetime,
 ) -> pl.DataFrame:
     """Parse one bounded REST depth snapshot while preserving venue ordering and update ids."""
-    if _SAFE.fullmatch(symbol) is None or category not in {"spot", "linear", "inverse"}:
+    if not _provider_symbol(symbol) or category not in {"spot", "linear", "inverse"}:
         raise DataError("Binance book snapshot identity is invalid")
     if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
         raise DataError("Binance book snapshot fetch time must be timezone-aware")
@@ -289,6 +297,84 @@ def parse_binance_book_snapshot(
     return pl.DataFrame(parsed)
 
 
+def parse_binance_exchange_info(
+    payload: bytes,
+    *,
+    category: BinanceCategory,
+    fetched_at: datetime,
+) -> pl.DataFrame:
+    """Parse one exact active Binance spot or perpetual membership observation."""
+    if category not in {"spot", "linear", "inverse"}:
+        raise DataError("Binance exchange-info category is invalid")
+    if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
+        raise DataError("Binance exchange-info fetch time must be timezone-aware")
+    try:
+        raw = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DataError("Binance exchange-info response is malformed") from exc
+    if not isinstance(raw, dict) or not isinstance(raw.get("symbols"), list):
+        raise DataError("Binance exchange-info response is malformed")
+    observed_at = fetched_at.astimezone(UTC)
+    parsed: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for item in raw["symbols"]:
+        if not isinstance(item, dict):
+            raise DataError("Binance exchange-info symbol is malformed")
+        symbol = item.get("symbol")
+        status = item.get("contractStatus" if category == "inverse" else "status")
+        base_asset = item.get("baseAsset")
+        quote_asset = item.get("quoteAsset")
+        if (
+            not _provider_symbol(symbol)
+            or not isinstance(status, str)
+            or _SAFE.fullmatch(status) is None
+            or not _provider_symbol(base_asset)
+            or not _provider_symbol(quote_asset)
+        ):
+            raise DataError("Binance exchange-info symbol is malformed")
+        assert isinstance(symbol, str)
+        if symbol in seen:
+            raise DataError("Binance exchange-info contains duplicate symbols")
+        seen.add(symbol)
+        if category == "spot":
+            allowed = item.get("isSpotTradingAllowed")
+            if not isinstance(allowed, bool):
+                raise DataError("Binance exchange-info spot permission is malformed")
+            contract_type: str = "SPOT"
+            onboard_time = None
+            delivery_time = None
+            active = status == "TRADING" and allowed
+        else:
+            raw_contract_type = item.get("contractType")
+            if not isinstance(raw_contract_type, str) or _SAFE.fullmatch(raw_contract_type) is None:
+                raise DataError("Binance exchange-info contract type is malformed")
+            contract_type = raw_contract_type
+            onboard_time = _optional_timestamp(item.get("onboardDate"), label="onboard")
+            delivery_time = _optional_timestamp(item.get("deliveryDate"), label="delivery")
+            active = (
+                status == "TRADING"
+                and contract_type == "PERPETUAL"
+                and (onboard_time is None or onboard_time <= observed_at)
+            )
+        if active:
+            parsed.append(
+                {
+                    "fetched_at": observed_at,
+                    "category": category,
+                    "symbol": symbol,
+                    "status": status,
+                    "contract_type": contract_type,
+                    "base_asset": base_asset,
+                    "quote_asset": quote_asset,
+                    "onboard_time": onboard_time,
+                    "delivery_time": delivery_time,
+                }
+            )
+    if not parsed:
+        raise DataError("Binance exchange-info has no active market membership")
+    return pl.DataFrame(parsed).sort("symbol")
+
+
 def parse_binance_archive_zip(
     payload: bytes, *, family: BinanceArchiveFamily = "klines"
 ) -> pl.DataFrame:
@@ -345,23 +431,29 @@ def archive_url(
     """Construct a closed official monthly archive URL."""
     if market not in {"spot", "um", "cm"}:
         raise DataError(f"unsupported Binance archive market {market!r}")
-    for value, label in ((family, "family"), (symbol, "symbol"), (period, "period")):
+    for value, label in ((family, "family"), (period, "period")):
         if _SAFE.fullmatch(value) is None:
             raise DataError(f"invalid Binance archive {label}")
+    if not _provider_symbol(symbol):
+        raise DataError("invalid Binance archive symbol")
     if family not in {"klines", "trades", "aggTrades"}:
         raise DataError("unsupported Binance archive family")
+    from urllib.parse import quote  # noqa: PLC0415
+
     root = "spot" if market == "spot" else f"futures/{market}"
+    encoded_symbol = quote(symbol, safe="")
     if family == "klines":
         if _SAFE.fullmatch(interval) is None:
             raise DataError("invalid Binance archive interval")
-        name = f"{symbol}-{interval}-{period}.zip"
+        name = f"{encoded_symbol}-{interval}-{period}.zip"
         return (
-            f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{interval}/{name}"
+            f"https://data.binance.vision/data/{root}/monthly/{family}/"
+            f"{encoded_symbol}/{interval}/{name}"
         )
     if interval:
         raise DataError("Binance trade archives do not accept an interval")
-    name = f"{symbol}-{family}-{period}.zip"
-    return f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{name}"
+    name = f"{encoded_symbol}-{family}-{period}.zip"
+    return f"https://data.binance.vision/data/{root}/monthly/{family}/{encoded_symbol}/{name}"
 
 
 def binance_public_api_url(
@@ -370,8 +462,12 @@ def binance_public_api_url(
     params: dict[str, str | int],
 ) -> str:
     """Build one public market-data URL from a closed endpoint and parameter contract."""
-    if category not in _PUBLIC_API_ROOTS or resource not in {"depth", "klines"}:
+    if category not in _PUBLIC_API_ROOTS or resource not in {"depth", "klines", "exchangeInfo"}:
         raise DataError("Binance public API endpoint is invalid")
+    if resource == "exchangeInfo":
+        if params:
+            raise DataError("Binance exchange-info does not accept parameters")
+        return f"{_PUBLIC_API_ROOTS[category]}/{resource}"
     allowed = (
         {"symbol", "limit"}
         if resource == "depth"
@@ -380,7 +476,7 @@ def binance_public_api_url(
     if set(params) - allowed or not {"symbol", "limit"}.issubset(params):
         raise DataError("Binance public API parameter contract is invalid")
     symbol, limit = params["symbol"], params["limit"]
-    if not isinstance(symbol, str) or _SAFE.fullmatch(symbol) is None:
+    if not _provider_symbol(symbol):
         raise DataError("Binance public API symbol is invalid")
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1_000:
         raise DataError("Binance public API limit must be between 1 and 1000")
@@ -409,6 +505,7 @@ def fetch_binance_public_api(url: str, *, timeout_seconds: int = 30) -> bytes:
     allowed_prefixes = tuple(f"{root}/" for root in _PUBLIC_API_ROOTS.values())
     if not url.startswith(allowed_prefixes):
         raise DataError("Binance public API host is invalid")
+    max_bytes = 32 * 1024 * 1024 if url.endswith("/exchangeInfo") else 16 * 1024 * 1024
     import urllib.error  # noqa: PLC0415
     import urllib.request  # noqa: PLC0415
 
@@ -420,10 +517,10 @@ def fetch_binance_public_api(url: str, *, timeout_seconds: int = 30) -> bytes:
             content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
             if content_type != "application/json":
                 raise DataError("Binance public API response MIME is invalid")
-            payload = bytes(response.read(16 * 1024 * 1024 + 1))
+            payload = bytes(response.read(max_bytes + 1))
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
         raise DataError("Binance public API request failed") from exc
-    if len(payload) > 16 * 1024 * 1024:
+    if len(payload) > max_bytes:
         raise DataError("Binance public API response exceeds the byte limit")
     return payload
 

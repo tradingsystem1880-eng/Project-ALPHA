@@ -118,6 +118,7 @@ def test_every_primary_family_has_exactly_one_authority() -> None:
         "trades": "binance",
         "aggregate_trades": "binance",
         "book_snapshots": "binance",
+        "market_membership": "binance",
         "instrument_catalog": "bybit",
         "derivative_bars": "bybit",
         "derivative_trades": "bybit",

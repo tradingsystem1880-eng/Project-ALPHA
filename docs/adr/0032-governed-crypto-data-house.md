@@ -23,7 +23,7 @@ Assign exactly one primary acquisition authority to each dataset family:
 
 | Dataset family | Authority | Boundary |
 |---|---|---|
-| CEX spot and futures market history | Binance native archives and public REST tail | Venue-native bars/trades; spot, USD-M, and COIN-M remain distinct |
+| CEX spot and futures membership and market history | Binance exchange-info, native archives, and public REST tail | Active membership plus venue-native bars/trades; spot, USD-M, and COIN-M remain distinct |
 | advanced derivatives and options | Bybit public V5 interfaces | Complete instrument catalogs, funding, OI, ratios, trade/mark/index/premium bars, recent executions, exact books, volatility, chains, IV, and Greeks retain native units and clocks |
 | asset identity and broad market reference | CoinGecko | Identity and reference statistics only; never execution-price evidence |
 | DEX pools, liquidity, and pool OHLCV | GeckoTerminal | Network-plus-contract/pool identity; manipulation and thin-liquidity warnings remain explicit |
@@ -49,6 +49,13 @@ values and may warn or quarantine the primary, but never substitutes another pro
 No automatic fallback may change provider, venue, market type, quote asset, unit, frequency, or
 timestamp convention. USDT, USDC, and USD are separate quote assets. Provider corrections create
 new immutable receipts; unexplained changes quarantine rather than overwrite evidence.
+
+Binance `market_membership` is a distinct supplemental family and does not displace Bybit's
+advanced-derivative `instrument_catalog` authority. Three exact, qualified spot/USD-M/COIN-M
+membership receipts define daily coverage point-in-time. Active spot markets and perpetuals are
+included; dated, inactive, and future-launched contracts are excluded. Provider-native Unicode
+symbols remain exact identities and are percent-encoded only at URL path boundaries. Each scheduled
+daily bar task requests only the immediately previous complete UTC day.
 
 The internal data root stores control state, manifests, qualification records, provider-check
 receipts, and sensitive research metadata. Bulk public bytes live beneath the configured external

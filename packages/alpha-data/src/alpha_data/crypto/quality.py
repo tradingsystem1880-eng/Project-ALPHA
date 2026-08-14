@@ -237,6 +237,12 @@ def _family_checks(
         values("status")
         values("base_coin")
         values("quote_coin")
+    elif dataset.family == "market_membership":
+        values("symbol")
+        values("status")
+        values("base_asset")
+        values("quote_asset")
+        values("contract_type")
     elif dataset.family == "derivative_trades":
         values("trade_id")
         if any(value <= 0 for value in numbers("price")):

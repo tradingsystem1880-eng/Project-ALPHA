@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import urllib.request
 import zipfile
 from datetime import UTC, datetime
@@ -15,15 +16,121 @@ from alpha_data.crypto.providers.binance import (
     archive_url,
     binance_public_api_url,
     fetch_binance_archive,
+    fetch_binance_public_api,
     parse_binance_aggregate_trades,
     parse_binance_archive_zip,
     parse_binance_book_snapshot,
+    parse_binance_exchange_info,
     parse_binance_klines,
     parse_binance_trades,
     point_in_time_liquid_universe,
     reconcile_archive_tail,
     verify_archive_checksum,
 )
+
+
+def test_exchange_info_parses_active_spot_and_perpetual_membership() -> None:
+    fetched_at = datetime(2026, 8, 15, tzinfo=UTC)
+    spot = json.dumps(
+        {
+            "symbols": [
+                {
+                    "symbol": "BTCUSDT",
+                    "status": "TRADING",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USDT",
+                    "isSpotTradingAllowed": True,
+                },
+                {
+                    "symbol": "OLDUSDT",
+                    "status": "BREAK",
+                    "baseAsset": "OLD",
+                    "quoteAsset": "USDT",
+                    "isSpotTradingAllowed": False,
+                },
+                {
+                    "symbol": "币安人生USDT",
+                    "status": "TRADING",
+                    "baseAsset": "币安人生",
+                    "quoteAsset": "USDT",
+                    "isSpotTradingAllowed": True,
+                },
+            ]
+        }
+    ).encode()
+    linear = json.dumps(
+        {
+            "symbols": [
+                {
+                    "symbol": "BTCUSDT",
+                    "status": "TRADING",
+                    "contractType": "PERPETUAL",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USDT",
+                    "onboardDate": 1_600_000_000_000,
+                    "deliveryDate": 4_133_980_800_000,
+                },
+                {
+                    "symbol": "BTCUSDT_260925",
+                    "status": "TRADING",
+                    "contractType": "CURRENT_QUARTER",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USDT",
+                    "onboardDate": 1_700_000_000_000,
+                    "deliveryDate": 1_790_000_000_000,
+                },
+            ]
+        }
+    ).encode()
+    inverse = json.dumps(
+        {
+            "symbols": [
+                {
+                    "symbol": "BTCUSD_PERP",
+                    "contractStatus": "TRADING",
+                    "contractType": "PERPETUAL",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USD",
+                    "onboardDate": 1_600_000_000_000,
+                    "deliveryDate": 4_133_980_800_000,
+                }
+            ]
+        }
+    ).encode()
+
+    spot_frame = parse_binance_exchange_info(spot, category="spot", fetched_at=fetched_at)
+    linear_frame = parse_binance_exchange_info(linear, category="linear", fetched_at=fetched_at)
+    inverse_frame = parse_binance_exchange_info(inverse, category="inverse", fetched_at=fetched_at)
+
+    assert spot_frame.select("symbol", "contract_type").rows() == [
+        ("BTCUSDT", "SPOT"),
+        ("币安人生USDT", "SPOT"),
+    ]
+    assert linear_frame.select("symbol", "contract_type").rows() == [("BTCUSDT", "PERPETUAL")]
+    assert inverse_frame.select("symbol", "contract_type").rows() == [("BTCUSD_PERP", "PERPETUAL")]
+    assert spot_frame["fetched_at"].to_list() == [fetched_at, fetched_at]
+
+
+def test_exchange_info_rejects_duplicate_and_malformed_membership() -> None:
+    fetched_at = datetime(2026, 8, 15, tzinfo=UTC)
+    duplicate = json.dumps(
+        {
+            "symbols": [
+                {
+                    "symbol": "BTCUSDT",
+                    "status": "TRADING",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USDT",
+                    "isSpotTradingAllowed": True,
+                }
+            ]
+            * 2
+        }
+    ).encode()
+    with pytest.raises(DataError, match="duplicate"):
+        parse_binance_exchange_info(duplicate, category="spot", fetched_at=fetched_at)
+    with pytest.raises(DataError, match="malformed"):
+        parse_binance_exchange_info(b"{}", category="spot", fetched_at=fetched_at)
 
 
 class _ArchiveResponse:
@@ -57,6 +164,32 @@ class _ArchiveResponse:
         if isinstance(value, BaseException):
             raise value
         return value
+
+
+def test_exchange_info_has_a_separate_bounded_response_ceiling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = b"x" * (17 * 1024 * 1024)
+    current_url = ""
+
+    def urlopen(request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        assert timeout == 30
+        return _ArchiveResponse(
+            [payload],
+            status=200,
+            headers={"Content-Type": "application/json"},
+            url=current_url,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    current_url = binance_public_api_url("spot", "exchangeInfo", {})
+    assert fetch_binance_public_api(current_url) == payload
+
+    current_url = binance_public_api_url(
+        "spot", "klines", {"symbol": "BTCUSDT", "interval": "1d", "limit": 1}
+    )
+    with pytest.raises(DataError, match="byte limit"):
+        fetch_binance_public_api(current_url)
 
 
 def test_archive_parser_preserves_native_kline_fields() -> None:
@@ -141,6 +274,9 @@ def test_checksum_and_archive_paths_fail_loud() -> None:
 
     assert archive_url("spot", "klines", "BTCUSDT", "1d", "2026-07").startswith(
         "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/"
+    )
+    assert "%E5%B8%81%E5%AE%89%E4%BA%BA%E7%94%9FUSDT" in archive_url(
+        "spot", "klines", "币安人生USDT", "1d", "2026-07"
     )
     with pytest.raises(DataError, match="market"):
         archive_url("options", "klines", "BTCUSDT", "1d", "2026-07")  # type: ignore[arg-type]

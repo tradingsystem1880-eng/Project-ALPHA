@@ -16,11 +16,13 @@ from alpha_data.crypto.providers.geckoterminal import NETWORKS
 
 type CoverageCadence = Literal["daily", "hourly", "five_minute", "funding_interval"]
 
-_PROVIDERS = frozenset({"bybit", "coingecko", "geckoterminal", "coinmetrics"})
+_PROVIDERS = frozenset({"binance", "bybit", "coingecko", "geckoterminal", "coinmetrics"})
 _CADENCES = frozenset({"daily", "hourly", "five_minute", "funding_interval"})
 _FAMILIES = frozenset(
     {
         "instrument_catalog",
+        "market_membership",
+        "market_bars",
         "derivative_bars",
         "funding",
         "open_interest",
@@ -321,6 +323,61 @@ def active_option_markets(frame: pl.DataFrame, *, as_of: datetime) -> tuple[tupl
     return tuple(sorted(markets))
 
 
+def active_binance_markets(
+    frames: tuple[pl.DataFrame, ...], *, as_of: datetime
+) -> tuple[tuple[str, str, str, str], ...]:
+    """Return exact active spot/perpetual identities from all three venue catalogs."""
+    required = frozenset(
+        {
+            "fetched_at",
+            "category",
+            "symbol",
+            "status",
+            "contract_type",
+            "base_asset",
+            "quote_asset",
+            "onboard_time",
+            "delivery_time",
+        }
+    )
+    if len(frames) != 3 or any(not required.issubset(frame.columns) for frame in frames):
+        raise DataError("Binance market-membership source coverage is incomplete")
+    as_of = as_of.astimezone(UTC)
+    rows: list[tuple[str, str, str, str]] = []
+    seen_categories: set[str] = set()
+    for frame in frames:
+        categories = set(frame["category"].to_list())
+        if len(categories) != 1 or not categories <= {"spot", "linear", "inverse"}:
+            raise DataError("Binance market-membership category is invalid")
+        category = str(next(iter(categories)))
+        if category in seen_categories:
+            raise DataError("Binance market-membership category is duplicated")
+        seen_categories.add(category)
+        selected = frame.filter(
+            (pl.col("fetched_at") <= as_of)
+            & (pl.col("status") == "TRADING")
+            & (
+                (pl.col("contract_type") == "SPOT")
+                if category == "spot"
+                else (pl.col("contract_type") == "PERPETUAL")
+            )
+            & (pl.col("onboard_time").is_null() | (pl.col("onboard_time") <= as_of))
+            & (pl.col("delivery_time").is_null() | (pl.col("delivery_time") > as_of))
+        )
+        for symbol, base, quote in selected.select(
+            "symbol", "base_asset", "quote_asset"
+        ).iter_rows():
+            if not all(isinstance(value, str) and value for value in (symbol, base, quote)):
+                raise DataError("Binance market-membership identity is invalid")
+            rows.append((str(symbol), str(base), str(quote), category))
+    if seen_categories != {"spot", "linear", "inverse"} or not rows:
+        raise DataError("Binance market-membership source coverage is incomplete")
+    ordered = tuple(sorted(rows, key=lambda item: (item[3], item[0])))
+    if len({(category, symbol) for symbol, _base, _quote, category in ordered}) != len(ordered):
+        raise DataError("Binance market-membership identity is duplicated")
+    return ordered
+
+
 def _task(
     provider: str,
     family: CryptoFamily,
@@ -357,6 +414,7 @@ def build_default_coverage_tasks(
     option_catalog: pl.DataFrame,
     option_open_interest: dict[tuple[str, str], float],
     as_of: datetime,
+    binance_memberships: tuple[pl.DataFrame, ...] = (),
 ) -> tuple[CryptoCoverageTaskV1, ...]:
     """Build the fixed public-data profile without fetching or granting authority."""
     if as_of.tzinfo is None or as_of.utcoffset() is None:
@@ -427,6 +485,36 @@ def build_default_coverage_tasks(
         )
         for category in ("spot", "linear", "inverse", "option")
     )
+
+    if binance_memberships:
+        tasks.extend(
+            _task(
+                "binance",
+                "market_membership",
+                category,
+                base=None,
+                quote=None,
+                category=category,
+                frequency="catalog_snapshot",
+                cadence="daily",
+            )
+            for category in ("spot", "linear", "inverse")
+        )
+        tasks.extend(
+            _task(
+                "binance",
+                "market_bars",
+                symbol,
+                base=base,
+                quote=quote,
+                category=category,
+                frequency="1d",
+                cadence="daily",
+            )
+            for symbol, base, quote, category in active_binance_markets(
+                binance_memberships, as_of=as_of
+            )
+        )
 
     perpetuals = (
         *_active_perpetuals(linear_catalog, category="linear", as_of=as_of),
@@ -530,6 +618,7 @@ __all__ = [
     "CryptoCoverageProfileV1",
     "CryptoCoverageTaskV1",
     "CoverageCadence",
+    "active_binance_markets",
     "active_option_markets",
     "build_default_coverage_tasks",
 ]

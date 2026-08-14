@@ -4,7 +4,7 @@ import hashlib
 import io
 import json
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.request import Request
 
@@ -1329,11 +1329,45 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
         }
     )
     option_quotes = pl.DataFrame({"open_interest": [10.0, 20.0]})
+    binance_memberships = {
+        category: pl.DataFrame(
+            {
+                "fetched_at": [as_of - timedelta(minutes=1)],
+                "category": [category],
+                "symbol": [
+                    {"spot": "BTCUSDT", "linear": "ETHUSDT", "inverse": "BTCUSD_PERP"}[category]
+                ],
+                "status": ["TRADING"],
+                "contract_type": ["SPOT" if category == "spot" else "PERPETUAL"],
+                "base_asset": ["ETH" if category == "linear" else "BTC"],
+                "quote_asset": ["USD" if category == "inverse" else "USDT"],
+                "onboard_time": [None],
+                "delivery_time": [None],
+            }
+        )
+        for category in ("spot", "linear", "inverse")
+    }
     sources = {
-        ("instrument_catalog", "linear", None, None): ("a" * 64, None, linear),
-        ("instrument_catalog", "inverse", None, None): ("b" * 64, None, empty_catalog),
-        ("instrument_catalog", "option", None, None): ("c" * 64, None, options),
-        ("option_quotes", None, "BTC", "USDT"): ("d" * 64, None, option_quotes),
+        ("bybit", "instrument_catalog", "linear", None, None): ("a" * 64, None, linear),
+        ("bybit", "instrument_catalog", "inverse", None, None): (
+            "b" * 64,
+            None,
+            empty_catalog,
+        ),
+        ("bybit", "instrument_catalog", "option", None, None): ("c" * 64, None, options),
+        ("bybit", "option_quotes", None, "BTC", "USDT"): (
+            "d" * 64,
+            None,
+            option_quotes,
+        ),
+        **{
+            ("binance", "market_membership", category, None, None): (
+                digest * 64,
+                None,
+                binance_memberships[category],
+            )
+            for category, digest in (("spot", "e"), ("linear", "f"), ("inverse", "1"))
+        },
     }
 
     class ProfileStore:
@@ -1343,6 +1377,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     def latest_source(
         _store: object,
         *,
+        provider: str,
         family: str,
         as_of: datetime,
         instrument: str | None = None,
@@ -1350,7 +1385,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
         quote_asset: str | None = None,
     ) -> tuple[str, object, pl.DataFrame]:
         assert as_of == datetime.fromisoformat("2026-08-15T00:00:00+00:00")
-        return sources[(family, instrument, base_asset, quote_asset)]
+        return sources[(provider, family, instrument, base_asset, quote_asset)]
 
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", ProfileStore)
     monkeypatch.setattr(crypto_data_cmds, "_latest_profile_source", latest_source)
@@ -1367,7 +1402,8 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     )
     assert created.exit_code == 0, created.output
     created_payload = json.loads(created.stdout)
-    assert created_payload["task_count"] == 24
+    assert created_payload["task_count"] == 30
+    assert created_payload["counts_by_provider"]["binance"] == 6
     assert created_payload["counts_by_cadence"]["five_minute"] == 1
     assert created_payload["execution_authority"] is False
 
@@ -1502,6 +1538,36 @@ def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
     assert "integrity" in rejected.output
 
 
+def test_binance_daily_profile_task_uses_only_previous_complete_utc_day(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = CryptoCoverageTaskV1(
+        provider="binance",
+        family="market_bars",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        category="spot",
+        frequency="1d",
+        cadence="daily",
+    )
+    captured: dict[str, object] = {}
+
+    def acquire_result(*args: object, **kwargs: object) -> dict[str, object]:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return {"normalized_manifest_id": "a" * 64}
+
+    monkeypatch.setattr(crypto_data_cmds, "_acquire_result", acquire_result)
+    crypto_data_cmds._run_profile_task(
+        task,
+        run_at=datetime.fromisoformat("2026-08-15T13:45:00+00:00"),
+    )
+
+    assert captured["kwargs"]["start"] == "2026-08-14T00:00:00+00:00"  # type: ignore[index]
+    assert captured["kwargs"]["end"] == "2026-08-14T23:59:59.999000+00:00"  # type: ignore[index]
+
+
 @pytest.mark.parametrize(
     ("family", "csv_name", "csv_payload", "expected_frequency"),
     (
@@ -1634,6 +1700,65 @@ def test_binance_book_snapshot_acquires_as_point_in_time_non_execution_evidence(
     assert manifest["dataset"]["family"] == "book_snapshots"
     assert manifest["dataset"]["frequency"] == "point_in_time_book"
     assert manifest["dataset"]["timestamp_convention"] == "fetch_knowledge_utc"
+
+
+def test_binance_market_membership_acquires_active_venue_catalog(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    fetched_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    payload = json.dumps(
+        {
+            "symbols": [
+                {
+                    "symbol": "BTCUSDT",
+                    "status": "TRADING",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USDT",
+                    "isSpotTradingAllowed": True,
+                }
+            ]
+        }
+    ).encode()
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: fetched_at)
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_public_api", lambda *_args: payload)
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "binance",
+            "market_membership",
+            "spot",
+            "--base",
+            "ALL",
+            "--quote",
+            "ALL",
+            "--category",
+            "spot",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["state"] == "qualified"
+    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    assert manifest["dataset"]["family"] == "market_membership"
+    assert manifest["dataset"]["provider"] == "binance"
+    frame = pl.read_parquet(store.bulk_root / manifest["artifact_key"])
+    assert frame.select("symbol", "contract_type").rows() == [("BTCUSDT", "SPOT")]
 
 
 def test_binance_archive_and_rest_tail_freeze_both_resources_and_reconcile(
