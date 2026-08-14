@@ -24,6 +24,46 @@ from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 runner = CliRunner()
 
 
+def test_coinmetrics_catalog_rejects_a_repeated_pagination_cursor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = json.dumps(
+        {
+            "data": [
+                {
+                    "asset": "btc",
+                    "metrics": [{"metric": "AdrActCnt", "frequencies": [{"frequency": "1d"}]}],
+                }
+            ],
+            "next_page_token": "repeated-cursor",
+        }
+    ).encode()
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_coinmetrics_community",
+        lambda _url: payload,
+    )
+
+    with pytest.raises(DataError, match="catalog cursor repeated"):
+        crypto_data_cmds._fetch_non_bybit(
+            "coinmetrics",
+            "onchain_catalog",
+            "community",
+            tmp_path,
+            base="ALL",
+            quote="USD",
+            category="network",
+            frequency="catalog_snapshot",
+            period=None,
+            network=None,
+            pool_address=None,
+            metrics=None,
+            start=None,
+            end=None,
+            fetched_at=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+        )
+
+
 def test_crypto_data_catalog_is_family_authoritative_and_human_readable() -> None:
     result = runner.invoke(app, ["crypto-data", "catalog", "--json"])
 
@@ -1012,7 +1052,7 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
 
     monkeypatch.setattr(crypto_data_cmds, "fetch_geckoterminal_public", fetch_geckoterminal)
 
-    coinmetrics_payload = json.dumps(
+    coinmetrics_timeseries_payload = json.dumps(
         {
             "data": [
                 {
@@ -1024,8 +1064,41 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
             ]
         }
     ).encode()
+    coinmetrics_catalog_page_1 = json.dumps(
+        {
+            "data": [
+                {
+                    "asset": "btc",
+                    "metrics": [{"metric": "AdrActCnt", "frequencies": [{"frequency": "1d"}]}],
+                }
+            ],
+            "next_page_token": "next-1",
+        }
+    ).encode()
+    coinmetrics_catalog_page_2 = json.dumps(
+        {
+            "data": [
+                {
+                    "asset": "eth",
+                    "metrics": [{"metric": "TxCnt", "frequencies": [{"frequency": "1d"}]}],
+                }
+            ]
+        }
+    ).encode()
+
+    def fetch_coinmetrics(url: str) -> bytes:
+        if "catalog-all" not in url:
+            return coinmetrics_timeseries_payload
+        return (
+            coinmetrics_catalog_page_2
+            if "next_page_token=next-1" in url
+            else coinmetrics_catalog_page_1
+        )
+
     monkeypatch.setattr(
-        crypto_data_cmds, "fetch_coinmetrics_community", lambda *_args: coinmetrics_payload
+        crypto_data_cmds,
+        "fetch_coinmetrics_community",
+        fetch_coinmetrics,
     )
     comparison_result = parse_ccxt_ohlcv(
         [[1_704_067_200_000, 49_000.0, 51_000.0, 48_000.0, 50_000.0, 1_000.0]],
@@ -1075,6 +1148,15 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
         ],
         [
             "coinmetrics",
+            "onchain_catalog",
+            "community",
+            "--base",
+            "ALL",
+            "--quote",
+            "USD",
+        ],
+        [
+            "coinmetrics",
             "onchain_metrics",
             "btc",
             "--base",
@@ -1116,7 +1198,14 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
         assert receipt["state"] == "qualified"
         receipts[str(receipt["family"])] = receipt
 
-    assert len(store.inventory()) == 14
+    assert receipts["onchain_catalog"]["raw_page_count"] == 2
+    raw_manifest_ids = receipts["onchain_catalog"]["raw_manifest_ids"]
+    assert isinstance(raw_manifest_ids, list)
+    raw_catalog_page = store.verify_manifest(str(raw_manifest_ids[0]))
+    request_pairs = raw_catalog_page["receipt"]["request"]
+    assert isinstance(request_pairs, list)
+    assert dict(request_pairs)["page_size"] == "1000"
+    assert len(store.inventory()) == 17
     inventory_json = json.dumps(store.inventory())
     assert "injected-only-for-test" not in inventory_json
 
@@ -1330,6 +1419,15 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
         }
     )
     option_quotes = pl.DataFrame({"open_interest": [10.0, 20.0]})
+    coinmetrics_catalog = pl.DataFrame(
+        {
+            "asset": ["btc", "eth"],
+            "metric": ["AdrActCnt", "TxCnt"],
+            "family": ["addresses", "transactions"],
+            "frequency": ["1d", "1d"],
+            "fetched_at": [as_of - timedelta(minutes=1)] * 2,
+        }
+    )
     binance_memberships = {
         category: pl.DataFrame(
             {
@@ -1361,6 +1459,11 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
             "d" * 64,
             None,
             option_quotes,
+        ),
+        ("coinmetrics", "onchain_catalog", "community", None, None): (
+            "2" * 64,
+            None,
+            coinmetrics_catalog,
         ),
         **{
             ("binance", "market_membership", category, None, None): (
@@ -1408,7 +1511,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     )
     assert created.exit_code == 0, created.output
     created_payload = json.loads(created.stdout)
-    assert created_payload["task_count"] == 30
+    assert created_payload["task_count"] == 31
     assert created_payload["counts_by_provider"]["binance"] == 6
     assert len(created_payload["binance_hourly_missing_scopes"]) == 3
     assert created_payload["counts_by_cadence"]["five_minute"] == 1

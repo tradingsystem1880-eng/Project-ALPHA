@@ -97,6 +97,7 @@ function defaultInstrument(family: CryptoFamily): string {
   if (family === 'comparison_bars') return 'BTC/USD'
   if (family === 'instrument_catalog') return 'linear'
   if (family === 'asset_metadata' || family === 'market_reference') return 'bitcoin'
+  if (family === 'onchain_catalog') return 'community'
   if (family === 'onchain_metrics') return 'btc'
   if (family.startsWith('option_') || family === 'historical_volatility') return 'BTC'
   return 'BTCUSDT'
@@ -493,11 +494,11 @@ export function CryptoDataCenter({
         period: provider === 'binance' && family !== 'book_snapshots' ? period : null,
         network: provider === 'geckoterminal' ? network : null,
         pool_address: provider === 'geckoterminal' && poolAddress ? poolAddress : null,
-        metrics: provider === 'coinmetrics'
+        metrics: provider === 'coinmetrics' && family === 'onchain_metrics'
           ? metrics.split(',').map((item) => item.trim()).filter(Boolean)
           : [],
-        start: provider === 'coinmetrics' || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? start : null,
-        end: provider === 'coinmetrics' || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? end : null,
+        start: (provider === 'coinmetrics' && family === 'onchain_metrics') || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? start : null,
+        end: (provider === 'coinmetrics' && family === 'onchain_metrics') || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? end : null,
         case_id: caseBoundEvent ? projectId : null,
         expected_case_revision: caseBoundEvent ? caseRevision : null,
         reason: caseBoundEvent ? eventReason.trim() : null,
@@ -900,8 +901,8 @@ export function CryptoDataCenter({
             <label><span className="eyebrow">Estimate days</span><input className="field" type="number" min={1} max={3650} value={days} onChange={(event) => setDays(Number(event.target.value))} /></label>
             {provider === 'binance' ? <label><span className="eyebrow">Archive month</span><input className="field mono" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label> : null}
             {provider === 'geckoterminal' ? <><label><span className="eyebrow">Network</span><input className="field mono" value={network} onChange={(event) => setNetwork(event.target.value)} /></label><label><span className="eyebrow">Pool address</span><input className="field mono" value={poolAddress} onChange={(event) => setPoolAddress(event.target.value)} /></label></> : null}
-            {provider === 'coinmetrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label> : null}
-            {provider === 'coinmetrics' || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
+            {provider === 'coinmetrics' && family === 'onchain_metrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label> : null}
+            {(provider === 'coinmetrics' && family === 'onchain_metrics') || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
             {caseBoundEvent ? <label><span className="eyebrow">Event-capture reason</span><input className="field" value={eventReason} onChange={(event) => setEventReason(event.target.value)} /></label> : null}
           </div>
           <div className="crypto-actions">

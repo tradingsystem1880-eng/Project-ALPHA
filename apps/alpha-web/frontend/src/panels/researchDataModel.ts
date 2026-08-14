@@ -144,7 +144,7 @@ export function cryptoSectionForFamily(family: CryptoFamily): CryptoDataSection 
     || family === 'option_quotes'
     || family === 'historical_volatility'
   ) return 'options'
-  if (family === 'onchain_metrics') return 'onchain'
+  if (family === 'onchain_catalog' || family === 'onchain_metrics') return 'onchain'
   if (family === 'dex_pools' || family === 'dex_ohlcv' || family === 'dex_transactions') return 'dex'
   return 'quality'
 }

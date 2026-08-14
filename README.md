@@ -41,8 +41,9 @@ preview into strategy, paper, or order authority.
 
 Crypto data is governed per dataset family rather than collapsed into one universal price:
 Binance owns native CEX spot/futures history, Bybit owns advanced derivatives/options, CoinGecko
-owns identity/reference, GeckoTerminal owns DEX pool data, Coin Metrics Community owns reviewed
-on-chain metrics, and Coinbase/CCXT is comparison. Venue, market type, units, clocks, and USD,
+owns identity/reference, GeckoTerminal owns DEX pool data, Coin Metrics Community owns its frozen
+catalog and only the reviewed on-chain metrics proven available by it, and Coinbase/CCXT is
+comparison. Venue, market type, units, clocks, and USD,
 USDT, and USDC denominations remain distinct; automatic provider fallback is prohibited. Existing
 CCXT snapshots and the Binance sandbox-paper warmup contract remain unchanged.
 Provider-native observations are admitted to research only through exact mechanical qualification

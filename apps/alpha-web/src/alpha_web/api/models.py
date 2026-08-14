@@ -712,6 +712,7 @@ type CryptoFamilyValue = Literal[
     "historical_volatility",
     "asset_metadata",
     "market_reference",
+    "onchain_catalog",
     "onchain_metrics",
     "dex_pools",
     "dex_ohlcv",

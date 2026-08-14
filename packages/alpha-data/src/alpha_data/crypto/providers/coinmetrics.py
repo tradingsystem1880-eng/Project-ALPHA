@@ -130,6 +130,17 @@ def parse_asset_metric_catalog(payload: bytes) -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
+def coinmetrics_next_page_token(payload: bytes) -> str | None:
+    """Return one validated Community cursor without exposing provider response text."""
+    raw = _decode(payload)
+    token = raw.get("next_page_token")
+    if token is None:
+        return None
+    if not isinstance(token, str) or not token or len(token) > 1_024:
+        raise DataError("Coin Metrics pagination token is invalid")
+    return token
+
+
 def parse_asset_metrics(
     payload: bytes, *, assets: tuple[str, ...], metrics: tuple[str, ...]
 ) -> pl.DataFrame:
@@ -186,6 +197,7 @@ def parse_asset_metrics(
 __all__ = [
     "REVIEWED_COMMUNITY_METRICS",
     "coinmetrics_community_url",
+    "coinmetrics_next_page_token",
     "fetch_coinmetrics_community",
     "parse_asset_metric_catalog",
     "parse_asset_metrics",

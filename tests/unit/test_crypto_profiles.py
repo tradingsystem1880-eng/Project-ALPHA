@@ -9,6 +9,18 @@ from alpha_core import DataError
 from alpha_data.crypto.profiles import CryptoCoverageProfileV1, build_default_coverage_tasks
 
 
+def _coinmetrics_catalog(as_of: datetime) -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "asset": ["btc", "btc", "eth"],
+            "metric": ["AdrActCnt", "TxCnt", "FeeTotNtv"],
+            "family": ["addresses", "transactions", "fees"],
+            "frequency": ["1d", "1d", "1d"],
+            "fetched_at": [as_of - timedelta(minutes=1)] * 3,
+        }
+    )
+
+
 def _binance_memberships(as_of: datetime) -> tuple[pl.DataFrame, ...]:
     def frame(
         category: str,
@@ -117,6 +129,7 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
         inverse_catalog=inverse,
         option_catalog=options,
         option_open_interest=option_open_interest,
+        coinmetrics_catalog=_coinmetrics_catalog(as_of),
         as_of=as_of,
         binance_memberships=_binance_memberships(as_of),
         binance_hourly_memberships=(hourly_membership,),
@@ -152,6 +165,10 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
         and task.instrument == "all"
         for task in tasks
     )
+    assert any(task.family == "onchain_catalog" for task in tasks)
+    assert {
+        task.base_asset: task.metrics for task in tasks if task.family == "onchain_metrics"
+    } == {"BTC": ("AdrActCnt", "TxCnt"), "ETH": ("FeeTotNtv",)}
     assert all(task.execution_authority is False for task in tasks)
     assert {
         (task.instrument, task.category, task.frequency)
@@ -206,6 +223,7 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
             ("SOL", "USDT"): 300.0,
             ("XRP", "USDT"): 200.0,
         },
+        coinmetrics_catalog=_coinmetrics_catalog(as_of),
         as_of=as_of,
     )
     fast = [task.instrument for task in tasks if task.cadence == "five_minute"]
@@ -226,5 +244,6 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
             inverse_catalog=empty_perpetual,
             option_catalog=options,
             option_open_interest={("BTC", "USDT"): 100.0},
+            coinmetrics_catalog=_coinmetrics_catalog(as_of),
             as_of=as_of,
         )

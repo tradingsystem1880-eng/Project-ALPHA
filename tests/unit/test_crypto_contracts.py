@@ -134,6 +134,7 @@ def test_every_primary_family_has_exactly_one_authority() -> None:
         "historical_volatility": "bybit",
         "asset_metadata": "coingecko",
         "market_reference": "coingecko",
+        "onchain_catalog": "coinmetrics",
         "onchain_metrics": "coinmetrics",
         "dex_pools": "geckoterminal",
         "dex_ohlcv": "geckoterminal",

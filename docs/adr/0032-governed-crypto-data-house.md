@@ -27,7 +27,8 @@ Assign exactly one primary acquisition authority to each dataset family:
 | advanced derivatives and options | Bybit public V5 interfaces | Complete instrument catalogs, funding, OI, ratios, trade/mark/index/premium bars, recent executions, exact books, volatility, chains, IV, and Greeks retain native units and clocks |
 | asset identity and broad market reference | CoinGecko | Identity and reference statistics only; never execution-price evidence |
 | DEX pools, liquidity, and pool OHLCV | GeckoTerminal | Network-plus-contract/pool identity; manipulation and thin-liquidity warnings remain explicit |
-| on-chain and network metrics | Coin Metrics Community | Only the reviewed Community catalog and its stated permitted uses |
+| on-chain and network metric catalog | Coin Metrics Community catalog | Supplemental exact membership evidence; only reviewed Community metrics are scheduled |
+| on-chain and network metrics | Coin Metrics Community timeseries | Research observations only when their exact asset/metric/frequency exists in the qualified frozen catalog |
 | independent market-data comparison | Coinbase through the existing CCXT adapter | Diagnostic comparison only; never automatic substitution |
 
 CCXT remains a supported legacy and comparison seam. Existing CCXT provenance and snapshot bytes
@@ -90,7 +91,8 @@ Availability time is part of every observation and derived feature.
 No crypto-data command or UI route receives exchange credentials, paper-entry authority, research
 gate authority, broker authority, or order authority. CoinGecko's Demo key is retrieved from macOS
 Keychain only by the existing allowlisted launcher and injected into one bounded process. Its fixed
-`catalog` action accepts no caller-selected provider, family, instrument, or output path. Binance,
+`catalog` and `reference` actions accept no caller-selected provider, family, instrument, or output
+path. Binance,
 Bybit, Coinbase, GeckoTerminal, and Coin Metrics use only public interfaces in this program.
 Bybit option instruments, quotes, and historical volatility require an explicit `option` market
 selection; the system must not accept a misleading linear/inverse selection and silently relabel
@@ -100,7 +102,9 @@ the first bounded terminal page. GeckoTerminal top-pool catalogs freeze five exa
 declared network. Each page has its own raw receipt and the normalized catalog commits to their
 ordered membership; incomplete pages or a CoinGecko universe beyond 100 pages fail closed.
 Default breadth is planned before acquisition in a content-addressed `CryptoCoverageProfileV1`
-bound to exact qualified Bybit catalog and option-chain manifests. Profile membership excludes
+bound to exact qualified Bybit catalog, option-chain, and Coin Metrics Community catalog manifests.
+On-chain tasks are derived only from exact qualified catalog rows known by the profile `as_of`;
+ALPHA never advertises an unavailable Community metric. Profile membership excludes
 future-launched and dated contracts, preserves native provider/category/quote/frequency identity,
 separates daily/hourly/five-minute/funding cadences, and limits the fast option tier to three
 underlyings ranked from complete aggregate-OI inputs. Missing rank inputs fail profile creation;

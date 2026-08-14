@@ -151,8 +151,9 @@ when its logical schema-and-row fingerprint matches that locked migration source
 
 ADR-0032 keeps provider-native datasets separate. Binance owns CEX spot/futures membership and market history;
 Bybit owns advanced derivatives/options; CoinGecko owns asset identity and broad reference;
-GeckoTerminal owns DEX pools/liquidity/OHLCV; Coin Metrics Community owns reviewed on-chain/network
-families; Coinbase through CCXT is an independent comparison. No provider is a universal crypto
+GeckoTerminal owns DEX pools/liquidity/OHLCV; Coin Metrics Community owns a supplemental frozen
+catalog plus the reviewed on-chain/network metrics proven by that catalog; Coinbase through CCXT
+is an independent comparison. No provider is a universal crypto
 price and no fallback changes venue, quote asset, units, frequency, or evidence.
 
 ```mermaid
@@ -193,7 +194,8 @@ CoinGecko full-market reference uses ordered 250-row pages through one short ter
 to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
 is a separate immutable raw receipt and the combined normalized catalog preserves that order.
 A `CryptoCoverageProfileV1` freezes the exact qualified Bybit catalog and option-chain manifests
-plus exact qualified Binance spot/USD-M/COIN-M membership manifests used to derive active venue,
+plus exact qualified Binance spot/USD-M/COIN-M membership and Coin Metrics Community catalog
+manifests used to derive active venue,
 perpetual, option-underlying, and cadence-specific acquisition tasks. Its
 membership is content-addressed and bounded to 10,000 tasks; profile inspection is paginated and
 the profile itself has no provider, research-gate, paper, or execution authority. Provider requests

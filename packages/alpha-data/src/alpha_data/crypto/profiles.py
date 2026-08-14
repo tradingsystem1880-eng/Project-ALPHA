@@ -35,6 +35,7 @@ _FAMILIES = frozenset(
         "historical_volatility",
         "asset_metadata",
         "market_reference",
+        "onchain_catalog",
         "onchain_metrics",
         "dex_pools",
     }
@@ -414,6 +415,7 @@ def build_default_coverage_tasks(
     inverse_catalog: pl.DataFrame,
     option_catalog: pl.DataFrame,
     option_open_interest: dict[tuple[str, str], float],
+    coinmetrics_catalog: pl.DataFrame,
     as_of: datetime,
     binance_memberships: tuple[pl.DataFrame, ...] = (),
     binance_hourly_memberships: tuple[pl.DataFrame, ...] = (),
@@ -458,22 +460,44 @@ def build_default_coverage_tasks(
         )
         for network in sorted(NETWORKS)
     )
-    reviewed_metrics = ("AdrActCnt", "FeeTotNtv", "HashRate", "PriceUSD", "SplyCur", "TxCnt")
-    tasks.extend(
+    required_catalog_columns = {"asset", "metric", "family", "frequency", "fetched_at"}
+    if not required_catalog_columns.issubset(coinmetrics_catalog.columns):
+        raise DataError("Coin Metrics Community catalog schema is incomplete")
+    tasks.append(
         _task(
             "coinmetrics",
-            "onchain_metrics",
-            asset.lower(),
-            base=asset,
+            "onchain_catalog",
+            "community",
+            base=None,
             quote=None,
             category=None,
-            frequency="1d",
+            frequency="catalog_snapshot",
             cadence="daily",
-            metrics=reviewed_metrics,
-            lookback_days=30,
         )
-        for asset in ("BTC", "ETH")
     )
+    for asset in ("BTC", "ETH"):
+        available = coinmetrics_catalog.filter(
+            (pl.col("asset") == asset.lower())
+            & (pl.col("frequency") == "1d")
+            & (pl.col("fetched_at") <= as_of)
+        )
+        metrics = tuple(sorted(set(str(value) for value in available["metric"].to_list())))
+        if not metrics:
+            raise DataError(f"Coin Metrics Community catalog has no daily {asset} metrics")
+        tasks.append(
+            _task(
+                "coinmetrics",
+                "onchain_metrics",
+                asset.lower(),
+                base=asset,
+                quote=None,
+                category=None,
+                frequency="1d",
+                cadence="daily",
+                metrics=metrics,
+                lookback_days=30,
+            )
+        )
     tasks.extend(
         _task(
             "bybit",

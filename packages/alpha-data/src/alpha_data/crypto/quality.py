@@ -300,6 +300,11 @@ def _family_checks(
                 and volume / reserve > 100
             ):
                 warnings.add("dex_volume_reserve_extreme")
+    elif dataset.family == "onchain_catalog":
+        values("asset")
+        values("metric")
+        values("family")
+        values("frequency")
     elif dataset.family == "onchain_metrics":
         metric_values = values("value")
         if any(value is None for value in metric_values):

@@ -8,6 +8,7 @@ from alpha_core import DataError
 from alpha_data.crypto.providers.coinmetrics import (
     REVIEWED_COMMUNITY_METRICS,
     coinmetrics_community_url,
+    coinmetrics_next_page_token,
     fetch_coinmetrics_community,
     parse_asset_metric_catalog,
     parse_asset_metrics,
@@ -42,6 +43,13 @@ def test_catalog_selects_only_reviewed_community_metric_families() -> None:
     assert "AdrActCnt" in REVIEWED_COMMUNITY_METRICS
     assert "DiffMean" not in REVIEWED_COMMUNITY_METRICS
     assert "FeeTotUSD" not in REVIEWED_COMMUNITY_METRICS
+    assert coinmetrics_next_page_token(payload) is None
+    assert (
+        coinmetrics_next_page_token(json.dumps({"data": [], "next_page_token": "next-1"}).encode())
+        == "next-1"
+    )
+    with pytest.raises(DataError, match="pagination token"):
+        coinmetrics_next_page_token(json.dumps({"data": [], "next_page_token": ""}).encode())
 
 
 def test_metric_parser_preserves_provider_status_and_null_semantics() -> None:

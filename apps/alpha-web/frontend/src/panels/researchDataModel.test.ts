@@ -75,6 +75,7 @@ describe('research data model', () => {
     expect(cryptoSectionForFamily('funding')).toBe('derivatives')
     expect(cryptoSectionForFamily('option_quotes')).toBe('options')
     expect(cryptoSectionForFamily('onchain_metrics')).toBe('onchain')
+    expect(cryptoSectionForFamily('onchain_catalog')).toBe('onchain')
     expect(cryptoSectionForFamily('dex_pools')).toBe('dex')
     expect(cryptoSectionForFamily('asset_metadata')).toBe('assets')
     expect(cryptoSectionForFamily('market_membership')).toBe('derivatives')

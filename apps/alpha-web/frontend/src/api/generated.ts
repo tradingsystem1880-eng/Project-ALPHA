@@ -4858,7 +4858,7 @@ export interface components {
             provider: string;
         };
         /** @enum {string} */
-        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_catalog" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
         /** CryptoFeatureCreateRequest */
         CryptoFeatureCreateRequest: {
             feature_name: components["schemas"]["CryptoFeatureNameValue"];

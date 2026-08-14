@@ -92,7 +92,9 @@ from alpha_data.crypto.providers.coingecko import (
 from alpha_data.crypto.providers.coinmetrics import (
     REVIEWED_COMMUNITY_METRICS,
     coinmetrics_community_url,
+    coinmetrics_next_page_token,
     fetch_coinmetrics_community,
+    parse_asset_metric_catalog,
     parse_asset_metrics,
 )
 from alpha_data.crypto.providers.geckoterminal import (
@@ -135,6 +137,7 @@ _ROW_BYTES: Final[dict[CryptoFamily, int]] = {
     "historical_volatility": 112,
     "asset_metadata": 1_024,
     "market_reference": 384,
+    "onchain_catalog": 192,
     "onchain_metrics": 128,
     "dex_pools": 512,
     "dex_ohlcv": 176,
@@ -410,6 +413,14 @@ def _option_quote_frame(
 
 def _asset_catalog_frame(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
     return parse_asset_catalog(payload).with_columns(pl.lit(fetched_at).alias("fetched_at"))
+
+
+def _coinmetrics_catalog_frame(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
+    return parse_asset_metric_catalog(payload).with_columns(pl.lit(fetched_at).alias("fetched_at"))
+
+
+def _coinmetrics_catalog_parser_at(completed_at: datetime) -> Callable[[bytes], pl.DataFrame]:
+    return partial(_coinmetrics_catalog_frame, fetched_at=completed_at)
 
 
 def _top_pools_frame(payload: bytes, *, network: str, fetched_at: datetime) -> pl.DataFrame:
@@ -1934,6 +1945,82 @@ def _fetch_non_bybit(
         )
 
     if provider == "coinmetrics":
+        if family == "onchain_catalog":
+            catalog_page_size = 1_000
+            catalog_params: dict[str, str | int] = {"page_size": catalog_page_size}
+            parser = partial(_coinmetrics_catalog_frame, fetched_at=fetched_at)
+            plan = _AcquisitionPlan(
+                endpoint="catalog",
+                params=catalog_params,
+                dataset=CryptoDatasetIdentityV1(
+                    provider="coinmetrics",
+                    venue="coinmetrics-community",
+                    market_type="network",
+                    family="onchain_catalog",
+                    instrument="community",
+                    base_asset=None,
+                    quote_asset=None,
+                    frequency="catalog_snapshot",
+                    units="provider_native_metric_identity",
+                    timestamp_convention="provider_observation_utc",
+                ),
+                parser=parser,
+                observed_column="fetched_at",
+                key_columns=("asset", "metric", "frequency"),
+                availability_column="fetched_at",
+                parser_at=_coinmetrics_catalog_parser_at,
+            )
+            pages_cm: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+            parsers_cm: list[Callable[[bytes], pl.DataFrame]] = []
+            page_token: str | None = None
+            seen_tokens: set[str] = set()
+            for page_number in range(1, 101):
+                page_params_cm = dict(catalog_params)
+                if page_token is not None:
+                    page_params_cm["next_page_token"] = page_token
+                payload = fetch_coinmetrics_community(
+                    coinmetrics_community_url("catalog", page_params_cm)
+                )
+                if parser(payload).is_empty():
+                    raise DataError("Coin Metrics Community catalog page has no reviewed metrics")
+                pages_cm.append(
+                    (
+                        payload,
+                        (
+                            ("page", str(page_number)),
+                            ("page_size", str(catalog_page_size)),
+                            *(
+                                (
+                                    (
+                                        "cursor_sha256",
+                                        hashlib.sha256(page_token.encode()).hexdigest(),
+                                    ),
+                                )
+                                if page_token is not None
+                                else ()
+                            ),
+                        ),
+                        (f"page={page_number}",),
+                    )
+                )
+                parsers_cm.append(parser)
+                next_token = coinmetrics_next_page_token(payload)
+                if next_token is None:
+                    return _FetchedPagedAcquisition(
+                        plan=plan,
+                        pages=tuple(pages_cm),
+                        page_parsers=tuple(parsers_cm),
+                        upstream_checksums=tuple(None for _ in pages_cm),
+                        combine_frames=None,
+                        provider_schema="coinmetrics-community-v4",
+                        parser_version="coinmetrics-community-catalog-v1",
+                        logical_name="onchain_catalog.json",
+                    )
+                if next_token in seen_tokens:
+                    raise DataError("Coin Metrics Community catalog cursor repeated")
+                seen_tokens.add(next_token)
+                page_token = next_token
+            raise DataError("Coin Metrics Community catalog exceeded the 100-page safety limit")
         if family != "onchain_metrics":
             raise DataError(f"Coin Metrics Community is not authoritative for {family}")
         selected_metrics = tuple(
@@ -2964,12 +3051,20 @@ def profile_create(
             )
             for category in ("spot", "linear", "inverse")
         )
+        coinmetrics_source = _latest_profile_source(
+            store,
+            provider="coinmetrics",
+            family="onchain_catalog",
+            instrument="community",
+            as_of=instant,
+        )
         hourly_sources = _latest_binance_liquidity_sources(store, as_of=instant)
         tasks = build_default_coverage_tasks(
             linear_catalog=linear,
             inverse_catalog=inverse,
             option_catalog=options,
             option_open_interest=option_oi,
+            coinmetrics_catalog=coinmetrics_source[2],
             as_of=instant,
             binance_memberships=tuple(source[2] for source in binance_sources),
             binance_hourly_memberships=tuple(source[2] for source in hourly_sources),
@@ -2980,6 +3075,7 @@ def profile_create(
                 [source[0] for source in catalog_sources]
                 + [source[0] for source in option_sources]
                 + [source[0] for source in binance_sources]
+                + [coinmetrics_source[0]]
                 + [source[0] for source in hourly_sources]
             ),
             tasks=tasks,
@@ -3574,7 +3670,7 @@ def _run_profile_task(task: CryptoCoverageTaskV1, *, run_at: datetime) -> dict[s
         else:
             raise DataError("Binance profile market-bar frequency is unsupported")
         start, end = start_at.isoformat(), end_at.isoformat()
-    if task.provider == "coinmetrics":
+    if task.provider == "coinmetrics" and task.family == "onchain_metrics":
         if task.lookback_days is None:
             raise DataError("Coin Metrics coverage task has no lookback")
         end_day = (run_at.astimezone(UTC) - timedelta(days=1)).date()
