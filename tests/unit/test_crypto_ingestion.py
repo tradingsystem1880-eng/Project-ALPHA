@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import io
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import polars as pl
 import pytest
 
 from alpha_core import DataError
 from alpha_data.crypto.contracts import CryptoDatasetIdentityV1
-from alpha_data.crypto.ingestion import ingest_provider_payload
+from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
 from alpha_data.crypto.providers.bybit import parse_funding_history
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
@@ -84,6 +86,7 @@ def test_provider_payload_freezes_raw_normalized_quality_and_offline_replay(tmp_
     assert result.normalized_manifest["artifact_kind"] == "normalized"
     assert result.normalized_manifest["input_manifest_ids"] == [result.raw_manifest["manifest_id"]]
     assert result.receipt.response_sha256 == result.raw_manifest["artifact_sha256"]
+    assert result.raw_manifest["receipt"] == result.receipt.to_dict()
     assert store.verify_manifest(result.raw_manifest["manifest_id"]) == result.raw_manifest
     assert (
         store.verify_manifest(result.normalized_manifest["manifest_id"])
@@ -114,3 +117,60 @@ def test_provider_payload_preserves_raw_receipt_when_parsing_fails(tmp_path: Pat
     inventory = store.inventory()
     assert len(inventory) == 1
     assert inventory[0]["artifact_kind"] == "raw"
+
+
+def test_paged_ingestion_preserves_each_exact_response_and_binds_all_inputs(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    first = b"timestamp,value\n2026-08-14T00:00:00Z,1\n"
+    second = b"timestamp,value\n2026-08-14T01:00:00Z,2\n"
+
+    result = ingest_provider_pages(
+        store,
+        dataset=_dataset(),
+        pages=(
+            (first, (("page", "1"),), ("next=cursor-a",)),
+            (second, (("cursor", "cursor-a"), ("page", "2")), ("terminal",)),
+        ),
+        fetched_at=NOW,
+        provider_schema="fixture-v1",
+        parser_version="fixture-parser-v1",
+        logical_name="page.csv",
+        parser=lambda payload: pl.read_csv(io.BytesIO(payload), try_parse_dates=True),
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+    )
+
+    assert len(result.receipts) == 2
+    assert len(result.raw_manifests) == 2
+    assert result.normalized_manifest["input_manifest_ids"] == [
+        manifest["manifest_id"] for manifest in result.raw_manifests
+    ]
+    assert result.quality.row_count == 2
+    for manifest, payload in zip(result.raw_manifests, (first, second), strict=True):
+        assert (store.bulk_root / str(manifest["artifact_key"])).read_bytes() == payload
+
+
+def test_paged_ingestion_freezes_all_fetched_pages_before_parser_failure(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    pages = (
+        (b"first-invalid-page", (("page", "1"),), ("next=cursor",)),
+        (b"second-invalid-page", (("page", "2"),), ("terminal",)),
+    )
+
+    with pytest.raises(DataError, match="response is malformed"):
+        ingest_provider_pages(
+            store,
+            dataset=_dataset(),
+            pages=pages,
+            fetched_at=NOW,
+            provider_schema="fixture-v1",
+            parser_version="fixture-parser-v1",
+            logical_name="page.json",
+            parser=parse_funding_history,
+            observed_column="timestamp",
+            key_columns=("timestamp",),
+        )
+
+    assert [item["artifact_kind"] for item in store.inventory()] == ["raw", "raw"]

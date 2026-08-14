@@ -169,7 +169,10 @@ External publication completes before its internal manifest. The configured volu
 writability, and free-space reserve are fail-closed prerequisites. The control database and
 manifests stay internal. Asset joins require network plus contract address or an explicitly reviewed
 native mapping; ticker-only joins fail. Existing CCXT snapshots and the `ccxt:binance` paper warmup
-path are unchanged.
+path are unchanged. Cursor-based Bybit ranges freeze each exact response as its own raw receipt;
+their one normalized artifact commits to every ordered raw manifest. The typed Workstation Crypto
+Data Center projects this same catalog, coverage, quality, storage, acquisition, and snapshot seam;
+its Guided and Advanced modes share identical server authority.
 
 ### 4.3 Canonical strategy/validation flow
 

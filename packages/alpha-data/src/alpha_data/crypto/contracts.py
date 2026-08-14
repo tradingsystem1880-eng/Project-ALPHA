@@ -326,6 +326,56 @@ class CryptoRawReceiptV1:
             "upstream_checksum": self.upstream_checksum,
         }
 
+    @classmethod
+    def from_dict(cls, value: object) -> CryptoRawReceiptV1:
+        if not isinstance(value, dict) or value.get("schema_version") != 1:
+            raise DataError("invalid CryptoRawReceiptV1")
+        try:
+            request_raw = value["request"]
+            pagination_raw = value["pagination"]
+            fetched_raw = value["fetched_at"]
+            if (
+                not isinstance(request_raw, list)
+                or not isinstance(pagination_raw, list)
+                or not isinstance(fetched_raw, str)
+            ):
+                raise DataError("invalid CryptoRawReceiptV1")
+            request = tuple(
+                (item[0], item[1])
+                for item in request_raw
+                if isinstance(item, list) and len(item) == 2
+            )
+            if len(request) != len(request_raw):
+                raise DataError("invalid CryptoRawReceiptV1")
+            receipt = cls(
+                receipt_id=value["receipt_id"],
+                dataset=CryptoDatasetIdentityV1.from_dict(value["dataset"]),
+                request=request,
+                fetched_at=datetime.fromisoformat(fetched_raw.replace("Z", "+00:00")),
+                response_sha256=value["response_sha256"],
+                response_bytes=value["response_bytes"],
+                provider_schema=value["provider_schema"],
+                parser_version=value["parser_version"],
+                pagination=tuple(pagination_raw),
+                upstream_checksum=value["upstream_checksum"],
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise DataError("invalid CryptoRawReceiptV1") from exc
+        rebuilt = cls.create(
+            dataset=receipt.dataset,
+            request=receipt.request,
+            fetched_at=receipt.fetched_at,
+            response_sha256=receipt.response_sha256,
+            response_bytes=receipt.response_bytes,
+            provider_schema=receipt.provider_schema,
+            parser_version=receipt.parser_version,
+            pagination=receipt.pagination,
+            upstream_checksum=receipt.upstream_checksum,
+        )
+        if rebuilt.receipt_id != receipt.receipt_id:
+            raise DataError("CryptoRawReceiptV1 identity does not match")
+        return receipt
+
 
 @dataclass(frozen=True)
 class CryptoQualityReportV1:

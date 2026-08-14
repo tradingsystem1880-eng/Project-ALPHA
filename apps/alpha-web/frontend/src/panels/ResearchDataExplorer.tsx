@@ -11,6 +11,7 @@ import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
+import { CryptoDataCenter } from './CryptoDataCenter'
 import {
   datasetAuditBadge,
   datasetOriginSummary,
@@ -84,8 +85,8 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Research Data</span>
-        <span className="chip kind">READ-ONLY · RESEARCH ONLY</span>
-        <span className="muted">registered refs · receipts · audits · inventory</span>
+        <span className="chip kind">GOVERNED DATA · NO EXECUTION AUTHORITY</span>
+        <span className="muted">crypto acquisition · qualified snapshots · registered research refs</span>
       </div>
       <div className="panel-body panel-pad workbench research-data-explorer" tabIndex={0}>
         {error ? (
@@ -94,6 +95,8 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
             <span>{error}</span>
           </div>
         ) : null}
+        <CryptoDataCenter />
+        <div className="rd-head">Research-case dataset bindings</div>
         <section aria-label="Dataset bound to current research contract">
           <div className="rd-head">Bound to the current contract</div>
           {!panelLink.linked.projectId ? (

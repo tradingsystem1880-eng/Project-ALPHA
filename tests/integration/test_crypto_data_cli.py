@@ -243,6 +243,7 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     coverage_payload = json.loads(coverage.stdout)
     assert coverage_payload["items"][0]["family"] == "funding"
     assert coverage_payload["items"][0]["state"] == "qualified"
+    assert coverage_payload["items"][0]["fetched_at"] == "2026-08-15T00:00:00+00:00"
     assert coverage_payload["canonical_next_action"] == "Select qualified families for a snapshot."
 
     quality = runner.invoke(
@@ -419,3 +420,91 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     assert len(store.inventory()) == 8
     inventory_json = json.dumps(store.inventory())
     assert "injected-only-for-test" not in inventory_json
+
+
+def test_bybit_bounded_open_interest_follows_cursors_and_freezes_each_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        minimum_free_bytes=100,
+    )
+    calls: list[dict[str, str | int]] = []
+
+    def fetch(_endpoint: str, params: dict[str, str | int]) -> bytes:
+        calls.append(dict(params))
+        cursor = params.get("cursor")
+        timestamp = "1786748400000" if cursor else "1786752000000"
+        body: dict[str, object] = {
+            "category": "linear",
+            "symbol": "BTCUSDT",
+            "list": [{"openInterest": "100", "timestamp": timestamp}],
+        }
+        if cursor is None:
+            body["nextPageCursor"] = "cursor-a"
+        return json.dumps({"retCode": 0, "time": 1_786_752_000_000, "result": body}).encode()
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "fetch_bybit_public", fetch)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data", "acquire", "bybit", "open_interest", "BTCUSDT",
+            "--base", "BTC", "--quote", "USDT", "--frequency", "1h",
+            "--start", "2026-08-14T00:00:00Z", "--end", "2026-08-15T00:00:00Z",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert calls == [
+        {
+            "category": "linear", "symbol": "BTCUSDT", "intervalTime": "1h",
+            "limit": 200, "startTime": 1_786_665_600_000, "endTime": 1_786_752_000_000,
+        },
+        {
+            "category": "linear", "symbol": "BTCUSDT", "intervalTime": "1h",
+            "limit": 200, "startTime": 1_786_665_600_000, "endTime": 1_786_752_000_000,
+            "cursor": "cursor-a",
+        },
+    ]
+    assert receipt["raw_page_count"] == 2
+    assert len(receipt["raw_manifest_ids"]) == 2
+    assert receipt["state"] == "qualified"
+    assert len(store.inventory()) == 3
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "message"),
+    [
+        ("2026-08-14T00:00:00Z", None, "together"),
+        ("2026-08-15T00:00:00Z", "2026-08-14T00:00:00Z", "later than start"),
+    ],
+)
+def test_bybit_range_fails_closed_when_incomplete_or_inverted(
+    start: str | None, end: str | None, message: str
+) -> None:
+    args = [
+        "crypto-data", "acquire", "bybit", "open_interest", "BTCUSDT",
+        "--base", "BTC", "--quote", "USDT",
+    ]
+    if start is not None:
+        args.extend(["--start", start])
+    if end is not None:
+        args.extend(["--end", end])
+    result = runner.invoke(app, args)
+    assert result.exit_code != 0
+    assert message in result.output

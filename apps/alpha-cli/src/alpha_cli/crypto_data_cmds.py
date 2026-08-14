@@ -26,10 +26,11 @@ from alpha_data.crypto.contracts import (
     CryptoFamily,
     CryptoMarketType,
     CryptoQualityReportV1,
+    CryptoRawReceiptV1,
     CryptoSnapshotMemberV1,
     CryptoSnapshotV1,
 )
-from alpha_data.crypto.ingestion import ingest_provider_payload
+from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
 from alpha_data.crypto.providers.binance import (
     archive_url,
     fetch_binance_archive,
@@ -118,6 +119,8 @@ class _AcquisitionPlan:
     observed_column: str
     key_columns: tuple[str, ...]
     availability_column: str | None = None
+    next_cursor: Callable[[bytes], str | None] | None = None
+    page_limit: int | None = None
 
 
 @dataclass(frozen=True)
@@ -136,10 +139,46 @@ def _open_interest_frame(payload: bytes) -> pl.DataFrame:
     return parse_open_interest(payload)[0]
 
 
+def _open_interest_cursor(payload: bytes) -> str | None:
+    return parse_open_interest(payload)[1]
+
+
 def _long_short_frame(payload: bytes, *, category: Literal["linear", "inverse"]) -> pl.DataFrame:
     if category not in {"linear", "inverse"}:
         raise DataError("Bybit ratio category must be linear or inverse")
     return parse_long_short_ratio(payload, category=category)[0]
+
+
+def _long_short_cursor(
+    payload: bytes, *, category: Literal["linear", "inverse"]
+) -> str | None:
+    return parse_long_short_ratio(payload, category=category)[1]
+
+
+def _iso_milliseconds(value: str, *, label: str) -> int:
+    try:
+        instant = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DataError(f"Bybit {label} must be an ISO-8601 timestamp") from exc
+    if instant.tzinfo is None:
+        raise DataError(f"Bybit {label} must include a timezone")
+    return int(instant.astimezone(UTC).timestamp() * 1_000)
+
+
+def _bybit_range(
+    start: str | None, end: str | None, *, fetched_at: datetime
+) -> tuple[int, int] | None:
+    if (start is None) != (end is None):
+        raise DataError("Bybit --start and --end must be supplied together")
+    if start is None or end is None:
+        return None
+    start_ms = _iso_milliseconds(start, label="start")
+    end_ms = _iso_milliseconds(end, label="end")
+    if end_ms <= start_ms:
+        raise DataError("Bybit end must be later than start")
+    if end_ms > int(fetched_at.timestamp() * 1_000):
+        raise DataError("Bybit end exceeds the acquisition knowledge time")
+    return start_ms, end_ms
 
 
 def _instrument_frame(payload: bytes, *, fetched_at_ms: int, base: str, quote: str) -> pl.DataFrame:
@@ -148,6 +187,10 @@ def _instrument_frame(payload: bytes, *, fetched_at_ms: int, base: str, quote: s
     if selected.is_empty():
         raise DataError("Bybit option page has no contracts for the requested base and quote")
     return selected
+
+
+def _instrument_cursor(payload: bytes, *, fetched_at_ms: int) -> str | None:
+    return parse_instruments(payload, category="option", fetched_at_ms=fetched_at_ms)[1]
 
 
 def _option_symbol_assets(symbol: str) -> tuple[str, str]:
@@ -407,6 +450,8 @@ def _bybit_plan(
     quote: str,
     category: str,
     frequency: str,
+    start: str | None,
+    end: str | None,
     fetched_at: datetime,
 ) -> _AcquisitionPlan:
     if FAMILY_AUTHORITIES[family] != "bybit":
@@ -431,6 +476,9 @@ def _bybit_plan(
     availability_column: str | None = None
     units = "provider_native"
     dataset_frequency = frequency
+    next_cursor: Callable[[bytes], str | None] | None = None
+    page_limit: int | None = None
+    bounded_range = _bybit_range(start, end, fetched_at=fetched_at)
 
     if family == "funding":
         endpoint = "funding"
@@ -438,6 +486,7 @@ def _bybit_plan(
         parser = parse_funding_history
         units = "dimensionless_rate"
         dataset_frequency = "funding_interval"
+        page_limit = 200
     elif family == "open_interest":
         endpoint = "open_interest"
         params = {
@@ -447,6 +496,7 @@ def _bybit_plan(
             "limit": 200,
         }
         parser = _open_interest_frame
+        next_cursor = _open_interest_cursor
         units = "base_coin_if_linear_quote_coin_if_inverse"
     elif family == "long_short_ratio":
         endpoint = "long_short_ratio"
@@ -457,6 +507,7 @@ def _bybit_plan(
             "limit": 200,
         }
         parser = partial(_long_short_frame, category=category_value)
+        next_cursor = partial(_long_short_cursor, category=category_value)
         units = "dimensionless_ratio"
     elif family in _BYBIT_PRICE_FAMILIES:
         endpoint, price_family = _BYBIT_PRICE_FAMILIES[family]
@@ -466,6 +517,7 @@ def _bybit_plan(
         params = {"category": category, "symbol": symbol, "interval": interval, "limit": 1_000}
         parser = partial(parse_price_klines, family=price_family)
         units = "quote_price"
+        page_limit = 1_000
     elif family == "option_instruments":
         endpoint = "instruments"
         params = {"category": "option", "baseCoin": base_value, "limit": 1_000}
@@ -480,6 +532,7 @@ def _bybit_plan(
         key_columns = ("symbol",)
         market_type = "option"
         dataset_frequency = "catalog_snapshot"
+        next_cursor = partial(_instrument_cursor, fetched_at_ms=fetched_at_ms)
     elif family == "option_quotes":
         endpoint = "option_tickers"
         params = {"category": "option", "baseCoin": base_value}
@@ -508,6 +561,17 @@ def _bybit_plan(
     else:
         raise DataError(f"Bybit acquisition is not implemented for {family}")
 
+    if bounded_range is not None:
+        if family in {"option_instruments", "option_quotes"}:
+            raise DataError(f"Bybit {family} is a point-in-time snapshot and rejects a time range")
+        start_ms, end_ms = bounded_range
+        if family in _BYBIT_PRICE_FAMILIES:
+            params.update({"start": start_ms, "end": end_ms})
+        else:
+            params.update({"startTime": start_ms, "endTime": end_ms})
+        if family == "historical_volatility" and end_ms - start_ms > 30 * 86_400_000:
+            raise DataError("Bybit historical volatility windows cannot exceed 30 days")
+
     return _AcquisitionPlan(
         endpoint=endpoint,
         params=params,
@@ -527,7 +591,39 @@ def _bybit_plan(
         observed_column=observed_column,
         key_columns=key_columns,
         availability_column=availability_column,
+        next_cursor=next_cursor,
+        page_limit=page_limit,
     )
+
+
+def _fetch_bybit_pages(
+    plan: _AcquisitionPlan, *, follow_cursors: bool
+) -> tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...]:
+    pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+    params = dict(plan.params)
+    seen_cursors: set[str] = set()
+    for page_number in range(1, 101):
+        payload = fetch_bybit_public(plan.endpoint, params)
+        next_cursor = plan.next_cursor(payload) if plan.next_cursor is not None else None
+        request = tuple((key, str(value)) for key, value in sorted(params.items()))
+        pagination = (f"page={page_number}", f"next_cursor={next_cursor or 'terminal'}")
+        pages.append((payload, request, pagination))
+        if next_cursor is None or not follow_cursors:
+            if (
+                plan.page_limit is not None
+                and {"startTime", "start"} & params.keys()
+                and plan.parser(payload).height >= plan.page_limit
+            ):
+                raise DataError(
+                    "Bybit bounded window fills one provider page; narrow the range to avoid "
+                    "silently truncated evidence"
+                )
+            return tuple(pages)
+        if next_cursor in seen_cursors:
+            raise DataError("Bybit pagination cursor repeated")
+        seen_cursors.add(next_cursor)
+        params["cursor"] = next_cursor
+    raise DataError("Bybit acquisition exceeded the 100-page safety limit")
 
 
 def _fetch_non_bybit(
@@ -834,15 +930,15 @@ def acquire(
                 quote=quote,
                 category=category,
                 frequency=frequency,
+                start=start,
+                end=end,
                 fetched_at=fetched_at,
             )
-            fetched = _FetchedAcquisition(
-                plan=plan,
-                payload=fetch_bybit_public(plan.endpoint, plan.params),
-                provider_schema="bybit-v5",
-                parser_version="bybit-public-v1",
-                logical_name=f"{dataset_family}.json",
+            pages = _fetch_bybit_pages(
+                plan,
+                follow_cursors=(start is not None or dataset_family == "option_instruments"),
             )
+            fetched = None
         else:
             fetched = _fetch_non_bybit(
                 provider,
@@ -861,32 +957,75 @@ def acquire(
                 fetched_at=fetched_at,
             )
             plan = fetched.plan
-        result = ingest_provider_payload(
-            _bulk_store(),
-            dataset=plan.dataset,
-            payload=fetched.payload,
-            request=tuple((key, str(value)) for key, value in sorted(plan.params.items())),
-            fetched_at=fetched_at,
-            provider_schema=fetched.provider_schema,
-            parser_version=fetched.parser_version,
-            logical_name=fetched.logical_name,
-            parser=plan.parser,
-            observed_column=plan.observed_column,
-            key_columns=plan.key_columns,
-            availability_column=plan.availability_column,
-            upstream_checksum=fetched.upstream_checksum,
-            expected_cadence=(
-                timedelta(seconds=fetched.expected_cadence_seconds)
-                if fetched.expected_cadence_seconds is not None
-                else None
-            ),
-            period_start_timestamps=fetched.period_start_timestamps,
-        )
+        if provider == "bybit" and len(pages) > 1:
+            paged_result = ingest_provider_pages(
+                _bulk_store(),
+                dataset=plan.dataset,
+                pages=pages,
+                fetched_at=fetched_at,
+                provider_schema="bybit-v5",
+                parser_version="bybit-public-v1",
+                logical_name=f"{dataset_family}.json",
+                parser=plan.parser,
+                observed_column=plan.observed_column,
+                key_columns=plan.key_columns,
+                availability_column=plan.availability_column,
+            )
+            quality = paged_result.quality
+            normalized_manifest = paged_result.normalized_manifest
+            raw_manifests = paged_result.raw_manifests
+        else:
+            if provider == "bybit":
+                payload, request, pagination = pages[0]
+                provider_schema = "bybit-v5"
+                parser_version = "bybit-public-v1"
+                logical_name = f"{dataset_family}.json"
+                upstream_checksum = None
+                expected_cadence_seconds = None
+                period_start_timestamps = False
+            else:
+                assert fetched is not None
+                payload = fetched.payload
+                request = tuple(
+                    (key, str(value)) for key, value in sorted(plan.params.items())
+                )
+                pagination = ()
+                provider_schema = fetched.provider_schema
+                parser_version = fetched.parser_version
+                logical_name = fetched.logical_name
+                upstream_checksum = fetched.upstream_checksum
+                expected_cadence_seconds = fetched.expected_cadence_seconds
+                period_start_timestamps = fetched.period_start_timestamps
+            single_result = ingest_provider_payload(
+                _bulk_store(),
+                dataset=plan.dataset,
+                payload=payload,
+                request=request,
+                fetched_at=fetched_at,
+                provider_schema=provider_schema,
+                parser_version=parser_version,
+                logical_name=logical_name,
+                parser=plan.parser,
+                observed_column=plan.observed_column,
+                key_columns=plan.key_columns,
+                pagination=pagination,
+                availability_column=plan.availability_column,
+                upstream_checksum=upstream_checksum,
+                expected_cadence=(
+                    timedelta(seconds=expected_cadence_seconds)
+                    if expected_cadence_seconds is not None
+                    else None
+                ),
+                period_start_timestamps=period_start_timestamps,
+            )
+            quality = single_result.quality
+            normalized_manifest = single_result.normalized_manifest
+            raw_manifests = (single_result.raw_manifest,)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     next_action = (
         "Create or extend a frozen crypto snapshot."
-        if result.quality.state == "qualified"
+        if quality.state == "qualified"
         else "Review the quality blockers before using this dataset."
     )
     _emit(
@@ -894,12 +1033,14 @@ def acquire(
             "provider": provider,
             "family": dataset_family,
             "instrument": plan.dataset.instrument,
-            "state": result.quality.state,
-            "failures": list(result.quality.failures),
-            "warnings": list(result.quality.warnings),
-            "raw_manifest_id": result.raw_manifest["manifest_id"],
-            "normalized_manifest_id": result.normalized_manifest["manifest_id"],
-            "artifact_sha256": result.normalized_manifest["artifact_sha256"],
+            "state": quality.state,
+            "failures": list(quality.failures),
+            "warnings": list(quality.warnings),
+            "raw_manifest_id": raw_manifests[0]["manifest_id"],
+            "raw_manifest_ids": [item["manifest_id"] for item in raw_manifests],
+            "raw_page_count": len(raw_manifests),
+            "normalized_manifest_id": normalized_manifest["manifest_id"],
+            "artifact_sha256": normalized_manifest["artifact_sha256"],
             "next_action": next_action,
             "execution_authority": False,
         },
@@ -932,12 +1073,27 @@ def _normalized_member(
     )
 
 
-def _coverage_row(manifest: dict[str, object]) -> dict[str, object]:
+def _coverage_row(
+    manifest: dict[str, object], *, store: CryptoBulkStore | None = None
+) -> dict[str, object]:
     dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
     quality = CryptoQualityReportV1.from_dict(manifest.get("quality"))
     manifest_id = manifest.get("manifest_id")
     if not isinstance(manifest_id, str):
         raise DataError("crypto normalized manifest id is invalid")
+    fetched_at: str | None = None
+    input_manifest_ids = manifest.get("input_manifest_ids")
+    if store is not None and isinstance(input_manifest_ids, list) and input_manifest_ids:
+        receipt_times: set[str] = set()
+        for input_manifest_id in input_manifest_ids:
+            raw_manifest = store.verify_manifest(input_manifest_id)
+            raw_receipt = raw_manifest.get("receipt")
+            if raw_receipt is None:
+                receipt_times.clear()
+                break
+            receipt_times.add(CryptoRawReceiptV1.from_dict(raw_receipt).fetched_at.isoformat())
+        if len(receipt_times) == 1:
+            fetched_at = receipt_times.pop()
     return {
         "manifest_id": manifest_id,
         "provider": dataset.provider,
@@ -958,6 +1114,7 @@ def _coverage_row(manifest: dict[str, object]) -> dict[str, object]:
         "row_count": quality.row_count,
         "artifact_sha256": quality.dataset_sha256,
         "method_version": quality.method_version,
+        "fetched_at": fetched_at,
     }
 
 
@@ -965,9 +1122,10 @@ def _coverage_row(manifest: dict[str, object]) -> dict[str, object]:
 def coverage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
     """Show exact normalized family coverage and qualification without provider probes."""
     try:
+        store = _bulk_store()
         items = [
-            _coverage_row(manifest)
-            for manifest in _bulk_store().inventory()
+            _coverage_row(manifest, store=store)
+            for manifest in store.inventory()
             if manifest.get("artifact_kind") == "normalized"
         ]
     except DataError as exc:
@@ -1001,7 +1159,7 @@ def quality(
         manifest = _bulk_store().verify_manifest(manifest_id)
         if manifest.get("artifact_kind") != "normalized":
             raise DataError("crypto quality requires a normalized manifest")
-        row = _coverage_row(manifest)
+        row = _coverage_row(manifest, store=_bulk_store())
         report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc

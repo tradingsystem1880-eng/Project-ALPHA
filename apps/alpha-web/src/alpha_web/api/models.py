@@ -691,6 +691,201 @@ class JobDetail(JobSummary):
     lines: list[str]
 
 
+type CryptoFamilyValue = Literal[
+    "market_bars",
+    "trades",
+    "aggregate_trades",
+    "book_snapshots",
+    "funding",
+    "open_interest",
+    "long_short_ratio",
+    "mark_bars",
+    "index_bars",
+    "premium_bars",
+    "option_instruments",
+    "option_quotes",
+    "historical_volatility",
+    "asset_metadata",
+    "market_reference",
+    "onchain_metrics",
+    "dex_pools",
+    "dex_ohlcv",
+    "dex_transactions",
+    "comparison_bars",
+]
+type CryptoProviderValue = Literal["binance", "bybit", "coingecko", "geckoterminal", "coinmetrics"]
+type CryptoQualificationStateValue = Literal[
+    "unverified", "unavailable", "qualified", "warning", "quarantined"
+]
+
+
+class CryptoAuthorityRow(StrictModel):
+    family: CryptoFamilyValue
+    provider: str
+    role: Literal["primary_acquisition", "diagnostic_comparison"]
+
+
+class CryptoCatalogResponse(StrictModel):
+    families: list[CryptoAuthorityRow]
+    automatic_fallback: Literal[False]
+    execution_authority: Literal[False]
+    next_action: str
+
+
+class CryptoStorageResponse(StrictModel):
+    state: Literal["ready", "blocked"]
+    blocker: str | None
+    bulk_root_label: str
+    manifest_count: int = Field(ge=0)
+    next_action: str
+    free_bytes: int | None = Field(default=None, ge=0)
+    total_bytes: int | None = Field(default=None, ge=0)
+    reserve_fraction: float | None = Field(default=None, ge=0, lt=1)
+    minimum_free_bytes: int | None = Field(default=None, ge=0)
+
+
+class CryptoEstimateRequest(StrictModel):
+    family: CryptoFamilyValue
+    instruments: int = Field(default=1, ge=1, le=250)
+    days: int = Field(default=30, ge=1, le=3_650)
+    frequency: Literal["1d", "1h", "5m", "1m", "tick"] = "1d"
+
+
+class CryptoEstimateResponse(StrictModel):
+    family: CryptoFamilyValue
+    provider: str
+    instruments: int
+    days: int
+    frequency: str
+    estimated_rows: int = Field(ge=0)
+    estimated_bytes: int = Field(ge=0)
+    bounded: Literal[True]
+    estimate_only: Literal[True]
+    next_action: str
+
+
+class CryptoCoverageItem(StrictModel):
+    manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    provider: str
+    venue: str
+    market_type: Literal["spot", "linear", "inverse", "option", "dex", "network"]
+    family: CryptoFamilyValue
+    instrument: str
+    base_asset: str | None
+    quote_asset: str | None
+    frequency: str
+    units: str
+    timestamp_convention: str
+    state: CryptoQualificationStateValue
+    failures: list[str]
+    warnings: list[str]
+    observed_start: str | None
+    observed_end: str | None
+    row_count: int = Field(ge=0)
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    method_version: str
+    fetched_at: str | None
+
+
+class CryptoCoverageResponse(StrictModel):
+    items: list[CryptoCoverageItem]
+    count: int = Field(ge=0)
+    canonical_next_action: str
+    automatic_fallback: Literal[False]
+    execution_authority: Literal[False]
+
+
+class CryptoAssetIdentityResponse(StrictModel):
+    schema_version: Literal[1]
+    coingecko_id: str
+    network: str
+    contract_address: str | None
+    native_asset: bool
+    provider_symbols: list[tuple[str, str]]
+    valid_from: str
+    valid_to: str | None
+    migration_lineage: list[str]
+
+
+class CryptoQualityReportResponse(StrictModel):
+    schema_version: Literal[1]
+    dataset_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    method_version: str
+    state: CryptoQualificationStateValue
+    failures: list[str]
+    warnings: list[str]
+    observed_start: str | None
+    observed_end: str | None
+    row_count: int = Field(ge=0)
+    correction_lineage: list[str]
+
+
+class CryptoDatasetIdentityResponse(StrictModel):
+    provider: str
+    venue: str
+    market_type: Literal["spot", "linear", "inverse", "option", "dex", "network"]
+    family: CryptoFamilyValue
+    instrument: str
+    base_asset: str | None
+    quote_asset: str | None
+    frequency: str
+    units: str
+    timestamp_convention: str
+
+
+class CryptoQualityResponse(StrictModel):
+    manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    dataset: CryptoDatasetIdentityResponse
+    quality: CryptoQualityReportResponse
+    next_action: str
+
+
+class CryptoAcquisitionRequest(StrictModel):
+    provider: CryptoProviderValue
+    family: CryptoFamilyValue
+    instrument: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
+    base: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
+    quote: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
+    category: Literal["spot", "linear", "inverse"] = "linear"
+    frequency: Literal["1d", "1h", "5m", "1m"] = "1h"
+    period: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")
+    network: str | None = Field(default=None, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
+    pool_address: str | None = Field(default=None, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
+    metrics: list[str] = Field(default_factory=list, max_length=32)
+    start: str | None = Field(default=None, max_length=64)
+    end: str | None = Field(default=None, max_length=64)
+
+
+class CryptoSnapshotCreateRequest(StrictModel):
+    manifest_ids: list[str] = Field(min_length=1, max_length=128)
+
+
+class CryptoSnapshotCreateResponse(StrictModel):
+    snapshot_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    member_count: int = Field(ge=1)
+    families: list[CryptoFamilyValue]
+    providers: list[str]
+    state: Literal["frozen"]
+    next_action: str
+    execution_authority: Literal[False]
+
+
+class CryptoSnapshotVerifyRequest(StrictModel):
+    required_families: list[CryptoFamilyValue] = Field(default_factory=list, max_length=20)
+    purpose: Literal["research", "validation", "execution_price"] = "research"
+
+
+class CryptoSnapshotVerifyResponse(StrictModel):
+    snapshot_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    eligible: bool
+    purpose: Literal["research", "validation", "execution_price"]
+    qualified_families: list[CryptoFamilyValue]
+    supplemental_families: list[CryptoFamilyValue]
+    blockers: list[str]
+    next_action: str
+    execution_authority: Literal[False]
+
+
 type JsonScalar = str | int | float | bool | None
 type JsonObject = dict[str, JsonValue]
 

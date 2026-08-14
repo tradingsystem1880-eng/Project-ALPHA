@@ -1079,6 +1079,85 @@ const ACTIVE_GATE_OVERRIDE: components['schemas']['ActiveResearchGateOverride'] 
   recorded_at: '2026-08-10T00:00:00Z',
 }
 
+const CRYPTO_MANIFEST_ID = '6'.repeat(64)
+const CRYPTO_OPTION_MANIFEST_ID = '7'.repeat(64)
+const CRYPTO_QUARANTINED_ID = '8'.repeat(64)
+const CRYPTO_SNAPSHOT_ID = '9'.repeat(64)
+const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
+  items: [
+    {
+      manifest_id: CRYPTO_MANIFEST_ID,
+      provider: 'bybit',
+      venue: 'bybit',
+      market_type: 'linear',
+      family: 'funding',
+      instrument: 'BTCUSDT',
+      base_asset: 'BTC',
+      quote_asset: 'USDT',
+      frequency: 'funding_interval',
+      units: 'dimensionless_rate',
+      timestamp_convention: 'provider_event_utc',
+      state: 'qualified',
+      failures: [],
+      warnings: [],
+      observed_start: '2026-06-01T00:00:00Z',
+      observed_end: '2026-08-14T16:00:00Z',
+      row_count: 200,
+      artifact_sha256: 'a'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: '2026-08-15T00:00:00Z',
+    },
+    {
+      manifest_id: CRYPTO_OPTION_MANIFEST_ID,
+      provider: 'bybit',
+      venue: 'bybit',
+      market_type: 'option',
+      family: 'option_quotes',
+      instrument: 'BTC',
+      base_asset: 'BTC',
+      quote_asset: 'USDT',
+      frequency: 'point_in_time_chain',
+      units: 'provider_native',
+      timestamp_convention: 'provider_event_utc',
+      state: 'qualified',
+      failures: [],
+      warnings: [],
+      observed_start: '2026-08-15T00:00:00Z',
+      observed_end: '2026-08-15T00:00:00Z',
+      row_count: 582,
+      artifact_sha256: 'b'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: '2026-08-15T00:00:00Z',
+    },
+    {
+      manifest_id: CRYPTO_QUARANTINED_ID,
+      provider: 'bybit',
+      venue: 'bybit',
+      market_type: 'option',
+      family: 'option_quotes',
+      instrument: 'BTC',
+      base_asset: 'BTC',
+      quote_asset: 'USD',
+      frequency: 'point_in_time_chain',
+      units: 'provider_native',
+      timestamp_convention: 'provider_event_utc',
+      state: 'quarantined',
+      failures: ['quote_identity_mismatch'],
+      warnings: [],
+      observed_start: '2026-08-14T00:00:00Z',
+      observed_end: '2026-08-14T00:00:00Z',
+      row_count: 582,
+      artifact_sha256: 'c'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: null,
+    },
+  ],
+  count: 3,
+  canonical_next_action: 'Select qualified families for a snapshot.',
+  automatic_fallback: false,
+  execution_authority: false,
+}
+
 // R6h (spec §15): an `open` research-required gate disables strategy-creation and
 // optimisation affordances on the Develop desk with the reason and a link to the case;
 // grandfathered (`not_required`) projects and non-research contexts stay fully enabled.
@@ -1255,6 +1334,97 @@ function responseFor(route: Route, options: MockOptions): unknown {
       limit: 100,
       offset: 0,
     }
+  }
+  if (url.pathname === '/api/crypto-data/catalog') {
+    return {
+      families: [
+        { family: 'funding', provider: 'bybit', role: 'primary_acquisition' },
+        { family: 'option_quotes', provider: 'bybit', role: 'primary_acquisition' },
+      ],
+      automatic_fallback: false,
+      execution_authority: false,
+      next_action: 'Check storage before estimating or acquiring data.',
+    } satisfies components['schemas']['CryptoCatalogResponse']
+  }
+  if (url.pathname === '/api/crypto-data/storage') {
+    return {
+      state: 'ready',
+      blocker: null,
+      bulk_root_label: 'crypto-data',
+      manifest_count: 6,
+      next_action: 'Estimate one bounded dataset acquisition.',
+      free_bytes: 1_800_000_000_000,
+      total_bytes: 2_000_000_000_000,
+      reserve_fraction: 0.15,
+      minimum_free_bytes: 100_000_000_000,
+    } satisfies components['schemas']['CryptoStorageResponse']
+  }
+  if (url.pathname === '/api/crypto-data/coverage') return CRYPTO_COVERAGE
+  if (url.pathname === '/api/crypto-data/estimate') {
+    return {
+      family: 'option_quotes',
+      provider: 'bybit',
+      instruments: 1,
+      days: 30,
+      frequency: '1h',
+      estimated_rows: 720,
+      estimated_bytes: 345_600,
+      bounded: true,
+      estimate_only: true,
+      next_action: 'Verify storage, then start one bounded acquisition.',
+    } satisfies components['schemas']['CryptoEstimateResponse']
+  }
+  if (url.pathname === '/api/crypto-data/acquisitions') {
+    return { job_id: 'crypto-job-1', status: 'running', session_id: null }
+  }
+  if (url.pathname === '/api/crypto-data/snapshots') {
+    return {
+      snapshot_id: CRYPTO_SNAPSHOT_ID,
+      member_count: 1,
+      families: ['option_quotes'],
+      providers: ['bybit'],
+      state: 'frozen',
+      next_action: 'Verify the snapshot for the exact research purpose.',
+      execution_authority: false,
+    } satisfies components['schemas']['CryptoSnapshotCreateResponse']
+  }
+  if (url.pathname === `/api/crypto-data/snapshots/${CRYPTO_SNAPSHOT_ID}/verify`) {
+    return {
+      snapshot_id: CRYPTO_SNAPSHOT_ID,
+      eligible: true,
+      purpose: 'research',
+      qualified_families: ['option_quotes'],
+      supplemental_families: [],
+      blockers: [],
+      next_action: 'Bind this snapshot to the exact research proposal.',
+      execution_authority: false,
+    } satisfies components['schemas']['CryptoSnapshotVerifyResponse']
+  }
+  if (url.pathname === `/api/crypto-data/quality/${CRYPTO_OPTION_MANIFEST_ID}`) {
+    return {
+      manifest_id: CRYPTO_OPTION_MANIFEST_ID,
+      dataset: {
+        provider: 'bybit', venue: 'bybit', market_type: 'option', family: 'option_quotes',
+        instrument: 'BTC', base_asset: 'BTC', quote_asset: 'USDT',
+        frequency: 'point_in_time_chain', units: 'provider_native',
+        timestamp_convention: 'provider_event_utc',
+      },
+      quality: {
+        schema_version: 1, dataset_sha256: 'b'.repeat(64),
+        method_version: 'crypto-quality-v1', state: 'qualified', failures: [], warnings: [],
+        observed_start: '2026-08-15T00:00:00Z', observed_end: '2026-08-15T00:00:00Z',
+        row_count: 582, correction_lineage: [],
+      },
+      next_action: 'Select this dataset for a frozen snapshot.',
+    } satisfies components['schemas']['CryptoQualityResponse']
+  }
+  if (url.pathname === '/api/crypto-data/assets/BTC') {
+    return {
+      schema_version: 1,
+      coingecko_id: 'bitcoin', network: 'bitcoin', contract_address: null,
+      native_asset: true, provider_symbols: [['bybit', 'BTC']],
+      valid_from: '2009-01-03T00:00:00Z', valid_to: null, migration_lineage: [],
+    } satisfies components['schemas']['CryptoAssetIdentityResponse']
   }
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/context-packets`) {
     return { items: [RESEARCH_PACKET], limit: 50, offset: 0 }
@@ -1802,6 +1972,49 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
   await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
   await expect(page.getByText(/snapshot snap1 · manifest/)).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('crypto data center guides acquisition, quality, and exact snapshot verification', async ({ page }) => {
+  await preparePage(page)
+
+  await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
+  const center = page.getByRole('region', { name: 'Crypto Data Center' })
+  await expect(center.getByText('Select qualified datasets for one exact frozen snapshot.')).toBeVisible()
+  await center.getByRole('tab', { name: 'Options & Volatility', exact: true }).click()
+  await expect(center.getByText('option quotes · bybit/bybit').first()).toBeVisible()
+  await expect(center.getByText('QUARANTINED', { exact: true })).toBeVisible()
+
+  await center.getByRole('button', { name: 'Estimate storage', exact: true }).click()
+  await expect(center.getByText(/720 rows · about/)).toBeVisible()
+  await center.getByLabel('Frequency').selectOption('5m')
+  await expect(center.getByText(/720 rows · about/)).toHaveCount(0)
+
+  await center.getByRole('button', { name: 'Acquire & qualify', exact: true }).click()
+  await expect(center.getByText(/Fetching one bounded provider response/)).toBeVisible()
+  await expect(center.getByText(/normalized_manifest_id/)).toHaveCount(0)
+
+  await center.getByLabel('Select qualified option_quotes BTC USDT').check()
+  await expect(center.getByText('Freeze the 1 selected qualified dataset into a snapshot.')).toBeVisible()
+  await center.getByRole('button', { name: 'Freeze selected snapshot', exact: true }).click()
+  await expect(center.getByText('Frozen · 1 members', { exact: true })).toBeVisible()
+  await center.getByRole('button', { name: 'Verify for research', exact: true }).click()
+  await expect(center.getByText('ELIGIBLE', { exact: true })).toBeVisible()
+  await expect(center.getByText(new RegExp(CRYPTO_SNAPSHOT_ID))).toBeHidden()
+
+  const qualifiedOption = center.locator('.crypto-dataset').filter({ hasText: 'USDT' }).first()
+  await qualifiedOption.getByRole('button', { name: 'Quality', exact: true }).click()
+  await expect(center.getByText(/Mechanical quality · BTC · option quotes/)).toBeVisible()
+
+  await center.getByRole('tab', { name: 'Storage & Jobs', exact: true }).click()
+  await expect(center.getByText('READY', { exact: true })).toBeVisible()
+  await expect(center.getByText('1.8 TB free of 2.0 TB')).toBeVisible()
+  await expect(center.getByText(/\/Volumes\//)).toHaveCount(0)
+
+  const overflow = await page.locator('.research-data-explorer').evaluate(
+    (element) => element.scrollWidth - element.clientWidth,
+  )
+  expect(overflow).toBe(0)
   await expectReleaseAccessibility(page)
 })
 

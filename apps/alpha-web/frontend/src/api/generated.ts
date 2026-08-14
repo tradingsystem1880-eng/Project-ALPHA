@@ -86,6 +86,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/acquisitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acquire */
+        post: operations["acquire_api_crypto_data_acquisitions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/assets/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset */
+        get: operations["asset_api_crypto_data_assets__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog */
+        get: operations["catalog_api_crypto_data_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coverage */
+        get: operations["coverage_api_crypto_data_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estimate */
+        post: operations["estimate_api_crypto_data_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/quality/{manifest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quality */
+        get: operations["quality_api_crypto_data_quality__manifest_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot Create */
+        post: operations["snapshot_create_api_crypto_data_snapshots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/snapshots/{snapshot_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot Verify */
+        post: operations["snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storage */
+        get: operations["storage_api_crypto_data_storage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/development/jobs": {
         parameters: {
             query?: never;
@@ -3785,6 +3938,360 @@ export interface components {
             name: string;
             /** Present */
             present: boolean;
+        };
+        /** CryptoAcquisitionRequest */
+        CryptoAcquisitionRequest: {
+            /** Base */
+            base: string;
+            /**
+             * Category
+             * @default linear
+             * @enum {string}
+             */
+            category: "spot" | "linear" | "inverse";
+            /** End */
+            end?: string | null;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /**
+             * Frequency
+             * @default 1h
+             * @enum {string}
+             */
+            frequency: "1d" | "1h" | "5m" | "1m";
+            /** Instrument */
+            instrument: string;
+            /** Metrics */
+            metrics?: string[];
+            /** Network */
+            network?: string | null;
+            /** Period */
+            period?: string | null;
+            /** Pool Address */
+            pool_address?: string | null;
+            provider: components["schemas"]["CryptoProviderValue"];
+            /** Quote */
+            quote: string;
+            /** Start */
+            start?: string | null;
+        };
+        /** CryptoAssetIdentityResponse */
+        CryptoAssetIdentityResponse: {
+            /** Coingecko Id */
+            coingecko_id: string;
+            /** Contract Address */
+            contract_address: string | null;
+            /** Migration Lineage */
+            migration_lineage: string[];
+            /** Native Asset */
+            native_asset: boolean;
+            /** Network */
+            network: string;
+            /** Provider Symbols */
+            provider_symbols: [
+                string,
+                string
+            ][];
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Valid From */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+        };
+        /** CryptoAuthorityRow */
+        CryptoAuthorityRow: {
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Provider */
+            provider: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "primary_acquisition" | "diagnostic_comparison";
+        };
+        /** CryptoCatalogResponse */
+        CryptoCatalogResponse: {
+            /**
+             * Automatic Fallback
+             * @constant
+             */
+            automatic_fallback: false;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Families */
+            families: components["schemas"]["CryptoAuthorityRow"][];
+            /** Next Action */
+            next_action: string;
+        };
+        /** CryptoCoverageItem */
+        CryptoCoverageItem: {
+            /** Artifact Sha256 */
+            artifact_sha256: string;
+            /** Base Asset */
+            base_asset: string | null;
+            /** Failures */
+            failures: string[];
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Instrument */
+            instrument: string;
+            /** Manifest Id */
+            manifest_id: string;
+            /**
+             * Market Type
+             * @enum {string}
+             */
+            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network";
+            /** Method Version */
+            method_version: string;
+            /** Observed End */
+            observed_end: string | null;
+            /** Observed Start */
+            observed_start: string | null;
+            /** Provider */
+            provider: string;
+            /** Quote Asset */
+            quote_asset: string | null;
+            /** Row Count */
+            row_count: number;
+            state: components["schemas"]["CryptoQualificationStateValue"];
+            /** Timestamp Convention */
+            timestamp_convention: string;
+            /** Units */
+            units: string;
+            /** Venue */
+            venue: string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** CryptoCoverageResponse */
+        CryptoCoverageResponse: {
+            /**
+             * Automatic Fallback
+             * @constant
+             */
+            automatic_fallback: false;
+            /** Canonical Next Action */
+            canonical_next_action: string;
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageItem"][];
+        };
+        /** CryptoDatasetIdentityResponse */
+        CryptoDatasetIdentityResponse: {
+            /** Base Asset */
+            base_asset: string | null;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequency */
+            frequency: string;
+            /** Instrument */
+            instrument: string;
+            /**
+             * Market Type
+             * @enum {string}
+             */
+            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network";
+            /** Provider */
+            provider: string;
+            /** Quote Asset */
+            quote_asset: string | null;
+            /** Timestamp Convention */
+            timestamp_convention: string;
+            /** Units */
+            units: string;
+            /** Venue */
+            venue: string;
+        };
+        /** CryptoEstimateRequest */
+        CryptoEstimateRequest: {
+            /**
+             * Days
+             * @default 30
+             */
+            days: number;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /**
+             * Frequency
+             * @default 1d
+             * @enum {string}
+             */
+            frequency: "1d" | "1h" | "5m" | "1m" | "tick";
+            /**
+             * Instruments
+             * @default 1
+             */
+            instruments: number;
+        };
+        /** CryptoEstimateResponse */
+        CryptoEstimateResponse: {
+            /**
+             * Bounded
+             * @constant
+             */
+            bounded: true;
+            /** Days */
+            days: number;
+            /**
+             * Estimate Only
+             * @constant
+             */
+            estimate_only: true;
+            /** Estimated Bytes */
+            estimated_bytes: number;
+            /** Estimated Rows */
+            estimated_rows: number;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequency */
+            frequency: string;
+            /** Instruments */
+            instruments: number;
+            /** Next Action */
+            next_action: string;
+            /** Provider */
+            provider: string;
+        };
+        /** @enum {string} */
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        /** @enum {string} */
+        CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics";
+        /** @enum {string} */
+        CryptoQualificationStateValue: "unverified" | "unavailable" | "qualified" | "warning" | "quarantined";
+        /** CryptoQualityReportResponse */
+        CryptoQualityReportResponse: {
+            /** Correction Lineage */
+            correction_lineage: string[];
+            /** Dataset Sha256 */
+            dataset_sha256: string;
+            /** Failures */
+            failures: string[];
+            /** Method Version */
+            method_version: string;
+            /** Observed End */
+            observed_end: string | null;
+            /** Observed Start */
+            observed_start: string | null;
+            /** Row Count */
+            row_count: number;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            state: components["schemas"]["CryptoQualificationStateValue"];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** CryptoQualityResponse */
+        CryptoQualityResponse: {
+            dataset: components["schemas"]["CryptoDatasetIdentityResponse"];
+            /** Manifest Id */
+            manifest_id: string;
+            /** Next Action */
+            next_action: string;
+            quality: components["schemas"]["CryptoQualityReportResponse"];
+        };
+        /** CryptoSnapshotCreateRequest */
+        CryptoSnapshotCreateRequest: {
+            /** Manifest Ids */
+            manifest_ids: string[];
+        };
+        /** CryptoSnapshotCreateResponse */
+        CryptoSnapshotCreateResponse: {
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Families */
+            families: components["schemas"]["CryptoFamilyValue"][];
+            /** Member Count */
+            member_count: number;
+            /** Next Action */
+            next_action: string;
+            /** Providers */
+            providers: string[];
+            /** Snapshot Id */
+            snapshot_id: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+        };
+        /** CryptoSnapshotVerifyRequest */
+        CryptoSnapshotVerifyRequest: {
+            /**
+             * Purpose
+             * @default research
+             * @enum {string}
+             */
+            purpose: "research" | "validation" | "execution_price";
+            /** Required Families */
+            required_families?: components["schemas"]["CryptoFamilyValue"][];
+        };
+        /** CryptoSnapshotVerifyResponse */
+        CryptoSnapshotVerifyResponse: {
+            /** Blockers */
+            blockers: string[];
+            /** Eligible */
+            eligible: boolean;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "research" | "validation" | "execution_price";
+            /** Qualified Families */
+            qualified_families: components["schemas"]["CryptoFamilyValue"][];
+            /** Snapshot Id */
+            snapshot_id: string;
+            /** Supplemental Families */
+            supplemental_families: components["schemas"]["CryptoFamilyValue"][];
+        };
+        /** CryptoStorageResponse */
+        CryptoStorageResponse: {
+            /** Blocker */
+            blocker: string | null;
+            /** Bulk Root Label */
+            bulk_root_label: string;
+            /** Free Bytes */
+            free_bytes?: number | null;
+            /** Manifest Count */
+            manifest_count: number;
+            /** Minimum Free Bytes */
+            minimum_free_bytes?: number | null;
+            /** Next Action */
+            next_action: string;
+            /** Reserve Fraction */
+            reserve_fraction?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "blocked";
+            /** Total Bytes */
+            total_bytes?: number | null;
         };
         /** DecisionPacket */
         DecisionPacket: {
@@ -8379,6 +8886,291 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommandDefinition"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    acquire_api_crypto_data_acquisitions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoAcquisitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_api_crypto_data_assets__symbol__get: {
+        parameters: {
+            query: {
+                as_of: string;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetIdentityResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    catalog_api_crypto_data_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCatalogResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    coverage_api_crypto_data_coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    estimate_api_crypto_data_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoEstimateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    quality_api_crypto_data_quality__manifest_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoQualityResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    snapshot_create_api_crypto_data_snapshots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoSnapshotCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoSnapshotCreateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoSnapshotVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoSnapshotVerifyResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    storage_api_crypto_data_storage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoStorageResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

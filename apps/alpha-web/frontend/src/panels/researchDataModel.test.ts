@@ -5,6 +5,9 @@ import {
   datasetAuditBadge,
   datasetOriginSummary,
   datasetRangeLabel,
+  cryptoCanonicalAction,
+  cryptoSectionForFamily,
+  latestCryptoManifestIds,
 } from './researchDataModel'
 
 function row(overrides: Partial<ResearchDatasetRefRow> = {}): ResearchDatasetRefRow {
@@ -63,5 +66,50 @@ describe('research data model', () => {
         }),
       ),
     ).toBe(`quantpad receipt ${'f'.repeat(32)} · response ${'d'.repeat(12)}…`)
+  })
+
+  it('maps every provider-native family into the intended owner section', () => {
+    expect(cryptoSectionForFamily('market_bars')).toBe('cex')
+    expect(cryptoSectionForFamily('funding')).toBe('derivatives')
+    expect(cryptoSectionForFamily('option_quotes')).toBe('options')
+    expect(cryptoSectionForFamily('onchain_metrics')).toBe('onchain')
+    expect(cryptoSectionForFamily('dex_pools')).toBe('dex')
+    expect(cryptoSectionForFamily('asset_metadata')).toBe('assets')
+  })
+
+  it('derives exactly one canonical next action from server state', () => {
+    expect(cryptoCanonicalAction({ loading: true })).toEqual({
+      state: 'loading',
+      label: 'Checking storage and qualified coverage…',
+    })
+    expect(
+      cryptoCanonicalAction({ storageState: 'blocked', storageBlocker: 'bulk_volume_not_mounted' }),
+    ).toEqual({
+      state: 'blocked',
+      label: 'Reconnect the reviewed Expansion volume, then refresh storage.',
+    })
+    expect(cryptoCanonicalAction({ storageState: 'ready', qualifiedCount: 0 })).toEqual({
+      state: 'ready',
+      label: 'Estimate one bounded dataset acquisition.',
+    })
+    expect(
+      cryptoCanonicalAction({ storageState: 'ready', qualifiedCount: 2, selectedCount: 1 }),
+    ).toEqual({
+      state: 'ready',
+      label: 'Freeze the 1 selected qualified dataset into a snapshot.',
+    })
+  })
+
+  it('selects the newest receipt per exact provider-native dataset identity', () => {
+    const base = {
+      provider: 'bybit', venue: 'bybit', market_type: 'linear', family: 'funding',
+      instrument: 'BTCUSDT', quote_asset: 'USDT', frequency: 'funding_interval',
+      units: 'dimensionless_rate',
+    } as const
+    expect(latestCryptoManifestIds([
+      { ...base, manifest_id: 'a'.repeat(64), fetched_at: '2026-08-14T00:00:00Z' },
+      { ...base, manifest_id: 'b'.repeat(64), fetched_at: '2026-08-15T00:00:00Z' },
+      { ...base, quote_asset: 'USD', manifest_id: 'c'.repeat(64), fetched_at: null },
+    ])).toEqual(new Set(['b'.repeat(64), 'c'.repeat(64)]))
   })
 })

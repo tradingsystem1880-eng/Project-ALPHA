@@ -16,7 +16,7 @@ from pathlib import Path
 
 from alpha_core import DataError
 
-from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
+from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1, CryptoRawReceiptV1
 
 _SAFE = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -254,7 +254,13 @@ class CryptoBulkStore:
             return current
         return self.append_staging(current, payload[current.bytes_written :])
 
-    def publish_staging(self, handle: StagingHandle, *, expected_sha256: str) -> dict[str, object]:
+    def publish_staging(
+        self,
+        handle: StagingHandle,
+        *,
+        expected_sha256: str,
+        receipt: CryptoRawReceiptV1 | None = None,
+    ) -> dict[str, object]:
         current = self.resume_staging(handle.staging_id)
         if current.bytes_written != current.expected_bytes:
             raise DataError("crypto staging payload is incomplete")
@@ -284,6 +290,15 @@ class CryptoBulkStore:
             "provider": current.provider,
             "receipt_id": current.receipt_id,
         }
+        if receipt is not None:
+            if (
+                receipt.receipt_id != current.receipt_id
+                or receipt.dataset.provider != current.provider
+                or receipt.response_sha256 != actual_hash
+                or receipt.response_bytes != current.expected_bytes
+            ):
+                raise DataError("crypto raw receipt does not match staged provider bytes")
+            body["receipt"] = receipt.to_dict()
         manifest = self._publish_manifest(body)
         shutil.rmtree(self._staging_path(handle.staging_id))
         return manifest

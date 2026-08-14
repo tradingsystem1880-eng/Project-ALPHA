@@ -1967,6 +1967,1079 @@
         "title": "CredentialStatus",
         "type": "object"
       },
+      "CryptoAcquisitionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "base": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "title": "Base",
+            "type": "string"
+          },
+          "category": {
+            "default": "linear",
+            "enum": [
+              "spot",
+              "linear",
+              "inverse"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "frequency": {
+            "default": "1h",
+            "enum": [
+              "1d",
+              "1h",
+              "5m",
+              "1m"
+            ],
+            "title": "Frequency",
+            "type": "string"
+          },
+          "instrument": {
+            "maxLength": 160,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Instrument",
+            "type": "string"
+          },
+          "metrics": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Metrics",
+            "type": "array"
+          },
+          "network": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "pool_address": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pool Address"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/CryptoProviderValue"
+          },
+          "quote": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "title": "Quote",
+            "type": "string"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          }
+        },
+        "required": [
+          "provider",
+          "family",
+          "instrument",
+          "base",
+          "quote"
+        ],
+        "title": "CryptoAcquisitionRequest",
+        "type": "object"
+      },
+      "CryptoAssetIdentityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "coingecko_id": {
+            "title": "Coingecko Id",
+            "type": "string"
+          },
+          "contract_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Address"
+          },
+          "migration_lineage": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Migration Lineage",
+            "type": "array"
+          },
+          "native_asset": {
+            "title": "Native Asset",
+            "type": "boolean"
+          },
+          "network": {
+            "title": "Network",
+            "type": "string"
+          },
+          "provider_symbols": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Provider Symbols",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "valid_from": {
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "schema_version",
+          "coingecko_id",
+          "network",
+          "contract_address",
+          "native_asset",
+          "provider_symbols",
+          "valid_from",
+          "valid_to",
+          "migration_lineage"
+        ],
+        "title": "CryptoAssetIdentityResponse",
+        "type": "object"
+      },
+      "CryptoAuthorityRow": {
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "primary_acquisition",
+              "diagnostic_comparison"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "provider",
+          "role"
+        ],
+        "title": "CryptoAuthorityRow",
+        "type": "object"
+      },
+      "CryptoCatalogResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic_fallback": {
+            "const": false,
+            "title": "Automatic Fallback",
+            "type": "boolean"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "families": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoAuthorityRow"
+            },
+            "title": "Families",
+            "type": "array"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "families",
+          "automatic_fallback",
+          "execution_authority",
+          "next_action"
+        ],
+        "title": "CryptoCatalogResponse",
+        "type": "object"
+      },
+      "CryptoCoverageItem": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Sha256",
+            "type": "string"
+          },
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "failures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": "string"
+          },
+          "manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "market_type": {
+            "enum": [
+              "spot",
+              "linear",
+              "inverse",
+              "option",
+              "dex",
+              "network"
+            ],
+            "title": "Market Type",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "observed_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed End"
+          },
+          "observed_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Start"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "row_count": {
+            "minimum": 0.0,
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CryptoQualificationStateValue"
+          },
+          "timestamp_convention": {
+            "title": "Timestamp Convention",
+            "type": "string"
+          },
+          "units": {
+            "title": "Units",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "manifest_id",
+          "provider",
+          "venue",
+          "market_type",
+          "family",
+          "instrument",
+          "base_asset",
+          "quote_asset",
+          "frequency",
+          "units",
+          "timestamp_convention",
+          "state",
+          "failures",
+          "warnings",
+          "observed_start",
+          "observed_end",
+          "row_count",
+          "artifact_sha256",
+          "method_version",
+          "fetched_at"
+        ],
+        "title": "CryptoCoverageItem",
+        "type": "object"
+      },
+      "CryptoCoverageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic_fallback": {
+            "const": false,
+            "title": "Automatic Fallback",
+            "type": "boolean"
+          },
+          "canonical_next_action": {
+            "title": "Canonical Next Action",
+            "type": "string"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoCoverageItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "count",
+          "canonical_next_action",
+          "automatic_fallback",
+          "execution_authority"
+        ],
+        "title": "CryptoCoverageResponse",
+        "type": "object"
+      },
+      "CryptoDatasetIdentityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": "string"
+          },
+          "market_type": {
+            "enum": [
+              "spot",
+              "linear",
+              "inverse",
+              "option",
+              "dex",
+              "network"
+            ],
+            "title": "Market Type",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "timestamp_convention": {
+            "title": "Timestamp Convention",
+            "type": "string"
+          },
+          "units": {
+            "title": "Units",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "venue",
+          "market_type",
+          "family",
+          "instrument",
+          "base_asset",
+          "quote_asset",
+          "frequency",
+          "units",
+          "timestamp_convention"
+        ],
+        "title": "CryptoDatasetIdentityResponse",
+        "type": "object"
+      },
+      "CryptoEstimateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "default": 30,
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "frequency": {
+            "default": "1d",
+            "enum": [
+              "1d",
+              "1h",
+              "5m",
+              "1m",
+              "tick"
+            ],
+            "title": "Frequency",
+            "type": "string"
+          },
+          "instruments": {
+            "default": 1,
+            "maximum": 250.0,
+            "minimum": 1.0,
+            "title": "Instruments",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "family"
+        ],
+        "title": "CryptoEstimateRequest",
+        "type": "object"
+      },
+      "CryptoEstimateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bounded": {
+            "const": true,
+            "title": "Bounded",
+            "type": "boolean"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "estimate_only": {
+            "const": true,
+            "title": "Estimate Only",
+            "type": "boolean"
+          },
+          "estimated_bytes": {
+            "minimum": 0.0,
+            "title": "Estimated Bytes",
+            "type": "integer"
+          },
+          "estimated_rows": {
+            "minimum": 0.0,
+            "title": "Estimated Rows",
+            "type": "integer"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "instruments": {
+            "title": "Instruments",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "provider",
+          "instruments",
+          "days",
+          "frequency",
+          "estimated_rows",
+          "estimated_bytes",
+          "bounded",
+          "estimate_only",
+          "next_action"
+        ],
+        "title": "CryptoEstimateResponse",
+        "type": "object"
+      },
+      "CryptoFamilyValue": {
+        "enum": [
+          "market_bars",
+          "trades",
+          "aggregate_trades",
+          "book_snapshots",
+          "funding",
+          "open_interest",
+          "long_short_ratio",
+          "mark_bars",
+          "index_bars",
+          "premium_bars",
+          "option_instruments",
+          "option_quotes",
+          "historical_volatility",
+          "asset_metadata",
+          "market_reference",
+          "onchain_metrics",
+          "dex_pools",
+          "dex_ohlcv",
+          "dex_transactions",
+          "comparison_bars"
+        ],
+        "type": "string"
+      },
+      "CryptoProviderValue": {
+        "enum": [
+          "binance",
+          "bybit",
+          "coingecko",
+          "geckoterminal",
+          "coinmetrics"
+        ],
+        "type": "string"
+      },
+      "CryptoQualificationStateValue": {
+        "enum": [
+          "unverified",
+          "unavailable",
+          "qualified",
+          "warning",
+          "quarantined"
+        ],
+        "type": "string"
+      },
+      "CryptoQualityReportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "correction_lineage": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Correction Lineage",
+            "type": "array"
+          },
+          "dataset_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Dataset Sha256",
+            "type": "string"
+          },
+          "failures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "observed_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed End"
+          },
+          "observed_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Start"
+          },
+          "row_count": {
+            "minimum": 0.0,
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CryptoQualificationStateValue"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "dataset_sha256",
+          "method_version",
+          "state",
+          "failures",
+          "warnings",
+          "observed_start",
+          "observed_end",
+          "row_count",
+          "correction_lineage"
+        ],
+        "title": "CryptoQualityReportResponse",
+        "type": "object"
+      },
+      "CryptoQualityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "dataset": {
+            "$ref": "#/components/schemas/CryptoDatasetIdentityResponse"
+          },
+          "manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/CryptoQualityReportResponse"
+          }
+        },
+        "required": [
+          "manifest_id",
+          "dataset",
+          "quality",
+          "next_action"
+        ],
+        "title": "CryptoQualityResponse",
+        "type": "object"
+      },
+      "CryptoSnapshotCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "manifest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "minItems": 1,
+            "title": "Manifest Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "manifest_ids"
+        ],
+        "title": "CryptoSnapshotCreateRequest",
+        "type": "object"
+      },
+      "CryptoSnapshotCreateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "families": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoFamilyValue"
+            },
+            "title": "Families",
+            "type": "array"
+          },
+          "member_count": {
+            "minimum": 1.0,
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "providers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Providers",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "state": {
+            "const": "frozen",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "member_count",
+          "families",
+          "providers",
+          "state",
+          "next_action",
+          "execution_authority"
+        ],
+        "title": "CryptoSnapshotCreateResponse",
+        "type": "object"
+      },
+      "CryptoSnapshotVerifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "purpose": {
+            "default": "research",
+            "enum": [
+              "research",
+              "validation",
+              "execution_price"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          },
+          "required_families": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoFamilyValue"
+            },
+            "maxItems": 20,
+            "title": "Required Families",
+            "type": "array"
+          }
+        },
+        "title": "CryptoSnapshotVerifyRequest",
+        "type": "object"
+      },
+      "CryptoSnapshotVerifyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "research",
+              "validation",
+              "execution_price"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          },
+          "qualified_families": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoFamilyValue"
+            },
+            "title": "Qualified Families",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "supplemental_families": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoFamilyValue"
+            },
+            "title": "Supplemental Families",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "eligible",
+          "purpose",
+          "qualified_families",
+          "supplemental_families",
+          "blockers",
+          "next_action",
+          "execution_authority"
+        ],
+        "title": "CryptoSnapshotVerifyResponse",
+        "type": "object"
+      },
+      "CryptoStorageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocker"
+          },
+          "bulk_root_label": {
+            "title": "Bulk Root Label",
+            "type": "string"
+          },
+          "free_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Bytes"
+          },
+          "manifest_count": {
+            "minimum": 0.0,
+            "title": "Manifest Count",
+            "type": "integer"
+          },
+          "minimum_free_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Free Bytes"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "reserve_fraction": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reserve Fraction"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "blocked"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "total_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Bytes"
+          }
+        },
+        "required": [
+          "state",
+          "blocker",
+          "bulk_root_label",
+          "manifest_count",
+          "next_action"
+        ],
+        "title": "CryptoStorageResponse",
+        "type": "object"
+      },
       "DecisionPacket": {
         "additionalProperties": false,
         "properties": {
@@ -15960,6 +17033,367 @@
         "summary": "Commands",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/crypto-data/acquisitions": {
+      "post": {
+        "operationId": "acquire_api_crypto_data_acquisitions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoAcquisitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Acquire",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/assets/{symbol}": {
+      "get": {
+        "operationId": "asset_api_crypto_data_assets__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": true,
+            "schema": {
+              "title": "As Of",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoAssetIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Asset",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/catalog": {
+      "get": {
+        "operationId": "catalog_api_crypto_data_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCatalogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Catalog",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/coverage": {
+      "get": {
+        "operationId": "coverage_api_crypto_data_coverage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCoverageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Coverage",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/estimate": {
+      "post": {
+        "operationId": "estimate_api_crypto_data_estimate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoEstimateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoEstimateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Estimate",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/quality/{manifest_id}": {
+      "get": {
+        "operationId": "quality_api_crypto_data_quality__manifest_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manifest_id",
+            "required": true,
+            "schema": {
+              "title": "Manifest Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoQualityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Quality",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/snapshots": {
+      "post": {
+        "operationId": "snapshot_create_api_crypto_data_snapshots_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoSnapshotCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoSnapshotCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Snapshot Create",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/snapshots/{snapshot_id}/verify": {
+      "post": {
+        "operationId": "snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoSnapshotVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoSnapshotVerifyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Snapshot Verify",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/storage": {
+      "get": {
+        "operationId": "storage_api_crypto_data_storage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoStorageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Storage",
+        "tags": [
+          "crypto-data"
         ]
       }
     },

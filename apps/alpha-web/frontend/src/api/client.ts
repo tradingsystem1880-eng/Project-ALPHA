@@ -8,6 +8,17 @@ import type {
   CommandDef,
   ControlJob,
   ControlJobDetail,
+  CryptoAcquisitionRequest,
+  CryptoAssetIdentity,
+  CryptoCatalog,
+  CryptoCoverage,
+  CryptoEstimate,
+  CryptoEstimateRequest,
+  CryptoQuality,
+  CryptoSnapshotCreate,
+  CryptoSnapshotVerify,
+  CryptoSnapshotVerifyRequest,
+  CryptoStorage,
   DecisionPacket,
   EvidencePage,
   EquitySeries,
@@ -295,6 +306,28 @@ export const api = {
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
   providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
+  cryptoCatalog: (): Promise<CryptoCatalog> => getJSON('/api/crypto-data/catalog'),
+  cryptoStorage: (): Promise<CryptoStorage> => getJSON('/api/crypto-data/storage'),
+  cryptoCoverage: (): Promise<CryptoCoverage> => getJSON('/api/crypto-data/coverage'),
+  cryptoAsset: (symbol: string, asOf: string): Promise<CryptoAssetIdentity> => {
+    const params = new URLSearchParams({ as_of: asOf })
+    return getJSON(`/api/crypto-data/assets/${encodeURIComponent(symbol)}?${params.toString()}`)
+  },
+  cryptoQuality: (manifestId: string): Promise<CryptoQuality> =>
+    getJSON(`/api/crypto-data/quality/${encodeURIComponent(manifestId)}`),
+  cryptoEstimate: (body: CryptoEstimateRequest): Promise<CryptoEstimate> =>
+    postJSON('/api/crypto-data/estimate', body),
+  cryptoAcquire: (
+    body: CryptoAcquisitionRequest,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
+    postJSON('/api/crypto-data/acquisitions', body),
+  cryptoSnapshotCreate: (manifestIds: string[]): Promise<CryptoSnapshotCreate> =>
+    postJSON('/api/crypto-data/snapshots', { manifest_ids: manifestIds }),
+  cryptoSnapshotVerify: (
+    snapshotId: string,
+    body: CryptoSnapshotVerifyRequest,
+  ): Promise<CryptoSnapshotVerify> =>
+    postJSON(`/api/crypto-data/snapshots/${encodeURIComponent(snapshotId)}/verify`, body),
   providerCheck: (providerId: string): Promise<ProviderCheckReceipt> =>
     postJSON(`/api/providers/${encodeURIComponent(providerId)}/check`, {}),
   system: (): Promise<SystemStatus> => getJSON('/api/system'),
