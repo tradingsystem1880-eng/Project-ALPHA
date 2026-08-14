@@ -21,6 +21,7 @@ from alpha_cli._atomic import write_text
 from alpha_core import DataError
 from alpha_data.adapters.quantpad_adapter import QuantPadAdapter
 from alpha_data.adapters.tiingo_adapter import TiingoAdapter
+from alpha_data.crypto.providers.coingecko import coingecko_demo_request, fetch_coingecko_demo
 
 type VerificationState = Literal[
     "verified",
@@ -60,6 +61,7 @@ _DETAIL_KEYS: Final = frozenset(
         "port",
         "permissions",
         "market_data",
+        "coin_id",
     }
 )
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -217,6 +219,24 @@ def _quantpad_check() -> tuple[tuple[str, ...], dict[str, object]]:
     }
 
 
+def _coingecko_check() -> tuple[tuple[str, ...], dict[str, object]]:
+    import os
+
+    api_key = os.environ.get("ALPHA_COINGECKO_API_KEY", "")
+    payload = fetch_coingecko_demo(coingecko_demo_request("ping", {}, api_key=api_key))
+    try:
+        raw = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DataError("CoinGecko Demo ping response is malformed") from exc
+    if not isinstance(raw, dict) or not isinstance(raw.get("gecko_says"), str):
+        raise DataError("CoinGecko Demo ping schema drifted")
+    return ("asset_metadata", "market_reference"), {
+        "interface": "rest_demo",
+        "coin_id": "ping",
+        "schema_version": 1,
+    }
+
+
 def _verified_what_if_receipt(data_dir: Path, account_alias: str, account_fingerprint: str) -> bool:
     roots = (
         Path(data_dir) / "ibkr-what-if-v2" / "receipts",
@@ -324,6 +344,7 @@ _CHECKERS: dict[str, Callable[[], tuple[tuple[str, ...], dict[str, object]]]] = 
     "tiingo": _tiingo_check,
     "quantpad": _quantpad_check,
     "ibkr": _ibkr_check,
+    "coingecko": _coingecko_check,
 }
 
 
@@ -332,7 +353,7 @@ def run_explicit_check(data_dir: Path, provider_id: str) -> dict[str, object]:
     provider = provider_id.strip().lower()
     checker = _CHECKERS.get(provider)
     if checker is None:
-        raise DataError("explicit checks are available only for tiingo, quantpad, and ibkr")
+        raise DataError("explicit checks are available only for supported providers")
     try:
         capabilities, details = _ibkr_check(data_dir) if provider == "ibkr" else checker()
     except ProviderCheckFailure as exc:

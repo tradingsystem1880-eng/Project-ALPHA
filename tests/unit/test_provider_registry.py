@@ -29,6 +29,9 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "finnhub",
         "binance",
         "bybit",
+        "coingecko",
+        "geckoterminal",
+        "coinmetrics",
         "ibkr",
     } == set(ids)
     historical_ids = {
@@ -148,6 +151,28 @@ def test_bybit_is_family_scoped_public_research_data_without_execution() -> None
     assert bybit.credential_env == ()
     assert bybit.research_authority is True
     assert bybit.paper_execution is False
+
+
+def test_crypto_reference_providers_have_distinct_family_authority() -> None:
+    definitions = {item.id: item for item in provider_definitions(environ={})}
+
+    assert definitions["coingecko"].capabilities == (
+        "crypto_asset_metadata",
+        "crypto_market_reference",
+    )
+    assert [item.name for item in definitions["coingecko"].credential_env] == [
+        "ALPHA_COINGECKO_API_KEY"
+    ]
+    assert definitions["geckoterminal"].capabilities == (
+        "crypto_dex_pools",
+        "crypto_dex_ohlcv",
+        "crypto_dex_transactions",
+    )
+    assert definitions["coinmetrics"].capabilities == ("crypto_onchain_metrics",)
+    assert all(
+        definitions[provider].research_authority and not definitions[provider].paper_execution
+        for provider in ("coingecko", "geckoterminal", "coinmetrics")
+    )
 
 
 def test_quantpad_is_registered_as_research_only_without_canonical_pull_authority() -> None:

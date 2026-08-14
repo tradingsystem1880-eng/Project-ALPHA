@@ -34,6 +34,9 @@ def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> Non
         "finnhub",
         "binance",
         "bybit",
+        "coingecko",
+        "geckoterminal",
+        "coinmetrics",
         "ibkr",
     } == set(providers)
     assert providers["finnhub"]["configured"] is True

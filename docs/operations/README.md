@@ -3,10 +3,21 @@
 This runbook is for the single-operator local deployment. Do not commit `.env`, Tiingo/IBKR
 credentials, account identifiers, Docker secrets, generated journals, or copied market data.
 
-The supplied Tiingo token, QuantPad token, and IBKR Paper account identifier are stored in the
-macOS keychain services `project-alpha-tiingo`, `project-alpha-quantpad`, and
-`project-alpha-ibkr-paper-account`. Repository files contain only those service names. The local
-`.env` is git-ignored and mode `0600`; it must not receive vendor or broker secrets.
+The supplied Tiingo token, QuantPad token, CoinGecko Demo key, and IBKR Paper account identifier are
+stored in the macOS keychain services `project-alpha-tiingo`, `project-alpha-quantpad`,
+`project-alpha-coingecko`, and `project-alpha-ibkr-paper-account`. Repository files contain only
+those service names. The local `.env` is git-ignored and mode `0600`; it must not receive vendor or
+broker secrets.
+
+For CoinGecko, run exactly one bounded authenticated readiness check with:
+
+```bash
+scripts/alpha-with-keychain-provider coingecko check
+```
+
+The launcher injects `ALPHA_COINGECKO_API_KEY` into only that replacement process. CoinGecko market
+reference, GeckoTerminal pool data, and Coin Metrics network data remain separate families;
+CoinGecko verification does not qualify any downloaded dataset.
 
 ## 1. Use QuantPad for external historical research
 

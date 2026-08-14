@@ -255,8 +255,26 @@ def test_explicit_check_redacts_vendor_errors_into_typed_receipts(
 
 
 def test_explicit_check_rejects_unknown_provider(tmp_path: Path) -> None:
-    with pytest.raises(DataError, match="only for tiingo"):
+    with pytest.raises(DataError, match="supported providers"):
         provider_readiness.run_explicit_check(tmp_path, "unknown")
+
+
+def test_coingecko_check_receipt_never_contains_injected_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    secret = "coingecko-secret-sentinel"
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", secret)
+    monkeypatch.setattr(
+        provider_readiness,
+        "fetch_coingecko_demo",
+        lambda *_args, **_kwargs: b'{"gecko_says":"(V3) To the Moon!"}',
+    )
+
+    receipt = provider_readiness.run_explicit_check(tmp_path, "coingecko")
+
+    assert receipt["verification_state"] == "verified"
+    assert receipt["granted_capabilities"] == ["asset_metadata", "market_reference"]
+    assert secret not in json.dumps(receipt)
 
 
 def test_ibkr_missing_local_prerequisites_are_connectivity_failed(

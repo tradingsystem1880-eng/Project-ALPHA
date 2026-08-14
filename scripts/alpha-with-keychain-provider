@@ -4,7 +4,7 @@ set -eu
 set +x
 
 if [ "$#" -ne 2 ]; then
-  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|finnhub> <check|workstation>" >&2
+  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|finnhub|coingecko> <check|workstation>" >&2
   exit 64
 fi
 
@@ -28,6 +28,10 @@ case "$provider" in
   finnhub)
     service=project-alpha-finnhub
     variable=ALPHA_FINNHUB_API_KEY
+    ;;
+  coingecko)
+    service=project-alpha-coingecko
+    variable=ALPHA_COINGECKO_API_KEY
     ;;
   *)
     echo "unsupported provider" >&2
