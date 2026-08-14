@@ -696,6 +696,7 @@ type CryptoFamilyValue = Literal[
     "trades",
     "aggregate_trades",
     "book_snapshots",
+    "market_membership",
     "instrument_catalog",
     "derivative_bars",
     "derivative_trades",
@@ -902,6 +903,44 @@ class CryptoQualityResponse(StrictModel):
     manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
     dataset: CryptoDatasetIdentityResponse
     quality: CryptoQualityReportResponse
+    next_action: str
+
+
+type CryptoFeatureNameValue = Literal[
+    "funding",
+    "open_interest_change",
+    "basis",
+    "volatility_surface",
+    "liquidity",
+    "onchain_change",
+]
+
+
+class CryptoFeatureCreateRequest(StrictModel):
+    feature_name: CryptoFeatureNameValue
+    inputs: dict[str, str] = Field(min_length=1, max_length=3)
+
+
+class CryptoFeatureResponse(StrictModel):
+    manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    feature_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    feature_name: CryptoFeatureNameValue
+    method_version: str
+    available_at: str
+    row_count: int = Field(ge=1)
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    input_count: int = Field(ge=1, le=3)
+    state: Literal["frozen", "verified"]
+    research_authority: Literal[False]
+    execution_authority: Literal[False]
+    next_action: str | None = None
+
+
+class CryptoFeatureListResponse(StrictModel):
+    items: list[CryptoFeatureResponse]
+    count: int = Field(ge=0)
+    research_authority: Literal[False]
+    execution_authority: Literal[False]
     next_action: str
 
 

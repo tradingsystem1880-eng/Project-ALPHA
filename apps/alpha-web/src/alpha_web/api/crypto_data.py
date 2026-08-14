@@ -21,6 +21,9 @@ from alpha_web.api.models import (
     CryptoCoverageResponse,
     CryptoEstimateRequest,
     CryptoEstimateResponse,
+    CryptoFeatureCreateRequest,
+    CryptoFeatureListResponse,
+    CryptoFeatureResponse,
     CryptoQualityResponse,
     CryptoSnapshotCreateRequest,
     CryptoSnapshotCreateResponse,
@@ -35,6 +38,15 @@ from alpha_web.api.models import (
 )
 
 router = APIRouter(prefix="/api/crypto-data", tags=["crypto-data"])
+
+_FEATURE_INPUT_ORDER = {
+    "funding": ("funding",),
+    "open_interest_change": ("open_interest",),
+    "basis": ("mark", "index", "premium"),
+    "volatility_surface": ("quotes", "instruments"),
+    "liquidity": ("pools",),
+    "onchain_change": ("onchain",),
+}
 
 
 def _project(args: list[str]) -> Any:
@@ -166,6 +178,36 @@ def quality(manifest_id: str) -> Any:
     if len(manifest_id) != 64 or any(char not in "0123456789abcdef" for char in manifest_id):
         raise HTTPException(status_code=422, detail="crypto manifest id is invalid")
     return _project(["crypto-data", "quality", manifest_id, "--json"])
+
+
+@router.post("/features", response_model=CryptoFeatureResponse)
+def feature_create(req: CryptoFeatureCreateRequest) -> Any:
+    expected = _FEATURE_INPUT_ORDER[req.feature_name]
+    if set(req.inputs) != set(expected):
+        raise HTTPException(
+            status_code=422,
+            detail=f"{req.feature_name} requires inputs: {', '.join(expected)}",
+        )
+    args = ["crypto-data", "feature-create", req.feature_name]
+    for name in expected:
+        manifest_id = req.inputs[name]
+        if len(manifest_id) != 64 or any(char not in "0123456789abcdef" for char in manifest_id):
+            raise HTTPException(status_code=422, detail="feature input manifest id is invalid")
+        args.extend(("--input", f"{name}={manifest_id}"))
+    args.append("--json")
+    return _project(args)
+
+
+@router.get("/features", response_model=CryptoFeatureListResponse)
+def features() -> Any:
+    return _project(["crypto-data", "features", "--json"])
+
+
+@router.get("/features/{manifest_id}", response_model=CryptoFeatureResponse)
+def feature_show(manifest_id: str) -> Any:
+    if len(manifest_id) != 64 or any(char not in "0123456789abcdef" for char in manifest_id):
+        raise HTTPException(status_code=422, detail="crypto feature manifest id is invalid")
+    return _project(["crypto-data", "feature-show", manifest_id, "--json"])
 
 
 @router.post("/estimate", response_model=CryptoEstimateResponse)

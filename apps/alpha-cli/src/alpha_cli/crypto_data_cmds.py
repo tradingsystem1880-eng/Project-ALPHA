@@ -35,6 +35,17 @@ from alpha_data.crypto.contracts import (
     CryptoSnapshotMemberV1,
     CryptoSnapshotV1,
 )
+from alpha_data.crypto.features import (
+    CryptoFeatureArtifactV1,
+    QualifiedCryptoFrame,
+    basis_features,
+    feature_frame_bytes,
+    funding_features,
+    liquidity_features,
+    onchain_features,
+    open_interest_features,
+    volatility_surface_features,
+)
 from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
 from alpha_data.crypto.profiles import (
     CoverageCadence,
@@ -2410,6 +2421,233 @@ def quality(
         },
         json_out=json_out,
     )
+
+
+_FEATURE_INPUT_NAMES: Final = {
+    "funding": ("funding",),
+    "open_interest_change": ("open_interest",),
+    "basis": ("mark", "index", "premium"),
+    "volatility_surface": ("quotes", "instruments"),
+    "liquidity": ("pools",),
+    "onchain_change": ("onchain",),
+}
+
+
+def _qualified_feature_source(
+    store: CryptoBulkStore, *, name: str, manifest_id: str
+) -> QualifiedCryptoFrame:
+    manifest = store.verify_manifest(manifest_id)
+    if manifest.get("artifact_kind") != "normalized":
+        raise DataError("crypto feature inputs must be normalized manifests")
+    dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+    quality = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    artifact_sha256 = manifest.get("artifact_sha256")
+    if not isinstance(artifact_sha256, str):
+        raise DataError("crypto feature input artifact hash is invalid")
+    return QualifiedCryptoFrame(
+        name=name,
+        dataset=dataset,
+        artifact_sha256=artifact_sha256,
+        quality=quality,
+        frame=_parquet_frame(store, manifest),
+    )
+
+
+def _create_feature(
+    feature_name: str,
+    *,
+    inputs: tuple[tuple[str, str], ...],
+    available_at: datetime,
+) -> dict[str, object]:
+    expected = _FEATURE_INPUT_NAMES.get(feature_name)
+    if expected is None:
+        raise DataError("crypto feature name is unsupported")
+    if tuple(name for name, _manifest_id in inputs) != expected or len(
+        {manifest_id for _name, manifest_id in inputs}
+    ) != len(inputs):
+        raise DataError(
+            f"crypto {feature_name} feature requires ordered inputs: {', '.join(expected)}"
+        )
+    store = _bulk_store()
+    sources = tuple(
+        _qualified_feature_source(store, name=name, manifest_id=manifest_id)
+        for name, manifest_id in inputs
+    )
+    if feature_name == "funding":
+        frame, artifact = funding_features(sources[0], available_at=available_at)
+    elif feature_name == "open_interest_change":
+        frame, artifact = open_interest_features(sources[0], available_at=available_at)
+    elif feature_name == "basis":
+        frame, artifact = basis_features(
+            sources[0], sources[1], sources[2], available_at=available_at
+        )
+    elif feature_name == "volatility_surface":
+        frame, artifact = volatility_surface_features(
+            sources[0], sources[1], available_at=available_at
+        )
+    elif feature_name == "liquidity":
+        frame, artifact = liquidity_features(sources[0], available_at=available_at)
+    else:
+        frame, artifact = onchain_features(sources[0], available_at=available_at)
+    payload = feature_frame_bytes(frame)
+    if hashlib.sha256(payload).hexdigest() != artifact.artifact_sha256:
+        raise DataError("crypto feature payload does not match its immutable contract")
+    derived = store.publish_derived(
+        payload,
+        derived_kind="crypto-feature",
+        input_manifest_ids=tuple(manifest_id for _name, manifest_id in inputs),
+        metadata={
+            "feature": artifact.to_dict(),
+            "input_manifest_ids_by_name": [list(item) for item in inputs],
+            "research_authority": False,
+            "execution_authority": False,
+        },
+    )
+    return {
+        "manifest_id": derived["manifest_id"],
+        "feature_id": artifact.feature_id,
+        "feature_name": artifact.feature_name,
+        "method_version": artifact.method_version,
+        "available_at": artifact.available_at.isoformat(),
+        "row_count": artifact.row_count,
+        "artifact_sha256": artifact.artifact_sha256,
+        "input_count": len(inputs),
+        "state": "frozen",
+        "research_authority": False,
+        "execution_authority": False,
+        "next_action": "Bind this feature beside its exact frozen crypto snapshot.",
+    }
+
+
+def _feature_projection(store: CryptoBulkStore, manifest: dict[str, object]) -> dict[str, object]:
+    if (
+        manifest.get("artifact_kind") != "derived"
+        or manifest.get("derived_kind") != "crypto-feature"
+        or not isinstance(manifest.get("metadata"), dict)
+    ):
+        raise DataError("crypto feature manifest is invalid")
+    metadata = cast(dict[str, object], manifest["metadata"])
+    if (
+        metadata.get("research_authority") is not False
+        or metadata.get("execution_authority") is not False
+        or not isinstance(metadata.get("input_manifest_ids_by_name"), list)
+    ):
+        raise DataError("crypto feature authority metadata is invalid")
+    artifact = CryptoFeatureArtifactV1.from_dict(metadata.get("feature"))
+    if manifest.get("artifact_sha256") != artifact.artifact_sha256:
+        raise DataError("crypto feature manifest does not match its artifact contract")
+    named_inputs = cast(list[object], metadata["input_manifest_ids_by_name"])
+    expected_names = _FEATURE_INPUT_NAMES[artifact.feature_name]
+    lineage_ids = manifest.get("input_manifest_ids")
+    if (
+        tuple(name for name, _digest in artifact.input_sha256) != expected_names
+        or len(named_inputs) != len(artifact.input_sha256)
+        or not isinstance(lineage_ids, list)
+        or len(lineage_ids) != len(named_inputs)
+    ):
+        raise DataError("crypto feature input lineage is incomplete")
+    for item, lineage_id, (expected_name, expected_hash) in zip(
+        named_inputs, lineage_ids, artifact.input_sha256, strict=True
+    ):
+        if (
+            not isinstance(item, list)
+            or len(item) != 2
+            or item[0] != expected_name
+            or not isinstance(item[1], str)
+            or item[1] != lineage_id
+            or store.verify_manifest(item[1]).get("artifact_sha256") != expected_hash
+        ):
+            raise DataError("crypto feature input lineage is invalid")
+    manifest_id = manifest.get("manifest_id")
+    if not isinstance(manifest_id, str):
+        raise DataError("crypto feature manifest id is invalid")
+    return {
+        "manifest_id": manifest_id,
+        "feature_id": artifact.feature_id,
+        "feature_name": artifact.feature_name,
+        "method_version": artifact.method_version,
+        "available_at": artifact.available_at.isoformat(),
+        "row_count": artifact.row_count,
+        "artifact_sha256": artifact.artifact_sha256,
+        "input_count": len(artifact.input_sha256),
+        "state": "verified",
+        "research_authority": False,
+        "execution_authority": False,
+    }
+
+
+@crypto_data_app.command("feature-create")
+def feature_create(
+    feature_name: str,
+    inputs: Annotated[
+        list[str] | None,
+        typer.Option("--input", help="repeat exact NAME=MANIFEST_ID"),
+    ] = None,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Materialize one immutable provenance-bound research feature."""
+    parsed: list[tuple[str, str]] = []
+    for value in inputs or ():
+        if "=" not in value:
+            raise typer.BadParameter("feature input must be NAME=MANIFEST_ID")
+        name, manifest_id = value.split("=", 1)
+        if _SHA256.fullmatch(manifest_id) is None:
+            raise typer.BadParameter("feature input manifest id is invalid")
+        parsed.append((name, manifest_id))
+    expected = _FEATURE_INPUT_NAMES.get(feature_name)
+    if expected is None:
+        raise typer.BadParameter("crypto feature name is unsupported")
+    by_name = dict(parsed)
+    if len(by_name) != len(parsed) or set(by_name) != set(expected):
+        raise typer.BadParameter(
+            f"crypto {feature_name} feature requires inputs: {', '.join(expected)}"
+        )
+    ordered = tuple((name, by_name[name]) for name in expected)
+    try:
+        result = _create_feature(feature_name, inputs=ordered, available_at=_now())
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result, json_out=json_out)
+
+
+@crypto_data_app.command("features")
+def features(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List immutable derived crypto features after full lineage re-verification."""
+    try:
+        store = _bulk_store()
+        items = [
+            _feature_projection(store, manifest)
+            for manifest in store.inventory()
+            if manifest.get("artifact_kind") == "derived"
+            and manifest.get("derived_kind") == "crypto-feature"
+        ]
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    items.sort(key=lambda item: (str(item["feature_name"]), str(item["manifest_id"])))
+    _emit(
+        {
+            "items": items,
+            "count": len(items),
+            "research_authority": False,
+            "execution_authority": False,
+            "next_action": "Create only a feature supported by exact qualified inputs.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("feature-show")
+def feature_show(
+    manifest_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Reverify one immutable derived feature and its exact input lineage."""
+    try:
+        store = _bulk_store()
+        result = _feature_projection(store, store.verify_manifest(manifest_id))
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result, json_out=json_out)
 
 
 def _comparison_frame(

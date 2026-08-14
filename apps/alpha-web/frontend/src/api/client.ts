@@ -17,6 +17,9 @@ import type {
   CryptoCoverage,
   CryptoEstimate,
   CryptoEstimateRequest,
+  CryptoFeature,
+  CryptoFeatureCreateRequest,
+  CryptoFeatures,
   CryptoQuality,
   CryptoSnapshotCreate,
   CryptoSnapshotRegister,
@@ -356,6 +359,11 @@ export const api = {
     postJSON(`/api/crypto-data/asset-masters/${encodeURIComponent(version)}/verify`, {}),
   cryptoQuality: (manifestId: string): Promise<CryptoQuality> =>
     getJSON(`/api/crypto-data/quality/${encodeURIComponent(manifestId)}`),
+  cryptoFeatures: (): Promise<CryptoFeatures> => getJSON('/api/crypto-data/features'),
+  cryptoFeatureCreate: (body: CryptoFeatureCreateRequest): Promise<CryptoFeature> =>
+    postJSON('/api/crypto-data/features', body),
+  cryptoFeature: (manifestId: string): Promise<CryptoFeature> =>
+    getJSON(`/api/crypto-data/features/${encodeURIComponent(manifestId)}`),
   cryptoEstimate: (body: CryptoEstimateRequest): Promise<CryptoEstimate> =>
     postJSON('/api/crypto-data/estimate', body),
   cryptoAcquire: (

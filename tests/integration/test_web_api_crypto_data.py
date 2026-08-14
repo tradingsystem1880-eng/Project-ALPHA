@@ -302,6 +302,71 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
     ]
 
 
+def test_crypto_feature_routes_build_named_lineage_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    source_id, feature_manifest = "a" * 64, "b" * 64
+    calls: list[list[str]] = []
+
+    def feature() -> dict[str, object]:
+        return {
+            "manifest_id": feature_manifest,
+            "feature_id": "c" * 64,
+            "feature_name": "funding",
+            "method_version": "crypto-features-v1",
+            "available_at": "2026-08-15T00:00:00+00:00",
+            "row_count": 2,
+            "artifact_sha256": "d" * 64,
+            "input_count": 1,
+            "state": "verified",
+            "research_authority": False,
+            "execution_authority": False,
+        }
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        if args[1] == "features":
+            return {
+                "items": [feature()],
+                "count": 1,
+                "research_authority": False,
+                "execution_authority": False,
+                "next_action": "Create only a supported feature.",
+            }
+        return feature() | ({"state": "frozen"} if args[1] == "feature-create" else {})
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    client = TestClient(create_app())
+    created = client.post(
+        "/api/crypto-data/features",
+        json={"feature_name": "funding", "inputs": {"funding": source_id}},
+    )
+    listed = client.get("/api/crypto-data/features")
+    shown = client.get(f"/api/crypto-data/features/{feature_manifest}")
+    invalid = client.post(
+        "/api/crypto-data/features",
+        json={"feature_name": "basis", "inputs": {"mark": source_id}},
+    )
+
+    assert created.status_code == 200, created.text
+    assert listed.status_code == 200, listed.text
+    assert shown.status_code == 200, shown.text
+    assert invalid.status_code == 422
+    assert calls == [
+        [
+            "crypto-data",
+            "feature-create",
+            "funding",
+            "--input",
+            f"funding={source_id}",
+            "--json",
+        ],
+        ["crypto-data", "features", "--json"],
+        ["crypto-data", "feature-show", feature_manifest, "--json"],
+    ]
+
+
 def test_crypto_asset_master_routes_build_closed_exact_identity_commands(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
@@ -12,6 +13,7 @@ from alpha_data.crypto.features import (
     CryptoFeatureArtifactV1,
     QualifiedCryptoFrame,
     basis_features,
+    feature_frame_bytes,
     funding_features,
     liquidity_features,
     onchain_features,
@@ -238,7 +240,11 @@ def test_feature_contracts_and_input_boundary_reject_malformed_state() -> None:
         with pytest.raises(DataError, match=message):
             changed.validate()
 
-    _, artifact = funding_features(source, available_at=NOW)
+    feature_frame, artifact = funding_features(source, available_at=NOW)
+    assert (
+        artifact.artifact_sha256 == hashlib.sha256(feature_frame_bytes(feature_frame)).hexdigest()
+    )
+    assert CryptoFeatureArtifactV1.from_dict(artifact.to_dict()) == artifact
     base = {
         "feature_id": artifact.feature_id,
         "feature_name": artifact.feature_name,

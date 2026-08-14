@@ -161,7 +161,9 @@ flowchart LR
     RR --> EXT["Expansion volume<br/>content-addressed public bytes"]
     EXT --> N["typed normalized family<br/>provider-native units and clocks"]
     N --> Q["CryptoQualityReportV1<br/>qualified or quarantined"]
+    Q --> F["CryptoFeatureArtifactV1<br/>exact Parquet · named input hashes"]
     Q --> S["CryptoSnapshotV1<br/>ordered exact membership"]
+    F --> S
     S --> R["research dataset registration<br/>availability-time guarded"]
 ```
 
@@ -214,6 +216,13 @@ Coinbase comparison bars are acquired through the existing venue-qualified CCXT 
 checks. A derived market-comparison artifact commits to the authoritative Binance input, every
 independent input hash, the exact quote/frequency identity, and mechanical thresholds; it never
 rewrites or substitutes the primary dataset.
+Funding, open-interest change, basis, volatility-surface, DEX-liquidity, and on-chain-change
+features are immutable derived Parquet artifacts. Their content-addressed manifests bind the
+ordered input manifest IDs by name, each reverified normalized artifact hash, the causal
+availability time, and the feature method version. CLI, REST, and the Guided Workstation accept
+only complete compatible qualified selections; listing or reading a feature re-hashes its bytes
+and complete source lineage. Features remain research inputs beside an exact snapshot and grant no
+research-gate or execution authority.
 Storage inventory and verification expose counts and hashes without private absolute paths.
 Cleanup is confined to `bulk/cache`, requires an explicit confirmation, and reports zero immutable
 artifacts removed; staging, raw, normalized, snapshot, manifest, and control roots are excluded.

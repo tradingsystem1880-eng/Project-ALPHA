@@ -1699,6 +1699,100 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
     assert "incomplete for 1 of 2" in incomplete.output
 
 
+def test_feature_create_persists_and_reverifies_exact_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    now = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    source = ingest_provider_payload(
+        store,
+        dataset=CryptoDatasetIdentityV1(
+            provider="bybit",
+            venue="bybit",
+            market_type="linear",
+            family="funding",
+            instrument="BTCUSDT",
+            base_asset="BTC",
+            quote_asset="USDT",
+            frequency="funding_interval",
+            units="provider_native_rate",
+            timestamp_convention="provider_event_utc",
+        ),
+        payload=b"fixture-funding",
+        request=(("symbol", "BTCUSDT"),),
+        fetched_at=now,
+        provider_schema="fixture",
+        parser_version="fixture-v1",
+        logical_name="funding.json",
+        parser=lambda _payload: pl.DataFrame(
+            {
+                "timestamp": [now - timedelta(hours=2), now - timedelta(hours=1)],
+                "funding_rate": [0.001, -0.0005],
+            }
+        ),
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+    )
+    source_id = str(source.normalized_manifest["manifest_id"])
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: now)
+
+    created = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "feature-create",
+            "funding",
+            "--input",
+            f"funding={source_id}",
+            "--json",
+        ],
+    )
+    assert created.exit_code == 0, created.output
+    payload = json.loads(created.stdout)
+    assert payload["state"] == "frozen"
+    assert payload["research_authority"] is False
+    assert payload["execution_authority"] is False
+    manifest = store.verify_manifest(payload["manifest_id"])
+    assert manifest["derived_kind"] == "crypto-feature"
+    assert manifest["input_manifest_ids"] == [source_id]
+    assert manifest["metadata"]["feature"]["artifact_sha256"] == manifest["artifact_sha256"]
+
+    shown = runner.invoke(
+        app,
+        ["crypto-data", "feature-show", payload["manifest_id"], "--json"],
+    )
+    assert shown.exit_code == 0, shown.output
+    assert json.loads(shown.stdout)["state"] == "verified"
+    listed = runner.invoke(app, ["crypto-data", "features", "--json"])
+    assert listed.exit_code == 0, listed.output
+    assert json.loads(listed.stdout)["count"] == 1
+
+    duplicated = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "feature-create",
+            "funding",
+            "--input",
+            f"funding={source_id}",
+            "--input",
+            f"funding={source_id}",
+        ],
+    )
+    assert duplicated.exit_code == 2
+    assert "requires inputs: funding" in duplicated.output
+
+
 def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

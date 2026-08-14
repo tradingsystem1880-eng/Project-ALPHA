@@ -3032,6 +3032,7 @@
           "trades",
           "aggregate_trades",
           "book_snapshots",
+          "market_membership",
           "instrument_catalog",
           "derivative_bars",
           "derivative_trades",
@@ -3054,6 +3055,166 @@
           "comparison_bars"
         ],
         "type": "string"
+      },
+      "CryptoFeatureCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "feature_name": {
+            "$ref": "#/components/schemas/CryptoFeatureNameValue"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 3,
+            "minProperties": 1,
+            "title": "Inputs",
+            "type": "object"
+          }
+        },
+        "required": [
+          "feature_name",
+          "inputs"
+        ],
+        "title": "CryptoFeatureCreateRequest",
+        "type": "object"
+      },
+      "CryptoFeatureListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoFeatureResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "research_authority": {
+            "const": false,
+            "title": "Research Authority",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "count",
+          "research_authority",
+          "execution_authority",
+          "next_action"
+        ],
+        "title": "CryptoFeatureListResponse",
+        "type": "object"
+      },
+      "CryptoFeatureNameValue": {
+        "enum": [
+          "funding",
+          "open_interest_change",
+          "basis",
+          "volatility_surface",
+          "liquidity",
+          "onchain_change"
+        ],
+        "type": "string"
+      },
+      "CryptoFeatureResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Sha256",
+            "type": "string"
+          },
+          "available_at": {
+            "title": "Available At",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "feature_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Feature Id",
+            "type": "string"
+          },
+          "feature_name": {
+            "$ref": "#/components/schemas/CryptoFeatureNameValue"
+          },
+          "input_count": {
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Input Count",
+            "type": "integer"
+          },
+          "manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "next_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Action"
+          },
+          "research_authority": {
+            "const": false,
+            "title": "Research Authority",
+            "type": "boolean"
+          },
+          "row_count": {
+            "minimum": 1.0,
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "frozen",
+              "verified"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manifest_id",
+          "feature_id",
+          "feature_name",
+          "method_version",
+          "available_at",
+          "row_count",
+          "artifact_sha256",
+          "input_count",
+          "state",
+          "research_authority",
+          "execution_authority"
+        ],
+        "title": "CryptoFeatureResponse",
+        "type": "object"
       },
       "CryptoProviderValue": {
         "enum": [
@@ -18068,6 +18229,118 @@
           }
         },
         "summary": "Estimate",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/features": {
+      "get": {
+        "operationId": "features_api_crypto_data_features_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoFeatureListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Features",
+        "tags": [
+          "crypto-data"
+        ]
+      },
+      "post": {
+        "operationId": "feature_create_api_crypto_data_features_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoFeatureCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoFeatureResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Feature Create",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/features/{manifest_id}": {
+      "get": {
+        "operationId": "feature_show_api_crypto_data_features__manifest_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manifest_id",
+            "required": true,
+            "schema": {
+              "title": "Manifest Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoFeatureResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Feature Show",
         "tags": [
           "crypto-data"
         ]

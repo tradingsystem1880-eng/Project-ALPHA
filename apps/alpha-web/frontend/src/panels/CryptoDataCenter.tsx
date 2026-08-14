@@ -12,6 +12,9 @@ import type {
   CryptoCoverageItem,
   CryptoEstimate,
   CryptoFamily,
+  CryptoFeature,
+  CryptoFeatureName,
+  CryptoFeatures,
   CryptoQuality,
   CryptoSnapshotCreate,
   CryptoSnapshotRegister,
@@ -25,6 +28,7 @@ import { JobConsole } from '../components/JobConsole'
 import { shortId } from '../util/format'
 import {
   cryptoCanonicalAction,
+  cryptoFeatureInputSelection,
   cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
   latestCryptoManifestIds,
@@ -53,6 +57,15 @@ const BYBIT_RANGED_FAMILIES = new Set<CryptoFamily>([
   'premium_bars',
   'historical_volatility',
 ])
+
+const FEATURE_CHOICES: { id: CryptoFeatureName; label: string; description: string }[] = [
+  { id: 'funding', label: 'Funding rate', description: 'Provider-native funding rate with exact availability time.' },
+  { id: 'open_interest_change', label: 'Open-interest change', description: 'Causal change in provider-native open interest.' },
+  { id: 'basis', label: 'Basis', description: 'Aligned mark, index, and premium observations for one instrument.' },
+  { id: 'volatility_surface', label: 'Volatility surface', description: 'Option quotes joined to the exact instrument catalog.' },
+  { id: 'liquidity', label: 'DEX liquidity', description: 'Pool liquidity retained in its native reported units.' },
+  { id: 'onchain_change', label: 'On-chain change', description: 'Causal changes in the selected network metrics.' },
+]
 
 function acquisitionProvider(value: string): CryptoAcquisitionRequest['provider'] | null {
   if (PROVIDERS.has(value)) return value as CryptoAcquisitionRequest['provider']
@@ -125,6 +138,9 @@ export function CryptoDataCenter({
   const [contractNetwork, setContractNetwork] = useState('ethereum')
   const [contractAddress, setContractAddress] = useState('')
   const [quality, setQuality] = useState<CryptoQuality | null>(null)
+  const [features, setFeatures] = useState<CryptoFeatures | null>(null)
+  const [featureName, setFeatureName] = useState<CryptoFeatureName>('funding')
+  const [createdFeature, setCreatedFeature] = useState<CryptoFeature | null>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [jobId, setJobId] = useState<string | null>(null)
   const [jobFinished, setJobFinished] = useState(false)
@@ -141,12 +157,13 @@ export function CryptoDataCenter({
     if (refresh) setRefreshing(true)
     else setLoading(true)
     try {
-      const [nextCatalog, nextCapabilities, nextAssetMasters, nextStorage, nextCoverage] = await Promise.all([
+      const [nextCatalog, nextCapabilities, nextAssetMasters, nextStorage, nextCoverage, nextFeatures] = await Promise.all([
         api.cryptoCatalog(),
         api.cryptoCapabilities(),
         api.cryptoAssetMasters(),
         api.cryptoStorage(),
         api.cryptoCoverage(),
+        api.cryptoFeatures(),
       ])
       setCatalog(nextCatalog)
       setCapabilities(nextCapabilities)
@@ -160,6 +177,7 @@ export function CryptoDataCenter({
       })
       setStorage(nextStorage)
       setCoverage(nextCoverage)
+      setFeatures(nextFeatures)
       setSelected((current) => {
         const admitted = new Set(
           nextCoverage.items
@@ -259,6 +277,29 @@ export function CryptoDataCenter({
       .filter((item) => selected.has(item.manifest_id) && item.base_asset)
       .map((item) => item.base_asset as string),
   )
+  const featureInputSelection = useMemo(
+    () => cryptoFeatureInputSelection(featureName, coverage?.items ?? [], selected),
+    [coverage, featureName, selected],
+  )
+
+  async function deriveFeature(): Promise<void> {
+    if (featureInputSelection.blocker) return
+    setBusyAction('feature')
+    setError(null)
+    try {
+      const created = await api.cryptoFeatureCreate({
+        feature_name: featureName,
+        inputs: featureInputSelection.inputs,
+      })
+      setCreatedFeature(created)
+      setFeatures(await api.cryptoFeatures())
+    } catch (reason: unknown) {
+      setCreatedFeature(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
 
   async function estimateAcquisition(): Promise<void> {
     setBusyAction('estimate')
@@ -692,6 +733,64 @@ export function CryptoDataCenter({
         <section className="provider-card" aria-label="Selected quality report">
           <div className="rd-head">Mechanical quality · {quality.dataset.instrument} · {quality.dataset.family.replaceAll('_', ' ')}</div>
           <div className="crypto-detail"><span className={stateClass(quality.quality.state)}>{quality.quality.state.toUpperCase()}</span><span>{quality.quality.row_count.toLocaleString()} rows · {quality.quality.observed_start ?? 'no start'} → {quality.quality.observed_end ?? 'no end'}</span><span>{quality.next_action}</span>{quality.quality.failures.length ? <strong>Failures: {quality.quality.failures.join(', ')}</strong> : null}{quality.quality.warnings.length ? <span>Warnings: {quality.quality.warnings.join(', ')}</span> : null}<span className="mono muted advanced-only">{quality.quality.dataset_sha256} · {quality.quality.method_version}</span></div>
+        </section>
+      ) : null}
+
+      {section === 'quality' ? (
+        <section className="provider-card" aria-label="Derived research features">
+          <div className="provider-card-head">
+            <div className="rd-head">Derived features</div>
+            <span className="chip kind">{features?.count ?? 0} frozen</span>
+          </div>
+          <p className="muted">Derivations use only the exact qualified datasets selected above. They preserve native provider lineage and grant no research or execution authority.</p>
+          <div className="crypto-form-grid">
+            <label>
+              <span className="eyebrow">Feature</span>
+              <select
+                className="field"
+                value={featureName}
+                onChange={(event) => {
+                  setFeatureName(event.target.value as CryptoFeatureName)
+                  setCreatedFeature(null)
+                }}
+              >
+                {FEATURE_CHOICES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            <div className="crypto-detail">
+              <span>{FEATURE_CHOICES.find((item) => item.id === featureName)?.description}</span>
+              <span className={featureInputSelection.blocker ? 'muted' : 'chip pass'}>
+                {featureInputSelection.blocker ?? 'EXACT INPUTS READY'}
+              </span>
+            </div>
+            <button
+              className="btn primary"
+              type="button"
+              disabled={busyAction !== null || featureInputSelection.blocker !== null}
+              onClick={() => void deriveFeature()}
+            >
+              {busyAction === 'feature' ? 'Deriving…' : 'Freeze selected feature'}
+            </button>
+          </div>
+          <p className="mono muted advanced-only">
+            alpha crypto-data feature-create {featureName}{Object.entries(featureInputSelection.inputs).map(([name, id]) => ` --input ${name}=${id}`).join('')}
+          </p>
+          {createdFeature ? (
+            <div className="workbench-notice" role="status">
+              <strong>FROZEN AND VERIFIED · {createdFeature.feature_name.replaceAll('_', ' ')}</strong>
+              <span>{createdFeature.row_count.toLocaleString()} rows · {createdFeature.input_count} exact input{createdFeature.input_count === 1 ? '' : 's'} · available {new Date(createdFeature.available_at).toLocaleString()}</span>
+              <span className="mono muted advanced-only">feature {createdFeature.feature_id} · artifact {createdFeature.artifact_sha256}</span>
+            </div>
+          ) : null}
+          <div className="crypto-coverage-list">
+            {(features?.items ?? []).map((item) => (
+              <article className="crypto-dataset" key={item.manifest_id}>
+                <span><strong>{item.feature_name.replaceAll('_', ' ')}</strong><span className="muted">{item.row_count.toLocaleString()} rows · {item.input_count} exact input{item.input_count === 1 ? '' : 's'}</span></span>
+                <span className="chip pass">{item.state.toUpperCase()}</span>
+                <span className="mono muted advanced-only">manifest {shortId(item.manifest_id)} · {item.method_version}</span>
+              </article>
+            ))}
+          </div>
         </section>
       ) : null}
 

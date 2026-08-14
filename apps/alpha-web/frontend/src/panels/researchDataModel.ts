@@ -2,7 +2,12 @@
 // provenance-chain summary. Registration itself is owner-CLI only (fail-closed on
 // receipts); this model only renders what the read plane serves.
 
-import type { CryptoFamily, ResearchDatasetRefRow } from '../api/types'
+import type {
+  CryptoCoverageItem,
+  CryptoFamily,
+  CryptoFeatureName,
+  ResearchDatasetRefRow,
+} from '../api/types'
 
 export type CryptoDataSection =
   | 'assets'
@@ -16,9 +21,82 @@ export type CryptoDataSection =
 
 export type CryptoMarketCategory = 'spot' | 'linear' | 'inverse' | 'option'
 
+export const CRYPTO_FEATURE_INPUTS: Record<CryptoFeatureName, readonly CryptoFamily[]> = {
+  funding: ['funding'],
+  open_interest_change: ['open_interest'],
+  basis: ['mark_bars', 'index_bars', 'premium_bars'],
+  volatility_surface: ['option_quotes', 'option_instruments'],
+  liquidity: ['dex_pools'],
+  onchain_change: ['onchain_metrics'],
+}
+
+const CRYPTO_FEATURE_INPUT_NAMES: Record<CryptoFeatureName, readonly string[]> = {
+  funding: ['funding'],
+  open_interest_change: ['open_interest'],
+  basis: ['mark', 'index', 'premium'],
+  volatility_surface: ['quotes', 'instruments'],
+  liquidity: ['pools'],
+  onchain_change: ['onchain'],
+}
+
+export interface CryptoFeatureInputSelection {
+  inputs: Record<string, string>
+  blocker: string | null
+}
+
+function compatibleFeatureIdentity(left: CryptoCoverageItem, right: CryptoCoverageItem): boolean {
+  return left.provider === right.provider
+    && left.venue === right.venue
+    && left.market_type === right.market_type
+    && left.instrument === right.instrument
+    && left.base_asset === right.base_asset
+    && left.quote_asset === right.quote_asset
+}
+
+export function cryptoFeatureInputSelection(
+  feature: CryptoFeatureName,
+  items: CryptoCoverageItem[],
+  selected: Set<string>,
+): CryptoFeatureInputSelection {
+  const requiredFamilies = CRYPTO_FEATURE_INPUTS[feature]
+  const candidates = items.filter(
+    (item) => item.state === 'qualified' && selected.has(item.manifest_id),
+  )
+  const chosen = requiredFamilies.map((family) => candidates
+    .filter((item) => item.family === family)
+    .sort((left, right) => `${right.fetched_at ?? ''}\u0000${right.manifest_id}`
+      .localeCompare(`${left.fetched_at ?? ''}\u0000${left.manifest_id}`)))
+  const missing = requiredFamilies.filter((_, index) => chosen[index].length === 0)
+  if (missing.length > 0) {
+    return {
+      inputs: {},
+      blocker: `Select qualified ${missing.map((item) => item.replaceAll('_', ' ')).join(', ')} data.`,
+    }
+  }
+  const anchor = chosen[0][0]
+  const compatible = chosen.map((familyCandidates, index) => {
+    if (index === 0 || requiredFamilies.length === 1) return familyCandidates[0]
+    return familyCandidates.find((item) => compatibleFeatureIdentity(anchor, item))
+  })
+  if (compatible.some((item) => !item)) {
+    return {
+      inputs: {},
+      blocker: 'Select inputs for the same provider, venue, market, instrument, base, and quote.',
+    }
+  }
+  return {
+    inputs: Object.fromEntries(
+      CRYPTO_FEATURE_INPUT_NAMES[feature].map((name, index) => [name, compatible[index]!.manifest_id]),
+    ),
+    blocker: null,
+  }
+}
+
 export function cryptoMarketChoicesForFamily(family: CryptoFamily): CryptoMarketCategory[] {
   if (family === 'comparison_bars') return ['spot']
-  if (family === 'instrument_catalog') return ['spot', 'linear', 'inverse', 'option']
+  if (family === 'instrument_catalog' || family === 'market_membership') {
+    return ['spot', 'linear', 'inverse', 'option']
+  }
   if (
     family === 'option_instruments'
     || family === 'option_quotes'
@@ -51,6 +129,7 @@ export function cryptoSectionForFamily(family: CryptoFamily): CryptoDataSection 
   if (
     family === 'funding'
     || family === 'instrument_catalog'
+    || family === 'market_membership'
     || family === 'derivative_bars'
     || family === 'derivative_trades'
     || family === 'derivative_book_snapshots'

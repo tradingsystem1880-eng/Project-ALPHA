@@ -240,6 +240,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Features */
+        get: operations["features_api_crypto_data_features_get"];
+        put?: never;
+        /** Feature Create */
+        post: operations["feature_create_api_crypto_data_features_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/features/{manifest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feature Show */
+        get: operations["feature_show_api_crypto_data_features__manifest_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/quality/{manifest_id}": {
         parameters: {
             query?: never;
@@ -4457,7 +4492,71 @@ export interface components {
             provider: string;
         };
         /** @enum {string} */
-        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        /** CryptoFeatureCreateRequest */
+        CryptoFeatureCreateRequest: {
+            feature_name: components["schemas"]["CryptoFeatureNameValue"];
+            /** Inputs */
+            inputs: {
+                [key: string]: string;
+            };
+        };
+        /** CryptoFeatureListResponse */
+        CryptoFeatureListResponse: {
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoFeatureResponse"][];
+            /** Next Action */
+            next_action: string;
+            /**
+             * Research Authority
+             * @constant
+             */
+            research_authority: false;
+        };
+        /** @enum {string} */
+        CryptoFeatureNameValue: "funding" | "open_interest_change" | "basis" | "volatility_surface" | "liquidity" | "onchain_change";
+        /** CryptoFeatureResponse */
+        CryptoFeatureResponse: {
+            /** Artifact Sha256 */
+            artifact_sha256: string;
+            /** Available At */
+            available_at: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Feature Id */
+            feature_id: string;
+            feature_name: components["schemas"]["CryptoFeatureNameValue"];
+            /** Input Count */
+            input_count: number;
+            /** Manifest Id */
+            manifest_id: string;
+            /** Method Version */
+            method_version: string;
+            /** Next Action */
+            next_action?: string | null;
+            /**
+             * Research Authority
+             * @constant
+             */
+            research_authority: false;
+            /** Row Count */
+            row_count: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "frozen" | "verified";
+        };
         /** @enum {string} */
         CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "ccxt:coinbase";
         /** @enum {string} */
@@ -9589,6 +9688,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoEstimateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    features_api_crypto_data_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoFeatureListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    feature_create_api_crypto_data_features_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoFeatureCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoFeatureResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    feature_show_api_crypto_data_features__manifest_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoFeatureResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

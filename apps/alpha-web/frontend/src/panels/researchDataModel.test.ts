@@ -6,6 +6,7 @@ import {
   datasetOriginSummary,
   datasetRangeLabel,
   cryptoCanonicalAction,
+  cryptoFeatureInputSelection,
   cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
   latestCryptoManifestIds,
@@ -76,6 +77,29 @@ describe('research data model', () => {
     expect(cryptoSectionForFamily('onchain_metrics')).toBe('onchain')
     expect(cryptoSectionForFamily('dex_pools')).toBe('dex')
     expect(cryptoSectionForFamily('asset_metadata')).toBe('assets')
+    expect(cryptoSectionForFamily('market_membership')).toBe('derivatives')
+  })
+
+  it('builds feature inputs only from exact compatible qualified selections', () => {
+    const coverage = (family: 'mark_bars' | 'index_bars' | 'premium_bars', id: string, instrument = 'BTCUSDT') => ({
+      manifest_id: id.repeat(64), provider: 'bybit', venue: 'bybit', market_type: 'linear' as const,
+      family, instrument, base_asset: 'BTC', quote_asset: 'USDT', frequency: '1h',
+      units: 'quote_per_base', state: 'qualified' as const, artifact_sha256: 'a'.repeat(64),
+      row_count: 2, fetched_at: '2026-08-15T00:00:00Z', method_version: 'crypto-quality-v1',
+      timestamp_convention: 'UTC period open', failures: [], warnings: [],
+      observed_start: '2026-08-14T00:00:00Z', observed_end: '2026-08-15T00:00:00Z',
+    })
+    const items = [coverage('mark_bars', '1'), coverage('index_bars', '2'), coverage('premium_bars', '3')]
+    expect(cryptoFeatureInputSelection('basis', items, new Set(items.map((item) => item.manifest_id)))).toEqual({
+      inputs: { mark: '1'.repeat(64), index: '2'.repeat(64), premium: '3'.repeat(64) },
+      blocker: null,
+    })
+    expect(cryptoFeatureInputSelection('basis', items, new Set([items[0].manifest_id]))).toEqual({
+      inputs: {}, blocker: 'Select qualified index bars, premium bars data.',
+    })
+    const mismatched = [items[0], coverage('index_bars', '2', 'ETHUSDT'), items[2]]
+    expect(cryptoFeatureInputSelection('basis', mismatched, new Set(mismatched.map((item) => item.manifest_id))).blocker)
+      .toBe('Select inputs for the same provider, venue, market, instrument, base, and quote.')
   })
 
   it('makes the truthful Bybit option market the only option-family choice', () => {

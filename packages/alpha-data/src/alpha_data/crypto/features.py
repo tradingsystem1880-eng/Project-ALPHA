@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Final, Literal
+from typing import Final, Literal, cast
 
 import polars as pl
 
@@ -26,6 +27,16 @@ type CryptoFeatureName = Literal[
 ]
 
 FEATURE_METHOD_VERSION: Final = "crypto-features-v1"
+_FEATURE_NAMES: Final = frozenset(
+    {
+        "funding",
+        "basis",
+        "open_interest_change",
+        "volatility_surface",
+        "liquidity",
+        "onchain_change",
+    }
+)
 _SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -84,6 +95,8 @@ class CryptoFeatureArtifactV1:
             or _SHA256.fullmatch(self.artifact_sha256) is None
         ):
             raise DataError("crypto feature artifact hash is invalid")
+        if self.feature_name not in _FEATURE_NAMES:
+            raise DataError("crypto feature artifact name is invalid")
         if self.method_version != FEATURE_METHOD_VERSION or not self.input_sha256:
             raise DataError("crypto feature artifact provenance is invalid")
         if len({name for name, _ in self.input_sha256}) != len(self.input_sha256) or any(
@@ -94,6 +107,101 @@ class CryptoFeatureArtifactV1:
         object.__setattr__(self, "available_at", _utc(self.available_at, "availability"))
         if self.row_count <= 0:
             raise DataError("crypto feature artifact row count must be positive")
+        if self.feature_id != _digest(self._body()):
+            raise DataError("crypto feature artifact identity is invalid")
+
+    def _body(self) -> dict[str, object]:
+        return {
+            "schema_version": 1,
+            "feature_name": self.feature_name,
+            "method_version": self.method_version,
+            "input_sha256": [list(item) for item in self.input_sha256],
+            "available_at": self.available_at.isoformat().replace("+00:00", "Z"),
+            "row_count": self.row_count,
+            "artifact_sha256": self.artifact_sha256,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._body(), "feature_id": self.feature_id}
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        feature_name: CryptoFeatureName,
+        input_sha256: tuple[tuple[str, str], ...],
+        available_at: datetime,
+        row_count: int,
+        artifact_sha256: str,
+    ) -> CryptoFeatureArtifactV1:
+        body = {
+            "schema_version": 1,
+            "feature_name": feature_name,
+            "method_version": FEATURE_METHOD_VERSION,
+            "input_sha256": [list(item) for item in input_sha256],
+            "available_at": _utc(available_at, "availability").isoformat().replace("+00:00", "Z"),
+            "row_count": row_count,
+            "artifact_sha256": artifact_sha256,
+        }
+        return cls(
+            feature_id=_digest(body),
+            feature_name=feature_name,
+            method_version=FEATURE_METHOD_VERSION,
+            input_sha256=input_sha256,
+            available_at=available_at,
+            row_count=row_count,
+            artifact_sha256=artifact_sha256,
+        )
+
+    @classmethod
+    def from_dict(cls, value: object) -> CryptoFeatureArtifactV1:
+        if not isinstance(value, dict) or set(value) != {
+            "schema_version",
+            "feature_id",
+            "feature_name",
+            "method_version",
+            "input_sha256",
+            "available_at",
+            "row_count",
+            "artifact_sha256",
+        }:
+            raise DataError("crypto feature artifact is malformed")
+        inputs = value.get("input_sha256")
+        if (
+            value.get("schema_version") != 1
+            or not isinstance(inputs, list)
+            or any(
+                not isinstance(item, list)
+                or len(item) != 2
+                or any(not isinstance(part, str) for part in item)
+                for item in inputs
+            )
+            or not isinstance(value.get("available_at"), str)
+        ):
+            raise DataError("crypto feature artifact is malformed")
+        try:
+            return cls(
+                feature_id=cast(str, value["feature_id"]),
+                feature_name=cast(CryptoFeatureName, value["feature_name"]),
+                method_version=cast(str, value["method_version"]),
+                input_sha256=tuple((str(item[0]), str(item[1])) for item in inputs),
+                available_at=datetime.fromisoformat(
+                    cast(str, value["available_at"]).replace("Z", "+00:00")
+                ),
+                row_count=cast(int, value["row_count"]),
+                artifact_sha256=cast(str, value["artifact_sha256"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise DataError("crypto feature artifact is malformed") from exc
+
+
+def feature_frame_bytes(frame: pl.DataFrame) -> bytes:
+    """Serialize the exact immutable feature payload used by its artifact hash."""
+    if not isinstance(frame, pl.DataFrame) or frame.is_empty():
+        raise DataError("crypto feature payload is empty")
+    output = io.BytesIO()
+    frame.write_parquet(output, compression="zstd", statistics=True)
+    return output.getvalue()
 
 
 def _require_columns(source: QualifiedCryptoFrame, columns: tuple[str, ...]) -> None:
@@ -135,20 +243,9 @@ def _artifact(
     available_at: datetime,
 ) -> CryptoFeatureArtifactV1:
     input_sha256 = tuple((source.name, source.artifact_sha256) for source in sources)
-    artifact_sha256 = hashlib.sha256(frame.write_ndjson().encode()).hexdigest()
-    body = {
-        "schema_version": 1,
-        "feature_name": feature_name,
-        "method_version": FEATURE_METHOD_VERSION,
-        "input_sha256": input_sha256,
-        "available_at": available_at.isoformat(),
-        "row_count": frame.height,
-        "artifact_sha256": artifact_sha256,
-    }
-    return CryptoFeatureArtifactV1(
-        feature_id=_digest(body),
+    artifact_sha256 = hashlib.sha256(feature_frame_bytes(frame)).hexdigest()
+    return CryptoFeatureArtifactV1.create(
         feature_name=feature_name,
-        method_version=FEATURE_METHOD_VERSION,
         input_sha256=input_sha256,
         available_at=available_at,
         row_count=frame.height,
@@ -354,6 +451,7 @@ __all__ = [
     "CryptoFeatureArtifactV1",
     "QualifiedCryptoFrame",
     "basis_features",
+    "feature_frame_bytes",
     "funding_features",
     "liquidity_features",
     "onchain_features",
