@@ -52,7 +52,7 @@ _LIMITS: Final[dict[CryptoFamily, tuple[str, ...]]] = {
     "trades": ("research_window_max_50_instruments_31_days",),
     "aggregate_trades": ("research_window_max_50_instruments_31_days",),
     "book_snapshots": ("explicit_snapshot_max_1000_levels_per_side",),
-    "instrument_catalog": ("spot_one_page", "derivatives_cursor_max_100_pages"),
+    "instrument_catalog": ("spot_one_page", "derivatives_and_options_cursor_max_100_pages"),
     "derivative_bars": ("bybit_page_1000",),
     "derivative_trades": ("case_bound_recent_max_1000",),
     "derivative_book_snapshots": ("case_bound_max_1000_levels_per_side",),

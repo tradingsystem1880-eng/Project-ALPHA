@@ -4080,6 +4080,8 @@ export interface components {
         CryptoAcquisitionRequest: {
             /** Base */
             base: string;
+            /** Case Id */
+            case_id?: string | null;
             /**
              * Category
              * @default linear
@@ -4088,6 +4090,8 @@ export interface components {
             category: "spot" | "linear" | "inverse" | "option";
             /** End */
             end?: string | null;
+            /** Expected Case Revision */
+            expected_case_revision?: string | null;
             family: components["schemas"]["CryptoFamilyValue"];
             /**
              * Frequency
@@ -4108,6 +4112,8 @@ export interface components {
             provider: components["schemas"]["CryptoProviderValue"];
             /** Quote */
             quote: string;
+            /** Reason */
+            reason?: string | null;
             /** Start */
             start?: string | null;
         };

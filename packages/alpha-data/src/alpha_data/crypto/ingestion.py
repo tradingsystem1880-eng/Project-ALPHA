@@ -12,7 +12,12 @@ import polars as pl
 
 from alpha_core import DataError
 
-from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1, CryptoRawReceiptV1
+from .contracts import (
+    CryptoAcquisitionScopeV1,
+    CryptoDatasetIdentityV1,
+    CryptoQualityReportV1,
+    CryptoRawReceiptV1,
+)
 from .quality import qualify_crypto_frame
 from .storage import CryptoBulkStore
 
@@ -55,6 +60,7 @@ def ingest_provider_payload(
     availability_column: str | None = None,
     correction_lineage: tuple[str, ...] = (),
     unexplained_revision: bool = False,
+    acquisition_scope: CryptoAcquisitionScopeV1 | None = None,
 ) -> CryptoIngestionResultV1:
     """Freeze exact provider bytes before parsing, then publish qualified Parquet separately."""
     if not isinstance(payload, bytes) or not payload:
@@ -108,6 +114,7 @@ def ingest_provider_payload(
         dataset=dataset,
         input_manifest_ids=(str(raw_manifest["manifest_id"]),),
         quality=quality,
+        acquisition_scope=acquisition_scope,
     )
     return CryptoIngestionResultV1(
         receipt=receipt,
@@ -137,6 +144,7 @@ def ingest_provider_pages(
     availability_column: str | None = None,
     correction_lineage: tuple[str, ...] = (),
     unexplained_revision: bool = False,
+    acquisition_scope: CryptoAcquisitionScopeV1 | None = None,
 ) -> CryptoPagedIngestionResultV1:
     """Freeze every exact provider page, then qualify one deterministically ordered dataset."""
     if not pages or len(pages) > 100:
@@ -208,6 +216,7 @@ def ingest_provider_pages(
         dataset=dataset,
         input_manifest_ids=tuple(str(item["manifest_id"]) for item in raw_manifests),
         quality=quality,
+        acquisition_scope=acquisition_scope,
     )
     return CryptoPagedIngestionResultV1(
         receipts=tuple(receipts),

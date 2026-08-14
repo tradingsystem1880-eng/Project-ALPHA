@@ -17,12 +17,14 @@ from typing import Annotated, Final, Literal, cast
 import polars as pl
 import typer
 
+from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.crypto.asset_master import AssetMaster, build_cross_provider_asset_master
 from alpha_data.crypto.capabilities import project_provider_capabilities
 from alpha_data.crypto.contracts import (
     FAMILY_AUTHORITIES,
+    CryptoAcquisitionScopeV1,
     CryptoDatasetIdentityV1,
     CryptoFamily,
     CryptoMarketType,
@@ -132,6 +134,7 @@ _BYBIT_PRICE_FAMILIES: Final[dict[CryptoFamily, tuple[str, PriceFamily]]] = {
     "index_bars": ("index_kline", "index"),
     "premium_bars": ("premium_kline", "premium"),
 }
+_CASE_BOUND_EVENT_FAMILIES: Final = frozenset({"derivative_trades", "derivative_book_snapshots"})
 
 
 @dataclass(frozen=True)
@@ -230,20 +233,16 @@ def _instrument_cursor(payload: bytes, *, fetched_at_ms: int) -> str | None:
     return parse_instruments(payload, category="option", fetched_at_ms=fetched_at_ms)[1]
 
 
-def _catalog_frame(
-    payload: bytes, *, category: Literal["spot", "linear", "inverse"], fetched_at_ms: int
-) -> pl.DataFrame:
+def _catalog_frame(payload: bytes, *, category: BybitCategory, fetched_at_ms: int) -> pl.DataFrame:
     return parse_instruments(payload, category=category, fetched_at_ms=fetched_at_ms)[0]
 
 
-def _catalog_cursor(
-    payload: bytes, *, category: Literal["spot", "linear", "inverse"], fetched_at_ms: int
-) -> str | None:
+def _catalog_cursor(payload: bytes, *, category: BybitCategory, fetched_at_ms: int) -> str | None:
     return parse_instruments(payload, category=category, fetched_at_ms=fetched_at_ms)[1]
 
 
 def _catalog_parser_at(
-    completed_at: datetime, *, category: Literal["spot", "linear", "inverse"]
+    completed_at: datetime, *, category: BybitCategory
 ) -> Callable[[bytes], pl.DataFrame]:
     return partial(
         _catalog_frame,
@@ -381,6 +380,39 @@ def _bulk_store() -> CryptoBulkStore:
     )
 
 
+def _control_store() -> ControlStore:
+    return ControlStore(AlphaSettings().data_dir)
+
+
+def _acquisition_scope(
+    family: CryptoFamily,
+    *,
+    case_id: str | None,
+    expected_case_revision: str | None,
+    reason: str | None,
+    captured_at: datetime,
+) -> CryptoAcquisitionScopeV1 | None:
+    supplied = any(value is not None for value in (case_id, expected_case_revision, reason))
+    if family not in _CASE_BOUND_EVENT_FAMILIES:
+        if supplied:
+            raise DataError("research-case scope is only valid for derivative event capture")
+        return None
+    if not case_id or not expected_case_revision or not reason:
+        raise DataError(
+            "derivative trades and books require --case-id, --expected-case-revision, and --reason"
+        )
+    current = _control_store().research_case_summary(case_id)
+    revision = research_case_revision(current)
+    if revision != expected_case_revision:
+        raise DataError("research case changed before derivative event capture; refresh and retry")
+    return CryptoAcquisitionScopeV1(
+        project_id=case_id,
+        case_revision=revision,
+        reason=reason,
+        captured_at=captured_at,
+    )
+
+
 def _snapshot_root() -> Path:
     return AlphaSettings().data_dir / "crypto" / "snapshots"
 
@@ -481,6 +513,7 @@ def _verified_snapshot(
         manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
         if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
             raise DataError("crypto snapshot member manifest is missing or mismatched")
+        _manifest_acquisition_scope(manifest, member.dataset)
         reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(manifest.get("quality"))
     projection = assess_crypto_snapshot(
         snapshot,
@@ -860,8 +893,10 @@ def _bybit_plan(
     if FAMILY_AUTHORITIES[family] != "bybit":
         raise DataError(f"{family} is not a Bybit-authoritative dataset family")
     if family == "instrument_catalog":
-        if category not in {"spot", "linear", "inverse"}:
-            raise DataError("Bybit instrument catalog category must be spot, linear, or inverse")
+        if category not in {"spot", "linear", "inverse", "option"}:
+            raise DataError(
+                "Bybit instrument catalog category must be spot, linear, inverse, or option"
+            )
     elif family in {"derivative_trades", "derivative_book_snapshots"}:
         if category not in {"linear", "inverse", "option"}:
             raise DataError("Bybit derivative event category must be linear, inverse, or option")
@@ -900,7 +935,7 @@ def _bybit_plan(
         if category != "spot":
             params["limit"] = 1_000
         fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        catalog_category = cast(Literal["spot", "linear", "inverse"], category)
+        catalog_category = cast(BybitCategory, category)
         parser = partial(
             _catalog_frame,
             category=catalog_category,
@@ -1634,12 +1669,24 @@ def acquire(
     metrics: str | None = typer.Option(None, help="comma-separated reviewed Coin Metrics metrics"),
     start: str | None = typer.Option(None, help="provider-native bounded start time"),
     end: str | None = typer.Option(None, help="provider-native bounded end time"),
+    case_id: str | None = typer.Option(None, help="research case for derivative event capture"),
+    expected_case_revision: str | None = typer.Option(
+        None, help="fresh research-case revision for derivative event capture"
+    ),
+    reason: str | None = typer.Option(None, help="bounded event-capture reason"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Acquire one bounded public provider page; this grants no research or order authority."""
     dataset_family = _family(family)
     fetched_at = _now()
     try:
+        acquisition_scope = _acquisition_scope(
+            dataset_family,
+            case_id=case_id,
+            expected_case_revision=expected_case_revision,
+            reason=reason,
+            captured_at=fetched_at,
+        )
         store = _bulk_store()
         store.verify_ready(required_bytes=0)
         if provider == "bybit":
@@ -1681,6 +1728,13 @@ def acquire(
             )
             plan = fetched.plan
         fetched_at = _now()
+        acquisition_scope = _acquisition_scope(
+            dataset_family,
+            case_id=case_id,
+            expected_case_revision=expected_case_revision,
+            reason=reason,
+            captured_at=fetched_at,
+        )
         if plan.parser_at is not None:
             plan = replace(plan, parser=plan.parser_at(fetched_at))
         correction_lineage: tuple[str, ...] = ()
@@ -1729,6 +1783,7 @@ def acquire(
                 period_start_timestamps=fetched.period_start_timestamps,
                 correction_lineage=correction_lineage,
                 unexplained_revision=bool(correction_lineage),
+                acquisition_scope=acquisition_scope,
             )
             quality = paged_result.quality
             normalized_manifest = paged_result.normalized_manifest
@@ -1746,6 +1801,7 @@ def acquire(
                 observed_column=plan.observed_column,
                 key_columns=plan.key_columns,
                 availability_column=plan.availability_column,
+                acquisition_scope=acquisition_scope,
             )
             quality = paged_result.quality
             normalized_manifest = paged_result.normalized_manifest
@@ -1793,6 +1849,7 @@ def acquire(
                 period_start_timestamps=period_start_timestamps,
                 correction_lineage=correction_lineage,
                 unexplained_revision=bool(correction_lineage),
+                acquisition_scope=acquisition_scope,
             )
             quality = single_result.quality
             normalized_manifest = single_result.normalized_manifest
@@ -1839,6 +1896,7 @@ def _normalized_member(
         raise DataError("crypto snapshot creation requires exact qualified artifacts")
     if dataset.provider != FAMILY_AUTHORITIES[dataset.family]:
         raise DataError("crypto normalized manifest has the wrong family authority")
+    _manifest_acquisition_scope(manifest, dataset)
     return (
         CryptoSnapshotMemberV1(
             dataset=dataset,
@@ -1847,6 +1905,22 @@ def _normalized_member(
         ),
         quality,
     )
+
+
+def _manifest_acquisition_scope(
+    manifest: dict[str, object], dataset: CryptoDatasetIdentityV1
+) -> CryptoAcquisitionScopeV1 | None:
+    raw_scope = manifest.get("acquisition_scope")
+    if dataset.family in _CASE_BOUND_EVENT_FAMILIES:
+        try:
+            return CryptoAcquisitionScopeV1.from_dict(raw_scope)
+        except DataError as exc:
+            raise DataError(
+                "legacy unscoped derivative event data cannot enter governed research evidence"
+            ) from exc
+    if raw_scope is not None:
+        raise DataError("crypto acquisition scope is attached to an unsupported dataset family")
+    return None
 
 
 def _coverage_row(

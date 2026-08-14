@@ -917,6 +917,9 @@ class CryptoAcquisitionRequest(StrictModel):
     metrics: list[str] = Field(default_factory=list, max_length=32)
     start: str | None = Field(default=None, max_length=64)
     end: str | None = Field(default=None, max_length=64)
+    case_id: str | None = Field(default=None, min_length=1, max_length=80)
+    expected_case_revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
 class CryptoSnapshotCreateRequest(StrictModel):

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from alpha_web import _catalog, _invoke
+from alpha_web import _catalog, _invoke, _research
 from alpha_web.app import create_app
 
 
@@ -94,6 +94,11 @@ def test_crypto_acquisition_route_builds_closed_argv_and_rejects_injection(
         return Accepted()
 
     monkeypatch.setattr(_invoke, "launch", launch)
+    monkeypatch.setattr(
+        _research,
+        "proposal_options",
+        lambda *_args, **_kwargs: {"case_revision": "a" * 64},
+    )
     client = TestClient(create_app())
     response = client.post(
         "/api/crypto-data/acquisitions",
@@ -141,6 +146,63 @@ def test_crypto_acquisition_route_builds_closed_argv_and_rejects_injection(
     )
     assert rejected.status_code == 422
     assert len(calls) == 1
+
+    missing_scope = client.post(
+        "/api/crypto-data/acquisitions",
+        json={
+            "provider": "bybit",
+            "family": "derivative_book_snapshots",
+            "instrument": "BTCUSDT",
+            "base": "BTC",
+            "quote": "USDT",
+            "category": "linear",
+        },
+    )
+    assert missing_scope.status_code == 422
+    assert len(calls) == 1
+
+    revision = "a" * 64
+    accepted_scope = client.post(
+        "/api/crypto-data/acquisitions",
+        json={
+            "provider": "bybit",
+            "family": "derivative_book_snapshots",
+            "instrument": "BTCUSDT",
+            "base": "BTC",
+            "quote": "USDT",
+            "category": "linear",
+            "case_id": "f03802b8-df35-4f19-a90c-0b3437aa587d",
+            "expected_case_revision": revision,
+            "reason": "Capture the bounded BTC event book.",
+        },
+    )
+    assert accepted_scope.status_code == 200
+    assert calls[-1][-7:] == [
+        "--case-id",
+        "f03802b8-df35-4f19-a90c-0b3437aa587d",
+        "--expected-case-revision",
+        revision,
+        "--reason",
+        "Capture the bounded BTC event book.",
+        "--json",
+    ]
+
+    stale_scope = client.post(
+        "/api/crypto-data/acquisitions",
+        json={
+            "provider": "bybit",
+            "family": "derivative_trades",
+            "instrument": "BTCUSDT",
+            "base": "BTC",
+            "quote": "USDT",
+            "category": "linear",
+            "case_id": "f03802b8-df35-4f19-a90c-0b3437aa587d",
+            "expected_case_revision": "b" * 64,
+            "reason": "Capture the bounded BTC event trades.",
+        },
+    )
+    assert stale_scope.status_code == 409
+    assert len(calls) == 2
 
 
 def test_crypto_snapshot_routes_build_exact_membership_commands(

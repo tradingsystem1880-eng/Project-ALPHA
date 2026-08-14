@@ -30,6 +30,7 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
   const [datasets, setDatasets] = useState<ResearchDatasetRefRow[] | null>(null)
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [boundDatasetRefId, setBoundDatasetRefId] = useState<string | null>(null)
+  const [caseRevision, setCaseRevision] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [datasetRevision, setDatasetRevision] = useState(0)
 
@@ -38,18 +39,21 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
     setDatasets(null)
     setSymbols(null)
     setBoundDatasetRefId(null)
+    setCaseRevision(null)
     const projectId = panelLink.linked.projectId
     Promise.all([
       api.researchDatasets(),
       api.symbols(),
       projectId ? api.researchCase(projectId) : Promise.resolve(null),
+      projectId ? api.researchProposalOptions(projectId) : Promise.resolve(null),
     ])
-      .then(([page, stored, researchCase]) => {
+      .then(([page, stored, researchCase, proposalOptions]) => {
         if (!live) return
         setDatasets(page.items)
         setSymbols(stored.symbols)
         const value = researchCase?.active_contract.payload['dataset_ref_id']
         setBoundDatasetRefId(typeof value === 'string' && value ? value : null)
+        setCaseRevision(proposalOptions?.case_revision ?? null)
         setError(null)
       })
       .catch((reason: unknown) => {
@@ -96,7 +100,11 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
             <span>{error}</span>
           </div>
         ) : null}
-        <CryptoDataCenter onRegistered={() => setDatasetRevision((value) => value + 1)} />
+        <CryptoDataCenter
+          projectId={panelLink.linked.projectId}
+          caseRevision={caseRevision}
+          onRegistered={() => setDatasetRevision((value) => value + 1)}
+        />
         <div className="rd-head">Research-case dataset bindings</div>
         <section aria-label="Dataset bound to current research contract">
           <div className="rd-head">Bound to the current contract</div>

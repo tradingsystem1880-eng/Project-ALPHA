@@ -245,6 +245,56 @@ class CryptoDatasetIdentityV1:
 
 
 @dataclass(frozen=True)
+class CryptoAcquisitionScopeV1:
+    """Immutable case binding for high-frequency research-event capture."""
+
+    project_id: str
+    case_revision: str
+    reason: str
+    captured_at: datetime
+    purpose: Literal["case_bound_event_capture"] = "case_bound_event_capture"
+    schema_version: Literal[1] = 1
+
+    def __post_init__(self) -> None:
+        _text(self.project_id, "acquisition project id")
+        _sha(self.case_revision, "acquisition case revision")
+        reason = _text(self.reason, "acquisition reason")
+        if len(reason) > 500:
+            raise DataError("crypto acquisition reason exceeds 500 characters")
+        object.__setattr__(self, "captured_at", _time(self.captured_at, "captured_at"))
+        if self.purpose != "case_bound_event_capture":
+            raise DataError("invalid crypto acquisition purpose")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": 1,
+            "project_id": self.project_id,
+            "case_revision": self.case_revision,
+            "reason": self.reason,
+            "captured_at": self.captured_at.isoformat().replace("+00:00", "Z"),
+            "purpose": self.purpose,
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> CryptoAcquisitionScopeV1:
+        if not isinstance(value, dict) or value.get("schema_version") != 1:
+            raise DataError("invalid CryptoAcquisitionScopeV1")
+        try:
+            captured_at = value["captured_at"]
+            if not isinstance(captured_at, str):
+                raise DataError("invalid CryptoAcquisitionScopeV1 captured_at")
+            return cls(
+                project_id=value["project_id"],
+                case_revision=value["case_revision"],
+                reason=value["reason"],
+                captured_at=datetime.fromisoformat(captured_at.replace("Z", "+00:00")),
+                purpose=value["purpose"],
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise DataError("invalid CryptoAcquisitionScopeV1") from exc
+
+
+@dataclass(frozen=True)
 class CryptoRawReceiptV1:
     receipt_id: str
     dataset: CryptoDatasetIdentityV1

@@ -84,7 +84,15 @@ function bytesLabel(value: number | null | undefined): string {
   return `${size.toFixed(unit < 2 ? 0 : 1)} ${units[unit]}`
 }
 
-export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }) {
+export function CryptoDataCenter({
+  projectId,
+  caseRevision,
+  onRegistered,
+}: {
+  projectId: string | null
+  caseRevision: string | null
+  onRegistered?: () => void
+}) {
   const [section, setSection] = useState<CryptoDataSection>('derivatives')
   const [catalog, setCatalog] = useState<CryptoCatalog | null>(null)
   const [capabilities, setCapabilities] = useState<CryptoCapabilities | null>(null)
@@ -103,6 +111,7 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
   const [network, setNetwork] = useState('eth')
   const [poolAddress, setPoolAddress] = useState('')
   const [metrics, setMetrics] = useState('AdrActCnt,TxCnt,FeeTotNtv')
+  const [eventReason, setEventReason] = useState('Capture this bounded derivative event for the selected research case.')
   const [start, setStart] = useState('2025-01-01T00:00:00Z')
   const [end, setEnd] = useState('2026-01-01T00:00:00Z')
   const [days, setDays] = useState(30)
@@ -219,7 +228,7 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
   const capability = capabilities?.items.find((item) => item.family === family) ?? null
   const categoryChoices: CryptoAcquisitionRequest['category'][] =
     family === 'instrument_catalog'
-      ? ['spot', 'linear', 'inverse']
+      ? ['spot', 'linear', 'inverse', 'option']
       : family === 'derivative_trades' || family === 'derivative_book_snapshots'
         ? ['linear', 'inverse', 'option']
         : ['spot', 'linear', 'inverse']
@@ -228,6 +237,8 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
       ? ['5m', '15m', '30m', '1h', '4h', '1d']
       : ['1m', '5m', '1h', '1d']
   const qualifiedCount = coverage?.items.filter((item) => item.state === 'qualified').length ?? 0
+  const caseBoundEvent = family === 'derivative_trades' || family === 'derivative_book_snapshots'
+  const eventCaptureReady = !caseBoundEvent || Boolean(projectId && caseRevision && eventReason.trim())
   const action = cryptoCanonicalAction({
     loading,
     storageState: storage?.state,
@@ -357,6 +368,9 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
           : [],
         start: provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? start : null,
         end: provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? end : null,
+        case_id: caseBoundEvent ? projectId : null,
+        expected_case_revision: caseBoundEvent ? caseRevision : null,
+        reason: caseBoundEvent ? eventReason.trim() : null,
       }
       const accepted = await api.cryptoAcquire(request)
       setJobId(accepted.job_id)
@@ -630,12 +644,14 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
             {provider === 'geckoterminal' ? <><label><span className="eyebrow">Network</span><input className="field mono" value={network} onChange={(event) => setNetwork(event.target.value)} /></label><label><span className="eyebrow">Pool address</span><input className="field mono" value={poolAddress} onChange={(event) => setPoolAddress(event.target.value)} /></label></> : null}
             {provider === 'coinmetrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label> : null}
             {provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
+            {caseBoundEvent ? <label><span className="eyebrow">Event-capture reason</span><input className="field" value={eventReason} onChange={(event) => setEventReason(event.target.value)} /></label> : null}
           </div>
           <div className="crypto-actions">
             <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void estimateAcquisition()}>{busyAction === 'estimate' ? 'Estimating…' : 'Estimate storage'}</button>
-            <button className="btn primary" type="button" disabled={storage?.state !== 'ready' || !provider || busyAction !== null} onClick={() => void acquire()}>{busyAction === 'acquire' ? 'Starting…' : 'Acquire & qualify'}</button>
+            <button className="btn primary" type="button" disabled={storage?.state !== 'ready' || !provider || busyAction !== null || !eventCaptureReady} onClick={() => void acquire()}>{busyAction === 'acquire' ? 'Starting…' : 'Acquire & qualify'}</button>
             {estimate ? <span className="muted">{estimate.estimated_rows.toLocaleString()} rows · about {bytesLabel(estimate.estimated_bytes)}</span> : null}
           </div>
+          {caseBoundEvent && !eventCaptureReady ? <div className="workbench-notice" role="note"><strong>SELECT A RESEARCH CASE</strong><span>Derivative trades and books must be bound to the current case revision before any provider request.</span></div> : null}
           <p className="mono muted advanced-only">alpha crypto-data acquire {provider} {family} {instrument} --base {base} --quote {quote} …</p>
         </section>
       ) : null}

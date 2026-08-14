@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from alpha_web import _catalog, _invoke
+from alpha_web import _catalog, _invoke, _research
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
     CryptoAcquisitionRequest,
@@ -188,6 +188,31 @@ def estimate(req: CryptoEstimateRequest) -> Any:
 
 @router.post("/acquisitions", response_model=JobStatus)
 def acquire(req: CryptoAcquisitionRequest) -> dict[str, object]:
+    case_bound_event = req.family in {"derivative_trades", "derivative_book_snapshots"}
+    scope_fields = (req.case_id, req.expected_case_revision, req.reason)
+    if case_bound_event and not all(scope_fields):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "derivative trades and books require a current research case, revision, and reason"
+            ),
+        )
+    if not case_bound_event and any(value is not None for value in scope_fields):
+        raise HTTPException(
+            status_code=422,
+            detail="research-case event scope is only valid for derivative trades and books",
+        )
+    if case_bound_event:
+        assert req.case_id is not None and req.expected_case_revision is not None
+        try:
+            current = _research.proposal_options(req.case_id, data_dir=data_dir())
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if current.get("case_revision") != req.expected_case_revision:
+            raise HTTPException(
+                status_code=409,
+                detail="research case changed before derivative event capture; refresh and retry",
+            )
     args = [
         "crypto-data",
         "acquire",
@@ -210,6 +235,9 @@ def acquire(req: CryptoAcquisitionRequest) -> dict[str, object]:
         ("--metrics", ",".join(req.metrics) if req.metrics else None),
         ("--start", req.start),
         ("--end", req.end),
+        ("--case-id", req.case_id),
+        ("--expected-case-revision", req.expected_case_revision),
+        ("--reason", req.reason),
     ):
         if value is not None:
             args.extend((flag, value))

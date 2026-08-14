@@ -1977,6 +1977,19 @@
             "title": "Base",
             "type": "string"
           },
+          "case_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
           "category": {
             "default": "linear",
             "enum": [
@@ -1999,6 +2012,18 @@
               }
             ],
             "title": "End"
+          },
+          "expected_case_revision": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Case Revision"
           },
           "family": {
             "$ref": "#/components/schemas/CryptoFamilyValue"
@@ -2079,6 +2104,19 @@
             "pattern": "^[A-Za-z0-9._-]+$",
             "title": "Quote",
             "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
           },
           "start": {
             "anyOf": [

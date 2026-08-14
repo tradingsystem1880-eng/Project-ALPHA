@@ -16,7 +16,12 @@ from pathlib import Path
 
 from alpha_core import DataError
 
-from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1, CryptoRawReceiptV1
+from .contracts import (
+    CryptoAcquisitionScopeV1,
+    CryptoDatasetIdentityV1,
+    CryptoQualityReportV1,
+    CryptoRawReceiptV1,
+)
 
 _SAFE = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -327,10 +332,16 @@ class CryptoBulkStore:
         dataset: CryptoDatasetIdentityV1,
         input_manifest_ids: tuple[str, ...],
         quality: CryptoQualityReportV1,
+        acquisition_scope: CryptoAcquisitionScopeV1 | None = None,
     ) -> dict[str, object]:
         """Publish exact normalized bytes only after every raw input re-verifies."""
         if not isinstance(payload, bytes) or not payload:
             raise DataError("crypto normalized publication requires non-empty bytes")
+        if dataset.family in {"derivative_trades", "derivative_book_snapshots"}:
+            if acquisition_scope is None:
+                raise DataError("high-frequency derivative capture requires a research-case scope")
+        elif acquisition_scope is not None:
+            raise DataError("research-case acquisition scope is limited to derivative event data")
         artifact_hash = hashlib.sha256(payload).hexdigest()
         if quality.dataset_sha256 != artifact_hash:
             raise DataError("crypto normalized bytes do not match the quality report")
@@ -379,6 +390,8 @@ class CryptoBulkStore:
             "input_manifest_ids": list(input_manifest_ids),
             "quality": quality.to_dict(),
         }
+        if acquisition_scope is not None:
+            body["acquisition_scope"] = acquisition_scope.to_dict()
         return self._publish_manifest(body)
 
     def verify_manifest(self, manifest_id: object) -> dict[str, object]:

@@ -176,7 +176,10 @@ CCXT snapshots and the `ccxt:binance` paper warmup
 path are unchanged. Cursor-based Bybit ranges and complete catalogs freeze each exact response as
 its own raw receipt; their one normalized artifact commits to every ordered raw manifest. Bybit
 point-in-time executions, books, chains, and catalogs use network completion as the local knowledge
-clock while retaining every provider event/engine timestamp separately. The typed Workstation Crypto
+clock while retaining every provider event/engine timestamp separately. High-frequency derivative
+executions and books additionally require `CryptoAcquisitionScopeV1`, bound to an existing research
+case, its exact pre/post-fetch revision, and a bounded reason. Historical unscoped artifacts remain
+readable but fail governed snapshot creation and re-verification. The typed Workstation Crypto
 Data Center projects this same catalog, coverage, quality, storage, acquisition, and snapshot seam;
 its Guided mode can build, select, verify, and resolve the latest exact contract map without copying
 opaque IDs, while Advanced only reveals its hash and receipts. Both modes share identical server

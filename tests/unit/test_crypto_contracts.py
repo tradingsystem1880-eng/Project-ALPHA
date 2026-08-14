@@ -8,6 +8,7 @@ import pytest
 from alpha_core import DataError
 from alpha_data.crypto.contracts import (
     FAMILY_AUTHORITIES,
+    CryptoAcquisitionScopeV1,
     CryptoAssetIdentityV1,
     CryptoDatasetIdentityV1,
     CryptoQualityReportV1,
@@ -68,6 +69,24 @@ def test_raw_receipt_rejects_secret_bearing_request_metadata() -> None:
             parser_version="1",
             pagination=(),
             upstream_checksum=None,
+        )
+
+
+def test_case_bound_acquisition_scope_round_trips_and_commits_to_revision() -> None:
+    scope = CryptoAcquisitionScopeV1(
+        project_id="f03802b8-df35-4f19-a90c-0b3437aa587d",
+        case_revision="a" * 64,
+        reason="Capture the bounded BTC event book.",
+        captured_at=datetime(2026, 8, 15, tzinfo=UTC),
+    )
+
+    assert CryptoAcquisitionScopeV1.from_dict(scope.to_dict()) == scope
+    with pytest.raises(DataError, match="revision"):
+        CryptoAcquisitionScopeV1(
+            project_id=scope.project_id,
+            case_revision="stale",
+            reason=scope.reason,
+            captured_at=scope.captured_at,
         )
 
 

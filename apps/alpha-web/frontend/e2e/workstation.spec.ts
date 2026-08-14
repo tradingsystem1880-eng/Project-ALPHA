@@ -2184,6 +2184,8 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await center.getByLabel('Dataset family').selectOption('derivative_book_snapshots')
   await expect(center.getByLabel('Market').getByRole('option', { name: 'option' })).toHaveCount(1)
   await expect(center.getByLabel('Start UTC')).toHaveCount(0)
+  await center.getByLabel('Dataset family').selectOption('instrument_catalog')
+  await expect(center.getByLabel('Market').getByRole('option', { name: 'option' })).toHaveCount(1)
   await center.getByRole('tab', { name: 'Options & Volatility', exact: true }).click()
   await expect(center.getByText('RECEIPT VERIFIED', { exact: true })).toBeVisible()
   await expect(center.getByLabel('Provider dataset capability')).toContainText(

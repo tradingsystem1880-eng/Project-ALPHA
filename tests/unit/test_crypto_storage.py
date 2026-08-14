@@ -12,7 +12,11 @@ import pytest
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.crypto import storage
-from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
+from alpha_data.crypto.contracts import (
+    CryptoAcquisitionScopeV1,
+    CryptoDatasetIdentityV1,
+    CryptoQualityReportV1,
+)
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 UUID = "758CBD77-1003-3BA3-AD28-1D647F5E2A08"
@@ -185,6 +189,65 @@ def test_staging_metadata_resumes_exact_offset(tmp_path: Path) -> None:
     assert resumed.bytes_written == 3
     store.append_staging(resumed, b"def")
     assert store.resume_staging(first.staging_id).bytes_written == 6
+
+
+def test_derivative_event_publication_requires_immutable_case_scope(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    raw_handle = store.begin_staging(
+        provider="bybit", receipt_id="r_event", logical_name="book.json", expected_bytes=3
+    )
+    raw_handle = store.append_staging(raw_handle, b"raw")
+    raw = store.publish_staging(
+        raw_handle,
+        expected_sha256=hashlib.sha256(b"raw").hexdigest(),
+    )
+    payload = b"PAR1-event-book"
+    digest = hashlib.sha256(payload).hexdigest()
+    dataset = CryptoDatasetIdentityV1(
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        family="derivative_book_snapshots",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="point_in_time_book",
+        units="provider_native_price_quantity",
+        timestamp_convention="provider_generation_utc",
+    )
+    quality = CryptoQualityReportV1(
+        dataset_sha256=digest,
+        method_version="crypto-quality-v1",
+        state="qualified",
+        failures=(),
+        warnings=(),
+        observed_start=datetime(2026, 8, 15, tzinfo=UTC),
+        observed_end=datetime(2026, 8, 15, tzinfo=UTC),
+        row_count=2,
+        correction_lineage=(),
+    )
+    with pytest.raises(DataError, match="research-case scope"):
+        store.publish_normalized(
+            payload,
+            dataset=dataset,
+            input_manifest_ids=(str(raw["manifest_id"]),),
+            quality=quality,
+        )
+
+    scope = CryptoAcquisitionScopeV1(
+        project_id="f03802b8-df35-4f19-a90c-0b3437aa587d",
+        case_revision="a" * 64,
+        reason="Capture the bounded BTC event book.",
+        captured_at=datetime(2026, 8, 15, tzinfo=UTC),
+    )
+    normalized = store.publish_normalized(
+        payload,
+        dataset=dataset,
+        input_manifest_ids=(str(raw["manifest_id"]),),
+        quality=quality,
+        acquisition_scope=scope,
+    )
+    assert normalized["acquisition_scope"] == scope.to_dict()
 
 
 def test_staging_resumes_only_when_existing_prefix_matches_exact_payload(tmp_path: Path) -> None:

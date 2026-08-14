@@ -34,6 +34,12 @@ CCXT remains a supported legacy and comparison seam. Existing CCXT provenance an
 are never rewritten. The existing `ccxt:binance` paper warmup contract is unchanged until a later
 parity ADR and evidence gate prove an exact native-snapshot replacement.
 
+High-frequency Bybit derivative trades and order-book snapshots are case-bound event captures.
+Before provider access, ALPHA requires an existing research case, its expected revision, and a
+bounded reason; it rechecks that revision after fetch before publication. The normalized manifest
+commits to `CryptoAcquisitionScopeV1`. Historical unscoped event artifacts remain readable and
+immutable but cannot enter or reverify as governed research evidence.
+
 No automatic fallback may change provider, venue, market type, quote asset, unit, frequency, or
 timestamp convention. USDT, USDC, and USD are separate quote assets. Provider corrections create
 new immutable receipts; unexplained changes quarantine rather than overwrite evidence.
