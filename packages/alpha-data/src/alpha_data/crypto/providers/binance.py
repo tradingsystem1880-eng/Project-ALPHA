@@ -6,6 +6,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 import re
 import zipfile
 from datetime import UTC, datetime
@@ -18,6 +19,8 @@ from alpha_core import DataError
 type BinanceArchiveMarket = Literal["spot", "um", "cm"]
 type BinanceKlineSource = Literal["archive_csv", "rest_json"]
 type BinanceArchiveFamily = Literal["klines", "trades", "aggTrades"]
+type BinanceCategory = Literal["spot", "linear", "inverse"]
+type BinancePublicResource = Literal["depth", "klines"]
 type WireScalar = str | int | float
 
 _COLUMNS: Final = (
@@ -34,6 +37,11 @@ _COLUMNS: Final = (
     "taker_buy_quote_volume",
 )
 _SAFE = re.compile(r"^[A-Za-z0-9_-]+$")
+_PUBLIC_API_ROOTS: Final = {
+    "spot": "https://api.binance.com/api/v3",
+    "linear": "https://fapi.binance.com/fapi/v1",
+    "inverse": "https://dapi.binance.com/dapi/v1",
+}
 
 
 def _boolean(value: WireScalar, *, label: str) -> bool:
@@ -55,6 +63,14 @@ def _timestamp(raw: WireScalar) -> datetime:
         return datetime.fromtimestamp(value / divisor, tz=UTC)
     except (OverflowError, OSError, ValueError) as exc:
         raise DataError("Binance kline timestamp is outside the supported range") from exc
+
+
+def _optional_timestamp(raw: object, *, label: str) -> datetime | None:
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, str | int | float):
+        raise DataError(f"Binance {label} timestamp is invalid")
+    return _timestamp(raw)
 
 
 def _rows(payload: bytes, source: BinanceKlineSource) -> list[list[WireScalar]]:
@@ -152,9 +168,7 @@ def parse_binance_trades(payload: bytes) -> pl.DataFrame:
     if frame["trade_id"].n_unique() != frame.height:
         raise DataError("Binance trade archive contains duplicate trade ids")
     if frame.filter(
-        (pl.col("price") <= 0)
-        | (pl.col("quantity") < 0)
-        | (pl.col("quote_quantity") < 0)
+        (pl.col("price") <= 0) | (pl.col("quantity") < 0) | (pl.col("quote_quantity") < 0)
     ).height:
         raise DataError("Binance trade prices and quantities violate bounds")
     return frame
@@ -198,6 +212,79 @@ def parse_binance_aggregate_trades(payload: bytes) -> pl.DataFrame:
     if frame.filter((pl.col("price") <= 0) | (pl.col("quantity") < 0)).height:
         raise DataError("Binance aggregate-trade price or quantity violates bounds")
     return frame
+
+
+def parse_binance_book_snapshot(
+    payload: bytes,
+    *,
+    symbol: str,
+    category: BinanceCategory,
+    fetched_at: datetime,
+) -> pl.DataFrame:
+    """Parse one bounded REST depth snapshot while preserving venue ordering and update ids."""
+    if _SAFE.fullmatch(symbol) is None or category not in {"spot", "linear", "inverse"}:
+        raise DataError("Binance book snapshot identity is invalid")
+    if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
+        raise DataError("Binance book snapshot fetch time must be timezone-aware")
+    try:
+        raw = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DataError("Binance book snapshot response is malformed") from exc
+    if not isinstance(raw, dict):
+        raise DataError("Binance book snapshot response must be an object")
+    update_id = raw.get("lastUpdateId")
+    if isinstance(update_id, bool) or not isinstance(update_id, int) or update_id < 0:
+        raise DataError("Binance book snapshot update id is invalid")
+    provider_event_time = _optional_timestamp(raw.get("E"), label="book event")
+    transaction_time = _optional_timestamp(raw.get("T"), label="book transaction")
+    observed_at = fetched_at.astimezone(UTC)
+    parsed: list[dict[str, object]] = []
+    prices_by_side: dict[str, list[float]] = {"bid": [], "ask": []}
+    for side, field in (("bid", "bids"), ("ask", "asks")):
+        levels = raw.get(field)
+        if not isinstance(levels, list):
+            raise DataError(f"Binance book snapshot {field} are invalid")
+        for level, item in enumerate(levels):
+            if not isinstance(item, list) or len(item) != 2:
+                raise DataError("Binance book snapshot level is invalid")
+            try:
+                price, quantity = float(item[0]), float(item[1])
+            except (TypeError, ValueError) as exc:
+                raise DataError("Binance book snapshot level is invalid") from exc
+            if (
+                not math.isfinite(price)
+                or not math.isfinite(quantity)
+                or price <= 0
+                or quantity <= 0
+            ):
+                raise DataError("Binance book snapshot price or quantity violates bounds")
+            prices_by_side[side].append(price)
+            parsed.append(
+                {
+                    "observed_at": observed_at,
+                    "provider_event_time": provider_event_time,
+                    "transaction_time": transaction_time,
+                    "symbol": symbol,
+                    "category": category,
+                    "update_id": update_id,
+                    "side": side,
+                    "level": level,
+                    "price": price,
+                    "quantity": quantity,
+                }
+            )
+    bids, asks = prices_by_side["bid"], prices_by_side["ask"]
+    if not bids or not asks:
+        raise DataError("Binance book snapshot is empty")
+    if len(set(bids)) != len(bids) or len(set(asks)) != len(asks):
+        raise DataError("Binance book snapshot contains duplicate prices")
+    if any(right >= left for left, right in zip(bids, bids[1:], strict=False)):
+        raise DataError("Binance book snapshot bids are not strictly descending")
+    if any(right <= left for left, right in zip(asks, asks[1:], strict=False)):
+        raise DataError("Binance book snapshot asks are not strictly ascending")
+    if bids[0] >= asks[0]:
+        raise DataError("Binance book snapshot is crossed")
+    return pl.DataFrame(parsed)
 
 
 def parse_binance_archive_zip(
@@ -261,13 +348,76 @@ def archive_url(
             raise DataError("invalid Binance archive interval")
         name = f"{symbol}-{interval}-{period}.zip"
         return (
-            f"https://data.binance.vision/data/{root}/monthly/{family}/"
-            f"{symbol}/{interval}/{name}"
+            f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{interval}/{name}"
         )
     if interval:
         raise DataError("Binance trade archives do not accept an interval")
     name = f"{symbol}-{family}-{period}.zip"
     return f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{name}"
+
+
+def binance_public_api_url(
+    category: BinanceCategory,
+    resource: BinancePublicResource,
+    params: dict[str, str | int],
+) -> str:
+    """Build one public market-data URL from a closed endpoint and parameter contract."""
+    if category not in _PUBLIC_API_ROOTS or resource not in {"depth", "klines"}:
+        raise DataError("Binance public API endpoint is invalid")
+    allowed = (
+        {"symbol", "limit"}
+        if resource == "depth"
+        else {"symbol", "interval", "limit", "startTime", "endTime"}
+    )
+    if set(params) - allowed or not {"symbol", "limit"}.issubset(params):
+        raise DataError("Binance public API parameter contract is invalid")
+    symbol, limit = params["symbol"], params["limit"]
+    if not isinstance(symbol, str) or _SAFE.fullmatch(symbol) is None:
+        raise DataError("Binance public API symbol is invalid")
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1_000:
+        raise DataError("Binance public API limit must be between 1 and 1000")
+    if resource == "klines":
+        interval = params.get("interval")
+        if interval not in {"1m", "5m", "1h", "1d"}:
+            raise DataError("Binance public API kline interval is invalid")
+        start, end = params.get("startTime"), params.get("endTime")
+        for value in (start, end):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise DataError("Binance public API time range is invalid")
+        if isinstance(start, int) and isinstance(end, int) and end < start:
+            raise DataError("Binance public API time range is inverted")
+    from urllib.parse import urlencode  # noqa: PLC0415
+
+    query = urlencode(sorted(params.items()))
+    return f"{_PUBLIC_API_ROOTS[category]}/{resource}?{query}"
+
+
+def fetch_binance_public_api(url: str, *, timeout_seconds: int = 30) -> bytes:
+    """Fetch one bounded keyless Binance market-data response with redirect revalidation."""
+    if not 1 <= timeout_seconds <= 60:
+        raise DataError("Binance public API timeout must be between 1 and 60 seconds")
+    allowed_prefixes = tuple(f"{root}/" for root in _PUBLIC_API_ROOTS.values())
+    if not url.startswith(allowed_prefixes):
+        raise DataError("Binance public API host is invalid")
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    request = urllib.request.Request(url, headers={"User-Agent": "Project-ALPHA/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            if not str(response.geturl()).startswith(allowed_prefixes):
+                raise DataError("Binance public API redirect host is invalid")
+            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
+            if content_type != "application/json":
+                raise DataError("Binance public API response MIME is invalid")
+            payload = bytes(response.read(16 * 1024 * 1024 + 1))
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+        raise DataError("Binance public API request failed") from exc
+    if len(payload) > 16 * 1024 * 1024:
+        raise DataError("Binance public API response exceeds the byte limit")
+    return payload
 
 
 def _fetch_archive_resource(

@@ -54,6 +54,7 @@ def ingest_provider_payload(
     period_start_timestamps: bool = False,
     availability_column: str | None = None,
     correction_lineage: tuple[str, ...] = (),
+    unexplained_revision: bool = False,
 ) -> CryptoIngestionResultV1:
     """Freeze exact provider bytes before parsing, then publish qualified Parquet separately."""
     if not isinstance(payload, bytes) or not payload:
@@ -100,6 +101,7 @@ def ingest_provider_payload(
         period_start_timestamps=period_start_timestamps,
         availability_column=availability_column,
         correction_lineage=correction_lineage,
+        unexplained_revision=unexplained_revision,
     )
     normalized_manifest = store.publish_normalized(
         normalized,
@@ -119,9 +121,7 @@ def ingest_provider_pages(
     store: CryptoBulkStore,
     *,
     dataset: CryptoDatasetIdentityV1,
-    pages: tuple[
-        tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...
-    ],
+    pages: tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...],
     fetched_at: datetime,
     provider_schema: str,
     parser_version: str,
@@ -129,17 +129,27 @@ def ingest_provider_pages(
     parser: Callable[[bytes], pl.DataFrame],
     observed_column: str,
     key_columns: tuple[str, ...],
+    page_parsers: tuple[Callable[[bytes], pl.DataFrame], ...] | None = None,
+    upstream_checksums: tuple[str | None, ...] | None = None,
+    combine_frames: Callable[[tuple[pl.DataFrame, ...]], pl.DataFrame] | None = None,
     expected_cadence: timedelta | None = None,
     period_start_timestamps: bool = False,
     availability_column: str | None = None,
     correction_lineage: tuple[str, ...] = (),
+    unexplained_revision: bool = False,
 ) -> CryptoPagedIngestionResultV1:
     """Freeze every exact provider page, then qualify one deterministically ordered dataset."""
     if not pages or len(pages) > 100:
         raise DataError("crypto paged ingestion requires between 1 and 100 pages")
+    parsers = page_parsers or tuple(parser for _ in pages)
+    checksums = upstream_checksums or tuple(None for _ in pages)
+    if len(parsers) != len(pages) or len(checksums) != len(pages):
+        raise DataError("crypto paged ingestion resource contracts do not match page count")
     receipts: list[CryptoRawReceiptV1] = []
     raw_manifests: list[dict[str, object]] = []
-    for page_number, (payload, request, pagination) in enumerate(pages, start=1):
+    for page_number, ((payload, request, pagination), checksum) in enumerate(
+        zip(pages, checksums, strict=True), start=1
+    ):
         if not isinstance(payload, bytes) or not payload:
             raise DataError("crypto provider page must be non-empty bytes")
         response_hash = hashlib.sha256(payload).hexdigest()
@@ -152,7 +162,7 @@ def ingest_provider_pages(
             provider_schema=provider_schema,
             parser_version=parser_version,
             pagination=pagination,
-            upstream_checksum=None,
+            upstream_checksum=checksum,
         )
         page_name = f"page-{page_number:03d}-{logical_name}"
         handle = store.begin_staging(
@@ -167,8 +177,14 @@ def ingest_provider_pages(
         )
         receipts.append(receipt)
 
-    frames = [parser(payload) for payload, _, _ in pages]
-    frame = pl.concat(frames, how="vertical_relaxed").sort(list(key_columns))
+    frames = tuple(
+        page_parser(payload) for page_parser, (payload, _, _) in zip(parsers, pages, strict=True)
+    )
+    frame = (
+        combine_frames(frames)
+        if combine_frames is not None
+        else pl.concat(frames, how="vertical_relaxed").sort(list(key_columns))
+    )
     output = io.BytesIO()
     frame.write_parquet(output, compression="zstd", statistics=True)
     normalized = output.getvalue()
@@ -185,6 +201,7 @@ def ingest_provider_pages(
         period_start_timestamps=period_start_timestamps,
         availability_column=availability_column,
         correction_lineage=correction_lineage,
+        unexplained_revision=unexplained_revision,
     )
     normalized_manifest = store.publish_normalized(
         normalized,

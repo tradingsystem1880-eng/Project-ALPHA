@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 from datetime import UTC, datetime
@@ -174,3 +175,52 @@ def test_paged_ingestion_freezes_all_fetched_pages_before_parser_failure(tmp_pat
         )
 
     assert [item["artifact_kind"] for item in store.inventory()] == ["raw", "raw"]
+
+
+def test_paged_ingestion_supports_exact_heterogeneous_resources_and_combiner(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    archive = b"2026-08-14T00:00:00Z,1\n"
+    tail = b'{"timestamp":"2026-08-14T01:00:00Z","value":2}'
+    checksum = hashlib.sha256(archive).hexdigest()
+
+    def parse_archive(payload: bytes) -> pl.DataFrame:
+        return pl.read_csv(
+            io.BytesIO(payload),
+            has_header=False,
+            new_columns=["timestamp", "value"],
+            try_parse_dates=True,
+        )
+
+    def parse_tail(payload: bytes) -> pl.DataFrame:
+        record = json.loads(payload)
+        return pl.DataFrame(
+            {
+                "timestamp": [datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))],
+                "value": [record["value"]],
+            }
+        )
+
+    result = ingest_provider_pages(
+        store,
+        dataset=_dataset(),
+        pages=(
+            (archive, (("resource", "archive"),), ("historical",)),
+            (tail, (("resource", "tail"),), ("unfinished_tail",)),
+        ),
+        fetched_at=NOW,
+        provider_schema="fixture-mixed-v1",
+        parser_version="fixture-mixed-parser-v1",
+        logical_name="resource.bin",
+        parser=parse_archive,
+        page_parsers=(parse_archive, parse_tail),
+        upstream_checksums=(checksum, None),
+        combine_frames=lambda frames: pl.concat(frames).sort("timestamp"),
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+    )
+
+    assert result.quality.row_count == 2
+    assert result.receipts[0].upstream_checksum == checksum
+    assert result.receipts[1].upstream_checksum is None

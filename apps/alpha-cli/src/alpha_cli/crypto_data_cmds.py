@@ -33,9 +33,14 @@ from alpha_data.crypto.contracts import (
 from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
 from alpha_data.crypto.providers.binance import (
     archive_url,
+    binance_public_api_url,
     fetch_binance_archive,
     fetch_binance_checksum,
+    fetch_binance_public_api,
     parse_binance_archive_zip,
+    parse_binance_book_snapshot,
+    parse_binance_klines,
+    reconcile_archive_tail,
     verify_archive_checksum,
 )
 from alpha_data.crypto.providers.bybit import (
@@ -136,6 +141,20 @@ class _FetchedAcquisition:
     period_start_timestamps: bool = False
 
 
+@dataclass(frozen=True)
+class _FetchedPagedAcquisition:
+    plan: _AcquisitionPlan
+    pages: tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...]
+    page_parsers: tuple[Callable[[bytes], pl.DataFrame], ...]
+    upstream_checksums: tuple[str | None, ...]
+    combine_frames: Callable[[tuple[pl.DataFrame, ...]], pl.DataFrame] | None
+    provider_schema: str
+    parser_version: str
+    logical_name: str
+    expected_cadence_seconds: int | None = None
+    period_start_timestamps: bool = False
+
+
 def _open_interest_frame(payload: bytes) -> pl.DataFrame:
     return parse_open_interest(payload)[0]
 
@@ -150,9 +169,7 @@ def _long_short_frame(payload: bytes, *, category: Literal["linear", "inverse"])
     return parse_long_short_ratio(payload, category=category)[0]
 
 
-def _long_short_cursor(
-    payload: bytes, *, category: Literal["linear", "inverse"]
-) -> str | None:
+def _long_short_cursor(payload: bytes, *, category: Literal["linear", "inverse"]) -> str | None:
     return parse_long_short_ratio(payload, category=category)[1]
 
 
@@ -261,6 +278,28 @@ def _snapshot_root() -> Path:
     return AlphaSettings().data_dir / "crypto" / "snapshots"
 
 
+def _stable_resource_revision_lineage(
+    store: CryptoBulkStore,
+    *,
+    dataset: CryptoDatasetIdentityV1,
+    request: tuple[tuple[str, str], ...],
+    response_sha256: str,
+) -> tuple[str, ...]:
+    """Find prior bytes for the same stable provider resource without trusting filenames."""
+    prior: set[str] = set()
+    for manifest in store.inventory():
+        if manifest.get("artifact_kind") != "raw" or "receipt" not in manifest:
+            continue
+        receipt = CryptoRawReceiptV1.from_dict(manifest["receipt"])
+        if (
+            receipt.dataset == dataset
+            and receipt.request == request
+            and receipt.response_sha256 != response_sha256
+        ):
+            prior.add(receipt.response_sha256)
+    return tuple(sorted(prior))
+
+
 def _write_snapshot(snapshot: CryptoSnapshotV1) -> None:
     root = _snapshot_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -303,9 +342,7 @@ def _verified_snapshot(
         manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
         if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
             raise DataError("crypto snapshot member manifest is missing or mismatched")
-        reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(
-            manifest.get("quality")
-        )
+        reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(manifest.get("quality"))
     projection = assess_crypto_snapshot(
         snapshot,
         quality_reports=reports,
@@ -339,9 +376,7 @@ def crypto_snapshot_registration(snapshot_id: str, *, symbol: str) -> dict[str, 
     frequencies = {member.dataset.frequency for member in snapshot.members}
     bar_minutes = None
     if len(frequencies) == 1:
-        bar_minutes = {"1m": 1, "5m": 5, "1h": 60, "1d": 1_440}.get(
-            next(iter(frequencies))
-        )
+        bar_minutes = {"1m": 1, "5m": 5, "1h": 60, "1d": 1_440}.get(next(iter(frequencies)))
     snapshot_path = _snapshot_root() / f"{snapshot.snapshot_id}.json"
     return {
         "dataset_kind": "snapshot",
@@ -511,9 +546,7 @@ def storage_inventory(json_out: bool = typer.Option(False, "--json", help="emit 
             if isinstance(size, int) and not isinstance(size, bool):
                 artifact_bytes[kind] = artifact_bytes.get(kind, 0) + size
         snapshots = (
-            tuple(sorted(_snapshot_root().glob("*.json")))
-            if _snapshot_root().exists()
-            else ()
+            tuple(sorted(_snapshot_root().glob("*.json"))) if _snapshot_root().exists() else ()
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -798,6 +831,89 @@ def _fetch_bybit_pages(
     raise DataError("Bybit acquisition exceeded the 100-page safety limit")
 
 
+def _binance_range(
+    start: str | None, end: str | None, *, fetched_at: datetime
+) -> tuple[int, int] | None:
+    if (start is None) != (end is None):
+        raise DataError("Binance --start and --end must be supplied together")
+    if start is None or end is None:
+        return None
+    try:
+        start_at = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        end_at = datetime.fromisoformat(end.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DataError("Binance start and end must be ISO-8601 timestamps") from exc
+    if (
+        start_at.tzinfo is None
+        or start_at.utcoffset() is None
+        or end_at.tzinfo is None
+        or end_at.utcoffset() is None
+    ):
+        raise DataError("Binance start and end must include a timezone")
+    start_ms = int(start_at.astimezone(UTC).timestamp() * 1_000)
+    end_ms = int(end_at.astimezone(UTC).timestamp() * 1_000)
+    if end_ms <= start_ms:
+        raise DataError("Binance end must be later than start")
+    if end_ms > int(fetched_at.timestamp() * 1_000):
+        raise DataError("Binance end exceeds the acquisition knowledge time")
+    return start_ms, end_ms
+
+
+def _fetch_binance_tail_pages(
+    *,
+    category: Literal["spot", "linear", "inverse"],
+    symbol: str,
+    frequency: str,
+    start_ms: int,
+    end_ms: int,
+) -> tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...]:
+    cadence_ms = {"1d": 86_400_000, "1h": 3_600_000, "5m": 300_000, "1m": 60_000}.get(frequency)
+    if cadence_ms is None:
+        raise DataError("Binance REST-tail frequency must be 1m, 5m, 1h, or 1d")
+    pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+    next_start = start_ms
+    for page_number in range(1, 101):
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "interval": frequency,
+            "limit": 1_000,
+            "startTime": next_start,
+            "endTime": end_ms,
+        }
+        payload = fetch_binance_public_api(binance_public_api_url(category, "klines", params))
+        frame = parse_binance_klines(payload, source="rest_json")
+        last_open = frame["open_time"][-1]
+        assert isinstance(last_open, datetime)
+        last_ms = int(last_open.timestamp() * 1_000)
+        if last_ms < next_start:
+            raise DataError("Binance REST tail did not advance its requested range")
+        following = last_ms + cadence_ms
+        terminal = frame.height < 1_000 or following > end_ms
+        request = tuple((key, str(value)) for key, value in sorted(params.items()))
+        pages.append(
+            (
+                payload,
+                request,
+                (f"page={page_number}", f"next_start={following if not terminal else 'terminal'}"),
+            )
+        )
+        if terminal:
+            return tuple(pages)
+        if following <= next_start:
+            raise DataError("Binance REST-tail pagination did not advance")
+        next_start = following
+    raise DataError("Binance REST-tail acquisition exceeded the 100-page safety limit")
+
+
+def _combine_binance_archive_tail(frames: tuple[pl.DataFrame, ...]) -> pl.DataFrame:
+    if not frames:
+        raise DataError("Binance archive/tail combination is empty")
+    combined = frames[0]
+    for tail in frames[1:]:
+        combined = reconcile_archive_tail(combined, tail)
+    return combined
+
+
 def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
@@ -814,7 +930,7 @@ def _fetch_non_bybit(
     start: str | None,
     end: str | None,
     fetched_at: datetime,
-) -> _FetchedAcquisition:
+) -> _FetchedAcquisition | _FetchedPagedAcquisition:
     base_value, quote_value = base.strip().upper(), quote.strip().upper()
     instrument_value = instrument.strip()
     if not base_value.isalnum() or not quote_value.isalnum() or not instrument_value:
@@ -822,6 +938,48 @@ def _fetch_non_bybit(
     keys: tuple[str, ...]
 
     if provider == "binance":
+        if category not in {"spot", "linear", "inverse"}:
+            raise DataError("Binance category must be spot, linear, or inverse")
+        category_value = cast(Literal["spot", "linear", "inverse"], category)
+        symbol = instrument_value.upper()
+        if family == "book_snapshots":
+            if period is not None or start is not None or end is not None:
+                raise DataError("Binance book snapshots do not accept period or time ranges")
+            depth_params: dict[str, str | int] = {"symbol": symbol, "limit": 1_000}
+            url = binance_public_api_url(category_value, "depth", depth_params)
+            payload = fetch_binance_public_api(url)
+            plan = _AcquisitionPlan(
+                endpoint="depth",
+                params=depth_params,
+                dataset=CryptoDatasetIdentityV1(
+                    provider="binance",
+                    venue="binance",
+                    market_type=category_value,
+                    family="book_snapshots",
+                    instrument=symbol,
+                    base_asset=base_value,
+                    quote_asset=quote_value,
+                    frequency="point_in_time_book",
+                    units="provider_native_price_quantity",
+                    timestamp_convention="fetch_knowledge_utc",
+                ),
+                parser=partial(
+                    parse_binance_book_snapshot,
+                    symbol=symbol,
+                    category=category_value,
+                    fetched_at=fetched_at,
+                ),
+                observed_column="observed_at",
+                key_columns=("observed_at", "side", "level"),
+                availability_column="observed_at",
+            )
+            return _FetchedAcquisition(
+                plan=plan,
+                payload=payload,
+                provider_schema="binance-public-depth-v1",
+                parser_version="binance-book-v1",
+                logical_name="book_snapshots.json",
+            )
         archive_family_by_dataset: dict[CryptoFamily, Literal["klines", "trades", "aggTrades"]] = {
             "market_bars": "klines",
             "trades": "trades",
@@ -830,25 +988,40 @@ def _fetch_non_bybit(
         archive_family = archive_family_by_dataset.get(family)
         if archive_family is None:
             raise DataError(
-                "this Binance archive acquisition accepts market_bars, trades, or "
-                "aggregate_trades"
+                "this Binance archive acquisition accepts market_bars, trades, or aggregate_trades"
             )
-        if category not in {"spot", "linear", "inverse"}:
-            raise DataError("Binance category must be spot, linear, or inverse")
-        if period is None or re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", period) is None:
+        bounded_range = _binance_range(start, end, fetched_at=fetched_at)
+        if family != "market_bars" and bounded_range is not None:
+            raise DataError("Binance trade archives do not accept --start or --end")
+        if period is not None and re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", period) is None:
             raise DataError("Binance archive acquisition requires --period YYYY-MM")
+        if period is None and (family != "market_bars" or bounded_range is None):
+            raise DataError(
+                "Binance archives require --period YYYY-MM; market_bars may instead use "
+                "a bounded --start/--end REST tail"
+            )
         market = {"spot": "spot", "linear": "um", "inverse": "cm"}[category]
         interval = frequency if archive_family == "klines" else ""
-        url = archive_url(
-            cast(Literal["spot", "um", "cm"], market),
-            archive_family,
-            instrument_value.upper(),
-            interval,
-            period,
-        )
-        payload = fetch_binance_archive(url)
-        checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
-        verify_archive_checksum(payload, checksum)
+        archive_payload: bytes | None = None
+        archive_params: dict[str, str | int] | None = None
+        if period is not None:
+            url = archive_url(
+                cast(Literal["spot", "um", "cm"], market),
+                archive_family,
+                symbol,
+                interval,
+                period,
+            )
+            archive_payload = fetch_binance_archive(url)
+            checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
+            verify_archive_checksum(archive_payload, checksum)
+            archive_params = {
+                "market": market,
+                "family": archive_family,
+                "symbol": symbol,
+                "period": period,
+                **({"interval": interval} if interval else {}),
+            }
         if family == "market_bars":
             cadence_seconds = {
                 "1d": 86_400,
@@ -881,20 +1054,26 @@ def _fetch_non_bybit(
             units = "provider_native_aggregate_trade"
             timestamp_convention = "provider_event_utc"
         plan = _AcquisitionPlan(
-            endpoint="monthly_archive",
-            params={
-                "market": market,
-                "family": archive_family,
-                "symbol": instrument_value.upper(),
-                "period": period,
-                **({"interval": interval} if interval else {}),
+            endpoint=(
+                "monthly_archive_and_rest_tail"
+                if archive_payload is not None and bounded_range is not None
+                else "monthly_archive"
+                if archive_payload is not None
+                else "rest_tail"
+            ),
+            params=archive_params
+            or {
+                "symbol": symbol,
+                "interval": frequency,
+                "startTime": bounded_range[0] if bounded_range is not None else 0,
+                "endTime": bounded_range[1] if bounded_range is not None else 0,
             },
             dataset=CryptoDatasetIdentityV1(
                 provider="binance",
                 venue="binance",
                 market_type=cast(CryptoMarketType, category),
                 family=family,
-                instrument=instrument_value.upper(),
+                instrument=symbol,
                 base_asset=base_value,
                 quote_asset=quote_value,
                 frequency=frequency_value,
@@ -905,13 +1084,56 @@ def _fetch_non_bybit(
             observed_column=observed_column,
             key_columns=keys,
         )
+        if family == "market_bars" and bounded_range is not None:
+            tail_pages = _fetch_binance_tail_pages(
+                category=category_value,
+                symbol=symbol,
+                frequency=frequency,
+                start_ms=bounded_range[0],
+                end_ms=bounded_range[1],
+            )
+            pages = tail_pages
+            page_parsers: tuple[Callable[[bytes], pl.DataFrame], ...] = tuple(
+                partial(parse_binance_klines, source="rest_json") for _ in tail_pages
+            )
+            upstream_checksums: tuple[str | None, ...] = tuple(None for _ in tail_pages)
+            if archive_payload is not None:
+                assert archive_params is not None
+                pages = (
+                    (
+                        archive_payload,
+                        tuple((key, str(value)) for key, value in sorted(archive_params.items())),
+                        ("archive",),
+                    ),
+                    *tail_pages,
+                )
+                page_parsers = (parse_binance_archive_zip, *page_parsers)
+                upstream_checksums = (
+                    hashlib.sha256(archive_payload).hexdigest(),
+                    *upstream_checksums,
+                )
+            return _FetchedPagedAcquisition(
+                plan=plan,
+                pages=pages,
+                page_parsers=page_parsers,
+                upstream_checksums=upstream_checksums,
+                combine_frames=_combine_binance_archive_tail,
+                provider_schema="binance-public-archive-rest-v1"
+                if archive_payload is not None
+                else "binance-public-rest-v1",
+                parser_version="binance-archive-rest-v1",
+                logical_name="market_bars.bin",
+                expected_cadence_seconds=cadence_seconds,
+                period_start_timestamps=True,
+            )
+        assert archive_payload is not None
         return _FetchedAcquisition(
             plan=plan,
-            payload=payload,
+            payload=archive_payload,
             provider_schema="binance-public-archive-v1",
             parser_version="binance-archive-v1",
             logical_name=f"{family}.zip",
-            upstream_checksum=hashlib.sha256(payload).hexdigest(),
+            upstream_checksum=hashlib.sha256(archive_payload).hexdigest(),
             expected_cadence_seconds=cadence_seconds,
             period_start_timestamps=family == "market_bars",
         )
@@ -1132,6 +1354,8 @@ def acquire(
     dataset_family = _family(family)
     fetched_at = _now()
     try:
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
         if provider == "bybit":
             plan = _bybit_plan(
                 dataset_family,
@@ -1167,9 +1391,59 @@ def acquire(
                 fetched_at=fetched_at,
             )
             plan = fetched.plan
-        if provider == "bybit" and len(pages) > 1:
+        correction_lineage: tuple[str, ...] = ()
+        if isinstance(fetched, _FetchedPagedAcquisition):
+            if fetched.upstream_checksums and fetched.upstream_checksums[0] is not None:
+                archive_payload, archive_request, _ = fetched.pages[0]
+                correction_lineage = _stable_resource_revision_lineage(
+                    store,
+                    dataset=plan.dataset,
+                    request=archive_request,
+                    response_sha256=hashlib.sha256(archive_payload).hexdigest(),
+                )
+        elif (
+            isinstance(fetched, _FetchedAcquisition)
+            and fetched.plan.dataset.provider == "binance"
+            and fetched.upstream_checksum is not None
+        ):
+            archive_request = tuple((key, str(value)) for key, value in sorted(plan.params.items()))
+            correction_lineage = _stable_resource_revision_lineage(
+                store,
+                dataset=plan.dataset,
+                request=archive_request,
+                response_sha256=hashlib.sha256(fetched.payload).hexdigest(),
+            )
+        if isinstance(fetched, _FetchedPagedAcquisition):
             paged_result = ingest_provider_pages(
-                _bulk_store(),
+                store,
+                dataset=plan.dataset,
+                pages=fetched.pages,
+                fetched_at=fetched_at,
+                provider_schema=fetched.provider_schema,
+                parser_version=fetched.parser_version,
+                logical_name=fetched.logical_name,
+                parser=plan.parser,
+                page_parsers=fetched.page_parsers,
+                upstream_checksums=fetched.upstream_checksums,
+                combine_frames=fetched.combine_frames,
+                observed_column=plan.observed_column,
+                key_columns=plan.key_columns,
+                availability_column=plan.availability_column,
+                expected_cadence=(
+                    timedelta(seconds=fetched.expected_cadence_seconds)
+                    if fetched.expected_cadence_seconds is not None
+                    else None
+                ),
+                period_start_timestamps=fetched.period_start_timestamps,
+                correction_lineage=correction_lineage,
+                unexplained_revision=bool(correction_lineage),
+            )
+            quality = paged_result.quality
+            normalized_manifest = paged_result.normalized_manifest
+            raw_manifests = paged_result.raw_manifests
+        elif provider == "bybit" and len(pages) > 1:
+            paged_result = ingest_provider_pages(
+                store,
                 dataset=plan.dataset,
                 pages=pages,
                 fetched_at=fetched_at,
@@ -1196,9 +1470,7 @@ def acquire(
             else:
                 assert fetched is not None
                 payload = fetched.payload
-                request = tuple(
-                    (key, str(value)) for key, value in sorted(plan.params.items())
-                )
+                request = tuple((key, str(value)) for key, value in sorted(plan.params.items()))
                 pagination = ()
                 provider_schema = fetched.provider_schema
                 parser_version = fetched.parser_version
@@ -1207,7 +1479,7 @@ def acquire(
                 expected_cadence_seconds = fetched.expected_cadence_seconds
                 period_start_timestamps = fetched.period_start_timestamps
             single_result = ingest_provider_payload(
-                _bulk_store(),
+                store,
                 dataset=plan.dataset,
                 payload=payload,
                 request=request,
@@ -1227,6 +1499,8 @@ def acquire(
                     else None
                 ),
                 period_start_timestamps=period_start_timestamps,
+                correction_lineage=correction_lineage,
+                unexplained_revision=bool(correction_lineage),
             )
             quality = single_result.quality
             normalized_manifest = single_result.normalized_manifest

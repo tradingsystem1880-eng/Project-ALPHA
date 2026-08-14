@@ -11,8 +11,10 @@ import pytest
 from alpha_core import DataError
 from alpha_data.crypto.providers.binance import (
     archive_url,
+    binance_public_api_url,
     parse_binance_aggregate_trades,
     parse_binance_archive_zip,
+    parse_binance_book_snapshot,
     parse_binance_klines,
     parse_binance_trades,
     point_in_time_liquid_universe,
@@ -60,9 +62,7 @@ def test_archive_zip_allows_one_bounded_flat_csv_member() -> None:
 
 
 def test_trade_and_aggregate_trade_archives_preserve_native_ids_and_optional_fields() -> None:
-    trades = parse_binance_trades(
-        b"51175358,17.8018,5.69,101.292242,1735689600010866,True,True\n"
-    )
+    trades = parse_binance_trades(b"51175358,17.8018,5.69,101.292242,1735689600010866,True,True\n")
     assert trades.row(0, named=True) == {
         "trade_id": 51175358,
         "price": 17.8018,
@@ -158,6 +158,87 @@ def test_rest_json_parser_and_malformed_rows_fail_loud() -> None:
     duplicated = b"1,1,2,0.5,1.5,10,2,15,2,4,6\n1,1,2,0.5,1.5,10,2,15,2,4,6\n"
     with pytest.raises(DataError, match="duplicate"):
         parse_binance_klines(duplicated, source="archive_csv")
+
+
+def test_book_snapshot_preserves_exact_sides_levels_and_knowledge_time() -> None:
+    fetched_at = datetime(2026, 8, 14, 19, tzinfo=UTC)
+    frame = parse_binance_book_snapshot(
+        b'{"lastUpdateId":42,"bids":[["90000","1.5"],["89999","2"]],'
+        b'"asks":[["90001","0.5"],["90002","3"]]}',
+        symbol="BTCUSDT",
+        category="spot",
+        fetched_at=fetched_at,
+    )
+
+    assert frame.columns == [
+        "observed_at",
+        "provider_event_time",
+        "transaction_time",
+        "symbol",
+        "category",
+        "update_id",
+        "side",
+        "level",
+        "price",
+        "quantity",
+    ]
+    assert frame.height == 4
+    assert frame.filter(pl.col("side") == "bid").sort("level")["price"].to_list() == [
+        90000.0,
+        89999.0,
+    ]
+    assert frame["observed_at"].unique().to_list() == [fetched_at]
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    (
+        (b'{"lastUpdateId":1,"bids":[],"asks":[]}', "empty"),
+        (b'{"lastUpdateId":1,"bids":[["2","1"]],"asks":[["1","1"]]}', "crossed"),
+        (b'{"lastUpdateId":1,"bids":[["1","-1"]],"asks":[["2","1"]]}', "bounds"),
+        (b'{"lastUpdateId":"x","bids":[["1","1"]],"asks":[["2","1"]]}', "update"),
+    ),
+)
+def test_book_snapshot_rejects_invalid_provider_state(payload: bytes, message: str) -> None:
+    with pytest.raises(DataError, match=message):
+        parse_binance_book_snapshot(
+            payload,
+            symbol="BTCUSDT",
+            category="spot",
+            fetched_at=datetime(2026, 8, 14, 19, tzinfo=UTC),
+        )
+
+
+def test_public_api_urls_are_closed_bounded_and_market_specific() -> None:
+    spot = binance_public_api_url("spot", "depth", {"symbol": "BTCUSDT", "limit": 1000})
+    linear = binance_public_api_url(
+        "linear",
+        "klines",
+        {"symbol": "BTCUSDT", "interval": "1h", "limit": 1000, "startTime": 1},
+    )
+    inverse = binance_public_api_url("inverse", "depth", {"symbol": "BTCUSD_PERP", "limit": 100})
+
+    assert spot.startswith("https://api.binance.com/api/v3/depth?")
+    assert linear.startswith("https://fapi.binance.com/fapi/v1/klines?")
+    assert inverse.startswith("https://dapi.binance.com/dapi/v1/depth?")
+    with pytest.raises(DataError, match="parameter"):
+        binance_public_api_url(
+            "spot", "depth", {"symbol": "BTCUSDT", "limit": 100, "apiKey": "secret"}
+        )
+    with pytest.raises(DataError, match="limit"):
+        binance_public_api_url("spot", "depth", {"symbol": "BTCUSDT", "limit": 5000})
+    with pytest.raises(DataError, match="range"):
+        binance_public_api_url(
+            "spot",
+            "klines",
+            {
+                "symbol": "BTCUSDT",
+                "interval": "1h",
+                "limit": 1000,
+                "startTime": 2,
+                "endTime": 1,
+            },
+        )
 
 
 def test_checksum_url_and_reconciliation_validate_contracts() -> None:

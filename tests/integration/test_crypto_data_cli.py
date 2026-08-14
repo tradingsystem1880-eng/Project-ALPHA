@@ -278,8 +278,13 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     registered = runner.invoke(
         app,
         [
-            "research", "data", "register-crypto", snapshot["snapshot_id"],
-            "--symbol", "BTC", "--json",
+            "research",
+            "data",
+            "register-crypto",
+            snapshot["snapshot_id"],
+            "--symbol",
+            "BTC",
+            "--json",
         ],
     )
     assert registered.exit_code == 0, registered.output
@@ -317,8 +322,13 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     rejected = runner.invoke(
         app,
         [
-            "research", "data", "register-crypto", snapshot["snapshot_id"],
-            "--symbol", "BTC", "--json",
+            "research",
+            "data",
+            "register-crypto",
+            snapshot["snapshot_id"],
+            "--symbol",
+            "BTC",
+            "--json",
         ],
     )
     assert rejected.exit_code != 0
@@ -533,9 +543,7 @@ def test_binance_trade_archive_families_acquire_with_exact_native_identity(
     with zipfile.ZipFile(zipped, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(csv_name, csv_payload)
     archive_payload = zipped.getvalue()
-    monkeypatch.setattr(
-        crypto_data_cmds, "fetch_binance_archive", lambda *_args: archive_payload
-    )
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_archive", lambda *_args: archive_payload)
     monkeypatch.setattr(
         crypto_data_cmds,
         "fetch_binance_checksum",
@@ -569,9 +577,240 @@ def test_binance_trade_archive_families_acquire_with_exact_native_identity(
     assert manifest["dataset"]["family"] == family
     assert manifest["dataset"]["frequency"] == expected_frequency
     raw_manifest = store.verify_manifest(receipt["raw_manifest_id"])
-    assert raw_manifest["receipt"]["upstream_checksum"] == hashlib.sha256(
-        archive_payload
-    ).hexdigest()
+    assert (
+        raw_manifest["receipt"]["upstream_checksum"] == hashlib.sha256(archive_payload).hexdigest()
+    )
+
+
+def test_binance_book_snapshot_acquires_as_point_in_time_non_execution_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    fetched_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: fetched_at)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_binance_public_api",
+        lambda *_args: b'{"lastUpdateId":42,"bids":[["90000","1.5"]],"asks":[["90001","0.5"]]}',
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "binance",
+            "book_snapshots",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["state"] == "qualified"
+    assert receipt["execution_authority"] is False
+    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    assert manifest["dataset"]["family"] == "book_snapshots"
+    assert manifest["dataset"]["frequency"] == "point_in_time_book"
+    assert manifest["dataset"]["timestamp_convention"] == "fetch_knowledge_utc"
+
+
+def test_binance_archive_and_rest_tail_freeze_both_resources_and_reconcile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+    archived_row = b"1738195200000,100,110,90,105,12,1738281599999,1260,42,6,630,0\n"
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("BTCUSDT-1d-2025-01.csv", archived_row)
+    archive_payload = zipped.getvalue()
+    tail_payload = json.dumps(
+        [
+            [
+                1738195200000,
+                "100",
+                "110",
+                "90",
+                "105",
+                "12",
+                1738281599999,
+                "1260",
+                42,
+                "6",
+                "630",
+                "0",
+            ],
+            [
+                1738281600000,
+                "105",
+                "115",
+                "100",
+                "110",
+                "10",
+                1738367999999,
+                "1100",
+                30,
+                "5",
+                "550",
+                "0",
+            ],
+        ]
+    ).encode()
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_archive", lambda *_args: archive_payload)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_binance_checksum",
+        lambda *_args: f"{hashlib.sha256(archive_payload).hexdigest()} file.zip\n".encode(),
+    )
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_public_api", lambda *_args: tail_payload)
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "binance",
+            "market_bars",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--frequency",
+            "1d",
+            "--period",
+            "2025-01",
+            "--start",
+            "2025-01-30T00:00:00Z",
+            "--end",
+            "2025-01-31T00:00:00Z",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["state"] == "qualified"
+    assert receipt["raw_page_count"] == 2
+    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    assert manifest["quality"]["row_count"] == 2
+    assert manifest["input_manifest_ids"] == receipt["raw_manifest_ids"]
+    archive_raw = store.verify_manifest(receipt["raw_manifest_ids"][0])
+    tail_raw = store.verify_manifest(receipt["raw_manifest_ids"][1])
+    assert (
+        archive_raw["receipt"]["upstream_checksum"] == hashlib.sha256(archive_payload).hexdigest()
+    )
+    assert tail_raw["receipt"]["upstream_checksum"] is None
+
+
+def test_changed_binance_archive_is_versioned_and_quarantined_as_unexplained(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    def zipped(close: str) -> bytes:
+        output = io.BytesIO()
+        row = (
+            f"1704067200000,42000,43000,41000,{close},12.5,1704153599999,531250,42,6.1,259250,0\n"
+        ).encode()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("BTCUSDT-1d-2024-01.csv", row)
+        return output.getvalue()
+
+    first_payload, second_payload = zipped("42500"), zipped("42600")
+    payloads = iter((first_payload, second_payload))
+    current: list[bytes] = []
+
+    def fetch_archive(*_args: object) -> bytes:
+        payload = next(payloads)
+        current[:] = [payload]
+        return payload
+
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_archive", fetch_archive)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_binance_checksum",
+        lambda *_args: f"{hashlib.sha256(current[0]).hexdigest()} file.zip\n".encode(),
+    )
+    command = [
+        "crypto-data",
+        "acquire",
+        "binance",
+        "market_bars",
+        "BTCUSDT",
+        "--base",
+        "BTC",
+        "--quote",
+        "USDT",
+        "--category",
+        "spot",
+        "--frequency",
+        "1d",
+        "--period",
+        "2024-01",
+        "--json",
+    ]
+
+    first = runner.invoke(app, command)
+    second = runner.invoke(app, command)
+
+    assert first.exit_code == 0, first.output
+    assert json.loads(first.stdout)["state"] == "qualified"
+    assert second.exit_code == 0, second.output
+    second_receipt = json.loads(second.stdout)
+    assert second_receipt["state"] == "quarantined"
+    manifest = store.verify_manifest(second_receipt["normalized_manifest_id"])
+    assert manifest["quality"]["failures"] == ["unexplained_provider_revision"]
+    assert manifest["quality"]["correction_lineage"] == [hashlib.sha256(first_payload).hexdigest()]
 
 
 def test_bybit_bounded_open_interest_follows_cursors_and_freezes_each_page(
@@ -613,9 +852,21 @@ def test_bybit_bounded_open_interest_follows_cursors_and_freezes_each_page(
     result = runner.invoke(
         app,
         [
-            "crypto-data", "acquire", "bybit", "open_interest", "BTCUSDT",
-            "--base", "BTC", "--quote", "USDT", "--frequency", "1h",
-            "--start", "2026-08-14T00:00:00Z", "--end", "2026-08-15T00:00:00Z",
+            "crypto-data",
+            "acquire",
+            "bybit",
+            "open_interest",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--frequency",
+            "1h",
+            "--start",
+            "2026-08-14T00:00:00Z",
+            "--end",
+            "2026-08-15T00:00:00Z",
             "--json",
         ],
     )
@@ -624,12 +875,20 @@ def test_bybit_bounded_open_interest_follows_cursors_and_freezes_each_page(
     receipt = json.loads(result.stdout)
     assert calls == [
         {
-            "category": "linear", "symbol": "BTCUSDT", "intervalTime": "1h",
-            "limit": 200, "startTime": 1_786_665_600_000, "endTime": 1_786_752_000_000,
+            "category": "linear",
+            "symbol": "BTCUSDT",
+            "intervalTime": "1h",
+            "limit": 200,
+            "startTime": 1_786_665_600_000,
+            "endTime": 1_786_752_000_000,
         },
         {
-            "category": "linear", "symbol": "BTCUSDT", "intervalTime": "1h",
-            "limit": 200, "startTime": 1_786_665_600_000, "endTime": 1_786_752_000_000,
+            "category": "linear",
+            "symbol": "BTCUSDT",
+            "intervalTime": "1h",
+            "limit": 200,
+            "startTime": 1_786_665_600_000,
+            "endTime": 1_786_752_000_000,
             "cursor": "cursor-a",
         },
     ]
@@ -650,8 +909,15 @@ def test_bybit_range_fails_closed_when_incomplete_or_inverted(
     start: str | None, end: str | None, message: str
 ) -> None:
     args = [
-        "crypto-data", "acquire", "bybit", "open_interest", "BTCUSDT",
-        "--base", "BTC", "--quote", "USDT",
+        "crypto-data",
+        "acquire",
+        "bybit",
+        "open_interest",
+        "BTCUSDT",
+        "--base",
+        "BTC",
+        "--quote",
+        "USDT",
     ]
     if start is not None:
         args.extend(["--start", start])

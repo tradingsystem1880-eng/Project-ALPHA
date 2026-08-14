@@ -110,6 +110,31 @@ def test_cadence_gap_and_corrections_are_explicit_not_repaired() -> None:
     assert frame["timestamp"].to_list()[1] - frame["timestamp"].to_list()[0] == timedelta(hours=2)
 
 
+def test_unexplained_provider_revision_is_quarantined_without_rewriting_values() -> None:
+    frame = pl.DataFrame(
+        {
+            "timestamp": [NOW - timedelta(hours=2)],
+            "funding_rate": [0.001],
+        }
+    )
+    report = qualify_crypto_frame(
+        _dataset("funding"),
+        frame,
+        artifact_sha256=SHA,
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+        knowledge_time=NOW,
+        as_of=NOW,
+        correction_lineage=("prior_response_sha256",),
+        unexplained_revision=True,
+    )
+
+    assert report.state == "quarantined"
+    assert report.failures == ("unexplained_provider_revision",)
+    assert report.correction_lineage == ("prior_response_sha256",)
+    assert frame["funding_rate"].to_list() == [0.001]
+
+
 def test_family_rules_reject_impossible_derivatives_values() -> None:
     funding = pl.DataFrame({"timestamp": [NOW - timedelta(hours=1)], "funding_rate": [1.1]})
     oi = pl.DataFrame({"timestamp": [NOW - timedelta(hours=1)], "open_interest": [-1.0]})

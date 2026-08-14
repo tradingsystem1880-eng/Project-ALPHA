@@ -279,6 +279,7 @@ def qualify_crypto_frame(
     period_start_timestamps: bool = False,
     availability_column: str | None = None,
     correction_lineage: tuple[str, ...] = (),
+    unexplained_revision: bool = False,
 ) -> CryptoQualityReportV1:
     """Classify exact bytes without repairing, replacing, or dropping observations."""
     knowledge = _utc(knowledge_time, "knowledge time")
@@ -318,6 +319,10 @@ def qualify_crypto_frame(
         elif any(value > cutoff for value in availability):
             failures.add("future_availability")
     failures.update(_numeric_failures(frame))
+    if unexplained_revision:
+        if not correction_lineage:
+            raise DataError("unexplained crypto revision requires correction lineage")
+        failures.add("unexplained_provider_revision")
     if expected_cadence is not None and observations:
         if expected_cadence <= timedelta(0):
             raise DataError("crypto quality cadence must be positive")
