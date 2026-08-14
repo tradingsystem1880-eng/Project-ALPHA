@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import io
+import zipfile
 from datetime import UTC, datetime
 
 import polars as pl
@@ -9,6 +11,7 @@ import pytest
 from alpha_core import DataError
 from alpha_data.crypto.providers.binance import (
     archive_url,
+    parse_binance_archive_zip,
     parse_binance_klines,
     point_in_time_liquid_universe,
     reconcile_archive_tail,
@@ -35,6 +38,23 @@ def test_archive_parser_preserves_native_kline_fields() -> None:
     ]
     assert frame.row(0, named=True)["quote_volume"] == 531250.0
     assert frame.row(0, named=True)["trade_count"] == 42
+
+
+def test_archive_zip_allows_one_bounded_flat_csv_member() -> None:
+    csv = b"1704067200000,42000,43000,41000,42500,12.5,1704153599999,531250,42,6.1,259250,0\n"
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("BTCUSDT-1d-2026-07.csv", csv)
+
+    assert parse_binance_archive_zip(output.getvalue()).equals(
+        parse_binance_klines(csv, source="archive_csv")
+    )
+
+    bad = io.BytesIO()
+    with zipfile.ZipFile(bad, "w") as archive:
+        archive.writestr("../private.csv", csv)
+    with pytest.raises(DataError, match="member path"):
+        parse_binance_archive_zip(bad.getvalue())
 
 
 def test_parser_detects_post_2025_microsecond_timestamps() -> None:

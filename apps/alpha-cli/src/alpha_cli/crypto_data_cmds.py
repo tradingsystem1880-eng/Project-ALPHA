@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Final, Literal, cast
@@ -29,6 +30,13 @@ from alpha_data.crypto.contracts import (
     CryptoSnapshotV1,
 )
 from alpha_data.crypto.ingestion import ingest_provider_payload
+from alpha_data.crypto.providers.binance import (
+    archive_url,
+    fetch_binance_archive,
+    fetch_binance_checksum,
+    parse_binance_archive_zip,
+    verify_archive_checksum,
+)
 from alpha_data.crypto.providers.bybit import (
     PriceFamily,
     fetch_bybit_public,
@@ -39,6 +47,25 @@ from alpha_data.crypto.providers.bybit import (
     parse_open_interest,
     parse_option_tickers,
     parse_price_klines,
+)
+from alpha_data.crypto.providers.coingecko import (
+    coingecko_demo_request,
+    fetch_coingecko_demo,
+    parse_asset_catalog,
+    parse_market_universe,
+)
+from alpha_data.crypto.providers.coinmetrics import (
+    REVIEWED_COMMUNITY_METRICS,
+    coinmetrics_community_url,
+    fetch_coinmetrics_community,
+    parse_asset_metrics,
+)
+from alpha_data.crypto.providers.geckoterminal import (
+    fetch_geckoterminal_public,
+    geckoterminal_public_url,
+    parse_pool_ohlcv,
+    parse_pool_trades,
+    parse_top_pools,
 )
 from alpha_data.crypto.research import (
     CryptoResearchPurpose,
@@ -93,6 +120,18 @@ class _AcquisitionPlan:
     availability_column: str | None = None
 
 
+@dataclass(frozen=True)
+class _FetchedAcquisition:
+    plan: _AcquisitionPlan
+    payload: bytes
+    provider_schema: str
+    parser_version: str
+    logical_name: str
+    upstream_checksum: str | None = None
+    expected_cadence_seconds: int | None = None
+    period_start_timestamps: bool = False
+
+
 def _open_interest_frame(payload: bytes) -> pl.DataFrame:
     return parse_open_interest(payload)[0]
 
@@ -109,6 +148,16 @@ def _instrument_frame(payload: bytes, *, fetched_at_ms: int) -> pl.DataFrame:
 
 def _option_quote_frame(payload: bytes, *, fetched_at_ms: int) -> pl.DataFrame:
     return parse_option_tickers(payload, fetched_at_ms=fetched_at_ms)[0]
+
+
+def _asset_catalog_frame(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
+    return parse_asset_catalog(payload).with_columns(pl.lit(fetched_at).alias("fetched_at"))
+
+
+def _top_pools_frame(payload: bytes, *, network: str, fetched_at: datetime) -> pl.DataFrame:
+    return parse_top_pools(payload, network=network).with_columns(
+        pl.lit(fetched_at).alias("fetched_at")
+    )
 
 
 def _emit(value: object, *, json_out: bool) -> None:
@@ -449,6 +498,281 @@ def _bybit_plan(
     )
 
 
+def _fetch_non_bybit(
+    provider: str,
+    family: CryptoFamily,
+    instrument: str,
+    *,
+    base: str,
+    quote: str,
+    category: str,
+    frequency: str,
+    period: str | None,
+    network: str | None,
+    pool_address: str | None,
+    metrics: str | None,
+    start: str | None,
+    end: str | None,
+    fetched_at: datetime,
+) -> _FetchedAcquisition:
+    base_value, quote_value = base.strip().upper(), quote.strip().upper()
+    instrument_value = instrument.strip()
+    if not base_value.isalnum() or not quote_value.isalnum() or not instrument_value:
+        raise DataError("crypto acquisition identity is invalid")
+    keys: tuple[str, ...]
+
+    if provider == "binance":
+        if family != "market_bars":
+            raise DataError("this Binance acquisition accepts market_bars archives")
+        if category not in {"spot", "linear", "inverse"}:
+            raise DataError("Binance category must be spot, linear, or inverse")
+        if period is None:
+            raise DataError("Binance archive acquisition requires --period YYYY-MM")
+        market = {"spot": "spot", "linear": "um", "inverse": "cm"}[category]
+        url = archive_url(
+            cast(Literal["spot", "um", "cm"], market),
+            "klines",
+            instrument_value.upper(),
+            frequency,
+            period,
+        )
+        payload = fetch_binance_archive(url)
+        checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
+        verify_archive_checksum(payload, checksum)
+        cadence_seconds = {"1d": 86_400, "1h": 3_600, "5m": 300, "1m": 60}.get(frequency)
+        if cadence_seconds is None:
+            raise DataError("Binance kline frequency must be 1m, 5m, 1h, or 1d")
+        plan = _AcquisitionPlan(
+            endpoint="monthly_archive",
+            params={
+                "market": market,
+                "family": "klines",
+                "symbol": instrument_value.upper(),
+                "interval": frequency,
+                "period": period,
+            },
+            dataset=CryptoDatasetIdentityV1(
+                provider="binance",
+                venue="binance",
+                market_type=cast(CryptoMarketType, category),
+                family="market_bars",
+                instrument=instrument_value.upper(),
+                base_asset=base_value,
+                quote_asset=quote_value,
+                frequency=frequency,
+                units="provider_native_ohlcv",
+                timestamp_convention="interval_start_utc",
+            ),
+            parser=parse_binance_archive_zip,
+            observed_column="open_time",
+            key_columns=("open_time",),
+        )
+        return _FetchedAcquisition(
+            plan=plan,
+            payload=payload,
+            provider_schema="binance-public-archive-v1",
+            parser_version="binance-archive-v1",
+            logical_name=f"{family}.zip",
+            upstream_checksum=hashlib.sha256(payload).hexdigest(),
+            expected_cadence_seconds=cadence_seconds,
+            period_start_timestamps=True,
+        )
+
+    if provider == "coingecko":
+        api_key = os.environ.get("ALPHA_COINGECKO_API_KEY", "")
+        if not api_key:
+            raise DataError("CoinGecko Demo key requires scoped process injection")
+        if family == "market_reference":
+            params: dict[str, str | int | bool] = {
+                "vs_currency": quote_value.lower(),
+                "ids": instrument_value,
+                "order": "market_cap_desc",
+                "per_page": 1,
+                "page": 1,
+                "sparkline": False,
+            }
+            request = coingecko_demo_request("markets", params, api_key=api_key)
+            payload = fetch_coingecko_demo(request)
+            parser = partial(
+                parse_market_universe,
+                vs_currency=quote_value,
+                fetched_at=fetched_at,
+            )
+            observed_column = "observed_at"
+            keys = ("coingecko_id", "quote_asset")
+            endpoint = "markets"
+            frequency_value = "point_in_time_reference"
+        elif family == "asset_metadata":
+            params = {"include_platform": True}
+            request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
+            payload = fetch_coingecko_demo(request)
+            parser = partial(_asset_catalog_frame, fetched_at=fetched_at)
+            observed_column = "fetched_at"
+            keys = ("coingecko_id", "network", "contract_address")
+            endpoint = "asset_catalog"
+            frequency_value = "catalog_snapshot"
+        else:
+            raise DataError(f"CoinGecko is not authoritative for {family}")
+        plan = _AcquisitionPlan(
+            endpoint=endpoint,
+            params={
+                key: int(value) if isinstance(value, bool) else value
+                for key, value in params.items()
+            },
+            dataset=CryptoDatasetIdentityV1(
+                provider="coingecko",
+                venue="coingecko",
+                market_type="reference",
+                family=family,
+                instrument=instrument_value,
+                base_asset=base_value,
+                quote_asset=quote_value if family == "market_reference" else None,
+                frequency=frequency_value,
+                units="reference_only",
+                timestamp_convention="provider_observation_utc",
+            ),
+            parser=parser,
+            observed_column=observed_column,
+            key_columns=keys,
+            availability_column="fetched_at",
+        )
+        return _FetchedAcquisition(
+            plan=plan,
+            payload=payload,
+            provider_schema="coingecko-demo-v3",
+            parser_version="coingecko-reference-v1",
+            logical_name=f"{family}.json",
+        )
+
+    if provider == "geckoterminal":
+        if network is None:
+            raise DataError("GeckoTerminal acquisition requires --network")
+        if family == "dex_pools":
+            params_gt: dict[str, str | int | bool] = {"page": 1}
+            url = geckoterminal_public_url("top_pools", network=network, params=params_gt)
+            payload = fetch_geckoterminal_public(url)
+            parser = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
+            observed_column = "fetched_at"
+            keys = ("network", "pool_address")
+            endpoint = "top_pools"
+            frequency_value = "daily_catalog"
+        elif family in {"dex_ohlcv", "dex_transactions"}:
+            if pool_address is None:
+                raise DataError("pool data acquisition requires --pool-address")
+            if family == "dex_ohlcv":
+                timeframe = {"1d": "day", "1h": "hour", "1m": "minute"}.get(frequency)
+                if timeframe is None:
+                    raise DataError("GeckoTerminal OHLCV frequency must be 1m, 1h, or 1d")
+                params_gt = {"aggregate": 1, "limit": 1_000, "currency": "usd"}
+                url = geckoterminal_public_url(
+                    "ohlcv",
+                    network=network,
+                    pool_address=pool_address,
+                    timeframe=timeframe,
+                    params=params_gt,
+                )
+                parser = partial(parse_pool_ohlcv, network=network, pool_address=pool_address)
+                keys = ("network", "pool_address", "timestamp")
+                endpoint = "ohlcv"
+            else:
+                params_gt = {}
+                url = geckoterminal_public_url(
+                    "trades", network=network, pool_address=pool_address, params=params_gt
+                )
+                parser = partial(parse_pool_trades, network=network, pool_address=pool_address)
+                keys = ("network", "pool_address", "tx_hash")
+                endpoint = "trades"
+            payload = fetch_geckoterminal_public(url)
+            observed_column = "timestamp"
+            frequency_value = frequency
+        else:
+            raise DataError(f"GeckoTerminal is not authoritative for {family}")
+        plan = _AcquisitionPlan(
+            endpoint=endpoint,
+            params={
+                key: int(value) if isinstance(value, bool) else value
+                for key, value in params_gt.items()
+            },
+            dataset=CryptoDatasetIdentityV1(
+                provider="geckoterminal",
+                venue=network,
+                market_type="dex",
+                family=family,
+                instrument=pool_address or network,
+                base_asset=base_value if pool_address else None,
+                quote_asset=quote_value if pool_address else None,
+                frequency=frequency_value,
+                units="provider_native_dex",
+                timestamp_convention="provider_observation_utc",
+            ),
+            parser=parser,
+            observed_column=observed_column,
+            key_columns=keys,
+        )
+        return _FetchedAcquisition(
+            plan=plan,
+            payload=payload,
+            provider_schema="geckoterminal-v2",
+            parser_version="geckoterminal-public-v1",
+            logical_name=f"{family}.json",
+        )
+
+    if provider == "coinmetrics":
+        if family != "onchain_metrics":
+            raise DataError(f"Coin Metrics Community is not authoritative for {family}")
+        selected_metrics = tuple(
+            item.strip() for item in (metrics or "").split(",") if item.strip()
+        )
+        if not selected_metrics or any(
+            item not in REVIEWED_COMMUNITY_METRICS for item in selected_metrics
+        ):
+            raise DataError("Coin Metrics requires reviewed --metrics values")
+        if not start or not end:
+            raise DataError("Coin Metrics acquisition requires --start and --end")
+        params_cm: dict[str, str | int] = {
+            "assets": instrument_value.lower(),
+            "metrics": ",".join(selected_metrics),
+            "frequency": frequency,
+            "start_time": start,
+            "end_time": end,
+            "page_size": 10_000,
+        }
+        url = coinmetrics_community_url("asset_metrics", params_cm)
+        payload = fetch_coinmetrics_community(url)
+        plan = _AcquisitionPlan(
+            endpoint="asset_metrics",
+            params=params_cm,
+            dataset=CryptoDatasetIdentityV1(
+                provider="coinmetrics",
+                venue="coinmetrics-community",
+                market_type="network",
+                family="onchain_metrics",
+                instrument=instrument_value.lower(),
+                base_asset=base_value,
+                quote_asset=None,
+                frequency=frequency,
+                units="metric_native",
+                timestamp_convention="provider_observation_utc",
+            ),
+            parser=partial(
+                parse_asset_metrics,
+                assets=(instrument_value.lower(),),
+                metrics=selected_metrics,
+            ),
+            observed_column="timestamp",
+            key_columns=("asset", "timestamp", "metric"),
+        )
+        return _FetchedAcquisition(
+            plan=plan,
+            payload=payload,
+            provider_schema="coinmetrics-community-v4",
+            parser_version="coinmetrics-community-v1",
+            logical_name="onchain_metrics.json",
+        )
+
+    raise DataError(f"unsupported crypto acquisition provider {provider!r}")
+
+
 @crypto_data_app.command("acquire")
 def acquire(
     provider: str,
@@ -456,39 +780,75 @@ def acquire(
     instrument: str,
     base: str = typer.Option(..., help="exact base asset"),
     quote: str = typer.Option(..., help="exact quote asset; USD, USDT, and USDC stay distinct"),
-    category: str = typer.Option("linear", help="Bybit linear or inverse market"),
+    category: str = typer.Option("linear", help="spot, linear, or inverse market"),
     frequency: str = typer.Option("1h", help="provider-native bounded frequency"),
+    period: str | None = typer.Option(None, help="Binance monthly archive period YYYY-MM"),
+    network: str | None = typer.Option(None, help="reviewed GeckoTerminal network id"),
+    pool_address: str | None = typer.Option(None, help="exact DEX pool address"),
+    metrics: str | None = typer.Option(None, help="comma-separated reviewed Coin Metrics metrics"),
+    start: str | None = typer.Option(None, help="provider-native bounded start time"),
+    end: str | None = typer.Option(None, help="provider-native bounded end time"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Acquire one bounded public provider page; this grants no research or order authority."""
-    if provider != "bybit":
-        raise typer.BadParameter("this acquisition slice currently accepts provider 'bybit'")
     dataset_family = _family(family)
     fetched_at = _now()
     try:
-        plan = _bybit_plan(
-            dataset_family,
-            instrument,
-            base=base,
-            quote=quote,
-            category=category,
-            frequency=frequency,
-            fetched_at=fetched_at,
-        )
-        payload = fetch_bybit_public(plan.endpoint, plan.params)
+        if provider == "bybit":
+            plan = _bybit_plan(
+                dataset_family,
+                instrument,
+                base=base,
+                quote=quote,
+                category=category,
+                frequency=frequency,
+                fetched_at=fetched_at,
+            )
+            fetched = _FetchedAcquisition(
+                plan=plan,
+                payload=fetch_bybit_public(plan.endpoint, plan.params),
+                provider_schema="bybit-v5",
+                parser_version="bybit-public-v1",
+                logical_name=f"{dataset_family}.json",
+            )
+        else:
+            fetched = _fetch_non_bybit(
+                provider,
+                dataset_family,
+                instrument,
+                base=base,
+                quote=quote,
+                category=category,
+                frequency=frequency,
+                period=period,
+                network=network,
+                pool_address=pool_address,
+                metrics=metrics,
+                start=start,
+                end=end,
+                fetched_at=fetched_at,
+            )
+            plan = fetched.plan
         result = ingest_provider_payload(
             _bulk_store(),
             dataset=plan.dataset,
-            payload=payload,
+            payload=fetched.payload,
             request=tuple((key, str(value)) for key, value in sorted(plan.params.items())),
             fetched_at=fetched_at,
-            provider_schema="bybit-v5",
-            parser_version="bybit-public-v1",
-            logical_name=f"{dataset_family}.json",
+            provider_schema=fetched.provider_schema,
+            parser_version=fetched.parser_version,
+            logical_name=fetched.logical_name,
             parser=plan.parser,
             observed_column=plan.observed_column,
             key_columns=plan.key_columns,
             availability_column=plan.availability_column,
+            upstream_checksum=fetched.upstream_checksum,
+            expected_cadence=(
+                timedelta(seconds=fetched.expected_cadence_seconds)
+                if fetched.expected_cadence_seconds is not None
+                else None
+            ),
+            period_start_timestamps=fetched.period_start_timestamps,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -537,6 +897,108 @@ def _normalized_member(
             artifact_sha256=artifact_hash,
         ),
         quality,
+    )
+
+
+def _coverage_row(manifest: dict[str, object]) -> dict[str, object]:
+    dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+    quality = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    manifest_id = manifest.get("manifest_id")
+    if not isinstance(manifest_id, str):
+        raise DataError("crypto normalized manifest id is invalid")
+    return {
+        "manifest_id": manifest_id,
+        "provider": dataset.provider,
+        "venue": dataset.venue,
+        "market_type": dataset.market_type,
+        "family": dataset.family,
+        "instrument": dataset.instrument,
+        "base_asset": dataset.base_asset,
+        "quote_asset": dataset.quote_asset,
+        "frequency": dataset.frequency,
+        "units": dataset.units,
+        "timestamp_convention": dataset.timestamp_convention,
+        "state": quality.state,
+        "failures": list(quality.failures),
+        "warnings": list(quality.warnings),
+        "observed_start": quality.observed_start.isoformat() if quality.observed_start else None,
+        "observed_end": quality.observed_end.isoformat() if quality.observed_end else None,
+        "row_count": quality.row_count,
+        "artifact_sha256": quality.dataset_sha256,
+        "method_version": quality.method_version,
+    }
+
+
+@crypto_data_app.command("coverage")
+def coverage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """Show exact normalized family coverage and qualification without provider probes."""
+    try:
+        items = [
+            _coverage_row(manifest)
+            for manifest in _bulk_store().inventory()
+            if manifest.get("artifact_kind") == "normalized"
+        ]
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    items.sort(
+        key=lambda row: (str(row["family"]), str(row["instrument"]), str(row["manifest_id"]))
+    )
+    _emit(
+        {
+            "items": items,
+            "count": len(items),
+            "canonical_next_action": (
+                "Select qualified families for a snapshot."
+                if any(item["state"] == "qualified" for item in items)
+                else "Acquire and qualify one bounded dataset."
+            ),
+            "automatic_fallback": False,
+            "execution_authority": False,
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("quality")
+def quality(
+    manifest_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Reverify and display one normalized artifact's mechanical quality report."""
+    try:
+        manifest = _bulk_store().verify_manifest(manifest_id)
+        if manifest.get("artifact_kind") != "normalized":
+            raise DataError("crypto quality requires a normalized manifest")
+        row = _coverage_row(manifest)
+        report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "manifest_id": manifest_id,
+            "dataset": {
+                key: row[key]
+                for key in (
+                    "provider",
+                    "venue",
+                    "market_type",
+                    "family",
+                    "instrument",
+                    "base_asset",
+                    "quote_asset",
+                    "frequency",
+                    "units",
+                    "timestamp_convention",
+                )
+            },
+            "quality": report.to_dict(),
+            "next_action": (
+                "Select this dataset for a frozen snapshot."
+                if report.state == "qualified"
+                else "Resolve the reported failures or warnings; do not substitute another venue."
+            ),
+        },
+        json_out=json_out,
     )
 
 

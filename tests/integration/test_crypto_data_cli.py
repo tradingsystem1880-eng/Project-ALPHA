@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import io
 import json
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -199,3 +202,185 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     verification = json.loads(verified.stdout)
     assert verification["eligible"] is True
     assert verification["blockers"] == []
+
+    coverage = runner.invoke(app, ["crypto-data", "coverage", "--json"])
+    assert coverage.exit_code == 0, coverage.output
+    coverage_payload = json.loads(coverage.stdout)
+    assert coverage_payload["items"][0]["family"] == "funding"
+    assert coverage_payload["items"][0]["state"] == "qualified"
+    assert coverage_payload["canonical_next_action"] == "Select qualified families for a snapshot."
+
+    quality = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "quality",
+            receipt["normalized_manifest_id"],
+            "--json",
+        ],
+    )
+    assert quality.exit_code == 0, quality.output
+    assert json.loads(quality.stdout)["quality"]["state"] == "qualified"
+
+
+def test_crypto_data_acquires_each_non_bybit_authority_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path / "control"))
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "injected-only-for-test")
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    csv = b"1704067200000,42000,43000,41000,42500,12.5,1704153599999,531250,42,6.1,259250,0\n"
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("BTCUSDT-1d-2024-01.csv", csv)
+    binance_payload = zipped.getvalue()
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_archive", lambda *_args: binance_payload)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_binance_checksum",
+        lambda *_args: f"{hashlib.sha256(binance_payload).hexdigest()} file.zip\n".encode(),
+    )
+
+    coingecko_payload = json.dumps(
+        [
+            {
+                "id": "bitcoin",
+                "symbol": "btc",
+                "name": "Bitcoin",
+                "current_price": 60_000,
+                "market_cap": 1_200_000,
+                "market_cap_rank": 1,
+                "fully_diluted_valuation": None,
+                "total_volume": 100,
+                "circulating_supply": 20,
+                "total_supply": 21,
+                "max_supply": 21,
+                "last_updated": "2026-08-14T00:00:00Z",
+            }
+        ]
+    ).encode()
+    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", lambda *_args: coingecko_payload)
+
+    gecko_payload = json.dumps(
+        {
+            "data": [
+                {
+                    "id": "eth_0xpool",
+                    "type": "pool",
+                    "attributes": {
+                        "address": "0xPool",
+                        "name": "USDC / WETH",
+                        "pool_created_at": "2021-12-30T20:32:10Z",
+                        "base_token_price_usd": "1.0",
+                        "quote_token_price_usd": "2000",
+                        "reserve_in_usd": "4558978.84",
+                        "volume_usd": {"h24": "39081025"},
+                        "transactions": {"h24": {"buys": 8, "sells": 7}},
+                    },
+                    "relationships": {
+                        "base_token": {"data": {"id": "eth_0xbase", "type": "token"}},
+                        "quote_token": {"data": {"id": "eth_0xquote", "type": "token"}},
+                        "dex": {"data": {"id": "uniswap_v3", "type": "dex"}},
+                    },
+                }
+            ]
+        }
+    ).encode()
+    monkeypatch.setattr(
+        crypto_data_cmds, "fetch_geckoterminal_public", lambda *_args: gecko_payload
+    )
+
+    coinmetrics_payload = json.dumps(
+        {
+            "data": [
+                {
+                    "asset": "btc",
+                    "time": "2026-08-14T00:00:00Z",
+                    "AdrActCnt": "123",
+                    "AdrActCnt-status": "reviewed",
+                }
+            ]
+        }
+    ).encode()
+    monkeypatch.setattr(
+        crypto_data_cmds, "fetch_coinmetrics_community", lambda *_args: coinmetrics_payload
+    )
+
+    commands = (
+        [
+            "binance",
+            "market_bars",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--frequency",
+            "1d",
+            "--period",
+            "2024-01",
+        ],
+        [
+            "coingecko",
+            "market_reference",
+            "bitcoin",
+            "--base",
+            "BTC",
+            "--quote",
+            "USD",
+        ],
+        [
+            "geckoterminal",
+            "dex_pools",
+            "ethereum",
+            "--base",
+            "ETH",
+            "--quote",
+            "USDC",
+            "--network",
+            "eth",
+        ],
+        [
+            "coinmetrics",
+            "onchain_metrics",
+            "btc",
+            "--base",
+            "BTC",
+            "--quote",
+            "USD",
+            "--frequency",
+            "1d",
+            "--metrics",
+            "AdrActCnt",
+            "--start",
+            "2026-08-14",
+            "--end",
+            "2026-08-15",
+        ],
+    )
+    for command in commands:
+        result = runner.invoke(app, ["crypto-data", "acquire", *command, "--json"])
+        assert result.exit_code == 0, result.output
+        assert json.loads(result.stdout)["state"] == "qualified"
+
+    assert len(store.inventory()) == 8
+    inventory_json = json.dumps(store.inventory())
+    assert "injected-only-for-test" not in inventory_json

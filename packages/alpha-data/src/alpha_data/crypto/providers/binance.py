@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import re
+import zipfile
 from datetime import UTC, datetime
 from typing import Final, Literal
 
@@ -109,6 +110,30 @@ def parse_binance_klines(payload: bytes, *, source: BinanceKlineSource) -> pl.Da
     return frame
 
 
+def parse_binance_archive_zip(payload: bytes) -> pl.DataFrame:
+    """Extract one bounded flat official CSV member and parse it without path writes."""
+    if not isinstance(payload, bytes) or not payload or len(payload) > 512 * 1024 * 1024:
+        raise DataError("Binance archive ZIP exceeds the compressed byte limit")
+    try:
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            members = [item for item in archive.infolist() if not item.is_dir()]
+            if len(members) != 1:
+                raise DataError("Binance archive ZIP must contain exactly one CSV member")
+            member = members[0]
+            if (
+                "/" in member.filename
+                or "\\" in member.filename
+                or not member.filename.endswith(".csv")
+            ):
+                raise DataError("Binance archive ZIP member path is invalid")
+            if member.flag_bits & 0x1 or member.file_size > 1024 * 1024 * 1024:
+                raise DataError("Binance archive ZIP member exceeds extraction bounds")
+            csv_payload = archive.read(member)
+    except (zipfile.BadZipFile, RuntimeError, OSError) as exc:
+        raise DataError("Binance archive ZIP is malformed") from exc
+    return parse_binance_klines(csv_payload, source="archive_csv")
+
+
 def verify_archive_checksum(payload: bytes, checksum_payload: bytes) -> None:
     """Verify one official SHA-256 checksum sidecar."""
     try:
@@ -138,6 +163,58 @@ def archive_url(
     root = "spot" if market == "spot" else f"futures/{market}"
     name = f"{symbol}-{interval}-{period}.zip"
     return f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{interval}/{name}"
+
+
+def _fetch_archive_resource(
+    url: str,
+    *,
+    timeout_seconds: int,
+    max_bytes: int,
+    content_types: frozenset[str],
+) -> bytes:
+    if not 1 <= timeout_seconds <= 120:
+        raise DataError("Binance archive timeout must be between 1 and 120 seconds")
+    if not url.startswith("https://data.binance.vision/data/"):
+        raise DataError("Binance archive host is invalid")
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    request = urllib.request.Request(url, headers={"User-Agent": "Project-ALPHA/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            if not str(response.geturl()).startswith("https://data.binance.vision/data/"):
+                raise DataError("Binance archive redirect host is invalid")
+            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
+            if content_type not in content_types:
+                raise DataError("Binance archive response MIME is invalid")
+            payload = bytes(response.read(max_bytes + 1))
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+        raise DataError("Binance archive request failed") from exc
+    if len(payload) > max_bytes:
+        raise DataError("Binance archive response exceeds the byte limit")
+    return payload
+
+
+def fetch_binance_archive(url: str, *, timeout_seconds: int = 120) -> bytes:
+    if not url.endswith(".zip"):
+        raise DataError("Binance archive URL must identify a ZIP")
+    return _fetch_archive_resource(
+        url,
+        timeout_seconds=timeout_seconds,
+        max_bytes=512 * 1024 * 1024,
+        content_types=frozenset({"application/zip", "application/octet-stream"}),
+    )
+
+
+def fetch_binance_checksum(url: str, *, timeout_seconds: int = 30) -> bytes:
+    if not url.endswith(".zip.CHECKSUM"):
+        raise DataError("Binance checksum URL is invalid")
+    return _fetch_archive_resource(
+        url,
+        timeout_seconds=timeout_seconds,
+        max_bytes=4_096,
+        content_types=frozenset({"text/plain", "application/octet-stream"}),
+    )
 
 
 def reconcile_archive_tail(archive: pl.DataFrame, tail: pl.DataFrame) -> pl.DataFrame:
