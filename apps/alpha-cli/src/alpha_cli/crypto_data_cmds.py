@@ -3007,6 +3007,151 @@ def liquidity_freeze(
     _emit(result, json_out=json_out)
 
 
+def _select_one_minute_profile(
+    profile: CryptoCoverageProfileV1,
+    *,
+    case_id: str,
+    expected_case_revision: str,
+    markets: tuple[str, ...],
+    reason: str,
+) -> tuple[CryptoCoverageProfileV1, dict[str, object]]:
+    if not 1 <= len(markets) <= 50 or len(set(markets)) != len(markets):
+        raise DataError("Binance one-minute selection requires 1 to 50 unique markets")
+    if not reason.strip() or len(reason.strip()) > 500:
+        raise DataError("Binance one-minute selection reason is invalid")
+    current = _control_store().research_case_summary(case_id)
+    revision = research_case_revision(current)
+    if revision != expected_case_revision:
+        raise DataError("research case changed before one-minute selection; refresh and retry")
+    daily: dict[tuple[str, str], CryptoCoverageTaskV1] = {
+        (task.category, task.instrument): task
+        for task in profile.tasks
+        if task.provider == "binance"
+        and task.family == "market_bars"
+        and task.frequency == "1d"
+        and task.category is not None
+    }
+    selected: list[CryptoCoverageTaskV1] = []
+    selection_rows: list[dict[str, object]] = []
+    for market in markets:
+        try:
+            category, symbol = market.split(":", 1)
+        except ValueError as exc:
+            raise DataError("Binance one-minute market must be CATEGORY:SYMBOL") from exc
+        category, symbol = category.strip().lower(), symbol.strip().upper()
+        task = daily.get((category, symbol))
+        if task is None:
+            raise DataError("Binance one-minute market is outside frozen daily membership")
+        one_minute = CryptoCoverageTaskV1(
+            provider="binance",
+            family="market_bars",
+            instrument=task.instrument,
+            base_asset=task.base_asset,
+            quote_asset=task.quote_asset,
+            category=task.category,
+            frequency="1m",
+            cadence="hourly",
+        )
+        if one_minute.task_id in {existing.task_id for existing in profile.tasks}:
+            raise DataError("Binance one-minute market is already selected in this profile")
+        selected.append(one_minute)
+        selection_rows.append(
+            {
+                "category": task.category,
+                "symbol": task.instrument,
+                "base_asset": task.base_asset,
+                "quote_asset": task.quote_asset,
+                "task_id": one_minute.task_id,
+            }
+        )
+    store = _bulk_store()
+    membership_inputs: list[str] = []
+    selected_categories = {task.category for task in selected}
+    for source_id in profile.source_manifest_ids:
+        manifest = store.verify_manifest(source_id)
+        if manifest.get("artifact_kind") != "normalized":
+            continue
+        dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+        if (
+            dataset.provider == "binance"
+            and dataset.family == "market_membership"
+            and dataset.instrument in selected_categories
+        ):
+            membership_inputs.append(source_id)
+    if len(membership_inputs) != len(selected_categories):
+        raise DataError("Binance one-minute selection membership sources are incomplete")
+    output = io.BytesIO()
+    pl.DataFrame(selection_rows).sort(["category", "symbol"]).write_parquet(
+        output, compression="zstd", statistics=True
+    )
+    receipt = store.publish_derived(
+        output.getvalue(),
+        derived_kind="binance-research-selection",
+        input_manifest_ids=tuple(sorted(membership_inputs)),
+        metadata={
+            "schema_version": 1,
+            "base_profile_id": profile.profile_id,
+            "project_id": case_id,
+            "case_revision": revision,
+            "reason": reason.strip(),
+            "selected_count": len(selected),
+            "frequency": "1m",
+            "acquisition_window": "previous_complete_hour",
+            "execution_authority": False,
+        },
+    )
+    if research_case_revision(_control_store().research_case_summary(case_id)) != revision:
+        raise DataError("research case changed during one-minute selection; refresh and retry")
+    receipt_id = receipt.get("manifest_id")
+    if not isinstance(receipt_id, str):
+        raise DataError("Binance one-minute selection receipt id is invalid")
+    updated = CryptoCoverageProfileV1.create(
+        as_of=_now(),
+        source_manifest_ids=(*profile.source_manifest_ids, receipt_id),
+        tasks=(*profile.tasks, *selected),
+    )
+    _write_coverage_profile(updated)
+    return updated, {
+        "profile_id": updated.profile_id,
+        "base_profile_id": profile.profile_id,
+        "selection_manifest_id": receipt_id,
+        "project_id": case_id,
+        "case_revision": revision,
+        "selected_count": len(selected),
+        "frequency": "1m",
+        "acquisition_window": "previous_complete_hour",
+        "state": "frozen",
+        "execution_authority": False,
+        "next_action": "Run only the intended bounded hourly profile page.",
+    }
+
+
+@crypto_data_app.command("profile-select-one-minute")
+def profile_select_one_minute(
+    profile_id: str,
+    case_id: str = typer.Option(..., help="existing governed research project"),
+    expected_case_revision: str = typer.Option(..., help="fresh research-case revision"),
+    markets: Annotated[
+        list[str] | None,
+        typer.Option("--market", help="repeat CATEGORY:SYMBOL; maximum 50 exact markets"),
+    ] = None,
+    reason: str = typer.Option(..., help="bounded research purpose for this high-resolution tier"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Bind at most 50 exact one-minute markets to a fresh research-case revision."""
+    try:
+        _updated, result = _select_one_minute_profile(
+            _read_coverage_profile(profile_id),
+            case_id=case_id,
+            expected_case_revision=expected_case_revision,
+            markets=tuple(markets or ()),
+            reason=reason,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result, json_out=json_out)
+
+
 def _batch_digest(body: dict[str, object]) -> str:
     payload = json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
     return hashlib.sha256(payload).hexdigest()

@@ -205,6 +205,10 @@ is excluded before task construction; Unicode provider symbols retain exact iden
 `binance-liquidity-membership` derived artifact is available only when an exact category/quote scope
 has complete qualified prior-day observations. It commits to all universe inputs, ranks at most 250
 without mixing USD/USDT or contract units, and supplies the following profile's one-hour tasks.
+An explicit `binance-research-selection` artifact separately binds at most 50 one-minute markets to
+one current research-case revision and reason. Only exact daily-profile identities are selectable;
+the case is checked before and after receipt publication. It is scheduling provenance, not evidence
+approval or execution authority.
 Coinbase comparison bars are acquired through the existing venue-qualified CCXT seam at exact
 1m/5m/1h/1d intervals. Bybit spot bars may be stored only as diagnostics and fail snapshot authority
 checks. A derived market-comparison artifact commits to the authoritative Binance input, every

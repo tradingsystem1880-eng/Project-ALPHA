@@ -62,6 +62,11 @@ quote-volume field; COIN-M ranks exact contract count multiplied by the catalog 
 USD, USDT, and other quote scopes are never cross-ranked. Each immutable selection is capped at 250,
 commits to the complete input universe, and becomes a source of the next content-addressed profile;
 hourly tasks then request only the previous complete UTC hour.
+The one-minute tier is never liquidity-inferred. `profile-select-one-minute` requires an existing
+research case, its exact fresh revision, a bounded reason, and 1–50 human-readable
+`category:symbol` identities already present in frozen daily membership. It publishes an immutable
+case-bound selection receipt, rechecks the case before profile publication, and schedules only the
+previous complete hour. Selection and acquisition grant no evidence or execution authority.
 
 The internal data root stores control state, manifests, qualification records, provider-check
 receipts, and sensitive research metadata. Bulk public bytes live beneath the configured external

@@ -1603,6 +1603,81 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
         "BBBUSDT"
     ]
 
+    case_id = "f03802b8-df35-4f19-a90c-0b3437aa587d"
+    case = {
+        "project_id": case_id,
+        "active_contract_id": "contract-1",
+        "phase": "exploration",
+        "execution_state": "approved",
+        "source_pack_id": "pack-1",
+    }
+    revision = crypto_data_cmds.research_case_revision(case)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_control_store",
+        lambda: type("CaseStore", (), {"research_case_summary": lambda _self, _id: case})(),
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:01:00+00:00"),
+    )
+    selected = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-select-one-minute",
+            profile.profile_id,
+            "--case-id",
+            case_id,
+            "--expected-case-revision",
+            revision,
+            "--market",
+            "spot:AAAUSDT",
+            "--reason",
+            "Inspect a bounded one-minute event window.",
+            "--json",
+        ],
+    )
+    assert selected.exit_code == 0, selected.output
+    selection = json.loads(selected.stdout)
+    assert selection["selected_count"] == 1
+    selected_profile = crypto_data_cmds._read_coverage_profile(selection["profile_id"])
+    assert any(
+        task.instrument == "AAAUSDT" and task.frequency == "1m" for task in selected_profile.tasks
+    )
+    selection_manifest = store.verify_manifest(selection["selection_manifest_id"])
+    assert selection_manifest["metadata"]["project_id"] == case_id
+    assert selection_manifest["metadata"]["execution_authority"] is False
+
+    stale = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-select-one-minute",
+            profile.profile_id,
+            "--case-id",
+            case_id,
+            "--expected-case-revision",
+            "stale",
+            "--market",
+            "spot:AAAUSDT",
+            "--reason",
+            "Inspect a bounded one-minute event window.",
+            "--json",
+        ],
+    )
+    assert stale.exit_code != 0
+    assert "changed before" in stale.output
+    with pytest.raises(DataError, match="1 to 50"):
+        crypto_data_cmds._select_one_minute_profile(
+            profile,
+            case_id=case_id,
+            expected_case_revision=revision,
+            markets=tuple(f"spot:MARKET{index}" for index in range(51)),
+            reason="Bounded selection.",
+        )
+
     (store.manifest_root / f"{payload['manifest_id']}.json").unlink()
     (store.manifest_root / f"{bar_manifest_ids[1]}.json").unlink()
     incomplete = runner.invoke(
