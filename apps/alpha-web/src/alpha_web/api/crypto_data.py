@@ -13,6 +13,7 @@ from alpha_web.api.models import (
     CryptoAssetIdentityResponse,
     CryptoCacheCleanRequest,
     CryptoCacheCleanResponse,
+    CryptoCapabilitiesResponse,
     CryptoCatalogResponse,
     CryptoCoverageResponse,
     CryptoEstimateRequest,
@@ -43,6 +44,11 @@ def _project(args: list[str]) -> Any:
 @router.get("/catalog", response_model=CryptoCatalogResponse)
 def catalog() -> Any:
     return _project(["crypto-data", "catalog", "--json"])
+
+
+@router.get("/capabilities", response_model=CryptoCapabilitiesResponse)
+def capabilities() -> Any:
+    return _project(["crypto-data", "capabilities", "--json"])
 
 
 @router.get("/storage", response_model=CryptoStorageResponse)

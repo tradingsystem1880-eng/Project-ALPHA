@@ -11,6 +11,7 @@ import type {
   CryptoAcquisitionRequest,
   CryptoAssetIdentity,
   CryptoCatalog,
+  CryptoCapabilities,
   CryptoCoverage,
   CryptoEstimate,
   CryptoEstimateRequest,
@@ -311,6 +312,8 @@ export const api = {
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
   providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
   cryptoCatalog: (): Promise<CryptoCatalog> => getJSON('/api/crypto-data/catalog'),
+  cryptoCapabilities: (): Promise<CryptoCapabilities> =>
+    getJSON('/api/crypto-data/capabilities'),
   cryptoStorage: (): Promise<CryptoStorage> => getJSON('/api/crypto-data/storage'),
   cryptoStorageInventory: (): Promise<CryptoStorageInventory> =>
     getJSON('/api/crypto-data/storage/inventory'),

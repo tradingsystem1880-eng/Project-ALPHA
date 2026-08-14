@@ -20,6 +20,7 @@ import typer
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.crypto.asset_master import AssetMaster
+from alpha_data.crypto.capabilities import project_provider_capabilities
 from alpha_data.crypto.contracts import (
     FAMILY_AUTHORITIES,
     CryptoDatasetIdentityV1,
@@ -457,6 +458,36 @@ def estimate(
             "bounded": True,
             "estimate_only": True,
             "next_action": "Verify storage, then start one bounded acquisition.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("capabilities")
+def capabilities(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """Project support, receipt verification, and qualification without probing providers."""
+    try:
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
+        projected = project_provider_capabilities(store.inventory())
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    verified = sum(item.verification_state == "receipt_verified" for item in projected)
+    qualified = sum(item.qualification_state == "qualified" for item in projected)
+    _emit(
+        {
+            "items": [item.to_dict() for item in projected],
+            "count": len(projected),
+            "receipt_verified_count": verified,
+            "qualified_count": qualified,
+            "provider_probe_performed": False,
+            "automatic_fallback": False,
+            "execution_authority": False,
+            "canonical_next_action": (
+                "Inspect qualified coverage and freeze an exact snapshot."
+                if qualified
+                else "Acquire and qualify one bounded provider-native dataset."
+            ),
         },
         json_out=json_out,
     )

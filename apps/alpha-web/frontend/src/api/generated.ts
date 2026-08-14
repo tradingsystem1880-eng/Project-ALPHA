@@ -120,6 +120,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_crypto_data_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/catalog": {
         parameters: {
             query?: never;
@@ -4109,6 +4126,64 @@ export interface components {
              * @constant
              */
             state: "cleaned";
+        };
+        /** CryptoCapabilitiesResponse */
+        CryptoCapabilitiesResponse: {
+            /**
+             * Automatic Fallback
+             * @constant
+             */
+            automatic_fallback: false;
+            /** Canonical Next Action */
+            canonical_next_action: string;
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCapabilityItem"][];
+            /**
+             * Provider Probe Performed
+             * @constant
+             */
+            provider_probe_performed: false;
+            /** Qualified Count */
+            qualified_count: number;
+            /** Receipt Verified Count */
+            receipt_verified_count: number;
+        };
+        /** CryptoCapabilityItem */
+        CryptoCapabilityItem: {
+            /**
+             * Authentication
+             * @enum {string}
+             */
+            authentication: "none" | "demo_key";
+            /** Earliest */
+            earliest: string | null;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequencies */
+            frequencies: string[];
+            /** Latest */
+            latest: string | null;
+            /** Limits */
+            limits: string[];
+            /** Provider */
+            provider: string;
+            qualification_state: components["schemas"]["CryptoQualificationStateValue"];
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Verification State
+             * @enum {string}
+             */
+            verification_state: "not_verified" | "receipt_verified";
         };
         /** CryptoCatalogResponse */
         CryptoCatalogResponse: {
@@ -9139,6 +9214,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoAssetIdentityResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    capabilities_api_crypto_data_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCapabilitiesResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

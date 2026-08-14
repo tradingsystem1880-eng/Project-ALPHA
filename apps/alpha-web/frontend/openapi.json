@@ -2264,6 +2264,150 @@
         "title": "CryptoCacheCleanResponse",
         "type": "object"
       },
+      "CryptoCapabilitiesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic_fallback": {
+            "const": false,
+            "title": "Automatic Fallback",
+            "type": "boolean"
+          },
+          "canonical_next_action": {
+            "title": "Canonical Next Action",
+            "type": "string"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoCapabilityItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "provider_probe_performed": {
+            "const": false,
+            "title": "Provider Probe Performed",
+            "type": "boolean"
+          },
+          "qualified_count": {
+            "minimum": 0.0,
+            "title": "Qualified Count",
+            "type": "integer"
+          },
+          "receipt_verified_count": {
+            "minimum": 0.0,
+            "title": "Receipt Verified Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "count",
+          "receipt_verified_count",
+          "qualified_count",
+          "provider_probe_performed",
+          "automatic_fallback",
+          "execution_authority",
+          "canonical_next_action"
+        ],
+        "title": "CryptoCapabilitiesResponse",
+        "type": "object"
+      },
+      "CryptoCapabilityItem": {
+        "additionalProperties": false,
+        "properties": {
+          "authentication": {
+            "enum": [
+              "none",
+              "demo_key"
+            ],
+            "title": "Authentication",
+            "type": "string"
+          },
+          "earliest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "frequencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Frequencies",
+            "type": "array"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest"
+          },
+          "limits": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limits",
+            "type": "array"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "qualification_state": {
+            "$ref": "#/components/schemas/CryptoQualificationStateValue"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "verification_state": {
+            "enum": [
+              "not_verified",
+              "receipt_verified"
+            ],
+            "title": "Verification State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "provider",
+          "family",
+          "authentication",
+          "earliest",
+          "latest",
+          "frequencies",
+          "limits",
+          "verification_state",
+          "qualification_state"
+        ],
+        "title": "CryptoCapabilityItem",
+        "type": "object"
+      },
       "CryptoCatalogResponse": {
         "additionalProperties": false,
         "properties": {
@@ -17383,6 +17527,37 @@
           }
         },
         "summary": "Asset",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/capabilities": {
+      "get": {
+        "operationId": "capabilities_api_crypto_data_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCapabilitiesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Capabilities",
         "tags": [
           "crypto-data"
         ]

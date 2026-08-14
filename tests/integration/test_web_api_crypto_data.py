@@ -35,6 +35,49 @@ def test_crypto_catalog_route_uses_authoritative_cli_projection(
     assert calls == [["crypto-data", "catalog", "--json"]]
 
 
+def test_crypto_capabilities_route_preserves_readiness_dimensions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        return {
+            "items": [
+                {
+                    "schema_version": 1,
+                    "provider": "bybit",
+                    "family": "open_interest",
+                    "authentication": "none",
+                    "earliest": "2026-08-01T00:00:00+00:00",
+                    "latest": "2026-08-14T00:00:00+00:00",
+                    "frequencies": ["1h"],
+                    "limits": ["bybit_page_200_cursor_max_100_pages"],
+                    "verification_state": "receipt_verified",
+                    "qualification_state": "qualified",
+                }
+            ],
+            "count": 1,
+            "receipt_verified_count": 1,
+            "qualified_count": 1,
+            "provider_probe_performed": False,
+            "automatic_fallback": False,
+            "execution_authority": False,
+            "canonical_next_action": "Inspect qualified coverage.",
+        }
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+
+    response = TestClient(create_app()).get("/api/crypto-data/capabilities")
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["verification_state"] == "receipt_verified"
+    assert response.json()["items"][0]["qualification_state"] == "qualified"
+    assert response.json()["provider_probe_performed"] is False
+    assert calls == [["crypto-data", "capabilities", "--json"]]
+
+
 def test_crypto_acquisition_route_builds_closed_argv_and_rejects_injection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -218,21 +261,30 @@ def test_crypto_storage_actions_use_closed_commands_and_confirm_cleanup(
         calls.append(args)
         if args[1] == "storage-inventory":
             return {
-                "manifest_count": 2, "snapshot_count": 1,
+                "manifest_count": 2,
+                "snapshot_count": 1,
                 "counts_by_kind": {"raw": 1, "normalized": 1},
                 "bytes_by_kind": {"raw": 10, "normalized": 20},
-                "cache_bytes": 5, "staging_count": 0,
-                "private_paths_exposed": False, "next_action": "Verify storage.",
+                "cache_bytes": 5,
+                "staging_count": 0,
+                "private_paths_exposed": False,
+                "next_action": "Verify storage.",
             }
         if args[1] == "storage-verify":
             return {
-                "state": "verified", "manifest_count": 2, "snapshot_count": 1,
-                "research_eligible_snapshot_count": 1, "cache_bytes": 5,
-                "private_paths_exposed": False, "next_action": "Continue.",
+                "state": "verified",
+                "manifest_count": 2,
+                "snapshot_count": 1,
+                "research_eligible_snapshot_count": 1,
+                "cache_bytes": 5,
+                "private_paths_exposed": False,
+                "next_action": "Continue.",
             }
         return {
-            "state": "cleaned", "removed_bytes": 5,
-            "immutable_artifacts_removed": 0, "private_paths_exposed": False,
+            "state": "cleaned",
+            "removed_bytes": 5,
+            "immutable_artifacts_removed": 0,
+            "private_paths_exposed": False,
             "next_action": "Run inventory.",
         }
 
@@ -241,12 +293,14 @@ def test_crypto_storage_actions_use_closed_commands_and_confirm_cleanup(
 
     assert client.get("/api/crypto-data/storage/inventory").status_code == 200
     assert client.post("/api/crypto-data/storage/verify", json={}).status_code == 200
-    assert client.post(
-        "/api/crypto-data/storage/cache/clean", json={"confirm": True}
-    ).status_code == 200
-    assert client.post(
-        "/api/crypto-data/storage/cache/clean", json={"confirm": False}
-    ).status_code == 422
+    assert (
+        client.post("/api/crypto-data/storage/cache/clean", json={"confirm": True}).status_code
+        == 200
+    )
+    assert (
+        client.post("/api/crypto-data/storage/cache/clean", json={"confirm": False}).status_code
+        == 422
+    )
     assert calls == [
         ["crypto-data", "storage-inventory", "--json"],
         ["crypto-data", "storage-verify", "--json"],

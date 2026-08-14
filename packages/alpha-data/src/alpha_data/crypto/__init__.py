@@ -1,5 +1,6 @@
 """Governed provider-native crypto data contracts and storage."""
 
+from alpha_data.crypto.capabilities import project_provider_capabilities
 from alpha_data.crypto.contracts import (
     CryptoAssetIdentityV1,
     CryptoDatasetIdentityV1,
@@ -18,4 +19,5 @@ __all__ = [
     "CryptoRawReceiptV1",
     "CryptoSnapshotV1",
     "ProviderDatasetCapabilityV1",
+    "project_provider_capabilities",
 ]

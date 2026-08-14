@@ -732,6 +732,30 @@ class CryptoCatalogResponse(StrictModel):
     next_action: str
 
 
+class CryptoCapabilityItem(StrictModel):
+    schema_version: Literal[1]
+    provider: str
+    family: CryptoFamilyValue
+    authentication: Literal["none", "demo_key"]
+    earliest: str | None
+    latest: str | None
+    frequencies: list[str]
+    limits: list[str]
+    verification_state: Literal["not_verified", "receipt_verified"]
+    qualification_state: CryptoQualificationStateValue
+
+
+class CryptoCapabilitiesResponse(StrictModel):
+    items: list[CryptoCapabilityItem]
+    count: int = Field(ge=0)
+    receipt_verified_count: int = Field(ge=0)
+    qualified_count: int = Field(ge=0)
+    provider_probe_performed: Literal[False]
+    automatic_fallback: Literal[False]
+    execution_authority: Literal[False]
+    canonical_next_action: str
+
+
 class CryptoStorageResponse(StrictModel):
     state: Literal["ready", "blocked"]
     blocker: str | None

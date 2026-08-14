@@ -1346,6 +1346,43 @@ function responseFor(route: Route, options: MockOptions): unknown {
       next_action: 'Check storage before estimating or acquiring data.',
     } satisfies components['schemas']['CryptoCatalogResponse']
   }
+  if (url.pathname === '/api/crypto-data/capabilities') {
+    return {
+      items: [
+        {
+          schema_version: 1,
+          provider: 'bybit',
+          family: 'funding',
+          authentication: 'none',
+          earliest: '2026-06-01T00:00:00+00:00',
+          latest: '2026-08-14T00:00:00+00:00',
+          frequencies: ['funding_interval'],
+          limits: ['bybit_page_200'],
+          verification_state: 'receipt_verified',
+          qualification_state: 'qualified',
+        },
+        {
+          schema_version: 1,
+          provider: 'bybit',
+          family: 'option_quotes',
+          authentication: 'none',
+          earliest: '2026-08-14T00:00:00+00:00',
+          latest: '2026-08-14T00:00:00+00:00',
+          frequencies: ['point_in_time_chain'],
+          limits: ['hourly_all_supported_underlyings'],
+          verification_state: 'receipt_verified',
+          qualification_state: 'qualified',
+        },
+      ],
+      count: 2,
+      receipt_verified_count: 2,
+      qualified_count: 2,
+      provider_probe_performed: false,
+      automatic_fallback: false,
+      execution_authority: false,
+      canonical_next_action: 'Inspect qualified coverage and freeze an exact snapshot.',
+    } satisfies components['schemas']['CryptoCapabilitiesResponse']
+  }
   if (url.pathname === '/api/crypto-data/storage') {
     return {
       state: 'ready',
@@ -2026,6 +2063,10 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   const center = page.getByRole('region', { name: 'Crypto Data Center' })
   await expect(center.getByText('Select qualified datasets for one exact frozen snapshot.')).toBeVisible()
   await center.getByRole('tab', { name: 'Options & Volatility', exact: true }).click()
+  await expect(center.getByText('RECEIPT VERIFIED', { exact: true })).toBeVisible()
+  await expect(center.getByLabel('Provider dataset capability')).toContainText(
+    'Stored coverage: 2026-08-14T00:00:00+00:00',
+  )
   await expect(center.getByText('option quotes · bybit/bybit').first()).toBeVisible()
   await expect(center.getByText('QUARANTINED', { exact: true })).toBeVisible()
 

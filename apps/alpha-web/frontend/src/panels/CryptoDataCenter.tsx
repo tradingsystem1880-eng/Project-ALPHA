@@ -5,6 +5,7 @@ import type {
   CryptoAcquisitionRequest,
   CryptoAssetIdentity,
   CryptoCatalog,
+  CryptoCapabilities,
   CryptoCoverage,
   CryptoCoverageItem,
   CryptoEstimate,
@@ -73,6 +74,7 @@ function bytesLabel(value: number | null | undefined): string {
 export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }) {
   const [section, setSection] = useState<CryptoDataSection>('derivatives')
   const [catalog, setCatalog] = useState<CryptoCatalog | null>(null)
+  const [capabilities, setCapabilities] = useState<CryptoCapabilities | null>(null)
   const [storage, setStorage] = useState<CryptoStorage | null>(null)
   const [coverage, setCoverage] = useState<CryptoCoverage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -110,12 +112,14 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
     if (refresh) setRefreshing(true)
     else setLoading(true)
     try {
-      const [nextCatalog, nextStorage, nextCoverage] = await Promise.all([
+      const [nextCatalog, nextCapabilities, nextStorage, nextCoverage] = await Promise.all([
         api.cryptoCatalog(),
+        api.cryptoCapabilities(),
         api.cryptoStorage(),
         api.cryptoCoverage(),
       ])
       setCatalog(nextCatalog)
+      setCapabilities(nextCapabilities)
       setStorage(nextStorage)
       setCoverage(nextCoverage)
       setSelected((current) => {
@@ -164,6 +168,7 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
   const provider = acquisitionProvider(
     catalog?.families.find((row) => row.family === family)?.provider ?? '',
   )
+  const capability = capabilities?.items.find((item) => item.family === family) ?? null
   const qualifiedCount = coverage?.items.filter((item) => item.state === 'qualified').length ?? 0
   const action = cryptoCanonicalAction({
     loading,
@@ -417,6 +422,24 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
             <div className="rd-head">Bounded acquisition</div>
             <span className="chip kind">{provider ?? 'NO AUTHORITY'}</span>
           </div>
+          {capability ? (
+            <div className="crypto-detail" aria-label="Provider dataset capability">
+              <span>
+                <span className="chip kind">SUPPORTED</span>{' '}
+                <span className={capability.verification_state === 'receipt_verified' ? 'chip pass' : 'chip'}>
+                  {capability.verification_state === 'receipt_verified' ? 'RECEIPT VERIFIED' : 'NOT VERIFIED'}
+                </span>{' '}
+                <span className={stateClass(capability.qualification_state)}>
+                  {capability.qualification_state.toUpperCase()}
+                </span>
+              </span>
+              <span>
+                Stored coverage: {capability.earliest ?? 'none'} → {capability.latest ?? 'none'}
+              </span>
+              <span className="advanced-only">Supported frequencies: {capability.frequencies.join(' · ')}</span>
+              <span className="advanced-only">Limits: {capability.limits.join(' · ')}</span>
+            </div>
+          ) : null}
           <div className="crypto-form-grid">
             <label><span className="eyebrow">Dataset family</span><select className="field" value={family} onChange={(event) => { const next = event.target.value as CryptoFamily; setFamily(next); setInstrument(defaultInstrument(next)) }}>{familyRows.map((row) => <option key={row.family} value={row.family}>{row.family.replaceAll('_', ' ')}</option>)}</select></label>
             <label><span className="eyebrow">Instrument</span><input className="field mono" value={instrument} onChange={(event) => setInstrument(event.target.value)} /></label>

@@ -497,6 +497,16 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     inventory_json = json.dumps(store.inventory())
     assert "injected-only-for-test" not in inventory_json
 
+    capabilities = runner.invoke(app, ["crypto-data", "capabilities", "--json"])
+    assert capabilities.exit_code == 0, capabilities.output
+    capability_payload = json.loads(capabilities.stdout)
+    assert capability_payload["provider_probe_performed"] is False
+    assert capability_payload["automatic_fallback"] is False
+    by_family = {item["family"]: item for item in capability_payload["items"]}
+    assert by_family["market_bars"]["verification_state"] == "receipt_verified"
+    assert by_family["market_bars"]["qualification_state"] == "qualified"
+    assert by_family["open_interest"]["verification_state"] == "not_verified"
+
 
 @pytest.mark.parametrize(
     ("family", "csv_name", "csv_payload", "expected_frequency"),
