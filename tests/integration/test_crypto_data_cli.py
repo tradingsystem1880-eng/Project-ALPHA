@@ -17,6 +17,7 @@ from alpha_cli.main import app
 from alpha_core import DataError
 from alpha_data.adapters.ccxt_adapter import parse_ccxt_ohlcv
 from alpha_data.crypto.contracts import FAMILY_AUTHORITIES
+from alpha_data.crypto.profiles import CryptoCoverageProfileV1, CryptoCoverageTaskV1
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 runner = CliRunner()
@@ -1395,6 +1396,110 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     rejected = runner.invoke(app, ["crypto-data", "profile-show", profile_id, "--json"])
     assert rejected.exit_code != 0
     assert "identity" in rejected.output
+
+
+def test_coverage_batch_checkpoints_and_resumes_only_the_unfinished_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    tasks = tuple(
+        CryptoCoverageTaskV1(
+            provider="coingecko",
+            family=family,
+            instrument="all",
+            base_asset=None,
+            quote_asset="USD" if family == "market_reference" else None,
+            category=None,
+            frequency="point_in_time_reference"
+            if family == "market_reference"
+            else "catalog_snapshot",
+            cadence="daily",
+        )
+        for family in ("asset_metadata", "market_reference")
+    )
+    profile = CryptoCoverageProfileV1.create(
+        as_of=run_at,
+        source_manifest_ids=("a" * 64,),
+        tasks=tasks,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_coverage_profile_root", lambda: tmp_path / "profiles")
+    monkeypatch.setattr(crypto_data_cmds, "_coverage_batch_root", lambda: tmp_path / "batches")
+    crypto_data_cmds._write_coverage_profile(profile)
+
+    class BatchStore:
+        def verify_manifest(self, manifest_id: str) -> dict[str, object]:
+            assert manifest_id == "a" * 64
+            return {"manifest_id": manifest_id}
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", BatchStore)
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: run_at)
+    calls: list[str] = []
+    fail_second = True
+
+    def acquire_result(
+        _provider: str, family: str, *_args: object, **_kwargs: object
+    ) -> dict[str, object]:
+        nonlocal fail_second
+        calls.append(family)
+        if family == "market_reference" and fail_second:
+            raise DataError("fixture provider outage")
+        digest = "b" * 64 if family == "asset_metadata" else "c" * 64
+        return {
+            "family": family,
+            "normalized_manifest_id": digest,
+            "execution_authority": False,
+        }
+
+    monkeypatch.setattr(crypto_data_cmds, "_acquire_result", acquire_result)
+    failed = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-run",
+            profile.profile_id,
+            "--cadence",
+            "daily",
+            "--limit",
+            "2",
+            "--confirm",
+            "--json",
+        ],
+    )
+    assert failed.exit_code != 0
+    batches = tuple((tmp_path / "batches").iterdir())
+    assert len(batches) == 1
+    batch_id = batches[0].name
+    checkpoint = json.loads((batches[0] / "checkpoint.json").read_text())
+    assert checkpoint["state"] == "failed"
+    assert checkpoint["next_index"] == 1
+    assert len(checkpoint["results"]) == 1
+    assert calls == ["asset_metadata", "market_reference"]
+
+    fail_second = False
+    resumed = runner.invoke(
+        app,
+        ["crypto-data", "profile-resume", batch_id, "--confirm", "--json"],
+    )
+    assert resumed.exit_code == 0, resumed.output
+    payload = json.loads(resumed.stdout)
+    assert payload["state"] == "completed"
+    assert payload["completed_count"] == 2
+    assert calls == ["asset_metadata", "market_reference", "market_reference"]
+
+    listed = runner.invoke(app, ["crypto-data", "profile-batches", "--json"])
+    assert listed.exit_code == 0, listed.output
+    assert json.loads(listed.stdout)["items"][0]["state"] == "completed"
+
+    checkpoint_path = batches[0] / "checkpoint.json"
+    checkpoint_path.write_text(
+        checkpoint_path.read_text().replace('"next_index": 2', '"next_index": 1')
+    )
+    rejected = runner.invoke(
+        app,
+        ["crypto-data", "profile-resume", batch_id, "--confirm", "--json"],
+    )
+    assert rejected.exit_code != 0
+    assert "integrity" in rejected.output
 
 
 @pytest.mark.parametrize(

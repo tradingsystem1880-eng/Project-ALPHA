@@ -87,7 +87,11 @@ future-launched and dated contracts, preserves native provider/category/quote/fr
 separates daily/hourly/five-minute/funding cadences, and limits the fast option tier to three
 underlyings ranked from complete aggregate-OI inputs. Missing rank inputs fail profile creation;
 creating or inspecting a profile performs no provider request and grants no evidence or execution
-authority.
+authority. Executing a profile requires an explicit confirmation and a bounded cadence slice of at
+most 25 tasks. The immutable batch plan binds the profile, slice, task identities, and one knowledge
+time; an atomic checkpoint records only completed normalized manifests. Resume re-verifies the
+profile sources and exact task membership, rejects altered plans or checkpoints, and starts at the
+first unfinished task. Batch execution never grants research, paper, broker, or order authority.
 
 ## Provider retention and removal policy
 

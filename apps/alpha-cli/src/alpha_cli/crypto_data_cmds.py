@@ -37,7 +37,9 @@ from alpha_data.crypto.contracts import (
 )
 from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
 from alpha_data.crypto.profiles import (
+    CoverageCadence,
     CryptoCoverageProfileV1,
+    CryptoCoverageTaskV1,
     active_option_markets,
     build_default_coverage_tasks,
 )
@@ -468,6 +470,10 @@ def _asset_master_root() -> Path:
 
 def _coverage_profile_root() -> Path:
     return AlphaSettings().data_dir / "crypto" / "coverage-profiles"
+
+
+def _coverage_batch_root() -> Path:
+    return AlphaSettings().data_dir / "crypto" / "coverage-batches"
 
 
 def _write_coverage_profile(profile: CryptoCoverageProfileV1) -> None:
@@ -2676,6 +2682,342 @@ def profiles(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -
             "count": len(items),
             "execution_authority": False,
             "next_action": "Create a fresh profile after catalog membership changes.",
+        },
+        json_out=json_out,
+    )
+
+
+def _batch_digest(body: dict[str, object]) -> str:
+    payload = json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _batch_directory(batch_id: str) -> Path:
+    if _SHA256.fullmatch(batch_id) is None:
+        raise DataError("crypto coverage-batch id is invalid")
+    return _coverage_batch_root() / batch_id
+
+
+def _write_batch_json(path: Path, value: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(
+        json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary, path)
+
+
+def _create_coverage_batch(
+    profile: CryptoCoverageProfileV1,
+    *,
+    cadence: CoverageCadence,
+    offset: int,
+    limit: int,
+    run_at: datetime,
+) -> tuple[str, dict[str, object]]:
+    selected = tuple(task for task in profile.tasks if task.cadence == cadence)[
+        offset : offset + limit
+    ]
+    if not selected:
+        raise DataError("crypto coverage batch selection is empty")
+    body: dict[str, object] = {
+        "schema_version": 1,
+        "profile_id": profile.profile_id,
+        "cadence": cadence,
+        "profile_offset": offset,
+        "run_at": run_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+        "tasks": [task.to_dict() for task in selected],
+        "execution_authority": False,
+    }
+    batch_id = _batch_digest(body)
+    root = _batch_directory(batch_id)
+    plan = {**body, "batch_id": batch_id}
+    plan_path = root / "plan.json"
+    if plan_path.exists():
+        if json.loads(plan_path.read_text(encoding="utf-8")) != plan:
+            raise DataError("crypto coverage-batch identity collision")
+    else:
+        _write_batch_json(plan_path, plan)
+    checkpoint_path = root / "checkpoint.json"
+    if not checkpoint_path.exists():
+        _write_batch_json(
+            checkpoint_path,
+            {
+                "schema_version": 1,
+                "batch_id": batch_id,
+                "next_index": 0,
+                "results": [],
+                "results_sha256": _batch_digest({"results": []}),
+                "state": "running",
+                "error": None,
+                "updated_at": run_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+                "execution_authority": False,
+            },
+        )
+    return batch_id, plan
+
+
+def _read_coverage_batch(batch_id: str) -> tuple[dict[str, object], dict[str, object]]:
+    root = _batch_directory(batch_id)
+    try:
+        plan = json.loads((root / "plan.json").read_text(encoding="utf-8"))
+        checkpoint = json.loads((root / "checkpoint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DataError("crypto coverage batch is unavailable or corrupt") from exc
+    if not isinstance(plan, dict) or plan.get("batch_id") != batch_id:
+        raise DataError("crypto coverage-batch plan identity is invalid")
+    body = {key: value for key, value in plan.items() if key != "batch_id"}
+    if (
+        set(body)
+        != {
+            "schema_version",
+            "profile_id",
+            "cadence",
+            "profile_offset",
+            "run_at",
+            "tasks",
+            "execution_authority",
+        }
+        or body.get("schema_version") != 1
+        or body.get("execution_authority") is not False
+        or _batch_digest(body) != batch_id
+        or not isinstance(body.get("tasks"), list)
+    ):
+        raise DataError("crypto coverage-batch plan integrity failure")
+    tasks = tuple(
+        CryptoCoverageTaskV1.from_dict(item) for item in cast(list[object], body["tasks"])
+    )
+    if not tasks or len(tasks) > 25:
+        raise DataError("crypto coverage-batch task membership is invalid")
+    if not isinstance(checkpoint, dict) or set(checkpoint) != {
+        "schema_version",
+        "batch_id",
+        "next_index",
+        "results",
+        "results_sha256",
+        "state",
+        "error",
+        "updated_at",
+        "execution_authority",
+    }:
+        raise DataError("crypto coverage-batch checkpoint is invalid")
+    results = checkpoint.get("results")
+    next_index = checkpoint.get("next_index")
+    if (
+        checkpoint.get("schema_version") != 1
+        or checkpoint.get("batch_id") != batch_id
+        or checkpoint.get("execution_authority") is not False
+        or checkpoint.get("state") not in {"running", "failed", "completed"}
+        or not isinstance(results, list)
+        or checkpoint.get("results_sha256") != _batch_digest({"results": results})
+        or not isinstance(next_index, int)
+        or isinstance(next_index, bool)
+        or next_index != len(results)
+        or not 0 <= next_index <= len(tasks)
+        or (checkpoint.get("state") == "completed") != (next_index == len(tasks))
+        or (checkpoint.get("state") == "failed") != isinstance(checkpoint.get("error"), str)
+        or any(
+            not isinstance(result, dict)
+            or result.get("task_id") != tasks[index].task_id
+            or _SHA256.fullmatch(str(result.get("normalized_manifest_id"))) is None
+            for index, result in enumerate(results)
+        )
+    ):
+        raise DataError("crypto coverage-batch checkpoint integrity failure")
+    return plan, checkpoint
+
+
+def _run_profile_task(task: CryptoCoverageTaskV1, *, run_at: datetime) -> dict[str, object]:
+    start: str | None = None
+    end: str | None = None
+    if task.provider == "coinmetrics":
+        if task.lookback_days is None:
+            raise DataError("Coin Metrics coverage task has no lookback")
+        end_day = (run_at.astimezone(UTC) - timedelta(days=1)).date()
+        start_day = end_day - timedelta(days=task.lookback_days - 1)
+        start, end = start_day.isoformat(), end_day.isoformat()
+    return _acquire_result(
+        task.provider,
+        task.family,
+        task.instrument,
+        base=task.base_asset or "ALL",
+        quote=task.quote_asset or "USD",
+        category=task.category or "spot",
+        frequency=task.frequency,
+        period=None,
+        network=task.network,
+        pool_address=None,
+        metrics=",".join(task.metrics) or None,
+        start=start,
+        end=end,
+        case_id=None,
+        expected_case_revision=None,
+        reason=None,
+    )
+
+
+def _execute_coverage_batch(batch_id: str) -> dict[str, object]:
+    plan, checkpoint = _read_coverage_batch(batch_id)
+    profile_id = plan.get("profile_id")
+    if not isinstance(profile_id, str):
+        raise DataError("crypto coverage-batch profile identity is invalid")
+    profile = _read_coverage_profile(profile_id)
+    store = _bulk_store()
+    for manifest_id in profile.source_manifest_ids:
+        store.verify_manifest(manifest_id)
+    tasks = tuple(
+        CryptoCoverageTaskV1.from_dict(item) for item in cast(list[object], plan["tasks"])
+    )
+    cadence = plan.get("cadence")
+    profile_offset = plan.get("profile_offset")
+    if (
+        cadence not in {"daily", "hourly", "five_minute", "funding_interval"}
+        or not isinstance(profile_offset, int)
+        or isinstance(profile_offset, bool)
+        or profile_offset < 0
+        or tasks
+        != tuple(task for task in profile.tasks if task.cadence == cadence)[
+            profile_offset : profile_offset + len(tasks)
+        ]
+    ):
+        raise DataError("crypto coverage-batch tasks do not match the frozen profile")
+    results = list(cast(list[dict[str, object]], checkpoint["results"]))
+    if checkpoint["state"] == "completed":
+        return {
+            "batch_id": batch_id,
+            "profile_id": profile_id,
+            "state": "completed",
+            "completed_count": len(results),
+            "results": results,
+            "execution_authority": False,
+            "next_action": "Create a new bounded batch when the cadence is next due.",
+        }
+    run_at = datetime.fromisoformat(str(plan["run_at"]).replace("Z", "+00:00"))
+    for index in range(len(results), len(tasks)):
+        task = tasks[index]
+        try:
+            acquired = _run_profile_task(task, run_at=run_at)
+        except (DataError, typer.BadParameter) as exc:
+            _write_batch_json(
+                _batch_directory(batch_id) / "checkpoint.json",
+                {
+                    "schema_version": 1,
+                    "batch_id": batch_id,
+                    "next_index": index,
+                    "results": results,
+                    "results_sha256": _batch_digest({"results": results}),
+                    "state": "failed",
+                    "error": str(exc),
+                    "updated_at": _now().isoformat().replace("+00:00", "Z"),
+                    "execution_authority": False,
+                },
+            )
+            raise DataError(
+                f"crypto coverage batch {batch_id} stopped at task {task.task_id}; "
+                "resume after resolving the reported provider or data blocker"
+            ) from exc
+        results.append({"task_id": task.task_id, **acquired})
+        _write_batch_json(
+            _batch_directory(batch_id) / "checkpoint.json",
+            {
+                "schema_version": 1,
+                "batch_id": batch_id,
+                "next_index": index + 1,
+                "results": results,
+                "results_sha256": _batch_digest({"results": results}),
+                "state": "completed" if index + 1 == len(tasks) else "running",
+                "error": None,
+                "updated_at": _now().isoformat().replace("+00:00", "Z"),
+                "execution_authority": False,
+            },
+        )
+    return {
+        "batch_id": batch_id,
+        "profile_id": profile_id,
+        "state": "completed",
+        "completed_count": len(results),
+        "results": results,
+        "execution_authority": False,
+        "next_action": "Create a new bounded batch when the cadence is next due.",
+    }
+
+
+@crypto_data_app.command("profile-run")
+def profile_run(
+    profile_id: str,
+    cadence: str = typer.Option(..., help="daily, hourly, five_minute, or funding_interval"),
+    offset: int = typer.Option(0, min=0),
+    limit: int = typer.Option(10, min=1, max=25),
+    confirm: bool = typer.Option(False, "--confirm", help="confirm this bounded provider batch"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Run and checkpoint one bounded cadence page from an immutable profile."""
+    if not confirm:
+        raise typer.BadParameter("profile-run requires --confirm before provider requests")
+    if cadence not in {"daily", "hourly", "five_minute", "funding_interval"}:
+        raise typer.BadParameter("coverage cadence is invalid")
+    try:
+        profile = _read_coverage_profile(profile_id)
+        batch_id, _plan = _create_coverage_batch(
+            profile,
+            cadence=cast(CoverageCadence, cadence),
+            offset=offset,
+            limit=limit,
+            run_at=_now(),
+        )
+        result = _execute_coverage_batch(batch_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result, json_out=json_out)
+
+
+@crypto_data_app.command("profile-resume")
+def profile_resume(
+    batch_id: str,
+    confirm: bool = typer.Option(False, "--confirm", help="confirm retry of unfinished tasks"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Resume exactly one failed or interrupted coverage batch."""
+    if not confirm:
+        raise typer.BadParameter("profile-resume requires --confirm before provider requests")
+    try:
+        result = _execute_coverage_batch(batch_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result, json_out=json_out)
+
+
+@crypto_data_app.command("profile-batches")
+def profile_batches(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List bounded coverage batch checkpoints without exposing provider bytes."""
+    try:
+        root = _coverage_batch_root()
+        items: list[dict[str, object]] = []
+        for path in sorted(root.glob("*/plan.json")) if root.exists() else ():
+            plan, checkpoint = _read_coverage_batch(path.parent.name)
+            tasks = cast(list[object], plan["tasks"])
+            items.append(
+                {
+                    "batch_id": path.parent.name,
+                    "profile_id": plan["profile_id"],
+                    "cadence": plan["cadence"],
+                    "profile_offset": plan["profile_offset"],
+                    "task_count": len(tasks),
+                    "completed_count": checkpoint["next_index"],
+                    "state": checkpoint["state"],
+                    "updated_at": checkpoint["updated_at"],
+                    "execution_authority": False,
+                }
+            )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "items": items,
+            "count": len(items),
+            "execution_authority": False,
+            "next_action": "Resume only a failed batch after resolving its recorded blocker.",
         },
         json_out=json_out,
     )
