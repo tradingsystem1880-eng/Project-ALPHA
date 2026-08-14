@@ -20,6 +20,7 @@ The approved post-v2 extension is bounded by the
 [provider/paper implementation spec](docs/superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md),
 [daily-data/IBKR Paper hardening](docs/superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md),
 [QuantPad external research boundary](docs/adr/0018-quantpad-external-research-data-boundary.md),
+[family-scoped crypto data authority](docs/adr/0032-governed-crypto-data-house.md),
 [dependency/license matrix](docs/governance/2026-07-19-dependency-license-matrix.md), and
 [risk register](docs/governance/2026-07-19-post-v2-risk-register.md).
 The professional Workstation program is implemented for private, single-owner, local use;
@@ -37,6 +38,13 @@ owner-clicked literature discovery and extraction, anchored claim screening, cit
 recommendations, and per-action Touch ID for the closed research-lifecycle authority set. It never
 turns literature, model output, standalone experiments, provider configuration, or a broker what-if
 preview into strategy, paper, or order authority.
+
+Crypto data is governed per dataset family rather than collapsed into one universal price:
+Binance owns native CEX spot/futures history, Bybit owns advanced derivatives/options, CoinGecko
+owns identity/reference, GeckoTerminal owns DEX pool data, Coin Metrics Community owns reviewed
+on-chain metrics, and Coinbase/CCXT is comparison. Venue, market type, units, clocks, and USD,
+USDT, and USDC denominations remain distinct; automatic provider fallback is prohibited. Existing
+CCXT snapshots and the Binance sandbox-paper warmup contract remain unchanged.
 
 ## Install
 

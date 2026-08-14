@@ -1,0 +1,91 @@
+# ADR-0032: Govern crypto data by dataset family
+
+**Status:** Accepted
+**Date:** 2026-08-14
+**Deciders:** Owner-approved crypto data-house plan and AI build agents
+
+## Context
+
+ALPHA's original crypto history boundary treated the CCXT daily-candle adapter as one global
+authority. That seam remains useful and its stored snapshots must remain readable, but it cannot
+represent venue-native futures archives, funding intervals, open interest, options, DEX pools,
+on-chain metrics, or point-in-time asset identity. Treating any provider as a universal crypto
+price would silently change venue, quote asset, units, timestamp semantics, or evidence.
+
+Large public datasets also do not belong beside the internal control database. The permanently
+attached Expansion volume can hold public bulk bytes, provided ALPHA verifies its stable volume
+identity and publishes internal authority records only after external content is durable.
+
+## Decision
+
+Keep the subsystem inside the existing `alpha_data` layer and compose it only through `alpha_cli`.
+Assign exactly one primary acquisition authority to each dataset family:
+
+| Dataset family | Authority | Boundary |
+|---|---|---|
+| CEX spot and futures market history | Binance native archives and public REST tail | Venue-native bars/trades; spot, USD-M, and COIN-M remain distinct |
+| advanced derivatives and options | Bybit public V5 interfaces | Funding, OI, ratios, mark/index/premium, instruments, volatility, chains, IV, and Greeks retain native units |
+| asset identity and broad market reference | CoinGecko | Identity and reference statistics only; never execution-price evidence |
+| DEX pools, liquidity, and pool OHLCV | GeckoTerminal | Network-plus-contract/pool identity; manipulation and thin-liquidity warnings remain explicit |
+| on-chain and network metrics | Coin Metrics Community | Only the reviewed Community catalog and its stated permitted uses |
+| independent market-data comparison | Coinbase through the existing CCXT adapter | Diagnostic comparison only; never automatic substitution |
+
+CCXT remains a supported legacy and comparison seam. Existing CCXT provenance and snapshot bytes
+are never rewritten. The existing `ccxt:binance` paper warmup contract is unchanged until a later
+parity ADR and evidence gate prove an exact native-snapshot replacement.
+
+No automatic fallback may change provider, venue, market type, quote asset, unit, frequency, or
+timestamp convention. USDT, USDC, and USD are separate quote assets. Provider corrections create
+new immutable receipts; unexplained changes quarantine rather than overwrite evidence.
+
+The internal data root stores control state, manifests, qualification records, provider-check
+receipts, and sensitive research metadata. Bulk public bytes live beneath the configured external
+root. `ALPHA_BULK_DATA_DIR` selects that root and `ALPHA_BULK_VOLUME_UUID` pins the expected volume.
+Before acquisition ALPHA verifies the mounted volume identity, writability, and a reserve of at
+least 15 percent and 100 GB. External content is atomically published first and the internal
+manifest is the final completion marker. Missing, substituted, low-space, interrupted, or tampered
+storage fails closed.
+
+Research consumes one exact qualified `CryptoSnapshotV1`. Dataset identity includes provider,
+venue, market type, family, instrument, frequency, units, and timestamp convention. Asset joins use
+network plus contract address or an explicitly reviewed native-asset mapping; ticker-only joins
+fail. Availability time is part of every observation and derived feature.
+
+No crypto-data command or UI route receives exchange credentials, paper-entry authority, research
+gate authority, broker authority, or order authority. CoinGecko's Demo key is retrieved from macOS
+Keychain only by the existing allowlisted launcher and injected into one bounded process. Binance,
+Bybit, Coinbase, GeckoTerminal, and Coin Metrics use only public interfaces in this program.
+
+## Provider retention and removal policy
+
+- Preserve exact response/checksum bytes only for the owner's private local research where the
+  provider permits it; never redistribute raw datasets or expose them through a hosted surface.
+- Record provider, endpoint family, request, response hash, fetch time, schema/parser version,
+  pagination, correction lineage, access tier, attribution note, and retention note in receipts.
+- A provider takedown, terms change, retraction, or removal request disables new acquisition first.
+  Then remove the affected external public blobs through an explicit inventory operation while
+  retaining a non-reconstructive internal tombstone, content hash, reason, and affected snapshot
+  list. Qualified snapshots depending on removed bytes become unavailable, never silently rebuilt.
+- Derived data is not presumed free of upstream terms. Its manifests retain input identities and
+  the same removal lineage.
+
+## Consequences
+
+- ALPHA can represent advanced crypto evidence without inventing a synthetic universal candle.
+- More provider-native contracts and quality rules are required; comparison warnings cannot repair
+  or replace missing primary evidence.
+- The external drive is a capacity dependency, not an authority store. Losing it blocks reads and
+  acquisition but cannot corrupt internal control state.
+- Public API availability, rate limits, revisions, retention, and service terms remain external
+  constraints. A successful check proves only the capability named in its receipt.
+- Any execution integration, paid plan, continuous tick mirror, automatic provider fallback, drive
+  reformat, or hosted/distributed use requires a new decision and evidence review.
+
+## Implementation anchors
+
+- `packages/alpha-data/src/alpha_data/crypto/`
+- `apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py`
+- `apps/alpha-cli/src/alpha_cli/providers.py`
+- `apps/alpha-cli/src/alpha_cli/provider_readiness.py`
+- `apps/alpha-web/frontend/src/panels/ResearchDataExplorer.tsx`
+- `tests/unit/test_crypto_*.py` and `tests/integration/test_crypto_data_house.py`

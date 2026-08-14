@@ -1,6 +1,6 @@
 # Project ALPHA — Architecture
 
-**Last reviewed:** 2026-08-12
+**Last reviewed:** 2026-08-14
 **Status:** Living (six-screen Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
 **Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
@@ -82,7 +82,7 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | Package | Layer | Charter | May import |
 |---|---|---|---|
 | `alpha_core` | 0 — domain | Frozen domain types, typed errors/settings, structural protocols including the low-volume operational `ExecutionEventSink`; paper opt-in defaults false. | *(nothing internal)* |
-| `alpha_data` | 1 — data | Receipt-backed Tiingo EOD and provider-derived ingestion, raw Parquet store, candidate quality/quarantine/promotion recovery, **point-in-time `as_of` firewall**, corporate-action clocks, and immutable hashed snapshots. CCXT provenance remains venue-qualified. | `core` |
+| `alpha_data` | 1 — data | Receipt-backed Tiingo EOD plus family-scoped native crypto ingestion, raw Parquet store, external content-addressed public bulk storage, candidate quality/quarantine/promotion recovery, **point-in-time `as_of` firewall**, corporate-action clocks, and immutable hashed snapshots. CCXT provenance remains venue-qualified and byte-compatible. | `core` |
 | `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, four-family path-risk primitives, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_research` | 1 — research | Pure deterministic research primitives: fixed-duration research bars and identity, group-atomic chronological D1/D2/D3 allocation, causal pattern detection, prospective power and confirmation, point-in-time matched event studies, multiplicity control, lineage-bound charts, and terminal gate packets. D1/D2 are admitted only through governed contracts/phases; the package grants no strategy, validation, holdout, paper, or execution authority. | `core` |
@@ -147,7 +147,31 @@ research-required. Normal APIs cannot emit grandfathering. One SQLite writer loc
 v1 rollback snapshot, additive v1/v2 DDL, and v2 marker commit; an existing backup is accepted only
 when its logical schema-and-row fingerprint matches that locked migration source.
 
-### 4.2 Canonical strategy/validation flow
+### 4.2 Crypto data-house flow
+
+ADR-0032 keeps provider-native datasets separate. Binance owns CEX spot/futures market history;
+Bybit owns advanced derivatives/options; CoinGecko owns asset identity and broad reference;
+GeckoTerminal owns DEX pools/liquidity/OHLCV; Coin Metrics Community owns reviewed on-chain/network
+families; Coinbase through CCXT is an independent comparison. No provider is a universal crypto
+price and no fallback changes venue, quote asset, units, frequency, or evidence.
+
+```mermaid
+flowchart LR
+    P["provider-native public interface"] --> RR["CryptoRawReceiptV1<br/>request · schema · exact hash"]
+    RR --> EXT["Expansion volume<br/>content-addressed public bytes"]
+    EXT --> N["typed normalized family<br/>provider-native units and clocks"]
+    N --> Q["CryptoQualityReportV1<br/>qualified or quarantined"]
+    Q --> S["CryptoSnapshotV1<br/>ordered exact membership"]
+    S --> R["research dataset registration<br/>availability-time guarded"]
+```
+
+External publication completes before its internal manifest. The configured volume UUID,
+writability, and free-space reserve are fail-closed prerequisites. The control database and
+manifests stay internal. Asset joins require network plus contract address or an explicitly reviewed
+native mapping; ticker-only joins fail. Existing CCXT snapshots and the `ccxt:binance` paper warmup
+path are unchanged.
+
+### 4.3 Canonical strategy/validation flow
 
 The canonical strategy loop runs from raw bars to an immutable v3 artifact bundle. Discovery runs execute from
 their declared start; OOS and final-holdout evidence instead use the fresh-state boundary shown
@@ -155,7 +179,7 @@ below so an in-sample portfolio can never leak into scored execution:
 
 ```mermaid
 flowchart TD
-    A["providers<br/>Tiingo/CCXT authority · Yahoo/Stooq comparison"] --> R["immutable receipt<br/>identity · versions · response hash"]
+    A["providers<br/>family-scoped authority · explicit comparison"] --> R["immutable receipt<br/>identity · versions · response hash"]
     R --> Q["provider candidate<br/>quality gate or quarantine"]
     Q --> B["canonical ParquetStore<br/>raw unadjusted OHLCV + actions"]
     B --> C{{"PointInTimeReader.as_of<br/>look-ahead firewall: ts ≤ when"}}
@@ -173,7 +197,7 @@ flowchart TD
 <details><summary>ASCII fallback</summary>
 
 ```
-providers (Tiingo/CCXT authority; Yahoo/Stooq comparison)
+providers (family-scoped authority; explicit non-substituting comparison)
    → immutable response receipt + dataset identity
    → provider candidate → quality gate/quarantine
    → canonical ParquetStore (raw, unadjusted OHLCV + corporate actions)

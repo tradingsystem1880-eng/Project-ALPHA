@@ -1,6 +1,6 @@
 # Dependency and License Matrix — Post-v2, Workstation v3, and Research Scientist Tracks
 
-- **Reviewed:** 2026-08-11
+- **Reviewed:** 2026-08-14
 - **Scope:** direct Python runtime dependencies, isolated workers, vendored code, external services,
   and upstream projects considered by the post-v2, Workstation v3, and Research Scientist decisions
 - **Status:** engineering inventory; not legal advice
@@ -75,6 +75,26 @@ canonical or paper-authoritative source. The public product material demonstrate
 bulk workflows, while the service license separately restricts bulk export/retention without express
 permission; permanent archives, post-subscription retention, redistribution, and commercial/public
 use therefore remain blocked on written permission.
+
+### Crypto data-house service review (ADR-0032)
+
+The crypto subsystem adds no vendor SDK. Thin first-party HTTP/archive adapters preserve exact
+provider bytes and record the service/access tier in every receipt. The approved scope is private,
+single-owner, local research; no raw or derived dataset is redistributed or hosted.
+
+| Service | Approved family | Access and retention boundary | Correction/removal path |
+|---|---|---|---|
+| Binance public data | Native CEX spot, USD-M, and COIN-M market history | Public archives/REST only; verify published checksums; retain locally for private research; attribution and upstream archive identity stay in receipts | New or revised archive creates a new receipt; unexplained byte drift quarantines; explicit inventory removal tombstones affected snapshots |
+| Bybit public V5 | Advanced derivatives and options | Public REST/WebSocket only; no account/key; bounded history and chain snapshots; provider-native values are not rewritten | New catalog/history bytes create new receipts; delisted instruments retain lifecycle; takedown/terms change disables fetch then tombstones dependent blobs |
+| CoinGecko Demo | Asset identity and broad market reference | Demo key from macOS Keychain into one bounded process; plan quotas apply; metadata/reference cannot satisfy execution-price evidence | Version identities/migrations; remove cached responses on provider request while retaining non-reconstructive hashes/lineage |
+| GeckoTerminal | DEX pools, liquidity, pool OHLCV, and bounded transactions | Keyless public API within its rate limit; tracked/case-bound pools only; pool manipulation and thin liquidity remain explicit warnings | Pool/token migrations append lineage; corrected responses are new receipts; removal invalidates dependent qualifications |
+| Coin Metrics Community | Reviewed on-chain/network metrics | Community API only and only catalog-advertised metrics; private non-commercial research; retain attribution and do not assume broader paid-data rights | Catalog/metric changes create a new capability receipt; removed metrics stop acquisition and dependent snapshots become unavailable |
+| Coinbase through CCXT | Independent market-data comparison | Existing public CCXT adapter and venue-qualified snapshots; comparison only | Existing V1 bytes remain immutable; new comparison observations cannot replace primary-provider evidence |
+
+Provider terms, access tiers, quotas, attribution, and retention rights can change independently of
+code. A successful network check proves only the named capability at its timestamp. Before any
+distribution, hosted use, paid tier, full-market tick mirror, or use beyond private local research,
+repeat the exact provider terms and data-rights review.
 
 ### Fonts embedded in emitted figures (2026-08-07)
 

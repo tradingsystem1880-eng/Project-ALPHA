@@ -47,3 +47,25 @@ def test_handwritten_docs_do_not_copy_generated_mcp_counts() -> None:
     text = "\n".join(path.read_text(encoding="utf-8") for path in documents)
     assert re.search(r"\b(?:48|54|59|62) (?:current )?(?:bounded )?MCP tools", text) is None
     assert re.search(r"pin (?:stays|consciously) \d+", text, flags=re.IGNORECASE) is None
+
+
+def test_crypto_data_authority_is_family_scoped() -> None:
+    adr = (ROOT / "docs/adr/0017-authoritative-daily-data-and-broker-paper-boundary.md").read_text(
+        encoding="utf-8"
+    )
+    crypto_adr = ROOT / "docs/adr/0032-governed-crypto-data-house.md"
+    assert crypto_adr.exists()
+    crypto_text = crypto_adr.read_text(encoding="utf-8")
+
+    assert "CCXT remains the authoritative crypto-history seam" not in adr
+    for family in (
+        "CEX spot and futures market history",
+        "advanced derivatives and options",
+        "asset identity and broad market reference",
+        "DEX pools, liquidity, and pool OHLCV",
+        "on-chain and network metrics",
+        "independent market-data comparison",
+    ):
+        assert family in crypto_text
+    assert "No automatic fallback" in crypto_text
+    assert "USDT, USDC, and USD" in crypto_text

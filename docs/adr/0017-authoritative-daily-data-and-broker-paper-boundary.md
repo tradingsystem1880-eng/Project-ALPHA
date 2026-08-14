@@ -17,7 +17,9 @@ direct vendor-to-chart or strategy-to-broker connection can provide.
 Keep NautilusTrader as the only simulation/execution engine and `alpha_cli` as the only composer.
 Keep the existing React/FastAPI and direct Lightweight Charts frontend. Adopt Tiingo EOD as the
 authoritative stock/ETF daily source; Yahoo Finance and Stooq are comparison-only and cannot replace
-qualified Tiingo history. CCXT remains the authoritative crypto-history seam.
+qualified Tiingo history. Crypto authority is assigned per dataset family by ADR-0032. CCXT remains
+a supported legacy/comparison seam, and the existing `ccxt:binance` paper warmup contract is
+unchanged pending a separate parity gate.
 
 Every receipt-backed daily pull follows:
 
