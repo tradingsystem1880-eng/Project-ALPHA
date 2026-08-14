@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
+import pytest
 
-from alpha_data.crypto.profiles import build_default_coverage_tasks
+from alpha_core import DataError
+from alpha_data.crypto.profiles import CryptoCoverageProfileV1, build_default_coverage_tasks
 
 
 def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
@@ -129,3 +131,13 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
     )
     fast = [task.instrument for task in tasks if task.cadence == "five_minute"]
     assert fast == ["ETH-OPTIONS", "SOL-OPTIONS", "XRP-OPTIONS"]
+
+    profile = CryptoCoverageProfileV1.create(
+        as_of=as_of,
+        source_manifest_ids=("a" * 64, "b" * 64, "c" * 64),
+        tasks=tasks,
+    )
+    assert CryptoCoverageProfileV1.from_dict(profile.to_dict()) == profile
+    forged = profile.to_dict() | {"profile_id": "f" * 64}
+    with pytest.raises(DataError, match="identity"):
+        CryptoCoverageProfileV1.from_dict(forged)

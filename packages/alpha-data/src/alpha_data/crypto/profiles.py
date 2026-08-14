@@ -6,7 +6,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Literal, cast
 
 import polars as pl
 
@@ -15,6 +15,28 @@ from alpha_data.crypto.contracts import CryptoFamily
 from alpha_data.crypto.providers.geckoterminal import NETWORKS
 
 type CoverageCadence = Literal["daily", "hourly", "five_minute", "funding_interval"]
+
+_PROVIDERS = frozenset({"bybit", "coingecko", "geckoterminal", "coinmetrics"})
+_CADENCES = frozenset({"daily", "hourly", "five_minute", "funding_interval"})
+_FAMILIES = frozenset(
+    {
+        "instrument_catalog",
+        "derivative_bars",
+        "funding",
+        "open_interest",
+        "long_short_ratio",
+        "mark_bars",
+        "index_bars",
+        "premium_bars",
+        "option_instruments",
+        "option_quotes",
+        "historical_volatility",
+        "asset_metadata",
+        "market_reference",
+        "onchain_metrics",
+        "dex_pools",
+    }
+)
 
 
 def _canonical(value: object) -> bytes:
@@ -45,9 +67,29 @@ class CryptoCoverageTaskV1:
         ):
             if not isinstance(value, str) or not value.strip():
                 raise DataError(f"crypto coverage task {label} is invalid")
-        if self.lookback_days is not None and not 1 <= self.lookback_days <= 3_650:
+        if self.provider not in _PROVIDERS or self.family not in _FAMILIES:
+            raise DataError("crypto coverage task provider or family is unsupported")
+        if self.cadence not in _CADENCES:
+            raise DataError("crypto coverage task cadence is unsupported")
+        for optional_value, label in (
+            (self.base_asset, "base asset"),
+            (self.quote_asset, "quote asset"),
+            (self.category, "category"),
+            (self.network, "network"),
+        ):
+            if optional_value is not None and (
+                not isinstance(optional_value, str) or not optional_value.strip()
+            ):
+                raise DataError(f"crypto coverage task {label} is invalid")
+        if self.lookback_days is not None and (
+            not isinstance(self.lookback_days, int)
+            or isinstance(self.lookback_days, bool)
+            or not 1 <= self.lookback_days <= 3_650
+        ):
             raise DataError("crypto coverage task lookback is invalid")
-        if any(not metric.strip() for metric in self.metrics):
+        if not isinstance(self.metrics, tuple) or any(
+            not isinstance(metric, str) or not metric.strip() for metric in self.metrics
+        ):
             raise DataError("crypto coverage task metric is invalid")
 
     @property
@@ -80,6 +122,150 @@ class CryptoCoverageTaskV1:
             "task_id": self.task_id,
             "execution_authority": False,
         }
+
+    @classmethod
+    def from_dict(cls, value: object) -> CryptoCoverageTaskV1:
+        if not isinstance(value, dict) or value.get("schema_version") != 1:
+            raise DataError("crypto coverage task has an unsupported schema")
+        expected = {
+            "schema_version",
+            "provider",
+            "family",
+            "instrument",
+            "base_asset",
+            "quote_asset",
+            "category",
+            "frequency",
+            "cadence",
+            "network",
+            "metrics",
+            "lookback_days",
+            "task_id",
+            "execution_authority",
+        }
+        if set(value) != expected or not isinstance(value.get("metrics"), list):
+            raise DataError("crypto coverage task is malformed")
+        try:
+            task = cls(
+                provider=cast(str, value["provider"]),
+                family=cast(CryptoFamily, value["family"]),
+                instrument=cast(str, value["instrument"]),
+                base_asset=cast(str | None, value["base_asset"]),
+                quote_asset=cast(str | None, value["quote_asset"]),
+                category=cast(str | None, value["category"]),
+                frequency=cast(str, value["frequency"]),
+                cadence=cast(CoverageCadence, value["cadence"]),
+                network=cast(str | None, value["network"]),
+                metrics=tuple(cast(list[str], value["metrics"])),
+                lookback_days=cast(int | None, value["lookback_days"]),
+            )
+        except (KeyError, TypeError) as exc:
+            raise DataError("crypto coverage task is malformed") from exc
+        if value.get("task_id") != task.task_id or value.get("execution_authority") is not False:
+            raise DataError("crypto coverage task identity is invalid")
+        return task
+
+
+@dataclass(frozen=True)
+class CryptoCoverageProfileV1:
+    profile_id: str
+    as_of: datetime
+    source_manifest_ids: tuple[str, ...]
+    tasks: tuple[CryptoCoverageTaskV1, ...]
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        as_of: datetime,
+        source_manifest_ids: tuple[str, ...],
+        tasks: tuple[CryptoCoverageTaskV1, ...],
+    ) -> CryptoCoverageProfileV1:
+        if not isinstance(as_of, datetime) or as_of.tzinfo is None or as_of.utcoffset() is None:
+            raise DataError("crypto coverage profile as_of must be timezone-aware")
+        normalized_at = as_of.astimezone(UTC)
+        if (
+            not isinstance(source_manifest_ids, tuple)
+            or not source_manifest_ids
+            or len(set(source_manifest_ids)) != len(source_manifest_ids)
+            or any(
+                not isinstance(manifest_id, str)
+                or len(manifest_id) != 64
+                or any(character not in "0123456789abcdef" for character in manifest_id)
+                for manifest_id in source_manifest_ids
+            )
+        ):
+            raise DataError("crypto coverage profile source membership is invalid")
+        if (
+            not isinstance(tasks, tuple)
+            or not tasks
+            or len(tasks) > 10_000
+            or any(not isinstance(task, CryptoCoverageTaskV1) for task in tasks)
+            or len({task.task_id for task in tasks}) != len(tasks)
+        ):
+            raise DataError("crypto coverage profile task membership is invalid")
+        body = cls._body(normalized_at, source_manifest_ids, tasks)
+        return cls(
+            profile_id=hashlib.sha256(_canonical(body)).hexdigest(),
+            as_of=normalized_at,
+            source_manifest_ids=source_manifest_ids,
+            tasks=tasks,
+        )
+
+    @staticmethod
+    def _body(
+        as_of: datetime,
+        source_manifest_ids: tuple[str, ...],
+        tasks: tuple[CryptoCoverageTaskV1, ...],
+    ) -> dict[str, object]:
+        return {
+            "schema_version": 1,
+            "as_of": as_of.isoformat().replace("+00:00", "Z"),
+            "source_manifest_ids": list(source_manifest_ids),
+            "tasks": [task.to_dict() for task in tasks],
+            "execution_authority": False,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self._body(self.as_of, self.source_manifest_ids, self.tasks),
+            "profile_id": self.profile_id,
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> CryptoCoverageProfileV1:
+        if not isinstance(value, dict) or value.get("schema_version") != 1:
+            raise DataError("crypto coverage profile has an unsupported schema")
+        expected = {
+            "schema_version",
+            "as_of",
+            "source_manifest_ids",
+            "tasks",
+            "execution_authority",
+            "profile_id",
+        }
+        if (
+            set(value) != expected
+            or not isinstance(value.get("as_of"), str)
+            or not isinstance(value.get("source_manifest_ids"), list)
+            or not isinstance(value.get("tasks"), list)
+        ):
+            raise DataError("crypto coverage profile is malformed")
+        try:
+            as_of = datetime.fromisoformat(cast(str, value["as_of"]).replace("Z", "+00:00"))
+            sources = tuple(cast(list[str], value["source_manifest_ids"]))
+            tasks = tuple(
+                CryptoCoverageTaskV1.from_dict(item) for item in cast(list[object], value["tasks"])
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise DataError("crypto coverage profile is malformed") from exc
+        profile = cls.create(as_of=as_of, source_manifest_ids=sources, tasks=tasks)
+        if (
+            value.get("profile_id") != profile.profile_id
+            or value.get("execution_authority") is not False
+        ):
+            raise DataError("crypto coverage profile identity is invalid")
+        return profile
 
 
 _PERPETUAL_COLUMNS = frozenset(
@@ -333,4 +519,9 @@ def build_default_coverage_tasks(
     return tuple(tasks)
 
 
-__all__ = ["CryptoCoverageTaskV1", "CoverageCadence", "build_default_coverage_tasks"]
+__all__ = [
+    "CryptoCoverageProfileV1",
+    "CryptoCoverageTaskV1",
+    "CoverageCadence",
+    "build_default_coverage_tasks",
+]
