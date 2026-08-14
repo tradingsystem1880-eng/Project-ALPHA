@@ -717,7 +717,9 @@ type CryptoFamilyValue = Literal[
     "dex_transactions",
     "comparison_bars",
 ]
-type CryptoProviderValue = Literal["binance", "bybit", "coingecko", "geckoterminal", "coinmetrics"]
+type CryptoProviderValue = Literal[
+    "binance", "bybit", "coingecko", "geckoterminal", "coinmetrics", "ccxt:coinbase"
+]
 type CryptoQualificationStateValue = Literal[
     "unverified", "unavailable", "qualified", "warning", "quarantined"
 ]
@@ -906,7 +908,7 @@ class CryptoQualityResponse(StrictModel):
 class CryptoAcquisitionRequest(StrictModel):
     provider: CryptoProviderValue
     family: CryptoFamilyValue
-    instrument: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
+    instrument: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9._:/-]+$")
     base: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
     quote: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
     category: Literal["spot", "linear", "inverse", "option"] = "linear"

@@ -33,6 +33,20 @@ class MarketComparisonSummaryV1:
     quarantine_bps: float
     schema_version: int = 1
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": 1,
+            "comparison_id": self.comparison_id,
+            "primary_sha256": self.primary_sha256,
+            "comparison_sha256": [list(item) for item in self.comparison_sha256],
+            "state": self.state,
+            "max_abs_divergence_bps": self.max_abs_divergence_bps,
+            "matched_observations": self.matched_observations,
+            "missing_observations": self.missing_observations,
+            "warning_bps": self.warning_bps,
+            "quarantine_bps": self.quarantine_bps,
+        }
+
 
 def _comparison_id(value: object) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
@@ -189,6 +203,7 @@ def _family_checks(
 
     if dataset.family in {
         "market_bars",
+        "comparison_bars",
         "derivative_bars",
         "mark_bars",
         "index_bars",

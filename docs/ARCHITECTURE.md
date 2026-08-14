@@ -187,6 +187,11 @@ authority. An explicit typed registration
 re-verifies every external member before recording the snapshot through the historical research
 `snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
 when a registered operator declares compatibility.
+Coinbase comparison bars are acquired through the existing venue-qualified CCXT seam at exact
+1m/5m/1h/1d intervals. Bybit spot bars may be stored only as diagnostics and fail snapshot authority
+checks. A derived market-comparison artifact commits to the authoritative Binance input, every
+independent input hash, the exact quote/frequency identity, and mechanical thresholds; it never
+rewrites or substitutes the primary dataset.
 Storage inventory and verification expose counts and hashes without private absolute paths.
 Cleanup is confined to `bulk/cache`, requires an explicit confirmation, and reports zero immutable
 artifacts removed; staging, raw, normalized, snapshot, manifest, and control roots are excluded.

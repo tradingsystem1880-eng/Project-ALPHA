@@ -169,12 +169,29 @@ def test_normalized_publication_is_bound_to_raw_input_dataset_and_quality(tmp_pa
     assert store.verify_manifest(normalized["manifest_id"]) == normalized
     assert str(tmp_path) not in json.dumps(normalized)
 
+    derived = store.publish_derived(
+        b"PAR1-derived-comparison",
+        derived_kind="market-comparison",
+        input_manifest_ids=(str(normalized["manifest_id"]),),
+        metadata={"comparison_id": "a" * 64, "automatic_substitution": False},
+    )
+    assert derived["artifact_kind"] == "derived"
+    assert derived["input_manifest_ids"] == [normalized["manifest_id"]]
+    assert store.verify_manifest(derived["manifest_id"]) == derived
+
     with pytest.raises(DataError, match="raw input manifest"):
         store.publish_normalized(
             payload,
             dataset=dataset,
             input_manifest_ids=("a" * 64,),
             quality=quality,
+        )
+    with pytest.raises(DataError, match="not normalized"):
+        store.publish_derived(
+            b"PAR1-bad-derived",
+            derived_kind="market-comparison",
+            input_manifest_ids=(str(raw["manifest_id"]),),
+            metadata={},
         )
 
 

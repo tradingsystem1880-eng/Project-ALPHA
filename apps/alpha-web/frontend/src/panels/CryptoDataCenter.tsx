@@ -41,7 +41,7 @@ const SECTIONS: { id: CryptoDataSection; label: string }[] = [
   { id: 'storage', label: 'Storage & Jobs' },
 ]
 
-const PROVIDERS = new Set(['binance', 'bybit', 'coingecko', 'geckoterminal', 'coinmetrics'])
+const PROVIDERS = new Set(['binance', 'bybit', 'coingecko', 'geckoterminal', 'coinmetrics', 'ccxt:coinbase'])
 const BYBIT_RANGED_FAMILIES = new Set<CryptoFamily>([
   'funding',
   'open_interest',
@@ -59,6 +59,7 @@ function acquisitionProvider(value: string): CryptoAcquisitionRequest['provider'
 }
 
 function defaultInstrument(family: CryptoFamily): string {
+  if (family === 'comparison_bars') return 'BTC/USD'
   if (family === 'instrument_catalog') return 'linear'
   if (family === 'asset_metadata' || family === 'market_reference') return 'bitcoin'
   if (family === 'onchain_metrics') return 'btc'
@@ -202,6 +203,14 @@ export function CryptoDataCenter({
   }, [family, instrument, base, quote, category, frequency, days])
 
   useEffect(() => {
+    if (family === 'comparison_bars') {
+      if (category !== 'spot') setCategory('spot')
+      if (frequency !== '1d') setFrequency('1d')
+      if (base !== 'BTC') setBase('BTC')
+      if (quote !== 'USD') setQuote('USD')
+      if (instrument !== 'BTC/USD') setInstrument('BTC/USD')
+      return
+    }
     if (
       category === 'option'
       && family !== 'derivative_trades'
@@ -211,7 +220,7 @@ export function CryptoDataCenter({
       !['open_interest', 'long_short_ratio'].includes(family)
       && ['15m', '30m', '4h'].includes(frequency)
     ) setFrequency('1h')
-  }, [category, family, frequency])
+  }, [base, category, family, frequency, instrument, quote])
 
   useEffect(() => {
     if (!BYBIT_RANGED_FAMILIES.has(family)) return
@@ -366,8 +375,8 @@ export function CryptoDataCenter({
         metrics: provider === 'coinmetrics'
           ? metrics.split(',').map((item) => item.trim()).filter(Boolean)
           : [],
-        start: provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? start : null,
-        end: provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? end : null,
+        start: provider === 'coinmetrics' || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? start : null,
+        end: provider === 'coinmetrics' || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? end : null,
         case_id: caseBoundEvent ? projectId : null,
         expected_case_revision: caseBoundEvent ? caseRevision : null,
         reason: caseBoundEvent ? eventReason.trim() : null,
@@ -643,7 +652,7 @@ export function CryptoDataCenter({
             {provider === 'binance' ? <label><span className="eyebrow">Archive month</span><input className="field mono" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label> : null}
             {provider === 'geckoterminal' ? <><label><span className="eyebrow">Network</span><input className="field mono" value={network} onChange={(event) => setNetwork(event.target.value)} /></label><label><span className="eyebrow">Pool address</span><input className="field mono" value={poolAddress} onChange={(event) => setPoolAddress(event.target.value)} /></label></> : null}
             {provider === 'coinmetrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label> : null}
-            {provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
+            {provider === 'coinmetrics' || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
             {caseBoundEvent ? <label><span className="eyebrow">Event-capture reason</span><input className="field" value={eventReason} onChange={(event) => setEventReason(event.target.value)} /></label> : null}
           </div>
           <div className="crypto-actions">

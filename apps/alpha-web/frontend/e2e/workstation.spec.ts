@@ -1391,6 +1391,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
         { family: 'derivative_trades', provider: 'bybit', role: 'primary_acquisition' },
         { family: 'derivative_book_snapshots', provider: 'bybit', role: 'primary_acquisition' },
         { family: 'option_quotes', provider: 'bybit', role: 'primary_acquisition' },
+        { family: 'comparison_bars', provider: 'ccxt:coinbase', role: 'diagnostic_comparison' },
       ],
       automatic_fallback: false,
       execution_authority: false,
@@ -2180,6 +2181,13 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await expect(center.getByText('usd-coin', { exact: true })).toBeVisible()
   await center.getByRole('button', { name: 'Verify identity map', exact: true }).click()
   await expect(center.getByText('VERIFIED · 1 contract mappings', { exact: true })).toBeVisible()
+  await center.getByRole('tab', { name: 'CEX History', exact: true }).click()
+  await center.getByLabel('Dataset family').selectOption('comparison_bars')
+  await expect(center.getByLabel('Instrument')).toHaveValue('BTC/USD')
+  await expect(center.getByLabel('Quote asset')).toHaveValue('USD')
+  await expect(center.getByLabel('Market')).toHaveValue('spot')
+  await expect(center.getByLabel('Frequency')).toHaveValue('1d')
+  await expect(center.getByLabel('Start UTC')).toBeVisible()
   await center.getByRole('tab', { name: 'Derivatives & Funding', exact: true }).click()
   await center.getByLabel('Dataset family').selectOption('derivative_book_snapshots')
   await expect(center.getByLabel('Market').getByRole('option', { name: 'option' })).toHaveCount(1)

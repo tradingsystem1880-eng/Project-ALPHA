@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
+from alpha_data.adapters.ccxt_adapter import parse_ccxt_ohlcv
 from alpha_data.crypto.contracts import FAMILY_AUTHORITIES
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
@@ -806,6 +807,84 @@ def test_derivative_event_capture_fails_before_network_without_case_scope(
     assert called is False
 
 
+def test_bybit_spot_bars_are_diagnostic_only_and_cannot_enter_a_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_bybit_public",
+        lambda *_args, **_kwargs: json.dumps(
+            {
+                "retCode": 0,
+                "time": 1_786_752_000_000,
+                "result": {
+                    "category": "spot",
+                    "symbol": "BTCUSDT",
+                    "list": [["1786665600000", "10", "12", "9", "11", "4", "44"]],
+                },
+            }
+        ).encode(),
+    )
+
+    acquired = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "bybit",
+            "comparison_bars",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--frequency",
+            "1d",
+            "--start",
+            "2026-08-14T00:00:00Z",
+            "--end",
+            "2026-08-14T23:59:59Z",
+            "--json",
+        ],
+    )
+
+    assert acquired.exit_code == 0, acquired.output
+    receipt = json.loads(acquired.stdout)
+    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    assert manifest["dataset"]["provider"] == "bybit"
+    assert manifest["dataset"]["family"] == "comparison_bars"
+    rejected = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "snapshot-create",
+            "--manifest-id",
+            receipt["normalized_manifest_id"],
+            "--json",
+        ],
+    )
+    assert rejected.exit_code != 0
+    assert "wrong family authority" in rejected.output
+
+
 def test_crypto_data_acquires_each_non_bybit_authority_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -904,6 +983,15 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     monkeypatch.setattr(
         crypto_data_cmds, "fetch_coinmetrics_community", lambda *_args: coinmetrics_payload
     )
+    comparison_result = parse_ccxt_ohlcv(
+        [[1_704_067_200_000, 49_000.0, 51_000.0, 48_000.0, 50_000.0, 1_000.0]],
+        "BTC/USDT",
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds.CCXTAdapter,
+        "fetch_timeframe",
+        lambda _self, _symbol, _start, _end, *, timeframe: comparison_result,
+    )
 
     commands = (
         [
@@ -958,13 +1046,33 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
             "--end",
             "2026-08-15",
         ],
+        [
+            "ccxt:coinbase",
+            "comparison_bars",
+            "BTC/USDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--frequency",
+            "1d",
+            "--start",
+            "2024-01-01",
+            "--end",
+            "2024-01-01",
+        ],
     )
+    receipts: dict[str, dict[str, object]] = {}
     for command in commands:
         result = runner.invoke(app, ["crypto-data", "acquire", *command, "--json"])
         assert result.exit_code == 0, result.output
-        assert json.loads(result.stdout)["state"] == "qualified"
+        receipt = json.loads(result.stdout)
+        assert receipt["state"] == "qualified"
+        receipts[str(receipt["family"])] = receipt
 
-    assert len(store.inventory()) == 8
+    assert len(store.inventory()) == 10
     inventory_json = json.dumps(store.inventory())
     assert "injected-only-for-test" not in inventory_json
 
@@ -977,6 +1085,36 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     assert by_family["market_bars"]["verification_state"] == "receipt_verified"
     assert by_family["market_bars"]["qualification_state"] == "qualified"
     assert by_family["open_interest"]["verification_state"] == "not_verified"
+    assert by_family["comparison_bars"]["verification_state"] == "receipt_verified"
+    assert by_family["comparison_bars"]["qualification_state"] == "qualified"
+
+    compared = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "compare",
+            "--primary-manifest-id",
+            str(receipts["market_bars"]["normalized_manifest_id"]),
+            "--comparison-manifest-id",
+            str(receipts["comparison_bars"]["normalized_manifest_id"]),
+            "--warning-bps",
+            "100",
+            "--quarantine-bps",
+            "500",
+            "--json",
+        ],
+    )
+    assert compared.exit_code == 0, compared.output
+    comparison = json.loads(compared.stdout)
+    assert comparison["state"] == "quarantined"
+    assert comparison["automatic_substitution"] is False
+    assert comparison["execution_authority"] is False
+    derived = store.verify_manifest(comparison["manifest_id"])
+    assert derived["artifact_kind"] == "derived"
+    assert derived["input_manifest_ids"] == [
+        receipts["market_bars"]["normalized_manifest_id"],
+        receipts["comparison_bars"]["normalized_manifest_id"],
+    ]
 
 
 @pytest.mark.parametrize(

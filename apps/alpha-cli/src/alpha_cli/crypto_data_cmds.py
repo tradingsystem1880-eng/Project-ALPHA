@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 import os
@@ -20,6 +21,7 @@ import typer
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
+from alpha_data.adapters.ccxt_adapter import CCXTAdapter, parse_ccxt_ohlcv
 from alpha_data.crypto.asset_master import AssetMaster, build_cross_provider_asset_master
 from alpha_data.crypto.capabilities import project_provider_capabilities
 from alpha_data.crypto.contracts import (
@@ -79,6 +81,7 @@ from alpha_data.crypto.providers.geckoterminal import (
     parse_pool_trades,
     parse_top_pools,
 )
+from alpha_data.crypto.quality import compare_market_observations
 from alpha_data.crypto.research import (
     CryptoResearchEligibilityV1,
     CryptoResearchPurpose,
@@ -135,6 +138,10 @@ _BYBIT_PRICE_FAMILIES: Final[dict[CryptoFamily, tuple[str, PriceFamily]]] = {
     "premium_bars": ("premium_kline", "premium"),
 }
 _CASE_BOUND_EVENT_FAMILIES: Final = frozenset({"derivative_trades", "derivative_book_snapshots"})
+
+
+class _LegacyUnscopedEventError(DataError):
+    """Historical bytes are valid but cannot qualify as governed research evidence."""
 
 
 @dataclass(frozen=True)
@@ -315,6 +322,38 @@ def _top_pools_parser_at(
     completed_at: datetime, *, network: str
 ) -> Callable[[bytes], pl.DataFrame]:
     return partial(_top_pools_frame, network=network, fetched_at=completed_at)
+
+
+def _ccxt_comparison_payload(frame: pl.DataFrame) -> bytes:
+    required = ("ts", "open", "high", "low", "close", "volume")
+    if any(column not in frame.columns for column in required) or frame.is_empty():
+        raise DataError("CCXT comparison output is empty or malformed")
+    rows: list[list[float | int]] = []
+    for row in frame.select(required).iter_rows(named=True):
+        timestamp = row["ts"]
+        if not isinstance(timestamp, datetime):
+            raise DataError("CCXT comparison timestamp is invalid")
+        rows.append(
+            [
+                int(timestamp.timestamp() * 1_000),
+                float(cast(float, row["open"])),
+                float(cast(float, row["high"])),
+                float(cast(float, row["low"])),
+                float(cast(float, row["close"])),
+                float(cast(float, row["volume"])),
+            ]
+        )
+    return json.dumps(rows, separators=(",", ":"), allow_nan=False).encode()
+
+
+def _parse_ccxt_comparison(payload: bytes, *, symbol: str) -> pl.DataFrame:
+    try:
+        raw = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DataError("CCXT comparison payload is invalid") from exc
+    if not isinstance(raw, list) or any(not isinstance(row, list) for row in raw):
+        raise DataError("CCXT comparison payload is invalid")
+    return parse_ccxt_ohlcv(raw, symbol).bars.rename({"ts": "timestamp"})
 
 
 def _option_symbol_assets(symbol: str) -> tuple[str, str]:
@@ -522,6 +561,39 @@ def _verified_snapshot(
         purpose=purpose,
     )
     return snapshot, reports, projection
+
+
+def _integrity_verified_snapshot(snapshot_id: str) -> tuple[CryptoSnapshotV1, bool]:
+    """Verify historical bytes and identity without promoting legacy scope into evidence."""
+    snapshot = _read_snapshot(snapshot_id)
+    if snapshot.asset_master_version != "reviewed-native-v1":
+        master = _read_asset_master(snapshot.asset_master_version)
+        if master.version != snapshot.asset_master_version:
+            raise DataError("crypto snapshot asset-master identity is mismatched")
+    store = _bulk_store()
+    by_membership = {
+        (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
+        for manifest in store.inventory()
+        if manifest.get("artifact_kind") == "normalized"
+    }
+    scope_eligible = True
+    reports: dict[str, CryptoQualityReportV1] = {}
+    for member in snapshot.members:
+        manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
+        if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
+            raise DataError("crypto snapshot member manifest is missing or mismatched")
+        try:
+            _manifest_acquisition_scope(manifest, member.dataset)
+        except _LegacyUnscopedEventError:
+            scope_eligible = False
+        reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    projection = assess_crypto_snapshot(
+        snapshot,
+        quality_reports=reports,
+        required_families=(),
+        purpose="research",
+    )
+    return snapshot, scope_eligible and projection.eligible
 
 
 def crypto_snapshot_registration(snapshot_id: str, *, symbol: str) -> dict[str, object]:
@@ -785,11 +857,9 @@ def storage_verify(json_out: bool = typer.Option(False, "--json", help="emit JSO
                 asset_master_count += 1
         if _snapshot_root().exists():
             for path in sorted(_snapshot_root().glob("*.json")):
-                snapshot, _, projection = _verified_snapshot(
-                    path.stem, required_families=(), purpose="research"
-                )
+                snapshot, eligible = _integrity_verified_snapshot(path.stem)
                 snapshot_count += 1
-                eligible_count += int(projection.eligible and snapshot.snapshot_id == path.stem)
+                eligible_count += int(eligible and snapshot.snapshot_id == path.stem)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(
@@ -890,9 +960,12 @@ def _bybit_plan(
     end: str | None,
     fetched_at: datetime,
 ) -> _AcquisitionPlan:
-    if FAMILY_AUTHORITIES[family] != "bybit":
+    diagnostic_spot = family == "comparison_bars" and category == "spot"
+    if FAMILY_AUTHORITIES[family] != "bybit" and not diagnostic_spot:
         raise DataError(f"{family} is not a Bybit-authoritative dataset family")
-    if family == "instrument_catalog":
+    if diagnostic_spot:
+        pass
+    elif family == "instrument_catalog":
         if category not in {"spot", "linear", "inverse", "option"}:
             raise DataError(
                 "Bybit instrument catalog category must be spot, linear, inverse, or option"
@@ -929,7 +1002,16 @@ def _bybit_plan(
     parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
     bounded_range = _bybit_range(start, end, fetched_at=fetched_at)
 
-    if family == "instrument_catalog":
+    if family == "comparison_bars":
+        endpoint = "trade_kline"
+        interval = {"1h": "60", "1d": "D", "5m": "5", "1m": "1"}.get(frequency)
+        if interval is None:
+            raise DataError("Bybit spot comparison frequency must be 1m, 5m, 1h, or 1d")
+        params = {"category": "spot", "symbol": symbol, "interval": interval, "limit": 1_000}
+        parser = partial(parse_price_klines, family="trade")
+        units = "quote_per_base_and_base_volume"
+        page_limit = 1_000
+    elif family == "instrument_catalog":
         endpoint = "instruments"
         params = {"category": category}
         if category != "spot":
@@ -1078,7 +1160,7 @@ def _bybit_plan(
         }:
             raise DataError(f"Bybit {family} is a point-in-time snapshot and rejects a time range")
         start_ms, end_ms = bounded_range
-        if family in _BYBIT_PRICE_FAMILIES:
+        if family in _BYBIT_PRICE_FAMILIES or family == "comparison_bars":
             params.update({"start": start_ms, "end": end_ms})
         else:
             params.update({"startTime": start_ms, "endTime": end_ms})
@@ -1246,6 +1328,86 @@ def _fetch_non_bybit(
         raise DataError("crypto acquisition identity is invalid")
     keys: tuple[str, ...]
     parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None
+
+    if provider == "ccxt:coinbase":
+        if family != "comparison_bars":
+            raise DataError("ccxt:coinbase is diagnostic authority only for comparison_bars")
+        cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}.get(frequency)
+        if category != "spot" or cadence_seconds is None:
+            raise DataError("ccxt:coinbase comparison supports exact 1m, 5m, 1h, or 1d spot bars")
+        if any(value is not None for value in (period, network, pool_address, metrics)):
+            raise DataError("ccxt:coinbase comparison received an unsupported provider option")
+        if start is None or end is None:
+            raise DataError("ccxt:coinbase comparison requires --start and --end")
+        symbol = instrument_value.upper()
+        if symbol != f"{base_value}/{quote_value}":
+            raise DataError("ccxt:coinbase instrument must exactly match BASE/QUOTE")
+        try:
+            start_at = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            end_at = datetime.fromisoformat(end.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise DataError("ccxt:coinbase start and end must be ISO-8601 timestamps") from exc
+        if start_at.tzinfo is None and len(start) == 10:
+            start_at = start_at.replace(tzinfo=UTC)
+        if end_at.tzinfo is None and len(end) == 10:
+            end_at = end_at.replace(tzinfo=UTC)
+        if (
+            start_at.tzinfo is None
+            or start_at.utcoffset() is None
+            or end_at.tzinfo is None
+            or end_at.utcoffset() is None
+        ):
+            raise DataError("ccxt:coinbase intraday bounds must include a timezone")
+        start_at = start_at.astimezone(UTC)
+        end_at = end_at.astimezone(UTC)
+        current_interval = int(fetched_at.timestamp()) // cadence_seconds * cadence_seconds
+        if end_at < start_at or int(end_at.timestamp()) >= current_interval:
+            raise DataError(
+                "ccxt:coinbase range must end before the current incomplete UTC interval"
+            )
+        result = CCXTAdapter(exchange="coinbase").fetch_timeframe(
+            symbol, start_at, end_at, timeframe=frequency
+        )
+        timestamps = result.bars["ts"].to_list() if "ts" in result.bars.columns else []
+        if not timestamps or any(
+            not isinstance(value, datetime) or not start_at <= value <= end_at
+            for value in timestamps
+        ):
+            raise DataError("ccxt:coinbase returned bars outside the exact requested range")
+        payload = _ccxt_comparison_payload(result.bars)
+        comparison_params: dict[str, str | int] = {
+            "symbol": symbol,
+            "timeframe": frequency,
+            "start": start,
+            "end": end,
+        }
+        return _FetchedAcquisition(
+            plan=_AcquisitionPlan(
+                endpoint="ccxt_fetch_ohlcv",
+                params=comparison_params,
+                dataset=CryptoDatasetIdentityV1(
+                    provider="ccxt:coinbase",
+                    venue="coinbase",
+                    market_type="spot",
+                    family="comparison_bars",
+                    instrument=symbol,
+                    base_asset=base_value,
+                    quote_asset=quote_value,
+                    frequency=frequency,
+                    units="quote_per_base_and_base_volume",
+                    timestamp_convention="interval_start_utc",
+                ),
+                parser=partial(_parse_ccxt_comparison, symbol=symbol),
+                observed_column="timestamp",
+                key_columns=("timestamp",),
+            ),
+            payload=payload,
+            provider_schema="ccxt-unified-ohlcv-v1",
+            parser_version="ccxt-adapter-v2-parser-v1",
+            logical_name="comparison_bars.json",
+            expected_cadence_seconds=cadence_seconds,
+            period_start_timestamps=True,
+        )
 
     if provider == "binance":
         if category not in {"spot", "linear", "inverse"}:
@@ -1915,7 +2077,7 @@ def _manifest_acquisition_scope(
         try:
             return CryptoAcquisitionScopeV1.from_dict(raw_scope)
         except DataError as exc:
-            raise DataError(
+            raise _LegacyUnscopedEventError(
                 "legacy unscoped derivative event data cannot enter governed research evidence"
             ) from exc
     if raw_scope is not None:
@@ -2036,6 +2198,115 @@ def quality(
                 "Select this dataset for a frozen snapshot."
                 if report.state == "qualified"
                 else "Resolve the reported failures or warnings; do not substitute another venue."
+            ),
+        },
+        json_out=json_out,
+    )
+
+
+def _comparison_frame(
+    store: CryptoBulkStore, manifest_id: str
+) -> tuple[dict[str, object], CryptoDatasetIdentityV1, CryptoQualityReportV1, pl.DataFrame]:
+    manifest = store.verify_manifest(manifest_id)
+    if manifest.get("artifact_kind") != "normalized":
+        raise DataError("crypto comparison inputs must be normalized manifests")
+    dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+    report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    if report.state != "qualified" or report.failures or report.warnings:
+        raise DataError("crypto comparison inputs must be exactly qualified")
+    artifact_key = manifest.get("artifact_key")
+    if not isinstance(artifact_key, str):
+        raise DataError("crypto comparison artifact key is invalid")
+    try:
+        frame = pl.read_parquet(store.bulk_root / artifact_key)
+    except (OSError, pl.exceptions.PolarsError) as exc:
+        raise DataError("crypto comparison artifact is unreadable") from exc
+    if "timestamp" not in frame.columns and "open_time" in frame.columns:
+        frame = frame.rename({"open_time": "timestamp"})
+    return manifest, dataset, report, frame
+
+
+@crypto_data_app.command("compare")
+def compare(
+    primary_manifest_id: Annotated[
+        str, typer.Option("--primary-manifest-id", help="authoritative market-bars manifest")
+    ],
+    comparison_manifest_ids: Annotated[
+        list[str],
+        typer.Option(
+            "--comparison-manifest-id",
+            help="independent ccxt:coinbase or Bybit spot comparison manifest",
+        ),
+    ],
+    warning_bps: float = typer.Option(100.0, min=0.000001),
+    quarantine_bps: float = typer.Option(500.0, min=0.000001),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Persist non-substituting cross-venue close-price divergence diagnostics."""
+    if not comparison_manifest_ids or len(set(comparison_manifest_ids)) != len(
+        comparison_manifest_ids
+    ):
+        raise typer.BadParameter("--comparison-manifest-id must contain unique manifests")
+    try:
+        store = _bulk_store()
+        primary_manifest, primary, primary_quality, primary_frame = _comparison_frame(
+            store, primary_manifest_id
+        )
+        if primary.family != "market_bars" or primary.provider != FAMILY_AUTHORITIES["market_bars"]:
+            raise DataError("crypto comparison primary must be authoritative Binance market bars")
+        comparisons: list[tuple[str, str, pl.DataFrame]] = []
+        for manifest_id in comparison_manifest_ids:
+            _manifest, dataset, report, frame = _comparison_frame(store, manifest_id)
+            if dataset.family != "comparison_bars" or dataset.provider not in {
+                "ccxt:coinbase",
+                "bybit",
+            }:
+                raise DataError("crypto comparison source must be Coinbase or Bybit spot bars")
+            if dataset.market_type != "spot" or (
+                dataset.base_asset,
+                dataset.quote_asset,
+                dataset.frequency,
+            ) != (primary.base_asset, primary.quote_asset, primary.frequency):
+                raise DataError(
+                    "crypto comparison sources must match exact spot base, quote, and frequency"
+                )
+            comparisons.append((dataset.provider, report.dataset_sha256, frame))
+        diagnostics, summary = compare_market_observations(
+            primary=primary_frame,
+            primary_provider=primary.provider,
+            primary_sha256=primary_quality.dataset_sha256,
+            comparisons=tuple(comparisons),
+            timestamp_column="timestamp",
+            value_column="close",
+            warning_bps=warning_bps,
+            quarantine_bps=quarantine_bps,
+        )
+        output = io.BytesIO()
+        diagnostics.write_parquet(output, compression="zstd", statistics=True)
+        derived = store.publish_derived(
+            output.getvalue(),
+            derived_kind="market-comparison",
+            input_manifest_ids=(primary_manifest_id, *comparison_manifest_ids),
+            metadata=summary.to_dict()
+            | {
+                "primary_provider": primary.provider,
+                "automatic_substitution": False,
+                "execution_authority": False,
+            },
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        summary.to_dict()
+        | {
+            "manifest_id": derived["manifest_id"],
+            "artifact_sha256": derived["artifact_sha256"],
+            "automatic_substitution": False,
+            "execution_authority": False,
+            "next_action": (
+                "Review or quarantine the primary dataset; no provider was substituted."
+                if summary.state != "qualified"
+                else "The exact cross-venue diagnostic is qualified."
             ),
         },
         json_out=json_out,

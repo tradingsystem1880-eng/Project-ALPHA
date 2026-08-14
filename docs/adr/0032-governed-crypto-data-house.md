@@ -40,6 +40,12 @@ bounded reason; it rechecks that revision after fetch before publication. The no
 commits to `CryptoAcquisitionScopeV1`. Historical unscoped event artifacts remain readable and
 immutable but cannot enter or reverify as governed research evidence.
 
+Coinbase through `ccxt:coinbase` is the sole primary authority for `comparison_bars`. Bybit spot
+bars are an explicitly non-authoritative diagnostic input and cannot enter a frozen snapshot.
+Cross-venue diagnostics require exact base, quote, spot market type, and frequency equality; USD,
+USDT, and USDC are never compared as if interchangeable. The derived report retains all venue
+values and may warn or quarantine the primary, but never substitutes another provider.
+
 No automatic fallback may change provider, venue, market type, quote asset, unit, frequency, or
 timestamp convention. USDT, USDC, and USD are separate quote assets. Provider corrections create
 new immutable receipts; unexplained changes quarantine rather than overwrite evidence.

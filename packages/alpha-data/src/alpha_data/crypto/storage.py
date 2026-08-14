@@ -23,7 +23,7 @@ from .contracts import (
     CryptoRawReceiptV1,
 )
 
-_SAFE = re.compile(r"^[A-Za-z0-9._-]+$")
+_SAFE = re.compile(r"^[A-Za-z0-9._:-]+$")
 
 
 @dataclass(frozen=True)
@@ -394,6 +394,59 @@ class CryptoBulkStore:
             body["acquisition_scope"] = acquisition_scope.to_dict()
         return self._publish_manifest(body)
 
+    def publish_derived(
+        self,
+        payload: bytes,
+        *,
+        derived_kind: str,
+        input_manifest_ids: tuple[str, ...],
+        metadata: dict[str, object],
+    ) -> dict[str, object]:
+        """Publish one immutable derived artifact after re-verifying all normalized inputs."""
+        if not isinstance(payload, bytes) or not payload:
+            raise DataError("crypto derived publication requires non-empty bytes")
+        kind = _safe_component(derived_kind, "derived kind")
+        if not input_manifest_ids or len(set(input_manifest_ids)) != len(input_manifest_ids):
+            raise DataError("crypto derived publication requires unique normalized inputs")
+        for manifest_id in input_manifest_ids:
+            manifest = self.verify_manifest(manifest_id)
+            if manifest.get("artifact_kind") != "normalized":
+                raise DataError("crypto derived input is not normalized provider data")
+        try:
+            _canonical(metadata)
+        except (TypeError, ValueError) as exc:
+            raise DataError("crypto derived metadata must be finite JSON") from exc
+        artifact_hash = hashlib.sha256(payload).hexdigest()
+        self.verify_ready(required_bytes=len(payload))
+        artifact_key = f"normalized/derived/{kind}/{artifact_hash}.parquet"
+        destination = self.bulk_root / artifact_key
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists():
+            if destination.stat().st_size != len(payload) or _sha256(destination) != artifact_hash:
+                raise DataError("crypto derived artifact identity collision")
+        else:
+            temporary = destination.with_name(f".{destination.name}.tmp")
+            try:
+                with temporary.open("wb") as stream:
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+        return self._publish_manifest(
+            {
+                "schema_version": 1,
+                "artifact_kind": "derived",
+                "derived_kind": kind,
+                "artifact_key": artifact_key,
+                "artifact_sha256": artifact_hash,
+                "artifact_bytes": len(payload),
+                "input_manifest_ids": list(input_manifest_ids),
+                "metadata": metadata,
+            }
+        )
+
     def verify_manifest(self, manifest_id: object) -> dict[str, object]:
         if not isinstance(manifest_id, str):
             raise DataError("invalid crypto manifest id")
@@ -427,6 +480,28 @@ class CryptoBulkStore:
             or _sha256(artifact) != artifact_hash
         ):
             raise DataError("crypto external artifact integrity failure")
+        artifact_kind = raw.get("artifact_kind")
+        if artifact_kind in {"normalized", "derived"}:
+            input_ids = raw.get("input_manifest_ids")
+            if (
+                not isinstance(input_ids, list)
+                or not input_ids
+                or any(not isinstance(value, str) for value in input_ids)
+                or len(set(input_ids)) != len(input_ids)
+            ):
+                raise DataError("crypto manifest input lineage is invalid")
+            expected_kind = "raw" if artifact_kind == "normalized" else "normalized"
+            for input_id in input_ids:
+                parent = self.verify_manifest(input_id)
+                parent_kind = parent.get("artifact_kind")
+                legacy_raw = (
+                    expected_kind == "raw"
+                    and parent_kind is None
+                    and isinstance(parent.get("artifact_key"), str)
+                    and str(parent["artifact_key"]).startswith("raw/")
+                )
+                if parent_kind != expected_kind and not legacy_raw:
+                    raise DataError("crypto manifest input lineage has the wrong artifact kind")
         return raw
 
     def inventory(self) -> tuple[dict[str, object], ...]:

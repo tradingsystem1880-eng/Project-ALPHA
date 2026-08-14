@@ -2045,7 +2045,7 @@
           "instrument": {
             "maxLength": 160,
             "minLength": 1,
-            "pattern": "^[A-Za-z0-9._:-]+$",
+            "pattern": "^[A-Za-z0-9._:/-]+$",
             "title": "Instrument",
             "type": "string"
           },
@@ -3061,7 +3061,8 @@
           "bybit",
           "coingecko",
           "geckoterminal",
-          "coinmetrics"
+          "coinmetrics",
+          "ccxt:coinbase"
         ],
         "type": "string"
       },
