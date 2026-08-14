@@ -349,6 +349,36 @@ def test_bybit_option_normalization_selects_exact_quote_asset() -> None:
         )
 
 
+def test_bybit_option_families_require_truthful_option_category() -> None:
+    fetched_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    for family in ("option_instruments", "option_quotes", "historical_volatility"):
+        plan = crypto_data_cmds._bybit_plan(
+            family,  # type: ignore[arg-type]
+            "BTC-OPTIONS",
+            base="BTC",
+            quote="USDT",
+            category="option",
+            frequency="1h",
+            start=None,
+            end=None,
+            fetched_at=fetched_at,
+        )
+        assert plan.dataset.market_type == "option"
+        assert plan.params["category"] == "option"
+        with pytest.raises(DataError, match="requires the option category"):
+            crypto_data_cmds._bybit_plan(
+                family,  # type: ignore[arg-type]
+                "BTC-OPTIONS",
+                base="BTC",
+                quote="USDT",
+                category="linear",
+                frequency="1h",
+                start=None,
+                end=None,
+                fetched_at=fetched_at,
+            )
+
+
 def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

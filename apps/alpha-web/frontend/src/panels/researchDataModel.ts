@@ -14,6 +14,31 @@ export type CryptoDataSection =
   | 'quality'
   | 'storage'
 
+export type CryptoMarketCategory = 'spot' | 'linear' | 'inverse' | 'option'
+
+export function cryptoMarketChoicesForFamily(family: CryptoFamily): CryptoMarketCategory[] {
+  if (family === 'comparison_bars') return ['spot']
+  if (family === 'instrument_catalog') return ['spot', 'linear', 'inverse', 'option']
+  if (
+    family === 'option_instruments'
+    || family === 'option_quotes'
+    || family === 'historical_volatility'
+  ) return ['option']
+  if (family === 'derivative_trades' || family === 'derivative_book_snapshots') {
+    return ['linear', 'inverse', 'option']
+  }
+  if (
+    family === 'funding'
+    || family === 'open_interest'
+    || family === 'long_short_ratio'
+    || family === 'derivative_bars'
+    || family === 'mark_bars'
+    || family === 'index_bars'
+    || family === 'premium_bars'
+  ) return ['linear', 'inverse']
+  return ['spot', 'linear', 'inverse']
+}
+
 export function cryptoSectionForFamily(family: CryptoFamily): CryptoDataSection {
   if (family === 'asset_metadata' || family === 'market_reference') return 'assets'
   if (

@@ -25,6 +25,7 @@ import { JobConsole } from '../components/JobConsole'
 import { shortId } from '../util/format'
 import {
   cryptoCanonicalAction,
+  cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
   latestCryptoManifestIds,
   type CryptoDataSection,
@@ -211,11 +212,8 @@ export function CryptoDataCenter({
       if (instrument !== 'BTC/USD') setInstrument('BTC/USD')
       return
     }
-    if (
-      category === 'option'
-      && family !== 'derivative_trades'
-      && family !== 'derivative_book_snapshots'
-    ) setCategory('linear')
+    const marketChoices = cryptoMarketChoicesForFamily(family)
+    if (!marketChoices.includes(category)) setCategory(marketChoices[0])
     if (
       !['open_interest', 'long_short_ratio'].includes(family)
       && ['15m', '30m', '4h'].includes(frequency)
@@ -236,11 +234,7 @@ export function CryptoDataCenter({
   )
   const capability = capabilities?.items.find((item) => item.family === family) ?? null
   const categoryChoices: CryptoAcquisitionRequest['category'][] =
-    family === 'instrument_catalog'
-      ? ['spot', 'linear', 'inverse', 'option']
-      : family === 'derivative_trades' || family === 'derivative_book_snapshots'
-        ? ['linear', 'inverse', 'option']
-        : ['spot', 'linear', 'inverse']
+    cryptoMarketChoicesForFamily(family)
   const frequencyChoices: CryptoAcquisitionRequest['frequency'][] =
     family === 'open_interest' || family === 'long_short_ratio'
       ? ['5m', '15m', '30m', '1h', '4h', '1d']

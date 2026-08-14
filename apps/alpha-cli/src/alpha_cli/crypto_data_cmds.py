@@ -975,6 +975,9 @@ def _bybit_plan(
     elif family in {"derivative_trades", "derivative_book_snapshots"}:
         if category not in {"linear", "inverse", "option"}:
             raise DataError("Bybit derivative event category must be linear, inverse, or option")
+    elif family in {"option_instruments", "option_quotes", "historical_volatility"}:
+        if category != "option":
+            raise DataError(f"Bybit {family} requires the option category")
     elif category not in {"linear", "inverse"}:
         raise DataError("Bybit derivative category must be linear or inverse")
     category_value = cast(Literal["linear", "inverse"], category)

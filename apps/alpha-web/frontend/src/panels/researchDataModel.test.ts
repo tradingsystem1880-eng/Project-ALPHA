@@ -6,6 +6,7 @@ import {
   datasetOriginSummary,
   datasetRangeLabel,
   cryptoCanonicalAction,
+  cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
   latestCryptoManifestIds,
 } from './researchDataModel'
@@ -75,6 +76,17 @@ describe('research data model', () => {
     expect(cryptoSectionForFamily('onchain_metrics')).toBe('onchain')
     expect(cryptoSectionForFamily('dex_pools')).toBe('dex')
     expect(cryptoSectionForFamily('asset_metadata')).toBe('assets')
+  })
+
+  it('makes the truthful Bybit option market the only option-family choice', () => {
+    expect(cryptoMarketChoicesForFamily('option_instruments')).toEqual(['option'])
+    expect(cryptoMarketChoicesForFamily('option_quotes')).toEqual(['option'])
+    expect(cryptoMarketChoicesForFamily('historical_volatility')).toEqual(['option'])
+    expect(cryptoMarketChoicesForFamily('derivative_trades')).toEqual([
+      'linear', 'inverse', 'option',
+    ])
+    expect(cryptoMarketChoicesForFamily('funding')).toEqual(['linear', 'inverse'])
+    expect(cryptoMarketChoicesForFamily('comparison_bars')).toEqual(['spot'])
   })
 
   it('derives exactly one canonical next action from server state', () => {

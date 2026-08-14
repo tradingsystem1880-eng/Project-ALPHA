@@ -74,6 +74,9 @@ gate authority, broker authority, or order authority. CoinGecko's Demo key is re
 Keychain only by the existing allowlisted launcher and injected into one bounded process. Its fixed
 `catalog` action accepts no caller-selected provider, family, instrument, or output path. Binance,
 Bybit, Coinbase, GeckoTerminal, and Coin Metrics use only public interfaces in this program.
+Bybit option instruments, quotes, and historical volatility require an explicit `option` market
+selection; the system must not accept a misleading linear/inverse selection and silently relabel
+the normalized identity.
 
 ## Provider retention and removal policy
 
