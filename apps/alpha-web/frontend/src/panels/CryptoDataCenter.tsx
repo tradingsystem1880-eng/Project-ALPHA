@@ -42,6 +42,16 @@ const SECTIONS: { id: CryptoDataSection; label: string }[] = [
 ]
 
 const PROVIDERS = new Set(['binance', 'bybit', 'coingecko', 'geckoterminal', 'coinmetrics'])
+const BYBIT_RANGED_FAMILIES = new Set<CryptoFamily>([
+  'funding',
+  'open_interest',
+  'long_short_ratio',
+  'derivative_bars',
+  'mark_bars',
+  'index_bars',
+  'premium_bars',
+  'historical_volatility',
+])
 
 function acquisitionProvider(value: string): CryptoAcquisitionRequest['provider'] | null {
   if (PROVIDERS.has(value)) return value as CryptoAcquisitionRequest['provider']
@@ -49,6 +59,7 @@ function acquisitionProvider(value: string): CryptoAcquisitionRequest['provider'
 }
 
 function defaultInstrument(family: CryptoFamily): string {
+  if (family === 'instrument_catalog') return 'linear'
   if (family === 'asset_metadata' || family === 'market_reference') return 'bitcoin'
   if (family === 'onchain_metrics') return 'btc'
   if (family.startsWith('option_') || family === 'historical_volatility') return 'BTC'
@@ -181,10 +192,41 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
     setRegistration(null)
   }, [family, instrument, base, quote, category, frequency, days])
 
+  useEffect(() => {
+    if (
+      category === 'option'
+      && family !== 'derivative_trades'
+      && family !== 'derivative_book_snapshots'
+    ) setCategory('linear')
+    if (
+      !['open_interest', 'long_short_ratio'].includes(family)
+      && ['15m', '30m', '4h'].includes(frequency)
+    ) setFrequency('1h')
+  }, [category, family, frequency])
+
+  useEffect(() => {
+    if (!BYBIT_RANGED_FAMILIES.has(family)) return
+    const recentEnd = new Date(Date.now() - 60 * 60 * 1000)
+    recentEnd.setUTCMinutes(0, 0, 0)
+    const recentStart = new Date(recentEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
+    setStart(recentStart.toISOString())
+    setEnd(recentEnd.toISOString())
+  }, [family])
+
   const provider = acquisitionProvider(
     catalog?.families.find((row) => row.family === family)?.provider ?? '',
   )
   const capability = capabilities?.items.find((item) => item.family === family) ?? null
+  const categoryChoices: CryptoAcquisitionRequest['category'][] =
+    family === 'instrument_catalog'
+      ? ['spot', 'linear', 'inverse']
+      : family === 'derivative_trades' || family === 'derivative_book_snapshots'
+        ? ['linear', 'inverse', 'option']
+        : ['spot', 'linear', 'inverse']
+  const frequencyChoices: CryptoAcquisitionRequest['frequency'][] =
+    family === 'open_interest' || family === 'long_short_ratio'
+      ? ['5m', '15m', '30m', '1h', '4h', '1d']
+      : ['1m', '5m', '1h', '1d']
   const qualifiedCount = coverage?.items.filter((item) => item.state === 'qualified').length ?? 0
   const action = cryptoCanonicalAction({
     loading,
@@ -307,14 +349,14 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
         quote,
         category,
         frequency,
-        period: provider === 'binance' ? period : null,
+        period: provider === 'binance' && family !== 'book_snapshots' ? period : null,
         network: provider === 'geckoterminal' ? network : null,
         pool_address: provider === 'geckoterminal' && poolAddress ? poolAddress : null,
         metrics: provider === 'coinmetrics'
           ? metrics.split(',').map((item) => item.trim()).filter(Boolean)
           : [],
-        start: provider === 'coinmetrics' ? start : null,
-        end: provider === 'coinmetrics' ? end : null,
+        start: provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? start : null,
+        end: provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? end : null,
       }
       const accepted = await api.cryptoAcquire(request)
       setJobId(accepted.job_id)
@@ -581,12 +623,13 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
             <label><span className="eyebrow">Instrument</span><input className="field mono" value={instrument} onChange={(event) => setInstrument(event.target.value)} /></label>
             <label><span className="eyebrow">Base asset</span><input className="field mono" value={base} onChange={(event) => setBase(event.target.value.toUpperCase())} /></label>
             <label><span className="eyebrow">Quote asset</span><input className="field mono" value={quote} onChange={(event) => setQuote(event.target.value.toUpperCase())} /></label>
-            <label><span className="eyebrow">Market</span><select className="field" value={category} onChange={(event) => setCategory(event.target.value as CryptoAcquisitionRequest['category'])}><option value="spot">spot</option><option value="linear">linear</option><option value="inverse">inverse</option></select></label>
-            <label><span className="eyebrow">Frequency</span><select className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as CryptoAcquisitionRequest['frequency'])}><option value="1d">daily</option><option value="1h">hourly</option><option value="5m">5 minutes</option><option value="1m">1 minute</option></select></label>
+            <label><span className="eyebrow">Market</span><select className="field" value={category} onChange={(event) => setCategory(event.target.value as CryptoAcquisitionRequest['category'])}>{categoryChoices.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label><span className="eyebrow">Frequency</span><select className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as CryptoAcquisitionRequest['frequency'])}>{frequencyChoices.map((item) => <option key={item} value={item}>{item === '1d' ? 'daily' : item === '1h' ? 'hourly' : item}</option>)}</select></label>
             <label><span className="eyebrow">Estimate days</span><input className="field" type="number" min={1} max={3650} value={days} onChange={(event) => setDays(Number(event.target.value))} /></label>
             {provider === 'binance' ? <label><span className="eyebrow">Archive month</span><input className="field mono" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label> : null}
             {provider === 'geckoterminal' ? <><label><span className="eyebrow">Network</span><input className="field mono" value={network} onChange={(event) => setNetwork(event.target.value)} /></label><label><span className="eyebrow">Pool address</span><input className="field mono" value={poolAddress} onChange={(event) => setPoolAddress(event.target.value)} /></label></> : null}
-            {provider === 'coinmetrics' ? <><label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
+            {provider === 'coinmetrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label> : null}
+            {provider === 'coinmetrics' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
           </div>
           <div className="crypto-actions">
             <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void estimateAcquisition()}>{busyAction === 'estimate' ? 'Estimating…' : 'Estimate storage'}</button>

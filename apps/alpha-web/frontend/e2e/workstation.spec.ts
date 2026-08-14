@@ -1386,6 +1386,10 @@ function responseFor(route: Route, options: MockOptions): unknown {
     return {
       families: [
         { family: 'funding', provider: 'bybit', role: 'primary_acquisition' },
+        { family: 'instrument_catalog', provider: 'bybit', role: 'primary_acquisition' },
+        { family: 'derivative_bars', provider: 'bybit', role: 'primary_acquisition' },
+        { family: 'derivative_trades', provider: 'bybit', role: 'primary_acquisition' },
+        { family: 'derivative_book_snapshots', provider: 'bybit', role: 'primary_acquisition' },
         { family: 'option_quotes', provider: 'bybit', role: 'primary_acquisition' },
       ],
       automatic_fallback: false,
@@ -2176,6 +2180,10 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await expect(center.getByText('usd-coin', { exact: true })).toBeVisible()
   await center.getByRole('button', { name: 'Verify identity map', exact: true }).click()
   await expect(center.getByText('VERIFIED · 1 contract mappings', { exact: true })).toBeVisible()
+  await center.getByRole('tab', { name: 'Derivatives & Funding', exact: true }).click()
+  await center.getByLabel('Dataset family').selectOption('derivative_book_snapshots')
+  await expect(center.getByLabel('Market').getByRole('option', { name: 'option' })).toHaveCount(1)
+  await expect(center.getByLabel('Start UTC')).toHaveCount(0)
   await center.getByRole('tab', { name: 'Options & Volatility', exact: true }).click()
   await expect(center.getByText('RECEIPT VERIFIED', { exact: true })).toBeVisible()
   await expect(center.getByLabel('Provider dataset capability')).toContainText(

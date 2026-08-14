@@ -25,6 +25,10 @@ export function cryptoSectionForFamily(family: CryptoFamily): CryptoDataSection 
   ) return 'cex'
   if (
     family === 'funding'
+    || family === 'instrument_catalog'
+    || family === 'derivative_bars'
+    || family === 'derivative_trades'
+    || family === 'derivative_book_snapshots'
     || family === 'open_interest'
     || family === 'long_short_ratio'
     || family === 'mark_bars'

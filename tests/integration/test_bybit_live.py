@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 
@@ -14,7 +15,9 @@ from alpha_data.crypto.providers.bybit import (
     parse_long_short_ratio,
     parse_open_interest,
     parse_option_tickers,
+    parse_orderbook_snapshot,
     parse_price_klines,
+    parse_recent_trades,
 )
 
 pytestmark = pytest.mark.network
@@ -50,12 +53,41 @@ def test_bybit_public_btc_perpetual_and_option_bundle() -> None:
     assert (
         parse_price_klines(
             fetch_bybit_public(
+                "trade_kline",
+                {"category": "linear", "symbol": "BTCUSDT", "interval": "60", "limit": 2},
+            ),
+            family="trade",
+        ).height
+        == 2
+    )
+    assert (
+        parse_price_klines(
+            fetch_bybit_public(
                 "mark_kline",
                 {"category": "linear", "symbol": "BTCUSDT", "interval": "60", "limit": 2},
             ),
             family="mark",
         ).height
         == 2
+    )
+    assert (
+        parse_recent_trades(
+            fetch_bybit_public(
+                "recent_trades", {"category": "linear", "symbol": "BTCUSDT", "limit": 2}
+            ),
+            fetched_at_ms=int(time.time() * 1_000),
+        ).height
+        == 2
+    )
+    assert (
+        parse_orderbook_snapshot(
+            fetch_bybit_public(
+                "orderbook", {"category": "linear", "symbol": "BTCUSDT", "limit": 25}
+            ),
+            category="linear",
+            fetched_at_ms=int(time.time() * 1_000),
+        ).height
+        == 50
     )
 
     assert (

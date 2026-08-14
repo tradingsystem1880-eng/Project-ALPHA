@@ -696,6 +696,10 @@ type CryptoFamilyValue = Literal[
     "trades",
     "aggregate_trades",
     "book_snapshots",
+    "instrument_catalog",
+    "derivative_bars",
+    "derivative_trades",
+    "derivative_book_snapshots",
     "funding",
     "open_interest",
     "long_short_ratio",
@@ -807,7 +811,7 @@ class CryptoEstimateRequest(StrictModel):
     family: CryptoFamilyValue
     instruments: int = Field(default=1, ge=1, le=250)
     days: int = Field(default=30, ge=1, le=3_650)
-    frequency: Literal["1d", "1h", "5m", "1m", "tick"] = "1d"
+    frequency: Literal["1d", "4h", "1h", "30m", "15m", "5m", "1m", "tick"] = "1d"
 
 
 class CryptoEstimateResponse(StrictModel):
@@ -905,8 +909,8 @@ class CryptoAcquisitionRequest(StrictModel):
     instrument: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
     base: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
     quote: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
-    category: Literal["spot", "linear", "inverse"] = "linear"
-    frequency: Literal["1d", "1h", "5m", "1m"] = "1h"
+    category: Literal["spot", "linear", "inverse", "option"] = "linear"
+    frequency: Literal["1d", "4h", "1h", "30m", "15m", "5m", "1m"] = "1h"
     period: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")
     network: str | None = Field(default=None, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
     pool_address: str | None = Field(default=None, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")

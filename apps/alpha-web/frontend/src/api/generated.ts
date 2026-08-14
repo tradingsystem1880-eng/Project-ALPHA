@@ -4085,7 +4085,7 @@ export interface components {
              * @default linear
              * @enum {string}
              */
-            category: "spot" | "linear" | "inverse";
+            category: "spot" | "linear" | "inverse" | "option";
             /** End */
             end?: string | null;
             family: components["schemas"]["CryptoFamilyValue"];
@@ -4094,7 +4094,7 @@ export interface components {
              * @default 1h
              * @enum {string}
              */
-            frequency: "1d" | "1h" | "5m" | "1m";
+            frequency: "1d" | "4h" | "1h" | "30m" | "15m" | "5m" | "1m";
             /** Instrument */
             instrument: string;
             /** Metrics */
@@ -4415,7 +4415,7 @@ export interface components {
              * @default 1d
              * @enum {string}
              */
-            frequency: "1d" | "1h" | "5m" | "1m" | "tick";
+            frequency: "1d" | "4h" | "1h" | "30m" | "15m" | "5m" | "1m" | "tick";
             /**
              * Instruments
              * @default 1
@@ -4451,7 +4451,7 @@ export interface components {
             provider: string;
         };
         /** @enum {string} */
-        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
         /** @enum {string} */
         CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics";
         /** @enum {string} */

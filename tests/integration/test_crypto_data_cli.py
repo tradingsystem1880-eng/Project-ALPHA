@@ -504,6 +504,185 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     assert "integrity" in rejected.output
 
 
+def test_bybit_missing_stage_three_families_acquire_and_qualify_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    calls: list[tuple[str, dict[str, str | int]]] = []
+
+    def fetch(endpoint: str, params: dict[str, str | int]) -> bytes:
+        calls.append((endpoint, dict(params)))
+        if endpoint == "instruments":
+            result: object = {
+                "category": "linear",
+                "list": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "contractType": "LinearPerpetual",
+                        "status": "Trading",
+                        "baseCoin": "BTC",
+                        "quoteCoin": "USDT",
+                        "settleCoin": "USDT",
+                        "launchTime": "1585526400000",
+                        "deliveryTime": "0",
+                        "fundingInterval": 480,
+                        "priceFilter": {"tickSize": "0.1"},
+                        "lotSizeFilter": {"qtyStep": "0.001"},
+                    }
+                ],
+                "nextPageCursor": "",
+            }
+        elif endpoint == "trade_kline":
+            result = {
+                "category": "linear",
+                "symbol": "BTCUSDT",
+                "list": [["1786748400000", "10", "12", "9", "11", "4", "44"]],
+            }
+        elif endpoint == "recent_trades":
+            result = {
+                "category": "linear",
+                "list": [
+                    {
+                        "execId": "trade-1",
+                        "symbol": "BTCUSDT",
+                        "price": "11",
+                        "size": "0.5",
+                        "side": "Buy",
+                        "time": "1786751999000",
+                        "isBlockTrade": False,
+                        "isRPITrade": False,
+                    }
+                ],
+            }
+        elif endpoint == "orderbook":
+            result = {
+                "s": "BTCUSDT",
+                "b": [["10", "2"]],
+                "a": [["11", "3"]],
+                "ts": 1_786_751_999_000,
+                "u": 7,
+                "seq": 8,
+                "cts": 1_786_751_998_000,
+            }
+        else:  # pragma: no cover - assertion below identifies unexpected routing
+            raise AssertionError(endpoint)
+        return json.dumps({"retCode": 0, "time": 1_786_752_000_000, "result": result}).encode()
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "fetch_bybit_public", fetch)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    families = (
+        ("instrument_catalog", "linear"),
+        ("derivative_bars", "BTCUSDT"),
+        ("derivative_trades", "BTCUSDT"),
+        ("derivative_book_snapshots", "BTCUSDT"),
+    )
+    for family, instrument in families:
+        result = runner.invoke(
+            app,
+            [
+                "crypto-data",
+                "acquire",
+                "bybit",
+                family,
+                instrument,
+                "--base",
+                "BTC",
+                "--quote",
+                "USDT",
+                "--category",
+                "linear",
+                "--frequency",
+                "1h",
+                "--json",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert json.loads(result.stdout)["state"] == "qualified"
+
+    assert [endpoint for endpoint, _ in calls] == [
+        "instruments",
+        "trade_kline",
+        "recent_trades",
+        "orderbook",
+    ]
+    assert len(store.inventory()) == 8
+
+
+def test_point_in_time_acquisition_uses_network_completion_as_knowledge_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        minimum_free_bytes=100,
+    )
+    payload = json.dumps(
+        {
+            "retCode": 0,
+            "time": 1_786_752_001_000,
+            "result": {
+                "s": "BTCUSDT",
+                "b": [["10", "2"]],
+                "a": [["11", "3"]],
+                "ts": 1_786_752_001_000,
+                "u": 7,
+                "seq": 8,
+                "cts": 1_786_752_000_900,
+            },
+        }
+    ).encode()
+    clocks = iter(
+        (
+            datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+            datetime.fromisoformat("2026-08-15T00:00:02+00:00"),
+        )
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "fetch_bybit_public", lambda *_args, **_kwargs: payload)
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: next(clocks))
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "bybit",
+            "derivative_book_snapshots",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "linear",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["state"] == "qualified"
+
+
 def test_crypto_data_acquires_each_non_bybit_authority_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

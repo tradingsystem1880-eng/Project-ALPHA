@@ -62,6 +62,14 @@ _ENDPOINTS: Final = {
         "/v5/market/tickers",
         frozenset({"category", "symbol", "baseCoin", "expDate"}),
     ),
+    "recent_trades": (
+        "/v5/market/recent-trade",
+        frozenset({"category", "symbol", "baseCoin", "optionType", "limit"}),
+    ),
+    "orderbook": (
+        "/v5/market/orderbook",
+        frozenset({"category", "symbol", "limit"}),
+    ),
 }
 
 
@@ -239,9 +247,10 @@ def parse_instruments(
         symbol = _text(record, "symbol")
         base_coin = _text(record, "baseCoin")
         assert symbol is not None and base_coin is not None
-        launch_ms = _integer(record, "launchTime")
+        launch_ms = _integer(record, "launchTime", optional=category == "spot")
         delivery_ms = _integer(record, "deliveryTime", optional=True)
-        assert launch_ms is not None
+        if category != "spot" and launch_ms is None:
+            raise DataError("Bybit derivative instrument launch time is missing")
         launch_time = _timestamp(launch_ms, "launch")
         delivery_time = _timestamp(delivery_ms, "delivery", allow_zero=True)
         if launch_time is not None and delivery_time is not None and delivery_time < launch_time:
@@ -249,8 +258,12 @@ def parse_instruments(
         status = _text(record, "status")
         if status == "Trading" and launch_time is not None and launch_time > fetched_at:
             raise DataError("Bybit trading instrument launch is in the future")
+        contract_type = _text(record, "contractType", optional=True)
         funding_interval = _integer(record, "fundingInterval", optional=True)
-        if funding_interval is not None and funding_interval <= 0:
+        if funding_interval is not None and (
+            funding_interval < 0
+            or (funding_interval == 0 and not (contract_type or "").endswith("Futures"))
+        ):
             raise DataError("Bybit funding interval must be positive")
         expiry_code: str | None = None
         strike_price: float | None = None
@@ -275,7 +288,7 @@ def parse_instruments(
                 "base_coin": base_coin,
                 "quote_coin": _text(record, "quoteCoin"),
                 "settle_coin": _text(record, "settleCoin", optional=True),
-                "contract_type": _text(record, "contractType", optional=True),
+                "contract_type": contract_type,
                 "launch_time": launch_time,
                 "delivery_time": delivery_time,
                 "funding_interval_minutes": funding_interval,
@@ -286,7 +299,7 @@ def parse_instruments(
                 "option_kind": option_kind,
             }
         )
-    return pl.DataFrame(rows).sort("symbol"), _cursor(result)
+    return pl.DataFrame(rows, infer_schema_length=None).sort("symbol"), _cursor(result)
 
 
 def parse_funding_history(payload: bytes) -> pl.DataFrame:
@@ -580,6 +593,123 @@ def parse_option_tickers(payload: bytes, *, fetched_at_ms: int) -> tuple[pl.Data
             }
         )
     return pl.DataFrame(rows).sort("symbol"), _cursor(result)
+
+
+def parse_recent_trades(payload: bytes, *, fetched_at_ms: int) -> pl.DataFrame:
+    """Parse bounded public trades without collapsing multiple executions in one millisecond."""
+    result, response_time = _result_object(payload)
+    category = _category(result.get("category"))
+    fetched_at = _timestamp(fetched_at_ms, "fetch")
+    assert fetched_at is not None
+    if response_time is not None and response_time > fetched_at_ms + 60_000:
+        raise DataError("Bybit recent-trade response is later than the fetch clock")
+    rows: list[dict[str, object]] = []
+    for record in _record_list(result):
+        trade_id = _text(record, "execId")
+        symbol = _text(record, "symbol")
+        price = _number(record, "price")
+        size = _number(record, "size")
+        timestamp_ms = _integer(record, "time")
+        side = _text(record, "side")
+        is_block = record.get("isBlockTrade", False)
+        is_rpi = record.get("isRPITrade", False)
+        assert trade_id is not None and symbol is not None
+        assert price is not None and size is not None and timestamp_ms is not None
+        if timestamp_ms > fetched_at_ms + 60_000:
+            raise DataError("Bybit recent trade is later than the fetch clock")
+        if price <= 0 or size <= 0:
+            raise DataError("Bybit recent trade price and size must be positive")
+        if side not in {"Buy", "Sell"}:
+            raise DataError("Bybit recent trade side is invalid")
+        if not isinstance(is_block, bool) or not isinstance(is_rpi, bool):
+            raise DataError("Bybit recent trade flags are invalid")
+        rows.append(
+            {
+                "timestamp": _timestamp(timestamp_ms, "trade"),
+                "available_at": fetched_at,
+                "category": category,
+                "symbol": symbol,
+                "trade_id": trade_id,
+                "side": side.lower(),
+                "price": price,
+                "size": size,
+                "is_block_trade": is_block,
+                "is_rpi_trade": is_rpi,
+                "mark_price": _number(record, "mP", optional=True),
+                "index_price": _number(record, "iP", optional=True),
+                "mark_iv": _number(record, "mIv", optional=True),
+                "trade_iv": _number(record, "iv", optional=True),
+            }
+        )
+    frame = pl.DataFrame(rows).sort("timestamp", "trade_id")
+    if frame["trade_id"].n_unique() != frame.height:
+        raise DataError("Bybit recent trades contain duplicate execution IDs")
+    return frame
+
+
+def parse_orderbook_snapshot(
+    payload: bytes, *, category: BybitCategory, fetched_at_ms: int
+) -> pl.DataFrame:
+    """Parse one exact public orderbook snapshot with sequence and knowledge clocks."""
+    result, response_time = _result_object(payload)
+    if category not in _CATEGORIES:
+        raise DataError("Bybit requested category is invalid")
+    symbol = _text(result, "s")
+    generated_ms = _integer(result, "ts")
+    update_id = _integer(result, "u")
+    cross_sequence = _integer(result, "seq")
+    engine_ms = _integer(result, "cts", optional=True)
+    assert symbol is not None and generated_ms is not None
+    assert update_id is not None and cross_sequence is not None
+    generated_at = _timestamp(generated_ms, "orderbook generation")
+    fetched_at = _timestamp(fetched_at_ms, "fetch")
+    engine_at = _timestamp(engine_ms, "orderbook engine")
+    assert generated_at is not None and fetched_at is not None
+    if generated_ms > fetched_at_ms + 60_000 or (
+        response_time is not None and response_time > fetched_at_ms + 60_000
+    ):
+        raise DataError("Bybit orderbook response is later than the fetch clock")
+    if engine_at is not None and engine_at > generated_at:
+        raise DataError("Bybit orderbook engine time exceeds generation time")
+
+    rows: list[dict[str, object]] = []
+    prices: dict[str, list[float]] = {"bid": [], "ask": []}
+    for side, field in (("bid", "b"), ("ask", "a")):
+        levels = result.get(field)
+        if not isinstance(levels, list) or not levels:
+            raise DataError("Bybit orderbook side is empty or malformed")
+        for level, raw in enumerate(levels, start=1):
+            if not isinstance(raw, list) or len(raw) != 2:
+                raise DataError("Bybit orderbook level is malformed")
+            record = {"price": raw[0], "size": raw[1]}
+            price = _number(record, "price")
+            size = _number(record, "size")
+            assert price is not None and size is not None
+            if price <= 0 or size <= 0:
+                raise DataError("Bybit orderbook price and size must be positive")
+            prices[side].append(price)
+            rows.append(
+                {
+                    "observed_at": generated_at,
+                    "available_at": fetched_at,
+                    "engine_at": engine_at,
+                    "category": category,
+                    "symbol": symbol,
+                    "side": side,
+                    "level": level,
+                    "price": price,
+                    "size": size,
+                    "update_id": update_id,
+                    "cross_sequence": cross_sequence,
+                }
+            )
+    if any(right >= left for left, right in zip(prices["bid"], prices["bid"][1:], strict=False)):
+        raise DataError("Bybit orderbook bids are not strictly descending")
+    if any(right <= left for left, right in zip(prices["ask"], prices["ask"][1:], strict=False)):
+        raise DataError("Bybit orderbook asks are not strictly ascending")
+    if prices["bid"][0] >= prices["ask"][0]:
+        raise DataError("Bybit orderbook is crossed or locked")
+    return pl.DataFrame(rows)
 
 
 def _unique_sorted(

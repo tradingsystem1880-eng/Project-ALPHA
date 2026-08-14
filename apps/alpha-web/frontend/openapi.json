@@ -1982,7 +1982,8 @@
             "enum": [
               "spot",
               "linear",
-              "inverse"
+              "inverse",
+              "option"
             ],
             "title": "Category",
             "type": "string"
@@ -2006,7 +2007,10 @@
             "default": "1h",
             "enum": [
               "1d",
+              "4h",
               "1h",
+              "30m",
+              "15m",
               "5m",
               "1m"
             ],
@@ -2897,7 +2901,10 @@
             "default": "1d",
             "enum": [
               "1d",
+              "4h",
               "1h",
+              "30m",
+              "15m",
               "5m",
               "1m",
               "tick"
@@ -2987,6 +2994,10 @@
           "trades",
           "aggregate_trades",
           "book_snapshots",
+          "instrument_catalog",
+          "derivative_bars",
+          "derivative_trades",
+          "derivative_book_snapshots",
           "funding",
           "open_interest",
           "long_short_ratio",

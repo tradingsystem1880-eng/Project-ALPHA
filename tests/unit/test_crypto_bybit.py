@@ -20,7 +20,9 @@ from alpha_data.crypto.providers.bybit import (
     parse_long_short_ratio,
     parse_open_interest,
     parse_option_tickers,
+    parse_orderbook_snapshot,
     parse_price_klines,
+    parse_recent_trades,
     price_bundle_diagnostics,
 )
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
@@ -154,6 +156,146 @@ def test_instrument_catalog_retains_lifecycle_funding_and_option_identity() -> N
         fetched_at_ms=1_787_878_400_000,
     )
     assert usdt_option.row(0, named=True)["option_kind"] == "put"
+
+    spot, _ = parse_instruments(
+        _payload(
+            {
+                "category": "spot",
+                "list": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "status": "Trading",
+                        "baseCoin": "BTC",
+                        "quoteCoin": "USDT",
+                        "priceFilter": {"tickSize": "0.1"},
+                        "lotSizeFilter": {"basePrecision": "0.000001"},
+                    }
+                ],
+            }
+        ),
+        category="spot",
+        fetched_at_ms=1_787_878_400_000,
+    )
+    assert spot.row(0, named=True)["launch_time"] is None
+
+    futures, _ = parse_instruments(
+        _payload(
+            {
+                "category": "linear",
+                "list": [
+                    {
+                        "symbol": "BTCUSDT-25DEC26",
+                        "contractType": "LinearFutures",
+                        "status": "Trading",
+                        "baseCoin": "BTC",
+                        "quoteCoin": "USDT",
+                        "settleCoin": "USDT",
+                        "launchTime": "1750000000000",
+                        "deliveryTime": "1798156800000",
+                        "fundingInterval": 0,
+                        "priceFilter": {"tickSize": "0.1"},
+                        "lotSizeFilter": {"qtyStep": "0.001"},
+                    }
+                ],
+            }
+        ),
+        category="linear",
+        fetched_at_ms=1_787_878_400_000,
+    )
+    assert futures.row(0, named=True)["funding_interval_minutes"] == 0
+
+
+def test_recent_derivative_trades_and_orderbook_preserve_provider_identity() -> None:
+    trades = parse_recent_trades(
+        _payload(
+            {
+                "category": "linear",
+                "list": [
+                    {
+                        "execId": "trade-2",
+                        "symbol": "BTCUSDT",
+                        "price": "90001.5",
+                        "size": "0.25",
+                        "side": "Buy",
+                        "time": "1787875200001",
+                        "isBlockTrade": False,
+                        "isRPITrade": True,
+                    },
+                    {
+                        "execId": "trade-1",
+                        "symbol": "BTCUSDT",
+                        "price": "90000",
+                        "size": "0.5",
+                        "side": "Sell",
+                        "time": "1787875200000",
+                        "isBlockTrade": False,
+                        "isRPITrade": False,
+                    },
+                ],
+            }
+        ),
+        fetched_at_ms=1_787_878_400_100,
+    )
+    assert trades["trade_id"].to_list() == ["trade-1", "trade-2"]
+    assert trades["side"].to_list() == ["sell", "buy"]
+    assert trades["is_rpi_trade"].to_list() == [False, True]
+
+    book = parse_orderbook_snapshot(
+        _payload(
+            {
+                "s": "BTCUSDT",
+                "b": [["90000", "1.5"], ["89999", "2"]],
+                "a": [["90001", "1"], ["90002", "3"]],
+                "ts": 1787875200001,
+                "u": 200,
+                "seq": 300,
+                "cts": 1787875200000,
+            }
+        ),
+        category="linear",
+        fetched_at_ms=1_787_878_400_100,
+    )
+    assert book.height == 4
+    assert book.filter(pl.col("side") == "bid")["price"].to_list() == [90000.0, 89999.0]
+    assert book.filter(pl.col("side") == "ask")["price"].to_list() == [90001.0, 90002.0]
+    assert book["update_id"].unique().to_list() == [200]
+
+
+def test_large_instrument_catalog_infers_optional_lifecycle_columns_completely() -> None:
+    records = [
+        {
+            "symbol": f"ASSET{index}USDT",
+            "contractType": "LinearPerpetual",
+            "status": "Trading",
+            "baseCoin": f"ASSET{index}",
+            "quoteCoin": "USDT",
+            "settleCoin": "USDT",
+            "launchTime": "1750000000000",
+            "deliveryTime": "0",
+            "fundingInterval": 480,
+            "priceFilter": {"tickSize": "0.1"},
+            "lotSizeFilter": {"qtyStep": "1"},
+        }
+        for index in range(100)
+    ]
+    records.append(
+        {
+            **records[0],
+            "symbol": "BTCUSDT-04SEP26",
+            "contractType": "LinearFutures",
+            "deliveryTime": "1788480000000",
+            "fundingInterval": 0,
+        }
+    )
+
+    frame, _ = parse_instruments(
+        _payload({"category": "linear", "list": records}),
+        category="linear",
+        fetched_at_ms=1_787_878_400_000,
+    )
+
+    assert frame.height == 101
+    assert frame["delivery_time"].null_count() == 100
 
 
 def test_derivatives_histories_preserve_native_units_and_pagination() -> None:

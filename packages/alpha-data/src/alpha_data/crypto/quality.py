@@ -187,7 +187,13 @@ def _family_checks(
                 result.append(float(value))
         return result
 
-    if dataset.family in {"market_bars", "mark_bars", "index_bars", "dex_ohlcv"}:
+    if dataset.family in {
+        "market_bars",
+        "derivative_bars",
+        "mark_bars",
+        "index_bars",
+        "dex_ohlcv",
+    }:
         opens, highs, lows, closes = (values(name) for name in ("open", "high", "low", "close"))
         for open_, high, low, close in zip(opens, highs, lows, closes, strict=False):
             raw = (open_, high, low, close)
@@ -211,6 +217,24 @@ def _family_checks(
             failures.add("negative_volume")
     elif dataset.family == "premium_bars":
         values("close")
+    elif dataset.family == "instrument_catalog":
+        values("symbol")
+        values("status")
+        values("base_coin")
+        values("quote_coin")
+    elif dataset.family == "derivative_trades":
+        values("trade_id")
+        if any(value <= 0 for value in numbers("price")):
+            failures.add("invalid_trade_price")
+        if any(value <= 0 for value in numbers("size")):
+            failures.add("invalid_trade_size")
+    elif dataset.family == "derivative_book_snapshots":
+        values("side")
+        values("level")
+        if any(value <= 0 for value in numbers("price")):
+            failures.add("invalid_book_price")
+        if any(value <= 0 for value in numbers("size")):
+            failures.add("invalid_book_size")
     elif dataset.family == "funding":
         if any(abs(value) > 1 for value in numbers("funding_rate")):
             failures.add("funding_rate_out_of_bounds")
