@@ -1,0 +1,131 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+import polars as pl
+
+from alpha_data.crypto.profiles import build_default_coverage_tasks
+
+
+def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
+    as_of = datetime(2026, 8, 15, tzinfo=UTC)
+    linear = pl.DataFrame(
+        {
+            "status": ["Trading", "Trading", "Trading"],
+            "contract_type": ["LinearPerpetual", "LinearFutures", "LinearPerpetual"],
+            "symbol": ["BTCUSDT", "BTC-30SEP26", "FUTUREUSDT"],
+            "base_coin": ["BTC", "BTC", "FUTURE"],
+            "quote_coin": ["USDT", "USDT", "USDT"],
+            "launch_time": [
+                as_of - timedelta(days=1_000),
+                as_of - timedelta(days=100),
+                as_of + timedelta(days=1),
+            ],
+            "delivery_time": [None, as_of + timedelta(days=30), None],
+        }
+    )
+    inverse = pl.DataFrame(
+        {
+            "status": ["Trading"],
+            "contract_type": ["InversePerpetual"],
+            "symbol": ["ETHUSD"],
+            "base_coin": ["ETH"],
+            "quote_coin": ["USD"],
+            "launch_time": [as_of - timedelta(days=1_000)],
+            "delivery_time": [None],
+        }
+    )
+    options = pl.DataFrame(
+        {
+            "status": ["Trading", "Trading", "Settled"],
+            "symbol": ["BTC-C", "ETH-C", "SOL-C"],
+            "base_coin": ["BTC", "ETH", "SOL"],
+            "quote_coin": ["USDT", "USDT", "USDT"],
+            "launch_time": [as_of - timedelta(days=10)] * 3,
+            "delivery_time": [as_of + timedelta(days=10)] * 3,
+        }
+    )
+    option_open_interest = {
+        ("BTC", "USDT"): 100.0,
+        ("ETH", "USDT"): 200.0,
+    }
+
+    tasks = build_default_coverage_tasks(
+        linear_catalog=linear,
+        inverse_catalog=inverse,
+        option_catalog=options,
+        option_open_interest=option_open_interest,
+        as_of=as_of,
+    )
+
+    by_id = {task.task_id: task for task in tasks}
+    assert len(by_id) == len(tasks)
+    assert not any(task.instrument in {"BTC-30SEP26", "FUTUREUSDT", "SOL"} for task in tasks)
+    assert {
+        (task.family, task.instrument, task.category, task.cadence)
+        for task in tasks
+        if task.provider == "bybit" and task.instrument in {"BTCUSDT", "ETHUSD"}
+    } >= {
+        ("funding", "BTCUSDT", "linear", "funding_interval"),
+        ("open_interest", "BTCUSDT", "linear", "hourly"),
+        ("long_short_ratio", "ETHUSD", "inverse", "hourly"),
+        ("premium_bars", "BTCUSDT", "linear", "hourly"),
+    }
+    assert {
+        (task.instrument, task.cadence) for task in tasks if task.family == "option_quotes"
+    } == {
+        ("BTC-OPTIONS", "hourly"),
+        ("ETH-OPTIONS", "hourly"),
+        ("BTC-OPTIONS", "five_minute"),
+        ("ETH-OPTIONS", "five_minute"),
+    }
+    assert (
+        sum(task.provider == "geckoterminal" and task.family == "dex_pools" for task in tasks) == 5
+    )
+    assert any(
+        task.provider == "coingecko"
+        and task.family == "market_reference"
+        and task.instrument == "all"
+        for task in tasks
+    )
+    assert all(task.execution_authority is False for task in tasks)
+
+
+def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> None:
+    as_of = datetime(2026, 8, 15, tzinfo=UTC)
+    empty_perpetual = pl.DataFrame(
+        schema={
+            "status": pl.String,
+            "contract_type": pl.String,
+            "symbol": pl.String,
+            "base_coin": pl.String,
+            "quote_coin": pl.String,
+            "launch_time": pl.Datetime(time_zone="UTC"),
+            "delivery_time": pl.Datetime(time_zone="UTC"),
+        }
+    )
+    bases = ["BTC", "ETH", "SOL", "XRP"]
+    options = pl.DataFrame(
+        {
+            "status": ["Trading"] * 4,
+            "symbol": [f"{base}-C" for base in bases],
+            "base_coin": bases,
+            "quote_coin": ["USDT"] * 4,
+            "launch_time": [as_of - timedelta(days=10)] * 4,
+            "delivery_time": [as_of + timedelta(days=10)] * 4,
+        }
+    )
+    tasks = build_default_coverage_tasks(
+        linear_catalog=empty_perpetual,
+        inverse_catalog=empty_perpetual,
+        option_catalog=options,
+        option_open_interest={
+            ("BTC", "USDT"): 100.0,
+            ("ETH", "USDT"): 400.0,
+            ("SOL", "USDT"): 300.0,
+            ("XRP", "USDT"): 200.0,
+        },
+        as_of=as_of,
+    )
+    fast = [task.instrument for task in tasks if task.cadence == "five_minute"]
+    assert fast == ["ETH-OPTIONS", "SOL-OPTIONS", "XRP-OPTIONS"]
