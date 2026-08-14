@@ -19,7 +19,7 @@ import typer
 
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
-from alpha_data.crypto.asset_master import AssetMaster
+from alpha_data.crypto.asset_master import AssetMaster, build_cross_provider_asset_master
 from alpha_data.crypto.capabilities import project_provider_capabilities
 from alpha_data.crypto.contracts import (
     FAMILY_AUTHORITIES,
@@ -279,6 +279,34 @@ def _snapshot_root() -> Path:
     return AlphaSettings().data_dir / "crypto" / "snapshots"
 
 
+def _asset_master_root() -> Path:
+    return AlphaSettings().data_dir / "crypto" / "asset-masters"
+
+
+def _write_asset_master(master: AssetMaster) -> None:
+    root = _asset_master_root()
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"{master.version}.json"
+    rendered = json.dumps(master.to_dict(), sort_keys=True, indent=2, allow_nan=False) + "\n"
+    if path.exists():
+        if path.read_text(encoding="utf-8") != rendered:
+            raise DataError("crypto asset-master identity collision")
+        return
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(rendered, encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def _read_asset_master(version: str) -> AssetMaster:
+    if _SHA256.fullmatch(version) is None:
+        raise DataError("crypto asset-master version is invalid")
+    try:
+        raw = json.loads((_asset_master_root() / f"{version}.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DataError("crypto asset-master is unavailable or corrupt") from exc
+    return AssetMaster.from_dict(raw)
+
+
 def _stable_resource_revision_lineage(
     store: CryptoBulkStore,
     *,
@@ -332,6 +360,10 @@ def _verified_snapshot(
     purpose: CryptoResearchPurpose,
 ) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1]:
     snapshot = _read_snapshot(snapshot_id)
+    if snapshot.asset_master_version != "reviewed-native-v1":
+        master = _read_asset_master(snapshot.asset_master_version)
+        if master.version != snapshot.asset_master_version:
+            raise DataError("crypto snapshot asset-master identity is mismatched")
     store = _bulk_store()
     by_membership = {
         (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
@@ -605,6 +637,13 @@ def storage_verify(json_out: bool = typer.Option(False, "--json", help="emit JSO
         inventory = store.inventory()
         snapshot_count = 0
         eligible_count = 0
+        asset_master_count = 0
+        if _asset_master_root().exists():
+            for path in sorted(_asset_master_root().glob("*.json")):
+                master = _read_asset_master(path.stem)
+                if master.version != path.stem:
+                    raise DataError("crypto asset-master filename identity is mismatched")
+                asset_master_count += 1
         if _snapshot_root().exists():
             for path in sorted(_snapshot_root().glob("*.json")):
                 snapshot, _, projection = _verified_snapshot(
@@ -620,6 +659,7 @@ def storage_verify(json_out: bool = typer.Option(False, "--json", help="emit JSO
             "manifest_count": len(inventory),
             "snapshot_count": snapshot_count,
             "research_eligible_snapshot_count": eligible_count,
+            "asset_master_count": asset_master_count,
             "cache_bytes": store.cache_size(),
             "private_paths_exposed": False,
             "next_action": "Continue with one bounded acquisition or exact snapshot selection.",
@@ -672,6 +712,27 @@ def asset(
         instant = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
         identity = AssetMaster.with_reviewed_native_assets().resolve_native(
             network=network, as_of=instant
+        )
+    except (ValueError, DataError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(identity.to_dict(), json_out=json_out)
+
+
+@crypto_data_app.command("asset-contract")
+def asset_contract(
+    network: str,
+    contract_address: str,
+    asset_master_version: str = typer.Option(..., help="exact frozen asset-master version"),
+    as_of: str = typer.Option(..., help="point-in-time ISO-8601 timestamp"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Resolve one contract by exact network and address; ticker lookup is unavailable."""
+    try:
+        instant = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+        identity = _read_asset_master(asset_master_version).resolve_contract(
+            network=network,
+            contract_address=contract_address,
+            as_of=instant,
         )
     except (ValueError, DataError) as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -1707,11 +1768,159 @@ def quality(
     )
 
 
+def _qualified_normalized_frame(
+    store: CryptoBulkStore, manifest_id: str, *, family: CryptoFamily
+) -> tuple[pl.DataFrame, CryptoQualityReportV1]:
+    manifest = store.verify_manifest(manifest_id)
+    if manifest.get("artifact_kind") != "normalized":
+        raise DataError("crypto asset-master sources must be normalized artifacts")
+    dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+    quality_report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    if dataset.family != family or dataset.provider != FAMILY_AUTHORITIES[family]:
+        raise DataError(f"crypto asset-master source is not authoritative {family}")
+    if quality_report.state != "qualified":
+        raise DataError("crypto asset-master sources must be mechanically qualified")
+    artifact_key = manifest.get("artifact_key")
+    if not isinstance(artifact_key, str):
+        raise DataError("crypto asset-master source artifact key is invalid")
+    try:
+        frame = pl.read_parquet(store.bulk_root / artifact_key)
+    except (OSError, pl.exceptions.PolarsError) as exc:
+        raise DataError("crypto asset-master source artifact is unreadable") from exc
+    return frame, quality_report
+
+
+@crypto_data_app.command("asset-master-create")
+def asset_master_create(
+    coingecko_manifest_id: Annotated[
+        str, typer.Option("--coingecko-manifest-id", help="qualified asset_metadata manifest")
+    ],
+    geckoterminal_manifest_ids: Annotated[
+        list[str],
+        typer.Option("--geckoterminal-manifest-id", help="qualified DEX pool catalog manifest"),
+    ],
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Freeze exact cross-provider contract identities; ticker joins remain prohibited."""
+    if not geckoterminal_manifest_ids or len(set(geckoterminal_manifest_ids)) != len(
+        geckoterminal_manifest_ids
+    ):
+        raise typer.BadParameter("--geckoterminal-manifest-id must contain unique pool catalogs")
+    try:
+        store = _bulk_store()
+        store.verify_ready(required_bytes=0)
+        coingecko, quality_report = _qualified_normalized_frame(
+            store, coingecko_manifest_id, family="asset_metadata"
+        )
+        pools = tuple(
+            _qualified_normalized_frame(store, manifest_id, family="dex_pools")[0]
+            for manifest_id in geckoterminal_manifest_ids
+        )
+        if quality_report.observed_end is None:
+            raise DataError("CoinGecko asset catalog has no observation time")
+        master = build_cross_provider_asset_master(
+            coingecko_catalog=coingecko,
+            geckoterminal_pools=pools,
+            observed_at=quality_report.observed_end,
+            source_manifest_ids=(coingecko_manifest_id, *geckoterminal_manifest_ids),
+        )
+        _write_asset_master(master)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "asset_master_version": master.version,
+            "identity_count": len(master.identities),
+            "contract_identity_count": sum(
+                not identity.native_asset for identity in master.identities
+            ),
+            "source_manifest_ids": list(master.source_manifest_ids),
+            "ticker_join_allowed": False,
+            "state": "frozen",
+            "next_action": "Use this exact asset-master version when freezing a snapshot.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("asset-master-verify")
+def asset_master_verify(
+    version: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Rederive a frozen asset master's content identity before snapshot use."""
+    try:
+        master = _read_asset_master(version)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "asset_master_version": master.version,
+            "identity_count": len(master.identities),
+            "contract_identity_count": sum(
+                not identity.native_asset for identity in master.identities
+            ),
+            "source_manifest_ids": list(master.source_manifest_ids),
+            "ticker_join_allowed": False,
+            "state": "verified",
+            "next_action": "Freeze a snapshot bound to this exact asset-master version.",
+        },
+        json_out=json_out,
+    )
+
+
+@crypto_data_app.command("asset-masters")
+def asset_masters(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """List verified asset masters without exposing internal paths or requiring opaque input."""
+    try:
+        items: list[dict[str, object]] = [
+            {
+                "asset_master_version": "reviewed-native-v1",
+                "identity_count": 2,
+                "contract_identity_count": 0,
+                "builtin": True,
+                "state": "verified",
+            }
+        ]
+        if _asset_master_root().exists():
+            for path in sorted(_asset_master_root().glob("*.json")):
+                master = _read_asset_master(path.stem)
+                items.append(
+                    {
+                        "asset_master_version": master.version,
+                        "identity_count": len(master.identities),
+                        "contract_identity_count": sum(
+                            not identity.native_asset for identity in master.identities
+                        ),
+                        "builtin": False,
+                        "state": "verified",
+                    }
+                )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            "items": items,
+            "count": len(items),
+            "ticker_join_allowed": False,
+            "next_action": (
+                "Select a contract-capable asset master when freezing contract data."
+                if len(items) > 1
+                else "Acquire CoinGecko metadata and a DEX pool catalog to map contract assets."
+            ),
+        },
+        json_out=json_out,
+    )
+
+
 @crypto_data_app.command("snapshot-create")
 def snapshot_create(
     manifest_ids: Annotated[
         list[str], typer.Option("--manifest-id", help="normalized manifest id")
     ],
+    asset_master_version: str = typer.Option(
+        "reviewed-native-v1", help="exact frozen asset-master version"
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Freeze exact ordered qualified membership; source and quote identities remain distinct."""
@@ -1719,10 +1928,12 @@ def snapshot_create(
         raise typer.BadParameter("--manifest-id must contain unique normalized manifests")
     try:
         store = _bulk_store()
+        if asset_master_version != "reviewed-native-v1":
+            _read_asset_master(asset_master_version)
         resolved = tuple(_normalized_member(store, manifest_id) for manifest_id in manifest_ids)
         snapshot = CryptoSnapshotV1.create(
             members=tuple(member for member, _ in resolved),
-            asset_master_version="reviewed-native-v1",
+            asset_master_version=asset_master_version,
             qualification_versions=tuple(
                 sorted({quality.method_version for _, quality in resolved})
             ),
@@ -1736,6 +1947,7 @@ def snapshot_create(
             "member_count": len(snapshot.members),
             "families": sorted({member.dataset.family for member in snapshot.members}),
             "providers": sorted({member.dataset.provider for member in snapshot.members}),
+            "asset_master_version": snapshot.asset_master_version,
             "state": "frozen",
             "next_action": "Verify the snapshot for the exact research purpose.",
             "execution_authority": False,

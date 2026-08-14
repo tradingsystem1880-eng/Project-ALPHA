@@ -145,6 +145,175 @@ def test_crypto_data_asset_identity_uses_reviewed_native_mapping_not_ticker_join
     assert "reviewed native mapping" in unknown.output
 
 
+def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_asset_master_root", lambda: tmp_path / "masters")
+    monkeypatch.setattr(crypto_data_cmds, "_snapshot_root", lambda: tmp_path / "snapshots")
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "fixture-key")
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_coingecko_demo",
+        lambda *_args: json.dumps(
+            [
+                {
+                    "id": "usd-coin",
+                    "symbol": "usdc",
+                    "name": "USDC",
+                    "platforms": {"ethereum": "0xUSDC"},
+                }
+            ]
+        ).encode(),
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_geckoterminal_public",
+        lambda *_args: json.dumps(
+            {
+                "data": [
+                    {
+                        "id": "eth_pool",
+                        "type": "pool",
+                        "attributes": {
+                            "address": "0xPool",
+                            "name": "USDC / WETH",
+                            "pool_created_at": "2021-12-30T20:32:10Z",
+                            "base_token_price_usd": "1",
+                            "quote_token_price_usd": "2000",
+                            "reserve_in_usd": "1000000",
+                            "volume_usd": {"h24": "10000"},
+                            "transactions": {"h24": {"buys": 8, "sells": 7}},
+                        },
+                        "relationships": {
+                            "base_token": {"data": {"id": "eth_0xUSDC", "type": "token"}},
+                            "quote_token": {"data": {"id": "eth_0xWETH", "type": "token"}},
+                            "dex": {"data": {"id": "uniswap_v3", "type": "dex"}},
+                        },
+                    }
+                ]
+            }
+        ).encode(),
+    )
+    coingecko = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "coingecko",
+            "asset_metadata",
+            "all",
+            "--base",
+            "BTC",
+            "--quote",
+            "USD",
+            "--json",
+        ],
+    )
+    gecko = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "geckoterminal",
+            "dex_pools",
+            "eth",
+            "--base",
+            "ETH",
+            "--quote",
+            "USD",
+            "--network",
+            "eth",
+            "--json",
+        ],
+    )
+    assert coingecko.exit_code == 0, coingecko.output
+    assert gecko.exit_code == 0, gecko.output
+    cg_manifest = json.loads(coingecko.stdout)["normalized_manifest_id"]
+    gt_manifest = json.loads(gecko.stdout)["normalized_manifest_id"]
+    created = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "asset-master-create",
+            "--coingecko-manifest-id",
+            cg_manifest,
+            "--geckoterminal-manifest-id",
+            gt_manifest,
+            "--json",
+        ],
+    )
+    assert created.exit_code == 0, created.output
+    master = json.loads(created.stdout)
+    assert master["contract_identity_count"] == 1
+    assert master["ticker_join_allowed"] is False
+
+    verified = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "asset-master-verify",
+            master["asset_master_version"],
+            "--json",
+        ],
+    )
+    snapshot = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "snapshot-create",
+            "--manifest-id",
+            gt_manifest,
+            "--asset-master-version",
+            master["asset_master_version"],
+            "--json",
+        ],
+    )
+    assert verified.exit_code == 0, verified.output
+    assert snapshot.exit_code == 0, snapshot.output
+    assert json.loads(snapshot.stdout)["asset_master_version"] == master["asset_master_version"]
+    contract = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "asset-contract",
+            "ethereum",
+            "0xusdc",
+            "--asset-master-version",
+            master["asset_master_version"],
+            "--as-of",
+            "2026-08-15T00:00:00Z",
+            "--json",
+        ],
+    )
+    assert contract.exit_code == 0, contract.output
+    assert json.loads(contract.stdout)["coingecko_id"] == "usd-coin"
+
+    master_path = tmp_path / "masters" / f"{master['asset_master_version']}.json"
+    master_path.write_text(master_path.read_text().replace("usd-coin", "forged"))
+    rejected = runner.invoke(
+        app,
+        ["crypto-data", "asset-master-verify", master["asset_master_version"]],
+    )
+    assert rejected.exit_code != 0
+    assert "version" in rejected.output
+
+
 def test_bybit_option_normalization_selects_exact_quote_asset() -> None:
     payload = json.dumps(
         {

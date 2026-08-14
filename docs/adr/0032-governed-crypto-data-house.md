@@ -49,11 +49,14 @@ storage fails closed.
 Research consumes one exact qualified `CryptoSnapshotV1`. Dataset identity includes provider,
 venue, market type, family, instrument, frequency, units, and timestamp convention. Asset joins use
 network plus contract address or an explicitly reviewed native-asset mapping; ticker-only joins
-fail. Availability time is part of every observation and derived feature.
+fail. A frozen asset master commits to the exact qualified source-manifest IDs as well as its
+ordered identities; non-legacy snapshots reverify that content identity before every read.
+Availability time is part of every observation and derived feature.
 
 No crypto-data command or UI route receives exchange credentials, paper-entry authority, research
 gate authority, broker authority, or order authority. CoinGecko's Demo key is retrieved from macOS
-Keychain only by the existing allowlisted launcher and injected into one bounded process. Binance,
+Keychain only by the existing allowlisted launcher and injected into one bounded process. Its fixed
+`catalog` action accepts no caller-selected provider, family, instrument, or output path. Binance,
 Bybit, Coinbase, GeckoTerminal, and Coin Metrics use only public interfaces in this program.
 
 ## Provider retention and removal policy

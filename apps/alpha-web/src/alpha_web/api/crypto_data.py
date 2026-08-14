@@ -11,6 +11,9 @@ from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
     CryptoAcquisitionRequest,
     CryptoAssetIdentityResponse,
+    CryptoAssetMasterCreateRequest,
+    CryptoAssetMasterListResponse,
+    CryptoAssetMasterResponse,
     CryptoCacheCleanRequest,
     CryptoCacheCleanResponse,
     CryptoCapabilitiesResponse,
@@ -88,6 +91,76 @@ def asset(symbol: str, as_of: str) -> Any:
     return _project(["crypto-data", "asset", normalized, "--as-of", as_of, "--json"])
 
 
+@router.get(
+    "/assets/contracts/{network}/{contract_address}",
+    response_model=CryptoAssetIdentityResponse,
+)
+def asset_contract(
+    network: str, contract_address: str, asset_master_version: str, as_of: str
+) -> Any:
+    if (
+        not network
+        or len(network) > 80
+        or not network.replace("-", "").isalnum()
+        or not contract_address
+        or len(contract_address) > 160
+        or not contract_address.replace("_", "").isalnum()
+    ):
+        raise HTTPException(status_code=422, detail="crypto contract identity is invalid")
+    if len(asset_master_version) != 64 or any(
+        char not in "0123456789abcdef" for char in asset_master_version
+    ):
+        raise HTTPException(status_code=422, detail="crypto asset-master version is invalid")
+    if not as_of or len(as_of) > 64:
+        raise HTTPException(status_code=422, detail="crypto asset as-of time is invalid")
+    return _project(
+        [
+            "crypto-data",
+            "asset-contract",
+            network,
+            contract_address,
+            "--asset-master-version",
+            asset_master_version,
+            "--as-of",
+            as_of,
+            "--json",
+        ]
+    )
+
+
+@router.post("/asset-masters", response_model=CryptoAssetMasterResponse)
+def asset_master_create(req: CryptoAssetMasterCreateRequest) -> Any:
+    if len(set(req.geckoterminal_manifest_ids)) != len(req.geckoterminal_manifest_ids):
+        raise HTTPException(status_code=422, detail="asset-master pool manifests must be unique")
+    args = [
+        "crypto-data",
+        "asset-master-create",
+        "--coingecko-manifest-id",
+        req.coingecko_manifest_id,
+    ]
+    for manifest_id in req.geckoterminal_manifest_ids:
+        args.extend(("--geckoterminal-manifest-id", manifest_id))
+    args.append("--json")
+    return _project(args)
+
+
+@router.get("/asset-masters", response_model=CryptoAssetMasterListResponse)
+def asset_masters() -> Any:
+    return _project(["crypto-data", "asset-masters", "--json"])
+
+
+@router.post(
+    "/asset-masters/{asset_master_version}/verify",
+    response_model=CryptoAssetMasterResponse,
+)
+def asset_master_verify(asset_master_version: str) -> Any:
+    if len(asset_master_version) != 64 or any(
+        char not in "0123456789abcdef" for char in asset_master_version
+    ):
+        raise HTTPException(status_code=422, detail="crypto asset-master version is invalid")
+    return _project(["crypto-data", "asset-master-verify", asset_master_version, "--json"])
+
+
 @router.get("/quality/{manifest_id}", response_model=CryptoQualityResponse)
 def quality(manifest_id: str) -> Any:
     if len(manifest_id) != 64 or any(char not in "0123456789abcdef" for char in manifest_id):
@@ -157,7 +230,7 @@ def snapshot_create(req: CryptoSnapshotCreateRequest) -> Any:
         if len(manifest_id) != 64 or any(char not in "0123456789abcdef" for char in manifest_id):
             raise HTTPException(status_code=422, detail="snapshot manifest id is invalid")
         args.extend(("--manifest-id", manifest_id))
-    args.append("--json")
+    args.extend(("--asset-master-version", req.asset_master_version, "--json"))
     return _project(args)
 
 

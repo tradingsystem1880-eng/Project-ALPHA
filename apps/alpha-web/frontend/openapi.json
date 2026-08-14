@@ -2184,6 +2184,163 @@
         "title": "CryptoAssetIdentityResponse",
         "type": "object"
       },
+      "CryptoAssetMasterCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "coingecko_manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Coingecko Manifest Id",
+            "type": "string"
+          },
+          "geckoterminal_manifest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Geckoterminal Manifest Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "coingecko_manifest_id",
+          "geckoterminal_manifest_ids"
+        ],
+        "title": "CryptoAssetMasterCreateRequest",
+        "type": "object"
+      },
+      "CryptoAssetMasterListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_master_version": {
+            "title": "Asset Master Version",
+            "type": "string"
+          },
+          "builtin": {
+            "title": "Builtin",
+            "type": "boolean"
+          },
+          "contract_identity_count": {
+            "minimum": 0.0,
+            "title": "Contract Identity Count",
+            "type": "integer"
+          },
+          "identity_count": {
+            "minimum": 2.0,
+            "title": "Identity Count",
+            "type": "integer"
+          },
+          "state": {
+            "const": "verified",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_master_version",
+          "identity_count",
+          "contract_identity_count",
+          "builtin",
+          "state"
+        ],
+        "title": "CryptoAssetMasterListItem",
+        "type": "object"
+      },
+      "CryptoAssetMasterListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoAssetMasterListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "ticker_join_allowed": {
+            "const": false,
+            "title": "Ticker Join Allowed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "count",
+          "ticker_join_allowed",
+          "next_action"
+        ],
+        "title": "CryptoAssetMasterListResponse",
+        "type": "object"
+      },
+      "CryptoAssetMasterResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_master_version": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Asset Master Version",
+            "type": "string"
+          },
+          "contract_identity_count": {
+            "minimum": 0.0,
+            "title": "Contract Identity Count",
+            "type": "integer"
+          },
+          "identity_count": {
+            "minimum": 2.0,
+            "title": "Identity Count",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "source_manifest_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Manifest Ids"
+          },
+          "state": {
+            "enum": [
+              "frozen",
+              "verified"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "ticker_join_allowed": {
+            "const": false,
+            "title": "Ticker Join Allowed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "asset_master_version",
+          "identity_count",
+          "contract_identity_count",
+          "ticker_join_allowed",
+          "state",
+          "next_action"
+        ],
+        "title": "CryptoAssetMasterResponse",
+        "type": "object"
+      },
       "CryptoAuthorityRow": {
         "additionalProperties": false,
         "properties": {
@@ -2502,7 +2659,8 @@
               "inverse",
               "option",
               "dex",
-              "network"
+              "network",
+              "reference"
             ],
             "title": "Market Type",
             "type": "string"
@@ -2673,7 +2831,8 @@
               "inverse",
               "option",
               "dex",
-              "network"
+              "network",
+              "reference"
             ],
             "title": "Market Type",
             "type": "string"
@@ -2982,6 +3141,12 @@
       "CryptoSnapshotCreateRequest": {
         "additionalProperties": false,
         "properties": {
+          "asset_master_version": {
+            "default": "reviewed-native-v1",
+            "pattern": "^(?:reviewed-native-v1|[0-9a-f]{64})$",
+            "title": "Asset Master Version",
+            "type": "string"
+          },
           "manifest_ids": {
             "items": {
               "type": "string"
@@ -3001,6 +3166,10 @@
       "CryptoSnapshotCreateResponse": {
         "additionalProperties": false,
         "properties": {
+          "asset_master_version": {
+            "title": "Asset Master Version",
+            "type": "string"
+          },
           "execution_authority": {
             "const": false,
             "title": "Execution Authority",
@@ -3045,6 +3214,7 @@
           "member_count",
           "families",
           "providers",
+          "asset_master_version",
           "state",
           "next_action",
           "execution_authority"
@@ -3397,6 +3567,11 @@
       "CryptoStorageVerifyResponse": {
         "additionalProperties": false,
         "properties": {
+          "asset_master_count": {
+            "minimum": 0.0,
+            "title": "Asset Master Count",
+            "type": "integer"
+          },
           "cache_bytes": {
             "minimum": 0.0,
             "title": "Cache Bytes",
@@ -3437,6 +3612,7 @@
           "manifest_count",
           "snapshot_count",
           "research_eligible_snapshot_count",
+          "asset_master_count",
           "cache_bytes",
           "private_paths_exposed",
           "next_action"
@@ -17476,6 +17652,187 @@
           }
         },
         "summary": "Acquire",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/asset-masters": {
+      "get": {
+        "operationId": "asset_masters_api_crypto_data_asset_masters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoAssetMasterListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Asset Masters",
+        "tags": [
+          "crypto-data"
+        ]
+      },
+      "post": {
+        "operationId": "asset_master_create_api_crypto_data_asset_masters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoAssetMasterCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoAssetMasterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Asset Master Create",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/asset-masters/{asset_master_version}/verify": {
+      "post": {
+        "operationId": "asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_master_version",
+            "required": true,
+            "schema": {
+              "title": "Asset Master Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoAssetMasterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Asset Master Verify",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/assets/contracts/{network}/{contract_address}": {
+      "get": {
+        "operationId": "asset_contract_api_crypto_data_assets_contracts__network___contract_address__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "title": "Network",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contract_address",
+            "required": true,
+            "schema": {
+              "title": "Contract Address",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_master_version",
+            "required": true,
+            "schema": {
+              "title": "Asset Master Version",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": true,
+            "schema": {
+              "title": "As Of",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoAssetIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Asset Contract",
         "tags": [
           "crypto-data"
         ]

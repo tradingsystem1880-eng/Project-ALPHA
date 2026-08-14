@@ -785,6 +785,7 @@ class CryptoStorageVerifyResponse(StrictModel):
     manifest_count: int = Field(ge=0)
     snapshot_count: int = Field(ge=0)
     research_eligible_snapshot_count: int = Field(ge=0)
+    asset_master_count: int = Field(ge=0)
     cache_bytes: int = Field(ge=0)
     private_paths_exposed: Literal[False]
     next_action: str
@@ -826,7 +827,7 @@ class CryptoCoverageItem(StrictModel):
     manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
     provider: str
     venue: str
-    market_type: Literal["spot", "linear", "inverse", "option", "dex", "network"]
+    market_type: Literal["spot", "linear", "inverse", "option", "dex", "network", "reference"]
     family: CryptoFamilyValue
     instrument: str
     base_asset: str | None
@@ -881,7 +882,7 @@ class CryptoQualityReportResponse(StrictModel):
 class CryptoDatasetIdentityResponse(StrictModel):
     provider: str
     venue: str
-    market_type: Literal["spot", "linear", "inverse", "option", "dex", "network"]
+    market_type: Literal["spot", "linear", "inverse", "option", "dex", "network", "reference"]
     family: CryptoFamilyValue
     instrument: str
     base_asset: str | None
@@ -916,6 +917,9 @@ class CryptoAcquisitionRequest(StrictModel):
 
 class CryptoSnapshotCreateRequest(StrictModel):
     manifest_ids: list[str] = Field(min_length=1, max_length=128)
+    asset_master_version: str = Field(
+        default="reviewed-native-v1", pattern=r"^(?:reviewed-native-v1|[0-9a-f]{64})$"
+    )
 
 
 class CryptoSnapshotCreateResponse(StrictModel):
@@ -923,9 +927,40 @@ class CryptoSnapshotCreateResponse(StrictModel):
     member_count: int = Field(ge=1)
     families: list[CryptoFamilyValue]
     providers: list[str]
+    asset_master_version: str
     state: Literal["frozen"]
     next_action: str
     execution_authority: Literal[False]
+
+
+class CryptoAssetMasterCreateRequest(StrictModel):
+    coingecko_manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    geckoterminal_manifest_ids: list[str] = Field(min_length=1, max_length=5)
+
+
+class CryptoAssetMasterResponse(StrictModel):
+    asset_master_version: str = Field(pattern=r"^[0-9a-f]{64}$")
+    identity_count: int = Field(ge=2)
+    contract_identity_count: int = Field(ge=0)
+    ticker_join_allowed: Literal[False]
+    state: Literal["frozen", "verified"]
+    next_action: str
+    source_manifest_ids: list[str] | None = None
+
+
+class CryptoAssetMasterListItem(StrictModel):
+    asset_master_version: str
+    identity_count: int = Field(ge=2)
+    contract_identity_count: int = Field(ge=0)
+    builtin: bool
+    state: Literal["verified"]
+
+
+class CryptoAssetMasterListResponse(StrictModel):
+    items: list[CryptoAssetMasterListItem]
+    count: int = Field(ge=1)
+    ticker_join_allowed: Literal[False]
+    next_action: str
 
 
 class CryptoSnapshotVerifyRequest(StrictModel):

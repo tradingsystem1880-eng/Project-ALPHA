@@ -1083,6 +1083,9 @@ const CRYPTO_MANIFEST_ID = '6'.repeat(64)
 const CRYPTO_OPTION_MANIFEST_ID = '7'.repeat(64)
 const CRYPTO_QUARANTINED_ID = '8'.repeat(64)
 const CRYPTO_SNAPSHOT_ID = '9'.repeat(64)
+const CRYPTO_ASSET_MASTER_ID = 'd'.repeat(64)
+const CRYPTO_COINGECKO_MANIFEST_ID = 'e'.repeat(64)
+const CRYPTO_POOL_MANIFEST_ID = 'f'.repeat(64)
 const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
   items: [
     {
@@ -1151,8 +1154,52 @@ const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
       method_version: 'crypto-quality-v1',
       fetched_at: null,
     },
+    {
+      manifest_id: CRYPTO_COINGECKO_MANIFEST_ID,
+      provider: 'coingecko',
+      venue: 'coingecko',
+      market_type: 'reference',
+      family: 'asset_metadata',
+      instrument: 'all',
+      base_asset: 'BTC',
+      quote_asset: 'USD',
+      frequency: 'catalog_snapshot',
+      units: 'metadata',
+      timestamp_convention: 'fetch_knowledge_utc',
+      state: 'qualified',
+      failures: [],
+      warnings: [],
+      observed_start: '2026-08-15T00:00:00Z',
+      observed_end: '2026-08-15T00:00:00Z',
+      row_count: 20_000,
+      artifact_sha256: 'd'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: '2026-08-15T00:00:00Z',
+    },
+    {
+      manifest_id: CRYPTO_POOL_MANIFEST_ID,
+      provider: 'geckoterminal',
+      venue: 'geckoterminal',
+      market_type: 'dex',
+      family: 'dex_pools',
+      instrument: 'eth',
+      base_asset: 'ETH',
+      quote_asset: 'USD',
+      frequency: 'catalog_snapshot',
+      units: 'provider_native',
+      timestamp_convention: 'fetch_knowledge_utc',
+      state: 'qualified',
+      failures: [],
+      warnings: [],
+      observed_start: '2026-08-15T00:00:00Z',
+      observed_end: '2026-08-15T00:00:00Z',
+      row_count: 100,
+      artifact_sha256: 'e'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: '2026-08-15T00:00:00Z',
+    },
   ],
-  count: 3,
+  count: 5,
   canonical_next_action: 'Select qualified families for a snapshot.',
   automatic_fallback: false,
   execution_authority: false,
@@ -1383,6 +1430,64 @@ function responseFor(route: Route, options: MockOptions): unknown {
       canonical_next_action: 'Inspect qualified coverage and freeze an exact snapshot.',
     } satisfies components['schemas']['CryptoCapabilitiesResponse']
   }
+  if (url.pathname === '/api/crypto-data/asset-masters' && route.request().method() === 'GET') {
+    return {
+      items: [
+        {
+          asset_master_version: 'reviewed-native-v1',
+          identity_count: 2,
+          contract_identity_count: 0,
+          builtin: true,
+          state: 'verified',
+        },
+        {
+          asset_master_version: CRYPTO_ASSET_MASTER_ID,
+          identity_count: 3,
+          contract_identity_count: 1,
+          builtin: false,
+          state: 'verified',
+        },
+      ],
+      count: 2,
+      ticker_join_allowed: false,
+      next_action: 'Build an exact contract identity map.',
+    } satisfies components['schemas']['CryptoAssetMasterListResponse']
+  }
+  if (url.pathname === '/api/crypto-data/asset-masters' && route.request().method() === 'POST') {
+    return {
+      asset_master_version: CRYPTO_ASSET_MASTER_ID,
+      identity_count: 3,
+      contract_identity_count: 1,
+      source_manifest_ids: [CRYPTO_COINGECKO_MANIFEST_ID, CRYPTO_POOL_MANIFEST_ID],
+      ticker_join_allowed: false,
+      state: 'frozen',
+      next_action: 'Use this exact asset-master version when freezing a snapshot.',
+    } satisfies components['schemas']['CryptoAssetMasterResponse']
+  }
+  if (url.pathname === `/api/crypto-data/asset-masters/${CRYPTO_ASSET_MASTER_ID}/verify`) {
+    return {
+      asset_master_version: CRYPTO_ASSET_MASTER_ID,
+      identity_count: 3,
+      contract_identity_count: 1,
+      source_manifest_ids: null,
+      ticker_join_allowed: false,
+      state: 'verified',
+      next_action: 'Freeze a snapshot bound to this exact asset-master version.',
+    } satisfies components['schemas']['CryptoAssetMasterResponse']
+  }
+  if (url.pathname === '/api/crypto-data/assets/contracts/ethereum/0xusdc') {
+    return {
+      schema_version: 1,
+      coingecko_id: 'usd-coin',
+      network: 'ethereum',
+      contract_address: '0xusdc',
+      native_asset: false,
+      provider_symbols: [['coingecko', 'usd-coin'], ['geckoterminal', '0xusdc']],
+      valid_from: '2026-08-15T00:00:00Z',
+      valid_to: null,
+      migration_lineage: [],
+    } satisfies components['schemas']['CryptoAssetIdentityResponse']
+  }
   if (url.pathname === '/api/crypto-data/storage') {
     return {
       state: 'ready',
@@ -1410,7 +1515,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === '/api/crypto-data/storage/verify') {
     return {
       state: 'verified', manifest_count: 6, snapshot_count: 1,
-      research_eligible_snapshot_count: 1, cache_bytes: 25_000_000,
+      research_eligible_snapshot_count: 1, asset_master_count: 1, cache_bytes: 25_000_000,
       private_paths_exposed: false, next_action: 'Continue.',
     } satisfies components['schemas']['CryptoStorageVerifyResponse']
   }
@@ -1445,6 +1550,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
       member_count: 1,
       families: ['option_quotes'],
       providers: ['bybit'],
+      asset_master_version: CRYPTO_ASSET_MASTER_ID,
       state: 'frozen',
       next_action: 'Verify the snapshot for the exact research purpose.',
       execution_authority: false,
@@ -2062,6 +2168,14 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
   const center = page.getByRole('region', { name: 'Crypto Data Center' })
   await expect(center.getByText('Select qualified datasets for one exact frozen snapshot.')).toBeVisible()
+  await center.getByRole('tab', { name: 'Assets & Contracts', exact: true }).click()
+  await center.getByRole('button', { name: 'Build from latest qualified catalogs', exact: true }).click()
+  await expect(center.getByText('FROZEN · 1 contract mappings', { exact: true })).toBeVisible()
+  await center.getByLabel('Contract address').fill('0xusdc')
+  await center.getByRole('button', { name: 'Resolve exact contract', exact: true }).click()
+  await expect(center.getByText('usd-coin', { exact: true })).toBeVisible()
+  await center.getByRole('button', { name: 'Verify identity map', exact: true }).click()
+  await expect(center.getByText('VERIFIED · 1 contract mappings', { exact: true })).toBeVisible()
   await center.getByRole('tab', { name: 'Options & Volatility', exact: true }).click()
   await expect(center.getByText('RECEIPT VERIFIED', { exact: true })).toBeVisible()
   await expect(center.getByLabel('Provider dataset capability')).toContainText(

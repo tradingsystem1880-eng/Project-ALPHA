@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import polars as pl
 import pytest
 
 from alpha_core import DataError
-from alpha_data.crypto.asset_master import AssetMaster, canonical_network
+from alpha_data.crypto.asset_master import (
+    AssetMaster,
+    build_cross_provider_asset_master,
+    canonical_network,
+)
 from alpha_data.crypto.contracts import CryptoAssetIdentityV1
 
 
@@ -88,3 +93,75 @@ def test_provider_network_ids_are_explicitly_mapped_not_guessed() -> None:
     assert canonical_network("coingecko", "binance-smart-chain") == "bnb-smart-chain"
     with pytest.raises(DataError, match="network mapping"):
         canonical_network("geckoterminal", "new-chain")
+
+
+def test_cross_provider_master_requires_exact_network_and_contract_identity() -> None:
+    observed_at = datetime(2026, 8, 15, tzinfo=UTC)
+    coingecko = pl.DataFrame(
+        {
+            "coingecko_id": ["usd-coin", "wrapped-bitcoin", "collision"],
+            "network": ["ethereum", "ethereum", "base"],
+            "contract_address": ["0xUSDC", "0xWBTC", "0xUSDC"],
+        }
+    )
+    pools = pl.DataFrame(
+        {
+            "network": ["eth"],
+            "base_token_address": ["0xUSDC"],
+            "quote_token_address": ["0xWETH"],
+        }
+    )
+
+    master = build_cross_provider_asset_master(
+        coingecko_catalog=coingecko,
+        geckoterminal_pools=(pools,),
+        observed_at=observed_at,
+        source_manifest_ids=("a" * 64, "b" * 64),
+    )
+    resolved = master.resolve_contract(
+        network="ethereum", contract_address="0xusdc", as_of=observed_at
+    )
+
+    assert resolved.coingecko_id == "usd-coin"
+    assert resolved.provider_symbols == (
+        ("coingecko", "usd-coin"),
+        ("geckoterminal", "0xusdc"),
+    )
+    assert master.resolve_native(network="bitcoin", as_of=observed_at).coingecko_id == "bitcoin"
+    with pytest.raises(DataError, match="unavailable"):
+        master.resolve_contract(network="ethereum", contract_address="0xwbtc", as_of=observed_at)
+    assert len(master.version) == 64
+    assert master.source_manifest_ids == ("a" * 64, "b" * 64)
+    assert AssetMaster.from_dict(master.to_dict()).to_dict() == master.to_dict()
+    changed_sources = build_cross_provider_asset_master(
+        coingecko_catalog=coingecko,
+        geckoterminal_pools=(pools,),
+        observed_at=observed_at,
+        source_manifest_ids=("a" * 64, "c" * 64),
+    )
+    assert changed_sources.version != master.version
+
+
+def test_cross_provider_master_rejects_ambiguous_contract_mapping() -> None:
+    observed_at = datetime(2026, 8, 15, tzinfo=UTC)
+    coingecko = pl.DataFrame(
+        {
+            "coingecko_id": ["token-a", "token-b"],
+            "network": ["ethereum", "ethereum"],
+            "contract_address": ["0x01", "0x01"],
+        }
+    )
+    pools = pl.DataFrame(
+        {
+            "network": ["eth"],
+            "base_token_address": ["0x01"],
+            "quote_token_address": ["0x02"],
+        }
+    )
+
+    with pytest.raises(DataError, match="ambiguous"):
+        build_cross_provider_asset_master(
+            coingecko_catalog=coingecko,
+            geckoterminal_pools=(pools,),
+            observed_at=observed_at,
+        )

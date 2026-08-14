@@ -159,6 +159,7 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
                 "member_count": 1,
                 "families": ["funding"],
                 "providers": ["bybit"],
+                "asset_master_version": "reviewed-native-v1",
                 "state": "frozen",
                 "next_action": "Verify the snapshot for the exact research purpose.",
                 "execution_authority": False,
@@ -208,7 +209,15 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
     assert registered.status_code == 200
     assert registered.json()["ref_id"] == "rd_" + "c" * 64
     assert calls == [
-        ["crypto-data", "snapshot-create", "--manifest-id", manifest_id, "--json"],
+        [
+            "crypto-data",
+            "snapshot-create",
+            "--manifest-id",
+            manifest_id,
+            "--asset-master-version",
+            "reviewed-native-v1",
+            "--json",
+        ],
         [
             "crypto-data",
             "snapshot-verify",
@@ -226,6 +235,107 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
             snapshot_id,
             "--symbol",
             "BTC",
+            "--json",
+        ],
+    ]
+
+
+def test_crypto_asset_master_routes_build_closed_exact_identity_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    cg_manifest, gt_manifest, version = "a" * 64, "b" * 64, "c" * 64
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        if args[1] == "asset-masters":
+            return {
+                "items": [
+                    {
+                        "asset_master_version": version,
+                        "identity_count": 3,
+                        "contract_identity_count": 1,
+                        "builtin": False,
+                        "state": "verified",
+                    }
+                ],
+                "count": 1,
+                "ticker_join_allowed": False,
+                "next_action": "Select this master.",
+            }
+        if args[1] == "asset-contract":
+            return {
+                "schema_version": 1,
+                "coingecko_id": "usd-coin",
+                "network": "ethereum",
+                "contract_address": "0xusdc",
+                "native_asset": False,
+                "provider_symbols": [
+                    ["coingecko", "usd-coin"],
+                    ["geckoterminal", "0xusdc"],
+                ],
+                "valid_from": "2026-08-15T00:00:00Z",
+                "valid_to": None,
+                "migration_lineage": [],
+            }
+        return {
+            "asset_master_version": version,
+            "identity_count": 3,
+            "contract_identity_count": 1,
+            "source_manifest_ids": [cg_manifest, gt_manifest]
+            if args[1] == "asset-master-create"
+            else None,
+            "ticker_join_allowed": False,
+            "state": "frozen" if args[1] == "asset-master-create" else "verified",
+            "next_action": "Continue.",
+        }
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    client = TestClient(create_app())
+    created = client.post(
+        "/api/crypto-data/asset-masters",
+        json={
+            "coingecko_manifest_id": cg_manifest,
+            "geckoterminal_manifest_ids": [gt_manifest],
+        },
+    )
+    listed = client.get("/api/crypto-data/asset-masters")
+    verified = client.post(f"/api/crypto-data/asset-masters/{version}/verify", json={})
+    contract = client.get(
+        "/api/crypto-data/assets/contracts/ethereum/0xusdc",
+        params={
+            "asset_master_version": version,
+            "as_of": "2026-08-15T00:00:00Z",
+        },
+    )
+
+    assert created.status_code == 200
+    assert listed.status_code == 200
+    assert verified.status_code == 200
+    assert contract.status_code == 200
+    assert contract.json()["coingecko_id"] == "usd-coin"
+    assert calls == [
+        [
+            "crypto-data",
+            "asset-master-create",
+            "--coingecko-manifest-id",
+            cg_manifest,
+            "--geckoterminal-manifest-id",
+            gt_manifest,
+            "--json",
+        ],
+        ["crypto-data", "asset-masters", "--json"],
+        ["crypto-data", "asset-master-verify", version, "--json"],
+        [
+            "crypto-data",
+            "asset-contract",
+            "ethereum",
+            "0xusdc",
+            "--asset-master-version",
+            version,
+            "--as-of",
+            "2026-08-15T00:00:00Z",
             "--json",
         ],
     ]
@@ -276,6 +386,7 @@ def test_crypto_storage_actions_use_closed_commands_and_confirm_cleanup(
                 "manifest_count": 2,
                 "snapshot_count": 1,
                 "research_eligible_snapshot_count": 1,
+                "asset_master_count": 0,
                 "cache_bytes": 5,
                 "private_paths_exposed": False,
                 "next_action": "Continue.",

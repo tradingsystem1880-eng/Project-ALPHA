@@ -168,11 +168,17 @@ flowchart LR
 External publication completes before its internal manifest. The configured volume UUID,
 writability, and free-space reserve are fail-closed prerequisites. The control database and
 manifests stay internal. Asset joins require network plus contract address or an explicitly reviewed
-native mapping; ticker-only joins fail. Existing CCXT snapshots and the `ccxt:binance` paper warmup
+native mapping; ticker-only joins fail. A content-addressed asset-master artifact commits to its
+ordered identities and the exact qualified CoinGecko/GeckoTerminal source-manifest IDs. Snapshot
+creation and every later verification rederive that version before accepting contract identity;
+historical snapshots using the built-in `reviewed-native-v1` label remain byte-compatible. Existing
+CCXT snapshots and the `ccxt:binance` paper warmup
 path are unchanged. Cursor-based Bybit ranges freeze each exact response as its own raw receipt;
 their one normalized artifact commits to every ordered raw manifest. The typed Workstation Crypto
 Data Center projects this same catalog, coverage, quality, storage, acquisition, and snapshot seam;
-its Guided and Advanced modes share identical server authority. An explicit typed registration
+its Guided mode can build, select, verify, and resolve the latest exact contract map without copying
+opaque IDs, while Advanced only reveals its hash and receipts. Both modes share identical server
+authority. An explicit typed registration
 re-verifies every external member before recording the snapshot through the historical research
 `snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
 when a registered operator declares compatibility.

@@ -10,6 +10,8 @@ import type {
   ControlJobDetail,
   CryptoAcquisitionRequest,
   CryptoAssetIdentity,
+  CryptoAssetMaster,
+  CryptoAssetMasters,
   CryptoCatalog,
   CryptoCapabilities,
   CryptoCoverage,
@@ -326,6 +328,32 @@ export const api = {
     const params = new URLSearchParams({ as_of: asOf })
     return getJSON(`/api/crypto-data/assets/${encodeURIComponent(symbol)}?${params.toString()}`)
   },
+  cryptoAssetContract: (
+    network: string,
+    contractAddress: string,
+    assetMasterVersion: string,
+    asOf: string,
+  ): Promise<CryptoAssetIdentity> => {
+    const params = new URLSearchParams({
+      asset_master_version: assetMasterVersion,
+      as_of: asOf,
+    })
+    return getJSON(
+      `/api/crypto-data/assets/contracts/${encodeURIComponent(network)}/${encodeURIComponent(contractAddress)}?${params.toString()}`,
+    )
+  },
+  cryptoAssetMasters: (): Promise<CryptoAssetMasters> =>
+    getJSON('/api/crypto-data/asset-masters'),
+  cryptoAssetMasterCreate: (
+    coingeckoManifestId: string,
+    geckoterminalManifestIds: string[],
+  ): Promise<CryptoAssetMaster> =>
+    postJSON('/api/crypto-data/asset-masters', {
+      coingecko_manifest_id: coingeckoManifestId,
+      geckoterminal_manifest_ids: geckoterminalManifestIds,
+    }),
+  cryptoAssetMasterVerify: (version: string): Promise<CryptoAssetMaster> =>
+    postJSON(`/api/crypto-data/asset-masters/${encodeURIComponent(version)}/verify`, {}),
   cryptoQuality: (manifestId: string): Promise<CryptoQuality> =>
     getJSON(`/api/crypto-data/quality/${encodeURIComponent(manifestId)}`),
   cryptoEstimate: (body: CryptoEstimateRequest): Promise<CryptoEstimate> =>
@@ -334,8 +362,14 @@ export const api = {
     body: CryptoAcquisitionRequest,
   ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
     postJSON('/api/crypto-data/acquisitions', body),
-  cryptoSnapshotCreate: (manifestIds: string[]): Promise<CryptoSnapshotCreate> =>
-    postJSON('/api/crypto-data/snapshots', { manifest_ids: manifestIds }),
+  cryptoSnapshotCreate: (
+    manifestIds: string[],
+    assetMasterVersion = 'reviewed-native-v1',
+  ): Promise<CryptoSnapshotCreate> =>
+    postJSON('/api/crypto-data/snapshots', {
+      manifest_ids: manifestIds,
+      asset_master_version: assetMasterVersion,
+    }),
   cryptoSnapshotVerify: (
     snapshotId: string,
     body: CryptoSnapshotVerifyRequest,

@@ -19,6 +19,17 @@ The launcher injects `ALPHA_COINGECKO_API_KEY` into only that replacement proces
 reference, GeckoTerminal pool data, and Coin Metrics network data remain separate families;
 CoinGecko verification does not qualify any downloaded dataset.
 
+Acquire and mechanically qualify the bounded CoinGecko contract catalog through a separate fixed
+launcher action:
+
+```bash
+scripts/alpha-with-keychain-provider coingecko catalog
+```
+
+This action cannot accept arbitrary provider, family, instrument, or output arguments. It freezes
+the exact response and qualification receipt; the key remains process-local and is absent from the
+request receipt, manifest, logs, and command arguments.
+
 ## 1. Use QuantPad for external historical research
 
 The project-scoped `.codex/config.toml` registers QuantPad's OAuth MCP endpoint. Start a new Codex

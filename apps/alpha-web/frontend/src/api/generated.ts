@@ -103,6 +103,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/asset-masters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset Masters */
+        get: operations["asset_masters_api_crypto_data_asset_masters_get"];
+        put?: never;
+        /** Asset Master Create */
+        post: operations["asset_master_create_api_crypto_data_asset_masters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/asset-masters/{asset_master_version}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Asset Master Verify */
+        post: operations["asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/assets/contracts/{network}/{contract_address}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset Contract */
+        get: operations["asset_contract_api_crypto_data_assets_contracts__network___contract_address__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/assets/{symbol}": {
         parameters: {
             query?: never;
@@ -4086,6 +4138,66 @@ export interface components {
             /** Valid To */
             valid_to: string | null;
         };
+        /** CryptoAssetMasterCreateRequest */
+        CryptoAssetMasterCreateRequest: {
+            /** Coingecko Manifest Id */
+            coingecko_manifest_id: string;
+            /** Geckoterminal Manifest Ids */
+            geckoterminal_manifest_ids: string[];
+        };
+        /** CryptoAssetMasterListItem */
+        CryptoAssetMasterListItem: {
+            /** Asset Master Version */
+            asset_master_version: string;
+            /** Builtin */
+            builtin: boolean;
+            /** Contract Identity Count */
+            contract_identity_count: number;
+            /** Identity Count */
+            identity_count: number;
+            /**
+             * State
+             * @constant
+             */
+            state: "verified";
+        };
+        /** CryptoAssetMasterListResponse */
+        CryptoAssetMasterListResponse: {
+            /** Count */
+            count: number;
+            /** Items */
+            items: components["schemas"]["CryptoAssetMasterListItem"][];
+            /** Next Action */
+            next_action: string;
+            /**
+             * Ticker Join Allowed
+             * @constant
+             */
+            ticker_join_allowed: false;
+        };
+        /** CryptoAssetMasterResponse */
+        CryptoAssetMasterResponse: {
+            /** Asset Master Version */
+            asset_master_version: string;
+            /** Contract Identity Count */
+            contract_identity_count: number;
+            /** Identity Count */
+            identity_count: number;
+            /** Next Action */
+            next_action: string;
+            /** Source Manifest Ids */
+            source_manifest_ids?: string[] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "frozen" | "verified";
+            /**
+             * Ticker Join Allowed
+             * @constant
+             */
+            ticker_join_allowed: false;
+        };
         /** CryptoAuthorityRow */
         CryptoAuthorityRow: {
             family: components["schemas"]["CryptoFamilyValue"];
@@ -4223,7 +4335,7 @@ export interface components {
              * Market Type
              * @enum {string}
              */
-            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network";
+            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network" | "reference";
             /** Method Version */
             method_version: string;
             /** Observed End */
@@ -4278,7 +4390,7 @@ export interface components {
              * Market Type
              * @enum {string}
              */
-            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network";
+            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network" | "reference";
             /** Provider */
             provider: string;
             /** Quote Asset */
@@ -4380,11 +4492,18 @@ export interface components {
         };
         /** CryptoSnapshotCreateRequest */
         CryptoSnapshotCreateRequest: {
+            /**
+             * Asset Master Version
+             * @default reviewed-native-v1
+             */
+            asset_master_version: string;
             /** Manifest Ids */
             manifest_ids: string[];
         };
         /** CryptoSnapshotCreateResponse */
         CryptoSnapshotCreateResponse: {
+            /** Asset Master Version */
+            asset_master_version: string;
             /**
              * Execution Authority
              * @constant
@@ -4534,6 +4653,8 @@ export interface components {
         };
         /** CryptoStorageVerifyResponse */
         CryptoStorageVerifyResponse: {
+            /** Asset Master Count */
+            asset_master_count: number;
             /** Cache Bytes */
             cache_bytes: number;
             /** Manifest Count */
@@ -9181,6 +9302,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_masters_api_crypto_data_asset_masters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetMasterListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_master_create_api_crypto_data_asset_masters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoAssetMasterCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetMasterResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_master_version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetMasterResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_contract_api_crypto_data_assets_contracts__network___contract_address__get: {
+        parameters: {
+            query: {
+                asset_master_version: string;
+                as_of: string;
+            };
+            header?: never;
+            path: {
+                network: string;
+                contract_address: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetIdentityResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

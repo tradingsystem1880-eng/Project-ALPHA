@@ -4,6 +4,8 @@ import { api } from '../api/client'
 import type {
   CryptoAcquisitionRequest,
   CryptoAssetIdentity,
+  CryptoAssetMaster,
+  CryptoAssetMasters,
   CryptoCatalog,
   CryptoCapabilities,
   CryptoCoverage,
@@ -95,6 +97,11 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
   const [days, setDays] = useState(30)
   const [estimate, setEstimate] = useState<CryptoEstimate | null>(null)
   const [asset, setAsset] = useState<CryptoAssetIdentity | null>(null)
+  const [assetMasters, setAssetMasters] = useState<CryptoAssetMasters | null>(null)
+  const [assetMaster, setAssetMaster] = useState<CryptoAssetMaster | null>(null)
+  const [assetMasterVersion, setAssetMasterVersion] = useState('reviewed-native-v1')
+  const [contractNetwork, setContractNetwork] = useState('ethereum')
+  const [contractAddress, setContractAddress] = useState('')
   const [quality, setQuality] = useState<CryptoQuality | null>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [jobId, setJobId] = useState<string | null>(null)
@@ -112,14 +119,23 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
     if (refresh) setRefreshing(true)
     else setLoading(true)
     try {
-      const [nextCatalog, nextCapabilities, nextStorage, nextCoverage] = await Promise.all([
+      const [nextCatalog, nextCapabilities, nextAssetMasters, nextStorage, nextCoverage] = await Promise.all([
         api.cryptoCatalog(),
         api.cryptoCapabilities(),
+        api.cryptoAssetMasters(),
         api.cryptoStorage(),
         api.cryptoCoverage(),
       ])
       setCatalog(nextCatalog)
       setCapabilities(nextCapabilities)
+      setAssetMasters(nextAssetMasters)
+      setAssetMasterVersion((current) => {
+        if (nextAssetMasters.items.some((item) => item.asset_master_version === current)) {
+          return current
+        }
+        return nextAssetMasters.items.find((item) => item.contract_identity_count > 0)
+          ?.asset_master_version ?? 'reviewed-native-v1'
+      })
       setStorage(nextStorage)
       setCoverage(nextCoverage)
       setSelected((current) => {
@@ -214,6 +230,70 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
     }
   }
 
+  async function inspectContractAsset(): Promise<void> {
+    if (!contractAddress || assetMasterVersion === 'reviewed-native-v1') return
+    setBusyAction('asset-contract')
+    setError(null)
+    try {
+      setAsset(await api.cryptoAssetContract(
+        contractNetwork,
+        contractAddress,
+        assetMasterVersion,
+        new Date().toISOString(),
+      ))
+    } catch (reason: unknown) {
+      setAsset(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function freezeAssetMaster(): Promise<void> {
+    const latestFor = (target: CryptoFamily): CryptoCoverageItem | undefined => {
+      const candidates = (coverage?.items ?? []).filter(
+        (item) => item.family === target && item.state === 'qualified',
+      )
+      const latest = latestCryptoManifestIds(candidates)
+      return candidates.find((item) => latest.has(item.manifest_id))
+    }
+    const coingecko = latestFor('asset_metadata')
+    const geckoterminal = latestFor('dex_pools')
+    if (!coingecko || !geckoterminal) {
+      setError('Acquire qualified CoinGecko asset metadata and a GeckoTerminal pool catalog first.')
+      return
+    }
+    setBusyAction('asset-master')
+    setError(null)
+    try {
+      const created = await api.cryptoAssetMasterCreate(
+        coingecko.manifest_id,
+        [geckoterminal.manifest_id],
+      )
+      setAssetMaster(created)
+      setAssetMasterVersion(created.asset_master_version)
+      await load(true)
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function verifyAssetMaster(): Promise<void> {
+    if (assetMasterVersion === 'reviewed-native-v1') return
+    setBusyAction('asset-master-verify')
+    setError(null)
+    try {
+      setAssetMaster(await api.cryptoAssetMasterVerify(assetMasterVersion))
+    } catch (reason: unknown) {
+      setAssetMaster(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   async function acquire(): Promise<void> {
     if (!provider) return
     setBusyAction('acquire')
@@ -250,7 +330,7 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
     setBusyAction('snapshot')
     setError(null)
     try {
-      const created = await api.cryptoSnapshotCreate([...selected])
+      const created = await api.cryptoSnapshotCreate([...selected], assetMasterVersion)
       setSnapshot(created)
       setVerification(null)
     } catch (reason: unknown) {
@@ -413,6 +493,62 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
               </div>
             ) : <p className="muted">Ticker-only contract joins are prohibited. Native BTC and ETH use reviewed mappings.</p>}
           </section>
+          <section className="provider-card" aria-label="Frozen asset master">
+            <div className="rd-head">Exact contract identity map</div>
+            <p className="muted">Contract assets are joined only when CoinGecko and GeckoTerminal agree on the exact network and contract address.</p>
+            <div className="crypto-form-grid">
+              <label>
+                <span className="eyebrow">Identity map</span>
+                <select
+                  className="field"
+                  value={assetMasterVersion}
+                  onChange={(event) => {
+                    setAssetMasterVersion(event.target.value)
+                    setAsset(null)
+                    setAssetMaster(null)
+                    setSnapshot(null)
+                    setVerification(null)
+                  }}
+                >
+                  {(assetMasters?.items ?? []).map((item) => (
+                    <option key={item.asset_master_version} value={item.asset_master_version}>
+                      {item.builtin
+                        ? 'Reviewed native assets (BTC and ETH)'
+                        : `${item.contract_identity_count} contract mappings · ${item.identity_count} total assets`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void freezeAssetMaster()}>
+                {busyAction === 'asset-master' ? 'Building…' : 'Build from latest qualified catalogs'}
+              </button>
+              {assetMasterVersion !== 'reviewed-native-v1' ? (
+                <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void verifyAssetMaster()}>
+                  {busyAction === 'asset-master-verify' ? 'Verifying…' : 'Verify identity map'}
+                </button>
+              ) : null}
+            </div>
+            {assetMaster ? (
+              <div className="crypto-detail" role="status">
+                <strong>{assetMaster.state.toUpperCase()} · {assetMaster.contract_identity_count} contract mappings</strong>
+                <span>Ticker-only joins: prohibited</span>
+                <span className="mono muted advanced-only">asset master {assetMaster.asset_master_version}</span>
+              </div>
+            ) : null}
+            <div className="crypto-form-grid">
+              <label><span className="eyebrow">Network</span><input className="field mono" value={contractNetwork} onChange={(event) => { setContractNetwork(event.target.value); setAsset(null) }} /></label>
+              <label><span className="eyebrow">Contract address</span><input className="field mono" value={contractAddress} onChange={(event) => { setContractAddress(event.target.value); setAsset(null) }} placeholder="Exact contract address" /></label>
+              <button
+                className="btn primary"
+                type="button"
+                disabled={busyAction !== null || !contractAddress || assetMasterVersion === 'reviewed-native-v1'}
+                onClick={() => void inspectContractAsset()}
+              >
+                {busyAction === 'asset-contract' ? 'Resolving…' : 'Resolve exact contract'}
+              </button>
+            </div>
+            {assetMasterVersion === 'reviewed-native-v1' ? <p className="muted">Acquire qualified CoinGecko asset metadata and a GeckoTerminal pool catalog, then build a contract identity map.</p> : null}
+          </section>
         </div>
       ) : null}
 
@@ -500,6 +636,7 @@ export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }
       <section className="crypto-snapshot provider-card" aria-label="Frozen crypto snapshot">
         <div className="provider-card-head"><div className="rd-head">Research snapshot</div><span className="chip kind">{selected.size} selected</span></div>
         <p className="muted">Only mechanically qualified datasets can be selected. Provider, venue, quote, units, timestamps, and hashes remain separate.</p>
+        <p className="muted">Identity map: {(assetMasters?.items.find((item) => item.asset_master_version === assetMasterVersion)?.builtin ?? true) ? 'reviewed native assets' : 'exact contract identity map'}<span className="advanced-only mono"> · {assetMasterVersion}</span></p>
         <div className="crypto-actions">
           <button className="btn primary" type="button" disabled={selected.size === 0 || busyAction !== null} onClick={() => void freezeSnapshot()}>{busyAction === 'snapshot' ? 'Freezing…' : 'Freeze selected snapshot'}</button>
           {snapshot ? <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void verifySnapshot()}>{busyAction === 'verify' ? 'Verifying…' : 'Verify for research'}</button> : null}
