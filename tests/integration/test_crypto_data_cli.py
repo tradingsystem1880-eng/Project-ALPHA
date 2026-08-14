@@ -488,6 +488,92 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     assert "injected-only-for-test" not in inventory_json
 
 
+@pytest.mark.parametrize(
+    ("family", "csv_name", "csv_payload", "expected_frequency"),
+    (
+        (
+            "trades",
+            "BTCUSDT-trades-2025-01.csv",
+            b"51175358,17.8018,5.69,101.292242,1735689600010866,True,True\n",
+            "trade_events",
+        ),
+        (
+            "aggregate_trades",
+            "BTCUSDT-aggTrades-2025-01.csv",
+            b"26129,0.01633102,4.70443515,27781,27781,1735689600010866,true\n",
+            "aggregate_trade_events",
+        ),
+    ),
+)
+def test_binance_trade_archive_families_acquire_with_exact_native_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    family: str,
+    csv_name: str,
+    csv_payload: bytes,
+    expected_frequency: str,
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(csv_name, csv_payload)
+    archive_payload = zipped.getvalue()
+    monkeypatch.setattr(
+        crypto_data_cmds, "fetch_binance_archive", lambda *_args: archive_payload
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "fetch_binance_checksum",
+        lambda *_args: f"{hashlib.sha256(archive_payload).hexdigest()} file.zip\n".encode(),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "binance",
+            family,
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--period",
+            "2025-01",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["state"] == "qualified"
+    manifest = store.verify_manifest(receipt["normalized_manifest_id"])
+    assert manifest["dataset"]["family"] == family
+    assert manifest["dataset"]["frequency"] == expected_frequency
+    raw_manifest = store.verify_manifest(receipt["raw_manifest_id"])
+    assert raw_manifest["receipt"]["upstream_checksum"] == hashlib.sha256(
+        archive_payload
+    ).hexdigest()
+
+
 def test_bybit_bounded_open_interest_follows_cursors_and_freezes_each_page(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

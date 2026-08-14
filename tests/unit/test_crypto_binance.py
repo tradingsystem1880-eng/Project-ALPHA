@@ -11,8 +11,10 @@ import pytest
 from alpha_core import DataError
 from alpha_data.crypto.providers.binance import (
     archive_url,
+    parse_binance_aggregate_trades,
     parse_binance_archive_zip,
     parse_binance_klines,
+    parse_binance_trades,
     point_in_time_liquid_universe,
     reconcile_archive_tail,
     verify_archive_checksum,
@@ -55,6 +57,37 @@ def test_archive_zip_allows_one_bounded_flat_csv_member() -> None:
         archive.writestr("../private.csv", csv)
     with pytest.raises(DataError, match="member path"):
         parse_binance_archive_zip(bad.getvalue())
+
+
+def test_trade_and_aggregate_trade_archives_preserve_native_ids_and_optional_fields() -> None:
+    trades = parse_binance_trades(
+        b"51175358,17.8018,5.69,101.292242,1735689600010866,True,True\n"
+    )
+    assert trades.row(0, named=True) == {
+        "trade_id": 51175358,
+        "price": 17.8018,
+        "quantity": 5.69,
+        "quote_quantity": 101.292242,
+        "timestamp": datetime(2025, 1, 1, 0, 0, 0, 10866, tzinfo=UTC),
+        "buyer_is_maker": True,
+        "best_match": True,
+    }
+    futures = parse_binance_trades(b"28457,4.000001,12,48,1499865549590,true\n")
+    assert futures["best_match"][0] is None
+
+    aggregate = parse_binance_aggregate_trades(
+        b"26129,0.01633102,4.70443515,27781,27781,1498793709153,true\n"
+    )
+    assert aggregate.row(0, named=True)["aggregate_trade_id"] == 26129
+    assert aggregate.row(0, named=True)["first_trade_id"] == 27781
+    assert aggregate.row(0, named=True)["best_match"] is None
+
+    assert "/monthly/trades/BTCUSDT/BTCUSDT-trades-2026-07.zip" in archive_url(
+        "spot", "trades", "BTCUSDT", "", "2026-07"
+    )
+    assert "/monthly/aggTrades/BTCUSDT/BTCUSDT-aggTrades-2026-07.zip" in archive_url(
+        "um", "aggTrades", "BTCUSDT", "", "2026-07"
+    )
 
 
 def test_parser_detects_post_2025_microsecond_timestamps() -> None:

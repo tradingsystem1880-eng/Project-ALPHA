@@ -822,50 +822,88 @@ def _fetch_non_bybit(
     keys: tuple[str, ...]
 
     if provider == "binance":
-        if family != "market_bars":
-            raise DataError("this Binance acquisition accepts market_bars archives")
+        archive_family_by_dataset: dict[CryptoFamily, Literal["klines", "trades", "aggTrades"]] = {
+            "market_bars": "klines",
+            "trades": "trades",
+            "aggregate_trades": "aggTrades",
+        }
+        archive_family = archive_family_by_dataset.get(family)
+        if archive_family is None:
+            raise DataError(
+                "this Binance archive acquisition accepts market_bars, trades, or "
+                "aggregate_trades"
+            )
         if category not in {"spot", "linear", "inverse"}:
             raise DataError("Binance category must be spot, linear, or inverse")
-        if period is None:
+        if period is None or re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", period) is None:
             raise DataError("Binance archive acquisition requires --period YYYY-MM")
         market = {"spot": "spot", "linear": "um", "inverse": "cm"}[category]
+        interval = frequency if archive_family == "klines" else ""
         url = archive_url(
             cast(Literal["spot", "um", "cm"], market),
-            "klines",
+            archive_family,
             instrument_value.upper(),
-            frequency,
+            interval,
             period,
         )
         payload = fetch_binance_archive(url)
         checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
         verify_archive_checksum(payload, checksum)
-        cadence_seconds = {"1d": 86_400, "1h": 3_600, "5m": 300, "1m": 60}.get(frequency)
-        if cadence_seconds is None:
-            raise DataError("Binance kline frequency must be 1m, 5m, 1h, or 1d")
+        if family == "market_bars":
+            cadence_seconds = {
+                "1d": 86_400,
+                "1h": 3_600,
+                "5m": 300,
+                "1m": 60,
+            }.get(frequency)
+            if cadence_seconds is None:
+                raise DataError("Binance kline frequency must be 1m, 5m, 1h, or 1d")
+            parser = parse_binance_archive_zip
+            observed_column = "open_time"
+            keys = ("open_time",)
+            frequency_value = frequency
+            units = "provider_native_ohlcv"
+            timestamp_convention = "interval_start_utc"
+        elif family == "trades":
+            cadence_seconds = None
+            parser = partial(parse_binance_archive_zip, family="trades")
+            observed_column = "timestamp"
+            keys = ("trade_id",)
+            frequency_value = "trade_events"
+            units = "provider_native_trade"
+            timestamp_convention = "provider_event_utc"
+        else:
+            cadence_seconds = None
+            parser = partial(parse_binance_archive_zip, family="aggTrades")
+            observed_column = "timestamp"
+            keys = ("aggregate_trade_id",)
+            frequency_value = "aggregate_trade_events"
+            units = "provider_native_aggregate_trade"
+            timestamp_convention = "provider_event_utc"
         plan = _AcquisitionPlan(
             endpoint="monthly_archive",
             params={
                 "market": market,
-                "family": "klines",
+                "family": archive_family,
                 "symbol": instrument_value.upper(),
-                "interval": frequency,
                 "period": period,
+                **({"interval": interval} if interval else {}),
             },
             dataset=CryptoDatasetIdentityV1(
                 provider="binance",
                 venue="binance",
                 market_type=cast(CryptoMarketType, category),
-                family="market_bars",
+                family=family,
                 instrument=instrument_value.upper(),
                 base_asset=base_value,
                 quote_asset=quote_value,
-                frequency=frequency,
-                units="provider_native_ohlcv",
-                timestamp_convention="interval_start_utc",
+                frequency=frequency_value,
+                units=units,
+                timestamp_convention=timestamp_convention,
             ),
-            parser=parse_binance_archive_zip,
-            observed_column="open_time",
-            key_columns=("open_time",),
+            parser=parser,
+            observed_column=observed_column,
+            key_columns=keys,
         )
         return _FetchedAcquisition(
             plan=plan,
@@ -875,7 +913,7 @@ def _fetch_non_bybit(
             logical_name=f"{family}.zip",
             upstream_checksum=hashlib.sha256(payload).hexdigest(),
             expected_cadence_seconds=cadence_seconds,
-            period_start_timestamps=True,
+            period_start_timestamps=family == "market_bars",
         )
 
     if provider == "coingecko":

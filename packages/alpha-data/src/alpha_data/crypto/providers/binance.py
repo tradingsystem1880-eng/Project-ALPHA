@@ -17,6 +17,7 @@ from alpha_core import DataError
 
 type BinanceArchiveMarket = Literal["spot", "um", "cm"]
 type BinanceKlineSource = Literal["archive_csv", "rest_json"]
+type BinanceArchiveFamily = Literal["klines", "trades", "aggTrades"]
 type WireScalar = str | int | float
 
 _COLUMNS: Final = (
@@ -33,6 +34,15 @@ _COLUMNS: Final = (
     "taker_buy_quote_volume",
 )
 _SAFE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _boolean(value: WireScalar, *, label: str) -> bool:
+    normalized = str(value).strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise DataError(f"Binance {label} boolean is invalid")
 
 
 def _timestamp(raw: WireScalar) -> datetime:
@@ -110,7 +120,89 @@ def parse_binance_klines(payload: bytes, *, source: BinanceKlineSource) -> pl.Da
     return frame
 
 
-def parse_binance_archive_zip(payload: bytes) -> pl.DataFrame:
+def parse_binance_trades(payload: bytes) -> pl.DataFrame:
+    """Parse spot/futures trade archives without erasing venue-specific quote/base quantity."""
+    try:
+        rows = [row for row in csv.reader(io.StringIO(payload.decode("utf-8"))) if row]
+    except (UnicodeDecodeError, csv.Error) as exc:
+        raise DataError("Binance trade archive is malformed") from exc
+    parsed: list[dict[str, object]] = []
+    for row in rows:
+        if len(row) not in {6, 7}:
+            raise DataError("Binance trade row must contain six or seven fields")
+        try:
+            parsed.append(
+                {
+                    "trade_id": int(row[0]),
+                    "price": float(row[1]),
+                    "quantity": float(row[2]),
+                    "quote_quantity": float(row[3]),
+                    "timestamp": _timestamp(row[4]),
+                    "buyer_is_maker": _boolean(row[5], label="trade maker"),
+                    "best_match": _boolean(row[6], label="trade best-match")
+                    if len(row) == 7
+                    else None,
+                }
+            )
+        except ValueError as exc:
+            raise DataError("Binance trade row contains an invalid numeric field") from exc
+    if not parsed:
+        raise DataError("Binance trade archive is empty")
+    frame = pl.DataFrame(parsed).sort(["timestamp", "trade_id"])
+    if frame["trade_id"].n_unique() != frame.height:
+        raise DataError("Binance trade archive contains duplicate trade ids")
+    if frame.filter(
+        (pl.col("price") <= 0)
+        | (pl.col("quantity") < 0)
+        | (pl.col("quote_quantity") < 0)
+    ).height:
+        raise DataError("Binance trade prices and quantities violate bounds")
+    return frame
+
+
+def parse_binance_aggregate_trades(payload: bytes) -> pl.DataFrame:
+    """Parse spot/futures aggregate trades with their exact component-id interval."""
+    try:
+        rows = [row for row in csv.reader(io.StringIO(payload.decode("utf-8"))) if row]
+    except (UnicodeDecodeError, csv.Error) as exc:
+        raise DataError("Binance aggregate-trade archive is malformed") from exc
+    parsed: list[dict[str, object]] = []
+    for row in rows:
+        if len(row) not in {7, 8}:
+            raise DataError("Binance aggregate-trade row must contain seven or eight fields")
+        try:
+            first_id, last_id = int(row[3]), int(row[4])
+            if last_id < first_id:
+                raise DataError("Binance aggregate-trade component ids are inverted")
+            parsed.append(
+                {
+                    "aggregate_trade_id": int(row[0]),
+                    "price": float(row[1]),
+                    "quantity": float(row[2]),
+                    "first_trade_id": first_id,
+                    "last_trade_id": last_id,
+                    "timestamp": _timestamp(row[5]),
+                    "buyer_is_maker": _boolean(row[6], label="aggregate-trade maker"),
+                    "best_match": _boolean(row[7], label="aggregate-trade best-match")
+                    if len(row) == 8
+                    else None,
+                }
+            )
+        except ValueError as exc:
+            raise DataError("Binance aggregate-trade row has an invalid numeric field") from exc
+    if not parsed:
+        raise DataError("Binance aggregate-trade archive is empty")
+    frame = pl.DataFrame(parsed).sort(["timestamp", "aggregate_trade_id"])
+    if frame["aggregate_trade_id"].n_unique() != frame.height:
+        raise DataError("Binance aggregate-trade archive contains duplicate ids")
+    if frame.filter((pl.col("price") <= 0) | (pl.col("quantity") < 0)).height:
+        raise DataError("Binance aggregate-trade price or quantity violates bounds")
+    return frame
+
+
+def parse_binance_archive_zip(
+    payload: bytes, *, family: BinanceArchiveFamily = "klines"
+) -> pl.DataFrame:
     """Extract one bounded flat official CSV member and parse it without path writes."""
     if not isinstance(payload, bytes) or not payload or len(payload) > 512 * 1024 * 1024:
         raise DataError("Binance archive ZIP exceeds the compressed byte limit")
@@ -131,7 +223,13 @@ def parse_binance_archive_zip(payload: bytes) -> pl.DataFrame:
             csv_payload = archive.read(member)
     except (zipfile.BadZipFile, RuntimeError, OSError) as exc:
         raise DataError("Binance archive ZIP is malformed") from exc
-    return parse_binance_klines(csv_payload, source="archive_csv")
+    if family == "klines":
+        return parse_binance_klines(csv_payload, source="archive_csv")
+    if family == "trades":
+        return parse_binance_trades(csv_payload)
+    if family == "aggTrades":
+        return parse_binance_aggregate_trades(csv_payload)
+    raise DataError("Binance archive family is invalid")
 
 
 def verify_archive_checksum(payload: bytes, checksum_payload: bytes) -> None:
@@ -152,17 +250,24 @@ def archive_url(
     """Construct a closed official monthly archive URL."""
     if market not in {"spot", "um", "cm"}:
         raise DataError(f"unsupported Binance archive market {market!r}")
-    for value, label in (
-        (family, "family"),
-        (symbol, "symbol"),
-        (interval, "interval"),
-        (period, "period"),
-    ):
+    for value, label in ((family, "family"), (symbol, "symbol"), (period, "period")):
         if _SAFE.fullmatch(value) is None:
             raise DataError(f"invalid Binance archive {label}")
+    if family not in {"klines", "trades", "aggTrades"}:
+        raise DataError("unsupported Binance archive family")
     root = "spot" if market == "spot" else f"futures/{market}"
-    name = f"{symbol}-{interval}-{period}.zip"
-    return f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{interval}/{name}"
+    if family == "klines":
+        if _SAFE.fullmatch(interval) is None:
+            raise DataError("invalid Binance archive interval")
+        name = f"{symbol}-{interval}-{period}.zip"
+        return (
+            f"https://data.binance.vision/data/{root}/monthly/{family}/"
+            f"{symbol}/{interval}/{name}"
+        )
+    if interval:
+        raise DataError("Binance trade archives do not accept an interval")
+    name = f"{symbol}-{family}-{period}.zip"
+    return f"https://data.binance.vision/data/{root}/monthly/{family}/{symbol}/{name}"
 
 
 def _fetch_archive_resource(
