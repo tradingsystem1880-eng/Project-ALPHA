@@ -95,6 +95,11 @@ uv run alpha data pull SPY --source tiingo --asset-class etf --venue ARCX --cale
 uv run alpha data pull BTC/USD --source ccxt --exchange coinbase --start 2018-01-01 --end 2024-12-31
 # Yahoo/Stooq remain explicit comparison feeds; neither may silently replace canonical Tiingo.
 
+# Public bulk crypto storage is separately configured. The UUID is mandatory for a removable
+# volume; CI and tests use the isolated `data/bulk` default without acquiring network data.
+# ALPHA_BULK_DATA_DIR=/Volumes/Expansion/Project-ALPHA/crypto-data
+# ALPHA_BULK_VOLUME_UUID=<mounted-volume-uuid>
+
 # 2. (optional) Freeze an immutable, content-hashed snapshot for reproducibility
 uv run alpha data snapshot equities-2024 AAPL SPY --source tiingo
 uv run alpha data snapshot btc-coinbase-2024 BTC/USD --source ccxt --exchange coinbase

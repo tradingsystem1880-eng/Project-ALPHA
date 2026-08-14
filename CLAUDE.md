@@ -142,7 +142,7 @@ Artifacts: new observed runs use manifest/schema, run-identity, and artifact-con
 | `types.py` | Frozen domain values | `Bar` (OHLCV), `ValidationOutcome`, causal `DecisionTrace`/`IndicatorTrace`, deterministic vector `ChartAnchor`/`ChartAnnotationTrace` |
 | `errors.py` | Typed error hierarchy | `AlphaError` ← `DataError`, `LookAheadError` |
 | `protocols.py` | Structural interfaces | `DataSource` (`available_symbols`, `as_of`), `Validator`, `ExecutionEventSink` (flat low-volume operational events only) |
-| `config.py` | Typed settings (env `ALPHA_*`/`.env`) | `AlphaSettings(data_dir=Path("data"), random_seed=7, paper_enabled=False, ibkr_paper_enabled=False)`; `forecast_hub_cache`/`forecast_local_only` = machine-local HF weight cache + no-network loading (never in run ids/manifests; ADR-0010) |
+| `config.py` | Typed settings (env `ALPHA_*`/`.env`) | `AlphaSettings(data_dir=Path("data"), bulk_data_dir=Path("data/bulk"), bulk_volume_uuid=None, random_seed=7, paper_enabled=False, ibkr_paper_enabled=False)`; `forecast_hub_cache`/`forecast_local_only` = machine-local HF weight cache + no-network loading (never in run ids/manifests; ADR-0010) |
 | `corporate.py` | Corporate-action types (two-clock) | `ActionType` (SPLIT/DIVIDEND/REDENOMINATION/SYMBOL_MIGRATION), `CorporateAction` (`knowledge_time`, `knowledge_is_estimated`) |
 
 ### `alpha_data` (`packages/alpha-data/src/alpha_data/`) — ingestion, PIT storage, snapshots.
@@ -161,6 +161,8 @@ Artifacts: new observed runs use manifest/schema, run-identity, and artifact-con
 | `adapters/ccxt_adapter.py` | Crypto daily OHLCV (UTC; validated `coinbase|binance`; **paginated** past per-call caps; venue-qualified provenance) | `SUPPORTED_CCXT_EXCHANGES`, `CCXTAdapter`, `parse_ccxt_ohlcv` (pure) |
 | `adapters/stooq_adapter.py` | Comparison-only EOD OHLCV (FX/commodity/index/ETF; provider-adjusted, no actions). **Anti-bot gated:** browser-UA + SHA-256 PoW solve, then **fails loud** (`_csv_or_raise`) on Stooq's per-IP "Access denied"; never replaces authoritative Tiingo stock/ETF history | `StooqAdapter`, `parse_stooq_csv` (pure) |
 | `adapters/quantpad_adapter.py` | **Research-only** daily bulk sub-slice (ADR-0018/0023): official `api.quantpad.ai` REST only, pinned wire schema that fails loud on drift, content-bound receipts, receipted scratch persistence for `rd_` dataset registration. Never in `data pull`/`_ADAPTERS`; provider capability `research_bars`, `research_authority: false` | `QuantPadAdapter`, `parse_quantpad_bars` (pure), `persist_research_fetch` |
+| `crypto/contracts.py` | Additive family/venue/unit-aware crypto identities, receipts, qualification reports, capabilities, and ordered frozen snapshots; V1 daily contracts are untouched | `CryptoAssetIdentityV1`, `CryptoDatasetIdentityV1`, `CryptoRawReceiptV1`, `CryptoQualityReportV1`, `CryptoSnapshotV1`, `ProviderDatasetCapabilityV1` |
+| `crypto/storage.py` | Expansion-volume UUID/capacity/writability gate, bounded resumable staging, external-first atomic publication, internal-last logical manifests, integrity inventory, and safe cache cleanup | `CryptoBulkStore`, `Capacity`, `StagingHandle`, `macos_volume_uuid` |
 
 ### `alpha_strategies` (`packages/alpha-strategies/src/alpha_strategies/`) — nautilus Strategy + pure decision fns. core only.
 | Module | Responsibility | Key public symbols |

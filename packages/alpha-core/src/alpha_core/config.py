@@ -13,6 +13,10 @@ class AlphaSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ALPHA_", env_file=".env", extra="ignore")
 
     data_dir: Path = Field(default=Path("data"))
+    # Public bulk datasets may live on a separately pinned volume. The internal data directory
+    # remains the authority for manifests, control state, and sensitive metadata.
+    bulk_data_dir: Path = Field(default=Path("data/bulk"))
+    bulk_volume_uuid: str | None = None
     random_seed: int = 7
     # Operational paper sessions are network-bound and nondeterministic. They require an explicit
     # owner opt-in and never enter deterministic research run ids or manifests.
