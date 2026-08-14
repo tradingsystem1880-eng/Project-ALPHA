@@ -201,7 +201,7 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
     if not isinstance(base_address, str) or not isinstance(quote_address, str):
         raise DataError("GeckoTerminal OHLCV contract identity is invalid")
     rows: list[dict[str, object]] = []
-    for point in values:
+    for provider_rank, point in enumerate(values):
         if not isinstance(point, list) or len(point) != 6:
             raise DataError("GeckoTerminal OHLCV point is invalid")
         timestamp = point[0]
@@ -210,6 +210,7 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
         rows.append(
             {
                 "network": network,
+                "provider_rank": provider_rank,
                 "pool_address": pool_address.lower(),
                 "base_token_address": base_address.lower(),
                 "quote_token_address": quote_address.lower(),
@@ -221,7 +222,7 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
                 "volume_usd": _finite(point[5], "volume"),
             }
         )
-    return pl.DataFrame(rows)
+    return pl.DataFrame(rows).sort("timestamp")
 
 
 def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.DataFrame:
@@ -229,11 +230,14 @@ def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.
     if not isinstance(data, list) or any(not isinstance(item, dict) for item in data):
         raise DataError("GeckoTerminal trade data is invalid")
     rows: list[dict[str, object]] = []
-    for record in data:
+    for provider_rank, record in enumerate(data):
         assert isinstance(record, dict)
         attributes = record.get("attributes")
+        trade_id = record.get("id")
         if record.get("type") != "trade" or not isinstance(attributes, dict):
             raise DataError("GeckoTerminal trade record is invalid")
+        if not isinstance(trade_id, str) or not trade_id:
+            raise DataError("GeckoTerminal trade identity record id is invalid")
         timestamp = attributes.get("block_timestamp")
         kind = attributes.get("kind")
         tx_hash = attributes.get("tx_hash")
@@ -254,8 +258,10 @@ def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.
         rows.append(
             {
                 "network": network,
+                "provider_rank": provider_rank,
                 "pool_address": pool_address.lower(),
                 "block_number": attributes.get("block_number"),
+                "trade_id": trade_id,
                 "tx_hash": tx_hash,
                 "timestamp": observed,
                 "kind": kind,
@@ -268,7 +274,7 @@ def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.
                 "volume_usd": _finite(attributes.get("volume_in_usd"), "trade volume"),
             }
         )
-    return pl.DataFrame(rows)
+    return pl.DataFrame(rows).sort(["timestamp", "trade_id"])
 
 
 __all__ = [

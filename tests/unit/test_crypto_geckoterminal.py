@@ -59,17 +59,27 @@ def test_pool_catalog_retains_contract_identity_liquidity_and_transactions() -> 
 def test_pool_ohlcv_preserves_sparse_intervals_and_exact_token_addresses() -> None:
     payload = json.dumps(
         {
-            "data": {"attributes": {"ohlcv_list": [[1700000000, 1, 2, 0.5, 1.5, 10]]}},
+            "data": {
+                "attributes": {
+                    "ohlcv_list": [
+                        [1700003600, 2, 3, 1.5, 2.5, 20],
+                        [1700000000, 1, 2, 0.5, 1.5, 10],
+                    ]
+                }
+            },
             "meta": {
                 "base": {"address": "0xBase", "coingecko_coin_id": "base"},
                 "quote": {"address": "0xQuote", "coingecko_coin_id": "quote"},
             },
         }
     ).encode()
-    row = parse_pool_ohlcv(payload, network="eth", pool_address="0xPool").row(0, named=True)
+    frame = parse_pool_ohlcv(payload, network="eth", pool_address="0xPool")
+    row = frame.row(0, named=True)
     assert row["base_token_address"] == "0xbase"
     assert row["quote_token_address"] == "0xquote"
     assert row["volume_usd"] == 10.0
+    assert row["provider_rank"] == 1
+    assert frame["timestamp"].is_sorted()
 
 
 def test_pool_trades_preserve_transaction_and_contract_identity() -> None:
@@ -77,29 +87,51 @@ def test_pool_trades_preserve_transaction_and_contract_identity() -> None:
         {
             "data": [
                 {
-                    "id": "eth_trade",
+                    "id": "eth_trade_newer",
                     "type": "trade",
                     "attributes": {
-                        "block_number": 123,
+                        "block_number": 124,
                         "tx_hash": "0xabc",
                         "from_token_amount": "0.1",
                         "to_token_amount": "200",
                         "price_from_in_usd": "2000",
                         "price_to_in_usd": "1",
-                        "block_timestamp": "2026-08-14T00:00:00Z",
+                        "block_timestamp": "2026-08-14T00:01:00Z",
                         "kind": "buy",
                         "volume_in_usd": "200",
                         "from_token_address": "0xFrom",
                         "to_token_address": "0xTo",
                     },
-                }
+                },
+                {
+                    "id": "eth_trade_older",
+                    "type": "trade",
+                    "attributes": {
+                        "block_number": 123,
+                        "tx_hash": "0xabc",
+                        "from_token_amount": "0.2",
+                        "to_token_amount": "400",
+                        "price_from_in_usd": "2000",
+                        "price_to_in_usd": "1",
+                        "block_timestamp": "2026-08-14T00:00:00Z",
+                        "kind": "sell",
+                        "volume_in_usd": "400",
+                        "from_token_address": "0xFrom",
+                        "to_token_address": "0xTo",
+                    },
+                },
             ]
         }
     ).encode()
-    row = parse_pool_trades(payload, network="eth", pool_address="0xPool").row(0, named=True)
+    frame = parse_pool_trades(payload, network="eth", pool_address="0xPool")
+    row = frame.row(0, named=True)
+    assert row["trade_id"] == "eth_trade_older"
     assert row["tx_hash"] == "0xabc"
     assert row["from_token_address"] == "0xfrom"
-    assert row["kind"] == "buy"
+    assert row["kind"] == "sell"
+    assert row["provider_rank"] == 1
+    assert frame["trade_id"].n_unique() == 2
+    assert frame["timestamp"].is_sorted()
 
 
 class _Response:

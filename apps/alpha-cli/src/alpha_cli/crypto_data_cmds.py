@@ -1271,7 +1271,7 @@ def _fetch_non_bybit(
                     "trades", network=network, pool_address=pool_address, params=params_gt
                 )
                 parser = partial(parse_pool_trades, network=network, pool_address=pool_address)
-                keys = ("network", "pool_address", "tx_hash")
+                keys = ("network", "pool_address", "trade_id")
                 endpoint = "trades"
             payload = fetch_geckoterminal_public(url)
             observed_column = "timestamp"
