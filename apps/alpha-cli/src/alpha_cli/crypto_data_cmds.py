@@ -37,6 +37,7 @@ from alpha_data.crypto.contracts import (
 )
 from alpha_data.crypto.ingestion import ingest_provider_pages, ingest_provider_payload
 from alpha_data.crypto.providers.binance import (
+    archive_checksum_sha256,
     archive_url,
     binance_public_api_url,
     fetch_binance_archive,
@@ -831,7 +832,8 @@ def storage_inventory(json_out: bool = typer.Option(False, "--json", help="emit 
             "counts_by_kind": counts,
             "bytes_by_kind": artifact_bytes,
             "cache_bytes": store.cache_size(),
-            "staging_count": len(tuple(store.staging_root.glob("*/staging.json"))),
+            "staging_count": len(tuple(store.staging_root.rglob("staging.json")))
+            + len(tuple(store.staging_root.rglob("download.json"))),
             "private_paths_exposed": False,
             "next_action": "Run storage-verify before relying on frozen snapshots.",
         },
@@ -1309,6 +1311,7 @@ def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
     instrument: str,
+    staging_root: Path,
     *,
     base: str,
     quote: str,
@@ -1489,8 +1492,9 @@ def _fetch_non_bybit(
                 interval,
                 period,
             )
-            archive_payload = fetch_binance_archive(url)
             checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
+            expected_checksum = archive_checksum_sha256(checksum)
+            archive_payload = fetch_binance_archive(url, staging_root, expected_checksum)
             verify_archive_checksum(archive_payload, checksum)
             archive_params = {
                 "market": market,
@@ -1876,6 +1880,7 @@ def acquire(
                 provider,
                 dataset_family,
                 instrument,
+                store.staging_root,
                 base=base,
                 quote=quote,
                 category=category,

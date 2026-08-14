@@ -7,9 +7,11 @@ import hashlib
 import io
 import json
 import math
+import os
 import re
 import zipfile
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Final, Literal
 
 import polars as pl
@@ -321,14 +323,20 @@ def parse_binance_archive_zip(
 
 def verify_archive_checksum(payload: bytes, checksum_payload: bytes) -> None:
     """Verify one official SHA-256 checksum sidecar."""
+    expected = archive_checksum_sha256(checksum_payload)
+    if hashlib.sha256(payload).hexdigest() != expected:
+        raise DataError("Binance archive checksum does not match exact bytes")
+
+
+def archive_checksum_sha256(checksum_payload: bytes) -> str:
+    """Parse the exact official sidecar without trusting its filename text."""
     try:
         expected = checksum_payload.decode("ascii").strip().split()[0].lower()
     except (UnicodeDecodeError, IndexError) as exc:
         raise DataError("Binance archive checksum sidecar is malformed") from exc
     if not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise DataError("Binance archive checksum sidecar is malformed")
-    if hashlib.sha256(payload).hexdigest() != expected:
-        raise DataError("Binance archive checksum does not match exact bytes")
+    return expected
 
 
 def archive_url(
@@ -450,9 +458,189 @@ def _fetch_archive_resource(
     return payload
 
 
-def fetch_binance_archive(url: str, *, timeout_seconds: int = 120) -> bytes:
+def _download_identity(url: str, expected_sha256: str, max_bytes: int) -> str:
+    canonical = json.dumps(
+        {"expected_sha256": expected_sha256, "max_bytes": max_bytes, "url": url},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _content_length(raw: str | None, *, label: str) -> int | None:
+    if raw is None:
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise DataError(f"Binance archive {label} is invalid") from exc
+    if value < 0:
+        raise DataError(f"Binance archive {label} is invalid")
+    return value
+
+
+def _resume_binance_archive(
+    url: str,
+    staging_root: Path,
+    expected_sha256: str,
+    *,
+    timeout_seconds: int,
+) -> bytes:
+    import http.client  # noqa: PLC0415
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    max_bytes = 512 * 1024 * 1024
+    if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
+        raise DataError("Binance archive expected checksum is invalid")
+    request_id = _download_identity(url, expected_sha256, max_bytes)
+    root = staging_root / "downloads" / request_id
+    metadata_path = root / "download.json"
+    payload_path = root / "payload.part"
+    cache_path = staging_root.parent / "cache" / "downloads" / f"{expected_sha256}.zip"
+    expected_metadata = {
+        "contract": "BinanceArchiveDownloadV1",
+        "expected_sha256": expected_sha256,
+        "max_bytes": max_bytes,
+        "url": url,
+    }
+    if cache_path.exists():
+        if not cache_path.is_file() or cache_path.is_symlink():
+            raise DataError("Binance archive cache path is unsafe")
+        cached = cache_path.read_bytes()
+        if len(cached) > max_bytes or hashlib.sha256(cached).hexdigest() != expected_sha256:
+            raise DataError("Binance archive cache does not match its checksum identity")
+        return cached
+
+    root.mkdir(parents=True, exist_ok=True)
+    if root.is_symlink():
+        raise DataError("Binance archive staging path is unsafe")
+    if metadata_path.exists():
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DataError("Binance archive resume metadata is unreadable") from exc
+        if metadata != expected_metadata:
+            raise DataError("Binance archive resume metadata does not match the request")
+    else:
+        temporary = metadata_path.with_suffix(".json.tmp")
+        temporary.write_text(
+            json.dumps(expected_metadata, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        os.replace(temporary, metadata_path)
+    if payload_path.exists() and (not payload_path.is_file() or payload_path.is_symlink()):
+        raise DataError("Binance archive partial path is unsafe")
+    offset = payload_path.stat().st_size if payload_path.exists() else 0
+    if offset > max_bytes:
+        raise DataError("Binance archive partial exceeds the byte limit")
+
+    headers = {"Accept-Encoding": "identity", "User-Agent": "Project-ALPHA/1.0"}
+    if offset:
+        headers["Range"] = f"bytes={offset}-"
+    request = urllib.request.Request(url, headers=headers)
+    total_bytes: int | None = None
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            if not str(response.geturl()).startswith("https://data.binance.vision/data/"):
+                raise DataError("Binance archive redirect host is invalid")
+            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
+            if content_type not in {"application/zip", "application/octet-stream"}:
+                raise DataError("Binance archive response MIME is invalid")
+            if str(response.headers.get("Content-Encoding", "identity")).lower() != "identity":
+                raise DataError("Binance archive response encoding is invalid")
+            status = int(getattr(response, "status", response.getcode()))
+            response_length = _content_length(
+                response.headers.get("Content-Length"), label="content length"
+            )
+            if offset:
+                if status != 206:
+                    raise DataError("Binance archive server refused the exact resume range")
+                content_range = str(response.headers.get("Content-Range", ""))
+                match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)", content_range)
+                if match is None or int(match.group(1)) != offset:
+                    raise DataError("Binance archive resume range is invalid")
+                end = int(match.group(2))
+                total_bytes = int(match.group(3))
+                if end < offset or end + 1 != total_bytes:
+                    raise DataError("Binance archive resume range is incomplete")
+                if response_length is not None and response_length != end - offset + 1:
+                    raise DataError("Binance archive resume length is inconsistent")
+            else:
+                if status != 200:
+                    raise DataError("Binance archive initial response status is invalid")
+                total_bytes = response_length
+            if total_bytes is not None and total_bytes > max_bytes:
+                raise DataError("Binance archive response exceeds the byte limit")
+            mode = "ab" if offset else "wb"
+            with payload_path.open(mode) as stream:
+                while chunk := response.read(1024 * 1024):
+                    if stream.tell() + len(chunk) > max_bytes:
+                        raise DataError("Binance archive response exceeds the byte limit")
+                    stream.write(chunk)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+    except DataError:
+        raise
+    except (
+        http.client.HTTPException,
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+    ) as exc:
+        raise DataError("Binance archive request interrupted; rerun to resume") from exc
+
+    actual_size = payload_path.stat().st_size
+    if total_bytes is not None and actual_size != total_bytes:
+        raise DataError("Binance archive request interrupted; rerun to resume")
+    actual_sha256 = _sha256_path(payload_path)
+    if actual_sha256 != expected_sha256:
+        quarantine = root.with_name(f"{root.name}.corrupt-{actual_sha256[:12]}")
+        if quarantine.exists():
+            raise DataError("Binance archive corrupt quarantine already exists")
+        os.replace(root, quarantine)
+        raise DataError("Binance archive checksum does not match exact resumed bytes")
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(payload_path, cache_path)
+    metadata_path.unlink()
+    root.rmdir()
+    downloads_root = root.parent
+    if not any(downloads_root.iterdir()):
+        downloads_root.rmdir()
+    return cache_path.read_bytes()
+
+
+def _sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def fetch_binance_archive(
+    url: str,
+    staging_root: Path | None = None,
+    expected_sha256: str | None = None,
+    *,
+    timeout_seconds: int = 120,
+) -> bytes:
     if not url.endswith(".zip"):
         raise DataError("Binance archive URL must identify a ZIP")
+    if not 1 <= timeout_seconds <= 120:
+        raise DataError("Binance archive timeout must be between 1 and 120 seconds")
+    if not url.startswith("https://data.binance.vision/data/"):
+        raise DataError("Binance archive host is invalid")
+    if (staging_root is None) != (expected_sha256 is None):
+        raise DataError("Binance archive resumability requires staging and checksum together")
+    if staging_root is not None and expected_sha256 is not None:
+        return _resume_binance_archive(
+            url,
+            Path(staging_root),
+            expected_sha256,
+            timeout_seconds=timeout_seconds,
+        )
     return _fetch_archive_resource(
         url,
         timeout_seconds=timeout_seconds,

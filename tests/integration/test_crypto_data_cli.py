@@ -1386,20 +1386,18 @@ def test_changed_binance_archive_is_versioned_and_quarantined_as_unexplained(
         return output.getvalue()
 
     first_payload, second_payload = zipped("42500"), zipped("42600")
-    payloads = iter((first_payload, second_payload))
     current: list[bytes] = []
+    payloads = iter((first_payload, second_payload))
 
     def fetch_archive(*_args: object) -> bytes:
-        payload = next(payloads)
-        current[:] = [payload]
-        return payload
+        return current[0]
+
+    def fetch_checksum(*_args: object) -> bytes:
+        current[:] = [next(payloads)]
+        return f"{hashlib.sha256(current[0]).hexdigest()} file.zip\n".encode()
 
     monkeypatch.setattr(crypto_data_cmds, "fetch_binance_archive", fetch_archive)
-    monkeypatch.setattr(
-        crypto_data_cmds,
-        "fetch_binance_checksum",
-        lambda *_args: f"{hashlib.sha256(current[0]).hexdigest()} file.zip\n".encode(),
-    )
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_checksum", fetch_checksum)
     command = [
         "crypto-data",
         "acquire",

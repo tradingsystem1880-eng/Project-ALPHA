@@ -56,7 +56,11 @@ root. `ALPHA_BULK_DATA_DIR` selects that root and `ALPHA_BULK_VOLUME_UUID` pins 
 Before acquisition ALPHA verifies the mounted volume identity, writability, and a reserve of at
 least 15 percent and 100 GB. External content is atomically published first and the internal
 manifest is the final completion marker. Missing, substituted, low-space, interrupted, or tampered
-storage fails closed.
+storage fails closed. Binance archive acquisition fetches the official checksum first, preserves
+interrupted bytes only under request-and-checksum-bound staging metadata, and resumes only when the
+server returns the exact remaining HTTP byte range. Completed checksum-verified ZIPs may enter the
+explicitly disposable external cache; an ignored range, changed checksum, or mismatched bytes fails
+without splicing provider responses or publishing a manifest.
 
 Research consumes one exact qualified `CryptoSnapshotV1`. Dataset identity includes provider,
 venue, market type, family, instrument, frequency, units, and timestamp convention. Asset joins use

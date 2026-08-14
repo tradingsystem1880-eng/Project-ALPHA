@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import io
+import urllib.request
 import zipfile
 from datetime import UTC, datetime
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -12,6 +14,7 @@ from alpha_core import DataError
 from alpha_data.crypto.providers.binance import (
     archive_url,
     binance_public_api_url,
+    fetch_binance_archive,
     parse_binance_aggregate_trades,
     parse_binance_archive_zip,
     parse_binance_book_snapshot,
@@ -21,6 +24,39 @@ from alpha_data.crypto.providers.binance import (
     reconcile_archive_tail,
     verify_archive_checksum,
 )
+
+
+class _ArchiveResponse:
+    def __init__(
+        self,
+        chunks: list[bytes | BaseException],
+        *,
+        status: int,
+        headers: dict[str, str],
+        url: str,
+    ) -> None:
+        self._chunks = iter(chunks)
+        self.status = status
+        self.headers = headers
+        self._url = url
+
+    def __enter__(self) -> _ArchiveResponse:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def geturl(self) -> str:
+        return self._url
+
+    def getcode(self) -> int:
+        return self.status
+
+    def read(self, _size: int = -1) -> bytes:
+        value = next(self._chunks, b"")
+        if isinstance(value, BaseException):
+            raise value
+        return value
 
 
 def test_archive_parser_preserves_native_kline_fields() -> None:
@@ -108,6 +144,89 @@ def test_checksum_and_archive_paths_fail_loud() -> None:
     )
     with pytest.raises(DataError, match="market"):
         archive_url("options", "klines", "BTCUSDT", "1d", "2026-07")  # type: ignore[arg-type]
+
+
+def test_archive_download_resumes_exact_partial_and_caches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/file.zip"
+    payload = b"abcdef"
+    expected = hashlib.sha256(payload).hexdigest()
+    requests: list[urllib.request.Request] = []
+
+    def urlopen(request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        assert timeout == 120
+        requests.append(request)
+        if len(requests) == 1:
+            assert request.get_header("Range") is None
+            return _ArchiveResponse(
+                [b"abc", OSError("connection reset")],
+                status=200,
+                headers={"Content-Type": "application/zip", "Content-Length": "6"},
+                url=url,
+            )
+        assert request.get_header("Range") == "bytes=3-"
+        return _ArchiveResponse(
+            [b"def", b""],
+            status=206,
+            headers={
+                "Content-Type": "application/zip",
+                "Content-Length": "3",
+                "Content-Range": "bytes 3-5/6",
+            },
+            url=url,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    staging = tmp_path / "staging"
+    with pytest.raises(DataError, match="rerun to resume"):
+        fetch_binance_archive(url, staging, expected)
+    partial = tuple(staging.rglob("payload.part"))
+    assert len(partial) == 1
+    assert partial[0].read_bytes() == b"abc"
+
+    assert fetch_binance_archive(url, staging, expected) == payload
+    assert [request.get_header("Range") for request in requests] == [None, "bytes=3-"]
+    assert not tuple(staging.rglob("payload.part"))
+    assert (tmp_path / "cache" / "downloads" / f"{expected}.zip").read_bytes() == payload
+
+    assert fetch_binance_archive(url, staging, expected) == payload
+    assert len(requests) == 2
+
+
+def test_archive_download_rejects_server_that_ignores_resume_range(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/file.zip"
+    payload = b"abcdef"
+    expected = hashlib.sha256(payload).hexdigest()
+    calls = 0
+
+    def urlopen(request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return _ArchiveResponse(
+                [b"abc", OSError("connection reset")],
+                status=200,
+                headers={"Content-Type": "application/zip", "Content-Length": "6"},
+                url=url,
+            )
+        assert request.get_header("Range") == "bytes=3-"
+        return _ArchiveResponse(
+            [payload],
+            status=200,
+            headers={"Content-Type": "application/zip", "Content-Length": "6"},
+            url=url,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    staging = tmp_path / "staging"
+    with pytest.raises(DataError, match="rerun to resume"):
+        fetch_binance_archive(url, staging, expected)
+    with pytest.raises(DataError, match="refused the exact resume range"):
+        fetch_binance_archive(url, staging, expected)
+    assert next(staging.rglob("payload.part")).read_bytes() == b"abc"
 
 
 def test_rest_tail_reconciliation_rejects_revisions_and_deduplicates() -> None:
