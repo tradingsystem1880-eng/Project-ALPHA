@@ -18,6 +18,8 @@ from alpha_web.api.models import (
     CryptoQualityResponse,
     CryptoSnapshotCreateRequest,
     CryptoSnapshotCreateResponse,
+    CryptoSnapshotRegisterRequest,
+    CryptoSnapshotRegisterResponse,
     CryptoSnapshotVerifyRequest,
     CryptoSnapshotVerifyResponse,
     CryptoStorageResponse,
@@ -144,3 +146,23 @@ def snapshot_verify(snapshot_id: str, req: CryptoSnapshotVerifyRequest) -> Any:
         args.extend(("--required-family", family))
     args.extend(("--purpose", req.purpose, "--json"))
     return _project(args)
+
+
+@router.post(
+    "/snapshots/{snapshot_id}/register",
+    response_model=CryptoSnapshotRegisterResponse,
+)
+def snapshot_register(snapshot_id: str, req: CryptoSnapshotRegisterRequest) -> Any:
+    if len(snapshot_id) != 64 or any(char not in "0123456789abcdef" for char in snapshot_id):
+        raise HTTPException(status_code=422, detail="crypto snapshot id is invalid")
+    return _project(
+        [
+            "research",
+            "data",
+            "register-crypto",
+            snapshot_id,
+            "--symbol",
+            req.symbol.upper(),
+            "--json",
+        ]
+    )

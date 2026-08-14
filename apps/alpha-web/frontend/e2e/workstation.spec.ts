@@ -1400,6 +1400,25 @@ function responseFor(route: Route, options: MockOptions): unknown {
       execution_authority: false,
     } satisfies components['schemas']['CryptoSnapshotVerifyResponse']
   }
+  if (url.pathname === `/api/crypto-data/snapshots/${CRYPTO_SNAPSHOT_ID}/register`) {
+    return {
+      ref_id: `rd_${'c'.repeat(64)}`,
+      dataset_kind: 'snapshot',
+      instrument: 'BTC',
+      provider: 'crypto-data-house',
+      start_ts: '2026-08-15T00:00:00Z',
+      end_ts: '2026-08-15T00:00:00Z',
+      bar_duration_minutes: null,
+      origin: {
+        snapshot_id: CRYPTO_SNAPSHOT_ID,
+        manifest_sha256: 'd'.repeat(64),
+        snapshot_schema: 'CryptoSnapshotV1',
+      },
+      research_only: true,
+      registered_by: 'owner',
+      registered_at: '2026-08-15T00:00:00Z',
+    } satisfies components['schemas']['CryptoSnapshotRegisterResponse']
+  }
   if (url.pathname === `/api/crypto-data/quality/${CRYPTO_OPTION_MANIFEST_ID}`) {
     return {
       manifest_id: CRYPTO_OPTION_MANIFEST_ID,
@@ -2001,6 +2020,10 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await center.getByRole('button', { name: 'Verify for research', exact: true }).click()
   await expect(center.getByText('ELIGIBLE', { exact: true })).toBeVisible()
   await expect(center.getByText(new RegExp(CRYPTO_SNAPSHOT_ID))).toBeHidden()
+  await center.getByRole('button', { name: 'Register research-only dataset', exact: true }).click()
+  await expect(center.getByText('REGISTERED · RESEARCH ONLY', { exact: true })).toBeVisible()
+  await expect(center.getByText(/does not make an incompatible case executable/)).toBeVisible()
+  await expect(center.getByText(new RegExp(`rd_${'c'.repeat(64)}`))).toBeHidden()
 
   const qualifiedOption = center.locator('.crypto-dataset').filter({ hasText: 'USDT' }).first()
   await qualifiedOption.getByRole('button', { name: 'Quality', exact: true }).click()

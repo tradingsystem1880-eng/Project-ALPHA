@@ -92,6 +92,20 @@ def test_proposal_options_are_executable_atomic_bundles_with_exact_prerequisites
             "notes": [],
         },
     )
+    crypto = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2026-08-04T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "b" * 64,
+            "manifest_sha256": "c" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
 
     options = _invoke("proposal-options", project_id)
     assert options["approval_ready"] is True
@@ -103,6 +117,9 @@ def test_proposal_options_are_executable_atomic_bundles_with_exact_prerequisites
         cast(list[dict[str, object]], options["compatible_datasets"])[0]["ref_id"]
         == dataset["ref_id"]
     )
+    assert crypto["ref_id"] not in {
+        row["ref_id"] for row in cast(list[dict[str, object]], options["compatible_datasets"])
+    }
     bundles = cast(list[dict[str, object]], options["valid_answer_bundles"])
     assert {
         (

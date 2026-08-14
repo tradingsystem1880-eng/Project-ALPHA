@@ -2855,6 +2855,97 @@
         "title": "CryptoSnapshotCreateResponse",
         "type": "object"
       },
+      "CryptoSnapshotRegisterRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "symbol": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "CryptoSnapshotRegisterRequest",
+        "type": "object"
+      },
+      "CryptoSnapshotRegisterResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bar_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bar Duration Minutes"
+          },
+          "dataset_kind": {
+            "const": "snapshot",
+            "title": "Dataset Kind",
+            "type": "string"
+          },
+          "end_ts": {
+            "title": "End Ts",
+            "type": "string"
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "provider": {
+            "const": "crypto-data-house",
+            "title": "Provider",
+            "type": "string"
+          },
+          "ref_id": {
+            "pattern": "^rd_[0-9a-f]{64}$",
+            "title": "Ref Id",
+            "type": "string"
+          },
+          "registered_at": {
+            "title": "Registered At",
+            "type": "string"
+          },
+          "registered_by": {
+            "title": "Registered By",
+            "type": "string"
+          },
+          "research_only": {
+            "const": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "start_ts": {
+            "title": "Start Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref_id",
+          "dataset_kind",
+          "instrument",
+          "provider",
+          "start_ts",
+          "end_ts",
+          "bar_duration_minutes",
+          "origin",
+          "research_only",
+          "registered_by",
+          "registered_at"
+        ],
+        "title": "CryptoSnapshotRegisterResponse",
+        "type": "object"
+      },
       "CryptoSnapshotVerifyRequest": {
         "additionalProperties": false,
         "properties": {
@@ -17309,6 +17400,58 @@
           }
         },
         "summary": "Snapshot Create",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/snapshots/{snapshot_id}/register": {
+      "post": {
+        "operationId": "snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoSnapshotRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoSnapshotRegisterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Snapshot Register",
         "tags": [
           "crypto-data"
         ]

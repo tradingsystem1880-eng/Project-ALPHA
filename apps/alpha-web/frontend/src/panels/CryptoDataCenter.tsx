@@ -11,6 +11,7 @@ import type {
   CryptoFamily,
   CryptoQuality,
   CryptoSnapshotCreate,
+  CryptoSnapshotRegister,
   CryptoSnapshotVerify,
   CryptoStorage,
 } from '../api/types'
@@ -66,7 +67,7 @@ function bytesLabel(value: number | null | undefined): string {
   return `${size.toFixed(unit < 2 ? 0 : 1)} ${units[unit]}`
 }
 
-export function CryptoDataCenter() {
+export function CryptoDataCenter({ onRegistered }: { onRegistered?: () => void }) {
   const [section, setSection] = useState<CryptoDataSection>('derivatives')
   const [catalog, setCatalog] = useState<CryptoCatalog | null>(null)
   const [storage, setStorage] = useState<CryptoStorage | null>(null)
@@ -95,6 +96,7 @@ export function CryptoDataCenter() {
   const [jobFinished, setJobFinished] = useState(false)
   const [snapshot, setSnapshot] = useState<CryptoSnapshotCreate | null>(null)
   const [verification, setVerification] = useState<CryptoSnapshotVerify | null>(null)
+  const [registration, setRegistration] = useState<CryptoSnapshotRegister | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
 
   const load = useCallback(async (refresh = false) => {
@@ -149,6 +151,7 @@ export function CryptoDataCenter() {
     setEstimate(null)
     setSnapshot(null)
     setVerification(null)
+    setRegistration(null)
   }, [family, instrument, base, quote, category, frequency, days])
 
   const provider = acquisitionProvider(
@@ -167,6 +170,11 @@ export function CryptoDataCenter() {
     return cryptoSectionForFamily(item.family) === section
   })
   const latestManifestIds = latestCryptoManifestIds(visibleCoverage)
+  const selectedBaseAssets = new Set(
+    (coverage?.items ?? [])
+      .filter((item) => selected.has(item.manifest_id) && item.base_asset)
+      .map((item) => item.base_asset as string),
+  )
 
   async function estimateAcquisition(): Promise<void> {
     setBusyAction('estimate')
@@ -251,6 +259,23 @@ export function CryptoDataCenter() {
       }))
     } catch (reason: unknown) {
       setVerification(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function registerSnapshot(): Promise<void> {
+    if (!snapshot || !verification?.eligible || selectedBaseAssets.size !== 1) return
+    setBusyAction('register')
+    setError(null)
+    try {
+      setRegistration(
+        await api.cryptoSnapshotRegister(snapshot.snapshot_id, [...selectedBaseAssets][0]),
+      )
+      onRegistered?.()
+    } catch (reason: unknown) {
+      setRegistration(null)
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
       setBusyAction(null)
@@ -405,7 +430,9 @@ export function CryptoDataCenter() {
           {snapshot ? <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void verifySnapshot()}>{busyAction === 'verify' ? 'Verifying…' : 'Verify for research'}</button> : null}
         </div>
         {snapshot ? <div className="crypto-detail"><strong>Frozen · {snapshot.member_count} members</strong><span>{snapshot.families.map((item) => item.replaceAll('_', ' ')).join(' · ')}</span><span className="mono muted advanced-only">snapshot {snapshot.snapshot_id}</span></div> : null}
-        {verification ? <div className={`workbench-notice ${verification.eligible ? '' : 'fail'}`} role="status"><strong>{verification.eligible ? 'ELIGIBLE' : 'BLOCKED'}</strong><span>{verification.next_action}{verification.blockers.length ? ` ${verification.blockers.join('; ')}` : ''}</span></div> : null}
+        {verification ? <div className={`workbench-notice ${verification.eligible ? '' : 'fail'}`} role="status"><strong>{verification.eligible ? 'ELIGIBLE' : 'BLOCKED'}</strong><span>{verification.eligible ? 'Register this immutable snapshot for compatible research proposals.' : `${verification.next_action}${verification.blockers.length ? ` ${verification.blockers.join('; ')}` : ''}`}</span></div> : null}
+        {verification?.eligible ? <div className="crypto-actions"><button className="btn primary" type="button" disabled={busyAction !== null || selectedBaseAssets.size !== 1 || registration !== null} onClick={() => void registerSnapshot()}>{busyAction === 'register' ? 'Registering…' : registration ? 'Registered for research' : 'Register research-only dataset'}</button>{selectedBaseAssets.size !== 1 ? <span className="muted">Select datasets for exactly one base asset before registration.</span> : null}</div> : null}
+        {registration ? <div className="workbench-notice" role="status"><strong>REGISTERED · RESEARCH ONLY</strong><span>Available to compatible proposal operators; registration does not make an incompatible case executable.</span><span className="mono muted advanced-only">{registration.ref_id}</span></div> : null}
       </section>
 
       {section === 'storage' && storage ? (

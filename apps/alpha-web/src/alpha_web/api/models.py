@@ -886,6 +886,24 @@ class CryptoSnapshotVerifyResponse(StrictModel):
     execution_authority: Literal[False]
 
 
+class CryptoSnapshotRegisterRequest(StrictModel):
+    symbol: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9-]+$")
+
+
+class CryptoSnapshotRegisterResponse(StrictModel):
+    ref_id: str = Field(pattern=r"^rd_[0-9a-f]{64}$")
+    dataset_kind: Literal["snapshot"]
+    instrument: str
+    provider: Literal["crypto-data-house"]
+    start_ts: str
+    end_ts: str
+    bar_duration_minutes: int | None
+    origin: JsonObject
+    research_only: Literal[True]
+    registered_by: str
+    registered_at: str
+
+
 type JsonScalar = str | int | float | bool | None
 type JsonObject = dict[str, JsonValue]
 

@@ -1,7 +1,7 @@
 // Research Data Explorer — "what data do we have, is it trustworthy, can it answer the
 // question?" Registered research-only dataset refs with their exact origin bindings and
-// latest audit findings, plus the stored-symbol inventory. Registration and audits are
-// owner-CLI operations; this panel is a read plane.
+// latest audit findings, plus the stored-symbol inventory. Qualified CryptoSnapshotV1
+// registration is a typed explicit UI action; legacy registration and audits remain CLI-only.
 
 import { useEffect, useState } from 'react'
 
@@ -31,6 +31,7 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [boundDatasetRefId, setBoundDatasetRefId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [datasetRevision, setDatasetRevision] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -58,7 +59,7 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
     return () => {
       live = false
     }
-  }, [panelLink.linked.projectId])
+  }, [panelLink.linked.projectId, datasetRevision])
 
   const boundDataset = datasets?.find((row) => row.ref_id === boundDatasetRefId) ?? null
   const availableDatasets = (datasets ?? []).filter((row) => row.ref_id !== boundDatasetRefId)
@@ -95,7 +96,7 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
             <span>{error}</span>
           </div>
         ) : null}
-        <CryptoDataCenter />
+        <CryptoDataCenter onRegistered={() => setDatasetRevision((value) => value + 1)} />
         <div className="rd-head">Research-case dataset bindings</div>
         <section aria-label="Dataset bound to current research contract">
           <div className="rd-head">Bound to the current contract</div>
@@ -116,8 +117,8 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
           <div className="rd-head">Globally available · not automatically bound</div>
           {datasets !== null && datasets.length === 0 ? (
             <Placeholder big="NO REGISTERED DATASETS">
-              Register data fail-closed against its exact receipt or provenance bytes:
-              alpha research data register SYMBOL --kind snapshot|store-slice|quantpad …
+              Freeze, verify, and register a crypto snapshot above, or register legacy data
+              fail-closed against its exact receipt or provenance bytes from the trusted CLI.
             </Placeholder>
           ) : null}
           {availableDatasets.map((row) => <DatasetRow key={row.ref_id} row={row} />)}

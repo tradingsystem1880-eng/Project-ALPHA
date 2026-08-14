@@ -172,7 +172,10 @@ native mapping; ticker-only joins fail. Existing CCXT snapshots and the `ccxt:bi
 path are unchanged. Cursor-based Bybit ranges freeze each exact response as its own raw receipt;
 their one normalized artifact commits to every ordered raw manifest. The typed Workstation Crypto
 Data Center projects this same catalog, coverage, quality, storage, acquisition, and snapshot seam;
-its Guided and Advanced modes share identical server authority.
+its Guided and Advanced modes share identical server authority. An explicit typed registration
+re-verifies every external member before recording the snapshot through the historical research
+`snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
+when a registered operator declares compatibility.
 
 ### 4.3 Canonical strategy/validation flow
 

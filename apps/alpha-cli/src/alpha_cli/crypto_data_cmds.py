@@ -69,6 +69,7 @@ from alpha_data.crypto.providers.geckoterminal import (
     parse_top_pools,
 )
 from alpha_data.crypto.research import (
+    CryptoResearchEligibilityV1,
     CryptoResearchPurpose,
     assess_crypto_snapshot,
 )
@@ -282,6 +283,79 @@ def _read_snapshot(snapshot_id: str) -> CryptoSnapshotV1:
     except (OSError, json.JSONDecodeError) as exc:
         raise DataError("crypto snapshot is unavailable or corrupt") from exc
     return CryptoSnapshotV1.from_dict(raw)
+
+
+def _verified_snapshot(
+    snapshot_id: str,
+    *,
+    required_families: tuple[CryptoFamily, ...],
+    purpose: CryptoResearchPurpose,
+) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1]:
+    snapshot = _read_snapshot(snapshot_id)
+    store = _bulk_store()
+    by_membership = {
+        (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
+        for manifest in store.inventory()
+        if manifest.get("artifact_kind") == "normalized"
+    }
+    reports: dict[str, CryptoQualityReportV1] = {}
+    for member in snapshot.members:
+        manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
+        if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
+            raise DataError("crypto snapshot member manifest is missing or mismatched")
+        reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(
+            manifest.get("quality")
+        )
+    projection = assess_crypto_snapshot(
+        snapshot,
+        quality_reports=reports,
+        required_families=required_families,
+        purpose=purpose,
+    )
+    return snapshot, reports, projection
+
+
+def crypto_snapshot_registration(snapshot_id: str, *, symbol: str) -> dict[str, object]:
+    """Reverify and project one immutable crypto snapshot for research-only registration."""
+    clean_symbol = symbol.strip().upper()
+    if not clean_symbol or not clean_symbol.replace("-", "").isalnum():
+        raise DataError("crypto snapshot registration symbol is invalid")
+    snapshot, reports, projection = _verified_snapshot(
+        snapshot_id, required_families=(), purpose="research"
+    )
+    if not projection.eligible:
+        raise DataError(
+            f"crypto snapshot is not research eligible: {', '.join(projection.blockers)}"
+        )
+    if not any(
+        member.dataset.base_asset == clean_symbol or member.dataset.instrument == clean_symbol
+        for member in snapshot.members
+    ):
+        raise DataError("crypto snapshot does not contain the requested asset identity")
+    starts = [report.observed_start for report in reports.values()]
+    ends = [report.observed_end for report in reports.values()]
+    if any(value is None for value in starts) or any(value is None for value in ends):
+        raise DataError("crypto snapshot has no complete observed range for registration")
+    frequencies = {member.dataset.frequency for member in snapshot.members}
+    bar_minutes = None
+    if len(frequencies) == 1:
+        bar_minutes = {"1m": 1, "5m": 5, "1h": 60, "1d": 1_440}.get(
+            next(iter(frequencies))
+        )
+    snapshot_path = _snapshot_root() / f"{snapshot.snapshot_id}.json"
+    return {
+        "dataset_kind": "snapshot",
+        "instrument": clean_symbol,
+        "provider": "crypto-data-house",
+        "start_ts": min(cast(datetime, value) for value in starts).isoformat(),
+        "end_ts": max(cast(datetime, value) for value in ends).isoformat(),
+        "bar_duration_minutes": bar_minutes,
+        "origin": {
+            "snapshot_id": snapshot.snapshot_id,
+            "manifest_sha256": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+    }
 
 
 @crypto_data_app.command("catalog")
@@ -1244,25 +1318,8 @@ def snapshot_verify(
         raise typer.BadParameter("--purpose must be research, validation, or execution_price")
     try:
         required = tuple(_family(family) for family in (required_families or []))
-        snapshot = _read_snapshot(snapshot_id)
-        store = _bulk_store()
-        inventory = store.inventory()
-        by_membership = {
-            (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
-            for manifest in inventory
-            if manifest.get("artifact_kind") == "normalized"
-        }
-        reports: dict[str, CryptoQualityReportV1] = {}
-        for member in snapshot.members:
-            manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
-            if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
-                raise DataError("crypto snapshot member manifest is missing or mismatched")
-            reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(
-                manifest.get("quality")
-            )
-        projection = assess_crypto_snapshot(
-            snapshot,
-            quality_reports=reports,
+        snapshot, _, projection = _verified_snapshot(
+            snapshot_id,
             required_families=required,
             purpose=cast(CryptoResearchPurpose, purpose),
         )
@@ -1287,4 +1344,4 @@ def snapshot_verify(
     )
 
 
-__all__ = ["crypto_data_app"]
+__all__ = ["crypto_data_app", "crypto_snapshot_registration"]

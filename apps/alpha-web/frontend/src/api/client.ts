@@ -16,6 +16,7 @@ import type {
   CryptoEstimateRequest,
   CryptoQuality,
   CryptoSnapshotCreate,
+  CryptoSnapshotRegister,
   CryptoSnapshotVerify,
   CryptoSnapshotVerifyRequest,
   CryptoStorage,
@@ -328,6 +329,11 @@ export const api = {
     body: CryptoSnapshotVerifyRequest,
   ): Promise<CryptoSnapshotVerify> =>
     postJSON(`/api/crypto-data/snapshots/${encodeURIComponent(snapshotId)}/verify`, body),
+  cryptoSnapshotRegister: (
+    snapshotId: string,
+    symbol: string,
+  ): Promise<CryptoSnapshotRegister> =>
+    postJSON(`/api/crypto-data/snapshots/${encodeURIComponent(snapshotId)}/register`, { symbol }),
   providerCheck: (providerId: string): Promise<ProviderCheckReceipt> =>
     postJSON(`/api/providers/${encodeURIComponent(providerId)}/check`, {}),
   system: (): Promise<SystemStatus> => getJSON('/api/system'),

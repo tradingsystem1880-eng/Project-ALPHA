@@ -205,6 +205,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/snapshots/{snapshot_id}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot Register */
+        post: operations["snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/snapshots/{snapshot_id}/verify": {
         parameters: {
             query?: never;
@@ -4232,6 +4249,44 @@ export interface components {
              * @constant
              */
             state: "frozen";
+        };
+        /** CryptoSnapshotRegisterRequest */
+        CryptoSnapshotRegisterRequest: {
+            /** Symbol */
+            symbol: string;
+        };
+        /** CryptoSnapshotRegisterResponse */
+        CryptoSnapshotRegisterResponse: {
+            /** Bar Duration Minutes */
+            bar_duration_minutes: number | null;
+            /**
+             * Dataset Kind
+             * @constant
+             */
+            dataset_kind: "snapshot";
+            /** End Ts */
+            end_ts: string;
+            /** Instrument */
+            instrument: string;
+            origin: components["schemas"]["JsonObject"];
+            /**
+             * Provider
+             * @constant
+             */
+            provider: "crypto-data-house";
+            /** Ref Id */
+            ref_id: string;
+            /** Registered At */
+            registered_at: string;
+            /** Registered By */
+            registered_by: string;
+            /**
+             * Research Only
+             * @constant
+             */
+            research_only: true;
+            /** Start Ts */
+            start_ts: string;
         };
         /** CryptoSnapshotVerifyRequest */
         CryptoSnapshotVerifyRequest: {
@@ -9107,6 +9162,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoSnapshotCreateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoSnapshotRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoSnapshotRegisterResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

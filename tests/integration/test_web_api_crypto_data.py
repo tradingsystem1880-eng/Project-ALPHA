@@ -120,6 +120,24 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
                 "next_action": "Verify the snapshot for the exact research purpose.",
                 "execution_authority": False,
             }
+        if args[0:3] == ["research", "data", "register-crypto"]:
+            return {
+                "ref_id": "rd_" + "c" * 64,
+                "dataset_kind": "snapshot",
+                "instrument": "BTC",
+                "provider": "crypto-data-house",
+                "start_ts": "2026-08-04T00:00:00+00:00",
+                "end_ts": "2026-08-14T00:00:00+00:00",
+                "bar_duration_minutes": 60,
+                "origin": {
+                    "snapshot_id": snapshot_id,
+                    "manifest_sha256": "d" * 64,
+                    "snapshot_schema": "CryptoSnapshotV1",
+                },
+                "research_only": True,
+                "registered_by": "owner",
+                "registered_at": "2026-08-15T00:00:00Z",
+            }
         return {
             "snapshot_id": snapshot_id,
             "eligible": True,
@@ -138,9 +156,14 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
         f"/api/crypto-data/snapshots/{snapshot_id}/verify",
         json={"required_families": ["funding"], "purpose": "research"},
     )
+    registered = client.post(
+        f"/api/crypto-data/snapshots/{snapshot_id}/register", json={"symbol": "btc"}
+    )
 
     assert created.status_code == 200
     assert verified.status_code == 200
+    assert registered.status_code == 200
+    assert registered.json()["ref_id"] == "rd_" + "c" * 64
     assert calls == [
         ["crypto-data", "snapshot-create", "--manifest-id", manifest_id, "--json"],
         [
@@ -151,6 +174,15 @@ def test_crypto_snapshot_routes_build_exact_membership_commands(
             "funding",
             "--purpose",
             "research",
+            "--json",
+        ],
+        [
+            "research",
+            "data",
+            "register-crypto",
+            snapshot_id,
+            "--symbol",
+            "BTC",
             "--json",
         ],
     ]

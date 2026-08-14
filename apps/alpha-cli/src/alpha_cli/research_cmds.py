@@ -2896,6 +2896,36 @@ def data_list(
     )
 
 
+@data_app.command("register-crypto")
+def data_register_crypto(
+    snapshot_id: str,
+    symbol: str = typer.Option(..., "--symbol", help="exact base asset in the snapshot"),
+    registered_by: str = typer.Option("owner", "--registered-by", help="registering actor"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Register an eligible CryptoSnapshotV1 after re-verifying every external member."""
+    from alpha_cli.crypto_data_cmds import crypto_snapshot_registration  # noqa: PLC0415
+
+    try:
+        binding = crypto_snapshot_registration(snapshot_id, symbol=symbol)
+        origin = binding["origin"]
+        if not isinstance(origin, Mapping):  # pragma: no cover - fixed local projection
+            raise DataError("crypto snapshot registration origin is malformed")
+        ref = _store().register_research_dataset(
+            dataset_kind=str(binding["dataset_kind"]),
+            instrument=str(binding["instrument"]),
+            provider=str(binding["provider"]),
+            start_ts=str(binding["start_ts"]),
+            end_ts=str(binding["end_ts"]),
+            bar_duration_minutes=cast(int | None, binding["bar_duration_minutes"]),
+            origin=origin,
+            registered_by=registered_by,
+        )
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(ref, json_out=json_out, fallback=f"registered crypto dataset {ref['ref_id']}")
+
+
 @data_app.command("audit")
 def data_audit(
     project_id: str,

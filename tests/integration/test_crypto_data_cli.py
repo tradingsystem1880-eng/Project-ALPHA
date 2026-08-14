@@ -238,6 +238,23 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     assert verification["eligible"] is True
     assert verification["blockers"] == []
 
+    registered = runner.invoke(
+        app,
+        [
+            "research", "data", "register-crypto", snapshot["snapshot_id"],
+            "--symbol", "BTC", "--json",
+        ],
+    )
+    assert registered.exit_code == 0, registered.output
+    research_ref = json.loads(registered.stdout)
+    assert research_ref["dataset_kind"] == "snapshot"
+    assert research_ref["instrument"] == "BTC"
+    assert research_ref["provider"] == "crypto-data-house"
+    assert research_ref["research_only"] is True
+    assert research_ref["origin"]["snapshot_id"] == snapshot["snapshot_id"]
+    assert len(research_ref["origin"]["manifest_sha256"]) == 64
+    assert research_ref["origin"]["snapshot_schema"] == "CryptoSnapshotV1"
+
     coverage = runner.invoke(app, ["crypto-data", "coverage", "--json"])
     assert coverage.exit_code == 0, coverage.output
     coverage_payload = json.loads(coverage.stdout)
@@ -257,6 +274,18 @@ def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     )
     assert quality.exit_code == 0, quality.output
     assert json.loads(quality.stdout)["quality"]["state"] == "qualified"
+
+    raw_manifest = store.verify_manifest(receipt["raw_manifest_id"])
+    (store.bulk_root / str(raw_manifest["artifact_key"])).write_bytes(b"tampered")
+    rejected = runner.invoke(
+        app,
+        [
+            "research", "data", "register-crypto", snapshot["snapshot_id"],
+            "--symbol", "BTC", "--json",
+        ],
+    )
+    assert rejected.exit_code != 0
+    assert "integrity" in rejected.output
 
 
 def test_crypto_data_acquires_each_non_bybit_authority_offline(
