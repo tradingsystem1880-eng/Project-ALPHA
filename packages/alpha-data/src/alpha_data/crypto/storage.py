@@ -16,6 +16,8 @@ from pathlib import Path
 
 from alpha_core import DataError
 
+from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
+
 _SAFE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
@@ -227,6 +229,20 @@ class CryptoBulkStore:
             os.fsync(stream.fileno())
         return self.resume_staging(handle.staging_id)
 
+    def resume_payload(self, handle: StagingHandle, payload: bytes) -> StagingHandle:
+        """Resume from an exact verified prefix; never splice different provider bytes."""
+        current = self.resume_staging(handle.staging_id)
+        if current != handle:
+            raise DataError("crypto staging offset is stale; resume before appending")
+        if not isinstance(payload, bytes) or len(payload) != current.expected_bytes:
+            raise DataError("crypto resumed payload does not match the bounded byte count")
+        staged = (self._staging_path(handle.staging_id) / "payload.part").read_bytes()
+        if payload[: current.bytes_written] != staged:
+            raise DataError("crypto resumed payload prefix does not match staged bytes")
+        if current.bytes_written == current.expected_bytes:
+            return current
+        return self.append_staging(current, payload[current.bytes_written :])
+
     def publish_staging(self, handle: StagingHandle, *, expected_sha256: str) -> dict[str, object]:
         current = self.resume_staging(handle.staging_id)
         if current.bytes_written != current.expected_bytes:
@@ -250,12 +266,18 @@ class CryptoBulkStore:
                 temporary.unlink(missing_ok=True)
         body = {
             "schema_version": 1,
+            "artifact_kind": "raw",
             "artifact_key": artifact_key,
             "artifact_sha256": actual_hash,
             "artifact_bytes": current.expected_bytes,
             "provider": current.provider,
             "receipt_id": current.receipt_id,
         }
+        manifest = self._publish_manifest(body)
+        shutil.rmtree(self._staging_path(handle.staging_id))
+        return manifest
+
+    def _publish_manifest(self, body: dict[str, object]) -> dict[str, object]:
         manifest_id = hashlib.sha256(_canonical(body)).hexdigest()
         manifest = {**body, "manifest_id": manifest_id}
         try:
@@ -270,8 +292,68 @@ class CryptoBulkStore:
                 os.replace(temporary, manifest_path)
         except OSError as exc:
             raise DataError("crypto internal manifest publication failed") from exc
-        shutil.rmtree(self._staging_path(handle.staging_id))
         return manifest
+
+    def publish_normalized(
+        self,
+        payload: bytes,
+        *,
+        dataset: CryptoDatasetIdentityV1,
+        input_manifest_ids: tuple[str, ...],
+        quality: CryptoQualityReportV1,
+    ) -> dict[str, object]:
+        """Publish exact normalized bytes only after every raw input re-verifies."""
+        if not isinstance(payload, bytes) or not payload:
+            raise DataError("crypto normalized publication requires non-empty bytes")
+        artifact_hash = hashlib.sha256(payload).hexdigest()
+        if quality.dataset_sha256 != artifact_hash:
+            raise DataError("crypto normalized bytes do not match the quality report")
+        if not input_manifest_ids or len(set(input_manifest_ids)) != len(input_manifest_ids):
+            raise DataError("crypto normalized publication requires unique raw input manifests")
+        for manifest_id in input_manifest_ids:
+            try:
+                raw_manifest = self.verify_manifest(manifest_id)
+            except DataError as exc:
+                raise DataError("crypto normalized raw input manifest failed verification") from exc
+            artifact_kind = raw_manifest.get("artifact_kind")
+            artifact_key = raw_manifest.get("artifact_key")
+            if artifact_kind != "raw" and not (
+                artifact_kind is None
+                and isinstance(artifact_key, str)
+                and artifact_key.startswith("raw/")
+            ):
+                raise DataError("crypto normalized input manifest is not raw provider data")
+        self.verify_ready(required_bytes=len(payload))
+        artifact_key = (
+            f"normalized/{dataset.family}/{dataset.content_sha256}/{artifact_hash}.parquet"
+        )
+        destination = self.bulk_root / artifact_key
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists():
+            if destination.stat().st_size != len(payload) or _sha256(destination) != artifact_hash:
+                raise DataError("crypto normalized artifact identity collision")
+        else:
+            temporary = destination.with_name(f".{destination.name}.tmp")
+            try:
+                with temporary.open("wb") as stream:
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+        body: dict[str, object] = {
+            "schema_version": 1,
+            "artifact_kind": "normalized",
+            "artifact_key": artifact_key,
+            "artifact_sha256": artifact_hash,
+            "artifact_bytes": len(payload),
+            "provider": dataset.provider,
+            "dataset": dataset.to_dict(),
+            "input_manifest_ids": list(input_manifest_ids),
+            "quality": quality.to_dict(),
+        }
+        return self._publish_manifest(body)
 
     def verify_manifest(self, manifest_id: object) -> dict[str, object]:
         if not isinstance(manifest_id, str):

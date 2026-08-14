@@ -364,6 +364,44 @@ class CryptoQualityReportV1:
             "correction_lineage": list(self.correction_lineage),
         }
 
+    @classmethod
+    def from_dict(cls, value: object) -> CryptoQualityReportV1:
+        if not isinstance(value, dict) or value.get("schema_version") != 1:
+            raise DataError("invalid CryptoQualityReportV1")
+
+        def optional_time(raw: object) -> datetime | None:
+            if raw is None:
+                return None
+            if not isinstance(raw, str):
+                raise DataError("invalid CryptoQualityReportV1 timestamp")
+            try:
+                return _time(datetime.fromisoformat(raw.replace("Z", "+00:00")), "quality time")
+            except ValueError as exc:
+                raise DataError("invalid CryptoQualityReportV1 timestamp") from exc
+
+        try:
+            failures = value["failures"]
+            warnings = value["warnings"]
+            lineage = value["correction_lineage"]
+            if any(
+                not isinstance(items, list) or any(not isinstance(item, str) for item in items)
+                for items in (failures, warnings, lineage)
+            ):
+                raise DataError("invalid CryptoQualityReportV1 lists")
+            return cls(
+                dataset_sha256=value["dataset_sha256"],
+                method_version=value["method_version"],
+                state=value["state"],
+                failures=tuple(failures),
+                warnings=tuple(warnings),
+                observed_start=optional_time(value["observed_start"]),
+                observed_end=optional_time(value["observed_end"]),
+                row_count=value["row_count"],
+                correction_lineage=tuple(lineage),
+            )
+        except (KeyError, TypeError) as exc:
+            raise DataError("invalid CryptoQualityReportV1") from exc
+
 
 @dataclass(frozen=True)
 class CryptoSnapshotMemberV1:

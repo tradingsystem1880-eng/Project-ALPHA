@@ -186,6 +186,7 @@ def test_receipt_quality_and_capability_contracts_are_honest() -> None:
         correction_lineage=("receipt-old",),
     )
     assert report.to_dict()["row_count"] == 100
+    assert CryptoQualityReportV1.from_dict(report.to_dict()) == report
     with pytest.raises(DataError, match="cannot contain failures"):
         CryptoQualityReportV1(**{**report.__dict__, "state": "qualified"})
     with pytest.raises(DataError, match="row_count"):

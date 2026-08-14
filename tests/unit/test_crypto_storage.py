@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import plistlib
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,7 @@ import pytest
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.crypto import storage
+from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 UUID = "758CBD77-1003-3BA3-AD28-1D647F5E2A08"
@@ -88,6 +91,65 @@ def test_resumable_publication_writes_external_blob_then_internal_manifest(tmp_p
         store.verify_manifest(manifest["manifest_id"])
 
 
+def test_normalized_publication_is_bound_to_raw_input_dataset_and_quality(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    raw_handle = store.begin_staging(
+        provider="bybit", receipt_id="r_raw", logical_name="funding.json", expected_bytes=3
+    )
+    raw_handle = store.append_staging(raw_handle, b"raw")
+    raw = store.publish_staging(
+        raw_handle,
+        expected_sha256=hashlib.sha256(b"raw").hexdigest(),
+    )
+    payload = b"PAR1-normalized-funding"
+    digest = hashlib.sha256(payload).hexdigest()
+    dataset = CryptoDatasetIdentityV1(
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        family="funding",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="funding_interval",
+        units="dimensionless_rate",
+        timestamp_convention="provider_event_utc",
+    )
+    quality = CryptoQualityReportV1(
+        dataset_sha256=digest,
+        method_version="crypto-quality-v1",
+        state="qualified",
+        failures=(),
+        warnings=(),
+        observed_start=datetime(2026, 8, 14, tzinfo=UTC),
+        observed_end=datetime(2026, 8, 15, tzinfo=UTC),
+        row_count=2,
+        correction_lineage=(),
+    )
+
+    normalized = store.publish_normalized(
+        payload,
+        dataset=dataset,
+        input_manifest_ids=(str(raw["manifest_id"]),),
+        quality=quality,
+    )
+
+    assert normalized["artifact_kind"] == "normalized"
+    assert normalized["dataset"] == dataset.to_dict()
+    assert normalized["quality"] == quality.to_dict()
+    assert normalized["input_manifest_ids"] == [raw["manifest_id"]]
+    assert store.verify_manifest(normalized["manifest_id"]) == normalized
+    assert str(tmp_path) not in json.dumps(normalized)
+
+    with pytest.raises(DataError, match="raw input manifest"):
+        store.publish_normalized(
+            payload,
+            dataset=dataset,
+            input_manifest_ids=("a" * 64,),
+            quality=quality,
+        )
+
+
 def test_staging_metadata_resumes_exact_offset(tmp_path: Path) -> None:
     store = _store(tmp_path)
     first = store.begin_staging(
@@ -99,6 +161,24 @@ def test_staging_metadata_resumes_exact_offset(tmp_path: Path) -> None:
     assert resumed.bytes_written == 3
     store.append_staging(resumed, b"def")
     assert store.resume_staging(first.staging_id).bytes_written == 6
+
+
+def test_staging_resumes_only_when_existing_prefix_matches_exact_payload(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="r_resume", logical_name="funding.json", expected_bytes=6
+    )
+    handle = store.append_staging(handle, b"abc")
+
+    completed = store.resume_payload(handle, b"abcdef")
+    assert completed.bytes_written == 6
+
+    other = store.begin_staging(
+        provider="bybit", receipt_id="r_wrong", logical_name="funding.json", expected_bytes=6
+    )
+    other = store.append_staging(other, b"abc")
+    with pytest.raises(DataError, match="prefix"):
+        store.resume_payload(other, b"abXdef")
 
 
 def test_publication_recovers_when_internal_manifest_write_is_interrupted(tmp_path: Path) -> None:

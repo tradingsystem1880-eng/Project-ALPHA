@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
 from alpha_data.crypto.contracts import FAMILY_AUTHORITIES
+from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 runner = CliRunner()
 
@@ -99,3 +102,100 @@ def test_crypto_data_asset_identity_uses_reviewed_native_mapping_not_ticker_join
     )
     assert unknown.exit_code != 0
     assert "reviewed native mapping" in unknown.output
+
+
+def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        minimum_free_bytes=100,
+    )
+    payload = json.dumps(
+        {
+            "retCode": 0,
+            "time": 1_786_752_000_000,
+            "result": {
+                "category": "linear",
+                "list": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "fundingRate": "0.0001",
+                        "fundingRateTimestamp": "1786752000000",
+                    }
+                ],
+            },
+        }
+    ).encode()
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path / "control"))
+    monkeypatch.setattr(crypto_data_cmds, "fetch_bybit_public", lambda *_args, **_kwargs: payload)
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "bybit",
+            "funding",
+            "BTCUSDT",
+            "--base",
+            "BTC",
+            "--quote",
+            "USDT",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["state"] == "qualified"
+    assert receipt["provider"] == "bybit"
+    assert receipt["family"] == "funding"
+    assert receipt["raw_manifest_id"] != receipt["normalized_manifest_id"]
+    assert receipt["next_action"] == "Create or extend a frozen crypto snapshot."
+    assert len(store.inventory()) == 2
+
+    created = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "snapshot-create",
+            "--manifest-id",
+            receipt["normalized_manifest_id"],
+            "--json",
+        ],
+    )
+    assert created.exit_code == 0, created.output
+    snapshot = json.loads(created.stdout)
+    assert snapshot["member_count"] == 1
+    assert snapshot["families"] == ["funding"]
+
+    verified = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "snapshot-verify",
+            snapshot["snapshot_id"],
+            "--required-family",
+            "funding",
+            "--purpose",
+            "research",
+            "--json",
+        ],
+    )
+    assert verified.exit_code == 0, verified.output
+    verification = json.loads(verified.stdout)
+    assert verification["eligible"] is True
+    assert verification["blockers"] == []
