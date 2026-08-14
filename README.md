@@ -106,6 +106,14 @@ uv run alpha data pull BTC/USD --source ccxt --exchange coinbase --start 2018-01
 # ALPHA_BULK_VOLUME_UUID=<mounted-volume-uuid>
 uv run alpha crypto-data storage-inventory --json
 uv run alpha crypto-data storage-verify --json
+# Freeze the current provider catalogs into an inspectable plan, then run only an explicitly
+# confirmed cadence page (maximum 25 tasks, checkpointed after each task).
+uv run alpha crypto-data profile-create --json
+uv run alpha crypto-data profiles --json
+uv run alpha crypto-data profile-show <PROFILE_ID> --cadence daily --limit 25 --json
+uv run alpha crypto-data profile-run <PROFILE_ID> --cadence daily --limit 25 --confirm --json
+# Derived features remain non-authoritative and require exact named qualified inputs.
+uv run alpha crypto-data features --json
 # Cache cleanup is deliberately separate and confirmed; it never removes raw, normalized,
 # staged, snapshot, manifest, or control artifacts.
 uv run alpha crypto-data cache-clean --confirm --json

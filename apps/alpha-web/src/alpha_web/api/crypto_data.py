@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _catalog, _invoke, _research
 from alpha_web.api._common import data_dir
@@ -18,12 +18,23 @@ from alpha_web.api.models import (
     CryptoCacheCleanResponse,
     CryptoCapabilitiesResponse,
     CryptoCatalogResponse,
+    CryptoCoverageBatchListResponse,
+    CryptoCoverageBatchRequest,
+    CryptoCoverageBatchResumeRequest,
+    CryptoCoverageProfileCreateRequest,
+    CryptoCoverageProfileCreateResponse,
+    CryptoCoverageProfileListResponse,
+    CryptoCoverageProfilePageResponse,
     CryptoCoverageResponse,
     CryptoEstimateRequest,
     CryptoEstimateResponse,
     CryptoFeatureCreateRequest,
     CryptoFeatureListResponse,
     CryptoFeatureResponse,
+    CryptoLiquidityFreezeRequest,
+    CryptoLiquidityFreezeResponse,
+    CryptoOneMinuteSelectionRequest,
+    CryptoOneMinuteSelectionResponse,
     CryptoQualityResponse,
     CryptoSnapshotCreateRequest,
     CryptoSnapshotCreateResponse,
@@ -54,6 +65,12 @@ def _project(args: list[str]) -> Any:
         return _catalog._run_json(args, data_dir=data_dir())
     except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _digest(value: str, label: str) -> str:
+    if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+        raise HTTPException(status_code=422, detail=f"crypto {label} id is invalid")
+    return value
 
 
 @router.get("/catalog", response_model=CryptoCatalogResponse)
@@ -91,6 +108,147 @@ def cache_clean(req: CryptoCacheCleanRequest) -> Any:
 @router.get("/coverage", response_model=CryptoCoverageResponse)
 def coverage() -> Any:
     return _project(["crypto-data", "coverage", "--json"])
+
+
+@router.get("/profiles", response_model=CryptoCoverageProfileListResponse)
+def profiles() -> Any:
+    return _project(["crypto-data", "profiles", "--json"])
+
+
+@router.post("/profiles", response_model=CryptoCoverageProfileCreateResponse)
+def profile_create(req: CryptoCoverageProfileCreateRequest) -> Any:
+    args = ["crypto-data", "profile-create"]
+    if req.as_of is not None:
+        args.extend(("--as-of", req.as_of))
+    args.append("--json")
+    return _project(args)
+
+
+@router.get("/profiles/{profile_id}", response_model=CryptoCoverageProfilePageResponse)
+def profile_show(
+    profile_id: str,
+    offset: int = Query(default=0, ge=0, le=10_000),
+    limit: int = Query(default=50, ge=1, le=100),
+    provider: str | None = Query(default=None, max_length=40),
+    family: str | None = Query(default=None, max_length=80),
+    category: str | None = Query(default=None, max_length=20),
+    frequency: str | None = Query(default=None, max_length=40),
+    cadence: str | None = Query(default=None, max_length=40),
+) -> Any:
+    args = [
+        "crypto-data",
+        "profile-show",
+        _digest(profile_id, "coverage profile"),
+        "--offset",
+        str(offset),
+        "--limit",
+        str(limit),
+    ]
+    for flag, value in (
+        ("--provider", provider),
+        ("--family", family),
+        ("--category", category),
+        ("--frequency", frequency),
+        ("--cadence", cadence),
+    ):
+        if value is not None:
+            args.extend((flag, value))
+    args.append("--json")
+    return _project(args)
+
+
+@router.post("/profiles/{profile_id}/batches", response_model=JobStatus)
+def profile_run(profile_id: str, req: CryptoCoverageBatchRequest) -> dict[str, object]:
+    args = [
+        "crypto-data",
+        "profile-run",
+        _digest(profile_id, "coverage profile"),
+        "--cadence",
+        req.cadence,
+        "--offset",
+        str(req.offset),
+        "--limit",
+        str(req.limit),
+        "--confirm",
+        "--json",
+    ]
+    try:
+        job = _invoke.launch(args, data_dir=data_dir(), run_type=None)
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"job_id": job.job_id, "status": job.status, "session_id": job.session_id}
+
+
+@router.get("/batches", response_model=CryptoCoverageBatchListResponse)
+def profile_batches() -> Any:
+    return _project(["crypto-data", "profile-batches", "--json"])
+
+
+@router.post("/batches/{batch_id}/resume", response_model=JobStatus)
+def profile_resume(batch_id: str, req: CryptoCoverageBatchResumeRequest) -> dict[str, object]:
+    if req.confirm is not True:  # pragma: no cover - Literal validation owns false inputs
+        raise HTTPException(status_code=422, detail="coverage-batch resume requires confirmation")
+    args = [
+        "crypto-data",
+        "profile-resume",
+        _digest(batch_id, "coverage batch"),
+        "--confirm",
+        "--json",
+    ]
+    try:
+        job = _invoke.launch(args, data_dir=data_dir(), run_type=None)
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"job_id": job.job_id, "status": job.status, "session_id": job.session_id}
+
+
+@router.post(
+    "/profiles/{profile_id}/liquidity-membership",
+    response_model=CryptoLiquidityFreezeResponse,
+)
+def liquidity_freeze(profile_id: str, req: CryptoLiquidityFreezeRequest) -> Any:
+    expected_quote = "USD" if req.category == "inverse" else "USDT"
+    if req.quote_asset != expected_quote:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{req.category} liquidity membership requires exact {expected_quote} quote",
+        )
+    return _project(
+        [
+            "crypto-data",
+            "liquidity-freeze",
+            _digest(profile_id, "coverage profile"),
+            "--category",
+            req.category,
+            "--quote-asset",
+            req.quote_asset,
+            "--session",
+            req.session,
+            "--limit",
+            str(req.limit),
+            "--json",
+        ]
+    )
+
+
+@router.post(
+    "/profiles/{profile_id}/one-minute-selection",
+    response_model=CryptoOneMinuteSelectionResponse,
+)
+def one_minute_selection(profile_id: str, req: CryptoOneMinuteSelectionRequest) -> Any:
+    args = [
+        "crypto-data",
+        "profile-select-one-minute",
+        _digest(profile_id, "coverage profile"),
+        "--case-id",
+        req.case_id,
+        "--expected-case-revision",
+        req.expected_case_revision,
+    ]
+    for market in req.markets:
+        args.extend(("--market", market))
+    args.extend(("--reason", req.reason, "--json"))
+    return _project(args)
 
 
 @router.get("/assets/{symbol}", response_model=CryptoAssetIdentityResponse)

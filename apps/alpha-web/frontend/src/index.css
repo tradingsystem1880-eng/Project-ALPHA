@@ -783,6 +783,35 @@ textarea.field:focus {
   flex-direction: column;
   gap: 4px;
 }
+.crypto-market-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px;
+  max-height: 240px;
+  margin: 8px 0;
+  padding: 6px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.crypto-market-picker label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px;
+}
+.crypto-market-picker label > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.crypto-market-picker small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .crypto-dataset {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

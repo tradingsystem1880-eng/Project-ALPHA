@@ -172,6 +172,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Batches */
+        get: operations["profile_batches_api_crypto_data_batches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/batches/{batch_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Profile Resume */
+        post: operations["profile_resume_api_crypto_data_batches__batch_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/capabilities": {
         parameters: {
             query?: never;
@@ -269,6 +303,92 @@ export interface paths {
         get: operations["feature_show_api_crypto_data_features__manifest_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profiles */
+        get: operations["profiles_api_crypto_data_profiles_get"];
+        put?: never;
+        /** Profile Create */
+        post: operations["profile_create_api_crypto_data_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Show */
+        get: operations["profile_show_api_crypto_data_profiles__profile_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Profile Run */
+        post: operations["profile_run_api_crypto_data_profiles__profile_id__batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}/liquidity-membership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Liquidity Freeze */
+        post: operations["liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}/one-minute-selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One Minute Selection */
+        post: operations["one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4355,6 +4475,75 @@ export interface components {
             /** Next Action */
             next_action: string;
         };
+        /** CryptoCoverageBatchListResponse */
+        CryptoCoverageBatchListResponse: {
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageBatchResponse"][];
+            /** Next Action */
+            next_action: string;
+        };
+        /** CryptoCoverageBatchRequest */
+        CryptoCoverageBatchRequest: {
+            cadence: components["schemas"]["CryptoCoverageCadenceValue"];
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+        };
+        /** CryptoCoverageBatchResponse */
+        CryptoCoverageBatchResponse: {
+            /** Batch Id */
+            batch_id: string;
+            cadence: components["schemas"]["CryptoCoverageCadenceValue"];
+            /** Completed Count */
+            completed_count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Profile Id */
+            profile_id: string;
+            /** Profile Offset */
+            profile_offset: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "failed" | "completed";
+            /** Task Count */
+            task_count: number;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** CryptoCoverageBatchResumeRequest */
+        CryptoCoverageBatchResumeRequest: {
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+        };
+        /** @enum {string} */
+        CryptoCoverageCadenceValue: "daily" | "hourly" | "five_minute" | "funding_interval";
         /** CryptoCoverageItem */
         CryptoCoverageItem: {
             /** Artifact Sha256 */
@@ -4399,6 +4588,148 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** CryptoCoverageProfileCreateRequest */
+        CryptoCoverageProfileCreateRequest: {
+            /** As Of */
+            as_of?: string | null;
+        };
+        /** CryptoCoverageProfileCreateResponse */
+        CryptoCoverageProfileCreateResponse: {
+            /** As Of */
+            as_of: string;
+            /** Binance Hourly Missing Scopes */
+            binance_hourly_missing_scopes: string[][];
+            /** Binance Hourly Scopes */
+            binance_hourly_scopes: string[][];
+            /** Counts By Cadence */
+            counts_by_cadence: {
+                [key: string]: number;
+            };
+            /** Counts By Family */
+            counts_by_family: {
+                [key: string]: number;
+            };
+            /** Counts By Provider */
+            counts_by_provider: {
+                [key: string]: number;
+            };
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Next Action */
+            next_action: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Source Manifest Ids */
+            source_manifest_ids: string[];
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+            /** Task Count */
+            task_count: number;
+        };
+        /** CryptoCoverageProfileFiltersResponse */
+        CryptoCoverageProfileFiltersResponse: {
+            /** Cadence */
+            cadence: string | null;
+            /** Category */
+            category: string | null;
+            /** Family */
+            family: string | null;
+            /** Frequency */
+            frequency: string | null;
+            /** Provider */
+            provider: string | null;
+        };
+        /** CryptoCoverageProfileListResponse */
+        CryptoCoverageProfileListResponse: {
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageProfileSummaryResponse"][];
+            /** Next Action */
+            next_action: string;
+        };
+        /** CryptoCoverageProfilePageResponse */
+        CryptoCoverageProfilePageResponse: {
+            /** As Of */
+            as_of: string;
+            /** Counts By Cadence */
+            counts_by_cadence: {
+                [key: string]: number;
+            };
+            /** Counts By Family */
+            counts_by_family: {
+                [key: string]: number;
+            };
+            /** Counts By Provider */
+            counts_by_provider: {
+                [key: string]: number;
+            };
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Filtered Count */
+            filtered_count: number;
+            filters: components["schemas"]["CryptoCoverageProfileFiltersResponse"];
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageTaskResponse"][];
+            /** Limit */
+            limit: number;
+            /** Next Action */
+            next_action: string;
+            /** Next Offset */
+            next_offset: number | null;
+            /** Offset */
+            offset: number;
+            /** Profile Id */
+            profile_id: string;
+            /** Source Manifest Ids */
+            source_manifest_ids: string[];
+            /** Task Count */
+            task_count: number;
+        };
+        /** CryptoCoverageProfileSummaryResponse */
+        CryptoCoverageProfileSummaryResponse: {
+            /** As Of */
+            as_of: string;
+            /** Counts By Cadence */
+            counts_by_cadence: {
+                [key: string]: number;
+            };
+            /** Counts By Family */
+            counts_by_family: {
+                [key: string]: number;
+            };
+            /** Counts By Provider */
+            counts_by_provider: {
+                [key: string]: number;
+            };
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Profile Id */
+            profile_id: string;
+            /** Source Manifest Ids */
+            source_manifest_ids: string[];
+            /** Task Count */
+            task_count: number;
+        };
         /** CryptoCoverageResponse */
         CryptoCoverageResponse: {
             /**
@@ -4417,6 +4748,41 @@ export interface components {
             execution_authority: false;
             /** Items */
             items: components["schemas"]["CryptoCoverageItem"][];
+        };
+        /** CryptoCoverageTaskResponse */
+        CryptoCoverageTaskResponse: {
+            /** Base Asset */
+            base_asset: string | null;
+            cadence: components["schemas"]["CryptoCoverageCadenceValue"];
+            /** Category */
+            category: string | null;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequency */
+            frequency: string;
+            /** Instrument */
+            instrument: string;
+            /** Lookback Days */
+            lookback_days: number | null;
+            /** Metrics */
+            metrics: string[];
+            /** Network */
+            network: string | null;
+            /** Provider */
+            provider: string;
+            /** Quote Asset */
+            quote_asset: string | null;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Task Id */
+            task_id: string;
         };
         /** CryptoDatasetIdentityResponse */
         CryptoDatasetIdentityResponse: {
@@ -4556,6 +4922,109 @@ export interface components {
              * @enum {string}
              */
             state: "frozen" | "verified";
+        };
+        /** CryptoLiquidityFreezeRequest */
+        CryptoLiquidityFreezeRequest: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "spot" | "linear" | "inverse";
+            /**
+             * Limit
+             * @default 250
+             */
+            limit: number;
+            /**
+             * Quote Asset
+             * @enum {string}
+             */
+            quote_asset: "USD" | "USDT";
+            /** Session */
+            session: string;
+        };
+        /** CryptoLiquidityFreezeResponse */
+        CryptoLiquidityFreezeResponse: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "spot" | "linear" | "inverse";
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Manifest Id */
+            manifest_id: string;
+            /** Next Action */
+            next_action: string;
+            /** Profile Id */
+            profile_id: string;
+            /**
+             * Quote Asset
+             * @enum {string}
+             */
+            quote_asset: "USD" | "USDT";
+            /** Selected Count */
+            selected_count: number;
+            /** Session */
+            session: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+            /** Universe Count */
+            universe_count: number;
+        };
+        /** CryptoOneMinuteSelectionRequest */
+        CryptoOneMinuteSelectionRequest: {
+            /** Case Id */
+            case_id: string;
+            /** Expected Case Revision */
+            expected_case_revision: string;
+            /** Markets */
+            markets: string[];
+            /** Reason */
+            reason: string;
+        };
+        /** CryptoOneMinuteSelectionResponse */
+        CryptoOneMinuteSelectionResponse: {
+            /**
+             * Acquisition Window
+             * @constant
+             */
+            acquisition_window: "previous_complete_hour";
+            /** Base Profile Id */
+            base_profile_id: string;
+            /** Case Revision */
+            case_revision: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /**
+             * Frequency
+             * @constant
+             */
+            frequency: "1m";
+            /** Next Action */
+            next_action: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Selected Count */
+            selected_count: number;
+            /** Selection Manifest Id */
+            selection_manifest_id: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
         };
         /** @enum {string} */
         CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "ccxt:coinbase";
@@ -9581,6 +10050,70 @@ export interface operations {
             };
         };
     };
+    profile_batches_api_crypto_data_batches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageBatchListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_resume_api_crypto_data_batches__batch_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCoverageBatchResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     capabilities_api_crypto_data_capabilities_get: {
         parameters: {
             query?: never;
@@ -9781,6 +10314,212 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoFeatureResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profiles_api_crypto_data_profiles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageProfileListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_create_api_crypto_data_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCoverageProfileCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageProfileCreateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_show_api_crypto_data_profiles__profile_id__get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                provider?: string | null;
+                family?: string | null;
+                category?: string | null;
+                frequency?: string | null;
+                cadence?: string | null;
+            };
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageProfilePageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_run_api_crypto_data_profiles__profile_id__batches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCoverageBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoLiquidityFreezeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoLiquidityFreezeResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoOneMinuteSelectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoOneMinuteSelectionResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */

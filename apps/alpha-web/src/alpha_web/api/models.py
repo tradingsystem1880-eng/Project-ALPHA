@@ -944,6 +944,145 @@ class CryptoFeatureListResponse(StrictModel):
     next_action: str
 
 
+type CryptoCoverageCadenceValue = Literal["daily", "hourly", "five_minute", "funding_interval"]
+
+
+class CryptoCoverageTaskResponse(StrictModel):
+    schema_version: Literal[1]
+    task_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    provider: str
+    family: CryptoFamilyValue
+    instrument: str
+    base_asset: str | None
+    quote_asset: str | None
+    category: str | None
+    frequency: str
+    cadence: CryptoCoverageCadenceValue
+    network: str | None
+    metrics: list[str]
+    lookback_days: int | None
+    execution_authority: Literal[False]
+
+
+class CryptoCoverageProfileSummaryResponse(StrictModel):
+    profile_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    as_of: str
+    source_manifest_ids: list[str]
+    task_count: int = Field(ge=1, le=10_000)
+    counts_by_provider: dict[str, int]
+    counts_by_cadence: dict[str, int]
+    counts_by_family: dict[str, int]
+    execution_authority: Literal[False]
+
+
+class CryptoCoverageProfileListResponse(StrictModel):
+    items: list[CryptoCoverageProfileSummaryResponse]
+    count: int = Field(ge=0)
+    execution_authority: Literal[False]
+    next_action: str
+
+
+class CryptoCoverageProfileCreateRequest(StrictModel):
+    as_of: str | None = Field(default=None, max_length=64)
+
+
+class CryptoCoverageProfileCreateResponse(CryptoCoverageProfileSummaryResponse):
+    state: Literal["frozen"]
+    binance_hourly_scopes: list[list[str]]
+    binance_hourly_missing_scopes: list[list[str]]
+    next_action: str
+
+
+class CryptoCoverageProfileFiltersResponse(StrictModel):
+    provider: str | None
+    family: str | None
+    category: str | None
+    frequency: str | None
+    cadence: str | None
+
+
+class CryptoCoverageProfilePageResponse(CryptoCoverageProfileSummaryResponse):
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    filtered_count: int = Field(ge=0, le=10_000)
+    filters: CryptoCoverageProfileFiltersResponse
+    items: list[CryptoCoverageTaskResponse]
+    has_more: bool
+    next_offset: int | None
+    next_action: str
+
+
+class CryptoCoverageBatchRequest(StrictModel):
+    cadence: CryptoCoverageCadenceValue
+    offset: int = Field(default=0, ge=0, le=10_000)
+    limit: int = Field(default=10, ge=1, le=25)
+    confirm: Literal[True]
+
+
+class CryptoCoverageBatchResumeRequest(StrictModel):
+    confirm: Literal[True]
+
+
+class CryptoCoverageBatchResponse(StrictModel):
+    batch_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    profile_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    cadence: CryptoCoverageCadenceValue
+    profile_offset: int = Field(ge=0)
+    task_count: int = Field(ge=1, le=25)
+    completed_count: int = Field(ge=0, le=25)
+    state: Literal["pending", "running", "failed", "completed"]
+    updated_at: str
+    execution_authority: Literal[False]
+
+
+class CryptoCoverageBatchListResponse(StrictModel):
+    items: list[CryptoCoverageBatchResponse]
+    count: int = Field(ge=0)
+    execution_authority: Literal[False]
+    next_action: str
+
+
+class CryptoLiquidityFreezeRequest(StrictModel):
+    category: Literal["spot", "linear", "inverse"]
+    quote_asset: Literal["USD", "USDT"]
+    session: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    limit: int = Field(default=250, ge=1, le=250)
+
+
+class CryptoLiquidityFreezeResponse(StrictModel):
+    manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    profile_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    session: str
+    category: Literal["spot", "linear", "inverse"]
+    quote_asset: Literal["USD", "USDT"]
+    universe_count: int = Field(ge=1)
+    selected_count: int = Field(ge=1, le=250)
+    state: Literal["frozen"]
+    execution_authority: Literal[False]
+    next_action: str
+
+
+class CryptoOneMinuteSelectionRequest(StrictModel):
+    case_id: str = Field(min_length=1, max_length=128)
+    expected_case_revision: str = Field(min_length=1, max_length=128)
+    markets: list[str] = Field(min_length=1, max_length=50)
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class CryptoOneMinuteSelectionResponse(StrictModel):
+    profile_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    base_profile_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    selection_manifest_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    project_id: str
+    case_revision: str
+    selected_count: int = Field(ge=1, le=50)
+    frequency: Literal["1m"]
+    acquisition_window: Literal["previous_complete_hour"]
+    state: Literal["frozen"]
+    execution_authority: Literal[False]
+    next_action: str
+
+
 class CryptoAcquisitionRequest(StrictModel):
     provider: CryptoProviderValue
     family: CryptoFamilyValue

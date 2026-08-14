@@ -2641,6 +2641,164 @@
         "title": "CryptoCatalogResponse",
         "type": "object"
       },
+      "CryptoCoverageBatchListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoCoverageBatchResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "count",
+          "execution_authority",
+          "next_action"
+        ],
+        "title": "CryptoCoverageBatchListResponse",
+        "type": "object"
+      },
+      "CryptoCoverageBatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "cadence": {
+            "$ref": "#/components/schemas/CryptoCoverageCadenceValue"
+          },
+          "confirm": {
+            "const": true,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 10,
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cadence",
+          "confirm"
+        ],
+        "title": "CryptoCoverageBatchRequest",
+        "type": "object"
+      },
+      "CryptoCoverageBatchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "cadence": {
+            "$ref": "#/components/schemas/CryptoCoverageCadenceValue"
+          },
+          "completed_count": {
+            "maximum": 25.0,
+            "minimum": 0.0,
+            "title": "Completed Count",
+            "type": "integer"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "profile_offset": {
+            "minimum": 0.0,
+            "title": "Profile Offset",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "running",
+              "failed",
+              "completed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "task_count": {
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "batch_id",
+          "profile_id",
+          "cadence",
+          "profile_offset",
+          "task_count",
+          "completed_count",
+          "state",
+          "updated_at",
+          "execution_authority"
+        ],
+        "title": "CryptoCoverageBatchResponse",
+        "type": "object"
+      },
+      "CryptoCoverageBatchResumeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "const": true,
+            "title": "Confirm",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "title": "CryptoCoverageBatchResumeRequest",
+        "type": "object"
+      },
+      "CryptoCoverageCadenceValue": {
+        "enum": [
+          "daily",
+          "hourly",
+          "five_minute",
+          "funding_interval"
+        ],
+        "type": "string"
+      },
       "CryptoCoverageItem": {
         "additionalProperties": false,
         "properties": {
@@ -2801,6 +2959,410 @@
         "title": "CryptoCoverageItem",
         "type": "object"
       },
+      "CryptoCoverageProfileCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "title": "CryptoCoverageProfileCreateRequest",
+        "type": "object"
+      },
+      "CryptoCoverageProfileCreateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "binance_hourly_missing_scopes": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Binance Hourly Missing Scopes",
+            "type": "array"
+          },
+          "binance_hourly_scopes": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Binance Hourly Scopes",
+            "type": "array"
+          },
+          "counts_by_cadence": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Cadence",
+            "type": "object"
+          },
+          "counts_by_family": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Family",
+            "type": "object"
+          },
+          "counts_by_provider": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Provider",
+            "type": "object"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "source_manifest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Manifest Ids",
+            "type": "array"
+          },
+          "state": {
+            "const": "frozen",
+            "title": "State",
+            "type": "string"
+          },
+          "task_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "as_of",
+          "source_manifest_ids",
+          "task_count",
+          "counts_by_provider",
+          "counts_by_cadence",
+          "counts_by_family",
+          "execution_authority",
+          "state",
+          "binance_hourly_scopes",
+          "binance_hourly_missing_scopes",
+          "next_action"
+        ],
+        "title": "CryptoCoverageProfileCreateResponse",
+        "type": "object"
+      },
+      "CryptoCoverageProfileFiltersResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cadence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cadence"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "required": [
+          "provider",
+          "family",
+          "category",
+          "frequency",
+          "cadence"
+        ],
+        "title": "CryptoCoverageProfileFiltersResponse",
+        "type": "object"
+      },
+      "CryptoCoverageProfileListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoCoverageProfileSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "count",
+          "execution_authority",
+          "next_action"
+        ],
+        "title": "CryptoCoverageProfileListResponse",
+        "type": "object"
+      },
+      "CryptoCoverageProfilePageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "counts_by_cadence": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Cadence",
+            "type": "object"
+          },
+          "counts_by_family": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Family",
+            "type": "object"
+          },
+          "counts_by_provider": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Provider",
+            "type": "object"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "filtered_count": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Filtered Count",
+            "type": "integer"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/CryptoCoverageProfileFiltersResponse"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoCoverageTaskResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Offset"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "source_manifest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Manifest Ids",
+            "type": "array"
+          },
+          "task_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "as_of",
+          "source_manifest_ids",
+          "task_count",
+          "counts_by_provider",
+          "counts_by_cadence",
+          "counts_by_family",
+          "execution_authority",
+          "offset",
+          "limit",
+          "filtered_count",
+          "filters",
+          "items",
+          "has_more",
+          "next_offset",
+          "next_action"
+        ],
+        "title": "CryptoCoverageProfilePageResponse",
+        "type": "object"
+      },
+      "CryptoCoverageProfileSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "counts_by_cadence": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Cadence",
+            "type": "object"
+          },
+          "counts_by_family": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Family",
+            "type": "object"
+          },
+          "counts_by_provider": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts By Provider",
+            "type": "object"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "source_manifest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Manifest Ids",
+            "type": "array"
+          },
+          "task_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "as_of",
+          "source_manifest_ids",
+          "task_count",
+          "counts_by_provider",
+          "counts_by_cadence",
+          "counts_by_family",
+          "execution_authority"
+        ],
+        "title": "CryptoCoverageProfileSummaryResponse",
+        "type": "object"
+      },
       "CryptoCoverageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2839,6 +3401,124 @@
           "execution_authority"
         ],
         "title": "CryptoCoverageResponse",
+        "type": "object"
+      },
+      "CryptoCoverageTaskResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "cadence": {
+            "$ref": "#/components/schemas/CryptoCoverageCadenceValue"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "family": {
+            "$ref": "#/components/schemas/CryptoFamilyValue"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": "string"
+          },
+          "lookback_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lookback Days"
+          },
+          "metrics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "network": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "task_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "task_id",
+          "provider",
+          "family",
+          "instrument",
+          "base_asset",
+          "quote_asset",
+          "category",
+          "frequency",
+          "cadence",
+          "network",
+          "metrics",
+          "lookback_days",
+          "execution_authority"
+        ],
+        "title": "CryptoCoverageTaskResponse",
         "type": "object"
       },
       "CryptoDatasetIdentityResponse": {
@@ -3214,6 +3894,235 @@
           "execution_authority"
         ],
         "title": "CryptoFeatureResponse",
+        "type": "object"
+      },
+      "CryptoLiquidityFreezeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "spot",
+              "linear",
+              "inverse"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "limit": {
+            "default": 250,
+            "maximum": 250.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "quote_asset": {
+            "enum": [
+              "USD",
+              "USDT"
+            ],
+            "title": "Quote Asset",
+            "type": "string"
+          },
+          "session": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Session",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "quote_asset",
+          "session"
+        ],
+        "title": "CryptoLiquidityFreezeRequest",
+        "type": "object"
+      },
+      "CryptoLiquidityFreezeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "spot",
+              "linear",
+              "inverse"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "quote_asset": {
+            "enum": [
+              "USD",
+              "USDT"
+            ],
+            "title": "Quote Asset",
+            "type": "string"
+          },
+          "selected_count": {
+            "maximum": 250.0,
+            "minimum": 1.0,
+            "title": "Selected Count",
+            "type": "integer"
+          },
+          "session": {
+            "title": "Session",
+            "type": "string"
+          },
+          "state": {
+            "const": "frozen",
+            "title": "State",
+            "type": "string"
+          },
+          "universe_count": {
+            "minimum": 1.0,
+            "title": "Universe Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "manifest_id",
+          "profile_id",
+          "session",
+          "category",
+          "quote_asset",
+          "universe_count",
+          "selected_count",
+          "state",
+          "execution_authority",
+          "next_action"
+        ],
+        "title": "CryptoLiquidityFreezeResponse",
+        "type": "object"
+      },
+      "CryptoOneMinuteSelectionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Case Id",
+            "type": "string"
+          },
+          "expected_case_revision": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Expected Case Revision",
+            "type": "string"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Markets",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id",
+          "expected_case_revision",
+          "markets",
+          "reason"
+        ],
+        "title": "CryptoOneMinuteSelectionRequest",
+        "type": "object"
+      },
+      "CryptoOneMinuteSelectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "acquisition_window": {
+            "const": "previous_complete_hour",
+            "title": "Acquisition Window",
+            "type": "string"
+          },
+          "base_profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Base Profile Id",
+            "type": "string"
+          },
+          "case_revision": {
+            "title": "Case Revision",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "frequency": {
+            "const": "1m",
+            "title": "Frequency",
+            "type": "string"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "profile_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "selected_count": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Selected Count",
+            "type": "integer"
+          },
+          "selection_manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Selection Manifest Id",
+            "type": "string"
+          },
+          "state": {
+            "const": "frozen",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "base_profile_id",
+          "selection_manifest_id",
+          "project_id",
+          "case_revision",
+          "selected_count",
+          "frequency",
+          "acquisition_window",
+          "state",
+          "execution_authority",
+          "next_action"
+        ],
+        "title": "CryptoOneMinuteSelectionResponse",
         "type": "object"
       },
       "CryptoProviderValue": {
@@ -18100,6 +19009,89 @@
         ]
       }
     },
+    "/api/crypto-data/batches": {
+      "get": {
+        "operationId": "profile_batches_api_crypto_data_batches_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCoverageBatchListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Profile Batches",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/batches/{batch_id}/resume": {
+      "post": {
+        "operationId": "profile_resume_api_crypto_data_batches__batch_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoCoverageBatchResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Profile Resume",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
     "/api/crypto-data/capabilities": {
       "get": {
         "operationId": "capabilities_api_crypto_data_capabilities_get",
@@ -18341,6 +19333,383 @@
           }
         },
         "summary": "Feature Show",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/profiles": {
+      "get": {
+        "operationId": "profiles_api_crypto_data_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCoverageProfileListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Profiles",
+        "tags": [
+          "crypto-data"
+        ]
+      },
+      "post": {
+        "operationId": "profile_create_api_crypto_data_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoCoverageProfileCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCoverageProfileCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Profile Create",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/profiles/{profile_id}": {
+      "get": {
+        "operationId": "profile_show_api_crypto_data_profiles__profile_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "family",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "frequency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Frequency"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cadence",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cadence"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoCoverageProfilePageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Profile Show",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/profiles/{profile_id}/batches": {
+      "post": {
+        "operationId": "profile_run_api_crypto_data_profiles__profile_id__batches_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoCoverageBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Profile Run",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/profiles/{profile_id}/liquidity-membership": {
+      "post": {
+        "operationId": "liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoLiquidityFreezeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoLiquidityFreezeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Liquidity Freeze",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
+    "/api/crypto-data/profiles/{profile_id}/one-minute-selection": {
+      "post": {
+        "operationId": "one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CryptoOneMinuteSelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoOneMinuteSelectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "One Minute Selection",
         "tags": [
           "crypto-data"
         ]

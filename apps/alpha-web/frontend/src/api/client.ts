@@ -15,11 +15,19 @@ import type {
   CryptoCatalog,
   CryptoCapabilities,
   CryptoCoverage,
+  CryptoCoverageBatches,
+  CryptoCoverageCadence,
+  CryptoCoverageProfile,
+  CryptoCoverageProfilePage,
+  CryptoCoverageProfiles,
   CryptoEstimate,
   CryptoEstimateRequest,
   CryptoFeature,
   CryptoFeatureCreateRequest,
   CryptoFeatures,
+  CryptoFamily,
+  CryptoLiquidityMembership,
+  CryptoOneMinuteSelection,
   CryptoQuality,
   CryptoSnapshotCreate,
   CryptoSnapshotRegister,
@@ -327,6 +335,52 @@ export const api = {
   cryptoCacheClean: (): Promise<CryptoCacheClean> =>
     postJSON('/api/crypto-data/storage/cache/clean', { confirm: true }),
   cryptoCoverage: (): Promise<CryptoCoverage> => getJSON('/api/crypto-data/coverage'),
+  cryptoProfiles: (): Promise<CryptoCoverageProfiles> => getJSON('/api/crypto-data/profiles'),
+  cryptoProfileCreate: (asOf: string | null = null): Promise<CryptoCoverageProfile> =>
+    postJSON('/api/crypto-data/profiles', { as_of: asOf }),
+  cryptoProfile: (
+    profileId: string,
+    options: {
+      offset?: number
+      limit?: number
+      provider?: string
+      family?: CryptoFamily
+      category?: string
+      frequency?: string
+      cadence?: CryptoCoverageCadence
+    } = {},
+  ): Promise<CryptoCoverageProfilePage> => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(options)) {
+      if (value !== undefined) params.set(key, String(value))
+    }
+    const query = params.size ? `?${params.toString()}` : ''
+    return getJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}${query}`)
+  },
+  cryptoProfileRun: (
+    profileId: string,
+    cadence: CryptoCoverageCadence,
+    offset: number,
+    limit: number,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
+    postJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}/batches`, {
+      cadence, offset, limit, confirm: true,
+    }),
+  cryptoBatches: (): Promise<CryptoCoverageBatches> => getJSON('/api/crypto-data/batches'),
+  cryptoBatchResume: (
+    batchId: string,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
+    postJSON(`/api/crypto-data/batches/${encodeURIComponent(batchId)}/resume`, { confirm: true }),
+  cryptoLiquidityFreeze: (
+    profileId: string,
+    body: { category: 'spot' | 'linear' | 'inverse'; quote_asset: 'USD' | 'USDT'; session: string; limit: number },
+  ): Promise<CryptoLiquidityMembership> =>
+    postJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}/liquidity-membership`, body),
+  cryptoOneMinuteSelection: (
+    profileId: string,
+    body: { case_id: string; expected_case_revision: string; markets: string[]; reason: string },
+  ): Promise<CryptoOneMinuteSelection> =>
+    postJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}/one-minute-selection`, body),
   cryptoAsset: (symbol: string, asOf: string): Promise<CryptoAssetIdentity> => {
     const params = new URLSearchParams({ as_of: asOf })
     return getJSON(`/api/crypto-data/assets/${encodeURIComponent(symbol)}?${params.toString()}`)

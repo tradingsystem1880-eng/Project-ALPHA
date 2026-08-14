@@ -367,6 +367,219 @@ def test_crypto_feature_routes_build_named_lineage_commands(
     ]
 
 
+def test_crypto_profile_routes_keep_batches_bounded_and_selections_case_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    profile_id, batch_id = "1" * 64, "2" * 64
+    project_calls: list[list[str]] = []
+    launch_calls: list[list[str]] = []
+
+    class Accepted:
+        job_id = "profile-job"
+        status = "running"
+        session_id = None
+
+    def launch(args: list[str], **_: object) -> Accepted:
+        launch_calls.append(args)
+        return Accepted()
+
+    summary = {
+        "profile_id": profile_id,
+        "as_of": "2026-08-15T00:00:00+00:00",
+        "source_manifest_ids": ["a" * 64],
+        "task_count": 1,
+        "counts_by_provider": {"binance": 1},
+        "counts_by_cadence": {"daily": 1},
+        "counts_by_family": {"market_bars": 1},
+        "execution_authority": False,
+    }
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        project_calls.append(args)
+        command = args[1]
+        if command == "profiles":
+            return {
+                "items": [summary],
+                "count": 1,
+                "execution_authority": False,
+                "next_action": "Create a fresh profile after catalog changes.",
+            }
+        if command == "profile-create":
+            return summary | {
+                "state": "frozen",
+                "binance_hourly_scopes": [],
+                "binance_hourly_missing_scopes": [["spot", "USDT"]],
+                "next_action": "Acquire the daily scope.",
+            }
+        if command == "profile-show":
+            return summary | {
+                "offset": 0,
+                "limit": 100,
+                "filtered_count": 1,
+                "filters": {
+                    "provider": "binance",
+                    "family": "market_bars",
+                    "category": None,
+                    "frequency": "1d",
+                    "cadence": None,
+                },
+                "items": [
+                    {
+                        "schema_version": 1,
+                        "task_id": "b" * 64,
+                        "provider": "binance",
+                        "family": "market_bars",
+                        "instrument": "BTCUSDT",
+                        "base_asset": "BTC",
+                        "quote_asset": "USDT",
+                        "category": "spot",
+                        "frequency": "1d",
+                        "cadence": "daily",
+                        "network": None,
+                        "metrics": [],
+                        "lookback_days": None,
+                        "execution_authority": False,
+                    }
+                ],
+                "has_more": False,
+                "next_offset": None,
+                "next_action": "Run only the intended bounded cadence batch.",
+            }
+        if command == "profile-batches":
+            return {
+                "items": [
+                    {
+                        "batch_id": batch_id,
+                        "profile_id": profile_id,
+                        "cadence": "daily",
+                        "profile_offset": 0,
+                        "task_count": 1,
+                        "completed_count": 0,
+                        "state": "failed",
+                        "updated_at": "2026-08-15T00:01:00Z",
+                        "execution_authority": False,
+                    }
+                ],
+                "count": 1,
+                "execution_authority": False,
+                "next_action": "Resume only a failed batch.",
+            }
+        if command == "liquidity-freeze":
+            return {
+                "manifest_id": "c" * 64,
+                "profile_id": profile_id,
+                "session": "2026-08-14",
+                "category": "spot",
+                "quote_asset": "USDT",
+                "universe_count": 1,
+                "selected_count": 1,
+                "state": "frozen",
+                "execution_authority": False,
+                "next_action": "Create a fresh profile.",
+            }
+        return {
+            "profile_id": "d" * 64,
+            "base_profile_id": profile_id,
+            "selection_manifest_id": "e" * 64,
+            "project_id": "f03802b8-df35-4f19-a90c-0b3437aa587d",
+            "case_revision": "f" * 64,
+            "selected_count": 1,
+            "frequency": "1m",
+            "acquisition_window": "previous_complete_hour",
+            "state": "frozen",
+            "execution_authority": False,
+            "next_action": "Run the hourly page.",
+        }
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    monkeypatch.setattr(_invoke, "launch", launch)
+    client = TestClient(create_app())
+
+    assert client.get("/api/crypto-data/profiles").status_code == 200
+    assert client.post("/api/crypto-data/profiles", json={"as_of": None}).status_code == 200
+    page = client.get(
+        f"/api/crypto-data/profiles/{profile_id}",
+        params={"provider": "binance", "family": "market_bars", "frequency": "1d", "limit": 100},
+    )
+    assert page.status_code == 200, page.text
+    assert page.json()["items"][0]["instrument"] == "BTCUSDT"
+    run = client.post(
+        f"/api/crypto-data/profiles/{profile_id}/batches",
+        json={"cadence": "daily", "offset": 0, "limit": 25, "confirm": True},
+    )
+    assert run.status_code == 200
+    assert client.get("/api/crypto-data/batches").status_code == 200
+    assert (
+        client.post(
+            f"/api/crypto-data/batches/{batch_id}/resume", json={"confirm": True}
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/api/crypto-data/profiles/{profile_id}/liquidity-membership",
+            json={"category": "spot", "quote_asset": "USDT", "session": "2026-08-14", "limit": 250},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/api/crypto-data/profiles/{profile_id}/liquidity-membership",
+            json={
+                "category": "inverse",
+                "quote_asset": "USDT",
+                "session": "2026-08-14",
+                "limit": 250,
+            },
+        ).status_code
+        == 422
+    )
+    selected = client.post(
+        f"/api/crypto-data/profiles/{profile_id}/one-minute-selection",
+        json={
+            "case_id": "f03802b8-df35-4f19-a90c-0b3437aa587d",
+            "expected_case_revision": "f" * 64,
+            "markets": ["spot:BTCUSDT"],
+            "reason": "Inspect this bounded one-minute research window.",
+        },
+    )
+    assert selected.status_code == 200, selected.text
+    assert launch_calls == [
+        [
+            "crypto-data",
+            "profile-run",
+            profile_id,
+            "--cadence",
+            "daily",
+            "--offset",
+            "0",
+            "--limit",
+            "25",
+            "--confirm",
+            "--json",
+        ],
+        ["crypto-data", "profile-resume", batch_id, "--confirm", "--json"],
+    ]
+    assert project_calls[-2][1] == "liquidity-freeze"
+    assert project_calls[-1][-5:] == [
+        "--market",
+        "spot:BTCUSDT",
+        "--reason",
+        "Inspect this bounded one-minute research window.",
+        "--json",
+    ]
+
+    assert (
+        client.post(
+            f"/api/crypto-data/profiles/{profile_id}/batches",
+            json={"cadence": "daily", "offset": 0, "limit": 26, "confirm": True},
+        ).status_code
+        == 422
+    )
+    assert client.get(f"/api/crypto-data/profiles/{'x' * 64}").status_code == 422
+
+
 def test_crypto_asset_master_routes_build_closed_exact_identity_commands(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

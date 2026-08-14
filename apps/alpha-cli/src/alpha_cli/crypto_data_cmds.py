@@ -2913,10 +2913,15 @@ def profile_create(
 ) -> None:
     """Freeze the default coverage tasks from exact qualified Bybit catalogs."""
     try:
-        instant = _now() if as_of is None else datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+        knowledge_now = _now()
+        instant = (
+            knowledge_now if as_of is None else datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+        )
         if instant.tzinfo is None or instant.utcoffset() is None:
             raise DataError("crypto coverage-profile as_of must include a timezone")
         instant = instant.astimezone(UTC)
+        if instant > knowledge_now:
+            raise DataError("crypto coverage-profile as_of cannot be in the future")
         store = _bulk_store()
         store.verify_ready(required_bytes=0)
         catalog_sources = tuple(
@@ -3007,6 +3012,11 @@ def profile_show(
     profile_id: str,
     offset: int = typer.Option(0, min=0),
     limit: int = typer.Option(50, min=1, max=100),
+    provider: str | None = typer.Option(None, help="filter exact provider"),
+    family: str | None = typer.Option(None, help="filter exact dataset family"),
+    category: str | None = typer.Option(None, help="filter exact market category"),
+    frequency: str | None = typer.Option(None, help="filter exact native frequency"),
+    cadence: str | None = typer.Option(None, help="filter exact acquisition cadence"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Inspect a bounded page of one immutable coverage profile."""
@@ -3014,15 +3024,29 @@ def profile_show(
         profile = _read_coverage_profile(profile_id)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
-    page = profile.tasks[offset : offset + limit]
+    filters = {
+        "provider": provider,
+        "family": family,
+        "category": category,
+        "frequency": frequency,
+        "cadence": cadence,
+    }
+    filtered = tuple(
+        task
+        for task in profile.tasks
+        if all(value is None or getattr(task, name) == value for name, value in filters.items())
+    )
+    page = filtered[offset : offset + limit]
     _emit(
         _profile_summary(profile)
         | {
             "offset": offset,
             "limit": limit,
+            "filtered_count": len(filtered),
+            "filters": filters,
             "items": [task.to_dict() for task in page],
-            "has_more": offset + len(page) < len(profile.tasks),
-            "next_offset": offset + len(page) if offset + len(page) < len(profile.tasks) else None,
+            "has_more": offset + len(page) < len(filtered),
+            "next_offset": offset + len(page) if offset + len(page) < len(filtered) else None,
             "next_action": "Run only the intended bounded cadence batch.",
         },
         json_out=json_out,

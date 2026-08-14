@@ -1086,6 +1086,9 @@ const CRYPTO_SNAPSHOT_ID = '9'.repeat(64)
 const CRYPTO_ASSET_MASTER_ID = 'd'.repeat(64)
 const CRYPTO_COINGECKO_MANIFEST_ID = 'e'.repeat(64)
 const CRYPTO_POOL_MANIFEST_ID = 'f'.repeat(64)
+const CRYPTO_PROFILE_ID = '1'.repeat(64)
+const CRYPTO_SELECTED_PROFILE_ID = '2'.repeat(64)
+const CRYPTO_PROFILE_TASK_ID = '3'.repeat(64)
 const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
   items: [
     {
@@ -1202,6 +1205,34 @@ const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
   count: 5,
   canonical_next_action: 'Select qualified families for a snapshot.',
   automatic_fallback: false,
+  execution_authority: false,
+}
+
+const CRYPTO_PROFILE_SUMMARY: components['schemas']['CryptoCoverageProfileSummaryResponse'] = {
+  profile_id: CRYPTO_PROFILE_ID,
+  as_of: '2026-08-15T00:00:00Z',
+  source_manifest_ids: ['a'.repeat(64)],
+  task_count: 1,
+  counts_by_provider: { binance: 1 },
+  counts_by_cadence: { daily: 1 },
+  counts_by_family: { market_bars: 1 },
+  execution_authority: false,
+}
+
+const CRYPTO_PROFILE_TASK: components['schemas']['CryptoCoverageTaskResponse'] = {
+  schema_version: 1,
+  task_id: CRYPTO_PROFILE_TASK_ID,
+  provider: 'binance',
+  family: 'market_bars',
+  instrument: 'BTCUSDT',
+  base_asset: 'BTC',
+  quote_asset: 'USDT',
+  category: 'spot',
+  frequency: '1d',
+  cadence: 'daily',
+  network: null,
+  metrics: [],
+  lookback_days: null,
   execution_authority: false,
 }
 
@@ -1532,6 +1563,77 @@ function responseFor(route: Route, options: MockOptions): unknown {
     } satisfies components['schemas']['CryptoCacheCleanResponse']
   }
   if (url.pathname === '/api/crypto-data/coverage') return CRYPTO_COVERAGE
+  if (url.pathname === '/api/crypto-data/features' && route.request().method() === 'GET') {
+    return {
+      items: [], count: 0, research_authority: false, execution_authority: false,
+      next_action: 'Create only a feature supported by exact qualified inputs.',
+    } satisfies components['schemas']['CryptoFeatureListResponse']
+  }
+  if (url.pathname === '/api/crypto-data/features' && route.request().method() === 'POST') {
+    return {
+      manifest_id: '0'.repeat(64), feature_id: 'a'.repeat(64), feature_name: 'funding',
+      method_version: 'crypto-features-v1', available_at: '2026-08-15T00:00:00Z',
+      row_count: 200, artifact_sha256: 'b'.repeat(64), input_count: 1, state: 'frozen',
+      research_authority: false, execution_authority: false,
+      next_action: 'Bind this feature beside its exact frozen crypto snapshot.',
+    } satisfies components['schemas']['CryptoFeatureResponse']
+  }
+  if (url.pathname === '/api/crypto-data/profiles' && route.request().method() === 'GET') {
+    return {
+      items: [CRYPTO_PROFILE_SUMMARY], count: 1, execution_authority: false,
+      next_action: 'Create a fresh profile after catalog membership changes.',
+    } satisfies components['schemas']['CryptoCoverageProfileListResponse']
+  }
+  if (url.pathname === '/api/crypto-data/profiles' && route.request().method() === 'POST') {
+    return {
+      ...CRYPTO_PROFILE_SUMMARY, state: 'frozen', binance_hourly_scopes: [],
+      binance_hourly_missing_scopes: [['spot', 'USDT']],
+      next_action: 'Acquire the complete prior-day scope.',
+    } satisfies components['schemas']['CryptoCoverageProfileCreateResponse']
+  }
+  if (url.pathname === `/api/crypto-data/profiles/${CRYPTO_PROFILE_ID}`) {
+    return {
+      ...CRYPTO_PROFILE_SUMMARY,
+      offset: Number(url.searchParams.get('offset') ?? 0),
+      limit: Number(url.searchParams.get('limit') ?? 50),
+      filtered_count: 1,
+      filters: {
+        provider: url.searchParams.get('provider'),
+        family: url.searchParams.get('family'),
+        category: url.searchParams.get('category'),
+        frequency: url.searchParams.get('frequency'),
+        cadence: url.searchParams.get('cadence'),
+      },
+      items: [CRYPTO_PROFILE_TASK], has_more: false, next_offset: null,
+      next_action: 'Run only the intended bounded cadence batch.',
+    } satisfies components['schemas']['CryptoCoverageProfilePageResponse']
+  }
+  if (url.pathname === `/api/crypto-data/profiles/${CRYPTO_PROFILE_ID}/batches`) {
+    return { job_id: 'crypto-profile-job', status: 'running', session_id: null }
+  }
+  if (url.pathname === '/api/crypto-data/batches') {
+    return {
+      items: [], count: 0, execution_authority: false,
+      next_action: 'Resume only a failed batch after resolving its blocker.',
+    } satisfies components['schemas']['CryptoCoverageBatchListResponse']
+  }
+  if (url.pathname === `/api/crypto-data/profiles/${CRYPTO_PROFILE_ID}/liquidity-membership`) {
+    return {
+      manifest_id: '4'.repeat(64), profile_id: CRYPTO_PROFILE_ID,
+      session: '2026-08-14', category: 'spot', quote_asset: 'USDT',
+      universe_count: 1, selected_count: 1, state: 'frozen', execution_authority: false,
+      next_action: 'Create a fresh profile.',
+    } satisfies components['schemas']['CryptoLiquidityFreezeResponse']
+  }
+  if (url.pathname === `/api/crypto-data/profiles/${CRYPTO_PROFILE_ID}/one-minute-selection`) {
+    return {
+      profile_id: CRYPTO_SELECTED_PROFILE_ID, base_profile_id: CRYPTO_PROFILE_ID,
+      selection_manifest_id: '5'.repeat(64), project_id: RESEARCH_CASE.project_id,
+      case_revision: RESEARCH_PROPOSAL_OPTIONS.case_revision, selected_count: 1,
+      frequency: '1m', acquisition_window: 'previous_complete_hour', state: 'frozen',
+      execution_authority: false, next_action: 'Run the intended hourly page.',
+    } satisfies components['schemas']['CryptoOneMinuteSelectionResponse']
+  }
   if (url.pathname === '/api/crypto-data/estimate') {
     return {
       family: 'option_quotes',
@@ -2228,8 +2330,27 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   const qualifiedOption = center.locator('.crypto-dataset').filter({ hasText: 'USDT' }).first()
   await qualifiedOption.getByRole('button', { name: 'Quality', exact: true }).click()
   await expect(center.getByText(/Mechanical quality · BTC · option quotes/)).toBeVisible()
+  await center.getByRole('tab', { name: 'Derivatives & Funding', exact: true }).click()
+  await center.getByLabel('Select qualified funding BTCUSDT USDT').check()
+  await center.getByRole('tab', { name: 'Coverage & Quality', exact: true }).click()
+  await expect(center.getByText('EXACT INPUTS READY', { exact: true })).toBeVisible()
+  await center.getByRole('button', { name: 'Freeze selected feature', exact: true }).click()
+  await expect(center.getByText('FROZEN AND VERIFIED · funding', { exact: true })).toBeVisible()
 
   await center.getByRole('tab', { name: 'Storage & Jobs', exact: true }).click()
+  await expect(center.getByText('Default coverage profile', { exact: true })).toBeVisible()
+  await expect(center.getByText('binance 1', { exact: true })).toBeVisible()
+  await expect(center.getByText('Run only the intended bounded cadence batch.')).toBeVisible()
+  await center.getByRole('button', { name: 'Run these 1 tasks', exact: true }).click()
+  await expect(center.getByText(/Running at most 25 exact tasks/)).toBeVisible()
+  await center.getByLabel('Complete UTC session').fill('2026-08-14')
+  await center.getByRole('button', { name: 'Freeze top-liquidity membership', exact: true }).click()
+  await expect(center.getByText('FROZEN · 1 OF 1', { exact: true })).toBeVisible()
+  const oneMinuteMarket = center.locator('.crypto-market-picker label').filter({ hasText: 'BTCUSDT' })
+  await oneMinuteMarket.getByRole('checkbox').check()
+  await expect(center.getByText('SELECT A RESEARCH CASE', { exact: true })).toBeVisible()
+  await expect(center.getByRole('button', { name: 'Freeze 1 selected market', exact: true })).toBeDisabled()
+  await expect(center.getByText(new RegExp(CRYPTO_PROFILE_ID))).toBeHidden()
   await expect(center.getByText('READY', { exact: true })).toBeVisible()
   await expect(center.getByText('1.8 TB free of 2.0 TB')).toBeVisible()
   await expect(center.getByText(/\/Volumes\//)).toHaveCount(0)

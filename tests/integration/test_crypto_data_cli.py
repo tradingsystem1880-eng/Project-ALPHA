@@ -1395,6 +1395,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", ProfileStore)
     monkeypatch.setattr(crypto_data_cmds, "_latest_profile_source", latest_source)
     monkeypatch.setattr(crypto_data_cmds, "_coverage_profile_root", lambda: tmp_path / "profiles")
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: as_of)
     created = runner.invoke(
         app,
         [
@@ -1412,6 +1413,18 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     assert len(created_payload["binance_hourly_missing_scopes"]) == 3
     assert created_payload["counts_by_cadence"]["five_minute"] == 1
     assert created_payload["execution_authority"] is False
+    future = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-create",
+            "--as-of",
+            "2100-01-01T00:00:00+00:00",
+            "--json",
+        ],
+    )
+    assert future.exit_code != 0
+    assert "cannot be in the future" in future.output
 
     profile_id = created_payload["profile_id"]
     shown = runner.invoke(
@@ -1432,6 +1445,31 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     assert len(shown_payload["items"]) == 2
     assert shown_payload["has_more"] is True
     assert shown_payload["next_offset"] == 2
+    filtered = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "profile-show",
+            profile_id,
+            "--provider",
+            "binance",
+            "--family",
+            "market_bars",
+            "--frequency",
+            "1d",
+            "--limit",
+            "100",
+            "--json",
+        ],
+    )
+    assert filtered.exit_code == 0, filtered.output
+    filtered_payload = json.loads(filtered.stdout)
+    assert filtered_payload["filtered_count"] == 3
+    assert {item["instrument"] for item in filtered_payload["items"]} == {
+        "BTCUSDT",
+        "ETHUSDT",
+        "BTCUSD_PERP",
+    }
 
     path = tmp_path / "profiles" / f"{profile_id}.json"
     path.write_text(path.read_text().replace('"frequency": "1h"', '"frequency": "4h"', 1))

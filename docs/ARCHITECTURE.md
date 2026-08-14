@@ -201,6 +201,11 @@ run only through an explicitly confirmed cadence batch of at most 25 tasks. Each
 exact profile slice and knowledge time in an immutable content-addressed plan, atomically checkpoints
 each successful normalized manifest, re-verifies all source manifests on execution or resume, and
 retries only unfinished membership. A completed resume is offline and idempotent.
+The typed Workstation projects those profiles as filtered, human-readable cadence pages and launches
+only an explicitly confirmed page of at most 25 tasks. Failed checkpoints alone are resumable.
+Prior-day Binance liquidity membership and one-minute research selections use the same server
+contracts as the CLI; the latter is bound to a fresh research-case revision and paginated daily
+membership, while stale async pages are discarded.
 Binance daily tasks cover every active spot/perpetual identity and deterministically request only
 the previous complete UTC day. Dated, future-launched, inactive, and duplicate membership fails or
 is excluded before task construction; Unicode provider symbols retain exact identity. A
