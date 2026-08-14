@@ -1629,14 +1629,13 @@ def _fetch_non_bybit(
         if family == "market_reference":
             params: dict[str, str | int | bool] = {
                 "vs_currency": quote_value.lower(),
-                "ids": instrument_value,
                 "order": "market_cap_desc",
-                "per_page": 1,
+                "per_page": 250 if instrument_value == "all" else 1,
                 "page": 1,
                 "sparkline": False,
             }
-            request = coingecko_demo_request("markets", params, api_key=api_key)
-            payload = fetch_coingecko_demo(request)
+            if instrument_value != "all":
+                params["ids"] = instrument_value
             parser = partial(
                 parse_market_universe,
                 vs_currency=quote_value,
@@ -1647,6 +1646,9 @@ def _fetch_non_bybit(
             keys = ("coingecko_id", "quote_asset")
             endpoint = "markets"
             frequency_value = "point_in_time_reference"
+            if instrument_value != "all":
+                request = coingecko_demo_request("markets", params, api_key=api_key)
+                payload = fetch_coingecko_demo(request)
         elif family == "asset_metadata":
             params = {"include_platform": True}
             request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
@@ -1671,7 +1673,9 @@ def _fetch_non_bybit(
                 market_type="reference",
                 family=family,
                 instrument=instrument_value,
-                base_asset=base_value,
+                base_asset=(
+                    None if family == "asset_metadata" or instrument_value == "all" else base_value
+                ),
                 quote_asset=quote_value if family == "market_reference" else None,
                 frequency=frequency_value,
                 units="reference_only",
@@ -1683,6 +1687,41 @@ def _fetch_non_bybit(
             availability_column="fetched_at",
             parser_at=parser_at,
         )
+        if family == "market_reference" and instrument_value == "all":
+            market_pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+            market_page_parsers: list[Callable[[bytes], pl.DataFrame]] = []
+            for page_number in range(1, 101):
+                page_params = {**params, "page": page_number}
+                request = coingecko_demo_request("markets", page_params, api_key=api_key)
+                payload = fetch_coingecko_demo(request)
+                page_parser = partial(
+                    parse_market_universe,
+                    vs_currency=quote_value,
+                    fetched_at=fetched_at,
+                )
+                row_count = page_parser(payload).height
+                if row_count == 0:
+                    raise DataError("CoinGecko market universe returned an empty page")
+                market_pages.append(
+                    (
+                        payload,
+                        tuple((key, str(value)) for key, value in sorted(page_params.items())),
+                        (f"page={page_number}",),
+                    )
+                )
+                market_page_parsers.append(page_parser)
+                if row_count < 250:
+                    return _FetchedPagedAcquisition(
+                        plan=plan,
+                        pages=tuple(market_pages),
+                        page_parsers=tuple(market_page_parsers),
+                        upstream_checksums=tuple(None for _ in market_pages),
+                        combine_frames=None,
+                        provider_schema="coingecko-demo-v3",
+                        parser_version="coingecko-reference-v1",
+                        logical_name=f"{family}.json",
+                    )
+            raise DataError("CoinGecko market universe exceeded the 100-page safety limit")
         return _FetchedAcquisition(
             plan=plan,
             payload=payload,
@@ -1696,8 +1735,6 @@ def _fetch_non_bybit(
             raise DataError("GeckoTerminal acquisition requires --network")
         if family == "dex_pools":
             params_gt: dict[str, str | int | bool] = {"page": 1}
-            url = geckoterminal_public_url("top_pools", network=network, params=params_gt)
-            payload = fetch_geckoterminal_public(url)
             parser = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
             parser_at = partial(_top_pools_parser_at, network=network)
             observed_column = "fetched_at"
@@ -1759,6 +1796,34 @@ def _fetch_non_bybit(
             key_columns=keys,
             parser_at=parser_at,
         )
+        if family == "dex_pools":
+            pages_gt: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+            page_parsers_gt: list[Callable[[bytes], pl.DataFrame]] = []
+            for page_number in range(1, 6):
+                page_params_gt: dict[str, str | int | bool] = {"page": page_number}
+                url = geckoterminal_public_url("top_pools", network=network, params=page_params_gt)
+                page_payload = fetch_geckoterminal_public(url)
+                page_parser_gt = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
+                if page_parser_gt(page_payload).height != 20:
+                    raise DataError("GeckoTerminal top-100 catalog page is incomplete")
+                pages_gt.append(
+                    (
+                        page_payload,
+                        (("page", str(page_number)),),
+                        (f"page={page_number}",),
+                    )
+                )
+                page_parsers_gt.append(page_parser_gt)
+            return _FetchedPagedAcquisition(
+                plan=plan,
+                pages=tuple(pages_gt),
+                page_parsers=tuple(page_parsers_gt),
+                upstream_checksums=tuple(None for _ in pages_gt),
+                combine_frames=None,
+                provider_schema="geckoterminal-v2",
+                parser_version="geckoterminal-public-v1",
+                logical_name=f"{family}.json",
+            )
         return _FetchedAcquisition(
             plan=plan,
             payload=payload,
@@ -1907,6 +1972,11 @@ def acquire(
         )
         if plan.parser_at is not None:
             plan = replace(plan, parser=plan.parser_at(fetched_at))
+            if isinstance(fetched, _FetchedPagedAcquisition):
+                fetched = replace(
+                    fetched,
+                    page_parsers=tuple(plan.parser for _ in fetched.pages),
+                )
         correction_lineage: tuple[str, ...] = ()
         if isinstance(fetched, _FetchedPagedAcquisition):
             if fetched.upstream_checksums and fetched.upstream_checksums[0] is not None:
@@ -2026,11 +2096,12 @@ def acquire(
             raw_manifests = (single_result.raw_manifest,)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
-    next_action = (
-        "Create or extend a frozen crypto snapshot."
-        if quality.state == "qualified"
-        else "Review the quality blockers before using this dataset."
-    )
+    if quality.state == "qualified":
+        next_action = "Create or extend a frozen crypto snapshot."
+    elif quality.state == "warning":
+        next_action = "Review the quality warnings before selecting stronger evidence."
+    else:
+        next_action = "Review the quality blockers before using this dataset."
     _emit(
         {
             "provider": provider,

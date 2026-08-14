@@ -77,6 +77,10 @@ Bybit, Coinbase, GeckoTerminal, and Coin Metrics use only public interfaces in t
 Bybit option instruments, quotes, and historical volatility require an explicit `option` market
 selection; the system must not accept a misleading linear/inverse selection and silently relabel
 the normalized identity.
+CoinGecko's daily `all` market-reference acquisition freezes every ordered 250-row page through
+the first bounded terminal page. GeckoTerminal top-pool catalogs freeze five exact 20-row pages per
+declared network. Each page has its own raw receipt and the normalized catalog commits to their
+ordered membership; incomplete pages or a CoinGecko universe beyond 100 pages fail closed.
 
 ## Provider retention and removal policy
 

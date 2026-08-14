@@ -187,6 +187,9 @@ authority. An explicit typed registration
 re-verifies every external member before recording the snapshot through the historical research
 `snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
 when a registered operator declares compatibility.
+CoinGecko full-market reference uses ordered 250-row pages through one short terminal page, bounded
+to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
+is a separate immutable raw receipt and the combined normalized catalog preserves that order.
 Coinbase comparison bars are acquired through the existing venue-qualified CCXT seam at exact
 1m/5m/1h/1d intervals. Bybit spot bars may be stored only as diagnostics and fail snapshot authority
 checks. A derived market-comparison artifact commits to the authoritative Binance input, every

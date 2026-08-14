@@ -6,6 +6,7 @@ import json
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from urllib.request import Request
 
 import pytest
 from typer.testing import CliRunner
@@ -185,15 +186,15 @@ def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
     monkeypatch.setattr(
         crypto_data_cmds,
         "fetch_geckoterminal_public",
-        lambda *_args: json.dumps(
+        lambda url: json.dumps(
             {
                 "data": [
                     {
-                        "id": "eth_pool",
+                        "id": f"eth_pool{index}",
                         "type": "pool",
                         "attributes": {
-                            "address": "0xPool",
-                            "name": "USDC / WETH",
+                            "address": f"0xPool{index}",
+                            "name": "USDC / WETH" if index == 0 else f"TOKEN{index} / WETH",
                             "pool_created_at": "2021-12-30T20:32:10Z",
                             "base_token_price_usd": "1",
                             "quote_token_price_usd": "2000",
@@ -202,11 +203,20 @@ def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
                             "transactions": {"h24": {"buys": 8, "sells": 7}},
                         },
                         "relationships": {
-                            "base_token": {"data": {"id": "eth_0xUSDC", "type": "token"}},
-                            "quote_token": {"data": {"id": "eth_0xWETH", "type": "token"}},
+                            "base_token": {
+                                "data": {
+                                    "id": "eth_0xUSDC" if index == 0 else f"eth_token{index}",
+                                    "type": "token",
+                                }
+                            },
+                            "quote_token": {"data": {"id": f"eth_weth{index}", "type": "token"}},
                             "dex": {"data": {"id": "uniswap_v3", "type": "dex"}},
                         },
                     }
+                    for index in range(
+                        (int(url.split("page=")[1].split("&", 1)[0]) - 1) * 20,
+                        int(url.split("page=")[1].split("&", 1)[0]) * 20,
+                    )
                 ]
             }
         ).encode(),
@@ -969,15 +979,18 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     ).encode()
     monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", lambda *_args: coingecko_payload)
 
-    gecko_payload = json.dumps(
-        {
-            "data": [
+    def fetch_geckoterminal(url: str) -> bytes:
+        page = int(url.split("page=")[1].split("&", 1)[0])
+        pools = []
+        for offset in range(20):
+            index = (page - 1) * 20 + offset
+            pools.append(
                 {
-                    "id": "eth_0xpool",
+                    "id": f"eth_0xpool{index}",
                     "type": "pool",
                     "attributes": {
-                        "address": "0xPool",
-                        "name": "USDC / WETH",
+                        "address": f"0xpool{index}",
+                        "name": f"TOKEN{index} / WETH",
                         "pool_created_at": "2021-12-30T20:32:10Z",
                         "base_token_price_usd": "1.0",
                         "quote_token_price_usd": "2000",
@@ -986,17 +999,15 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
                         "transactions": {"h24": {"buys": 8, "sells": 7}},
                     },
                     "relationships": {
-                        "base_token": {"data": {"id": "eth_0xbase", "type": "token"}},
+                        "base_token": {"data": {"id": f"eth_0xbase{index}", "type": "token"}},
                         "quote_token": {"data": {"id": "eth_0xquote", "type": "token"}},
                         "dex": {"data": {"id": "uniswap_v3", "type": "dex"}},
                     },
                 }
-            ]
-        }
-    ).encode()
-    monkeypatch.setattr(
-        crypto_data_cmds, "fetch_geckoterminal_public", lambda *_args: gecko_payload
-    )
+            )
+        return json.dumps({"data": pools}).encode()
+
+    monkeypatch.setattr(crypto_data_cmds, "fetch_geckoterminal_public", fetch_geckoterminal)
 
     coinmetrics_payload = json.dumps(
         {
@@ -1102,7 +1113,7 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
         assert receipt["state"] == "qualified"
         receipts[str(receipt["family"])] = receipt
 
-    assert len(store.inventory()) == 10
+    assert len(store.inventory()) == 14
     inventory_json = json.dumps(store.inventory())
     assert "injected-only-for-test" not in inventory_json
 
@@ -1145,6 +1156,138 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
         receipts["market_bars"]["normalized_manifest_id"],
         receipts["comparison_bars"]["normalized_manifest_id"],
     ]
+
+
+def test_public_reference_catalogs_freeze_every_ordered_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = CryptoBulkStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path / "control"))
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "injected-only-for-test")
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_now",
+        lambda: datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    def market_row(index: int) -> dict[str, object]:
+        return {
+            "id": f"coin-{index}",
+            "symbol": f"c{index}",
+            "name": f"Coin {index}",
+            "current_price": float(index + 1),
+            "market_cap": float(10_000 - index),
+            "market_cap_rank": index + 1,
+            "fully_diluted_valuation": None,
+            "total_volume": 100.0,
+            "circulating_supply": 20.0,
+            "total_supply": 21.0,
+            "max_supply": 21.0,
+            "last_updated": "2026-08-14T00:00:00Z",
+        }
+
+    coin_pages: list[int] = []
+
+    def fetch_coingecko(request: Request) -> bytes:
+        url = request.full_url
+        page = int(url.split("page=")[1].split("&", 1)[0])
+        coin_pages.append(page)
+        rows = [market_row(index) for index in range(250)] if page == 1 else [market_row(250)]
+        return json.dumps(rows).encode()
+
+    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", fetch_coingecko)
+    coingecko = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "coingecko",
+            "market_reference",
+            "all",
+            "--base",
+            "ALL",
+            "--quote",
+            "USD",
+            "--json",
+        ],
+    )
+    assert coingecko.exit_code == 0, coingecko.output
+    coingecko_receipt = json.loads(coingecko.stdout)
+    assert coin_pages == [1, 2]
+    assert coingecko_receipt["raw_page_count"] == 2
+    coingecko_manifest = store.verify_manifest(coingecko_receipt["normalized_manifest_id"])
+    assert coingecko_manifest["quality"]["row_count"] == 251
+    assert coingecko_manifest["dataset"]["instrument"] == "all"
+    assert coingecko_manifest["dataset"]["base_asset"] is None
+
+    def pool_page(page: int) -> bytes:
+        rows = []
+        for offset in range(20):
+            index = (page - 1) * 20 + offset
+            rows.append(
+                {
+                    "id": f"eth_0xpool{index}",
+                    "type": "pool",
+                    "attributes": {
+                        "address": f"0xpool{index}",
+                        "name": f"TOKEN{index} / WETH",
+                        "pool_created_at": "2021-12-30T20:32:10Z",
+                        "base_token_price_usd": "1.0",
+                        "quote_token_price_usd": "2000",
+                        "reserve_in_usd": "4558978.84",
+                        "volume_usd": {"h24": "39081025"},
+                        "transactions": {"h24": {"buys": 8, "sells": 7}},
+                    },
+                    "relationships": {
+                        "base_token": {"data": {"id": f"eth_0xbase{index}", "type": "token"}},
+                        "quote_token": {"data": {"id": "eth_0xquote", "type": "token"}},
+                        "dex": {"data": {"id": "uniswap_v3", "type": "dex"}},
+                    },
+                }
+            )
+        return json.dumps({"data": rows}).encode()
+
+    pool_pages: list[int] = []
+
+    def fetch_gecko(url: str) -> bytes:
+        page = int(url.split("page=")[1].split("&", 1)[0])
+        pool_pages.append(page)
+        return pool_page(page)
+
+    monkeypatch.setattr(crypto_data_cmds, "fetch_geckoterminal_public", fetch_gecko)
+    gecko = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "acquire",
+            "geckoterminal",
+            "dex_pools",
+            "eth",
+            "--base",
+            "ETH",
+            "--quote",
+            "USD",
+            "--network",
+            "eth",
+            "--json",
+        ],
+    )
+    assert gecko.exit_code == 0, gecko.output
+    gecko_receipt = json.loads(gecko.stdout)
+    assert pool_pages == [1, 2, 3, 4, 5]
+    assert gecko_receipt["raw_page_count"] == 5
+    gecko_manifest = store.verify_manifest(gecko_receipt["normalized_manifest_id"])
+    assert gecko_manifest["quality"]["row_count"] == 100
 
 
 @pytest.mark.parametrize(
