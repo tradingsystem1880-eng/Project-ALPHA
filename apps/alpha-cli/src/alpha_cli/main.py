@@ -5,6 +5,7 @@ from __future__ import annotations
 import typer
 
 from alpha_cli.backtest_cmds import backtest_app
+from alpha_cli.crypto_data_cmds import crypto_data_app
 from alpha_cli.data_cmds import data_app
 from alpha_cli.evidence_cmds import evidence_app
 from alpha_cli.figures_cmds import figures_app
@@ -28,6 +29,7 @@ from alpha_cli.validate_cmds import validate as _validate
 
 app = typer.Typer(help="Project ALPHA command-line interface.")
 app.add_typer(data_app, name="data")
+app.add_typer(crypto_data_app, name="crypto-data")
 app.add_typer(backtest_app, name="backtest")
 app.add_typer(forecast_app, name="forecast")
 app.add_typer(optim_app, name="optim")
