@@ -192,6 +192,7 @@ _CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
         "candidate_fixed_stress",
         "candidate_qlib",
         *_CANDIDATE_KRONOS_COMMANDS,
+        "candidate_holdout",
     }
 )
 
@@ -277,7 +278,10 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
         "kronos",
         frozenset({"forecast_run", "forecast_eval", *_CANDIDATE_KRONOS_COMMANDS}),
     ),
-    "holdout_reveal": ("holdout", frozenset({"backtest_holdout"})),
+    "holdout_reveal": (
+        "holdout",
+        frozenset({"backtest_holdout", "candidate_holdout"}),
+    ),
 }
 _PRE_REVEAL_RESEARCH_STAGES: Final = frozenset(
     {

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Final
 
@@ -38,6 +38,7 @@ _COMMANDS: Final = {
     "qlib_fixture": "candidate_qlib",
     "kronos_forecast_fixture": "candidate_kronos_forecast",
     "kronos_eval_fixture": "candidate_kronos_eval",
+    "holdout": "candidate_holdout",
 }
 _ANALYSES: Final = frozenset(_COMMANDS)
 
@@ -125,6 +126,13 @@ def _analysis_result(
     if analysis == "baseline":
         passed = bool(returns.size and float(np.mean(returns)) > 0.0)
         return {"method": "full_registered_event_replay_v1"}, passed
+    if analysis == "holdout":
+        passed = bool(returns.size and float(np.mean(returns)) > 0.0)
+        return {
+            "method": "one_shot_locked_event_window_v1",
+            "event_count": int(returns.size),
+            "mean_net_return": float(np.mean(returns)),
+        }, passed
     if analysis == "inner_oos":
         start = max(0, int(np.floor(returns.size * 0.8)))
         selected = returns[start:]
@@ -307,6 +315,9 @@ def run_hedged_basis_candidate(
     observations: tuple[HedgedBasisObservationV1, ...],
     analysis: str,
     source_run_id: str | None = None,
+    holdout_start: date | None = None,
+    holdout_end: date | None = None,
+    holdout_spec_hash: str | None = None,
     research_cutoff: str | None,
     as_of: datetime | None,
 ) -> dict[str, Any]:
@@ -318,6 +329,22 @@ def run_hedged_basis_candidate(
     if not research_contract_id.startswith("rc_") or len(research_contract_id) != 67:
         raise DataError("hedged basis run requires its promoted research contract")
     admitted = _admit(observations, as_of=as_of)
+    if analysis == "holdout":
+        if (
+            holdout_start is None
+            or holdout_end is None
+            or holdout_end < holdout_start
+            or holdout_spec_hash is None
+            or len(holdout_spec_hash) != 64
+        ):
+            raise DataError("candidate holdout requires its exact sealed window and hash")
+        admitted = tuple(
+            observation
+            for observation in admitted
+            if holdout_start <= observation.event_time.date() <= holdout_end
+        )
+        if not admitted:
+            raise DataError("candidate holdout has no events inside the sealed window")
     source = _source_fingerprint(admitted)
     command = _COMMANDS[analysis]
     identity_payload = {
@@ -332,6 +359,16 @@ def run_hedged_basis_candidate(
         if source_run_id is None or len(source_run_id) != 16:
             raise DataError("candidate Monte Carlo requires its exact source validation run")
         identity_payload["source_run_id"] = source_run_id
+    if analysis == "holdout":
+        assert holdout_start is not None
+        assert holdout_end is not None
+        identity_payload.update(
+            {
+                "holdout_start": holdout_start.isoformat(),
+                "holdout_end": holdout_end.isoformat(),
+                "holdout_spec_hash": holdout_spec_hash,
+            }
+        )
     identity = _runner.run_identity_for(
         identity_payload,
         source_fingerprint=source,
@@ -380,6 +417,12 @@ def run_hedged_basis_candidate(
     if analysis.startswith("monte_carlo_"):
         manifest["source_run_id"] = source_run_id
         manifest["status"] = analysis_result["status"]
+    if analysis == "holdout":
+        assert holdout_start is not None
+        assert holdout_end is not None
+        manifest["holdout_spec_hash"] = holdout_spec_hash
+        manifest["holdout_start"] = holdout_start.isoformat()
+        manifest["holdout_end"] = holdout_end.isoformat()
     _artifacts.write_manifest(run_dir, manifest)
     return _artifacts.read_manifest(run_dir)
 
@@ -399,6 +442,19 @@ def validate_hedged_basis_candidate_artifacts(
     if analysis is None or manifest.get("deployment_scope") != "sandbox_only":
         raise DataError("hedged basis manifest is not a registered sandbox candidate run")
     admitted = _admit(observations, as_of=as_of)
+    if analysis == "holdout":
+        try:
+            holdout_start = date.fromisoformat(str(manifest["holdout_start"]))
+            holdout_end = date.fromisoformat(str(manifest["holdout_end"]))
+        except (KeyError, ValueError) as exc:
+            raise DataError("hedged basis holdout window is invalid") from exc
+        admitted = tuple(
+            observation
+            for observation in admitted
+            if holdout_start <= observation.event_time.date() <= holdout_end
+        )
+        if not admitted:
+            raise DataError("hedged basis holdout window contains no events")
     expected_payload: dict[str, object] = {
         "command": _COMMANDS[analysis],
         "strategy_name": "hedged_basis_crowding_v1",
@@ -409,6 +465,14 @@ def validate_hedged_basis_candidate_artifacts(
     }
     if analysis.startswith("monte_carlo_"):
         expected_payload["source_run_id"] = manifest.get("source_run_id")
+    if analysis == "holdout":
+        expected_payload.update(
+            {
+                "holdout_start": manifest.get("holdout_start"),
+                "holdout_end": manifest.get("holdout_end"),
+                "holdout_spec_hash": manifest.get("holdout_spec_hash"),
+            }
+        )
     expected_identity = _runner.run_identity_for(
         expected_payload,
         source_fingerprint=_source_fingerprint(admitted),

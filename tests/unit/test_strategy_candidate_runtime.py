@@ -227,3 +227,30 @@ def test_candidate_fixed_development_diagnostics_are_exact(
         assert [row["selected"] for row in metadata["trials"]] == [False, True, False]
     if analysis == "cross_asset_scope":
         assert metadata["status"] == "completed_not_applicable_single_registered_asset"
+
+
+def test_candidate_holdout_binds_exact_window_and_hash(tmp_path: Path) -> None:
+    observations = _observations()
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        analysis="holdout",
+        holdout_start=datetime(2025, 1, 1, tzinfo=UTC).date(),
+        holdout_end=datetime(2025, 1, 3, tzinfo=UTC).date(),
+        holdout_spec_hash="1" * 64,
+        research_cutoff=None,
+        as_of=None,
+    )
+
+    assert manifest["command"] == "candidate_holdout"
+    assert manifest["holdout_spec_hash"] == "1" * 64
+    assert manifest["passed"] is True
+    validate_hedged_basis_candidate_artifacts(
+        tmp_path / "runs" / str(manifest["run_id"]),
+        manifest,
+        observations=observations,
+        as_of=None,
+    )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 import typer
 
@@ -24,6 +25,9 @@ def run(
     research_contract_id: str = typer.Option(...),
     analysis: str = typer.Option("baseline", help="registered candidate analysis"),
     source_run_id: str | None = typer.Option(None, help="exact upstream validation run"),
+    holdout_start: str | None = typer.Option(None, help="sealed holdout start YYYY-MM-DD"),
+    holdout_end: str | None = typer.Option(None, help="sealed holdout end YYYY-MM-DD"),
+    holdout_spec_hash: str | None = typer.Option(None, help="exact sealed holdout contract"),
     as_of: str | None = typer.Option(None, help="inclusive pre-holdout cutoff YYYY-MM-DD"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
@@ -31,6 +35,8 @@ def run(
     settings = AlphaSettings()
     try:
         cutoff = _runner.parse_as_of(as_of)
+        start = None if holdout_start is None else date.fromisoformat(holdout_start)
+        end = None if holdout_end is None else date.fromisoformat(holdout_end)
         observations = crypto_hedged_basis_observations(snapshot_id)
         manifest = run_hedged_basis_candidate(
             settings.data_dir,
@@ -40,10 +46,13 @@ def run(
             observations=observations,
             analysis=analysis,
             source_run_id=source_run_id,
+            holdout_start=start,
+            holdout_end=end,
+            holdout_spec_hash=holdout_spec_hash,
             research_cutoff=as_of,
             as_of=cutoff,
         )
-    except DataError as exc:
+    except (DataError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     if json_out:
         typer.echo(json.dumps(manifest, sort_keys=True, allow_nan=False))

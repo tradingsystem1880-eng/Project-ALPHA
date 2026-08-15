@@ -728,6 +728,7 @@ def build_suite_plan(
         )
 
     args: tuple[str, ...]
+    preview: tuple[str, ...]
     if hedged_basis and action == "baseline":
         args = (
             "strategy-candidate",
@@ -991,6 +992,81 @@ def build_suite_plan(
             )
         governance["kronos_role"] = "disclosed_fake_fixture_not_market_oracle"
         workload = _workload(action, commands=2, canonical_runs=2)
+    elif hedged_basis and action == "holdout_reveal":
+        if holdout is None:
+            blockers.append("final holdout must be sealed before owner reveal")
+        elif holdout.get("revealed_at") is not None and not resume_reveal:
+            blockers.append("final holdout was already revealed")
+        elif holdout.get("contaminated_at") is not None:
+            blockers.append("final holdout is contaminated for this lineage")
+        sealed_spec = store.get_holdout_spec(project_id, experiment_id)
+        if sealed_spec is None:
+            blockers.append("final holdout must include a sealed evaluation window")
+        steps.append(
+            SuiteStep(
+                "One-shot final holdout reveal",
+                ("__holdout__",),
+                (
+                    "project",
+                    "reveal-holdout",
+                    project_id,
+                    experiment_id,
+                    "--actor",
+                    "<owner>",
+                    "--reason",
+                    "<owner-confirmed>",
+                ),
+                "owner_only_irreversible_audit",
+            )
+        )
+        if sealed_spec is not None:
+            spec_hash = str(sealed_spec["spec_hash"])
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                "holdout",
+                "--holdout-start",
+                str(sealed_spec["start_date"]),
+                "--holdout-end",
+                str(sealed_spec["end_date"]),
+                "--holdout-spec-hash",
+                spec_hash,
+            )
+            preview = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                "holdout",
+                "--holdout-window",
+                f"<sealed:{spec_hash}>",
+            )
+            steps.append(
+                SuiteStep(
+                    "Locked candidate holdout evaluation",
+                    args,
+                    preview,
+                    "one_shot_fixed_candidate_holdout",
+                )
+            )
+        governance.update(
+            {
+                "owner_only": True,
+                "available_to_mcp": False,
+                "one_shot": True,
+                "resume_same_job_after_interruption": resume_reveal,
+                "sealed_window_redacted_until_reveal": True,
+                "deployment_scope": "sandbox_only",
+                "places_orders": False,
+            }
+        )
+        workload = _workload(action, commands=2, canonical_runs=1)
     elif hedged_basis and action == "paper_preflight":
         args = ("strategy-candidate", "paper-preflight", "--json")
         steps.append(
@@ -1911,6 +1987,11 @@ def _finish_stage(
 
 
 def _headline_state(data_dir: Path, plan: SuitePlan, run_ids: Sequence[str]) -> StageState:
+    if (
+        plan.action == "paper_preflight"
+        and plan.governance.get("preflight_outcome") == "UNSUPPORTED_MULTI_VENUE_PAPER"
+    ):
+        return "fail"
     if not run_ids:
         return "pass"
     if plan.action not in {

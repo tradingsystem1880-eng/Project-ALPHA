@@ -14,6 +14,7 @@ from alpha_cli._suite import (
     StepExecution,
     SuiteAction,
     SuiteStep,
+    _headline_state,
     _monte_carlo_results,
     _monte_carlo_stage_state,
     build_suite_plan,
@@ -1036,6 +1037,7 @@ def test_hedged_basis_paper_preflight_is_a_non_authorizing_blocker(tmp_path: Pat
     assert plan.governance["preflight_outcome"] == "UNSUPPORTED_MULTI_VENUE_PAPER"
     assert plan.governance["paper_readiness_credit"] is False
     assert plan.governance["places_orders"] is False
+    assert _headline_state(tmp_path, plan, ()) == "fail"
 
 
 def _publish_candidate_suite_run(
@@ -1372,3 +1374,14 @@ def test_candidate_freeze_rebuilds_the_complete_distinct_evidence_family(tmp_pat
     )
 
     assert frozen["state"] == "pass"
+
+    holdout = build_suite_plan(
+        store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path
+    )
+    assert holdout.ready is True
+    assert holdout.steps[0].argv == ("__holdout__",)
+    assert holdout.steps[1].argv[6] == "holdout"
+    assert "2026-04-01" in holdout.steps[1].argv
+    assert "2026-04-01" not in holdout.steps[1].preview
+    assert holdout.governance["owner_only"] is True
+    assert holdout.governance["places_orders"] is False
