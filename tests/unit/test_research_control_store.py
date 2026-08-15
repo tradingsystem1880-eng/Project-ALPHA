@@ -10,6 +10,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -4321,6 +4322,56 @@ def test_data_audit_refuses_drifted_bytes_and_unsupported_kinds(
         bad_range["start_ts"] = "2021-01-01"
         bad_range["end_ts"] = "2020-01-01"
         run_data_audit(tmp_path, project_id=project_id, ref=bad_range)
+
+
+def test_data_audit_reverifies_registered_crypto_crowding_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli import crypto_data_cmds
+    from alpha_cli.research_data_audit import run_data_audit
+
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    snapshot_id = "a" * 64
+    manifest_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text("{}", encoding="utf-8")
+    observations = tuple(
+        SimpleNamespace(
+            funding_time=START + timedelta(hours=8 * index),
+            funding_rate=(-1 if index % 2 else 1) * (index + 1) / 100_000,
+        )
+        for index in range(40)
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "crypto_crowding_observations",
+        lambda requested: observations if requested == snapshot_id else (),
+    )
+    ref = {
+        "ref_id": "rd_" + "2" * 64,
+        "dataset_kind": "snapshot",
+        "instrument": "BTC",
+        "provider": "crypto-data-house",
+        "start_ts": START.isoformat(),
+        "end_ts": (START + timedelta(hours=8 * 39)).isoformat(),
+        "bar_duration_minutes": None,
+        "origin": {
+            "snapshot_id": snapshot_id,
+            "snapshot_schema": "CryptoSnapshotV1",
+            "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        },
+    }
+
+    result = run_data_audit(tmp_path, project_id=project_id, ref=ref)
+
+    assert result["summary"]["blocking_count"] == 0
+    assert result["manifest"]["snapshot_id"] == snapshot_id
+    assert result["manifest"]["snapshot_hash"] == ref["origin"]["manifest_sha256"]
+    run_dir = tmp_path / "runs" / result["manifest"]["run_id"]
+    descriptives = json.loads((run_dir / "descriptives.json").read_text(encoding="utf-8"))
+    assert descriptives["funding_rate_distribution"]["n"] == 40
+    assert "return_distribution" not in descriptives
 
 
 def test_source_records_gain_typed_doi_year_authors_columns(tmp_path: Path) -> None:
