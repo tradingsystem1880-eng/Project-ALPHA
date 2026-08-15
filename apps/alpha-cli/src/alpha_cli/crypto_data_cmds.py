@@ -2316,6 +2316,36 @@ def _fetch_non_bybit(
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
 
 
+def _acquisition_correction_lineage(
+    store: CryptoBulkStore,
+    plan: _AcquisitionPlan,
+    fetched: _FetchedAcquisition | _FetchedPagedAcquisition | None,
+) -> tuple[str, ...]:
+    if isinstance(fetched, _FetchedPagedAcquisition):
+        if not fetched.upstream_checksums or fetched.upstream_checksums[0] is None:
+            return ()
+        archive_payload, archive_request, _ = fetched.pages[0]
+        return _stable_resource_revision_lineage(
+            store,
+            dataset=plan.dataset,
+            request=archive_request,
+            response_sha256=hashlib.sha256(archive_payload).hexdigest(),
+        )
+    if (
+        isinstance(fetched, _FetchedAcquisition)
+        and fetched.plan.dataset.provider == "binance"
+        and fetched.upstream_checksum is not None
+    ):
+        archive_request = tuple((key, str(value)) for key, value in sorted(plan.params.items()))
+        return _stable_resource_revision_lineage(
+            store,
+            dataset=plan.dataset,
+            request=archive_request,
+            response_sha256=hashlib.sha256(fetched.payload).hexdigest(),
+        )
+    return ()
+
+
 def _acquire_result(
     provider: str,
     family: str,
@@ -2403,28 +2433,7 @@ def _acquire_result(
                     fetched,
                     page_parsers=tuple(plan.parser for _ in fetched.pages),
                 )
-        correction_lineage: tuple[str, ...] = ()
-        if isinstance(fetched, _FetchedPagedAcquisition):
-            if fetched.upstream_checksums and fetched.upstream_checksums[0] is not None:
-                archive_payload, archive_request, _ = fetched.pages[0]
-                correction_lineage = _stable_resource_revision_lineage(
-                    store,
-                    dataset=plan.dataset,
-                    request=archive_request,
-                    response_sha256=hashlib.sha256(archive_payload).hexdigest(),
-                )
-        elif (
-            isinstance(fetched, _FetchedAcquisition)
-            and fetched.plan.dataset.provider == "binance"
-            and fetched.upstream_checksum is not None
-        ):
-            archive_request = tuple((key, str(value)) for key, value in sorted(plan.params.items()))
-            correction_lineage = _stable_resource_revision_lineage(
-                store,
-                dataset=plan.dataset,
-                request=archive_request,
-                response_sha256=hashlib.sha256(fetched.payload).hexdigest(),
-            )
+        correction_lineage = _acquisition_correction_lineage(store, plan, fetched)
         if isinstance(fetched, _FetchedPagedAcquisition):
             paged_result = ingest_provider_pages(
                 store,
