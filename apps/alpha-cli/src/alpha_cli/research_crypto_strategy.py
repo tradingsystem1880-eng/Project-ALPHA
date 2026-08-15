@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import polars as pl
 
 from alpha_core import DataError
+from alpha_data.crypto.contracts import (
+    CryptoFamily,
+    CryptoQualityReportV1,
+    CryptoSnapshotMemberV1,
+    CryptoSnapshotV1,
+)
 from alpha_research import (
     CryptoCrowdingObservationV1,
     registered_crypto_crowding_plan,
@@ -17,6 +27,16 @@ from alpha_research import (
 from alpha_strategies.hedged_basis import HedgedBasisObservationV1
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+_CROWDING_FAMILIES: tuple[CryptoFamily, ...] = (
+    "funding",
+    "open_interest",
+    "premium_bars",
+    "mark_bars",
+    "index_bars",
+    "derivative_bars",
+    "instrument_catalog",
+    "long_short_ratio",
+)
 
 
 def _utc(value: object, label: str) -> datetime:
@@ -132,4 +152,79 @@ def compose_hedged_basis_observations(
     return tuple(rows)
 
 
-__all__ = ["compose_hedged_basis_observations"]
+def _member_digest(members: tuple[CryptoSnapshotMemberV1, ...]) -> str:
+    payload = json.dumps(
+        [member.to_dict() for member in members],
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def load_hedged_basis_observations(
+    snapshot: CryptoSnapshotV1,
+    quality_reports: Mapping[str, CryptoQualityReportV1],
+    *,
+    bulk_root: Path,
+) -> tuple[HedgedBasisObservationV1, ...]:
+    """Load one exact qualified nine-family candidate bundle from verified external bytes."""
+    from alpha_cli.research_crypto_data import load_crypto_crowding_observations
+
+    by_family = {member.dataset.family: member for member in snapshot.members}
+    expected = {*_CROWDING_FAMILIES, "market_bars"}
+    if set(by_family) != expected or len(by_family) != len(snapshot.members):
+        raise DataError("hedged basis snapshot is not the exact registered nine-family bundle")
+    spot = by_family["market_bars"]
+    dataset = spot.dataset
+    if (
+        dataset.provider != "binance"
+        or dataset.venue != "binance"
+        or dataset.market_type != "spot"
+        or dataset.instrument != "BTCUSDT"
+        or dataset.base_asset != "BTC"
+        or dataset.quote_asset != "USDT"
+        or dataset.frequency != "1h"
+        or dataset.units != "provider_native_ohlcv"
+        or dataset.timestamp_convention != "interval_start_utc"
+    ):
+        raise DataError("hedged basis Binance spot dataset identity is invalid")
+    for member in snapshot.members:
+        report = quality_reports.get(member.artifact_sha256)
+        if (
+            report is None
+            or report.dataset_sha256 != member.artifact_sha256
+            or report.method_version not in snapshot.qualification_versions
+            or report.state != "qualified"
+            or report.failures
+            or report.warnings
+        ):
+            raise DataError("hedged basis snapshot has an unqualified member")
+        if report.correction_lineage:
+            raise DataError(
+                "hedged basis snapshot corrections lack row-level availability timestamps"
+            )
+    bybit_members = tuple(by_family[family] for family in _CROWDING_FAMILIES)
+    bybit_snapshot = CryptoSnapshotV1.create(
+        members=bybit_members,
+        asset_master_version=snapshot.asset_master_version,
+        qualification_versions=snapshot.qualification_versions,
+    )
+    crowding = load_crypto_crowding_observations(
+        bybit_snapshot,
+        quality_reports,
+        bulk_root=bulk_root,
+    )
+    try:
+        spot_frame = pl.read_parquet(bulk_root / spot.artifact_key)
+    except (OSError, pl.exceptions.PolarsError) as exc:
+        raise DataError("hedged basis Binance spot member is unreadable") from exc
+    return compose_hedged_basis_observations(
+        crowding,
+        spot_frame,
+        bybit_snapshot_sha256=_member_digest(bybit_members),
+        binance_spot_sha256=spot.artifact_sha256,
+    )
+
+
+__all__ = ["compose_hedged_basis_observations", "load_hedged_basis_observations"]

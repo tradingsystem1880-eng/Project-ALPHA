@@ -21,6 +21,7 @@ import typer
 
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
+from alpha_cli.research_crypto_strategy import load_hedged_basis_observations
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.adapters.ccxt_adapter import CCXTAdapter, parse_ccxt_ohlcv
@@ -121,6 +122,7 @@ from alpha_research import (
     CryptoCrowdingResearchPlanV1,
     registered_crypto_crowding_plan,
 )
+from alpha_strategies.hedged_basis import HedgedBasisObservationV1
 
 crypto_data_app = typer.Typer(
     help="Provider-native crypto acquisition, qualification, snapshots, and storage."
@@ -801,6 +803,92 @@ def crypto_crowding_observations(snapshot_id: str) -> tuple[CryptoCrowdingObserv
     """Reverify and compose one exact snapshot without creating an attempt or evidence."""
     snapshot, reports, _, _ = _verified_crypto_crowding_snapshot(snapshot_id)
     return load_crypto_crowding_observations(
+        snapshot,
+        reports,
+        bulk_root=_bulk_store().bulk_root,
+    )
+
+
+def _hedged_basis_requirements() -> tuple[CryptoDatasetRequirementV1, ...]:
+    return (
+        *_crypto_crowding_requirements(registered_crypto_crowding_plan()),
+        CryptoDatasetRequirementV1(
+            family="market_bars",
+            provider="binance",
+            venue="binance",
+            market_type="spot",
+            instrument="BTCUSDT",
+            base_asset="BTC",
+            quote_asset="USDT",
+            frequency="1h",
+            units="provider_native_ohlcv",
+            timestamp_convention="interval_start_utc",
+        ),
+    )
+
+
+def _verified_hedged_basis_snapshot(
+    snapshot_id: str,
+) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1]:
+    requirements = _hedged_basis_requirements()
+    snapshot, reports, _ = _verified_snapshot(
+        snapshot_id,
+        required_families=tuple(item.family for item in requirements),
+        purpose="validation",
+    )
+    projection = assess_crypto_dataset_requirements(
+        snapshot,
+        quality_reports=reports,
+        requirements=requirements,
+        purpose="validation",
+    )
+    if not projection.eligible:
+        raise DataError(
+            "crypto snapshot is incompatible with the registered hedged basis candidate: "
+            f"{', '.join(projection.blockers)}"
+        )
+    if len(snapshot.members) != len(requirements):
+        raise DataError("hedged basis snapshot contains unregistered supplemental members")
+    observed = tuple(
+        value
+        for report in reports.values()
+        for value in (report.observed_start, report.observed_end)
+        if value is not None
+    )
+    if len(observed) != 2 * len(reports):
+        raise DataError("hedged basis snapshot has an incomplete observed range")
+    master = _snapshot_asset_master(snapshot)
+    for instant in (min(observed), max(observed)):
+        identity = master.resolve_native(network="bitcoin", as_of=instant)
+        if identity.coingecko_id != "bitcoin" or any(
+            symbol not in identity.provider_symbols
+            for symbol in (("bybit", "BTC"), ("binance", "BTC"))
+        ):
+            raise DataError("hedged basis snapshot asset master does not resolve both BTC legs")
+    return snapshot, reports, projection
+
+
+def crypto_hedged_basis_snapshot_compatibility(snapshot_id: str) -> dict[str, object]:
+    """Reverify the exact two-venue snapshot without creating strategy evidence."""
+    snapshot, _, projection = _verified_hedged_basis_snapshot(snapshot_id)
+    return {
+        "snapshot_id": snapshot.snapshot_id,
+        "strategy_name": "hedged_basis_crowding_v1",
+        "qualified_families": list(projection.qualified_families),
+        "asset_master_version": snapshot.asset_master_version,
+        "qualification_versions": list(snapshot.qualification_versions),
+        "eligible": True,
+        "deployment_scope": "sandbox_only",
+        "execution_authority": False,
+    }
+
+
+def crypto_hedged_basis_observations(
+    snapshot_id: str,
+) -> tuple[HedgedBasisObservationV1, ...]:
+    """Reverify and compose the exact candidate stream without creating a run."""
+    snapshot, reports, _ = _verified_hedged_basis_snapshot(snapshot_id)
+    return load_hedged_basis_observations(
         snapshot,
         reports,
         bulk_root=_bulk_store().bulk_root,
@@ -4568,9 +4656,30 @@ def snapshot_verify_crowding(
     )
 
 
+@crypto_data_app.command("snapshot-verify-hedged-basis")
+def snapshot_verify_hedged_basis(
+    snapshot_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Verify the exact two-venue candidate bundle without granting paper authority."""
+    try:
+        projection = crypto_hedged_basis_snapshot_compatibility(snapshot_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            **projection,
+            "next_action": "Bind this snapshot to the sandbox-only development candidate.",
+        },
+        json_out=json_out,
+    )
+
+
 __all__ = [
     "crypto_crowding_observations",
     "crypto_crowding_snapshot_compatibility",
     "crypto_data_app",
+    "crypto_hedged_basis_observations",
+    "crypto_hedged_basis_snapshot_compatibility",
     "crypto_snapshot_registration",
 ]
