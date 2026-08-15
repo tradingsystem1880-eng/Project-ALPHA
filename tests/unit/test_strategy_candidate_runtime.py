@@ -197,6 +197,10 @@ def test_candidate_monte_carlo_binds_source_and_discloses_model_role(
         ("optimize_cost_sensitivity", "candidate_optim"),
         ("portfolio_concentration", "candidate_portfolio"),
         ("cross_asset_scope", "candidate_cross_asset"),
+        ("fixed_stress", "candidate_fixed_stress"),
+        ("qlib_fixture", "candidate_qlib"),
+        ("kronos_forecast_fixture", "candidate_kronos_forecast"),
+        ("kronos_eval_fixture", "candidate_kronos_eval"),
     ],
 )
 def test_candidate_fixed_development_diagnostics_are_exact(

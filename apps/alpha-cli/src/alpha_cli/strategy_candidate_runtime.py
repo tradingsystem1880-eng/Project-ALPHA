@@ -34,6 +34,10 @@ _COMMANDS: Final = {
     "optimize_cost_sensitivity": "candidate_optim",
     "portfolio_concentration": "candidate_portfolio",
     "cross_asset_scope": "candidate_cross_asset",
+    "fixed_stress": "candidate_fixed_stress",
+    "qlib_fixture": "candidate_qlib",
+    "kronos_forecast_fixture": "candidate_kronos_forecast",
+    "kronos_eval_fixture": "candidate_kronos_eval",
 }
 _ANALYSES: Final = frozenset(_COMMANDS)
 
@@ -203,6 +207,52 @@ def _analysis_result(
             "status": "completed_not_applicable_single_registered_asset",
             "eligible_cross_assets": [],
             "reason": "ADR-0033 registers BTCUSDT only; no second asset may be invented.",
+        }, True
+    if analysis == "fixed_stress":
+        scenarios = [
+            ("cost_plus_20_bps", -0.002),
+            ("perp_gap_minus_1_percent", -0.010),
+            ("funding_removed", -0.001),
+            ("combined_adverse", -0.013),
+        ]
+        return {
+            "method": "fixed_additive_return_stress_v1",
+            "scenarios": [
+                {
+                    "name": name,
+                    "return_adjustment": adjustment,
+                    "cumulative_return": float(np.prod(1.0 + returns + adjustment) - 1.0),
+                }
+                for name, adjustment in scenarios
+            ],
+            "governing_null_test": False,
+        }, True
+    if analysis == "qlib_fixture":
+        lagged = returns[:-1]
+        outcomes = returns[1:]
+        directional_accuracy = (
+            None if outcomes.size == 0 else float(np.mean(np.sign(lagged) == np.sign(outcomes)))
+        )
+        return {
+            "method": "qlib_contract_temporal_fixture_v1",
+            "model": "lag_sign_baseline",
+            "external_qlib_model_loaded": False,
+            "promotion_authority": False,
+            "directional_accuracy": directional_accuracy,
+        }, True
+    if analysis in {"kronos_forecast_fixture", "kronos_eval_fixture"}:
+        return {
+            "method": (
+                "disclosed_fake_last_return_forecast_v1"
+                if analysis == "kronos_forecast_fixture"
+                else "disclosed_fake_rolling_error_evaluation_v1"
+            ),
+            "model": "fake",
+            "real_kronos_weights_loaded": False,
+            "promotion_authority": False,
+            "mean_absolute_error": (
+                None if returns.size < 2 else float(np.mean(np.abs(returns[1:] - returns[:-1])))
+            ),
         }, True
 
     centered = returns - float(np.mean(returns))

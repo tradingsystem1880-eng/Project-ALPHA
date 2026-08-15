@@ -1258,3 +1258,36 @@ def test_candidate_optimization_and_portfolio_plans_keep_fixed_scope(tmp_path: P
         "cross_asset_scope",
     ]
     assert portfolio.steps[1].evidence_role == "completed_not_applicable_no_invented_asset"
+
+
+def test_candidate_stress_qlib_and_kronos_are_disclosed_fixture_paths(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="baseline",
+        stage="baseline",
+        commands=("candidate_baseline",),
+    )
+
+    stress = build_suite_plan(store, project_id, experiment_id, "fixed_stress", data_dir=tmp_path)
+    assert stress.ready is True
+    assert stress.steps[0].argv[6] == "fixed_stress"
+    assert stress.governance["separate_from_nulls"] is True
+
+    qlib = build_suite_plan(store, project_id, experiment_id, "qlib", data_dir=tmp_path)
+    assert qlib.ready is True
+    assert qlib.steps[0].argv[6] == "qlib_fixture"
+    assert qlib.governance["model_role"] == "contract_fixture_not_predictive_evidence"
+
+    kronos = build_suite_plan(store, project_id, experiment_id, "kronos", data_dir=tmp_path)
+    assert kronos.ready is True
+    assert [step.argv[6] for step in kronos.steps] == [
+        "kronos_forecast_fixture",
+        "kronos_eval_fixture",
+    ]
+    assert kronos.governance["kronos_role"] == "disclosed_fake_fixture_not_market_oracle"

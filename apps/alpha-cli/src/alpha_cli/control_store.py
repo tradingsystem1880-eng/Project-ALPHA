@@ -178,6 +178,9 @@ _CANDIDATE_MONTE_CARLO_COMMANDS: Final = frozenset(
     {"candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"}
 )
 _CANDIDATE_PORTFOLIO_COMMANDS: Final = frozenset({"candidate_portfolio", "candidate_cross_asset"})
+_CANDIDATE_KRONOS_COMMANDS: Final = frozenset(
+    {"candidate_kronos_forecast", "candidate_kronos_eval"}
+)
 _CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
     {
         "candidate_baseline",
@@ -186,6 +189,9 @@ _CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
         *_CANDIDATE_MONTE_CARLO_COMMANDS,
         "candidate_optim",
         *_CANDIDATE_PORTFOLIO_COMMANDS,
+        "candidate_fixed_stress",
+        "candidate_qlib",
+        *_CANDIDATE_KRONOS_COMMANDS,
     }
 )
 
@@ -249,6 +255,7 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
         "robustness",
         frozenset({"validate", *_CANDIDATE_NULL_COMMANDS}),
     ),
+    "fixed_stress": ("robustness", frozenset({"candidate_fixed_stress"})),
     "monte_carlo": (
         "monte_carlo",
         _MONTE_CARLO_COMMANDS | _CANDIDATE_MONTE_CARLO_COMMANDS,
@@ -265,8 +272,11 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
             }
         ),
     ),
-    "qlib": ("ml", frozenset({"ml_replay"})),
-    "kronos": ("kronos", frozenset({"forecast_run", "forecast_eval"})),
+    "qlib": ("ml", frozenset({"ml_replay", "candidate_qlib"})),
+    "kronos": (
+        "kronos",
+        frozenset({"forecast_run", "forecast_eval", *_CANDIDATE_KRONOS_COMMANDS}),
+    ),
     "holdout_reveal": ("holdout", frozenset({"backtest_holdout"})),
 }
 _PRE_REVEAL_RESEARCH_STAGES: Final = frozenset(
@@ -8471,6 +8481,7 @@ class ControlStore:
                     "three_null_families",
                     "monte_carlo",
                     "optimize_grid",
+                    "fixed_stress",
                     "portfolio_cross_asset",
                     "qlib",
                     "kronos",
@@ -8724,6 +8735,12 @@ class ControlStore:
                 )
             return
         if suite_action == "kronos":
+            if not commands.isdisjoint(_CANDIDATE_KRONOS_COMMANDS):
+                if commands != _CANDIDATE_KRONOS_COMMANDS:
+                    raise DataError(
+                        "candidate Kronos fixture requires forecast and evaluation runs"
+                    )
+                return
             if not {"forecast_run", "forecast_eval"}.issubset(commands):
                 raise DataError(
                     "Kronos completion requires canonical forecast and rolling-evaluation runs"

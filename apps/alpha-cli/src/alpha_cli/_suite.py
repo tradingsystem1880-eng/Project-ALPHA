@@ -918,6 +918,79 @@ def build_suite_plan(
                 )
             )
         workload = _workload(action, commands=2, canonical_runs=2)
+    elif hedged_basis and action == "fixed_stress":
+        args = (
+            "strategy-candidate",
+            "run",
+            snapshot,
+            "--research-contract-id",
+            str(research_contract_id),
+            "--analysis",
+            "fixed_stress",
+            "--as-of",
+            cutoff_value,
+        )
+        steps.append(
+            SuiteStep(
+                "Fixed two-leg stress scenarios",
+                args,
+                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                "scenario_sensitivity_separate_from_nulls",
+                ((cutoff_value, public_cutoff),),
+            )
+        )
+        governance["separate_from_nulls"] = True
+        workload = _workload(action, commands=1, canonical_runs=1)
+    elif hedged_basis and action == "qlib":
+        args = (
+            "strategy-candidate",
+            "run",
+            snapshot,
+            "--research-contract-id",
+            str(research_contract_id),
+            "--analysis",
+            "qlib_fixture",
+            "--as-of",
+            cutoff_value,
+        )
+        steps.append(
+            SuiteStep(
+                "Qlib interface contract fixture",
+                args,
+                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                "fixture_only_no_external_model_or_promotion_authority",
+                ((cutoff_value, public_cutoff),),
+            )
+        )
+        governance["model_role"] = "contract_fixture_not_predictive_evidence"
+        workload = _workload(action, commands=1, canonical_runs=1)
+    elif hedged_basis and action == "kronos":
+        for analysis, label in (
+            ("kronos_forecast_fixture", "Disclosed fake forecast fixture"),
+            ("kronos_eval_fixture", "Disclosed fake rolling evaluation"),
+        ):
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                analysis,
+                "--as-of",
+                cutoff_value,
+            )
+            steps.append(
+                SuiteStep(
+                    label,
+                    args,
+                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                    "fake_model_fixture_not_market_oracle",
+                    ((cutoff_value, public_cutoff),),
+                )
+            )
+        governance["kronos_role"] = "disclosed_fake_fixture_not_market_oracle"
+        workload = _workload(action, commands=2, canonical_runs=2)
     elif hedged_basis and action == "paper_preflight":
         args = ("strategy-candidate", "paper-preflight", "--json")
         steps.append(
