@@ -75,6 +75,18 @@ FAMILY_AUTHORITIES: Final[dict[CryptoFamily, str]] = {
     "comparison_bars": "ccxt:coinbase",
 }
 _HEX = re.compile(r"^[0-9a-f]{64}$")
+_CASE_INSENSITIVE_ADDRESS_NETWORKS = frozenset(
+    {
+        "arbitrum",
+        "arbitrum-one",
+        "base",
+        "binance-smart-chain",
+        "bnb-smart-chain",
+        "bsc",
+        "eth",
+        "ethereum",
+    }
+)
 _SECRET_MARKERS = ("api_key", "apikey", "authorization", "password", "secret", "token")
 
 
@@ -96,7 +108,11 @@ def normalize_crypto_address(network: str, address: str) -> str:
     """Preserve case-sensitive identities while canonicalizing EVM-style addresses."""
     network_key = _text(network, "address network").lower()
     address_value = _text(address, "address")
-    return address_value if network_key == "solana" else address_value.lower()
+    return (
+        address_value.lower()
+        if network_key in _CASE_INSENSITIVE_ADDRESS_NETWORKS
+        else address_value
+    )
 
 
 def _sha(value: str, label: str) -> str:

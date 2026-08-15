@@ -169,6 +169,15 @@ def test_asset_identity_normalizes_and_checks_lifecycle() -> None:
     )
     assert solana.contract_address == "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
+    unreviewed = CryptoAssetIdentityV1(
+        **{
+            **solana.__dict__,
+            "network": "unreviewed-case-sensitive-network",
+            "contract_address": "MixedCaseIdentity",
+        }
+    )
+    assert unreviewed.contract_address == "MixedCaseIdentity"
+
     with pytest.raises(DataError, match="valid_to"):
         CryptoAssetIdentityV1(**{**asset.__dict__, "valid_to": datetime(2010, 1, 1, tzinfo=UTC)})
     with pytest.raises(DataError, match="native_asset"):
