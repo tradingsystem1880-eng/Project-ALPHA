@@ -29,6 +29,8 @@ and V1 reads stable:
 - immutable coverage-batch hashing, validation, and checkpoint persistence live in
   `_crypto_coverage.py`;
 - the Crypto Data Center acquisition controls are separated from its controller and focused views;
+- crypto Playwright journeys have their own `crypto-data.spec.ts`, while the general Workstation
+  specification is a small registration surface over one shared typed harness;
 - candidate suite actions use one table-driven dispatch path.
 
 The five-axis review found and repaired credential inheritance in MCP, Workstation, ML, Qlib,

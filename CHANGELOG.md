@@ -18,8 +18,9 @@ qualification and all separately authorized paper-acceptance scenarios remain pe
 
 - The branch simplification and crypto lifecycle acceptance report records the exact local gates,
   public-surface coverage, behavior-preserving CLI/UI extractions, honest real-case boundary, and
-  remaining owner/environment checkpoints. It does not claim publication, paper readiness, or an
-  owner decision.
+  remaining owner/environment checkpoints. Crypto Playwright journeys now live in a dedicated
+  specification over the shared typed Workstation harness. This does not claim publication, paper
+  readiness, or an owner decision.
 
 - ADR-0033 and the registered `bybit_btcusdt_crowding_reversal_v1` research operator, including
   exact qualified-snapshot preflight, causal funding/OI/premium/mark/index observations, mechanical
