@@ -85,6 +85,25 @@ def test_asset_catalog_does_not_lose_contract_identity_when_optional_symbol_is_e
     assert row["symbol"] == ""
 
 
+def test_asset_catalog_treats_null_platforms_as_no_contract_mapping() -> None:
+    payload = json.dumps(
+        [
+            {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "platforms": None},
+            {
+                "id": "wrapped-bitcoin",
+                "symbol": "wbtc",
+                "name": "Wrapped Bitcoin",
+                "platforms": {"ethereum": "0xWBTC"},
+            },
+        ]
+    ).encode()
+
+    frame = parse_asset_catalog(payload)
+
+    assert frame.height == 1
+    assert frame.row(0, named=True)["coingecko_id"] == "wrapped-bitcoin"
+
+
 def test_requested_asset_detail_preserves_bounded_descriptive_metadata() -> None:
     fetched_at = datetime(2026, 8, 15, tzinfo=UTC)
     payload = json.dumps(

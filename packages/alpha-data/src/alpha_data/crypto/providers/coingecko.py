@@ -202,6 +202,8 @@ def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
             or not isinstance(name, str)
         ):
             raise DataError("CoinGecko asset identity is invalid")
+        if platforms is None:
+            platforms = {}
         if not isinstance(platforms, dict):
             raise DataError("CoinGecko asset platforms are invalid")
         for network, contract in sorted(platforms.items()):
