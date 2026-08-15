@@ -120,14 +120,22 @@ def test_requested_asset_detail_preserves_bounded_descriptive_metadata() -> None
 
 def test_requested_asset_detail_rejects_unbounded_or_invalid_metadata() -> None:
     now = datetime(2026, 8, 15, tzinfo=UTC)
+    for payload, message in ((b"bad", "malformed"), (b"[]", "must be an object")):
+        with pytest.raises(DataError, match=message):
+            parse_asset_detail(payload, fetched_at=now)
     with pytest.raises(DataError, match="timezone"):
         parse_asset_detail(
             b'{"id":"bitcoin","symbol":"btc","name":"Bitcoin","categories":[]}',
             fetched_at=datetime(2026, 8, 15),
         )
     for patch, message in (
+        ({"id": ""}, "identity"),
         ({"categories": ["x"] * 501}, "categories"),
         ({"genesis_date": "yesterday"}, "genesis date"),
+        ({"last_updated": "yesterday"}, "update time"),
+        ({"hashing_algorithm": {}}, "hashing_algorithm"),
+        ({"block_time_in_minutes": -1}, "block_time_in_minutes"),
+        ({"sentiment_votes_down_percentage": "none"}, "sentiment_votes_down_percentage"),
         ({"sentiment_votes_up_percentage": 101}, "sentiment_votes_up_percentage"),
         ({"public_interest_score": -0.1}, "public_interest_score"),
     ):
