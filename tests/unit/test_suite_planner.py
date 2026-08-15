@@ -1173,6 +1173,54 @@ def test_candidate_baseline_admission_rejects_forged_authority(
         )
 
 
+@pytest.mark.parametrize(
+    ("suite_action", "stage", "state", "changes", "message"),
+    [
+        ("baseline", "baseline", "ready", {}, "require pass, warning, or fail"),
+        ("unknown", "baseline", "pass", {}, "does not publish canonical runs"),
+        ("baseline", "oos", "pass", {}, "belongs to stage"),
+        ("baseline", "baseline", "pass", {"schema_version": 2}, "verified v3 run"),
+        ("baseline", "baseline", "pass", {"command": "candidate_oos"}, "cannot cite command"),
+        ("baseline", "baseline", "pass", {"snapshot_id": "a" * 64}, "uses snapshot"),
+        ("baseline", "baseline", "pass", {"snapshot_hash": "a" * 64}, "snapshot hash"),
+        (
+            "baseline",
+            "baseline",
+            "pass",
+            {"command": "backtest_run"},
+            "command family does not match",
+        ),
+    ],
+)
+def test_candidate_suite_admission_fails_closed_before_linking(
+    tmp_path: Path,
+    suite_action: str,
+    stage: str,
+    state: StageState,
+    changes: dict[str, object],
+    message: str,
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    run_id = hashlib.sha256(message.encode()).hexdigest()[:16]
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id=run_id,
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+        changes=changes,
+    )
+
+    with pytest.raises(DataError, match=message):
+        store.link_suite_stage_run(
+            project_id,
+            experiment_id,
+            suite_action=suite_action,
+            stage=stage,
+            state=state,
+            run_id=run_id,
+        )
+
+
 def test_candidate_oos_and_null_plans_use_distinct_registered_commands(tmp_path: Path) -> None:
     store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
     _complete_candidate_stage(
@@ -1239,6 +1287,63 @@ def test_candidate_oos_and_null_plans_use_distinct_registered_commands(tmp_path:
     source_runs = {step.argv[8] for step in monte_carlo.steps}
     assert len(source_runs) == 1
     assert monte_carlo.governance["kronos_role"] == ("disclosed_fake_fixture_not_market_oracle")
+
+
+def test_candidate_planner_reports_missing_authority_and_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
+    monte_carlo = build_suite_plan(
+        store, project_id, experiment_id, "monte_carlo", data_dir=tmp_path
+    )
+    assert "completed headline null run" in "; ".join(monte_carlo.blockers)
+
+    original = store.get_project
+
+    def missing_contract(_: ControlStore, selected_project_id: str) -> dict[str, object]:
+        project = original(selected_project_id)
+        versions = project["versions"]
+        assert isinstance(versions, list)
+        for version in versions:
+            assert isinstance(version, dict)
+            version.pop("research_contract_id", None)
+        return project
+
+    monkeypatch.setattr(ControlStore, "get_project", missing_contract)
+    baseline = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+    assert "promoted research contract" in "; ".join(baseline.blockers)
+    assert "<promoted-research-contract-required>" in baseline.steps[0].argv
+
+
+def test_candidate_planner_hides_revealed_or_contaminated_windows(tmp_path: Path) -> None:
+    store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
+    database = store._database_path()  # noqa: SLF001
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE holdout_state SET revealed_at = ? WHERE project_id = ? AND experiment_id = ?",
+            ("2026-08-15T00:00:00Z", project_id, experiment_id),
+        )
+    revealed = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+    assert "cannot resume" in "; ".join(revealed.blockers)
+
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE holdout_state SET revealed_at = NULL, contaminated_at = ? "
+            "WHERE project_id = ? AND experiment_id = ?",
+            ("2026-08-15T00:00:00Z", project_id, experiment_id),
+        )
+    contaminated = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+    assert "contaminated" in "; ".join(contaminated.blockers)
+
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "DELETE FROM holdout_specs WHERE project_id = ? AND experiment_id = ?",
+            (project_id, experiment_id),
+        )
+    holdout = build_suite_plan(
+        store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path
+    )
+    assert "sealed evaluation window" in "; ".join(holdout.blockers)
 
 
 def test_candidate_optimization_and_portfolio_plans_keep_fixed_scope(tmp_path: Path) -> None:
