@@ -1555,7 +1555,7 @@ def test_candidate_suite_executes_complete_sandbox_fixture_and_blocked_paper(
     snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
     snapshot_hash = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
 
-    def observation(event: datetime) -> HedgedBasisObservationV1:
+    def observation(event: datetime, *, perp_exit: float) -> HedgedBasisObservationV1:
         return HedgedBasisObservationV1.create(
             event_time=event,
             event_available_at=event,
@@ -1564,7 +1564,7 @@ def test_candidate_suite_executes_complete_sandbox_fixture_and_blocked_paper(
             exit_time=event + timedelta(hours=8),
             exit_available_at=event + timedelta(hours=8),
             bybit_perp_entry=100.0,
-            bybit_perp_exit=99.0,
+            bybit_perp_exit=perp_exit,
             binance_spot_entry=100.0,
             binance_spot_exit=100.0,
             funding_rate=0.001,
@@ -1577,10 +1577,16 @@ def test_candidate_suite_executes_complete_sandbox_fixture_and_blocked_paper(
         )
 
     observations = tuple(
-        observation(datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=16 * index))
+        observation(
+            datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=16 * index),
+            perp_exit=98.5 if index % 2 == 0 else 99.5,
+        )
         for index in range(60)
     ) + tuple(
-        observation(datetime(2026, 4, 1, tzinfo=UTC) + timedelta(hours=16 * index))
+        observation(
+            datetime(2026, 4, 1, tzinfo=UTC) + timedelta(hours=16 * index),
+            perp_exit=98.5 if index % 2 == 0 else 99.5,
+        )
         for index in range(12)
     )
 
@@ -1639,6 +1645,16 @@ def test_candidate_suite_executes_complete_sandbox_fixture_and_blocked_paper(
         assert plan.ready is True, (action, plan.blockers)
         completed = execute_suite(store, plan, data_dir=tmp_path, step_runner=run_step)
         assert completed["status"] == "succeeded"
+        result = cast(dict[str, object], completed["result"])
+        if action == "monte_carlo" and result["stage_state"] == "warning":
+            review = store.review_monte_carlo(
+                project_id,
+                experiment_id,
+                decision="continue",
+                actor="fixture-owner",
+                rationale="Exercise the exact warning evidence path in the deterministic fixture.",
+            )
+            assert review["decision"] == "continue"
 
     store.append_experiment_stage_state(
         project_id, experiment_id, "candidate", "ready", reason="fixture evidence complete"

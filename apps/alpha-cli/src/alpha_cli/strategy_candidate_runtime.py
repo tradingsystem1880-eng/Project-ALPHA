@@ -21,7 +21,14 @@ from alpha_strategies.hedged_basis import (
     evaluate_hedged_basis,
     registered_hedged_basis_plan,
 )
-from alpha_validation import annualized_volatility, sharpe_ratio
+from alpha_validation import (
+    annualized_volatility,
+    empirical_return_paths,
+    regime_switching_return_paths,
+    sharpe_ratio,
+    student_t_return_paths,
+    summarize_path_family,
+)
 
 _COMMANDS: Final = {
     "baseline": "candidate_baseline",
@@ -119,6 +126,66 @@ def _payloads(
     return evaluation, pl.DataFrame(rows), result
 
 
+def _causal_return_regimes(returns: np.ndarray) -> np.ndarray:
+    """Label each event from only the magnitude history available before that event."""
+    labels = np.zeros(returns.size, dtype=np.int8)
+    for index in range(1, returns.size):
+        prior = np.abs(returns[:index])
+        labels[index] = int(abs(float(returns[index - 1])) >= float(np.median(prior)))
+    return labels
+
+
+def _family_payload(family: str, paths: np.ndarray) -> dict[str, object]:
+    summary = summarize_path_family(family, paths)
+    payload: object = json.loads(_canonical(asdict(summary)))
+    if not isinstance(payload, dict):  # pragma: no cover - dataclass serialization is an object.
+        raise DataError("candidate Monte Carlo family summary is invalid")
+    return payload
+
+
+def _classical_path_risk(returns: np.ndarray) -> tuple[dict[str, object], bool]:
+    paths = 2048
+    iid = empirical_return_paths(returns, n_paths=paths, seed=9413)
+    student = student_t_return_paths(returns, n_paths=paths, seed=9421)
+    families = [_family_payload("iid_empirical", iid)]
+    try:
+        regime = regime_switching_return_paths(
+            returns,
+            _causal_return_regimes(returns),
+            n_paths=paths,
+            min_state_observations=10,
+            min_state_transitions=5,
+            seed=9417,
+        )
+        regime_payload = _family_payload("regime_switching", regime.paths)
+        regime_payload.update(
+            {
+                "state_observations": list(regime.state_observations),
+                "state_transitions": list(regime.state_transitions),
+            }
+        )
+    except DataError as exc:
+        regime_payload = {
+            "family": "regime_switching",
+            "status": "not_estimable",
+            "reason": str(exc),
+        }
+    families.append(regime_payload)
+    families.append(_family_payload("student_t", student))
+    status = "clear" if all(row.get("status") == "clear" for row in families) else "warning"
+    return {
+        "method": "three_classical_path_risk_families_v1",
+        "model": "classical_three_family",
+        "paths_per_family": paths,
+        "semantic_seeds": {"iid_empirical": 9413, "regime_switching": 9417, "student_t": 9421},
+        "causal_regime_labels": "prior_event_absolute_return_expanding_median_v1",
+        "families": families,
+        "status": status,
+        "scenario_risk_only": True,
+        "edge_or_authority_claim": False,
+    }, status == "clear"
+
+
 def _analysis_result(
     analysis: str, result: HedgedBasisEvaluationV1
 ) -> tuple[dict[str, object], bool]:
@@ -144,34 +211,29 @@ def _analysis_result(
         }, passed
 
     if analysis in {"monte_carlo_classical", "monte_carlo_kronos_fixture"}:
-        paths = 2048
-        rng = np.random.default_rng(9413 if analysis == "monte_carlo_classical" else 9419)
         if analysis == "monte_carlo_classical":
-            simulated = rng.choice(returns, size=(paths, returns.size), replace=True)
-            method = "iid_event_return_bootstrap_v1"
-            model = "classical_iid"
-        else:
-            # The deterministic acceptance fixture deliberately does not claim a
-            # downloaded Kronos model. It exercises the model-family boundary with
-            # a disclosed AR(1) generator calibrated only on the admitted returns.
-            lag = returns[:-1]
-            lead = returns[1:]
-            denominator = float(np.dot(lag, lag)) if lag.size else 0.0
-            phi = (
-                0.0
-                if denominator == 0.0
-                else float(np.clip(np.dot(lag, lead) / denominator, -0.95, 0.95))
-            )
-            residuals = lead - phi * lag if lead.size else returns
-            scale = float(np.std(residuals, ddof=1)) if residuals.size >= 2 else 0.0
-            simulated = np.empty((paths, returns.size), dtype=np.float64)
-            simulated[:, 0] = rng.choice(returns, size=paths)
-            for index in range(1, returns.size):
-                simulated[:, index] = phi * simulated[:, index - 1] + rng.normal(
-                    0.0, scale, size=paths
-                )
-            method = "disclosed_fake_ar1_generator_v1"
-            model = "fake"
+            return _classical_path_risk(returns)
+        paths = 2048
+        rng = np.random.default_rng(9419)
+        # The deterministic acceptance fixture deliberately does not claim a
+        # downloaded Kronos model. It exercises the model-family boundary with
+        # a disclosed AR(1) generator calibrated only on the admitted returns.
+        lag = returns[:-1]
+        lead = returns[1:]
+        denominator = float(np.dot(lag, lag)) if lag.size else 0.0
+        phi = (
+            0.0
+            if denominator == 0.0
+            else float(np.clip(np.dot(lag, lead) / denominator, -0.95, 0.95))
+        )
+        residuals = lead - phi * lag if lead.size else returns
+        scale = float(np.std(residuals, ddof=1)) if residuals.size >= 2 else 0.0
+        simulated = np.empty((paths, returns.size), dtype=np.float64)
+        simulated[:, 0] = rng.choice(returns, size=paths)
+        for index in range(1, returns.size):
+            simulated[:, index] = phi * simulated[:, index - 1] + rng.normal(0.0, scale, size=paths)
+        method = "disclosed_fake_ar1_generator_v1"
+        model = "fake"
         terminal = np.prod(1.0 + simulated, axis=1) - 1.0
         loss_probability = float(np.mean(terminal <= 0.0))
         status = "clear" if loss_probability <= 0.25 else "warning"
@@ -179,7 +241,7 @@ def _analysis_result(
             "method": method,
             "model": model,
             "paths": paths,
-            "seed": 9413 if analysis == "monte_carlo_classical" else 9419,
+            "seed": 9419,
             "loss_probability": loss_probability,
             "terminal_return_p05": float(np.quantile(terminal, 0.05)),
             "status": status,

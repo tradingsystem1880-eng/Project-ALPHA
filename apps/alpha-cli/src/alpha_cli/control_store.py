@@ -3562,6 +3562,18 @@ class ControlStore:
         project_id: str,
         experiment_id: str,
     ) -> tuple[tuple[str, str], ...]:
+        strategy = connection.execute(
+            """SELECT v.strategy_name
+            FROM experiment_specs e
+            JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+            WHERE e.experiment_id = ?""",
+            (experiment_id,),
+        ).fetchone()
+        expected_commands = (
+            _CANDIDATE_MONTE_CARLO_COMMANDS
+            if strategy is not None and strategy["strategy_name"] == "hedged_basis_crowding_v1"
+            else _MONTE_CARLO_COMMANDS
+        )
         rows = connection.execute(
             """SELECT * FROM stage_run_links
             WHERE project_id = ? AND experiment_id = ? AND stage = 'monte_carlo'
@@ -3576,7 +3588,7 @@ class ControlStore:
             run_id = str(row["run_id"])
             rdir, manifest = self._verified_run(run_id)
             command = str(manifest.get("command"))
-            if command not in _MONTE_CARLO_COMMANDS:
+            if command not in expected_commands:
                 continue
             evidence.append(
                 (
@@ -3587,7 +3599,7 @@ class ControlStore:
                 )
             )
         commands = {command for command, _, _, _ in evidence}
-        if commands != _MONTE_CARLO_COMMANDS:
+        if commands != expected_commands:
             raise DataError(
                 "Monte Carlo review requires verified classical and Kronos run evidence"
             )
@@ -8867,9 +8879,24 @@ class ControlStore:
             ):
                 raise DataError("candidate freeze requires passing headline evidence")
             if not all(row["status"] == "clear" for row in by_stage.get("monte_carlo", [])):
-                raise DataError(
-                    "candidate freeze requires clear candidate Monte Carlo evidence or review"
+                review = connection.execute(
+                    """SELECT decision, evidence_hashes_json FROM monte_carlo_reviews
+                    WHERE project_id = ? AND experiment_id = ?""",
+                    (project_id, experiment_id),
+                ).fetchone()
+                candidate_review_hashes = self._encoded_monte_carlo_evidence_hashes(
+                    connection,
+                    project_id=project_id,
+                    experiment_id=experiment_id,
                 )
+                if (
+                    review is None
+                    or review["decision"] != "continue"
+                    or review["evidence_hashes_json"] != candidate_review_hashes
+                ):
+                    raise DataError(
+                        "candidate freeze requires clear candidate Monte Carlo evidence or review"
+                    )
             return by_stage
 
         problems: list[str] = []

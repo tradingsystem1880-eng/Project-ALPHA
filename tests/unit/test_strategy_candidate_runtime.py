@@ -190,7 +190,11 @@ def test_candidate_pre_holdout_analyses_recompute_exactly(
 @pytest.mark.parametrize(
     ("analysis", "command", "model"),
     [
-        ("monte_carlo_classical", "candidate_monte_carlo_classical", "classical_iid"),
+        (
+            "monte_carlo_classical",
+            "candidate_monte_carlo_classical",
+            "classical_three_family",
+        ),
         ("monte_carlo_kronos_fixture", "candidate_monte_carlo_kronos", "fake"),
     ],
 )
@@ -215,6 +219,12 @@ def test_candidate_monte_carlo_binds_source_and_discloses_model_role(
     assert manifest["status"] in {"clear", "warning"}
     metadata = manifest["metadata"]
     assert isinstance(metadata, dict) and metadata["model"] == model
+    if analysis == "monte_carlo_classical":
+        assert [row["family"] for row in metadata["families"]] == [
+            "iid_empirical",
+            "regime_switching",
+            "student_t",
+        ]
     validate_hedged_basis_candidate_artifacts(
         tmp_path / "runs" / str(manifest["run_id"]),
         manifest,
