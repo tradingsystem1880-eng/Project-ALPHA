@@ -91,4 +91,3 @@ paper-readiness credit, order, fill, position, or broker event.
 - `apps/alpha-cli/src/alpha_cli/research_d2.py`
 - `packages/alpha-data/src/alpha_data/crypto/research.py`
 - `packages/alpha-strategies/src/alpha_strategies/`
-

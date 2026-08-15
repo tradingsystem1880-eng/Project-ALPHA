@@ -29,6 +29,27 @@ from alpha_core.config import AlphaSettings
 
 ml_app = typer.Typer(help="Prepare and validate isolated cross-sectional ML worker exchanges.")
 
+_WORKER_ENV_NAMES = frozenset(
+    {
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "PATH",
+        "PYTHONPATH",
+        "TMPDIR",
+        "TZ",
+        "UV_CACHE_DIR",
+        "VIRTUAL_ENV",
+    }
+)
+
+
+def _worker_environment(*, seed: int) -> dict[str, str]:
+    """Build the credential-free environment allowed into the isolated Qlib worker."""
+    environment = {name: value for name, value in os.environ.items() if name in _WORKER_ENV_NAMES}
+    environment["PYTHONHASHSEED"] = str(seed)
+    return environment
+
 
 def _default_worker_project() -> Path:
     return Path(__file__).resolve().parents[4] / "workers" / "qlib"
@@ -169,8 +190,7 @@ def train(
                 str(lock.resolve()),
             ]
         )
-        environment = dict(os.environ)
-        environment["PYTHONHASHSEED"] = str(request.request["seed"])
+        environment = _worker_environment(seed=int(request.request["seed"]))
         completed = subprocess.run(
             command,
             cwd=project,
