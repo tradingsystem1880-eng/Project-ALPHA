@@ -31,6 +31,10 @@ from alpha_cli.research_crypto_binding import (
     load_crypto_empirical_d1,
     load_crypto_empirical_dataset,
 )
+from alpha_cli.research_crypto_d2 import (
+    crypto_d2_execution_fingerprint,
+    run_crypto_crowding_confirmation,
+)
 from alpha_cli.research_crypto_runtime import (
     crypto_d0_execution_fingerprint,
     crypto_d1_execution_fingerprint,
@@ -87,6 +91,7 @@ from alpha_research import (
     ResearchD2Boundary,
     ResearchD2BoundaryV2,
     projected_confirmation_power,
+    registered_crypto_crowding_plan,
     research_d2_boundary_from_dict,
 )
 
@@ -796,6 +801,14 @@ def _registered_d1_execution_fingerprint(payload: Mapping[str, object]) -> str:
         crypto_d1_execution_fingerprint(payload)
         if _is_crypto_crowding_contract(payload)
         else d1_execution_fingerprint(payload)
+    )
+
+
+def _registered_d2_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    return (
+        crypto_d2_execution_fingerprint(payload)
+        if _is_crypto_crowding_contract(payload)
+        else d2_execution_fingerprint(payload)
     )
 
 
@@ -1650,6 +1663,88 @@ def _admitted_d1_matched_cell(run_dir: Path) -> dict[str, object]:
     return dict(matched)
 
 
+def _draft_crypto_confirmation(
+    store: ControlStore,
+    *,
+    project_id: str,
+    exploration_id: str,
+    payload: Mapping[str, object],
+    manifest: Mapping[str, object],
+    created_by: str,
+) -> tuple[dict[str, object], dict[str, object]]:
+    observations, boundary = _crypto_empirical_d1(store, payload)
+    if manifest.get("dataset_hash") != boundary.dataset_fingerprint:
+        raise DataError("the admitted crypto D1 run does not bind the frozen snapshot")
+    run_id = str(manifest["run_id"])
+    run_dir = AlphaSettings().data_dir / "runs" / run_id
+    evidence = json.loads((run_dir / D1_EVIDENCE_ARTIFACT).read_text(encoding="utf-8"))
+    analyses = json.loads((run_dir / D1_ANALYSES_ARTIFACT).read_text(encoding="utf-8"))
+    primary = evidence.get("primary_result")
+    magnitude = None if not isinstance(primary, Mapping) else primary.get("practical_magnitude")
+    readiness = evidence.get("confirmation_readiness")
+    evaluation = analyses.get("measurements", {}).get("evaluation", {})
+    estimate = evaluation.get("primary_estimate") if isinstance(evaluation, Mapping) else None
+    event_count = evaluation.get("primary_event_count") if isinstance(evaluation, Mapping) else None
+    if (
+        not isinstance(primary, Mapping)
+        or primary.get("status") != "TESTED"
+        or not isinstance(magnitude, Mapping)
+        or magnitude.get("status") != "CLEARS_HURDLE"
+        or not isinstance(readiness, Mapping)
+        or readiness.get("state") != "ready"
+        or not isinstance(estimate, Mapping)
+        or isinstance(event_count, bool)
+        or not isinstance(event_count, int)
+        or event_count < 50
+    ):
+        raise DataError(
+            "crypto confirmation drafting requires a verified D1 result with at least "
+            "50 events that clears the registered hurdle and all readiness checks"
+        )
+    if boundary.d2.group_count < registered_crypto_crowding_plan().minimum_confirmation_events:
+        raise DataError("the sealed D2 zone cannot contain the ten required confirmation events")
+    confirmation_payload = dict(payload)
+    confirmation_payload["scope"] = "confirmation"
+    confirmation_payload["parent_contract_id"] = exploration_id
+    hashes = {**_implementation_hashes(), "data": boundary.dataset_fingerprint}
+    confirmation_payload["hashes"] = hashes
+    confirmation_payload["confirmation"] = {
+        "variant_count": 1,
+        "multiplicity_count": 1,
+        "familywise_alpha": 0.05,
+        "minimum_confirmation_events": (
+            registered_crypto_crowding_plan().minimum_confirmation_events
+        ),
+        "source_run_id": run_id,
+        "d1_event_count": event_count,
+        "d1_matched_pairs": estimate.get("matched_pairs"),
+        "d1_effective_week_clusters": estimate.get("effective_week_clusters"),
+        "d1_estimate": estimate.get("estimate"),
+        "d1_ci_lower": estimate.get("ci_lower"),
+        "d1_ci_upper": estimate.get("ci_upper"),
+        "operator_fingerprint": registered_crypto_crowding_plan().operator_fingerprint,
+        "boundary_sha256": boundary.boundary_sha256,
+    }
+    contract = store.create_research_contract(
+        project_id,
+        scope="confirmation",
+        parent_contract_id=exploration_id,
+        payload=confirmation_payload,
+        created_by=created_by,
+        author_kind="agent",
+    )
+    store.transition_research_phase(
+        project_id,
+        to_phase="confirmation_review",
+        contract_id=str(contract["contract_id"]),
+        actor=created_by,
+        reason="the exact crypto one-shot D2 contract is frozen from admitted D1 evidence",
+        next_action="Owner approves or rejects the exact one-shot D2 confirmation contract.",
+        responsibility="owner",
+    )
+    return contract, store.research_case_summary(project_id)
+
+
 @research_app.command("draft-confirmation")
 def draft_confirmation(
     project_id: str,
@@ -1683,6 +1778,24 @@ def draft_confirmation(
             or manifest.get("evidence_zone") != "D1"
         ):
             raise DataError("confirmation drafting requires a completed D1 deep-research attempt")
+        if _is_crypto_crowding_contract(payload):
+            contract, case_row = _draft_crypto_confirmation(
+                store,
+                project_id=project_id,
+                exploration_id=exploration_id,
+                payload=payload,
+                manifest=manifest,
+                created_by=created_by,
+            )
+            _emit(
+                {"contract": contract, "case": case_row},
+                json_out=json_out,
+                fallback=(
+                    f"confirmation contract {contract['contract_id']} awaits owner review "
+                    "(one-shot crypto D2)"
+                ),
+            )
+            return
         bars, boundary = _empirical_d1_bars(store, payload)
         if manifest.get("dataset_hash") != bars.dataset.content_sha256:
             raise DataError("the admitted D1 run does not bind the approval-frozen dataset")
@@ -2395,8 +2508,15 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
                 "one-shot confirmation requires the empirical_dataset boundary authority; "
                 "synthetic acceptance boundaries cannot authorize D2 confirmation"
             )
+        crypto_observations: tuple[CryptoCrowdingObservationV1, ...] | None = None
+        crypto_boundary: ResearchD2BoundaryV2 | None = None
+        bars: EqualDurationResearchBars | None = None
+        sealed_boundary: ResearchD2Boundary | None = None
         try:
-            bars, sealed_boundary = _empirical_d1_bars(store, payload)
+            if _is_crypto_crowding_contract(payload):
+                crypto_observations, crypto_boundary = _crypto_empirical_d1(store, payload)
+            else:
+                bars, sealed_boundary = _empirical_d1_bars(store, payload)
         except DataError as integrity_error:
             raise _contaminated_d2_failure(
                 store,
@@ -2449,15 +2569,28 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
             )
 
         try:
-            manifest = run_confirmation(
-                AlphaSettings().data_dir,
-                project_id=project_id,
-                contract_id=contract_id,
-                contract=payload,
-                bars=bars,
-                boundary=sealed_boundary,
-                on_checkpoint=on_checkpoint,
-            )
+            if crypto_observations is not None and crypto_boundary is not None:
+                manifest = run_crypto_crowding_confirmation(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    observations=crypto_observations,
+                    boundary=crypto_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            elif bars is not None and sealed_boundary is not None:
+                manifest = run_confirmation(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    bars=bars,
+                    boundary=sealed_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            else:  # pragma: no cover - integrity dispatch above is exhaustive.
+                raise DataError("one-shot confirmation has no executable registered dataset")
         except Exception as run_error:
             failure = _checkpoint_failed_research_run(
                 store,
@@ -2465,7 +2598,7 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
                 contract_id,
                 run_error=run_error,
                 kind="sealed-confirmation",
-                config_fingerprint=d2_execution_fingerprint(payload),
+                config_fingerprint=_registered_d2_execution_fingerprint(payload),
                 attempt_number=attempt_number,
                 evidence_zone="D2",
                 finding=(

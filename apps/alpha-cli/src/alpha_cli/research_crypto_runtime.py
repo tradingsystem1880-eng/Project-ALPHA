@@ -152,7 +152,7 @@ def _json_value(value: object) -> object:
     return value
 
 
-def _evaluation_payload(result: CryptoCrowdingEvaluationV1) -> dict[str, object]:
+def crypto_evaluation_payload(result: CryptoCrowdingEvaluationV1) -> dict[str, object]:
     payload = _json_value(asdict(result))
     if not isinstance(payload, dict):  # pragma: no cover - dataclass serialization is an object.
         raise DataError("crypto crowding evaluation did not serialize to an object")
@@ -160,17 +160,22 @@ def _evaluation_payload(result: CryptoCrowdingEvaluationV1) -> dict[str, object]
     return payload
 
 
-def _d1_admission(boundary: ResearchD2BoundaryV2) -> tuple[int, int]:
-    stop = boundary.d1.stop_index - boundary.outcome_overlap_embargo_groups
-    if stop <= boundary.d1.start_index:
-        raise DataError("crypto crowding D1 boundary has no outcome-safe discovery observations")
-    return boundary.d1.start_index, stop
+def _admission(boundary: ResearchD2BoundaryV2, evidence_zone: str) -> tuple[int, int]:
+    zone = boundary.d1 if evidence_zone == "D1" else boundary.d2
+    stop = zone.stop_index - boundary.outcome_overlap_embargo_groups
+    if evidence_zone not in {"D1", "D2"} or stop <= zone.start_index:
+        raise DataError(
+            f"crypto crowding {evidence_zone} boundary has no outcome-safe observations"
+        )
+    return zone.start_index, stop
 
 
-def _validate_d1_inputs(
+def validate_crypto_execution_inputs(
     contract: Mapping[str, object],
     observations: tuple[CryptoCrowdingObservationV1, ...],
     boundary: ResearchD2BoundaryV2,
+    *,
+    evidence_zone: str,
 ) -> tuple[str, int, int]:
     dataset_hash, _ = _validated_d1_binding(contract)
     if boundary.dataset_fingerprint != dataset_hash:
@@ -185,7 +190,7 @@ def _validate_d1_inputs(
         boundary.to_dict()
     ):
         raise DataError("crypto crowding D1 boundary differs from the frozen contract")
-    start, stop = _d1_admission(boundary)
+    start, stop = _admission(boundary, evidence_zone)
     return dataset_hash, start, stop
 
 
@@ -201,7 +206,7 @@ def _d1_findings(result: CryptoCrowdingEvaluationV1) -> dict[str, object]:
         item.adjusted_p_value is not None for item in result.sensitivity_results
     )
     placebo = result.shifted_date_placebo
-    controls_passed = placebo is not None and placebo.two_sided_p_value > 0.05
+    controls_passed = placebo is not None and placebo.two_sided_p_value <= 0.05
     primary_status = "TESTED" if tested else "INCONCLUSIVE"
     evidence: dict[str, object] = {
         "schema": "ResearchGateEvidenceV1",
@@ -284,7 +289,7 @@ def _d1_payloads(
     observations: tuple[CryptoCrowdingObservationV1, ...],
     boundary: ResearchD2BoundaryV2,
 ) -> tuple[dict[str, object], dict[str, object], CryptoCrowdingEvaluationV1]:
-    start, stop = _d1_admission(boundary)
+    start, stop = _admission(boundary, "D1")
     result = evaluate_crypto_crowding(
         observations,
         evidence_zone="D1",
@@ -301,7 +306,7 @@ def _d1_payloads(
             "boundary_sha256": boundary.boundary_sha256,
         },
         "measurements": {
-            "evaluation": _evaluation_payload(result),
+            "evaluation": crypto_evaluation_payload(result),
             "budget": {"variants_used": 3},
         },
     }
@@ -542,7 +547,9 @@ def run_crypto_crowding_deep(
     """Execute the frozen operator against only the outcome-safe D1 membership."""
     if _PROJECT_ID.fullmatch(project_id) is None or _CONTRACT_ID.fullmatch(contract_id) is None:
         raise DataError("crypto crowding D1 requires canonical project and contract ids")
-    dataset_hash, _, _ = _validate_d1_inputs(contract, observations, boundary)
+    dataset_hash, _, _ = validate_crypto_execution_inputs(
+        contract, observations, boundary, evidence_zone="D1"
+    )
     contract_hash = _sha(contract)
     execution_fingerprint = crypto_d1_execution_fingerprint(contract)
     run_identity = {
@@ -571,7 +578,7 @@ def run_crypto_crowding_deep(
         lambda target: target.write_text(_canonical(evidence), encoding="utf-8"),
     )
 
-    start, stop = _d1_admission(boundary)
+    start, stop = _admission(boundary, "D1")
     admitted = observations[start:stop]
     series = ResearchChartSeries(
         series_id="d1-mark-minus-index",
@@ -692,7 +699,9 @@ def validate_crypto_d1_evidence_artifacts(
         or manifest.get("research_contract_id") != contract_id
     ):
         raise DataError("crypto D1 verification authority does not match the manifest")
-    dataset_hash, _, _ = _validate_d1_inputs(contract, observations, boundary)
+    dataset_hash, _, _ = validate_crypto_execution_inputs(
+        contract, observations, boundary, evidence_zone="D1"
+    )
     if (
         manifest.get("dataset_hash") != dataset_hash
         or manifest.get("contract_hash") != _sha(contract)
@@ -725,6 +734,7 @@ def validate_crypto_d1_evidence_artifacts(
 
 
 __all__ = [
+    "crypto_evaluation_payload",
     "crypto_d0_execution_fingerprint",
     "crypto_d1_execution_fingerprint",
     "registered_crypto_d0_operator",
@@ -733,4 +743,5 @@ __all__ = [
     "validate_crypto_d0_acceptance_artifact",
     "validate_crypto_d0_contract",
     "validate_crypto_d1_evidence_artifacts",
+    "validate_crypto_execution_inputs",
 ]

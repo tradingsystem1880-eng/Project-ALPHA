@@ -2761,9 +2761,27 @@ class ControlStore:
     ) -> dict[str, object]:
         """Reverify D2 typed evidence by exact mechanical recomputation (D0/D1 pattern)."""
 
+        run_dir, manifest = self._verified_run(run_id)
+        protocol = contract_payload.get("protocol")
+        operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+        if isinstance(operator, Mapping) and operator.get("name") == (
+            "bybit_btcusdt_crowding_reversal"
+        ):
+            from alpha_cli.research_crypto_binding import load_crypto_empirical_d1
+            from alpha_cli.research_crypto_d2 import validate_crypto_d2_evidence_artifacts
+
+            observations, boundary = load_crypto_empirical_d1(self, contract_payload)
+            return validate_crypto_d2_evidence_artifacts(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract=contract_payload,
+                observations=observations,
+                boundary=boundary,
+            )
         from alpha_cli.research_d2 import validate_d2_evidence_artifacts
 
-        run_dir, manifest = self._verified_run(run_id)
         return validate_d2_evidence_artifacts(
             run_dir,
             manifest,
