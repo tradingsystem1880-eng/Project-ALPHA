@@ -242,7 +242,7 @@ def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
             {
                 "data": [
                     {
-                        "id": f"eth_pool{index}",
+                            "id": f"eth_0xPool{index}",
                         "type": "pool",
                         "attributes": {
                             "address": f"0xPool{index}",
