@@ -53,6 +53,7 @@ from alpha_research.crypto_crowding import (
     evaluate_crypto_crowding,
     execute_crypto_crowding_d0,
     registered_crypto_crowding_plan,
+    select_registered_crypto_crowding_events,
 )
 from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
 from alpha_research.descriptives import (
@@ -209,6 +210,7 @@ __all__ = [
     "required_observations_known_sigma",
     "return_distribution",
     "registered_crypto_crowding_plan",
+    "select_registered_crypto_crowding_events",
     "research_d2_boundary_from_dict",
     "rolling_effect_size",
     "rolling_rank_ic",

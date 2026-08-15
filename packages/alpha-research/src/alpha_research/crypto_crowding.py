@@ -553,6 +553,44 @@ def _events_for_percentile(
     return tuple(accepted)
 
 
+def select_registered_crypto_crowding_events(
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    *,
+    admission_start: int = 0,
+    admission_stop: int | None = None,
+) -> tuple[CryptoCrowdingEventV1, ...]:
+    """Select only the registered primary events for downstream sandbox development.
+
+    The strategy plane consumes these materialized event identities; it does not reimplement or
+    broaden the research operator.
+    """
+    if not isinstance(observations, tuple) or any(
+        not isinstance(item, CryptoCrowdingObservationV1) for item in observations
+    ):
+        raise DataError("crypto crowding observations must be an ordered typed tuple")
+    times = [item.funding_time for item in observations]
+    if any(right <= left for left, right in zip(times, times[1:], strict=False)):
+        raise DataError("crypto crowding funding observations must be strictly increasing")
+    stop = len(observations) if admission_stop is None else admission_stop
+    if (
+        isinstance(admission_start, bool)
+        or not isinstance(admission_start, int)
+        or isinstance(stop, bool)
+        or not isinstance(stop, int)
+        or admission_start < 0
+        or stop > len(observations)
+        or admission_start >= stop
+    ):
+        raise DataError("crypto crowding admission window is invalid")
+    plan = registered_crypto_crowding_plan()
+    return _events_for_percentile(
+        observations,
+        percentile=plan.primary_percentile,
+        plan=plan,
+        eligible=range(max(plan.history_observations, admission_start), stop),
+    )
+
+
 def _causal_tercile(
     values: tuple[float, ...],
     *,
@@ -836,11 +874,10 @@ def evaluate_crypto_crowding(
     ):
         raise DataError("crypto crowding admission window is invalid")
     eligible = range(max(plan.history_observations, requested_start), requested_stop)
-    primary = _events_for_percentile(
+    primary = select_registered_crypto_crowding_events(
         observations,
-        percentile=plan.primary_percentile,
-        plan=plan,
-        eligible=eligible,
+        admission_start=requested_start,
+        admission_stop=requested_stop,
     )
     primary_estimate = _matched_estimate(
         observations,
@@ -899,4 +936,5 @@ __all__ = [
     "execute_crypto_crowding_d0",
     "evaluate_crypto_crowding",
     "registered_crypto_crowding_plan",
+    "select_registered_crypto_crowding_events",
 ]
