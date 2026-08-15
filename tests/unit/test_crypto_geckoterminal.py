@@ -136,6 +136,78 @@ def test_pool_trades_preserve_transaction_and_contract_identity() -> None:
     assert frame["timestamp"].is_sorted()
 
 
+def test_solana_pool_and_token_addresses_remain_case_sensitive() -> None:
+    pool = "MixedCasePool1111111111111111111111111111111"
+    base = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    quote = "So11111111111111111111111111111111111111112"
+    catalog = json.dumps(
+        {
+            "data": [
+                {
+                    "id": f"solana_{pool}",
+                    "type": "pool",
+                    "attributes": {
+                        "address": pool,
+                        "name": "USDC / SOL",
+                        "pool_created_at": "2021-12-30T20:32:10Z",
+                        "base_token_price_usd": "1",
+                        "quote_token_price_usd": "200",
+                        "reserve_in_usd": "1000",
+                        "volume_usd": {"h24": "100"},
+                        "transactions": {"h24": {"buys": 1, "sells": 1}},
+                    },
+                    "relationships": {
+                        "base_token": {"data": {"id": f"solana_{base}"}},
+                        "quote_token": {"data": {"id": f"solana_{quote}"}},
+                        "dex": {"data": {"id": "orca"}},
+                    },
+                }
+            ]
+        }
+    ).encode()
+    catalog_row = parse_top_pools(catalog, network="solana").row(0, named=True)
+    assert catalog_row["pool_address"] == pool
+    assert catalog_row["base_token_address"] == base
+
+    ohlcv = json.dumps(
+        {
+            "data": {"attributes": {"ohlcv_list": [[1_700_000_000, 1, 2, 0.5, 1.5, 10]]}},
+            "meta": {"base": {"address": base}, "quote": {"address": quote}},
+        }
+    ).encode()
+    ohlcv_row = parse_pool_ohlcv(ohlcv, network="solana", pool_address=pool).row(0, named=True)
+    assert ohlcv_row["pool_address"] == pool
+    assert ohlcv_row["base_token_address"] == base
+
+    trades = json.dumps(
+        {
+            "data": [
+                {
+                    "id": "solana_trade_1",
+                    "type": "trade",
+                    "attributes": {
+                        "block_number": 1,
+                        "tx_hash": "MixedCaseSignature",
+                        "from_token_amount": "1",
+                        "to_token_amount": "2",
+                        "price_from_in_usd": "2",
+                        "price_to_in_usd": "1",
+                        "block_timestamp": "2026-08-14T00:00:00Z",
+                        "kind": "buy",
+                        "volume_in_usd": "2",
+                        "from_token_address": base,
+                        "to_token_address": quote,
+                    },
+                }
+            ]
+        }
+    ).encode()
+    trade_row = parse_pool_trades(trades, network="solana", pool_address=pool).row(0, named=True)
+    assert trade_row["pool_address"] == pool
+    assert trade_row["from_token_address"] == base
+    assert trade_row["tx_hash"] == "MixedCaseSignature"
+
+
 class _Response:
     def __init__(self, payload: bytes, mime: str = "application/json") -> None:
         self.payload = payload

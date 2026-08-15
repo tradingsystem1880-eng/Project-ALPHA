@@ -157,6 +157,18 @@ def test_asset_identity_normalizes_and_checks_lifecycle() -> None:
     assert asset.contract_address == "0xabc"
     assert asset.to_dict()["valid_to"] == "2026-01-01T00:00:00Z"
 
+    solana = CryptoAssetIdentityV1(
+        coingecko_id="usd-coin",
+        network="solana",
+        contract_address="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        native_asset=False,
+        provider_symbols=(("coingecko", "usd-coin"),),
+        valid_from=datetime(2020, 1, 1, tzinfo=UTC),
+        valid_to=None,
+        migration_lineage=(),
+    )
+    assert solana.contract_address == "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
     with pytest.raises(DataError, match="valid_to"):
         CryptoAssetIdentityV1(**{**asset.__dict__, "valid_to": datetime(2010, 1, 1, tzinfo=UTC)})
     with pytest.raises(DataError, match="native_asset"):

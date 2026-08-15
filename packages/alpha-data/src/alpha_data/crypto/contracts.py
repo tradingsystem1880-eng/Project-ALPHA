@@ -92,6 +92,13 @@ def _text(value: str, label: str) -> str:
     return value.strip()
 
 
+def normalize_crypto_address(network: str, address: str) -> str:
+    """Preserve case-sensitive identities while canonicalizing EVM-style addresses."""
+    network_key = _text(network, "address network").lower()
+    address_value = _text(address, "address")
+    return address_value if network_key == "solana" else address_value.lower()
+
+
 def _sha(value: str, label: str) -> str:
     if not isinstance(value, str) or _HEX.fullmatch(value) is None:
         raise DataError(f"crypto {label} must be lowercase SHA-256")
@@ -138,7 +145,9 @@ class CryptoAssetIdentityV1:
             raise DataError("non-native crypto identity requires a contract address")
         if self.contract_address is not None:
             object.__setattr__(
-                self, "contract_address", _text(self.contract_address, "contract address").lower()
+                self,
+                "contract_address",
+                normalize_crypto_address(self.network, self.contract_address),
             )
         object.__setattr__(
             self, "provider_symbols", _pairs(self.provider_symbols, "provider symbols")

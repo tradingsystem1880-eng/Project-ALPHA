@@ -13,6 +13,8 @@ import polars as pl
 
 from alpha_core import DataError
 
+from ..contracts import normalize_crypto_address
+
 type QueryScalar = str | int | bool
 
 _ENDPOINTS: Final = {
@@ -187,7 +189,7 @@ def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
                     "symbol": str(symbol).upper(),
                     "name": name,
                     "network": network.lower(),
-                    "contract_address": contract.lower(),
+                    "contract_address": normalize_crypto_address(network, contract),
                 }
             )
     return pl.DataFrame(rows)

@@ -72,7 +72,7 @@ def test_asset_catalog_explodes_contracts_without_ticker_join() -> None:
     ).encode()
     frame = parse_asset_catalog(payload)
     assert set(frame["network"]) == {"ethereum", "solana"}
-    assert set(frame["contract_address"]) == {"0xa0b8", "epjf"}
+    assert set(frame["contract_address"]) == {"0xa0b8", "EPjF"}
 
 
 def test_asset_catalog_does_not_lose_contract_identity_when_optional_symbol_is_empty() -> None:

@@ -177,6 +177,39 @@ def test_cross_provider_master_ignores_unreviewed_coingecko_networks() -> None:
         )
 
 
+def test_cross_provider_master_preserves_case_sensitive_solana_contracts() -> None:
+    observed_at = datetime(2026, 8, 15, tzinfo=UTC)
+    address = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    master = build_cross_provider_asset_master(
+        coingecko_catalog=pl.DataFrame(
+            {
+                "coingecko_id": ["usd-coin"],
+                "network": ["solana"],
+                "contract_address": [address],
+            }
+        ),
+        geckoterminal_pools=(
+            pl.DataFrame(
+                {
+                    "network": ["solana"],
+                    "base_token_address": [address],
+                    "quote_token_address": ["So11111111111111111111111111111111111111112"],
+                }
+            ),
+        ),
+        observed_at=observed_at,
+    )
+
+    identity = master.resolve_contract(
+        network="solana", contract_address=address, as_of=observed_at
+    )
+    assert identity.contract_address == address
+    with pytest.raises(DataError, match="unavailable"):
+        master.resolve_contract(
+            network="solana", contract_address=address.lower(), as_of=observed_at
+        )
+
+
 def test_cross_provider_master_rejects_ambiguous_contract_mapping() -> None:
     observed_at = datetime(2026, 8, 15, tzinfo=UTC)
     coingecko = pl.DataFrame(

@@ -10,7 +10,7 @@ import polars as pl
 
 from alpha_core import DataError
 
-from .contracts import CryptoAssetIdentityV1
+from .contracts import CryptoAssetIdentityV1, normalize_crypto_address
 
 _NETWORKS = {
     ("coingecko", "ethereum"): "ethereum",
@@ -221,7 +221,7 @@ class AssetMaster:
         self, *, network: str, contract_address: str, as_of: datetime
     ) -> CryptoAssetIdentityV1:
         network_key = network.strip().lower()
-        contract_key = contract_address.strip().lower()
+        contract_key = normalize_crypto_address(network_key, contract_address)
         if not network_key or not contract_key:
             raise DataError("crypto contract lookup requires network and contract address")
         return self._one(
@@ -271,7 +271,7 @@ def build_cross_provider_asset_master(
         for row in pools.iter_rows(named=True):
             network = canonical_network("geckoterminal", str(row["network"]))
             for field in ("base_token_address", "quote_token_address"):
-                contract = str(row[field]).strip().lower()
+                contract = normalize_crypto_address(network, str(row[field]))
                 if not contract:
                     raise DataError("crypto asset-master pool contract is invalid")
                 tracked.add((network, contract))
@@ -281,7 +281,7 @@ def build_cross_provider_asset_master(
         coingecko_network = _NETWORKS.get(("coingecko", str(row["network"]).strip().lower()))
         if coingecko_network is None:
             continue
-        contract = str(row["contract_address"]).strip().lower()
+        contract = normalize_crypto_address(coingecko_network, str(row["contract_address"]))
         key = (coingecko_network, contract)
         if key in tracked:
             matches.setdefault(key, []).append(str(row["coingecko_id"]))

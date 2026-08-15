@@ -13,6 +13,8 @@ import polars as pl
 
 from alpha_core import DataError
 
+from ..contracts import normalize_crypto_address
+
 type QueryScalar = str | int | bool
 
 NETWORKS: Final = frozenset({"eth", "solana", "base", "bsc", "arbitrum"})
@@ -138,7 +140,8 @@ def _relationship(record: dict[str, object], name: str, network: str) -> str:
         raise DataError("GeckoTerminal pool relationship identity is invalid")
     identity = str(data["id"])
     prefix = f"{network}_"
-    return identity[len(prefix) :].lower() if identity.startswith(prefix) else identity
+    value = identity[len(prefix) :] if identity.startswith(prefix) else identity
+    return normalize_crypto_address(network, value)
 
 
 def parse_top_pools(payload: bytes, *, network: str) -> pl.DataFrame:
@@ -174,7 +177,7 @@ def parse_top_pools(payload: bytes, *, network: str) -> pl.DataFrame:
         rows.append(
             {
                 "network": network,
-                "pool_address": str(address).lower(),
+                "pool_address": normalize_crypto_address(network, str(address)),
                 "name": name,
                 "dex_id": _relationship(record, "dex", network),
                 "base_token_address": _relationship(record, "base_token", network),
@@ -227,9 +230,9 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
             {
                 "network": network,
                 "provider_rank": provider_rank,
-                "pool_address": pool_address.lower(),
-                "base_token_address": base_address.lower(),
-                "quote_token_address": quote_address.lower(),
+                "pool_address": normalize_crypto_address(network, pool_address),
+                "base_token_address": normalize_crypto_address(network, base_address),
+                "quote_token_address": normalize_crypto_address(network, quote_address),
                 "timestamp": datetime.fromtimestamp(timestamp, tz=UTC),
                 "open": _finite(point[1], "open"),
                 "high": _finite(point[2], "high"),
@@ -275,14 +278,14 @@ def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.
             {
                 "network": network,
                 "provider_rank": provider_rank,
-                "pool_address": pool_address.lower(),
+                "pool_address": normalize_crypto_address(network, pool_address),
                 "block_number": attributes.get("block_number"),
                 "trade_id": trade_id,
                 "tx_hash": tx_hash,
                 "timestamp": observed,
                 "kind": kind,
-                "from_token_address": str(from_address).lower(),
-                "to_token_address": str(to_address).lower(),
+                "from_token_address": normalize_crypto_address(network, str(from_address)),
+                "to_token_address": normalize_crypto_address(network, str(to_address)),
                 "from_token_amount": _finite(attributes.get("from_token_amount"), "from amount"),
                 "to_token_amount": _finite(attributes.get("to_token_amount"), "to amount"),
                 "price_from_usd": _finite(attributes.get("price_from_in_usd"), "from price"),
