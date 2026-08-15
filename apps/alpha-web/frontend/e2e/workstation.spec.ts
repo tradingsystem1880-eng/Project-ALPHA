@@ -1086,6 +1086,7 @@ const CRYPTO_SNAPSHOT_ID = '9'.repeat(64)
 const CRYPTO_ASSET_MASTER_ID = 'd'.repeat(64)
 const CRYPTO_COINGECKO_MANIFEST_ID = 'e'.repeat(64)
 const CRYPTO_POOL_MANIFEST_ID = 'f'.repeat(64)
+const CRYPTO_SOLANA_POOL_MANIFEST_ID = '0'.repeat(64)
 const CRYPTO_PROFILE_ID = '1'.repeat(64)
 const CRYPTO_SELECTED_PROFILE_ID = '2'.repeat(64)
 const CRYPTO_PROFILE_TASK_ID = '3'.repeat(64)
@@ -1201,8 +1202,30 @@ const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
       method_version: 'crypto-quality-v1',
       fetched_at: '2026-08-15T00:00:00Z',
     },
+    {
+      manifest_id: CRYPTO_SOLANA_POOL_MANIFEST_ID,
+      provider: 'geckoterminal',
+      venue: 'geckoterminal',
+      market_type: 'dex',
+      family: 'dex_pools',
+      instrument: 'solana',
+      base_asset: 'SOL',
+      quote_asset: 'USD',
+      frequency: 'catalog_snapshot',
+      units: 'provider_native',
+      timestamp_convention: 'fetch_knowledge_utc',
+      state: 'qualified',
+      failures: [],
+      warnings: [],
+      observed_start: '2026-08-15T00:00:00Z',
+      observed_end: '2026-08-15T00:00:00Z',
+      row_count: 100,
+      artifact_sha256: 'f'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: '2026-08-15T00:00:00Z',
+    },
   ],
-  count: 5,
+  count: 6,
   canonical_next_action: 'Select qualified families for a snapshot.',
   automatic_fallback: false,
   execution_authority: false,
@@ -1490,11 +1513,22 @@ function responseFor(route: Route, options: MockOptions): unknown {
     } satisfies components['schemas']['CryptoAssetMasterListResponse']
   }
   if (url.pathname === '/api/crypto-data/asset-masters' && route.request().method() === 'POST') {
+    expect(route.request().postDataJSON()).toEqual({
+      coingecko_manifest_id: CRYPTO_COINGECKO_MANIFEST_ID,
+      geckoterminal_manifest_ids: [
+        CRYPTO_POOL_MANIFEST_ID,
+        CRYPTO_SOLANA_POOL_MANIFEST_ID,
+      ],
+    })
     return {
       asset_master_version: CRYPTO_ASSET_MASTER_ID,
       identity_count: 3,
       contract_identity_count: 1,
-      source_manifest_ids: [CRYPTO_COINGECKO_MANIFEST_ID, CRYPTO_POOL_MANIFEST_ID],
+      source_manifest_ids: [
+        CRYPTO_COINGECKO_MANIFEST_ID,
+        CRYPTO_POOL_MANIFEST_ID,
+        CRYPTO_SOLANA_POOL_MANIFEST_ID,
+      ],
       ticker_join_allowed: false,
       state: 'frozen',
       next_action: 'Use this exact asset-master version when freezing a snapshot.',

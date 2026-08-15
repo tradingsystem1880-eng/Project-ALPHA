@@ -434,16 +434,16 @@ export function CryptoDataCenter({
   }
 
   async function freezeAssetMaster(): Promise<void> {
-    const latestFor = (target: CryptoFamily): CryptoCoverageItem | undefined => {
+    const latestFor = (target: CryptoFamily): CryptoCoverageItem[] => {
       const candidates = (coverage?.items ?? []).filter(
         (item) => item.family === target && item.state === 'qualified',
       )
       const latest = latestCryptoManifestIds(candidates)
-      return candidates.find((item) => latest.has(item.manifest_id))
+      return candidates.filter((item) => latest.has(item.manifest_id))
     }
-    const coingecko = latestFor('asset_metadata')
+    const [coingecko] = latestFor('asset_metadata')
     const geckoterminal = latestFor('dex_pools')
-    if (!coingecko || !geckoterminal) {
+    if (!coingecko || geckoterminal.length === 0) {
       setError('Acquire qualified CoinGecko asset metadata and a GeckoTerminal pool catalog first.')
       return
     }
@@ -452,7 +452,7 @@ export function CryptoDataCenter({
     try {
       const created = await api.cryptoAssetMasterCreate(
         coingecko.manifest_id,
-        [geckoterminal.manifest_id],
+        geckoterminal.map((item) => item.manifest_id),
       )
       setAssetMaster(created)
       setAssetMasterVersion(created.asset_master_version)
