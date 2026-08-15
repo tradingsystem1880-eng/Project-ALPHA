@@ -271,7 +271,7 @@ def test_coingecko_requested_asset_detail_is_not_mislabeled_as_the_full_catalog(
     assert fetched.plan.dataset.base_asset == "BTC"
     assert fetched.parser_version == "coingecko-detail-v1"
     assert "/coins/bitcoin?" in requested_urls[0]
-    assert "market_data=False" in requested_urls[0]
+    assert "market_data=false" in requested_urls[0]
 
 
 def test_asset_master_rejects_requested_detail_as_a_catalog_source(tmp_path: Path) -> None:
