@@ -38,6 +38,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0030](0030-touch-id-owner-presence-for-research-actions.md) | Require fresh Touch ID for Workstation research authority | Accepted | 2026-08-13 |
 | [0031](0031-provider-readiness-and-paper-acceptance-v2.md) | Separate provider checks, paper acceptance, and IBKR what-if previews | Accepted | 2026-08-13 |
 | [0032](0032-governed-crypto-data-house.md) | Govern crypto data by dataset family | Accepted | 2026-08-14 |
+| [0033](0033-governed-crypto-crowding-research-and-sandbox-basis.md) | Govern crypto crowding research separately from sandbox basis development | Accepted | 2026-08-15 |
 
 ## Conventions
 

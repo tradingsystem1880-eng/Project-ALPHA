@@ -88,6 +88,11 @@ fail. A frozen asset master commits to the exact qualified source-manifest IDs a
 ordered identities; non-legacy snapshots reverify that content identity before every read.
 Availability time is part of every observation and derived feature.
 
+ADR-0033 is the sole initial empirical extension of this data boundary. It registers one exact
+Bybit linear BTCUSDT/USDT crowding-reversal question and keeps the later Bybit-perpetual/Binance-spot
+basis candidate sandbox-only. No other crypto snapshot, feature, instrument, quote, or venue gains
+research or strategy authority by analogy.
+
 No crypto-data command or UI route receives exchange credentials, paper-entry authority, research
 gate authority, broker authority, or order authority. CoinGecko's Demo key is retrieved from macOS
 Keychain only by the existing allowlisted launcher and injected into one bounded process. Its fixed

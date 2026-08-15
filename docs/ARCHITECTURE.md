@@ -236,6 +236,16 @@ Storage inventory and verification expose counts and hashes without private abso
 Cleanup is confined to `bulk/cache`, requires an explicit confirmation, and reports zero immutable
 artifacts removed; staging, raw, normalized, snapshot, manifest, and control roots are excluded.
 
+ADR-0033 adds one explicit research edge to this data flow. The
+`bybit_btcusdt_crowding_reversal_v1` proposal is available only for an exact qualified Bybit linear
+BTCUSDT/USDT snapshot containing funding, hourly OI, premium, mark, index, derivative bars, and the
+instrument catalog. `alpha_research` owns the versioned point-in-time event/outcome evaluation;
+`alpha_cli` only re-verifies and composes the snapshot. The existing group-atomic D1/D2/D3
+boundary, one-shot D2, owner actions, and prohibited D3 read do not change. A later
+`hedged_basis_crowding_v1` candidate may inherit a supported research disposition into strategy
+development, but it remains a two-venue standalone sandbox whose paper preflight is mechanically
+blocked and whose outputs cannot become broker evidence.
+
 ### 4.3 Canonical strategy/validation flow
 
 The canonical strategy loop runs from raw bars to an immutable v3 artifact bundle. Discovery runs execute from
