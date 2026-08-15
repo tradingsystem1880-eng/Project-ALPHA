@@ -1397,6 +1397,100 @@ def _combine_binance_archive_tail(frames: tuple[pl.DataFrame, ...]) -> pl.DataFr
     return combined
 
 
+def _fetch_coinbase_comparison(
+    family: CryptoFamily,
+    instrument: str,
+    *,
+    base: str,
+    quote: str,
+    category: str,
+    frequency: str,
+    period: str | None,
+    network: str | None,
+    pool_address: str | None,
+    metrics: str | None,
+    start: str | None,
+    end: str | None,
+    fetched_at: datetime,
+) -> _FetchedAcquisition:
+    if family != "comparison_bars":
+        raise DataError("ccxt:coinbase is diagnostic authority only for comparison_bars")
+    cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}.get(frequency)
+    if category != "spot" or cadence_seconds is None:
+        raise DataError("ccxt:coinbase comparison supports exact 1m, 5m, 1h, or 1d spot bars")
+    if any(value is not None for value in (period, network, pool_address, metrics)):
+        raise DataError("ccxt:coinbase comparison received an unsupported provider option")
+    if start is None or end is None:
+        raise DataError("ccxt:coinbase comparison requires --start and --end")
+    base_value, quote_value = base.strip().upper(), quote.strip().upper()
+    symbol = instrument.strip().upper()
+    if symbol != f"{base_value}/{quote_value}":
+        raise DataError("ccxt:coinbase instrument must exactly match BASE/QUOTE")
+    try:
+        start_at = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        end_at = datetime.fromisoformat(end.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DataError("ccxt:coinbase start and end must be ISO-8601 timestamps") from exc
+    if start_at.tzinfo is None and len(start) == 10:
+        start_at = start_at.replace(tzinfo=UTC)
+    if end_at.tzinfo is None and len(end) == 10:
+        end_at = end_at.replace(tzinfo=UTC)
+    if (
+        start_at.tzinfo is None
+        or start_at.utcoffset() is None
+        or end_at.tzinfo is None
+        or end_at.utcoffset() is None
+    ):
+        raise DataError("ccxt:coinbase intraday bounds must include a timezone")
+    start_at = start_at.astimezone(UTC)
+    end_at = end_at.astimezone(UTC)
+    current_interval = int(fetched_at.timestamp()) // cadence_seconds * cadence_seconds
+    if end_at < start_at or int(end_at.timestamp()) >= current_interval:
+        raise DataError("ccxt:coinbase range must end before the current incomplete UTC interval")
+    result = CCXTAdapter(exchange="coinbase").fetch_timeframe(
+        symbol, start_at, end_at, timeframe=frequency
+    )
+    timestamps = result.bars["ts"].to_list() if "ts" in result.bars.columns else []
+    if not timestamps or any(
+        not isinstance(value, datetime) or not start_at <= value <= end_at for value in timestamps
+    ):
+        raise DataError("ccxt:coinbase returned bars outside the exact requested range")
+    payload = _ccxt_comparison_payload(result.bars)
+    params: dict[str, str | int] = {
+        "symbol": symbol,
+        "timeframe": frequency,
+        "start": start,
+        "end": end,
+    }
+    return _FetchedAcquisition(
+        plan=_AcquisitionPlan(
+            endpoint="ccxt_fetch_ohlcv",
+            params=params,
+            dataset=CryptoDatasetIdentityV1(
+                provider="ccxt:coinbase",
+                venue="coinbase",
+                market_type="spot",
+                family="comparison_bars",
+                instrument=symbol,
+                base_asset=base_value,
+                quote_asset=quote_value,
+                frequency=frequency,
+                units="quote_per_base_and_base_volume",
+                timestamp_convention="interval_start_utc",
+            ),
+            parser=partial(_parse_ccxt_comparison, symbol=symbol),
+            observed_column="timestamp",
+            key_columns=("timestamp",),
+        ),
+        payload=payload,
+        provider_schema="ccxt-unified-ohlcv-v1",
+        parser_version="ccxt-adapter-v2-parser-v1",
+        logical_name="comparison_bars.json",
+        expected_cadence_seconds=cadence_seconds,
+        period_start_timestamps=True,
+    )
+
+
 def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
@@ -1423,83 +1517,20 @@ def _fetch_non_bybit(
     parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None
 
     if provider == "ccxt:coinbase":
-        if family != "comparison_bars":
-            raise DataError("ccxt:coinbase is diagnostic authority only for comparison_bars")
-        cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}.get(frequency)
-        if category != "spot" or cadence_seconds is None:
-            raise DataError("ccxt:coinbase comparison supports exact 1m, 5m, 1h, or 1d spot bars")
-        if any(value is not None for value in (period, network, pool_address, metrics)):
-            raise DataError("ccxt:coinbase comparison received an unsupported provider option")
-        if start is None or end is None:
-            raise DataError("ccxt:coinbase comparison requires --start and --end")
-        symbol = instrument_value.upper()
-        if symbol != f"{base_value}/{quote_value}":
-            raise DataError("ccxt:coinbase instrument must exactly match BASE/QUOTE")
-        try:
-            start_at = datetime.fromisoformat(start.replace("Z", "+00:00"))
-            end_at = datetime.fromisoformat(end.replace("Z", "+00:00"))
-        except ValueError as exc:
-            raise DataError("ccxt:coinbase start and end must be ISO-8601 timestamps") from exc
-        if start_at.tzinfo is None and len(start) == 10:
-            start_at = start_at.replace(tzinfo=UTC)
-        if end_at.tzinfo is None and len(end) == 10:
-            end_at = end_at.replace(tzinfo=UTC)
-        if (
-            start_at.tzinfo is None
-            or start_at.utcoffset() is None
-            or end_at.tzinfo is None
-            or end_at.utcoffset() is None
-        ):
-            raise DataError("ccxt:coinbase intraday bounds must include a timezone")
-        start_at = start_at.astimezone(UTC)
-        end_at = end_at.astimezone(UTC)
-        current_interval = int(fetched_at.timestamp()) // cadence_seconds * cadence_seconds
-        if end_at < start_at or int(end_at.timestamp()) >= current_interval:
-            raise DataError(
-                "ccxt:coinbase range must end before the current incomplete UTC interval"
-            )
-        result = CCXTAdapter(exchange="coinbase").fetch_timeframe(
-            symbol, start_at, end_at, timeframe=frequency
-        )
-        timestamps = result.bars["ts"].to_list() if "ts" in result.bars.columns else []
-        if not timestamps or any(
-            not isinstance(value, datetime) or not start_at <= value <= end_at
-            for value in timestamps
-        ):
-            raise DataError("ccxt:coinbase returned bars outside the exact requested range")
-        payload = _ccxt_comparison_payload(result.bars)
-        comparison_params: dict[str, str | int] = {
-            "symbol": symbol,
-            "timeframe": frequency,
-            "start": start,
-            "end": end,
-        }
-        return _FetchedAcquisition(
-            plan=_AcquisitionPlan(
-                endpoint="ccxt_fetch_ohlcv",
-                params=comparison_params,
-                dataset=CryptoDatasetIdentityV1(
-                    provider="ccxt:coinbase",
-                    venue="coinbase",
-                    market_type="spot",
-                    family="comparison_bars",
-                    instrument=symbol,
-                    base_asset=base_value,
-                    quote_asset=quote_value,
-                    frequency=frequency,
-                    units="quote_per_base_and_base_volume",
-                    timestamp_convention="interval_start_utc",
-                ),
-                parser=partial(_parse_ccxt_comparison, symbol=symbol),
-                observed_column="timestamp",
-                key_columns=("timestamp",),
-            ),
-            payload=payload,
-            provider_schema="ccxt-unified-ohlcv-v1",
-            parser_version="ccxt-adapter-v2-parser-v1",
-            logical_name="comparison_bars.json",
-            expected_cadence_seconds=cadence_seconds,
-            period_start_timestamps=True,
+        return _fetch_coinbase_comparison(
+            family,
+            instrument,
+            base=base,
+            quote=quote,
+            category=category,
+            frequency=frequency,
+            period=period,
+            network=network,
+            pool_address=pool_address,
+            metrics=metrics,
+            start=start,
+            end=end,
+            fetched_at=fetched_at,
         )
 
     if provider == "binance":
