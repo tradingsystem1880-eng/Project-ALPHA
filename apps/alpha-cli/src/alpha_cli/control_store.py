@@ -2645,12 +2645,26 @@ class ControlStore:
     ) -> dict[str, object]:
         """Reverify one D0 run and every mandatory acceptance outcome."""
 
-        from alpha_cli.research_runtime import (
-            validate_d0_acceptance_artifact,
-            validate_d0_pilot_contract,
+        protocol = contract_payload.get("protocol")
+        bound_operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+        crypto_crowding = (
+            isinstance(bound_operator, Mapping)
+            and bound_operator.get("name") == "bybit_btcusdt_crowding_reversal"
         )
+        if crypto_crowding:
+            from alpha_cli.research_crypto_runtime import (  # noqa: PLC0415
+                validate_crypto_d0_acceptance_artifact,
+                validate_crypto_d0_contract,
+            )
 
-        operator = validate_d0_pilot_contract(contract_payload)
+            operator = validate_crypto_d0_contract(contract_payload)
+        else:
+            from alpha_cli.research_runtime import (  # noqa: PLC0415
+                validate_d0_acceptance_artifact,
+                validate_d0_pilot_contract,
+            )
+
+            operator = validate_d0_pilot_contract(contract_payload)
 
         self._require_research_run(
             run_id,
@@ -2676,16 +2690,26 @@ class ControlStore:
             or _SHA256_RE.fullmatch(operator_fingerprint) is None
         ):
             raise DataError("registered D0 acceptance binding is not content-addressed")
-        validate_d0_acceptance_artifact(
-            run_dir,
-            manifest,
-            project_id=project_id,
-            contract_id=contract_id,
-            contract_hash=contract_hash,
-            dataset_hash=dataset_hash,
-            execution_fingerprint=config_fingerprint,
-            d0_operator_fingerprint=operator_fingerprint,
-        )
+        if crypto_crowding:
+            validate_crypto_d0_acceptance_artifact(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_hash=contract_hash,
+                execution_fingerprint=config_fingerprint,
+            )
+        else:
+            validate_d0_acceptance_artifact(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_hash=contract_hash,
+                dataset_hash=dataset_hash,
+                execution_fingerprint=config_fingerprint,
+                d0_operator_fingerprint=operator_fingerprint,
+            )
         return manifest
 
     def _require_d1_verified_evidence(

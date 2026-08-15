@@ -26,6 +26,11 @@ from alpha_cli.control_store import (
     ResearchResponsibility,
     research_case_revision,
 )
+from alpha_cli.research_crypto_runtime import (
+    crypto_d0_execution_fingerprint,
+    run_crypto_crowding_pilot,
+    validate_crypto_d0_contract,
+)
 from alpha_cli.research_d1 import (
     D1_ANALYSES_ARTIFACT,
     D1_EVIDENCE_ARTIFACT,
@@ -659,6 +664,52 @@ def _case_payload(
     if not isinstance(payload, dict):
         raise DataError("research case has no active contract payload")
     return cast(dict[str, object], payload), summary
+
+
+def _is_crypto_crowding_contract(payload: Mapping[str, object]) -> bool:
+    protocol = payload.get("protocol")
+    operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+    return (
+        isinstance(operator, Mapping) and operator.get("name") == "bybit_btcusdt_crowding_reversal"
+    )
+
+
+def _validate_registered_d0_contract(payload: Mapping[str, object]) -> dict[str, object]:
+    return (
+        validate_crypto_d0_contract(payload)
+        if _is_crypto_crowding_contract(payload)
+        else validate_d0_pilot_contract(payload)
+    )
+
+
+def _registered_d0_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    return (
+        crypto_d0_execution_fingerprint(payload)
+        if _is_crypto_crowding_contract(payload)
+        else d0_execution_fingerprint(payload)
+    )
+
+
+def _run_registered_d0_pilot(
+    data_dir: Path,
+    *,
+    project_id: str,
+    contract_id: str,
+    contract: Mapping[str, object],
+) -> dict[str, Any]:
+    if _is_crypto_crowding_contract(contract):
+        return run_crypto_crowding_pilot(
+            data_dir,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract,
+        )
+    return run_synthetic_pilot(
+        data_dir,
+        project_id=project_id,
+        contract_id=contract_id,
+        contract=contract,
+    )
 
 
 @research_app.command("capture")
@@ -2391,7 +2442,7 @@ def run_research(
         if case["phase"] != "pilot":
             raise DataError("synthetic pilot requires the owner-approved pilot phase")
         contract_id = str(case["active_contract_id"])
-        validate_d0_pilot_contract(payload)
+        _validate_registered_d0_contract(payload)
         execution_state = str(case["execution_state"])
         latest_attempt_id = case.get("latest_attempt_id")
         if (
@@ -2455,7 +2506,7 @@ def run_research(
                 "code, dependency lock, evaluator, or environment; create and approve a revised "
                 "contract before another pilot"
             )
-        execution_fingerprint = d0_execution_fingerprint(payload)
+        execution_fingerprint = _registered_d0_execution_fingerprint(payload)
         if execution_state == "idle":
             store.transition_research_execution(
                 project_id,
@@ -2480,7 +2531,7 @@ def run_research(
         attempt_number = raw_launch_number
         reservation_id = str(reservation["reservation_id"])
         try:
-            manifest = run_synthetic_pilot(
+            manifest = _run_registered_d0_pilot(
                 AlphaSettings().data_dir,
                 project_id=project_id,
                 contract_id=contract_id,
