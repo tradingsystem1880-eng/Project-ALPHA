@@ -334,6 +334,59 @@ def _publish_suite_run(
     (run_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
 
 
+def _complete_candidate_stage(
+    store: ControlStore,
+    tmp_path: Path,
+    project_id: str,
+    experiment_id: str,
+    contract_id: str,
+    snapshot_id: str,
+    *,
+    action: str,
+    stage: str,
+    commands: tuple[str, ...],
+) -> None:
+    if stage != "baseline":
+        store.append_experiment_stage_state(
+            project_id, experiment_id, stage, "ready", reason="candidate fixture ready"
+        )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, stage, "queued", reason="candidate fixture queued"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, stage, "running", reason="candidate fixture running"
+    )
+    for index, command in enumerate(commands):
+        run_id = f"4{len(command):02x}{index:013x}"
+        changes: dict[str, object] = {"passed": True}
+        if command.startswith("candidate_null_"):
+            changes["metadata"] = {"null_model": command.removeprefix("candidate_null_")}
+        _publish_candidate_suite_run(
+            tmp_path,
+            run_id=run_id,
+            snapshot_id=snapshot_id,
+            contract_id=contract_id,
+            command=command,
+            changes=changes,
+        )
+        store.link_suite_stage_run(
+            project_id,
+            experiment_id,
+            suite_action=action,
+            stage=stage,
+            state="pass" if index == 0 else "warning",
+            run_id=run_id,
+        )
+    store.complete_suite_stage(
+        project_id,
+        experiment_id,
+        suite_action=action,
+        stage=stage,
+        state="pass",
+        reason="verified candidate fixture",
+    )
+
+
 def test_monte_carlo_result_statuses_map_and_aggregate_fail_closed(tmp_path: Path) -> None:
     _experiment(tmp_path)
     run_ids = ("20000000000000a1", "20000000000000a2", "20000000000000a3")
@@ -985,6 +1038,7 @@ def _publish_candidate_suite_run(
     run_id: str,
     snapshot_id: str,
     contract_id: str,
+    command: str = "candidate_baseline",
     changes: dict[str, object] | None = None,
 ) -> None:
     snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
@@ -993,7 +1047,7 @@ def _publish_candidate_suite_run(
         "artifact_contract_version": 3,
         "run_identity_version": 3,
         "run_id": run_id,
-        "command": "candidate_baseline",
+        "command": command,
         "kind": "strategy_candidate",
         "snapshot_id": snapshot_id,
         "snapshot_hash": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
@@ -1069,3 +1123,44 @@ def test_candidate_baseline_admission_rejects_forged_authority(
             state="pass",
             run_id=run_id,
         )
+
+
+def test_candidate_oos_and_null_plans_use_distinct_registered_commands(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="baseline",
+        stage="baseline",
+        commands=("candidate_baseline",),
+    )
+
+    oos = build_suite_plan(store, project_id, experiment_id, "inner_oos", data_dir=tmp_path)
+    assert oos.ready is True
+    assert oos.steps[0].argv[6:8] == ("inner_oos", "--as-of")
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="inner_oos",
+        stage="oos",
+        commands=("candidate_oos",),
+    )
+
+    nulls = build_suite_plan(
+        store, project_id, experiment_id, "three_null_families", data_dir=tmp_path
+    )
+    assert nulls.ready is True
+    assert [step.argv[6] for step in nulls.steps] == [
+        "null_bootstrap",
+        "null_student_t",
+        "null_garch",
+    ]
+    assert nulls.governance["aggregation"] == "no_majority_vote"

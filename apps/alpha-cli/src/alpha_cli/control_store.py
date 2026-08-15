@@ -171,6 +171,12 @@ RESEARCH_D2_REVISION_RELATIONS: Final = frozenset(
 RESEARCH_SOURCE_ACCESS_MODES: Final = frozenset({"metadata_only", "open_access", "owner_provided"})
 PROJECT_RESEARCH_ORIGINS: Final = frozenset({"strategy_development", "research_capture"})
 _MONTE_CARLO_COMMANDS: Final = frozenset({"monte_carlo_classical", "monte_carlo_kronos"})
+_CANDIDATE_NULL_COMMANDS: Final = frozenset(
+    {"candidate_null_bootstrap", "candidate_null_student_t", "candidate_null_garch"}
+)
+_CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
+    {"candidate_baseline", "candidate_oos", *_CANDIDATE_NULL_COMMANDS}
+)
 
 _ASSOCIATION_TOKEN_MARKERS: Final = ("associat", "correlat", "kendall", "pearson", "spearman")
 _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
@@ -189,7 +195,7 @@ _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
         "forecast_eval",
         *_MONTE_CARLO_COMMANDS,
         "ml_replay",
-        "candidate_baseline",
+        *_CANDIDATE_EVIDENCE_COMMANDS,
     }
 )
 _GENERIC_EVIDENCE_RESEARCH_MARKERS: Final = frozenset(
@@ -227,8 +233,11 @@ _SUITE_JOB_KINDS: Final = frozenset(
 )
 _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
     "baseline": ("baseline", frozenset({"backtest_run", "candidate_baseline"})),
-    "inner_oos": ("oos", frozenset({"backtest_oos"})),
-    "three_null_families": ("robustness", frozenset({"validate"})),
+    "inner_oos": ("oos", frozenset({"backtest_oos", "candidate_oos"})),
+    "three_null_families": (
+        "robustness",
+        frozenset({"validate", *_CANDIDATE_NULL_COMMANDS}),
+    ),
     "monte_carlo": (
         "monte_carlo",
         _MONTE_CARLO_COMMANDS,
@@ -8405,20 +8414,28 @@ class ControlStore:
                 expected_hash = verified_snapshot_hash(self._data_dir, expected_snapshot)
                 if manifest.get("snapshot_hash") != expected_hash:
                     raise DataError("suite result snapshot hash does not match the experiment")
-                if manifest.get("command") == "candidate_baseline":
-                    candidate = connection.execute(
-                        """SELECT v.strategy_name, l.contract_id
-                        FROM experiment_specs e
-                        JOIN strategy_versions v ON v.version_id = e.strategy_version_id
-                        LEFT JOIN research_contract_strategy_links l
-                          ON l.project_id = ? AND l.version_id = v.version_id
-                        WHERE e.experiment_id = ?""",
-                        (project_id, experiment_id),
-                    ).fetchone()
+                candidate = connection.execute(
+                    """SELECT v.strategy_name, l.contract_id
+                    FROM experiment_specs e
+                    JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+                    LEFT JOIN research_contract_strategy_links l
+                      ON l.project_id = ? AND l.version_id = v.version_id
+                    WHERE e.experiment_id = ?""",
+                    (project_id, experiment_id),
+                ).fetchone()
+                candidate_strategy = (
+                    candidate is not None
+                    and candidate["strategy_name"] == "hedged_basis_crowding_v1"
+                )
+                candidate_command = manifest.get("command") in _CANDIDATE_EVIDENCE_COMMANDS
+                if candidate_strategy != candidate_command:
+                    raise DataError(
+                        "suite evidence command family does not match the registered strategy"
+                    )
+                if candidate_command:
                     inheritance = manifest.get("research_inheritance")
                     if (
-                        candidate is None
-                        or candidate["strategy_name"] != "hedged_basis_crowding_v1"
+                        candidate is None  # static narrowing; query is required above.
                         or candidate["contract_id"] is None
                         or not isinstance(inheritance, Mapping)
                         or inheritance.get("contract_id") != candidate["contract_id"]
@@ -8628,6 +8645,15 @@ class ControlStore:
         )
         commands = {str(manifest.get("command")) for _, manifest in evidence}
         if suite_action == "three_null_families":
+            candidate_family = not commands.isdisjoint(_CANDIDATE_NULL_COMMANDS)
+            if candidate_family and commands != _CANDIDATE_NULL_COMMANDS:
+                raise DataError(
+                    "candidate robustness completion requires exactly its three null runs"
+                )
+            if not candidate_family and commands != {"validate"}:
+                raise DataError(
+                    "single-instrument robustness completion requires validate runs only"
+                )
             families = {
                 metadata.get("null_model")
                 for _, manifest in evidence
@@ -8636,6 +8662,8 @@ class ControlStore:
             headline = any(
                 view["state"] == "pass"
                 and manifest.get("passed") is True
+                and manifest.get("command")
+                == ("candidate_null_bootstrap" if candidate_family else "validate")
                 and isinstance(manifest.get("metadata"), Mapping)
                 and cast(Mapping[str, object], manifest["metadata"]).get("null_model")
                 == "bootstrap"

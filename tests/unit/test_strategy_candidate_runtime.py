@@ -74,6 +74,7 @@ def test_candidate_baseline_is_immutable_sandbox_evidence(tmp_path: Path) -> Non
     )
     assert result["event_count"] == 3
     assert set(manifest["artifacts"]) == {
+        "candidate_analysis.json",
         "candidate_evaluation.json",
         "report.md",
         "returns.parquet",
@@ -107,3 +108,48 @@ def test_candidate_runtime_fails_before_publication_on_invalid_scope(tmp_path: P
             as_of=None,
         )
     assert not (tmp_path / "runs").exists()
+
+
+@pytest.mark.parametrize(
+    ("analysis", "command"),
+    [
+        ("inner_oos", "candidate_oos"),
+        ("null_bootstrap", "candidate_null_bootstrap"),
+        ("null_student_t", "candidate_null_student_t"),
+        ("null_garch", "candidate_null_garch"),
+    ],
+)
+def test_candidate_pre_holdout_analyses_recompute_exactly(
+    tmp_path: Path, analysis: str, command: str
+) -> None:
+    observations = _observations()
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        analysis=analysis,
+        research_cutoff="2025-01-31",
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )
+
+    assert manifest["command"] == command
+    assert isinstance(manifest["passed"], bool)
+    assert isinstance(manifest["metadata"], dict)
+    if analysis.startswith("null_"):
+        metadata = manifest["metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["null_model"] == analysis.removeprefix("null_")
+        method_token = {
+            "null_bootstrap": "sign_randomization",
+            "null_student_t": "student_t",
+            "null_garch": "garch_1_1",
+        }[analysis]
+        assert method_token in str(metadata["method"])
+    validate_hedged_basis_candidate_artifacts(
+        tmp_path / "runs" / str(manifest["run_id"]),
+        manifest,
+        observations=observations,
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )

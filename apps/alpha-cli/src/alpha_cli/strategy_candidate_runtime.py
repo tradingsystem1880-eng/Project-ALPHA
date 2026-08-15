@@ -23,8 +23,14 @@ from alpha_strategies.hedged_basis import (
 )
 from alpha_validation import annualized_volatility, sharpe_ratio
 
-_ANALYSES: Final = frozenset({"baseline"})
-_COMMANDS: Final = {"baseline": "candidate_baseline"}
+_COMMANDS: Final = {
+    "baseline": "candidate_baseline",
+    "inner_oos": "candidate_oos",
+    "null_bootstrap": "candidate_null_bootstrap",
+    "null_student_t": "candidate_null_student_t",
+    "null_garch": "candidate_null_garch",
+}
+_ANALYSES: Final = frozenset(_COMMANDS)
 
 
 def _canonical(value: object) -> str:
@@ -103,6 +109,66 @@ def _payloads(
     return evaluation, pl.DataFrame(rows), result
 
 
+def _analysis_result(
+    analysis: str, result: HedgedBasisEvaluationV1
+) -> tuple[dict[str, object], bool]:
+    returns = np.asarray([trade.net_return for trade in result.trades], dtype=np.float64)
+    if analysis == "baseline":
+        passed = bool(returns.size and float(np.mean(returns)) > 0.0)
+        return {"method": "full_registered_event_replay_v1"}, passed
+    if analysis == "inner_oos":
+        start = max(0, int(np.floor(returns.size * 0.8)))
+        selected = returns[start:]
+        passed = bool(selected.size and float(np.mean(selected)) > 0.0)
+        return {
+            "method": "ordered_last_20_percent_event_groups_v1",
+            "event_count": int(selected.size),
+            "mean_net_return": float(np.mean(selected)),
+        }, passed
+
+    centered = returns - float(np.mean(returns))
+    observed = abs(float(np.mean(returns)))
+    rng = np.random.default_rng(7331)
+    paths = 4096
+    null_model = analysis.removeprefix("null_")
+    if null_model == "bootstrap":
+        signs = rng.choice(np.asarray((-1.0, 1.0)), size=(paths, returns.size))
+        null_returns = signs * centered
+        method = "deterministic_centered_sign_randomization_v1"
+        parameters: dict[str, object] = {}
+    elif null_model == "student_t":
+        degrees_of_freedom = 5
+        scale = float(np.std(centered, ddof=1)) if returns.size >= 2 else 0.0
+        scale /= float(np.sqrt(degrees_of_freedom / (degrees_of_freedom - 2)))
+        null_returns = rng.standard_t(degrees_of_freedom, size=(paths, returns.size)) * scale
+        method = "deterministic_student_t_location_null_v1"
+        parameters = {"degrees_of_freedom": degrees_of_freedom}
+    else:
+        alpha, beta = 0.10, 0.85
+        variance = float(np.var(centered, ddof=1)) if returns.size >= 2 else 0.0
+        omega = max(variance * (1.0 - alpha - beta), np.finfo(np.float64).eps)
+        null_returns = np.empty((paths, returns.size), dtype=np.float64)
+        conditional_variance = np.full(paths, max(variance, omega), dtype=np.float64)
+        prior_shock = np.zeros(paths, dtype=np.float64)
+        for index in range(returns.size):
+            conditional_variance = omega + alpha * prior_shock**2 + beta * conditional_variance
+            prior_shock = rng.normal(size=paths) * np.sqrt(conditional_variance)
+            null_returns[:, index] = prior_shock
+        method = "deterministic_garch_1_1_location_null_v1"
+        parameters = {"alpha": alpha, "beta": beta, "omega": omega}
+    null_means = np.abs(np.mean(null_returns, axis=1))
+    p_value = float((np.count_nonzero(null_means >= observed) + 1) / (paths + 1))
+    passed = p_value <= 0.05
+    return {
+        "method": method,
+        "null_model": null_model,
+        "paths": paths,
+        "seed": 7331,
+        "two_sided_p_value": p_value,
+        "parameters": parameters,
+    }, passed
+
+
 def run_hedged_basis_candidate(
     data_dir: Path,
     *,
@@ -138,12 +204,17 @@ def run_hedged_basis_candidate(
         snapshot_hash=snapshot_hash,
     )
     run_dir = _artifacts.run_dir(data_dir, identity.run_id)
-    evaluation, frame, _ = _payloads(admitted)
+    evaluation, frame, result = _payloads(admitted)
+    analysis_result, passed = _analysis_result(analysis, result)
     _artifacts.publish_artifact(
         run_dir / "candidate_evaluation.json",
         lambda target: target.write_text(_canonical(evaluation), encoding="utf-8"),
     )
     _artifacts.publish_artifact(run_dir / "returns.parquet", frame.write_parquet)
+    _artifacts.publish_artifact(
+        run_dir / "candidate_analysis.json",
+        lambda target: target.write_text(_canonical(analysis_result), encoding="utf-8"),
+    )
     _artifacts.publish_artifact(
         run_dir / "report.md",
         lambda target: target.write_text(
@@ -166,7 +237,10 @@ def run_hedged_basis_candidate(
         "paper_eligible": False,
         "broker_connection_attempted": False,
         "event_count": len(admitted),
+        "passed": passed,
+        "metadata": analysis_result,
         "candidate_evaluation_artifact": "candidate_evaluation.json",
+        "candidate_analysis_artifact": "candidate_analysis.json",
         "returns_artifact": "returns.parquet",
     }
     _artifacts.write_manifest(run_dir, manifest)
@@ -204,7 +278,8 @@ def validate_hedged_basis_candidate_artifacts(
         manifest.get(field) != value for field, value in expected_identity.manifest_fields().items()
     ):
         raise DataError("hedged basis manifest does not bind the frozen candidate execution")
-    expected, _, _ = _payloads(admitted)
+    expected, _, result = _payloads(admitted)
+    expected_analysis, expected_passed = _analysis_result(analysis, result)
     try:
         actual: object = json.loads(
             (run_dir / "candidate_evaluation.json").read_text(encoding="utf-8")
@@ -213,6 +288,18 @@ def validate_hedged_basis_candidate_artifacts(
         raise DataError("hedged basis candidate evaluation is unreadable") from exc
     if _canonical(actual) != _canonical(expected):
         raise DataError("hedged basis candidate evaluation fails exact recomputation")
+    try:
+        actual_analysis: object = json.loads(
+            (run_dir / "candidate_analysis.json").read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DataError("hedged basis candidate analysis is unreadable") from exc
+    if (
+        _canonical(actual_analysis) != _canonical(expected_analysis)
+        or manifest.get("metadata") != expected_analysis
+        or manifest.get("passed") is not expected_passed
+    ):
+        raise DataError("hedged basis candidate analysis fails exact recomputation")
     return expected
 
 

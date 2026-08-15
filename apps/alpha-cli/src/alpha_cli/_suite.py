@@ -758,6 +758,56 @@ def build_suite_plan(
             }
         )
         workload = _workload(action, commands=1, canonical_runs=1)
+    elif hedged_basis and action == "inner_oos":
+        args = (
+            "strategy-candidate",
+            "run",
+            snapshot,
+            "--research-contract-id",
+            str(research_contract_id),
+            "--analysis",
+            "inner_oos",
+            "--as-of",
+            cutoff_value,
+        )
+        steps.append(
+            SuiteStep(
+                "Ordered inner OOS event groups",
+                args,
+                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                "ordered_last_20_percent_event_groups",
+                ((cutoff_value, public_cutoff),),
+            )
+        )
+        workload = _workload(action, commands=1, canonical_runs=1)
+    elif hedged_basis and action == "three_null_families":
+        for analysis, label in (
+            ("null_bootstrap", "Sign-randomization headline null"),
+            ("null_student_t", "Student-t sensitivity null"),
+            ("null_garch", "Conditional-volatility sensitivity null"),
+        ):
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                analysis,
+                "--as-of",
+                cutoff_value,
+            )
+            steps.append(
+                SuiteStep(
+                    label,
+                    args,
+                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                    "candidate_return_stream_null_no_majority_vote",
+                    ((cutoff_value, public_cutoff),),
+                )
+            )
+        governance["aggregation"] = "no_majority_vote"
+        workload = _workload(action, commands=3, canonical_runs=3)
     elif hedged_basis and action == "paper_preflight":
         args = ("strategy-candidate", "paper-preflight", "--json")
         steps.append(
@@ -1693,6 +1743,10 @@ def _headline_state(data_dir: Path, plan: SuitePlan, run_ids: Sequence[str]) -> 
     if run_dir is None:
         raise DataError(f"suite result run {run_ids[0]!r} was not published")
     manifest = read_manifest(run_dir)
+    if plan.action == "three_null_families" and manifest.get("command") == (
+        "candidate_null_bootstrap"
+    ):
+        return "pass" if manifest.get("passed") is True else "fail"
     if plan.action in {"optimize_grid", "holdout_reveal"}:
         return "pass" if manifest.get("passed") is True else "fail"
     outcomes = manifest.get("outcomes")
