@@ -632,6 +632,10 @@ def test_archive_and_checksum_fetch_validate_redirect_mime_and_size(
         [b"digest file\n"], status=200, headers={"Content-Type": "text/plain"}, url=checksum
     )
     assert fetch_binance_checksum(checksum) == b"digest file\n"
+    response = _ArchiveResponse(
+        [b"digest file\n"], status=200, headers={"Content-Type": "application/zip"}, url=checksum
+    )
+    assert fetch_binance_checksum(checksum) == b"digest file\n"
 
     response = _ArchiveResponse(
         [b"zip"], status=200, headers={"Content-Type": "text/html"}, url=archive

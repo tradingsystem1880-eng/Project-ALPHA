@@ -794,7 +794,9 @@ def fetch_binance_checksum(url: str, *, timeout_seconds: int = 30) -> bytes:
         url,
         timeout_seconds=timeout_seconds,
         max_bytes=4_096,
-        content_types=frozenset({"text/plain", "application/octet-stream"}),
+        # Binance currently serves its ASCII CHECKSUM sidecars as application/zip. The
+        # 4 KiB bound plus strict SHA-256 sidecar parser still rejects archive bytes.
+        content_types=frozenset({"text/plain", "application/octet-stream", "application/zip"}),
     )
 
 
