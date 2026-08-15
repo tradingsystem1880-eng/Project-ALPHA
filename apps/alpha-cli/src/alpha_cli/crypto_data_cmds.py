@@ -1372,6 +1372,17 @@ def _fetch_bybit_pages(
     seen_cursors: set[str] = set()
     for page_number in range(1, 101):
         payload = fetch_bybit_public(plan.endpoint, params)
+        frame = plan.parser(payload)
+        range_start = params.get("startTime", params.get("start"))
+        range_end = params.get("endTime", params.get("end"))
+        if isinstance(range_start, int) and isinstance(range_end, int):
+            _require_observations_in_range(
+                frame,
+                column=plan.observed_column,
+                start_ms=range_start,
+                end_ms=range_end,
+                provider="Bybit",
+            )
         next_cursor = plan.next_cursor(payload) if plan.next_cursor is not None else None
         request = tuple((key, str(value)) for key, value in sorted(params.items()))
         pagination = (f"page={page_number}", f"next_cursor={next_cursor or 'terminal'}")
@@ -1380,7 +1391,7 @@ def _fetch_bybit_pages(
             if (
                 plan.page_limit is not None
                 and {"startTime", "start"} & params.keys()
-                and plan.parser(payload).height >= plan.page_limit
+                and frame.height >= plan.page_limit
             ):
                 raise DataError(
                     "Bybit bounded window fills one provider page; narrow the range to avoid "
@@ -1392,6 +1403,28 @@ def _fetch_bybit_pages(
         seen_cursors.add(next_cursor)
         params["cursor"] = next_cursor
     raise DataError("Bybit acquisition exceeded the 100-page safety limit")
+
+
+def _require_observations_in_range(
+    frame: pl.DataFrame,
+    *,
+    column: str,
+    start_ms: int,
+    end_ms: int,
+    provider: str,
+) -> None:
+    if frame.is_empty():
+        raise DataError(f"{provider} returned no observations for the exact requested range")
+    if column not in frame.columns:
+        raise DataError(f"{provider} response has no requested-range timestamp")
+    first = frame[column].min()
+    last = frame[column].max()
+    if not isinstance(first, datetime) or not isinstance(last, datetime):
+        raise DataError(f"{provider} requested-range timestamp is invalid")
+    first_ms = int(first.timestamp() * 1_000)
+    last_ms = int(last.timestamp() * 1_000)
+    if first_ms < start_ms or last_ms > end_ms:
+        raise DataError(f"{provider} returned observations outside the exact requested range")
 
 
 def _binance_range(
@@ -1445,6 +1478,13 @@ def _fetch_binance_tail_pages(
         }
         payload = fetch_binance_public_api(binance_public_api_url(category, "klines", params))
         frame = parse_binance_klines(payload, source="rest_json")
+        _require_observations_in_range(
+            frame,
+            column="open_time",
+            start_ms=next_start,
+            end_ms=end_ms,
+            provider="Binance REST tail",
+        )
         last_open = frame["open_time"][-1]
         assert isinstance(last_open, datetime)
         last_ms = int(last_open.timestamp() * 1_000)

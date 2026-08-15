@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 
 from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
+from alpha_core import DataError
 from alpha_data.crypto.contracts import CryptoFamily
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
@@ -510,3 +511,84 @@ def test_bybit_range_fails_closed_when_incomplete_or_inverted(
     result = runner.invoke(app, args)
     assert result.exit_code != 0
     assert message in result.output
+
+
+def test_bybit_bounded_pages_reject_observations_outside_requested_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fetched_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    plan = crypto_data_cmds._bybit_plan(
+        "open_interest",
+        "BTCUSDT",
+        base="BTC",
+        quote="USDT",
+        category="linear",
+        frequency="1h",
+        start="2026-08-14T00:00:00Z",
+        end="2026-08-15T00:00:00Z",
+        fetched_at=fetched_at,
+    )
+    payload = json.dumps(
+        {
+            "retCode": 0,
+            "time": 1_786_752_000_000,
+            "result": {
+                "category": "linear",
+                "symbol": "BTCUSDT",
+                "list": [{"openInterest": "100", "timestamp": "1786665599000"}],
+            },
+        }
+    ).encode()
+    monkeypatch.setattr(crypto_data_cmds, "fetch_bybit_public", lambda *_args: payload)
+
+    with pytest.raises(DataError, match="outside the exact requested range"):
+        crypto_data_cmds._fetch_bybit_pages(plan, follow_cursors=True)
+
+
+def test_binance_tail_rejects_mixed_rows_outside_requested_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    start_ms = 1_786_665_600_000
+    end_ms = start_ms + 3_600_000
+    payload = json.dumps(
+        [
+            [
+                start_ms - 3_600_000,
+                "100",
+                "110",
+                "90",
+                "105",
+                "12",
+                start_ms - 1,
+                "1260",
+                42,
+                "6",
+                "630",
+                "0",
+            ],
+            [
+                start_ms,
+                "105",
+                "115",
+                "100",
+                "110",
+                "10",
+                end_ms - 1,
+                "1100",
+                30,
+                "5",
+                "550",
+                "0",
+            ],
+        ]
+    ).encode()
+    monkeypatch.setattr(crypto_data_cmds, "fetch_binance_public_api", lambda *_args: payload)
+
+    with pytest.raises(DataError, match="outside the exact requested range"):
+        crypto_data_cmds._fetch_binance_tail_pages(
+            category="spot",
+            symbol="BTCUSDT",
+            frequency="1h",
+            start_ms=start_ms,
+            end_ms=end_ms,
+        )
