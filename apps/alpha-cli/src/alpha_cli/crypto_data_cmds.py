@@ -1037,18 +1037,14 @@ def asset_contract(
     _emit(identity.to_dict(), json_out=json_out)
 
 
-def _bybit_plan(
+def _validated_bybit_identity(
     family: CryptoFamily,
     instrument: str,
     *,
     base: str,
     quote: str,
     category: str,
-    frequency: str,
-    start: str | None,
-    end: str | None,
-    fetched_at: datetime,
-) -> _AcquisitionPlan:
+) -> tuple[Literal["linear", "inverse"], CryptoMarketType, str, str, str]:
     diagnostic_spot = family == "comparison_bars" and category == "spot"
     if FAMILY_AUTHORITIES[family] != "bybit" and not diagnostic_spot:
         raise DataError(f"{family} is not a Bybit-authoritative dataset family")
@@ -1077,6 +1073,52 @@ def _bybit_plan(
         or not symbol.replace("-", "").isalnum()
     ):
         raise DataError("Bybit instrument, base, or quote identity is invalid")
+    return category_value, market_type, base_value, quote_value, symbol
+
+
+def _apply_bybit_range(
+    family: CryptoFamily,
+    params: dict[str, str | int],
+    bounded_range: tuple[int, int] | None,
+) -> None:
+    if bounded_range is None:
+        return
+    if family in {
+        "instrument_catalog",
+        "derivative_trades",
+        "derivative_book_snapshots",
+        "option_instruments",
+        "option_quotes",
+    }:
+        raise DataError(f"Bybit {family} is a point-in-time snapshot and rejects a time range")
+    start_ms, end_ms = bounded_range
+    if family in _BYBIT_PRICE_FAMILIES or family == "comparison_bars":
+        params.update({"start": start_ms, "end": end_ms})
+    else:
+        params.update({"startTime": start_ms, "endTime": end_ms})
+    if family == "historical_volatility" and end_ms - start_ms > 30 * 86_400_000:
+        raise DataError("Bybit historical volatility windows cannot exceed 30 days")
+
+
+def _bybit_plan(
+    family: CryptoFamily,
+    instrument: str,
+    *,
+    base: str,
+    quote: str,
+    category: str,
+    frequency: str,
+    start: str | None,
+    end: str | None,
+    fetched_at: datetime,
+) -> _AcquisitionPlan:
+    category_value, market_type, base_value, quote_value, symbol = _validated_bybit_identity(
+        family,
+        instrument,
+        base=base,
+        quote=quote,
+        category=category,
+    )
     endpoint: str
     params: dict[str, str | int]
     parser: Callable[[bytes], pl.DataFrame]
@@ -1242,22 +1284,7 @@ def _bybit_plan(
     else:
         raise DataError(f"Bybit acquisition is not implemented for {family}")
 
-    if bounded_range is not None:
-        if family in {
-            "instrument_catalog",
-            "derivative_trades",
-            "derivative_book_snapshots",
-            "option_instruments",
-            "option_quotes",
-        }:
-            raise DataError(f"Bybit {family} is a point-in-time snapshot and rejects a time range")
-        start_ms, end_ms = bounded_range
-        if family in _BYBIT_PRICE_FAMILIES or family == "comparison_bars":
-            params.update({"start": start_ms, "end": end_ms})
-        else:
-            params.update({"startTime": start_ms, "endTime": end_ms})
-        if family == "historical_volatility" and end_ms - start_ms > 30 * 86_400_000:
-            raise DataError("Bybit historical volatility windows cannot exceed 30 days")
+    _apply_bybit_range(family, params, bounded_range)
 
     return _AcquisitionPlan(
         endpoint=endpoint,
