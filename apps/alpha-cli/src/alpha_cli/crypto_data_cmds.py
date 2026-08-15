@@ -1100,6 +1100,90 @@ def _apply_bybit_range(
         raise DataError("Bybit historical volatility windows cannot exceed 30 days")
 
 
+def _bybit_option_plan(
+    family: Literal["option_instruments", "option_quotes", "historical_volatility"],
+    symbol: str,
+    *,
+    base: str,
+    quote: str,
+    frequency: str,
+    bounded_range: tuple[int, int] | None,
+    fetched_at: datetime,
+) -> _AcquisitionPlan:
+    observed_column = "timestamp"
+    key_columns: tuple[str, ...] = ("timestamp", "symbol")
+    availability_column: str | None = None
+    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
+    next_cursor: Callable[[bytes], str | None] | None = None
+    dataset_frequency = frequency
+    if family == "option_instruments":
+        endpoint = "instruments"
+        params: dict[str, str | int] = {
+            "category": "option",
+            "baseCoin": base,
+            "limit": 1_000,
+        }
+        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
+        parser = partial(
+            _instrument_frame,
+            fetched_at_ms=fetched_at_ms,
+            base=base,
+            quote=quote,
+        )
+        parser_at = partial(_option_instrument_parser_at, base=base, quote=quote)
+        observed_column = "fetched_at"
+        key_columns = ("symbol",)
+        dataset_frequency = "catalog_snapshot"
+        next_cursor = partial(_instrument_cursor, fetched_at_ms=fetched_at_ms)
+    elif family == "option_quotes":
+        endpoint = "option_tickers"
+        params = {"category": "option", "baseCoin": base}
+        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
+        parser = partial(
+            _option_quote_frame,
+            fetched_at_ms=fetched_at_ms,
+            base=base,
+            quote=quote,
+        )
+        parser_at = partial(_option_quote_parser_at, base=base, quote=quote)
+        observed_column = "available_at"
+        availability_column = "available_at"
+        key_columns = ("available_at", "symbol")
+        dataset_frequency = "point_in_time_chain"
+    else:
+        endpoint = "historical_volatility"
+        params = {"category": "option", "baseCoin": base, "quoteCoin": quote}
+        parser = partial(
+            parse_historical_volatility,
+            base_coin=base,
+            quote_coin=cast(Literal["USD", "USDT"], quote),
+        )
+        key_columns = ("timestamp", "period_days")
+    _apply_bybit_range(family, params, bounded_range)
+    return _AcquisitionPlan(
+        endpoint=endpoint,
+        params=params,
+        dataset=CryptoDatasetIdentityV1(
+            provider="bybit",
+            venue="bybit",
+            market_type="option",
+            family=family,
+            instrument=symbol,
+            base_asset=base,
+            quote_asset=quote,
+            frequency=dataset_frequency,
+            units="provider_native",
+            timestamp_convention="provider_event_utc",
+        ),
+        parser=parser,
+        observed_column=observed_column,
+        key_columns=key_columns,
+        availability_column=availability_column,
+        next_cursor=next_cursor,
+        parser_at=parser_at,
+    )
+
+
 def _bybit_plan(
     family: CryptoFamily,
     instrument: str,
@@ -1135,6 +1219,17 @@ def _bybit_plan(
     page_limit: int | None = None
     parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
     bounded_range = _bybit_range(start, end, fetched_at=fetched_at)
+
+    if family in {"option_instruments", "option_quotes", "historical_volatility"}:
+        return _bybit_option_plan(
+            cast(Literal["option_instruments", "option_quotes", "historical_volatility"], family),
+            symbol,
+            base=base_value,
+            quote=quote_value,
+            frequency=frequency,
+            bounded_range=bounded_range,
+            fetched_at=fetched_at,
+        )
 
     if family == "comparison_bars":
         endpoint = "trade_kline"
@@ -1239,48 +1334,6 @@ def _bybit_plan(
         parser = partial(parse_price_klines, family=price_family)
         units = "quote_price"
         page_limit = 1_000
-    elif family == "option_instruments":
-        endpoint = "instruments"
-        params = {"category": "option", "baseCoin": base_value, "limit": 1_000}
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(
-            _instrument_frame,
-            fetched_at_ms=fetched_at_ms,
-            base=base_value,
-            quote=quote_value,
-        )
-        parser_at = partial(_option_instrument_parser_at, base=base_value, quote=quote_value)
-        observed_column = "fetched_at"
-        key_columns = ("symbol",)
-        market_type = "option"
-        dataset_frequency = "catalog_snapshot"
-        next_cursor = partial(_instrument_cursor, fetched_at_ms=fetched_at_ms)
-    elif family == "option_quotes":
-        endpoint = "option_tickers"
-        params = {"category": "option", "baseCoin": base_value}
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(
-            _option_quote_frame,
-            fetched_at_ms=fetched_at_ms,
-            base=base_value,
-            quote=quote_value,
-        )
-        parser_at = partial(_option_quote_parser_at, base=base_value, quote=quote_value)
-        observed_column = "available_at"
-        availability_column = "available_at"
-        key_columns = ("available_at", "symbol")
-        market_type = "option"
-        dataset_frequency = "point_in_time_chain"
-    elif family == "historical_volatility":
-        endpoint = "historical_volatility"
-        params = {"category": "option", "baseCoin": base_value, "quoteCoin": quote_value}
-        parser = partial(
-            parse_historical_volatility,
-            base_coin=base_value,
-            quote_coin=cast(Literal["USD", "USDT"], quote_value),
-        )
-        key_columns = ("timestamp", "period_days")
-        market_type = "option"
     else:
         raise DataError(f"Bybit acquisition is not implemented for {family}")
 
