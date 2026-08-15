@@ -23,10 +23,8 @@ from alpha_cli._crypto_acquisition import (
     AcquisitionPlan as _AcquisitionPlan,
 )
 from alpha_cli._crypto_acquisition import (
-    bybit_plan as _bybit_plan,
-)
-from alpha_cli._crypto_acquisition import (
-    option_quote_frame as _option_quote_frame,  # noqa: F401 - compatibility seam
+    bybit_plan,
+    option_quote_frame,
 )
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
@@ -125,6 +123,10 @@ from alpha_strategies.hedged_basis import HedgedBasisObservationV1
 crypto_data_app = typer.Typer(
     help="Provider-native crypto acquisition, qualification, snapshots, and storage."
 )
+
+# Historical test and composition seams remain available while implementation lives privately.
+_bybit_plan = bybit_plan
+_option_quote_frame = option_quote_frame
 
 _ROW_BYTES: Final[dict[CryptoFamily, int]] = {
     "market_bars": 160,
