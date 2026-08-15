@@ -31,6 +31,9 @@ _COMMANDS: Final = {
     "null_garch": "candidate_null_garch",
     "monte_carlo_classical": "candidate_monte_carlo_classical",
     "monte_carlo_kronos_fixture": "candidate_monte_carlo_kronos",
+    "optimize_cost_sensitivity": "candidate_optim",
+    "portfolio_concentration": "candidate_portfolio",
+    "cross_asset_scope": "candidate_cross_asset",
 }
 _ANALYSES: Final = frozenset(_COMMANDS)
 
@@ -169,6 +172,38 @@ def _analysis_result(
             "terminal_return_p05": float(np.quantile(terminal, 0.05)),
             "status": status,
         }, status == "clear"
+    if analysis == "optimize_cost_sensitivity":
+        gross = returns + 0.004
+        trials = [
+            {
+                "trial": index,
+                "total_round_trip_cost_bps": cost,
+                "mean_net_return": float(np.mean(gross - cost / 10_000.0)),
+                "selected": cost == 40,
+            }
+            for index, cost in enumerate((20, 40, 60))
+        ]
+        passed = bool(trials[1]["mean_net_return"] > 0.0)
+        return {
+            "method": "frozen_cost_sensitivity_no_adaptive_selection_v1",
+            "registered_cost_bps": 40,
+            "trials": trials,
+        }, passed
+    if analysis == "portfolio_concentration":
+        return {
+            "method": "single_candidate_concentration_diagnostic_v1",
+            "candidate_count": 1,
+            "gross_exposure_legs": 2,
+            "venues": ["bybit", "binance"],
+            "concentration_warning": "single_registered_asset",
+        }, True
+    if analysis == "cross_asset_scope":
+        return {
+            "method": "registered_universe_scope_check_v1",
+            "status": "completed_not_applicable_single_registered_asset",
+            "eligible_cross_assets": [],
+            "reason": "ADR-0033 registers BTCUSDT only; no second asset may be invented.",
+        }, True
 
     centered = returns - float(np.mean(returns))
     observed = abs(float(np.mean(returns)))

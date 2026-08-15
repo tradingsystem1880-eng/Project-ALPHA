@@ -177,12 +177,15 @@ _CANDIDATE_NULL_COMMANDS: Final = frozenset(
 _CANDIDATE_MONTE_CARLO_COMMANDS: Final = frozenset(
     {"candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"}
 )
+_CANDIDATE_PORTFOLIO_COMMANDS: Final = frozenset({"candidate_portfolio", "candidate_cross_asset"})
 _CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
     {
         "candidate_baseline",
         "candidate_oos",
         *_CANDIDATE_NULL_COMMANDS,
         *_CANDIDATE_MONTE_CARLO_COMMANDS,
+        "candidate_optim",
+        *_CANDIDATE_PORTFOLIO_COMMANDS,
     }
 )
 
@@ -250,10 +253,17 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
         "monte_carlo",
         _MONTE_CARLO_COMMANDS | _CANDIDATE_MONTE_CARLO_COMMANDS,
     ),
-    "optimize_grid": ("optimization", frozenset({"optim_grid"})),
+    "optimize_grid": ("optimization", frozenset({"optim_grid", "candidate_optim"})),
     "portfolio_cross_asset": (
         "portfolio",
-        frozenset({"backtest_portfolio", "cross_sectional", "backtest_cross_sectional"}),
+        frozenset(
+            {
+                "backtest_portfolio",
+                "cross_sectional",
+                "backtest_cross_sectional",
+                *_CANDIDATE_PORTFOLIO_COMMANDS,
+            }
+        ),
     ),
     "qlib": ("ml", frozenset({"ml_replay"})),
     "kronos": ("kronos", frozenset({"forecast_run", "forecast_eval"})),
@@ -8698,6 +8708,12 @@ class ControlStore:
                 raise DataError("Monte Carlo families must cite one source validation run")
             return
         if suite_action == "portfolio_cross_asset":
+            if not commands.isdisjoint(_CANDIDATE_PORTFOLIO_COMMANDS):
+                if commands != _CANDIDATE_PORTFOLIO_COMMANDS:
+                    raise DataError(
+                        "candidate portfolio completion requires concentration and scope checks"
+                    )
+                return
             required = (
                 {"backtest_portfolio"},
                 {"cross_sectional", "backtest_cross_sectional"},

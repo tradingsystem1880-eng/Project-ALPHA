@@ -189,3 +189,37 @@ def test_candidate_monte_carlo_binds_source_and_discloses_model_role(
         observations=observations,
         as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
     )
+
+
+@pytest.mark.parametrize(
+    ("analysis", "command"),
+    [
+        ("optimize_cost_sensitivity", "candidate_optim"),
+        ("portfolio_concentration", "candidate_portfolio"),
+        ("cross_asset_scope", "candidate_cross_asset"),
+    ],
+)
+def test_candidate_fixed_development_diagnostics_are_exact(
+    tmp_path: Path, analysis: str, command: str
+) -> None:
+    observations = _observations()
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        analysis=analysis,
+        research_cutoff="2025-01-31",
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )
+
+    assert manifest["command"] == command
+    assert manifest["passed"] is True
+    metadata = manifest["metadata"]
+    assert isinstance(metadata, dict)
+    if analysis == "optimize_cost_sensitivity":
+        assert [row["total_round_trip_cost_bps"] for row in metadata["trials"]] == [20, 40, 60]
+        assert [row["selected"] for row in metadata["trials"]] == [False, True, False]
+    if analysis == "cross_asset_scope":
+        assert metadata["status"] == "completed_not_applicable_single_registered_asset"

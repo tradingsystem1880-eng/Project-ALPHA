@@ -861,6 +861,63 @@ def build_suite_plan(
             }
         )
         workload = _workload(action, commands=2, canonical_runs=2)
+    elif hedged_basis and action == "optimize_grid":
+        args = (
+            "strategy-candidate",
+            "run",
+            snapshot,
+            "--research-contract-id",
+            str(research_contract_id),
+            "--analysis",
+            "optimize_cost_sensitivity",
+            "--as-of",
+            cutoff_value,
+        )
+        steps.append(
+            SuiteStep(
+                "Frozen cost sensitivity",
+                args,
+                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                "fixed_20_40_60_bps_no_adaptive_selection",
+                ((cutoff_value, public_cutoff),),
+            )
+        )
+        governance["optimization_authority"] = "registered_40_bps_cost_remains_immutable"
+        workload = _workload(action, commands=1, canonical_runs=1, grid_configurations=3)
+    elif hedged_basis and action == "portfolio_cross_asset":
+        for analysis, label, role in (
+            (
+                "portfolio_concentration",
+                "Two-leg concentration diagnostic",
+                "single_candidate_two_venue_concentration",
+            ),
+            (
+                "cross_asset_scope",
+                "Registered cross-asset scope check",
+                "completed_not_applicable_no_invented_asset",
+            ),
+        ):
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                analysis,
+                "--as-of",
+                cutoff_value,
+            )
+            steps.append(
+                SuiteStep(
+                    label,
+                    args,
+                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                    role,
+                    ((cutoff_value, public_cutoff),),
+                )
+            )
+        workload = _workload(action, commands=2, canonical_runs=2)
     elif hedged_basis and action == "paper_preflight":
         args = ("strategy-candidate", "paper-preflight", "--json")
         steps.append(
@@ -1873,6 +1930,33 @@ def _record_optimization_trial_attempts(
         raise DataError(f"optimization run {run_id!r} was not published")
     manifest = read_manifest(run_dir)
     verify_manifest_artifacts(run_dir, manifest)
+    if manifest.get("command") == "candidate_optim":
+        metadata = manifest.get("metadata")
+        trials = metadata.get("trials") if isinstance(metadata, Mapping) else None
+        if not isinstance(trials, list) or len(trials) != 3:
+            raise DataError("candidate optimization requires its fixed three-cost ledger")
+        for trial in trials:
+            if not isinstance(trial, Mapping):
+                raise DataError("candidate optimization trial is invalid")
+            canonical = json.dumps(dict(trial), sort_keys=True, separators=(",", ":"))
+            store.record_attempt(
+                plan.project_id,
+                plan.experiment_id,
+                stage=plan.stage,
+                status="completed",
+                config_fingerprint=hashlib.sha256(canonical.encode()).hexdigest(),
+                run_id=run_id,
+                details={
+                    "action": plan.action,
+                    "job_id": job_id,
+                    "trial": trial.get("trial"),
+                    "total_round_trip_cost_bps": trial.get("total_round_trip_cost_bps"),
+                    "mean_net_return": trial.get("mean_net_return"),
+                    "selected": trial.get("selected"),
+                    "selection_authority": "registered_40_bps_cost_remains_immutable",
+                },
+            )
+        return
     if manifest.get("command") != "optim_grid":
         raise DataError(f"suite optimization evidence {run_id!r} is not an optim_grid run")
 

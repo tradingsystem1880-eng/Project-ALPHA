@@ -361,6 +361,8 @@ def _complete_candidate_stage(
         changes: dict[str, object] = {"passed": True}
         if command.startswith("candidate_null_"):
             changes["metadata"] = {"null_model": command.removeprefix("candidate_null_")}
+        if command.startswith("candidate_monte_carlo_"):
+            changes.update({"status": "clear", "source_run_id": "abcdef0123456789"})
         _publish_candidate_suite_run(
             tmp_path,
             run_id=run_id,
@@ -374,7 +376,11 @@ def _complete_candidate_stage(
             experiment_id,
             suite_action=action,
             stage=stage,
-            state="pass" if index == 0 else "warning",
+            state=(
+                "warning"
+                if command in {"candidate_null_student_t", "candidate_null_garch"}
+                else "pass"
+            ),
             run_id=run_id,
         )
     store.complete_suite_stage(
@@ -1191,3 +1197,64 @@ def test_candidate_oos_and_null_plans_use_distinct_registered_commands(tmp_path:
     source_runs = {step.argv[8] for step in monte_carlo.steps}
     assert len(source_runs) == 1
     assert monte_carlo.governance["kronos_role"] == ("disclosed_fake_fixture_not_market_oracle")
+
+
+def test_candidate_optimization_and_portfolio_plans_keep_fixed_scope(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    for action, stage, commands in (
+        ("baseline", "baseline", ("candidate_baseline",)),
+        ("inner_oos", "oos", ("candidate_oos",)),
+        (
+            "three_null_families",
+            "robustness",
+            (
+                "candidate_null_bootstrap",
+                "candidate_null_student_t",
+                "candidate_null_garch",
+            ),
+        ),
+        (
+            "monte_carlo",
+            "monte_carlo",
+            ("candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"),
+        ),
+    ):
+        _complete_candidate_stage(
+            store,
+            tmp_path,
+            project_id,
+            experiment_id,
+            contract_id,
+            snapshot_id,
+            action=action,
+            stage=stage,
+            commands=commands,
+        )
+
+    optimization = build_suite_plan(
+        store, project_id, experiment_id, "optimize_grid", data_dir=tmp_path
+    )
+    assert optimization.ready is True
+    assert optimization.steps[0].argv[6] == "optimize_cost_sensitivity"
+    assert optimization.estimated_workload["grid_configurations"] == 3
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="optimize_grid",
+        stage="optimization",
+        commands=("candidate_optim",),
+    )
+
+    portfolio = build_suite_plan(
+        store, project_id, experiment_id, "portfolio_cross_asset", data_dir=tmp_path
+    )
+    assert portfolio.ready is True
+    assert [step.argv[6] for step in portfolio.steps] == [
+        "portfolio_concentration",
+        "cross_asset_scope",
+    ]
+    assert portfolio.steps[1].evidence_role == "completed_not_applicable_no_invented_asset"
