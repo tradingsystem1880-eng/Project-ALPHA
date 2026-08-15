@@ -10,6 +10,17 @@ from datetime import UTC, datetime, timedelta
 from typing import Final, Literal
 
 from alpha_core import DataError
+from alpha_research.event_study import (
+    EventStudyObservation,
+    PreEventCovariate,
+    evaluate_matched_association,
+    match_event_controls,
+)
+from alpha_research.multiple_testing import (
+    FrozenSecondaryFamily,
+    SecondaryHypothesis,
+    holm_adjust_secondary_family,
+)
 
 type CryptoEvidenceZone = Literal["D1", "D2"]
 type CryptoCrowdingStatus = Literal["EVALUATED", "INCONCLUSIVE"]
@@ -61,6 +72,7 @@ class CryptoCrowdingResearchPlanV1:
     history_observations: int = 365
     primary_percentile: float = 0.95
     sensitivity_percentiles: tuple[float, float] = (0.9, 0.975)
+    sensitivity_multiplicity: str = "holm_v1"
     percentile_method: str = "linear_type7_v1"
     open_interest_lookback_hours: int = 24
     entry_delay_hours: int = 1
@@ -68,6 +80,14 @@ class CryptoCrowdingResearchPlanV1:
     minimum_effective_events: int = 50
     minimum_confirmation_events: int = 10
     uncertainty_cluster: str = "UTC_week"
+    matching_covariates: tuple[str, str, str] = (
+        "utc_funding_slot",
+        "recent_trend_tercile",
+        "recent_volatility_tercile",
+    )
+    bootstrap_resamples: int = 2_000
+    bootstrap_seed: int = 7
+    shifted_placebo_days: tuple[int, ...] = (1, 3, 5, 7, 9, 11, 13, 15, 17, 19)
     topology: str = "group_atomic_60_20_20"
     schema: str = _PLAN_SCHEMA
     schema_version: Literal[1] = 1
@@ -86,6 +106,7 @@ class CryptoCrowdingResearchPlanV1:
             or self.history_observations != 365
             or self.primary_percentile != 0.95
             or self.sensitivity_percentiles != (0.9, 0.975)
+            or self.sensitivity_multiplicity != "holm_v1"
             or self.percentile_method != "linear_type7_v1"
             or self.open_interest_lookback_hours != 24
             or self.entry_delay_hours != 1
@@ -93,6 +114,11 @@ class CryptoCrowdingResearchPlanV1:
             or self.minimum_effective_events != 50
             or self.minimum_confirmation_events != 10
             or self.uncertainty_cluster != "UTC_week"
+            or self.matching_covariates
+            != ("utc_funding_slot", "recent_trend_tercile", "recent_volatility_tercile")
+            or self.bootstrap_resamples != 2_000
+            or self.bootstrap_seed != 7
+            or self.shifted_placebo_days != (1, 3, 5, 7, 9, 11, 13, 15, 17, 19)
             or self.topology != "group_atomic_60_20_20"
             or self.schema != _PLAN_SCHEMA
             or self.schema_version != 1
@@ -115,6 +141,7 @@ class CryptoCrowdingResearchPlanV1:
             "history_observations": self.history_observations,
             "primary_percentile": self.primary_percentile,
             "sensitivity_percentiles": list(self.sensitivity_percentiles),
+            "sensitivity_multiplicity": self.sensitivity_multiplicity,
             "percentile_method": self.percentile_method,
             "open_interest_lookback_hours": self.open_interest_lookback_hours,
             "entry_delay_hours": self.entry_delay_hours,
@@ -122,6 +149,10 @@ class CryptoCrowdingResearchPlanV1:
             "minimum_effective_events": self.minimum_effective_events,
             "minimum_confirmation_events": self.minimum_confirmation_events,
             "uncertainty_cluster": self.uncertainty_cluster,
+            "matching_covariates": list(self.matching_covariates),
+            "bootstrap_resamples": self.bootstrap_resamples,
+            "bootstrap_seed": self.bootstrap_seed,
+            "shifted_placebo_days": list(self.shifted_placebo_days),
             "topology": self.topology,
         }
 
@@ -154,6 +185,7 @@ class CryptoCrowdingObservationV1:
     recent_trend: float
     recent_volatility: float
     regime: str
+    diagnostics_available_at: datetime
     correction_lineage: tuple[str, ...] = ()
     schema: str = _OBSERVATION_SCHEMA
     schema_version: Literal[1] = 1
@@ -168,6 +200,7 @@ class CryptoCrowdingObservationV1:
             "entry_available_at",
             "exit_time",
             "exit_available_at",
+            "diagnostics_available_at",
         ):
             object.__setattr__(self, field, _utc(getattr(self, field), field))
         for field in ("funding_rate", "premium", "recent_trend", "recent_volatility"):
@@ -193,6 +226,7 @@ class CryptoCrowdingObservationV1:
                 self.funding_available_at,
                 self.open_interest_available_at,
                 self.premium_available_at,
+                self.diagnostics_available_at,
             )
             > self.funding_time
         ):
@@ -221,6 +255,51 @@ class CryptoCrowdingEventV1:
 
 
 @dataclass(frozen=True)
+class CryptoCrowdingEstimateV1:
+    estimate: float
+    ci_lower: float
+    ci_upper: float
+    p_value: float
+    matched_pairs: int
+    unmatched_events: int
+    effective_week_clusters: int
+    low_cluster_count: bool
+
+
+@dataclass(frozen=True)
+class CryptoCrowdingSensitivityV1:
+    percentile: float
+    event_count: int
+    p_value: float | None
+    adjusted_p_value: float | None
+    rejected: bool | None
+
+
+@dataclass(frozen=True)
+class CryptoCrowdingShiftedPlaceboV1:
+    shift_count: int
+    observed_mean: float
+    placebo_mean: float
+    two_sided_p_value: float
+
+
+@dataclass(frozen=True)
+class CryptoCrowdingLongShortDiagnosticV1:
+    event_mean: float
+    non_event_mean: float
+    event_count: int
+    non_event_count: int
+    missing_count: int
+
+
+@dataclass(frozen=True)
+class CryptoCrowdingRegimeDiagnosticV1:
+    regime: str
+    event_count: int
+    mean_outcome: float
+
+
+@dataclass(frozen=True)
 class CryptoCrowdingEvaluationV1:
     evidence_zone: CryptoEvidenceZone
     plan_fingerprint: str
@@ -228,6 +307,11 @@ class CryptoCrowdingEvaluationV1:
     primary_events: tuple[CryptoCrowdingEventV1, ...]
     sensitivity_event_counts: tuple[tuple[float, int], ...]
     blockers: tuple[str, ...]
+    primary_estimate: CryptoCrowdingEstimateV1 | None = None
+    sensitivity_results: tuple[CryptoCrowdingSensitivityV1, ...] = ()
+    shifted_date_placebo: CryptoCrowdingShiftedPlaceboV1 | None = None
+    long_short_diagnostic: CryptoCrowdingLongShortDiagnosticV1 | None = None
+    regime_diagnostics: tuple[CryptoCrowdingRegimeDiagnosticV1, ...] = ()
     schema: str = _RESULT_SCHEMA
     schema_version: Literal[1] = 1
 
@@ -324,6 +408,7 @@ def _d0_observations(
                 recent_trend=0.01,
                 recent_volatility=0.02,
                 regime="normal",
+                diagnostics_available_at=funding_time,
             )
         )
     return tuple(rows)
@@ -396,7 +481,7 @@ def _percentile(values: tuple[float, ...], probability: float) -> float:
     position = (len(ordered) - 1) * probability
     lower = math.floor(position)
     upper = math.ceil(position)
-    if lower == upper:
+    if lower == upper or ordered[lower] == ordered[upper]:
         return ordered[lower]
     weight = position - lower
     return ordered[lower] * (1 - weight) + ordered[upper] * weight
@@ -450,6 +535,245 @@ def _events_for_percentile(
     return tuple(accepted)
 
 
+def _causal_tercile(
+    values: tuple[float, ...],
+    *,
+    index: int,
+    history_observations: int,
+) -> str:
+    history = values[index - history_observations : index]
+    lower = _percentile(history, 1 / 3)
+    upper = _percentile(history, 2 / 3)
+    current = values[index]
+    if current <= lower:
+        return "low"
+    if current >= upper:
+        return "high"
+    return "middle"
+
+
+def _study_observation(
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    *,
+    index: int,
+    is_event: bool,
+    plan: CryptoCrowdingResearchPlanV1,
+) -> EventStudyObservation:
+    row = observations[index]
+    iso_year, iso_week, _ = row.funding_time.isocalendar()
+    return EventStudyObservation(
+        observation_id=f"{'event' if is_event else 'control'}-{index}",
+        is_event=is_event,
+        event_at=row.funding_time,
+        event_available_at=max(
+            row.funding_available_at,
+            row.open_interest_available_at,
+            row.premium_available_at,
+            row.diagnostics_available_at,
+        ),
+        outcome_start_at=row.entry_time,
+        outcome_end_at=row.exit_time,
+        outcome_available_at=row.exit_available_at,
+        outcome=(row.exit_mark / row.entry_mark - 1) - (row.exit_index / row.entry_index - 1),
+        cluster_id=f"{iso_year}-W{iso_week:02d}",
+        covariates=(
+            PreEventCovariate(
+                "utc_funding_slot",
+                row.funding_time.hour,
+                row.funding_time,
+                row.funding_available_at,
+            ),
+            PreEventCovariate(
+                "recent_trend_tercile",
+                _causal_tercile(
+                    tuple(item.recent_trend for item in observations),
+                    index=index,
+                    history_observations=plan.history_observations,
+                ),
+                row.funding_time,
+                row.diagnostics_available_at,
+            ),
+            PreEventCovariate(
+                "recent_volatility_tercile",
+                _causal_tercile(
+                    tuple(item.recent_volatility for item in observations),
+                    index=index,
+                    history_observations=plan.history_observations,
+                ),
+                row.funding_time,
+                row.diagnostics_available_at,
+            ),
+        ),
+    )
+
+
+def _matched_estimate(
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    events: tuple[CryptoCrowdingEventV1, ...],
+    *,
+    plan: CryptoCrowdingResearchPlanV1,
+) -> CryptoCrowdingEstimateV1 | None:
+    event_indices = {item.observation_index for item in events}
+    eligible = range(plan.history_observations, len(observations) - 1)
+    event_rows = tuple(
+        _study_observation(observations, index=index, is_event=True, plan=plan)
+        for index in sorted(event_indices)
+    )
+    control_rows = tuple(
+        _study_observation(observations, index=index, is_event=False, plan=plan)
+        for index in eligible
+        if index not in event_indices
+    )
+    if len(event_rows) < 2 or not control_rows:
+        return None
+    matched = match_event_controls(
+        (*event_rows, *control_rows),
+        covariate_names=plan.matching_covariates,
+        as_of=observations[-1].exit_available_at,
+    )
+    if len(matched.pairs) < 2 or matched.effective_event_count < 2:
+        return None
+    estimate = evaluate_matched_association(
+        matched,
+        n_resamples=plan.bootstrap_resamples,
+        seed=plan.bootstrap_seed,
+    )
+    return CryptoCrowdingEstimateV1(
+        estimate=estimate.estimate,
+        ci_lower=estimate.ci_lower,
+        ci_upper=estimate.ci_upper,
+        p_value=estimate.p_value,
+        matched_pairs=len(matched.pairs),
+        unmatched_events=len(matched.unmatched_event_ids),
+        effective_week_clusters=estimate.effective_event_count,
+        low_cluster_count=estimate.low_cluster_count,
+    )
+
+
+def _sensitivity_results(
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    *,
+    plan: CryptoCrowdingResearchPlanV1,
+) -> tuple[CryptoCrowdingSensitivityV1, ...]:
+    rows: list[
+        tuple[float, tuple[CryptoCrowdingEventV1, ...], CryptoCrowdingEstimateV1 | None]
+    ] = []
+    for percentile in plan.sensitivity_percentiles:
+        events = _events_for_percentile(observations, percentile=percentile, plan=plan)
+        rows.append((percentile, events, _matched_estimate(observations, events, plan=plan)))
+    estimates = [estimate for _, _, estimate in rows]
+    if any(estimate is None for estimate in estimates):
+        return tuple(
+            CryptoCrowdingSensitivityV1(percentile, len(events), None, None, None)
+            for percentile, events, _ in rows
+        )
+    adjusted = holm_adjust_secondary_family(
+        FrozenSecondaryFamily(
+            family_id="bybit_btcusdt_funding_percentile_sensitivities_v1",
+            hypotheses=tuple(
+                SecondaryHypothesis(f"funding_percentile_{percentile:g}", estimate.p_value)
+                for percentile, _, estimate in rows
+                if estimate is not None
+            ),
+        )
+    )
+    by_id = {item.hypothesis_id: item for item in adjusted}
+    return tuple(
+        CryptoCrowdingSensitivityV1(
+            percentile=percentile,
+            event_count=len(events),
+            p_value=estimate.p_value if estimate is not None else None,
+            adjusted_p_value=by_id[f"funding_percentile_{percentile:g}"].adjusted_p_value,
+            rejected=by_id[f"funding_percentile_{percentile:g}"].rejected,
+        )
+        for percentile, events, estimate in rows
+    )
+
+
+def _shifted_date_placebo(
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    events: tuple[CryptoCrowdingEventV1, ...],
+    *,
+    plan: CryptoCrowdingResearchPlanV1,
+) -> CryptoCrowdingShiftedPlaceboV1 | None:
+    if not events:
+        return None
+    outcomes = tuple(
+        (item.exit_mark / item.entry_mark - 1) - (item.exit_index / item.entry_index - 1)
+        for item in observations
+    )
+    observed = sum(item.mark_minus_index_return for item in events) / len(events)
+    means: list[float] = []
+    for days in plan.shifted_placebo_days:
+        for direction in (-1, 1):
+            shift = direction * days * 3
+            shifted = [
+                item.observation_index + shift
+                for item in events
+                if plan.history_observations
+                <= item.observation_index + shift
+                < len(observations) - 1
+            ]
+            if shifted:
+                means.append(sum(outcomes[index] for index in shifted) / len(shifted))
+    if not means:
+        return None
+    p_value = (sum(abs(value) >= abs(observed) for value in means) + 1) / (len(means) + 1)
+    return CryptoCrowdingShiftedPlaceboV1(
+        shift_count=len(means),
+        observed_mean=observed,
+        placebo_mean=sum(means) / len(means),
+        two_sided_p_value=p_value,
+    )
+
+
+def _diagnostics(
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    events: tuple[CryptoCrowdingEventV1, ...],
+    *,
+    plan: CryptoCrowdingResearchPlanV1,
+) -> tuple[
+    CryptoCrowdingLongShortDiagnosticV1 | None,
+    tuple[CryptoCrowdingRegimeDiagnosticV1, ...],
+]:
+    event_indices = {item.observation_index for item in events}
+    eligible = range(plan.history_observations, len(observations) - 1)
+    event_ratios = [
+        ratio
+        for index in event_indices
+        if (ratio := observations[index].long_short_ratio) is not None
+    ]
+    control_ratios = [
+        ratio
+        for index in eligible
+        if index not in event_indices
+        and (ratio := observations[index].long_short_ratio) is not None
+    ]
+    missing = sum(observations[index].long_short_ratio is None for index in eligible)
+    ratio_diagnostic = None
+    if event_ratios and control_ratios:
+        ratio_diagnostic = CryptoCrowdingLongShortDiagnosticV1(
+            event_mean=sum(event_ratios) / len(event_ratios),
+            non_event_mean=sum(control_ratios) / len(control_ratios),
+            event_count=len(event_ratios),
+            non_event_count=len(control_ratios),
+            missing_count=missing,
+        )
+    by_regime: dict[str, list[float]] = {}
+    for event in events:
+        regime = observations[event.observation_index].regime
+        by_regime.setdefault(regime, []).append(event.mark_minus_index_return)
+    regimes = tuple(
+        CryptoCrowdingRegimeDiagnosticV1(
+            regime=regime,
+            event_count=len(values),
+            mean_outcome=sum(values) / len(values),
+        )
+        for regime, values in sorted(by_regime.items())
+    )
+    return ratio_diagnostic, regimes
+
+
 def evaluate_crypto_crowding(
     observations: tuple[CryptoCrowdingObservationV1, ...],
     *,
@@ -468,20 +792,21 @@ def evaluate_crypto_crowding(
 
     plan = registered_crypto_crowding_plan()
     primary = _events_for_percentile(observations, percentile=plan.primary_percentile, plan=plan)
-    sensitivities = tuple(
-        (
-            percentile,
-            len(_events_for_percentile(observations, percentile=percentile, plan=plan)),
-        )
-        for percentile in plan.sensitivity_percentiles
-    )
+    primary_estimate = _matched_estimate(observations, primary, plan=plan)
+    sensitivity_results = _sensitivity_results(observations, plan=plan)
+    sensitivities = tuple((item.percentile, item.event_count) for item in sensitivity_results)
     blockers = {f"minimum_effective_events:{len(primary)}<{plan.minimum_effective_events}"}
     if len(primary) >= plan.minimum_effective_events:
         blockers.clear()
+        if primary_estimate is None:
+            blockers.add("matched_controls_unavailable")
+        elif primary_estimate.low_cluster_count:
+            blockers.add(f"minimum_week_clusters:{primary_estimate.effective_week_clusters}<10")
     if evidence_zone == "D2" and len(primary) < plan.minimum_confirmation_events:
         blockers.add(
             f"minimum_confirmation_events:{len(primary)}<{plan.minimum_confirmation_events}"
         )
+    long_short, regimes = _diagnostics(observations, primary, plan=plan)
     ordered_blockers = tuple(sorted(blockers))
     return CryptoCrowdingEvaluationV1(
         evidence_zone=evidence_zone,
@@ -490,15 +815,25 @@ def evaluate_crypto_crowding(
         primary_events=primary,
         sensitivity_event_counts=sensitivities,
         blockers=ordered_blockers,
+        primary_estimate=primary_estimate,
+        sensitivity_results=sensitivity_results,
+        shifted_date_placebo=_shifted_date_placebo(observations, primary, plan=plan),
+        long_short_diagnostic=long_short,
+        regime_diagnostics=regimes,
     )
 
 
 __all__ = [
     "CryptoCrowdingD0AcceptanceV1",
     "CryptoCrowdingEvaluationV1",
+    "CryptoCrowdingEstimateV1",
     "CryptoCrowdingEventV1",
+    "CryptoCrowdingLongShortDiagnosticV1",
     "CryptoCrowdingObservationV1",
+    "CryptoCrowdingRegimeDiagnosticV1",
     "CryptoCrowdingResearchPlanV1",
+    "CryptoCrowdingSensitivityV1",
+    "CryptoCrowdingShiftedPlaceboV1",
     "execute_crypto_crowding_d0",
     "evaluate_crypto_crowding",
     "registered_crypto_crowding_plan",

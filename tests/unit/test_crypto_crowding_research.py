@@ -44,6 +44,40 @@ def _observations(
                 recent_trend=0.01,
                 recent_volatility=0.02,
                 regime="normal",
+                diagnostics_available_at=funding_time,
+            )
+        )
+    return tuple(rows)
+
+
+def _mature_observations() -> tuple[CryptoCrowdingObservationV1, ...]:
+    start = datetime(2020, 1, 1, tzinfo=UTC)
+    rows: list[CryptoCrowdingObservationV1] = []
+    for index in range(620):
+        funding_time = start + timedelta(hours=8 * index)
+        is_event = index >= 366 and index % 2 == 0
+        rows.append(
+            CryptoCrowdingObservationV1(
+                funding_time=funding_time,
+                funding_available_at=funding_time,
+                funding_rate=0.02 if is_event else 0.001,
+                open_interest=1_000.0 + index,
+                open_interest_available_at=funding_time,
+                premium=0.002 if is_event else -0.001,
+                premium_available_at=funding_time,
+                entry_time=funding_time + timedelta(hours=1),
+                entry_available_at=funding_time + timedelta(hours=1),
+                entry_mark=100.0,
+                entry_index=100.0,
+                exit_time=funding_time + timedelta(hours=8),
+                exit_available_at=funding_time + timedelta(hours=8),
+                exit_mark=99.8 if is_event else 100.0,
+                exit_index=100.0,
+                long_short_ratio=2.0 if is_event else 1.0,
+                recent_trend=0.01,
+                recent_volatility=0.02,
+                regime="crowded" if is_event else "normal",
+                diagnostics_available_at=funding_time,
             )
         )
     return tuple(rows)
@@ -58,6 +92,7 @@ def test_registered_crypto_crowding_plan_is_exact_and_content_addressed() -> Non
     assert plan.quote_asset == "USDT"
     assert plan.primary_percentile == 0.95
     assert plan.sensitivity_percentiles == (0.9, 0.975)
+    assert plan.sensitivity_multiplicity == "holm_v1"
     assert len(plan.operator_fingerprint) == 64
     assert plan.to_dict()["operator_fingerprint"] == plan.operator_fingerprint
     with pytest.raises(DataError, match="registered generation"):
@@ -81,6 +116,27 @@ def test_crypto_crowding_evaluator_detects_causal_primary_event_and_outcome() ->
     assert result.plan_fingerprint == registered_crypto_crowding_plan().operator_fingerprint
 
 
+def test_crypto_crowding_evaluator_runs_registered_controls_and_inference() -> None:
+    result = evaluate_crypto_crowding(_mature_observations(), evidence_zone="D1")
+
+    assert result.status == "EVALUATED"
+    assert result.blockers == ()
+    assert result.primary_estimate is not None
+    assert result.primary_estimate.estimate == pytest.approx(-0.002)
+    assert result.primary_estimate.matched_pairs >= 50
+    assert result.primary_estimate.effective_week_clusters >= 10
+    assert result.primary_estimate.low_cluster_count is False
+    assert tuple(item.percentile for item in result.sensitivity_results) == (0.9, 0.975)
+    assert all(item.adjusted_p_value is not None for item in result.sensitivity_results)
+    assert all(item.rejected is True for item in result.sensitivity_results)
+    assert result.shifted_date_placebo is not None
+    assert result.shifted_date_placebo.shift_count == 20
+    assert result.shifted_date_placebo.placebo_mean == pytest.approx(0.0)
+    assert result.long_short_diagnostic is not None
+    assert result.long_short_diagnostic.event_mean == pytest.approx(2.0)
+    assert {item.regime for item in result.regime_diagnostics} == {"crowded"}
+
+
 def test_crypto_crowding_evaluator_enforces_non_overlap() -> None:
     rows = list(_observations(event_indices={380, 381, 383}))
     result = evaluate_crypto_crowding(tuple(rows), evidence_zone="D1")
@@ -92,6 +148,8 @@ def test_crypto_crowding_evaluator_rejects_future_poison_and_malformed_identity(
     rows = list(_observations())
     with pytest.raises(DataError, match="event input is not point-in-time available"):
         replace(rows[380], premium_available_at=rows[380].funding_time + timedelta(hours=2))
+    with pytest.raises(DataError, match="event input is not point-in-time available"):
+        replace(rows[380], diagnostics_available_at=rows[380].funding_time + timedelta(hours=1))
 
     with pytest.raises(DataError, match="evidence zone"):
         evaluate_crypto_crowding(_observations(), evidence_zone="D3")  # type: ignore[arg-type]

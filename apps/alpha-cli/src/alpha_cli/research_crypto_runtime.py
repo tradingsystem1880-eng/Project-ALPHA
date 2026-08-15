@@ -28,7 +28,9 @@ _CONTRACT_ID: Final = re.compile(r"rc_[0-9a-f]{64}")
 _SHA256: Final = re.compile(r"[0-9a-f]{64}")
 _ACCEPTANCE_ARTIFACT: Final = "d0_acceptance.json"
 _MAX_ACCEPTANCE_BYTES: Final = 128 * 1024
-_RUNTIME_VERSION: Final = 1
+_RUNTIME_VERSION: Final = 2
+_FIXTURE_ID: Final = "bybit_btcusdt_crowding_d0_v2"
+_FIXTURE_VERSION: Final = 2
 
 
 def _canonical(value: object) -> str:
@@ -61,8 +63,8 @@ def registered_crypto_d0_operator() -> dict[str, object]:
         "operator_fingerprint": plan.operator_fingerprint,
         "event_availability": "provider_event_point_in_time",
         "fixture": {
-            "fixture_id": "bybit_btcusdt_crowding_d0_v1",
-            "fixture_version": 1,
+            "fixture_id": _FIXTURE_ID,
+            "fixture_version": _FIXTURE_VERSION,
             "definition_fingerprint": fixture.fixture_definition_sha256,
         },
     }
@@ -117,8 +119,8 @@ def _acceptance_payload(
         "dataset_hash": result.fixture_definition_sha256,
         "execution_fingerprint": execution_fingerprint,
         "d0_operator_fingerprint": operator["fingerprint"],
-        "fixture_id": "bybit_btcusdt_crowding_d0_v1",
-        "fixture_version": 1,
+        "fixture_id": _FIXTURE_ID,
+        "fixture_version": _FIXTURE_VERSION,
         "evidence_zone": "D0",
         "real_market_evidence": False,
         "eligible_for_holdout_or_execution": False,
