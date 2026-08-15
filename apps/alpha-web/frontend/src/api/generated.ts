@@ -8270,7 +8270,7 @@ export interface components {
             updated_at: string;
         };
         /** @enum {string} */
-        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window" | "tiingo_daily_fallback";
+        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window" | "tiingo_daily_fallback" | "bybit_btcusdt_linear_hourly";
         /** ResearchChecklistQuestion */
         ResearchChecklistQuestion: {
             /** Answer */
@@ -8483,8 +8483,8 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["ResearchChecklistQuestion"][];
         };
-        /** @constant */
-        ResearchEventAvailabilityValue: "second_trough_confirmable";
+        /** @enum {string} */
+        ResearchEventAvailabilityValue: "second_trough_confirmable" | "bybit_funding_event_point_in_time";
         /** ResearchEvidenceHub */
         ResearchEvidenceHub: {
             /**
@@ -8908,7 +8908,7 @@ export interface components {
         /** @enum {string} */
         ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
         /** @enum {string} */
-        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp" | "next_regular_session_return_50bp";
+        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp" | "next_regular_session_return_50bp" | "next_funding_mark_minus_index_5bp";
         /** ResearchPriority */
         ResearchPriority: {
             /** Data Readiness */

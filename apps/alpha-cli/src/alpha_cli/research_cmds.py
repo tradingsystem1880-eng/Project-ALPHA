@@ -74,6 +74,7 @@ from alpha_cli.research_runtime import (
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_research import (
+    CryptoCrowdingObservationV1,
     EqualDurationResearchBars,
     ResearchChartFingerprintV1,
     ResearchD2Boundary,
@@ -192,36 +193,72 @@ def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]
         raise DataError("research case has no exact raw idea for proposal preflight")
     intake = draft_exploration_contract(raw_idea)
     packs = store.list_research_source_packs(project_id, limit=100)
-    datasets = store.list_research_datasets(instrument="SPY", limit=100)
-    registered_event = "double bottom" in raw_idea.casefold()
-    compatible_datasets: list[dict[str, object]] = []
+    datasets = store.list_research_datasets(limit=100)
+    double_bottom_event = "double bottom" in raw_idea.casefold()
+    crypto_event = (
+        intake.get("recommended_answer_bundle_id") == "bybit_btcusdt_crowding_reversal_v1"
+    )
+    tiingo_datasets: list[dict[str, object]] = []
+    crypto_datasets: list[dict[str, object]] = []
     for dataset in datasets:
         audit = dataset.get("latest_audit")
         summary = audit.get("summary") if isinstance(audit, Mapping) else None
         blocking_count = summary.get("blocking_count") if isinstance(summary, Mapping) else None
         if (
-            dataset.get("provider") == "tiingo"
+            dataset.get("instrument") == "SPY"
+            and dataset.get("provider") == "tiingo"
             and dataset.get("bar_duration_minutes") == 1_440
             and blocking_count == 0
         ):
-            compatible_datasets.append(dataset)
+            tiingo_datasets.append(dataset)
+        origin = dataset.get("origin")
+        snapshot_id = None if not isinstance(origin, Mapping) else origin.get("snapshot_id")
+        if (
+            crypto_event
+            and dataset.get("instrument") == "BTC"
+            and dataset.get("provider") == "crypto-data-house"
+            and isinstance(origin, Mapping)
+            and origin.get("snapshot_schema") == "CryptoSnapshotV1"
+            and isinstance(snapshot_id, str)
+        ):
+            try:
+                from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415
+                    crypto_crowding_snapshot_compatibility,
+                )
+
+                projection = crypto_crowding_snapshot_compatibility(snapshot_id)
+            except DataError:
+                continue
+            if (
+                projection.get("eligible") is True
+                and projection.get("bundle_id") == "bybit_btcusdt_crowding_reversal_v1"
+            ):
+                crypto_datasets.append(dataset)
     bundles: list[dict[str, object]] = []
     for bundle in registered_answer_bundles():
+        bundle_id = str(bundle.get("bundle_id", ""))
         requires_dataset = bundle.get("requires_dataset") is True
+        if bundle_id == "bybit_btcusdt_crowding_reversal_v1":
+            event_matches = crypto_event
+            compatible = crypto_datasets
+            missing_dataset = (
+                "One exact qualified Bybit linear BTCUSDT/USDT CryptoSnapshotV1 with every "
+                "registered family is required."
+            )
+        else:
+            event_matches = double_bottom_event
+            compatible = tiingo_datasets if requires_dataset else []
+            missing_dataset = (
+                "A qualified Tiingo SPY daily dataset with a zero-blocker audit is required."
+            )
         bundle["compatible_dataset_ids"] = (
-            [str(row["ref_id"]) for row in compatible_datasets] if requires_dataset else []
+            [str(row["ref_id"]) for row in compatible] if requires_dataset else []
         )
-        bundle["available"] = registered_event and (
-            not requires_dataset or bool(compatible_datasets)
-        )
+        bundle["available"] = event_matches and (not requires_dataset or bool(compatible))
         bundle["blocked_reason"] = (
             "No registered end-to-end research operator matches the idea's event."
-            if not registered_event
-            else (
-                "A qualified Tiingo SPY daily dataset with a zero-blocker audit is required."
-                if requires_dataset and not compatible_datasets
-                else None
-            )
+            if not event_matches
+            else (missing_dataset if requires_dataset and not compatible else None)
         )
         bundles.append(bundle)
     blockers: list[dict[str, str]] = []
@@ -241,7 +278,7 @@ def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]
                 "recovery_action": "Follow the canonical next action shown for this case.",
             }
         )
-    if not registered_event:
+    if not double_bottom_event and not crypto_event:
         blockers.append(
             {
                 "code": "RESEARCH_OPERATOR_UNAVAILABLE",
@@ -257,7 +294,7 @@ def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]
         "recommended_answer_bundle_id": intake.get("recommended_answer_bundle_id"),
         "valid_answer_bundles": bundles,
         "compatible_source_packs": packs,
-        "compatible_datasets": compatible_datasets,
+        "compatible_datasets": crypto_datasets if crypto_event else tiingo_datasets,
         "blockers": blockers,
         "approval_ready": bool(packs)
         and not blockers
@@ -323,15 +360,24 @@ def _dependency_lock_sha() -> str:
 
 def _implementation_hashes() -> dict[str, str | None]:
     import alpha_research
-    from alpha_cli import research_intake, research_runtime
+    from alpha_cli import (
+        research_crypto_data,
+        research_crypto_runtime,
+        research_intake,
+        research_runtime,
+    )
 
     intake_path = Path(research_intake.__file__)
     runtime_path = Path(research_runtime.__file__)
+    crypto_data_path = Path(research_crypto_data.__file__)
+    crypto_runtime_path = Path(research_crypto_runtime.__file__)
     research_root = Path(alpha_research.__file__).parent
     dependency_lock = _dependency_lock_sha()
     code = _sha_json(
         {
             "alpha_research": _python_tree_sha(research_root),
+            "research_crypto_data": _file_sha(crypto_data_path),
+            "research_crypto_runtime": _file_sha(crypto_runtime_path),
             "research_intake": _file_sha(intake_path),
             "research_runtime": _file_sha(runtime_path),
         }
@@ -351,6 +397,7 @@ def _implementation_hashes() -> dict[str, str | None]:
     evaluator = _sha_json(
         {
             "detector": "point-in-time-double-bottom-v1",
+            "crypto_crowding": "bybit-btcusdt-crowding-reversal-v1",
             "pilot": "d0-synthetic-v1",
             "power": "known-sigma-prospective-v1",
             "rendering": "deterministic-matplotlib-line-chart-v1",
@@ -404,7 +451,9 @@ def _require_resolved_material(value: object, label: str) -> None:
 # The material chart choices whose exploration boundary is an empirical dataset boundary
 # (ADR-0026). The D0 pilot fixture stays synthetic even on these lanes; only the frozen
 # D1/D2/D3 evidence boundary binds real registered data.
-_EMPIRICAL_CHART_CHOICES: Final = frozenset({"tiingo_daily_fallback"})
+_EMPIRICAL_CHART_CHOICES: Final = frozenset(
+    {"tiingo_daily_fallback", "bybit_btcusdt_linear_hourly"}
+)
 
 
 class _EmpiricalDataset(NamedTuple):
@@ -414,12 +463,83 @@ class _EmpiricalDataset(NamedTuple):
     bars: EqualDurationResearchBars
 
 
+class _CryptoEmpiricalDataset(NamedTuple):
+    """One exact qualified crypto snapshot resolved to causal research observations."""
+
+    ref: dict[str, object]
+    snapshot_id: str
+    snapshot_hash: str
+    operator_fingerprint: str
+    asset_master_version: str
+    qualification_versions: tuple[str, ...]
+    observations: tuple[CryptoCrowdingObservationV1, ...]
+
+
 def _empirical_dataset(store: ControlStore, ref_id: str) -> _EmpiricalDataset:
     """Load a registered ``rd_`` dataset fail-closed through the Gate-4 daily lane."""
 
     ref = store.get_research_dataset(ref_id)
     bars = load_registered_research_bars(AlphaSettings().data_dir, ref=ref)
     return _EmpiricalDataset(ref=ref, bars=bars)
+
+
+def _crypto_empirical_dataset(store: ControlStore, ref_id: str) -> _CryptoEmpiricalDataset:
+    """Reverify one registered CryptoSnapshotV1 and compose its exact causal observations."""
+
+    ref = store.get_research_dataset(ref_id)
+    origin = ref.get("origin")
+    if (
+        ref.get("dataset_kind") != "snapshot"
+        or ref.get("instrument") != "BTC"
+        or ref.get("provider") != "crypto-data-house"
+        or not isinstance(origin, Mapping)
+        or origin.get("snapshot_schema") != "CryptoSnapshotV1"
+    ):
+        raise DataError("crypto crowding requires one registered CryptoSnapshotV1 BTC dataset")
+    snapshot_id = origin.get("snapshot_id")
+    snapshot_hash = origin.get("manifest_sha256")
+
+    def is_sha256(value: object) -> bool:
+        return (
+            isinstance(value, str)
+            and len(value) == 64
+            and all(character in "0123456789abcdef" for character in value)
+        )
+
+    if not is_sha256(snapshot_id) or not is_sha256(snapshot_hash):
+        raise DataError("crypto crowding registered snapshot binding is malformed")
+    assert isinstance(snapshot_id, str) and isinstance(snapshot_hash, str)
+    from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415
+        crypto_crowding_observations,
+        crypto_crowding_snapshot_compatibility,
+    )
+
+    projection = crypto_crowding_snapshot_compatibility(snapshot_id)
+    observations = crypto_crowding_observations(snapshot_id)
+    operator_fingerprint = projection.get("operator_fingerprint")
+    asset_master_version = projection.get("asset_master_version")
+    versions = projection.get("qualification_versions")
+    if (
+        projection.get("eligible") is not True
+        or projection.get("bundle_id") != "bybit_btcusdt_crowding_reversal_v1"
+        or not is_sha256(operator_fingerprint)
+        or not isinstance(asset_master_version, str)
+        or not isinstance(versions, list)
+        or not versions
+        or any(not isinstance(value, str) or not value for value in versions)
+        or not observations
+    ):
+        raise DataError("crypto crowding snapshot compatibility projection is incomplete")
+    assert isinstance(operator_fingerprint, str)
+    return _CryptoEmpiricalDataset(
+        ref=ref,
+        snapshot_id=snapshot_id,
+        snapshot_hash=snapshot_hash,
+        operator_fingerprint=operator_fingerprint,
+        asset_master_version=asset_master_version,
+        qualification_versions=tuple(cast(list[str], versions)),
+        observations=observations,
+    )
 
 
 def _empirical_d1_bars(
@@ -468,7 +588,7 @@ def _approval_payload(
     *,
     source_pack_id: str,
     d2_relation_to_prior: str | None = None,
-    empirical_dataset: _EmpiricalDataset | None = None,
+    empirical_dataset: _EmpiricalDataset | _CryptoEmpiricalDataset | None = None,
 ) -> dict[str, object]:
     result = dict(draft)
     primary_claim = result.get("primary_claim")
@@ -490,12 +610,12 @@ def _approval_payload(
     empirical_lane = chart_choice in _EMPIRICAL_CHART_CHOICES
     if empirical_dataset is not None and not empirical_lane:
         raise DataError(
-            "a registered research dataset can bind only the Gate-4 tiingo_daily_fallback "
-            "lane; synthetic-boundary lanes must not carry one"
+            "a registered research dataset can bind only a registered empirical lane; "
+            "synthetic-boundary lanes must not carry one"
         )
     if empirical_lane and empirical_dataset is None and result.get("approval_ready") is True:
         raise DataError(
-            "the Gate-4 tiingo_daily_fallback lane requires a registered research dataset "
+            "the selected empirical lane requires a registered compatible research dataset "
             "bound at draft time; pass --dataset rd_<sha256>"
         )
     chart_value = result.get("chart_fingerprint")
@@ -546,7 +666,36 @@ def _approval_payload(
         "empirical_confirmation_authorized": False,
     }
     empirical_section: dict[str, object] | None = None
-    if empirical_dataset is not None:
+    if isinstance(empirical_dataset, _CryptoEmpiricalDataset):
+        ref = empirical_dataset.ref
+        eligible_groups = tuple(
+            observation.funding_time.isoformat() for observation in empirical_dataset.observations
+        )
+        if len(set(eligible_groups)) != len(eligible_groups):
+            raise DataError("crypto crowding snapshot produced duplicate funding groups")
+        dataset_fingerprint = empirical_dataset.snapshot_id
+        boundary_authority = {
+            "kind": "empirical_dataset",
+            "real_market_evidence": True,
+            "empirical_confirmation_authorized": True,
+        }
+        hashes = cast(dict[str, object], result["hashes"])
+        hashes["data"] = dataset_fingerprint
+        empirical_section = {
+            "ref_id": str(ref.get("ref_id", "")),
+            "content_sha256": dataset_fingerprint,
+            "instrument": "BTCUSDT",
+            "provider": "bybit",
+            "session_group_count": len(eligible_groups),
+            "start_ts": eligible_groups[0],
+            "end_ts": eligible_groups[-1],
+            "snapshot_id": empirical_dataset.snapshot_id,
+            "snapshot_hash": empirical_dataset.snapshot_hash,
+            "operator_fingerprint": empirical_dataset.operator_fingerprint,
+            "asset_master_version": empirical_dataset.asset_master_version,
+            "qualification_versions": list(empirical_dataset.qualification_versions),
+        }
+    elif isinstance(empirical_dataset, _EmpiricalDataset):
         ref, bars = empirical_dataset
         ref_instrument = str(ref.get("instrument", ""))
         ref_provider = str(ref.get("provider", ""))
@@ -645,6 +794,16 @@ def _approval_payload(
         in registered_d0_material_choices()
     ):
         protocol["d0_operator"] = registered_d0_operator(result)
+    elif (
+        isinstance(resolved, Mapping)
+        and result.get("approval_ready") is True
+        and result.get("answer_bundle_id") == "bybit_btcusdt_crowding_reversal_v1"
+        and event_value.get("name") == "bybit_btcusdt_crowding_reversal"
+        and event_value.get("availability") == "bybit_funding_event_point_in_time"
+    ):
+        from alpha_cli.research_crypto_runtime import registered_crypto_d0_operator  # noqa: PLC0415
+
+        protocol["d0_operator"] = registered_crypto_d0_operator()
     return result
 
 
@@ -1292,7 +1451,15 @@ def draft(
         preview = draft_exploration_contract(str(project["hypothesis"]), resolutions=resolutions)
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
-        binding = _empirical_dataset(store, dataset) if dataset is not None else None
+        if answer_bundle is not None:
+            preview["answer_bundle_id"] = answer_bundle
+        binding: _EmpiricalDataset | _CryptoEmpiricalDataset | None
+        if dataset is None:
+            binding = None
+        elif answer_bundle == "bybit_btcusdt_crowding_reversal_v1":
+            binding = _crypto_empirical_dataset(store, dataset)
+        else:
+            binding = _empirical_dataset(store, dataset)
         payload = _approval_payload(
             preview, source_pack_id=source_pack_id, empirical_dataset=binding
         )

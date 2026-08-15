@@ -14087,7 +14087,8 @@
       "ResearchChartConstructionValue": {
         "enum": [
           "spy_rth_60m_four_hour_window",
-          "tiingo_daily_fallback"
+          "tiingo_daily_fallback",
+          "bybit_btcusdt_linear_hourly"
         ],
         "type": "string"
       },
@@ -14701,7 +14702,10 @@
         "type": "object"
       },
       "ResearchEventAvailabilityValue": {
-        "const": "second_trough_confirmable",
+        "enum": [
+          "second_trough_confirmable",
+          "bybit_funding_event_point_in_time"
+        ],
         "type": "string"
       },
       "ResearchEvidenceHub": {
@@ -15998,7 +16002,8 @@
       "ResearchPrimaryOutcomeValue": {
         "enum": [
           "four_trading_hour_return_25bp",
-          "next_regular_session_return_50bp"
+          "next_regular_session_return_50bp",
+          "next_funding_mark_minus_index_5bp"
         ],
         "type": "string"
       },

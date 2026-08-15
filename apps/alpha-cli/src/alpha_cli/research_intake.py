@@ -15,6 +15,7 @@ from typing import Any, Final
 from alpha_cli.research_analysis_plan import default_analysis_plan
 from alpha_cli.research_runtime import registered_d0_material_choices
 from alpha_core import DataError
+from alpha_research import registered_crypto_crowding_plan
 
 type ResearchContractDraft = dict[str, Any]
 
@@ -27,13 +28,21 @@ _CHART_CHOICES: Final = frozenset(
         "spy_rth_60m_four_hour_window",
         "synthetic_only",
         "tiingo_daily_fallback",
+        "bybit_btcusdt_linear_hourly",
     }
 )
-_EVENT_CHOICES: Final = frozenset({"second_trough_confirmable", "neckline_breakout_confirmed"})
+_EVENT_CHOICES: Final = frozenset(
+    {
+        "second_trough_confirmable",
+        "neckline_breakout_confirmed",
+        "bybit_funding_event_point_in_time",
+    }
+)
 _OUTCOME_CHOICES: Final = frozenset(
     {
         "four_trading_hour_return_25bp",
         "next_regular_session_return_50bp",
+        "next_funding_mark_minus_index_5bp",
     }
 )
 _ANSWER_BUNDLES: Final = (
@@ -54,6 +63,16 @@ _ANSWER_BUNDLES: Final = (
             "chart_construction": "tiingo_daily_fallback",
             "event_availability": "second_trough_confirmable",
             "primary_outcome": "next_regular_session_return_50bp",
+        },
+        "requires_dataset": True,
+    },
+    {
+        "bundle_id": "bybit_btcusdt_crowding_reversal_v1",
+        "label": "Bybit BTCUSDT crowding reversal research",
+        "answers": {
+            "chart_construction": "bybit_btcusdt_linear_hourly",
+            "event_availability": "bybit_funding_event_point_in_time",
+            "primary_outcome": "next_funding_mark_minus_index_5bp",
         },
         "requires_dataset": True,
     },
@@ -111,6 +130,14 @@ def _choice(identifier: str, label: str, consequence: str) -> dict[str, str]:
 
 def _recommended_bundle_id(raw: str) -> str | None:
     lowered = raw.casefold()
+    if (
+        "bybit" in lowered
+        and ("btcusdt" in lowered or "btc/usdt" in lowered)
+        and "funding" in lowered
+        and ("open interest" in lowered or re.search(r"\boi\b", lowered) is not None)
+        and ("crowding" in lowered or "reversal" in lowered)
+    ):
+        return "bybit_btcusdt_crowding_reversal_v1"
     names_sp500 = any(token in lowered for token in ("s&p", "sp500", "s and p 500"))
     names_four_hour = re.search(r"\b(?:4h|4[- ]?hour)\b", lowered) is not None
     return "synthetic_spy_60m_four_hour_v1" if names_sp500 and names_four_hour else None
@@ -139,8 +166,18 @@ def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, objec
     four_hour = re.search(r"\b(?:4h|4[- ]?hour)\b", lowered) is not None
     result: list[dict[str, object]] = []
     recommended = _recommended_bundle_id(raw)
+    crypto_crowding = recommended == "bybit_btcusdt_crowding_reversal_v1"
     if "chart_construction" not in resolutions:
-        if sp500 and four_hour:
+        if crypto_crowding:
+            choices = [
+                _choice(
+                    "bybit_btcusdt_linear_hourly",
+                    "Bybit linear BTCUSDT hourly contract",
+                    "Keeps Bybit venue lineage, linear-contract units, and USDT quote identity; "
+                    "USD and USDC are not substitutes.",
+                )
+            ]
+        elif sp500 and four_hour:
             choices = [
                 _choice(
                     "spy_extended_fixed_4h",
@@ -195,13 +232,21 @@ def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, objec
                         availability=(
                             "available"
                             if choice["id"]
-                            in {"spy_rth_60m_four_hour_window", "tiingo_daily_fallback"}
+                            in {
+                                "spy_rth_60m_four_hour_window",
+                                "tiingo_daily_fallback",
+                                "bybit_btcusdt_linear_hourly",
+                            }
                             else "unavailable"
                         ),
                         blocked_reason=(
                             None
                             if choice["id"]
-                            in {"spy_rth_60m_four_hour_window", "tiingo_daily_fallback"}
+                            in {
+                                "spy_rth_60m_four_hour_window",
+                                "tiingo_daily_fallback",
+                                "bybit_btcusdt_linear_hourly",
+                            }
                             else "No registered end-to-end research operator uses this choice."
                         ),
                     )
@@ -211,51 +256,76 @@ def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, objec
             }
         )
     if "event_availability" not in resolutions:
+        event_choices = (
+            [
+                _material_choice(
+                    "bybit_funding_event_point_in_time",
+                    "Provider funding event, point-in-time",
+                    "Uses only completed funding, OI, premium, and diagnostic observations known "
+                    "at the provider-declared funding timestamp.",
+                    availability="available",
+                )
+            ]
+            if crypto_crowding
+            else [
+                _material_choice(
+                    "second_trough_confirmable",
+                    "Second trough confirmable",
+                    "Fires only after any required right-pivot observations are available.",
+                    availability="available",
+                ),
+                _material_choice(
+                    "neckline_breakout_confirmed",
+                    "Neckline breakout confirmed",
+                    "Treats breakout confirmation as a different, later event variant.",
+                    availability="unavailable",
+                    blocked_reason=("No registered end-to-end research operator uses this choice."),
+                ),
+            ]
+        )
         result.append(
             {
                 "id": "event_availability",
                 "prompt": "When is the event knowable without future information?",
                 "blocking_reason": "It changes event timing and prevents a look-ahead detector.",
-                "choices": [
-                    _material_choice(
-                        "second_trough_confirmable",
-                        "Second trough confirmable",
-                        "Fires only after any required right-pivot observations are available.",
-                        availability="available",
-                    ),
-                    _material_choice(
-                        "neckline_breakout_confirmed",
-                        "Neckline breakout confirmed",
-                        "Treats breakout confirmation as a different, later event variant.",
-                        availability="unavailable",
-                        blocked_reason=(
-                            "No registered end-to-end research operator uses this choice."
-                        ),
-                    ),
-                ],
+                "choices": event_choices,
                 "recommended_answer_bundle_id": recommended,
             }
         )
     if "primary_outcome" not in resolutions:
+        outcome_choices = (
+            [
+                _material_choice(
+                    "next_funding_mark_minus_index_5bp",
+                    "Next funding mark-minus-index, -5 bp",
+                    "Measures mark return minus index return from the first complete hourly bar "
+                    "through the next declared funding timestamp; at least 5 bp underperformance "
+                    "is the practical hurdle.",
+                    availability="available",
+                )
+            ]
+            if crypto_crowding
+            else [
+                _material_choice(
+                    "four_trading_hour_return_25bp",
+                    "Four trading hours, 25 bp",
+                    "Tests a positive 240-trading-minute return that clears 0.25%.",
+                    availability="available",
+                ),
+                _material_choice(
+                    "next_regular_session_return_50bp",
+                    "Next session, 50 bp",
+                    "Tests the next regular-session return against a 0.50% hurdle.",
+                    availability="available",
+                ),
+            ]
+        )
         result.append(
             {
                 "id": "primary_outcome",
                 "prompt": "What single horizon and minimum useful move defines a bounce?",
                 "blocking_reason": "It fixes the primary endpoint and economic hurdle.",
-                "choices": [
-                    _material_choice(
-                        "four_trading_hour_return_25bp",
-                        "Four trading hours, 25 bp",
-                        "Tests a positive 240-trading-minute return that clears 0.25%.",
-                        availability="available",
-                    ),
-                    _material_choice(
-                        "next_regular_session_return_50bp",
-                        "Next session, 50 bp",
-                        "Tests the next regular-session return against a 0.50% hurdle.",
-                        availability="available",
-                    ),
-                ],
+                "choices": outcome_choices,
                 "recommended_answer_bundle_id": recommended,
             }
         )
@@ -317,12 +387,32 @@ def _chart_fingerprint(choice: str | None) -> dict[str, object]:
             "anchor": "US_EQUITIES_SESSION_CLOSE",
             "label": "registered Tiingo session-daily Gate-4 fallback bars",
         },
+        "bybit_btcusdt_linear_hourly": {
+            "provider": "bybit",
+            "instrument": "BTCUSDT",
+            "venue": "bybit",
+            "timezone": "UTC",
+            "session": "continuous_crypto",
+            "bar_duration_minutes": 60,
+            "anchor": "provider_interval_start",
+            "adjustment_basis": "provider_native_unadjusted",
+            "timestamp_semantics": "interval_start_utc",
+            "market_type": "linear",
+            "base_asset": "BTC",
+            "quote_asset": "USDT",
+            "label": "Bybit linear BTCUSDT provider-native hourly observations",
+        },
     }
     selected = variants.get(choice or "", {"status": "UNRESOLVED"})
     return {**common, **selected}
 
 
 def _gate1_reason(supported: bool, chart: str | None) -> str:
+    if supported and chart == "bybit_btcusdt_linear_hourly":
+        return (
+            "The registered Bybit BTCUSDT crowding D0 operator is available; empirical D1 "
+            "requires one exact compatible qualified CryptoSnapshotV1."
+        )
     if supported and chart == "tiingo_daily_fallback":
         return (
             "The registered synthetic session-daily double-bottom D0 operator is available; "
@@ -354,6 +444,13 @@ def _primary_claim(choice: str | None) -> dict[str, object]:
             "direction": "positive",
             "minimum_effect_return": 0.005,
         },
+        "next_funding_mark_minus_index_5bp": {
+            "estimand": "event_mark_return_minus_index_return",
+            "endpoint": "next_provider_declared_funding_timestamp",
+            "horizon": "next_provider_declared_funding_timestamp",
+            "direction": "negative",
+            "minimum_effect_return": -0.0005,
+        },
     }
     return variants.get(choice or "", {"status": "UNRESOLVED"})
 
@@ -375,14 +472,33 @@ def draft_exploration_contract(
     availability = resolved.get("event_availability")
     chart = resolved.get("chart_construction")
     outcome = resolved.get("primary_outcome")
-    event_name = "double_bottom" if "double bottom" in exact_idea.casefold() else "owner_idea_event"
-    gate1_supported = (
+    crypto_crowding = _recommended_bundle_id(exact_idea) == "bybit_btcusdt_crowding_reversal_v1"
+    event_name = (
+        "bybit_btcusdt_crowding_reversal"
+        if crypto_crowding
+        else ("double_bottom" if "double bottom" in exact_idea.casefold() else "owner_idea_event")
+    )
+    double_bottom_supported = (
         event_name == "double_bottom"
         and availability == "second_trough_confirmable"
         and outcome is not None
         and chart is not None
         and (chart, outcome) in registered_d0_material_choices()
     )
+    crypto_supported = (
+        crypto_crowding
+        and chart == "bybit_btcusdt_linear_hourly"
+        and availability == "bybit_funding_event_point_in_time"
+        and outcome == "next_funding_mark_minus_index_5bp"
+    )
+    gate1_supported = double_bottom_supported or crypto_supported
+    registered_chart_choices = {
+        chart_choice for chart_choice, _outcome in registered_d0_material_choices()
+    } | {"bybit_btcusdt_linear_hourly"}
+    registered_event_choices = {
+        "second_trough_confirmable",
+        "bybit_funding_event_point_in_time",
+    }
     capability_gaps = [
         {
             "id": identifier,
@@ -390,8 +506,8 @@ def draft_exploration_contract(
             "blocked_reason": "No registered end-to-end research operator uses this choice.",
         }
         for identifier in sorted(
-            (_CHART_CHOICES - {chart for chart, _outcome in registered_d0_material_choices()})
-            | (_EVENT_CHOICES - {"second_trough_confirmable"})
+            (_CHART_CHOICES - registered_chart_choices)
+            | (_EVENT_CHOICES - registered_event_choices)
         )
     ]
     return {
@@ -410,38 +526,72 @@ def draft_exploration_contract(
             "reason": _gate1_reason(gate1_supported, chart),
         },
         "resolved_material_choices": dict(sorted(resolved.items())),
-        "thesis": {
-            "mechanism": "Provisional: revisited local support may concentrate demand or reduce "
-            "near-term selling pressure, producing conditional short-horizon mean reversion.",
-            "prediction": "The point-in-time-valid event has a more positive forward return than "
-            "pre-event matched controls after declared costs.",
-            "alternatives": [
-                "day-of-week or calendar effect",
-                "prevailing trend and drawdown state",
-                "volatility, VIX, or volatility-term-structure regime",
-                "gap, volume, breadth, rates, or scheduled macro-event state",
-                "session or chart-construction artifact",
-                "correlated-market movement rather than pattern-specific information",
-            ],
-            "interpretation": "point-in-time-valid predictive association; not a causal effect",
-        },
+        "thesis": (
+            {
+                "mechanism": "Provisional: unusually positive funding with rising open interest "
+                "and premium may identify crowded long positioning that later mean-reverts.",
+                "prediction": "The point-in-time crowding event precedes mark-price "
+                "underperformance relative to the index through the next funding timestamp.",
+                "alternatives": [
+                    "UTC funding-slot effect",
+                    "recent trend or volatility regime",
+                    "long-short positioning imbalance",
+                    "mark or index construction artifact",
+                    "provider correction or availability lag",
+                ],
+                "interpretation": "point-in-time predictive association; not a causal effect",
+            }
+            if crypto_crowding
+            else {
+                "mechanism": "Provisional: revisited local support may concentrate demand or "
+                "reduce near-term selling pressure, producing conditional short-horizon mean "
+                "reversion.",
+                "prediction": "The point-in-time-valid event has a more positive forward return "
+                "than pre-event matched controls after declared costs.",
+                "alternatives": [
+                    "day-of-week or calendar effect",
+                    "prevailing trend and drawdown state",
+                    "volatility, VIX, or volatility-term-structure regime",
+                    "gap, volume, breadth, rates, or scheduled macro-event state",
+                    "session or chart-construction artifact",
+                    "correlated-market movement rather than pattern-specific information",
+                ],
+                "interpretation": "point-in-time-valid predictive association; not a causal effect",
+            }
+        ),
         "chart_fingerprint": _chart_fingerprint(resolved.get("chart_construction")),
-        "event_definition": {
-            "name": event_name,
-            "availability": availability or "UNRESOLVED",
-            "records_both_trough_times": True,
-            "fires_only_when_confirmable": True,
-            "right_pivot_moves_event_forward": True,
-            "neckline_is_separate_variant": True,
-            "overlapping_outcomes": "purge",
-        },
+        "event_definition": (
+            {
+                "name": event_name,
+                "availability": availability or "UNRESOLVED",
+                "funding_percentile": 0.95,
+                "funding_history_observations": 365,
+                "requires_positive_24h_open_interest_change": True,
+                "requires_positive_premium": True,
+                "overlapping_outcomes": "purge",
+            }
+            if crypto_crowding
+            else {
+                "name": event_name,
+                "availability": availability or "UNRESOLVED",
+                "records_both_trough_times": True,
+                "fires_only_when_confirmable": True,
+                "right_pivot_moves_event_forward": True,
+                "neckline_is_separate_variant": True,
+                "overlapping_outcomes": "purge",
+            }
+        ),
         "primary_claim": _primary_claim(outcome),
         "analysis_plan": (
-            default_analysis_plan(
-                horizon_bars=4 if outcome == "four_trading_hour_return_25bp" else 1
+            registered_crypto_crowding_plan().to_dict()
+            if crypto_crowding and outcome is not None
+            else (
+                default_analysis_plan(
+                    horizon_bars=4 if outcome == "four_trading_hour_return_25bp" else 1
+                )
+                if outcome is not None
+                else {"status": "UNRESOLVED"}
             )
-            if outcome is not None
-            else {"status": "UNRESOLVED"}
         ),
         "required_falsifiers": [
             "pseudo-pattern control",

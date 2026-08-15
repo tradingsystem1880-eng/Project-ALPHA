@@ -1258,11 +1258,17 @@ type ResearchExecutionStateValue = Literal[
 type ResearchD2StateValue = Literal["sealed", "authorized", "consumed", "contaminated"]
 type ResearchD3StateValue = Literal["not_sealed", "sealed", "consumed", "contaminated"]
 type ResearchChartConstructionValue = Literal[
-    "spy_rth_60m_four_hour_window", "tiingo_daily_fallback"
+    "spy_rth_60m_four_hour_window",
+    "tiingo_daily_fallback",
+    "bybit_btcusdt_linear_hourly",
 ]
-type ResearchEventAvailabilityValue = Literal["second_trough_confirmable"]
+type ResearchEventAvailabilityValue = Literal[
+    "second_trough_confirmable", "bybit_funding_event_point_in_time"
+]
 type ResearchPrimaryOutcomeValue = Literal[
-    "four_trading_hour_return_25bp", "next_regular_session_return_50bp"
+    "four_trading_hour_return_25bp",
+    "next_regular_session_return_50bp",
+    "next_funding_mark_minus_index_5bp",
 ]
 
 

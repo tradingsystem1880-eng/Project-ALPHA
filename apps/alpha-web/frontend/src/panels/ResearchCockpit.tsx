@@ -39,15 +39,21 @@ type CockpitView = 'overview' | 'decision'
 const CHART_OPTIONS: ReadonlyArray<{ value: ChartConstruction; label: string }> = [
   { value: 'spy_rth_60m_four_hour_window', label: 'Synthetic SPY-like 60m D0 · four-hour window' },
   { value: 'tiingo_daily_fallback', label: 'Qualified Tiingo daily SPY · next-session lane' },
+  { value: 'bybit_btcusdt_linear_hourly', label: 'Bybit linear BTCUSDT · hourly crowding lane' },
 ]
 
 const EVENT_OPTIONS: ReadonlyArray<{ value: EventAvailability; label: string }> = [
   { value: 'second_trough_confirmable', label: 'Second trough confirmable' },
+  { value: 'bybit_funding_event_point_in_time', label: 'Bybit funding event · point-in-time' },
 ]
 
 const OUTCOME_OPTIONS: ReadonlyArray<{ value: PrimaryOutcome; label: string }> = [
   { value: 'four_trading_hour_return_25bp', label: 'Four trading hours · +25 bp' },
   { value: 'next_regular_session_return_50bp', label: 'Next regular session · +50 bp' },
+  {
+    value: 'next_funding_mark_minus_index_5bp',
+    label: 'Next funding mark-minus-index · -5 bp',
+  },
 ]
 
 function errorMessage(reason: unknown): string {

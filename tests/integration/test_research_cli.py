@@ -6,7 +6,9 @@ import hashlib
 import json
 import sqlite3
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
@@ -17,6 +19,7 @@ from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import ControlStore
 from alpha_cli.main import app
 from alpha_core import DataError
+from alpha_research import CryptoCrowdingObservationV1
 from tests.fixtures.cli_fixtures import seed_store
 
 runner = CliRunner()
@@ -131,7 +134,201 @@ def test_proposal_options_are_executable_atomic_bundles_with_exact_prerequisites
     } == {
         ("synthetic_spy_60m_four_hour_v1", True, ()),
         ("tiingo_spy_daily_next_session_v1", True, (str(dataset["ref_id"]),)),
+        ("bybit_btcusdt_crowding_reversal_v1", False, ()),
     }
+
+
+def test_crypto_proposal_options_require_authoritatively_compatible_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke(
+        "capture",
+        "On Bybit BTCUSDT linear perpetuals, test whether extreme positive funding with rising "
+        "open interest and premium predicts crowding reversal before the next funding event",
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Perpetual funding mechanics",
+        locator="doi:10.0000/crypto-example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition={},
+    )
+    compatible = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2025-01-01T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "b" * 64,
+            "manifest_sha256": "c" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+    incompatible = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2025-01-01T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "d" * 64,
+            "manifest_sha256": "e" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+
+    def compatibility(snapshot_id: str) -> dict[str, object]:
+        if snapshot_id == "d" * 64:
+            raise DataError("mixed quote asset")
+        return {
+            "snapshot_id": snapshot_id,
+            "bundle_id": "bybit_btcusdt_crowding_reversal_v1",
+            "operator_fingerprint": "f" * 64,
+            "asset_master_version": "reviewed-native-v1",
+            "qualification_versions": ["crypto-quality-v1"],
+            "eligible": True,
+        }
+
+    monkeypatch.setattr(
+        "alpha_cli.crypto_data_cmds.crypto_crowding_snapshot_compatibility",
+        compatibility,
+    )
+    observation = cast(
+        CryptoCrowdingObservationV1,
+        SimpleNamespace(funding_time=datetime(2025, 1, 1, tzinfo=UTC)),
+    )
+    monkeypatch.setattr(
+        "alpha_cli.crypto_data_cmds.crypto_crowding_observations",
+        lambda _snapshot_id: (observation,),
+    )
+
+    binding = research_cmds._crypto_empirical_dataset(store, str(compatible["ref_id"]))
+    assert binding.snapshot_id == "b" * 64
+    assert binding.operator_fingerprint == "f" * 64
+    assert binding.observations == (observation,)
+
+    options = _invoke("proposal-options", project_id)
+
+    assert options["recommended_answer_bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    assert options["approval_ready"] is True
+    bundles = cast(list[dict[str, object]], options["valid_answer_bundles"])
+    selected = next(
+        bundle for bundle in bundles if bundle["bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    )
+    assert selected["available"] is True
+    assert selected["compatible_dataset_ids"] == [compatible["ref_id"]]
+    assert incompatible["ref_id"] not in cast(list[str], selected["compatible_dataset_ids"])
+
+
+def test_crypto_draft_freezes_exact_snapshot_operator_and_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke(
+        "capture",
+        "On Bybit BTCUSDT linear perpetuals, test whether extreme positive funding with rising "
+        "open interest and premium predicts crowding reversal before the next funding event",
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Perpetual funding mechanics",
+        locator="doi:10.0000/crypto-example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition={},
+    )
+    dataset = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2025-01-01T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "b" * 64,
+            "manifest_sha256": "c" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+    start = datetime(2025, 1, 1, tzinfo=UTC)
+    binding = research_cmds._CryptoEmpiricalDataset(
+        ref=dataset,
+        snapshot_id="b" * 64,
+        snapshot_hash="c" * 64,
+        operator_fingerprint="f" * 64,
+        asset_master_version="reviewed-native-v1",
+        qualification_versions=("crypto-quality-v1",),
+        observations=tuple(
+            cast(
+                CryptoCrowdingObservationV1,
+                SimpleNamespace(funding_time=start + timedelta(hours=8 * index)),
+            )
+            for index in range(10)
+        ),
+    )
+    monkeypatch.setattr(research_cmds, "_crypto_empirical_dataset", lambda *_args: binding)
+    monkeypatch.setattr(
+        "alpha_cli.crypto_data_cmds.crypto_crowding_snapshot_compatibility",
+        lambda _snapshot_id: {
+            "snapshot_id": "b" * 64,
+            "bundle_id": "bybit_btcusdt_crowding_reversal_v1",
+            "operator_fingerprint": "f" * 64,
+            "eligible": True,
+        },
+    )
+    options = _invoke("proposal-options", project_id)
+
+    drafted = _invoke(
+        "draft",
+        project_id,
+        "--source-pack-id",
+        str(pack["pack_id"]),
+        "--answer-bundle",
+        "bybit_btcusdt_crowding_reversal_v1",
+        "--dataset",
+        str(dataset["ref_id"]),
+        "--expected-case-revision",
+        str(options["case_revision"]),
+    )
+
+    contract = cast(dict[str, object], drafted["contract"])
+    payload = cast(dict[str, object], contract["payload"])
+    assert payload["answer_bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    assert cast(dict[str, object], payload["hashes"])["data"] == "b" * 64
+    protocol = cast(dict[str, object], payload["protocol"])
+    assert cast(dict[str, object], protocol["d0_operator"])["name"] == (
+        "bybit_btcusdt_crowding_reversal"
+    )
+    authority = cast(dict[str, object], protocol["boundary_authority"])
+    assert authority == {
+        "kind": "empirical_dataset",
+        "real_market_evidence": True,
+        "empirical_confirmation_authorized": True,
+    }
+    empirical = cast(dict[str, object], protocol["empirical_dataset"])
+    assert empirical["snapshot_id"] == "b" * 64
+    assert empirical["operator_fingerprint"] == "f" * 64
+    assert empirical["session_group_count"] == 10
 
 
 def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
