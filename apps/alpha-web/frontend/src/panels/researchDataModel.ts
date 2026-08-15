@@ -21,6 +21,12 @@ export type CryptoDataSection =
 
 export type CryptoMarketCategory = 'spot' | 'linear' | 'inverse' | 'option'
 
+export function cryptoCoverageStateClass(state: CryptoCoverageItem['state']): string {
+  if (state === 'qualified') return 'chip pass'
+  if (state === 'quarantined' || state === 'unavailable') return 'chip fail'
+  return 'chip'
+}
+
 export const CRYPTO_FEATURE_INPUTS: Record<CryptoFeatureName, readonly CryptoFamily[]> = {
   funding: ['funding'],
   open_interest_change: ['open_interest'],

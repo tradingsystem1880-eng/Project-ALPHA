@@ -34,8 +34,10 @@ import type {
 } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { shortId } from '../util/format'
+import { CryptoCoverageView } from './CryptoCoverageView'
 import {
   cryptoCanonicalAction,
+  cryptoCoverageStateClass,
   cryptoFeatureInputSelection,
   cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
@@ -102,12 +104,6 @@ function defaultInstrument(family: CryptoFamily): string {
   if (family === 'onchain_metrics') return 'btc'
   if (family.startsWith('option_') || family === 'historical_volatility') return 'BTC'
   return 'BTCUSDT'
-}
-
-function stateClass(state: CryptoCoverageItem['state']): string {
-  if (state === 'qualified') return 'chip pass'
-  if (state === 'quarantined' || state === 'unavailable') return 'chip fail'
-  return 'chip'
 }
 
 function bytesLabel(value: number | null | undefined): string {
@@ -883,7 +879,7 @@ export function CryptoDataCenter({
                 <span className={capability.verification_state === 'receipt_verified' ? 'chip pass' : 'chip'}>
                   {capability.verification_state === 'receipt_verified' ? 'RECEIPT VERIFIED' : 'NOT VERIFIED'}
                 </span>{' '}
-                <span className={stateClass(capability.qualification_state)}>
+                <span className={cryptoCoverageStateClass(capability.qualification_state)}>
                   {capability.qualification_state.toUpperCase()}
                 </span>
               </span>
@@ -920,37 +916,21 @@ export function CryptoDataCenter({
 
       {jobId ? <section className="crypto-job"><div className="rd-head">{jobKind === 'profile' ? 'Coverage batch job' : 'Acquisition job'}</div><div className="workbench-notice" role="status"><strong>{jobFinished ? 'FINISHED' : 'RUNNING'}</strong><span>{jobFinished ? 'Coverage refreshed. Review the new mechanical qualification below.' : jobKind === 'profile' ? 'Running at most 25 exact tasks from the frozen profile with an atomic checkpoint after each task.' : 'Fetching one bounded provider response and freezing its exact bytes.'}</span></div><div className="advanced-only"><JobConsole jobId={jobId} onDone={() => { setJobFinished(true); void load(true) }} /></div></section> : null}
 
-      <section aria-label="Crypto coverage">
-        <div className="rd-head">{section === 'quality' ? 'All coverage and quality' : 'Available coverage'} · {latestManifestIds.size} current <span className="advanced-only">· {visibleCoverage.length} immutable versions</span></div>
-        {loading ? <p className="muted">Loading exact manifests and qualification reports…</p> : null}
-        {!loading && visibleCoverage.length === 0 ? <p className="muted">No dataset in this family has been acquired yet. Estimate one bounded acquisition above.</p> : null}
-        <div className="crypto-coverage-list">
-          {visibleCoverage.map((item) => (
-            <article className={`crypto-dataset ${selected.has(item.manifest_id) ? 'selected' : ''}${latestManifestIds.has(item.manifest_id) ? '' : ' advanced-only'}`} key={item.manifest_id}>
-              <label className="crypto-dataset-select">
-                <input
-                  type="checkbox"
-                  checked={selected.has(item.manifest_id)}
-                  disabled={item.state !== 'qualified'}
-                  onChange={() => toggleManifest(item)}
-                  aria-label={`Select ${item.state} ${item.family} ${item.instrument} ${item.quote_asset ?? 'no quote asset'}`}
-                />
-                <span><strong>{item.instrument}</strong><span>{item.family.replaceAll('_', ' ')} · {item.provider}/{item.venue}</span></span>
-              </label>
-              <span className={stateClass(item.state)}>{item.state.toUpperCase()}</span>
-              <span className="mono">{item.row_count.toLocaleString()} rows · {item.frequency}</span>
-              <span className="muted">{item.quote_asset ?? 'no quote'} · {item.units}{item.fetched_at ? ` · fetched ${new Date(item.fetched_at).toLocaleString()}` : ' · legacy receipt time unavailable'}</span>
-              <button className="btn" type="button" disabled={busyAction === `quality:${item.manifest_id}`} onClick={() => void inspectQuality(item)}>Quality</button>
-              <span className="mono muted advanced-only">manifest {shortId(item.manifest_id)} · artifact {shortId(item.artifact_sha256)} · {item.method_version}</span>
-            </article>
-          ))}
-        </div>
-      </section>
+      <CryptoCoverageView
+        section={section}
+        loading={loading}
+        items={visibleCoverage}
+        latestManifestIds={latestManifestIds}
+        selectedManifestIds={selected}
+        busyAction={busyAction}
+        onToggle={toggleManifest}
+        onInspectQuality={(item) => void inspectQuality(item)}
+      />
 
       {quality ? (
         <section className="provider-card" aria-label="Selected quality report">
           <div className="rd-head">Mechanical quality · {quality.dataset.instrument} · {quality.dataset.family.replaceAll('_', ' ')}</div>
-          <div className="crypto-detail"><span className={stateClass(quality.quality.state)}>{quality.quality.state.toUpperCase()}</span><span>{quality.quality.row_count.toLocaleString()} rows · {quality.quality.observed_start ?? 'no start'} → {quality.quality.observed_end ?? 'no end'}</span><span>{quality.next_action}</span>{quality.quality.failures.length ? <strong>Failures: {quality.quality.failures.join(', ')}</strong> : null}{quality.quality.warnings.length ? <span>Warnings: {quality.quality.warnings.join(', ')}</span> : null}<span className="mono muted advanced-only">{quality.quality.dataset_sha256} · {quality.quality.method_version}</span></div>
+          <div className="crypto-detail"><span className={cryptoCoverageStateClass(quality.quality.state)}>{quality.quality.state.toUpperCase()}</span><span>{quality.quality.row_count.toLocaleString()} rows · {quality.quality.observed_start ?? 'no start'} → {quality.quality.observed_end ?? 'no end'}</span><span>{quality.next_action}</span>{quality.quality.failures.length ? <strong>Failures: {quality.quality.failures.join(', ')}</strong> : null}{quality.quality.warnings.length ? <span>Warnings: {quality.quality.warnings.join(', ')}</span> : null}<span className="mono muted advanced-only">{quality.quality.dataset_sha256} · {quality.quality.method_version}</span></div>
         </section>
       ) : null}
 
