@@ -1491,6 +1491,145 @@ def _fetch_coinbase_comparison(
     )
 
 
+def _fetch_coingecko(
+    family: CryptoFamily,
+    instrument: str,
+    *,
+    base: str,
+    quote: str,
+    fetched_at: datetime,
+) -> _FetchedAcquisition | _FetchedPagedAcquisition:
+    base_value = base.strip().upper()
+    quote_value = quote.strip().upper()
+    instrument_value = instrument.strip()
+    api_key = os.environ.get("ALPHA_COINGECKO_API_KEY", "")
+    if not api_key:
+        raise DataError("CoinGecko Demo key requires scoped process injection")
+    keys: tuple[str, ...]
+    parser: Callable[[bytes], pl.DataFrame]
+    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None
+    if family == "market_reference":
+        parser_version_value = "coingecko-reference-v1"
+        params: dict[str, str | int | bool] = {
+            "vs_currency": quote_value.lower(),
+            "order": "market_cap_desc",
+            "per_page": 250 if instrument_value == "all" else 1,
+            "page": 1,
+            "sparkline": False,
+        }
+        if instrument_value != "all":
+            params["ids"] = instrument_value
+        parser = partial(
+            parse_market_universe,
+            vs_currency=quote_value,
+            fetched_at=fetched_at,
+        )
+        parser_at = partial(_market_reference_parser_at, quote=quote_value)
+        observed_column = "observed_at"
+        keys = ("observed_at", "coingecko_id", "quote_asset")
+        endpoint = "markets"
+        frequency_value = "point_in_time_reference"
+        if instrument_value != "all":
+            request = coingecko_demo_request("markets", params, api_key=api_key)
+            payload = fetch_coingecko_demo(request)
+    elif family == "asset_metadata":
+        if instrument_value == "all":
+            params = {"include_platform": True}
+            request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
+            parser = partial(_asset_catalog_frame, fetched_at=fetched_at)
+            parser_at = _asset_catalog_parser_at
+            keys = ("coingecko_id", "network", "contract_address")
+            endpoint = "asset_catalog"
+            frequency_value = "catalog_snapshot"
+            parser_version_value = "coingecko-catalog-v1"
+        else:
+            params = {
+                "localization": False,
+                "tickers": False,
+                "market_data": False,
+                "community_data": False,
+                "developer_data": False,
+            }
+            request = coingecko_demo_request(
+                "coin_detail", params, api_key=api_key, coin_id=instrument_value
+            )
+            parser = partial(parse_asset_detail, fetched_at=fetched_at)
+            parser_at = _asset_detail_parser_at
+            keys = ("coingecko_id",)
+            endpoint = "coin_detail"
+            frequency_value = "point_in_time_detail"
+            parser_version_value = "coingecko-detail-v1"
+        payload = fetch_coingecko_demo(request)
+        observed_column = "fetched_at"
+    else:
+        raise DataError(f"CoinGecko is not authoritative for {family}")
+    plan = _AcquisitionPlan(
+        endpoint=endpoint,
+        params={
+            key: int(value) if isinstance(value, bool) else value for key, value in params.items()
+        },
+        dataset=CryptoDatasetIdentityV1(
+            provider="coingecko",
+            venue="coingecko",
+            market_type="reference",
+            family=family,
+            instrument=instrument_value,
+            base_asset=(None if instrument_value == "all" else base_value),
+            quote_asset=quote_value if family == "market_reference" else None,
+            frequency=frequency_value,
+            units="reference_only",
+            timestamp_convention="provider_observation_utc",
+        ),
+        parser=parser,
+        observed_column=observed_column,
+        key_columns=keys,
+        availability_column="fetched_at",
+        parser_at=parser_at,
+    )
+    if family == "market_reference" and instrument_value == "all":
+        market_pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+        market_page_parsers: list[Callable[[bytes], pl.DataFrame]] = []
+        for page_number in range(1, 101):
+            page_params = {**params, "page": page_number}
+            request = coingecko_demo_request("markets", page_params, api_key=api_key)
+            payload = fetch_coingecko_demo(request)
+            page_parser = partial(
+                parse_market_universe,
+                vs_currency=quote_value,
+                fetched_at=fetched_at,
+            )
+            row_count = page_parser(payload).height
+            if row_count == 0:
+                raise DataError("CoinGecko market universe returned an empty page")
+            market_pages.append(
+                (
+                    payload,
+                    tuple((key, str(value)) for key, value in sorted(page_params.items())),
+                    (f"page={page_number}",),
+                )
+            )
+            market_page_parsers.append(page_parser)
+            if row_count < 250:
+                return _FetchedPagedAcquisition(
+                    plan=plan,
+                    pages=tuple(market_pages),
+                    page_parsers=tuple(market_page_parsers),
+                    upstream_checksums=tuple(None for _ in market_pages),
+                    combine_frames=None,
+                    provider_schema="coingecko-demo-v3",
+                    parser_version=parser_version_value,
+                    logical_name=f"{family}.json",
+                )
+        raise DataError("CoinGecko market universe exceeded the 100-page safety limit")
+    return _FetchedAcquisition(
+        plan=plan,
+        payload=payload,
+        provider_schema="coingecko-demo-v3",
+        parser_version=parser_version_value,
+        logical_name=f"{family}.json",
+    )
+
+
 def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
@@ -1530,6 +1669,15 @@ def _fetch_non_bybit(
             metrics=metrics,
             start=start,
             end=end,
+            fetched_at=fetched_at,
+        )
+
+    if provider == "coingecko":
+        return _fetch_coingecko(
+            family,
+            instrument,
+            base=base,
+            quote=quote,
             fetched_at=fetched_at,
         )
 
@@ -1776,132 +1924,6 @@ def _fetch_non_bybit(
             upstream_checksum=hashlib.sha256(archive_payload).hexdigest(),
             expected_cadence_seconds=cadence_seconds,
             period_start_timestamps=family == "market_bars",
-        )
-
-    if provider == "coingecko":
-        api_key = os.environ.get("ALPHA_COINGECKO_API_KEY", "")
-        if not api_key:
-            raise DataError("CoinGecko Demo key requires scoped process injection")
-        if family == "market_reference":
-            parser_version_value = "coingecko-reference-v1"
-            params: dict[str, str | int | bool] = {
-                "vs_currency": quote_value.lower(),
-                "order": "market_cap_desc",
-                "per_page": 250 if instrument_value == "all" else 1,
-                "page": 1,
-                "sparkline": False,
-            }
-            if instrument_value != "all":
-                params["ids"] = instrument_value
-            parser = partial(
-                parse_market_universe,
-                vs_currency=quote_value,
-                fetched_at=fetched_at,
-            )
-            parser_at = partial(_market_reference_parser_at, quote=quote_value)
-            observed_column = "observed_at"
-            keys = ("observed_at", "coingecko_id", "quote_asset")
-            endpoint = "markets"
-            frequency_value = "point_in_time_reference"
-            if instrument_value != "all":
-                request = coingecko_demo_request("markets", params, api_key=api_key)
-                payload = fetch_coingecko_demo(request)
-        elif family == "asset_metadata":
-            if instrument_value == "all":
-                params = {"include_platform": True}
-                request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
-                parser = partial(_asset_catalog_frame, fetched_at=fetched_at)
-                parser_at = _asset_catalog_parser_at
-                keys = ("coingecko_id", "network", "contract_address")
-                endpoint = "asset_catalog"
-                frequency_value = "catalog_snapshot"
-                parser_version_value = "coingecko-catalog-v1"
-            else:
-                params = {
-                    "localization": False,
-                    "tickers": False,
-                    "market_data": False,
-                    "community_data": False,
-                    "developer_data": False,
-                }
-                request = coingecko_demo_request(
-                    "coin_detail", params, api_key=api_key, coin_id=instrument_value
-                )
-                parser = partial(parse_asset_detail, fetched_at=fetched_at)
-                parser_at = _asset_detail_parser_at
-                keys = ("coingecko_id",)
-                endpoint = "coin_detail"
-                frequency_value = "point_in_time_detail"
-                parser_version_value = "coingecko-detail-v1"
-            payload = fetch_coingecko_demo(request)
-            observed_column = "fetched_at"
-        else:
-            raise DataError(f"CoinGecko is not authoritative for {family}")
-        plan = _AcquisitionPlan(
-            endpoint=endpoint,
-            params={
-                key: int(value) if isinstance(value, bool) else value
-                for key, value in params.items()
-            },
-            dataset=CryptoDatasetIdentityV1(
-                provider="coingecko",
-                venue="coingecko",
-                market_type="reference",
-                family=family,
-                instrument=instrument_value,
-                base_asset=(None if instrument_value == "all" else base_value),
-                quote_asset=quote_value if family == "market_reference" else None,
-                frequency=frequency_value,
-                units="reference_only",
-                timestamp_convention="provider_observation_utc",
-            ),
-            parser=parser,
-            observed_column=observed_column,
-            key_columns=keys,
-            availability_column="fetched_at",
-            parser_at=parser_at,
-        )
-        if family == "market_reference" and instrument_value == "all":
-            market_pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
-            market_page_parsers: list[Callable[[bytes], pl.DataFrame]] = []
-            for page_number in range(1, 101):
-                page_params = {**params, "page": page_number}
-                request = coingecko_demo_request("markets", page_params, api_key=api_key)
-                payload = fetch_coingecko_demo(request)
-                page_parser = partial(
-                    parse_market_universe,
-                    vs_currency=quote_value,
-                    fetched_at=fetched_at,
-                )
-                row_count = page_parser(payload).height
-                if row_count == 0:
-                    raise DataError("CoinGecko market universe returned an empty page")
-                market_pages.append(
-                    (
-                        payload,
-                        tuple((key, str(value)) for key, value in sorted(page_params.items())),
-                        (f"page={page_number}",),
-                    )
-                )
-                market_page_parsers.append(page_parser)
-                if row_count < 250:
-                    return _FetchedPagedAcquisition(
-                        plan=plan,
-                        pages=tuple(market_pages),
-                        page_parsers=tuple(market_page_parsers),
-                        upstream_checksums=tuple(None for _ in market_pages),
-                        combine_frames=None,
-                        provider_schema="coingecko-demo-v3",
-                        parser_version=parser_version_value,
-                        logical_name=f"{family}.json",
-                    )
-            raise DataError("CoinGecko market universe exceeded the 100-page safety limit")
-        return _FetchedAcquisition(
-            plan=plan,
-            payload=payload,
-            provider_schema="coingecko-demo-v3",
-            parser_version=parser_version_value,
-            logical_name=f"{family}.json",
         )
 
     if provider == "geckoterminal":
