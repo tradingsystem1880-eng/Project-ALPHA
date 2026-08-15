@@ -28,6 +28,7 @@ _STRATEGY_MODULES = {
     "mean_reversion": "mean_reversion.py",
     "breakout": "breakout.py",
     "kronos": "signal_replay.py",
+    "hedged_basis_crowding_v1": "hedged_basis.py",
 }
 
 

@@ -638,6 +638,21 @@ def verified_snapshot_hash(data_dir: Path, snapshot_id: str | None) -> str | Non
     """Resolve one frozen snapshot to the exact verified manifest digest used by run identity."""
     if snapshot_id is None:
         return None
+    crypto_path = data_dir / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    if crypto_path.exists():
+        if crypto_path.is_symlink() or not crypto_path.is_file():
+            raise DataError("crypto snapshot manifest path is unsafe")
+        from alpha_data.crypto.contracts import CryptoSnapshotV1
+
+        try:
+            raw = crypto_path.read_bytes()
+            parsed: object = json.loads(raw)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DataError("crypto snapshot manifest is unavailable or corrupt") from exc
+        snapshot = CryptoSnapshotV1.from_dict(parsed)
+        if snapshot.snapshot_id != snapshot_id:
+            raise DataError("crypto snapshot manifest identity does not match its filename")
+        return hashlib.sha256(raw).hexdigest()
     from alpha_data.snapshot import resolve_snapshot_dir
 
     return snapshot_manifest_hash(resolve_snapshot_dir(data_dir / "snapshots", snapshot_id))
