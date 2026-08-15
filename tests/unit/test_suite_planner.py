@@ -357,7 +357,7 @@ def _complete_candidate_stage(
         project_id, experiment_id, stage, "running", reason="candidate fixture running"
     )
     for index, command in enumerate(commands):
-        run_id = f"4{len(command):02x}{index:013x}"
+        run_id = hashlib.sha256(f"{command}:{index}".encode()).hexdigest()[:16]
         changes: dict[str, object] = {"passed": True}
         if command.startswith("candidate_null_"):
             changes["metadata"] = {"null_model": command.removeprefix("candidate_null_")}
@@ -1291,3 +1291,84 @@ def test_candidate_stress_qlib_and_kronos_are_disclosed_fixture_paths(tmp_path: 
         "kronos_eval_fixture",
     ]
     assert kronos.governance["kronos_role"] == "disclosed_fake_fixture_not_market_oracle"
+
+
+def test_candidate_freeze_rebuilds_the_complete_distinct_evidence_family(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    actions = (
+        ("baseline", "baseline", ("candidate_baseline",)),
+        ("inner_oos", "oos", ("candidate_oos",)),
+        (
+            "three_null_families",
+            "robustness",
+            (
+                "candidate_null_bootstrap",
+                "candidate_null_student_t",
+                "candidate_null_garch",
+            ),
+        ),
+        (
+            "monte_carlo",
+            "monte_carlo",
+            ("candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"),
+        ),
+        ("optimize_grid", "optimization", ("candidate_optim",)),
+        (
+            "portfolio_cross_asset",
+            "portfolio",
+            ("candidate_portfolio", "candidate_cross_asset"),
+        ),
+        ("qlib", "ml", ("candidate_qlib",)),
+        (
+            "kronos",
+            "kronos",
+            ("candidate_kronos_forecast", "candidate_kronos_eval"),
+        ),
+    )
+    for action, stage, commands in actions:
+        _complete_candidate_stage(
+            store,
+            tmp_path,
+            project_id,
+            experiment_id,
+            contract_id,
+            snapshot_id,
+            action=action,
+            stage=stage,
+            commands=commands,
+        )
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id="5000000000000001",
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+        command="candidate_fixed_stress",
+        changes={"passed": True},
+    )
+    store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="fixed_stress",
+        stage="robustness",
+        state="pass",
+        run_id="5000000000000001",
+    )
+
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "ready", reason="all checks complete"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "queued", reason="freeze queued"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "running", reason="freeze verification running"
+    )
+    frozen = store.append_experiment_stage_state(
+        project_id,
+        experiment_id,
+        "candidate",
+        "pass",
+        reason="freeze exact deterministic sandbox candidate",
+    )
+
+    assert frozen["state"] == "pass"

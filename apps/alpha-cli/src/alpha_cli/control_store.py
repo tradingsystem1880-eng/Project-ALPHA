@@ -8762,7 +8762,10 @@ class ControlStore:
     ) -> dict[str, list[dict[str, object]]]:
         """Rebuild the pre-holdout gate from verified canonical runs, never cached labels."""
         experiment = connection.execute(
-            "SELECT snapshot_id FROM experiment_specs WHERE experiment_id = ?", (experiment_id,)
+            """SELECT e.snapshot_id, v.strategy_name FROM experiment_specs e
+            JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+            WHERE e.experiment_id = ?""",
+            (experiment_id,),
         ).fetchone()
         if experiment is None:  # pragma: no cover - caller validates the project link.
             raise DataError(f"unknown experiment {experiment_id!r}")
@@ -8777,6 +8780,7 @@ class ControlStore:
             )
         expected_cutoff = self._manifest_research_cutoff(sealed)
         snapshot_id = str(experiment["snapshot_id"])
+        candidate_strategy = experiment["strategy_name"] == "hedged_basis_crowding_v1"
         from alpha_cli._runner import verified_snapshot_hash
 
         try:
@@ -8787,14 +8791,17 @@ class ControlStore:
                 "the frozen experiment snapshot is unavailable"
             ) from exc
         by_stage: dict[str, list[dict[str, object]]] = {}
-        for stage in (
+        stages = [
             "baseline",
             "oos",
             "robustness",
             "monte_carlo",
             "optimization",
             "portfolio",
-        ):
+        ]
+        if candidate_strategy:
+            stages.extend(("kronos", "ml"))
+        for stage in stages:
             for view, manifest in self._terminal_stage_runs(
                 connection,
                 project_id=project_id,
@@ -8820,6 +8827,46 @@ class ControlStore:
                         "status": manifest.get("status"),
                     }
                 )
+
+        if candidate_strategy:
+            required: dict[str, set[str]] = {
+                "baseline": {"candidate_baseline"},
+                "oos": {"candidate_oos"},
+                "robustness": {*_CANDIDATE_NULL_COMMANDS, "candidate_fixed_stress"},
+                "monte_carlo": set(_CANDIDATE_MONTE_CARLO_COMMANDS),
+                "optimization": {"candidate_optim"},
+                "portfolio": set(_CANDIDATE_PORTFOLIO_COMMANDS),
+                "kronos": set(_CANDIDATE_KRONOS_COMMANDS),
+                "ml": {"candidate_qlib"},
+            }
+            missing = [
+                stage
+                for stage, commands in required.items()
+                if {str(row["command"]) for row in by_stage.get(stage, [])} != commands
+            ]
+            if missing:
+                raise DataError(
+                    "candidate freeze requires verified hedged-basis evidence for: "
+                    + ", ".join(missing)
+                )
+            if not all(
+                row["passed"] is True
+                for stage in ("baseline", "oos", "robustness", "optimization")
+                for row in by_stage.get(stage, [])
+                if row["command"]
+                in {
+                    "candidate_baseline",
+                    "candidate_oos",
+                    "candidate_null_bootstrap",
+                    "candidate_optim",
+                }
+            ):
+                raise DataError("candidate freeze requires passing headline evidence")
+            if not all(row["status"] == "clear" for row in by_stage.get("monte_carlo", [])):
+                raise DataError(
+                    "candidate freeze requires clear candidate Monte Carlo evidence or review"
+                )
+            return by_stage
 
         problems: list[str] = []
         if not any(row["command"] == "backtest_run" for row in by_stage.get("baseline", [])):
