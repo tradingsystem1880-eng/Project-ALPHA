@@ -591,6 +591,24 @@ def _content_length(raw: str | None, *, label: str) -> int | None:
     return value
 
 
+def _mkdir_archive_path(root: Path, *components: str, label: str) -> Path:
+    """Create a downloader-owned path without following substituted directories."""
+    current = root
+    if current.is_symlink():
+        raise DataError(f"Binance archive {label} path is unsafe")
+    current.mkdir(exist_ok=True)
+    if not current.is_dir():
+        raise DataError(f"Binance archive {label} path is unsafe")
+    for component in components:
+        current /= component
+        if current.is_symlink():
+            raise DataError(f"Binance archive {label} path is unsafe")
+        current.mkdir(exist_ok=True)
+        if not current.is_dir():
+            raise DataError(f"Binance archive {label} path is unsafe")
+    return current
+
+
 def _resume_binance_archive(
     url: str,
     staging_root: Path,
@@ -606,10 +624,18 @@ def _resume_binance_archive(
     if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
         raise DataError("Binance archive expected checksum is invalid")
     request_id = _download_identity(url, expected_sha256, max_bytes)
-    root = staging_root / "downloads" / request_id
+    storage_root = staging_root.parent
+    root = _mkdir_archive_path(
+        storage_root,
+        staging_root.name,
+        "downloads",
+        request_id,
+        label="staging",
+    )
     metadata_path = root / "download.json"
     payload_path = root / "payload.part"
-    cache_path = staging_root.parent / "cache" / "downloads" / f"{expected_sha256}.zip"
+    cache_root = _mkdir_archive_path(storage_root, "cache", "downloads", label="cache")
+    cache_path = cache_root / f"{expected_sha256}.zip"
     expected_metadata = {
         "contract": "BinanceArchiveDownloadV1",
         "expected_sha256": expected_sha256,
@@ -624,10 +650,9 @@ def _resume_binance_archive(
             raise DataError("Binance archive cache does not match its checksum identity")
         return cached
 
-    root.mkdir(parents=True, exist_ok=True)
-    if root.is_symlink():
-        raise DataError("Binance archive staging path is unsafe")
     if metadata_path.exists():
+        if not metadata_path.is_file() or metadata_path.is_symlink():
+            raise DataError("Binance archive resume metadata path is unsafe")
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -636,6 +661,8 @@ def _resume_binance_archive(
             raise DataError("Binance archive resume metadata does not match the request")
     else:
         temporary = metadata_path.with_suffix(".json.tmp")
+        if temporary.exists() and (not temporary.is_file() or temporary.is_symlink()):
+            raise DataError("Binance archive resume metadata path is unsafe")
         temporary.write_text(
             json.dumps(expected_metadata, sort_keys=True, separators=(",", ":")),
             encoding="utf-8",
@@ -713,7 +740,6 @@ def _resume_binance_archive(
             raise DataError("Binance archive corrupt quarantine already exists")
         os.replace(root, quarantine)
         raise DataError("Binance archive checksum does not match exact resumed bytes")
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
     os.replace(payload_path, cache_path)
     metadata_path.unlink()
     root.rmdir()

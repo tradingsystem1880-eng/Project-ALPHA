@@ -841,6 +841,60 @@ def test_resumable_archive_rejects_corrupt_cache_and_metadata(
         fetch_binance_archive(url, staging, expected)
 
 
+def test_resumable_archive_rejects_symlinked_storage_roots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    payload = b"good"
+    expected = hashlib.sha256(payload).hexdigest()
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        return _ArchiveResponse(
+            [payload],
+            status=200,
+            headers={"Content-Type": "application/zip", "Content-Length": str(len(payload))},
+            url=url,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    outside_staging = tmp_path / "outside-staging"
+    outside_staging.mkdir()
+    staging = tmp_path / "staging"
+    staging.symlink_to(outside_staging, target_is_directory=True)
+    with pytest.raises(DataError, match="staging path is unsafe"):
+        fetch_binance_archive(url, staging, expected)
+
+    staging.unlink()
+    staging.mkdir()
+    outside_cache = tmp_path / "outside-cache"
+    outside_cache.mkdir()
+    (tmp_path / "cache").symlink_to(outside_cache, target_is_directory=True)
+    with pytest.raises(DataError, match="cache path is unsafe"):
+        fetch_binance_archive(url, staging, expected)
+
+
+def test_resumable_archive_rejects_symlinked_resume_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    expected = hashlib.sha256(b"good").hexdigest()
+
+    def offline(*_args: object, **_kwargs: object) -> object:
+        raise OSError("offline")
+
+    monkeypatch.setattr(urllib.request, "urlopen", offline)
+    staging = tmp_path / "staging"
+    with pytest.raises(DataError, match="rerun to resume"):
+        fetch_binance_archive(url, staging, expected)
+    metadata = next(staging.rglob("download.json"))
+    metadata.unlink()
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}", encoding="utf-8")
+    metadata.symlink_to(outside)
+    with pytest.raises(DataError, match="metadata path is unsafe"):
+        fetch_binance_archive(url, staging, expected)
+
+
 @pytest.mark.parametrize(
     ("status", "headers", "response_url", "message"),
     (
