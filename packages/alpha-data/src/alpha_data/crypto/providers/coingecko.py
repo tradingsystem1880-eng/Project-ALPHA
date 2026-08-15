@@ -57,7 +57,11 @@ def coingecko_demo_request(
             raise DataError("CoinGecko page is invalid")
         if not isinstance(per_page, int) or isinstance(per_page, bool) or not 1 <= per_page <= 250:
             raise DataError("CoinGecko page size is invalid")
-    query = urlencode(sorted(params.items())).replace("%2C", ",")
+    encoded_params = [
+        (key, "true" if value is True else "false" if value is False else value)
+        for key, value in sorted(params.items())
+    ]
+    query = urlencode(encoded_params).replace("%2C", ",")
     url = f"https://api.coingecko.com/api/v3{path}" + (f"?{query}" if query else "")
     return Request(
         url,

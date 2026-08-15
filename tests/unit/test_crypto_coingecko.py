@@ -28,6 +28,13 @@ def test_demo_request_uses_header_and_closed_bounded_query() -> None:
     with pytest.raises(DataError, match="unsupported CoinGecko"):
         coingecko_demo_request("markets", {"x_cg_demo_api_key": "leak"}, api_key="secret")
 
+    catalog = coingecko_demo_request("asset_catalog", {"include_platform": True}, api_key="secret")
+    detail = coingecko_demo_request(
+        "coin_detail", {"market_data": False}, api_key="secret", coin_id="bitcoin"
+    )
+    assert catalog.full_url.endswith("?include_platform=true")
+    assert detail.full_url.endswith("?market_data=false")
+
 
 def test_market_universe_preserves_reference_units_and_nulls() -> None:
     payload = json.dumps(
