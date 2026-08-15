@@ -278,9 +278,11 @@ def build_cross_provider_asset_master(
 
     matches: dict[tuple[str, str], list[str]] = {}
     for row in coingecko_catalog.iter_rows(named=True):
-        network = canonical_network("coingecko", str(row["network"]))
+        coingecko_network = _NETWORKS.get(("coingecko", str(row["network"]).strip().lower()))
+        if coingecko_network is None:
+            continue
         contract = str(row["contract_address"]).strip().lower()
-        key = (network, contract)
+        key = (coingecko_network, contract)
         if key in tracked:
             matches.setdefault(key, []).append(str(row["coingecko_id"]))
     identities = list(AssetMaster.with_reviewed_native_assets().identities)

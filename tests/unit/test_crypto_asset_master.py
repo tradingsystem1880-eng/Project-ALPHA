@@ -142,6 +142,41 @@ def test_cross_provider_master_requires_exact_network_and_contract_identity() ->
     assert changed_sources.version != master.version
 
 
+def test_cross_provider_master_ignores_unreviewed_coingecko_networks() -> None:
+    observed_at = datetime(2026, 8, 15, tzinfo=UTC)
+    coingecko = pl.DataFrame(
+        {
+            "coingecko_id": ["usd-coin", "unreviewed-token"],
+            "network": ["ethereum", "unreviewed-chain"],
+            "contract_address": ["0xUSDC", "unknown-contract"],
+        }
+    )
+    pools = pl.DataFrame(
+        {
+            "network": ["eth"],
+            "base_token_address": ["0xUSDC"],
+            "quote_token_address": ["0xWETH"],
+        }
+    )
+
+    master = build_cross_provider_asset_master(
+        coingecko_catalog=coingecko,
+        geckoterminal_pools=(pools,),
+        observed_at=observed_at,
+    )
+
+    assert (
+        master.resolve_contract(
+            network="ethereum", contract_address="0xusdc", as_of=observed_at
+        ).coingecko_id
+        == "usd-coin"
+    )
+    with pytest.raises(DataError, match="unavailable"):
+        master.resolve_contract(
+            network="unreviewed-chain", contract_address="unknown-contract", as_of=observed_at
+        )
+
+
 def test_cross_provider_master_rejects_ambiguous_contract_mapping() -> None:
     observed_at = datetime(2026, 8, 15, tzinfo=UTC)
     coingecko = pl.DataFrame(
