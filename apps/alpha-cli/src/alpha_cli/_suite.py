@@ -575,6 +575,122 @@ def _grid_steps(
     return step, combinations
 
 
+_CANDIDATE_SIMPLE_ACTIONS: Final[dict[SuiteAction, tuple[tuple[str, str, str], ...]]] = {
+    "baseline": (
+        ("baseline", "Sandbox two-leg baseline", "two_leg_return_replay_no_order_authority"),
+    ),
+    "inner_oos": (
+        ("inner_oos", "Ordered inner OOS event groups", "ordered_last_20_percent_event_groups"),
+    ),
+    "three_null_families": (
+        (
+            "null_bootstrap",
+            "Sign-randomization headline null",
+            "candidate_return_stream_null_no_majority_vote",
+        ),
+        (
+            "null_student_t",
+            "Student-t sensitivity null",
+            "candidate_return_stream_null_no_majority_vote",
+        ),
+        (
+            "null_garch",
+            "Conditional-volatility sensitivity null",
+            "candidate_return_stream_null_no_majority_vote",
+        ),
+    ),
+    "optimize_grid": (
+        (
+            "optimize_cost_sensitivity",
+            "Frozen cost sensitivity",
+            "fixed_20_40_60_bps_no_adaptive_selection",
+        ),
+    ),
+    "portfolio_cross_asset": (
+        (
+            "portfolio_concentration",
+            "Two-leg concentration diagnostic",
+            "single_candidate_two_venue_concentration",
+        ),
+        (
+            "cross_asset_scope",
+            "Registered cross-asset scope check",
+            "completed_not_applicable_no_invented_asset",
+        ),
+    ),
+    "fixed_stress": (
+        (
+            "fixed_stress",
+            "Fixed two-leg stress scenarios",
+            "scenario_sensitivity_separate_from_nulls",
+        ),
+    ),
+    "qlib": (
+        (
+            "qlib_fixture",
+            "Qlib interface contract fixture",
+            "fixture_only_no_external_model_or_promotion_authority",
+        ),
+    ),
+    "kronos": (
+        (
+            "kronos_forecast_fixture",
+            "Disclosed fake forecast fixture",
+            "fake_model_fixture_not_market_oracle",
+        ),
+        (
+            "kronos_eval_fixture",
+            "Disclosed fake rolling evaluation",
+            "fake_model_fixture_not_market_oracle",
+        ),
+    ),
+}
+
+_CANDIDATE_SIMPLE_GOVERNANCE: Final[dict[SuiteAction, dict[str, object]]] = {
+    "baseline": {
+        "deployment_scope": "sandbox_only",
+        "execution_model": "two_leg_return_replay",
+        "places_orders": False,
+        "paper_eligible": False,
+    },
+    "three_null_families": {"aggregation": "no_majority_vote"},
+    "optimize_grid": {"optimization_authority": "registered_40_bps_cost_remains_immutable"},
+    "fixed_stress": {"separate_from_nulls": True},
+    "qlib": {"model_role": "contract_fixture_not_predictive_evidence"},
+    "kronos": {"kronos_role": "disclosed_fake_fixture_not_market_oracle"},
+}
+
+
+def _candidate_step(
+    *,
+    snapshot: str,
+    research_contract_id: str,
+    analysis: str,
+    label: str,
+    evidence_role: str,
+    cutoff: str,
+    public_cutoff: str,
+) -> SuiteStep:
+    argv = (
+        "strategy-candidate",
+        "run",
+        snapshot,
+        "--research-contract-id",
+        research_contract_id,
+        "--analysis",
+        analysis,
+        "--as-of",
+        cutoff,
+    )
+    return SuiteStep(
+        label,
+        argv,
+        _cutoff_preview(argv, cutoff=cutoff, marker=public_cutoff),
+        evidence_role,
+        ((cutoff, public_cutoff),),
+    )
+
+
 def build_suite_plan(
     store: ControlStore,
     project_id: str,
@@ -729,86 +845,27 @@ def build_suite_plan(
 
     args: tuple[str, ...]
     preview: tuple[str, ...]
-    if hedged_basis and action == "baseline":
-        args = (
-            "strategy-candidate",
-            "run",
-            snapshot,
-            "--research-contract-id",
-            str(research_contract_id),
-            "--analysis",
-            "baseline",
-            "--as-of",
-            cutoff_value,
-        )
-        steps.append(
-            SuiteStep(
-                "Sandbox two-leg baseline",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "two_leg_return_replay_no_order_authority",
-                ((cutoff_value, public_cutoff),),
+    if hedged_basis and action in _CANDIDATE_SIMPLE_ACTIONS:
+        specifications = _CANDIDATE_SIMPLE_ACTIONS[action]
+        steps.extend(
+            _candidate_step(
+                snapshot=snapshot,
+                research_contract_id=str(research_contract_id),
+                analysis=analysis,
+                label=label,
+                evidence_role=evidence_role,
+                cutoff=cutoff_value,
+                public_cutoff=public_cutoff,
             )
+            for analysis, label, evidence_role in specifications
         )
-        governance.update(
-            {
-                "deployment_scope": "sandbox_only",
-                "execution_model": "two_leg_return_replay",
-                "places_orders": False,
-                "paper_eligible": False,
-            }
+        governance.update(_CANDIDATE_SIMPLE_GOVERNANCE.get(action, {}))
+        workload = _workload(
+            action,
+            commands=len(specifications),
+            canonical_runs=len(specifications),
+            **({"grid_configurations": 3} if action == "optimize_grid" else {}),
         )
-        workload = _workload(action, commands=1, canonical_runs=1)
-    elif hedged_basis and action == "inner_oos":
-        args = (
-            "strategy-candidate",
-            "run",
-            snapshot,
-            "--research-contract-id",
-            str(research_contract_id),
-            "--analysis",
-            "inner_oos",
-            "--as-of",
-            cutoff_value,
-        )
-        steps.append(
-            SuiteStep(
-                "Ordered inner OOS event groups",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "ordered_last_20_percent_event_groups",
-                ((cutoff_value, public_cutoff),),
-            )
-        )
-        workload = _workload(action, commands=1, canonical_runs=1)
-    elif hedged_basis and action == "three_null_families":
-        for analysis, label in (
-            ("null_bootstrap", "Sign-randomization headline null"),
-            ("null_student_t", "Student-t sensitivity null"),
-            ("null_garch", "Conditional-volatility sensitivity null"),
-        ):
-            args = (
-                "strategy-candidate",
-                "run",
-                snapshot,
-                "--research-contract-id",
-                str(research_contract_id),
-                "--analysis",
-                analysis,
-                "--as-of",
-                cutoff_value,
-            )
-            steps.append(
-                SuiteStep(
-                    label,
-                    args,
-                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                    "candidate_return_stream_null_no_majority_vote",
-                    ((cutoff_value, public_cutoff),),
-                )
-            )
-        governance["aggregation"] = "no_majority_vote"
-        workload = _workload(action, commands=3, canonical_runs=3)
     elif hedged_basis and action == "monte_carlo":
         source = _latest_run_for_command(
             project,
@@ -861,136 +918,6 @@ def build_suite_plan(
                 "kronos_role": "disclosed_fake_fixture_not_market_oracle",
             }
         )
-        workload = _workload(action, commands=2, canonical_runs=2)
-    elif hedged_basis and action == "optimize_grid":
-        args = (
-            "strategy-candidate",
-            "run",
-            snapshot,
-            "--research-contract-id",
-            str(research_contract_id),
-            "--analysis",
-            "optimize_cost_sensitivity",
-            "--as-of",
-            cutoff_value,
-        )
-        steps.append(
-            SuiteStep(
-                "Frozen cost sensitivity",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "fixed_20_40_60_bps_no_adaptive_selection",
-                ((cutoff_value, public_cutoff),),
-            )
-        )
-        governance["optimization_authority"] = "registered_40_bps_cost_remains_immutable"
-        workload = _workload(action, commands=1, canonical_runs=1, grid_configurations=3)
-    elif hedged_basis and action == "portfolio_cross_asset":
-        for analysis, label, role in (
-            (
-                "portfolio_concentration",
-                "Two-leg concentration diagnostic",
-                "single_candidate_two_venue_concentration",
-            ),
-            (
-                "cross_asset_scope",
-                "Registered cross-asset scope check",
-                "completed_not_applicable_no_invented_asset",
-            ),
-        ):
-            args = (
-                "strategy-candidate",
-                "run",
-                snapshot,
-                "--research-contract-id",
-                str(research_contract_id),
-                "--analysis",
-                analysis,
-                "--as-of",
-                cutoff_value,
-            )
-            steps.append(
-                SuiteStep(
-                    label,
-                    args,
-                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                    role,
-                    ((cutoff_value, public_cutoff),),
-                )
-            )
-        workload = _workload(action, commands=2, canonical_runs=2)
-    elif hedged_basis and action == "fixed_stress":
-        args = (
-            "strategy-candidate",
-            "run",
-            snapshot,
-            "--research-contract-id",
-            str(research_contract_id),
-            "--analysis",
-            "fixed_stress",
-            "--as-of",
-            cutoff_value,
-        )
-        steps.append(
-            SuiteStep(
-                "Fixed two-leg stress scenarios",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "scenario_sensitivity_separate_from_nulls",
-                ((cutoff_value, public_cutoff),),
-            )
-        )
-        governance["separate_from_nulls"] = True
-        workload = _workload(action, commands=1, canonical_runs=1)
-    elif hedged_basis and action == "qlib":
-        args = (
-            "strategy-candidate",
-            "run",
-            snapshot,
-            "--research-contract-id",
-            str(research_contract_id),
-            "--analysis",
-            "qlib_fixture",
-            "--as-of",
-            cutoff_value,
-        )
-        steps.append(
-            SuiteStep(
-                "Qlib interface contract fixture",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "fixture_only_no_external_model_or_promotion_authority",
-                ((cutoff_value, public_cutoff),),
-            )
-        )
-        governance["model_role"] = "contract_fixture_not_predictive_evidence"
-        workload = _workload(action, commands=1, canonical_runs=1)
-    elif hedged_basis and action == "kronos":
-        for analysis, label in (
-            ("kronos_forecast_fixture", "Disclosed fake forecast fixture"),
-            ("kronos_eval_fixture", "Disclosed fake rolling evaluation"),
-        ):
-            args = (
-                "strategy-candidate",
-                "run",
-                snapshot,
-                "--research-contract-id",
-                str(research_contract_id),
-                "--analysis",
-                analysis,
-                "--as-of",
-                cutoff_value,
-            )
-            steps.append(
-                SuiteStep(
-                    label,
-                    args,
-                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                    "fake_model_fixture_not_market_oracle",
-                    ((cutoff_value, public_cutoff),),
-                )
-            )
-        governance["kronos_role"] = "disclosed_fake_fixture_not_market_oracle"
         workload = _workload(action, commands=2, canonical_runs=2)
     elif hedged_basis and action == "holdout_reveal":
         if holdout is None:
