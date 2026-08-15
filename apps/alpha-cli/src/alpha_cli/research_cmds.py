@@ -26,8 +26,15 @@ from alpha_cli.control_store import (
     ResearchResponsibility,
     research_case_revision,
 )
+from alpha_cli.research_crypto_binding import (
+    CryptoEmpiricalDataset,
+    load_crypto_empirical_d1,
+    load_crypto_empirical_dataset,
+)
 from alpha_cli.research_crypto_runtime import (
     crypto_d0_execution_fingerprint,
+    crypto_d1_execution_fingerprint,
+    run_crypto_crowding_deep,
     run_crypto_crowding_pilot,
     validate_crypto_d0_contract,
 )
@@ -84,6 +91,12 @@ from alpha_research import (
 )
 
 _LITERATURE_DOCUMENT_HOSTS: Final = frozenset({"arxiv.org", "export.arxiv.org"})
+
+# Stable private monkeypatch seams retained while the implementation lives in the shared binding
+# module used by both command orchestration and admission-time verification.
+_CryptoEmpiricalDataset = CryptoEmpiricalDataset
+_crypto_empirical_dataset = load_crypto_empirical_dataset
+_crypto_empirical_d1 = load_crypto_empirical_d1
 
 
 def _apply_literature_worker_limits() -> None:
@@ -463,83 +476,12 @@ class _EmpiricalDataset(NamedTuple):
     bars: EqualDurationResearchBars
 
 
-class _CryptoEmpiricalDataset(NamedTuple):
-    """One exact qualified crypto snapshot resolved to causal research observations."""
-
-    ref: dict[str, object]
-    snapshot_id: str
-    snapshot_hash: str
-    operator_fingerprint: str
-    asset_master_version: str
-    qualification_versions: tuple[str, ...]
-    observations: tuple[CryptoCrowdingObservationV1, ...]
-
-
 def _empirical_dataset(store: ControlStore, ref_id: str) -> _EmpiricalDataset:
     """Load a registered ``rd_`` dataset fail-closed through the Gate-4 daily lane."""
 
     ref = store.get_research_dataset(ref_id)
     bars = load_registered_research_bars(AlphaSettings().data_dir, ref=ref)
     return _EmpiricalDataset(ref=ref, bars=bars)
-
-
-def _crypto_empirical_dataset(store: ControlStore, ref_id: str) -> _CryptoEmpiricalDataset:
-    """Reverify one registered CryptoSnapshotV1 and compose its exact causal observations."""
-
-    ref = store.get_research_dataset(ref_id)
-    origin = ref.get("origin")
-    if (
-        ref.get("dataset_kind") != "snapshot"
-        or ref.get("instrument") != "BTC"
-        or ref.get("provider") != "crypto-data-house"
-        or not isinstance(origin, Mapping)
-        or origin.get("snapshot_schema") != "CryptoSnapshotV1"
-    ):
-        raise DataError("crypto crowding requires one registered CryptoSnapshotV1 BTC dataset")
-    snapshot_id = origin.get("snapshot_id")
-    snapshot_hash = origin.get("manifest_sha256")
-
-    def is_sha256(value: object) -> bool:
-        return (
-            isinstance(value, str)
-            and len(value) == 64
-            and all(character in "0123456789abcdef" for character in value)
-        )
-
-    if not is_sha256(snapshot_id) or not is_sha256(snapshot_hash):
-        raise DataError("crypto crowding registered snapshot binding is malformed")
-    assert isinstance(snapshot_id, str) and isinstance(snapshot_hash, str)
-    from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415
-        crypto_crowding_observations,
-        crypto_crowding_snapshot_compatibility,
-    )
-
-    projection = crypto_crowding_snapshot_compatibility(snapshot_id)
-    observations = crypto_crowding_observations(snapshot_id)
-    operator_fingerprint = projection.get("operator_fingerprint")
-    asset_master_version = projection.get("asset_master_version")
-    versions = projection.get("qualification_versions")
-    if (
-        projection.get("eligible") is not True
-        or projection.get("bundle_id") != "bybit_btcusdt_crowding_reversal_v1"
-        or not is_sha256(operator_fingerprint)
-        or not isinstance(asset_master_version, str)
-        or not isinstance(versions, list)
-        or not versions
-        or any(not isinstance(value, str) or not value for value in versions)
-        or not observations
-    ):
-        raise DataError("crypto crowding snapshot compatibility projection is incomplete")
-    assert isinstance(operator_fingerprint, str)
-    return _CryptoEmpiricalDataset(
-        ref=ref,
-        snapshot_id=snapshot_id,
-        snapshot_hash=snapshot_hash,
-        operator_fingerprint=operator_fingerprint,
-        asset_master_version=asset_master_version,
-        qualification_versions=tuple(cast(list[str], versions)),
-        observations=observations,
-    )
 
 
 def _empirical_d1_bars(
@@ -588,7 +530,7 @@ def _approval_payload(
     *,
     source_pack_id: str,
     d2_relation_to_prior: str | None = None,
-    empirical_dataset: _EmpiricalDataset | _CryptoEmpiricalDataset | None = None,
+    empirical_dataset: _EmpiricalDataset | CryptoEmpiricalDataset | None = None,
 ) -> dict[str, object]:
     result = dict(draft)
     primary_claim = result.get("primary_claim")
@@ -666,7 +608,7 @@ def _approval_payload(
         "empirical_confirmation_authorized": False,
     }
     empirical_section: dict[str, object] | None = None
-    if isinstance(empirical_dataset, _CryptoEmpiricalDataset):
+    if isinstance(empirical_dataset, CryptoEmpiricalDataset):
         ref = empirical_dataset.ref
         eligible_groups = tuple(
             observation.funding_time.isoformat() for observation in empirical_dataset.observations
@@ -846,6 +788,14 @@ def _registered_d0_execution_fingerprint(payload: Mapping[str, object]) -> str:
         crypto_d0_execution_fingerprint(payload)
         if _is_crypto_crowding_contract(payload)
         else d0_execution_fingerprint(payload)
+    )
+
+
+def _registered_d1_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    return (
+        crypto_d1_execution_fingerprint(payload)
+        if _is_crypto_crowding_contract(payload)
+        else d1_execution_fingerprint(payload)
     )
 
 
@@ -1453,7 +1403,7 @@ def draft(
             raise DataError("all material research questions must be resolved in the one batch")
         if answer_bundle is not None:
             preview["answer_bundle_id"] = answer_bundle
-        binding: _EmpiricalDataset | _CryptoEmpiricalDataset | None
+        binding: _EmpiricalDataset | CryptoEmpiricalDataset | None
         if dataset is None:
             binding = None
         elif answer_bundle == "bybit_btcusdt_crowding_reversal_v1":
@@ -2139,10 +2089,16 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
         )
         boundary_kind = None if not isinstance(authority, Mapping) else authority.get("kind")
         sealed_boundary: ResearchD2Boundary | None = None
+        crypto_boundary: ResearchD2BoundaryV2 | None = None
+        crypto_observations: tuple[CryptoCrowdingObservationV1, ...] | None = None
+        bars: EqualDurationResearchBars | None = None
         if boundary_kind == "synthetic_acceptance_fixture":
             bars = registered_synthetic_d1_bars()
         elif boundary_kind == "empirical_dataset":
-            bars, sealed_boundary = _empirical_d1_bars(store, payload)
+            if _is_crypto_crowding_contract(payload):
+                crypto_observations, crypto_boundary = _crypto_empirical_d1(store, payload)
+            else:
+                bars, sealed_boundary = _empirical_d1_bars(store, payload)
         else:
             raise DataError("deep research requires a registered boundary authority kind")
         if execution_state == "idle":
@@ -2190,15 +2146,28 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
             )
 
         try:
-            manifest = run_deep_research(
-                AlphaSettings().data_dir,
-                project_id=project_id,
-                contract_id=contract_id,
-                contract=payload,
-                bars=bars,
-                boundary=sealed_boundary,
-                on_checkpoint=on_checkpoint,
-            )
+            if crypto_observations is not None and crypto_boundary is not None:
+                manifest = run_crypto_crowding_deep(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    observations=crypto_observations,
+                    boundary=crypto_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            elif bars is not None:
+                manifest = run_deep_research(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    bars=bars,
+                    boundary=sealed_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            else:  # pragma: no cover - authority dispatch above is exhaustive.
+                raise DataError("deep research has no executable registered dataset")
         except Exception as run_error:
             failure = _checkpoint_failed_research_run(
                 store,
@@ -2206,7 +2175,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 contract_id,
                 run_error=run_error,
                 kind="d1-deep-research",
-                config_fingerprint=d1_execution_fingerprint(payload),
+                config_fingerprint=_registered_d1_execution_fingerprint(payload),
                 attempt_number=attempt_number,
                 evidence_zone="D1",
                 finding="The D1 deep run failed; no empirical conclusion was produced.",

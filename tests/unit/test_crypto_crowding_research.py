@@ -165,10 +165,31 @@ def test_crypto_crowding_evaluator_requires_complete_history_and_d2_sample() -> 
 
     d2 = evaluate_crypto_crowding(_observations(), evidence_zone="D2")
     assert d2.status == "INCONCLUSIVE"
-    assert d2.blockers == (
-        "minimum_confirmation_events:1<10",
-        "minimum_effective_events:1<50",
+    assert d2.blockers == ("minimum_confirmation_events:1<10",)
+
+
+def test_crypto_crowding_evaluator_reads_history_but_admits_only_frozen_zone() -> None:
+    rows = _observations(event_indices={380, 410})
+
+    result = evaluate_crypto_crowding(
+        rows,
+        evidence_zone="D2",
+        admission_start=400,
+        admission_stop=420,
     )
+
+    assert [event.observation_index for event in result.primary_events] == [410]
+    assert result.blockers == ("minimum_confirmation_events:1<10",)
+    assert result.long_short_diagnostic is not None
+    assert result.long_short_diagnostic.event_count == 1
+
+    with pytest.raises(DataError, match="admission window"):
+        evaluate_crypto_crowding(
+            rows,
+            evidence_zone="D2",
+            admission_start=421,
+            admission_stop=420,
+        )
 
 
 def test_crypto_crowding_evaluator_rejects_noncausal_outcome_boundary() -> None:

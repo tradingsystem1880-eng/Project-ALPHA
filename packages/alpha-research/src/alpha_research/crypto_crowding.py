@@ -507,11 +507,12 @@ def _events_for_percentile(
     *,
     percentile: float,
     plan: CryptoCrowdingResearchPlanV1,
+    eligible: range,
 ) -> tuple[CryptoCrowdingEventV1, ...]:
     by_time = {item.funding_time: item for item in observations}
     accepted: list[CryptoCrowdingEventV1] = []
     last_exit: datetime | None = None
-    for index in range(plan.history_observations, len(observations)):
+    for index in eligible:
         current = observations[index]
         history = observations[index - plan.history_observations : index]
         threshold = _percentile(tuple(item.funding_rate for item in history), percentile)
@@ -629,9 +630,9 @@ def _matched_estimate(
     events: tuple[CryptoCrowdingEventV1, ...],
     *,
     plan: CryptoCrowdingResearchPlanV1,
+    eligible: range,
 ) -> CryptoCrowdingEstimateV1 | None:
     event_indices = {item.observation_index for item in events}
-    eligible = range(plan.history_observations, len(observations))
     event_rows = tuple(
         _study_observation(observations, index=index, is_event=True, plan=plan)
         for index in sorted(event_indices)
@@ -646,7 +647,7 @@ def _matched_estimate(
     matched = match_event_controls(
         (*event_rows, *control_rows),
         covariate_names=plan.matching_covariates,
-        as_of=observations[-1].exit_available_at,
+        as_of=observations[eligible.stop - 1].exit_available_at,
     )
     if len(matched.pairs) < 2 or matched.effective_event_count < 2:
         return None
@@ -671,13 +672,25 @@ def _sensitivity_results(
     observations: tuple[CryptoCrowdingObservationV1, ...],
     *,
     plan: CryptoCrowdingResearchPlanV1,
+    eligible: range,
 ) -> tuple[CryptoCrowdingSensitivityV1, ...]:
     rows: list[
         tuple[float, tuple[CryptoCrowdingEventV1, ...], CryptoCrowdingEstimateV1 | None]
     ] = []
     for percentile in plan.sensitivity_percentiles:
-        events = _events_for_percentile(observations, percentile=percentile, plan=plan)
-        rows.append((percentile, events, _matched_estimate(observations, events, plan=plan)))
+        events = _events_for_percentile(
+            observations,
+            percentile=percentile,
+            plan=plan,
+            eligible=eligible,
+        )
+        rows.append(
+            (
+                percentile,
+                events,
+                _matched_estimate(observations, events, plan=plan, eligible=eligible),
+            )
+        )
     estimates = [estimate for _, _, estimate in rows]
     if any(estimate is None for estimate in estimates):
         return tuple(
@@ -712,13 +725,14 @@ def _shifted_date_placebo(
     events: tuple[CryptoCrowdingEventV1, ...],
     *,
     plan: CryptoCrowdingResearchPlanV1,
+    eligible: range,
 ) -> CryptoCrowdingShiftedPlaceboV1 | None:
     if not events:
         return None
     outcomes = {
         item.funding_time: (item.exit_mark / item.entry_mark - 1)
         - (item.exit_index / item.entry_index - 1)
-        for item in observations
+        for item in observations[eligible.start : eligible.stop]
     }
     observed = sum(item.mark_minus_index_return for item in events) / len(events)
     means: list[float] = []
@@ -748,12 +762,12 @@ def _diagnostics(
     events: tuple[CryptoCrowdingEventV1, ...],
     *,
     plan: CryptoCrowdingResearchPlanV1,
+    eligible: range,
 ) -> tuple[
     CryptoCrowdingLongShortDiagnosticV1 | None,
     tuple[CryptoCrowdingRegimeDiagnosticV1, ...],
 ]:
     event_indices = {item.observation_index for item in events}
-    eligible = range(plan.history_observations, len(observations))
     event_ratios = [
         ratio
         for index in event_indices
@@ -794,6 +808,8 @@ def evaluate_crypto_crowding(
     observations: tuple[CryptoCrowdingObservationV1, ...],
     *,
     evidence_zone: CryptoEvidenceZone,
+    admission_start: int | None = None,
+    admission_stop: int | None = None,
 ) -> CryptoCrowdingEvaluationV1:
     """Evaluate only the registered causal event family; never read D3 observations."""
     if evidence_zone not in {"D1", "D2"}:
@@ -807,22 +823,47 @@ def evaluate_crypto_crowding(
         raise DataError("crypto crowding funding observations must be strictly increasing")
 
     plan = registered_crypto_crowding_plan()
-    primary = _events_for_percentile(observations, percentile=plan.primary_percentile, plan=plan)
-    primary_estimate = _matched_estimate(observations, primary, plan=plan)
-    sensitivity_results = _sensitivity_results(observations, plan=plan)
+    requested_start = 0 if admission_start is None else admission_start
+    requested_stop = len(observations) if admission_stop is None else admission_stop
+    if (
+        isinstance(requested_start, bool)
+        or not isinstance(requested_start, int)
+        or isinstance(requested_stop, bool)
+        or not isinstance(requested_stop, int)
+        or requested_start < 0
+        or requested_stop > len(observations)
+        or requested_start >= requested_stop
+    ):
+        raise DataError("crypto crowding admission window is invalid")
+    eligible = range(max(plan.history_observations, requested_start), requested_stop)
+    primary = _events_for_percentile(
+        observations,
+        percentile=plan.primary_percentile,
+        plan=plan,
+        eligible=eligible,
+    )
+    primary_estimate = _matched_estimate(
+        observations,
+        primary,
+        plan=plan,
+        eligible=eligible,
+    )
+    sensitivity_results = _sensitivity_results(observations, plan=plan, eligible=eligible)
     sensitivities = tuple((item.percentile, item.event_count) for item in sensitivity_results)
-    blockers = {f"minimum_effective_events:{len(primary)}<{plan.minimum_effective_events}"}
-    if len(primary) >= plan.minimum_effective_events:
+    required_events = (
+        plan.minimum_confirmation_events if evidence_zone == "D2" else plan.minimum_effective_events
+    )
+    blocker_name = (
+        "minimum_confirmation_events" if evidence_zone == "D2" else "minimum_effective_events"
+    )
+    blockers = {f"{blocker_name}:{len(primary)}<{required_events}"}
+    if len(primary) >= required_events:
         blockers.clear()
         if primary_estimate is None:
             blockers.add("matched_controls_unavailable")
         elif primary_estimate.low_cluster_count:
             blockers.add(f"minimum_week_clusters:{primary_estimate.effective_week_clusters}<10")
-    if evidence_zone == "D2" and len(primary) < plan.minimum_confirmation_events:
-        blockers.add(
-            f"minimum_confirmation_events:{len(primary)}<{plan.minimum_confirmation_events}"
-        )
-    long_short, regimes = _diagnostics(observations, primary, plan=plan)
+    long_short, regimes = _diagnostics(observations, primary, plan=plan, eligible=eligible)
     ordered_blockers = tuple(sorted(blockers))
     return CryptoCrowdingEvaluationV1(
         evidence_zone=evidence_zone,
@@ -833,7 +874,12 @@ def evaluate_crypto_crowding(
         blockers=ordered_blockers,
         primary_estimate=primary_estimate,
         sensitivity_results=sensitivity_results,
-        shifted_date_placebo=_shifted_date_placebo(observations, primary, plan=plan),
+        shifted_date_placebo=_shifted_date_placebo(
+            observations,
+            primary,
+            plan=plan,
+            eligible=eligible,
+        ),
         long_short_diagnostic=long_short,
         regime_diagnostics=regimes,
     )
