@@ -825,7 +825,7 @@ def build_suite_plan(
             (
                 "monte_carlo_classical",
                 "Classical event-return Monte Carlo",
-                "iid_event_return_bootstrap",
+                "iid_regime_student_t_no_majority_vote",
             ),
             (
                 "monte_carlo_kronos_fixture",
