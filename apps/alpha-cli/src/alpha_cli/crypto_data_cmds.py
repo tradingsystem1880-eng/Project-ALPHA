@@ -108,11 +108,14 @@ from alpha_data.crypto.providers.geckoterminal import (
 )
 from alpha_data.crypto.quality import compare_market_observations
 from alpha_data.crypto.research import (
+    CryptoDatasetRequirementV1,
     CryptoResearchEligibilityV1,
     CryptoResearchPurpose,
+    assess_crypto_dataset_requirements,
     assess_crypto_snapshot,
 )
 from alpha_data.crypto.storage import CryptoBulkStore
+from alpha_research import CryptoCrowdingResearchPlanV1, registered_crypto_crowding_plan
 
 crypto_data_app = typer.Typer(
     help="Provider-native crypto acquisition, qualification, snapshots, and storage."
@@ -649,6 +652,119 @@ def _verified_snapshot(
         purpose=purpose,
     )
     return snapshot, reports, projection
+
+
+def _crypto_crowding_requirements(
+    plan: CryptoCrowdingResearchPlanV1,
+) -> tuple[CryptoDatasetRequirementV1, ...]:
+    semantic_fields = {
+        "funding": ("funding_interval", "dimensionless_rate", "provider_event_utc"),
+        "open_interest": (
+            "1h",
+            "base_coin_if_linear_quote_coin_if_inverse",
+            "provider_event_utc",
+        ),
+        "premium_bars": ("1h", "quote_price", "provider_event_utc"),
+        "mark_bars": ("1h", "quote_price", "provider_event_utc"),
+        "index_bars": ("1h", "quote_price", "provider_event_utc"),
+        "derivative_bars": ("1h", "quote_price", "provider_event_utc"),
+        "instrument_catalog": (
+            "catalog_snapshot",
+            "provider_native",
+            "fetch_knowledge_utc",
+        ),
+    }
+    requirements: list[CryptoDatasetRequirementV1] = []
+    for family_name in plan.required_families:
+        family = _family(family_name)
+        try:
+            frequency, units, timestamp_convention = semantic_fields[family_name]
+        except KeyError as exc:  # pragma: no cover - closed plan validates its own generation
+            raise DataError("crypto crowding plan contains an unsupported family") from exc
+        catalog = family == "instrument_catalog"
+        requirements.append(
+            CryptoDatasetRequirementV1(
+                family=family,
+                provider=plan.provider,
+                venue=plan.venue.casefold(),
+                market_type=plan.market_type,
+                instrument=plan.market_type if catalog else plan.instrument,
+                base_asset=None if catalog else plan.base_asset,
+                quote_asset=None if catalog else plan.quote_asset,
+                frequency=frequency,
+                units=units,
+                timestamp_convention=timestamp_convention,
+            )
+        )
+    return tuple(requirements)
+
+
+def _snapshot_asset_master(snapshot: CryptoSnapshotV1) -> AssetMaster:
+    return (
+        AssetMaster.with_reviewed_native_assets()
+        if snapshot.asset_master_version == "reviewed-native-v1"
+        else _read_asset_master(snapshot.asset_master_version)
+    )
+
+
+def _verified_crypto_crowding_snapshot(
+    snapshot_id: str,
+) -> tuple[
+    CryptoSnapshotV1,
+    dict[str, CryptoQualityReportV1],
+    CryptoResearchEligibilityV1,
+    CryptoCrowdingResearchPlanV1,
+]:
+    plan = registered_crypto_crowding_plan()
+    snapshot, reports, _ = _verified_snapshot(
+        snapshot_id,
+        required_families=tuple(_family(family) for family in plan.required_families),
+        purpose="research",
+    )
+    projection = assess_crypto_dataset_requirements(
+        snapshot,
+        quality_reports=reports,
+        requirements=_crypto_crowding_requirements(plan),
+        purpose="research",
+    )
+    if not projection.eligible:
+        raise DataError(
+            "crypto snapshot is incompatible with the registered crowding operator: "
+            f"{', '.join(projection.blockers)}"
+        )
+    observed = tuple(
+        value
+        for report in reports.values()
+        for value in (report.observed_start, report.observed_end)
+        if value is not None
+    )
+    if len(observed) != 2 * len(reports):
+        raise DataError("crypto crowding snapshot has an incomplete observed range")
+    master = _snapshot_asset_master(snapshot)
+    for instant in (min(observed), max(observed)):
+        identity = master.resolve_native(network="bitcoin", as_of=instant)
+        if (
+            identity.coingecko_id != "bitcoin"
+            or ("bybit", plan.base_asset) not in identity.provider_symbols
+        ):
+            raise DataError("crypto crowding snapshot asset master does not resolve Bybit BTC")
+    return snapshot, reports, projection, plan
+
+
+def crypto_crowding_snapshot_compatibility(snapshot_id: str) -> dict[str, object]:
+    """Reverify an exact snapshot against the registered BTCUSDT crowding operator."""
+    snapshot, _, projection, plan = _verified_crypto_crowding_snapshot(snapshot_id)
+    return {
+        "snapshot_id": snapshot.snapshot_id,
+        "bundle_id": plan.bundle_id,
+        "operator_fingerprint": plan.operator_fingerprint,
+        "asset_master_version": snapshot.asset_master_version,
+        "qualification_versions": list(snapshot.qualification_versions),
+        "required_families": list(plan.required_families),
+        "qualified_families": list(projection.qualified_families),
+        "eligible": True,
+        "execution_authority": False,
+    }
 
 
 def _integrity_verified_snapshot(snapshot_id: str) -> tuple[CryptoSnapshotV1, bool]:
@@ -4373,4 +4489,29 @@ def snapshot_verify(
     )
 
 
-__all__ = ["crypto_data_app", "crypto_snapshot_registration"]
+@crypto_data_app.command("snapshot-verify-crowding")
+def snapshot_verify_crowding(
+    snapshot_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Verify exact Bybit BTCUSDT crowding-research compatibility without granting authority."""
+    try:
+        projection = crypto_crowding_snapshot_compatibility(snapshot_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        {
+            **projection,
+            "next_action": (
+                "Register this exact snapshot, then bind it through proposal preflight."
+            ),
+        },
+        json_out=json_out,
+    )
+
+
+__all__ = [
+    "crypto_crowding_snapshot_compatibility",
+    "crypto_data_app",
+    "crypto_snapshot_registration",
+]
