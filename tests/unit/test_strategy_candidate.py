@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
 from typer.testing import CliRunner
 
+from alpha_cli import _runner, strategy_candidate_cmds
 from alpha_cli.main import app
 from alpha_cli.strategy_candidate import (
     hedged_basis_paper_preflight,
@@ -50,3 +55,77 @@ def test_hedged_basis_paper_preflight_is_actionably_blocked_without_side_effects
     invoked = CliRunner().invoke(app, ["strategy-candidate", "paper-preflight", "--json"])
     assert invoked.exit_code == 0, invoked.output
     assert "UNSUPPORTED_MULTI_VENUE_PAPER" in invoked.output
+
+    text = CliRunner().invoke(app, ["strategy-candidate", "paper-preflight"])
+    assert text.exit_code == 0
+    assert "no broker connection or order was attempted" in text.output
+
+
+def test_candidate_run_cli_forwards_only_typed_frozen_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(strategy_candidate_cmds, "crypto_hedged_basis_observations", lambda _: ())
+    monkeypatch.setattr(_runner, "verified_snapshot_hash", lambda *_: "e" * 64)
+    captured: dict[str, object] = {}
+
+    def fake_run(data_dir: Path, **kwargs: object) -> dict[str, object]:
+        captured.update({"data_dir": data_dir, **kwargs})
+        return {"run_id": "1234567890abcdef", "command": "candidate_holdout"}
+
+    monkeypatch.setattr(strategy_candidate_cmds, "run_hedged_basis_candidate", fake_run)
+    invoked = CliRunner().invoke(
+        app,
+        [
+            "strategy-candidate",
+            "run",
+            "d" * 64,
+            "--research-contract-id",
+            f"rc_{'f' * 64}",
+            "--analysis",
+            "holdout",
+            "--holdout-start",
+            "2025-01-01",
+            "--holdout-end",
+            "2025-01-31",
+            "--holdout-spec-hash",
+            "1" * 64,
+            "--json",
+        ],
+    )
+
+    assert invoked.exit_code == 0, invoked.output
+    assert json.loads(invoked.output)["run_id"] == "1234567890abcdef"
+    assert captured["data_dir"] == tmp_path
+    assert str(captured["holdout_start"]) == "2025-01-01"
+    assert str(captured["holdout_end"]) == "2025-01-31"
+    assert captured["holdout_spec_hash"] == "1" * 64
+    assert captured["observations"] == ()
+
+    text = CliRunner().invoke(
+        app,
+        [
+            "strategy-candidate",
+            "run",
+            "d" * 64,
+            "--research-contract-id",
+            f"rc_{'f' * 64}",
+        ],
+    )
+    assert text.exit_code == 0
+    assert "SANDBOX ONLY" in text.output
+
+    invalid = CliRunner().invoke(
+        app,
+        [
+            "strategy-candidate",
+            "run",
+            "d" * 64,
+            "--research-contract-id",
+            f"rc_{'f' * 64}",
+            "--holdout-start",
+            "not-a-date",
+        ],
+    )
+    assert invalid.exit_code != 0
+    assert "Invalid value" in invalid.output

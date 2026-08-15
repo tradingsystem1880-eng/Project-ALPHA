@@ -14,9 +14,11 @@ from alpha_cli._suite import (
     StepExecution,
     SuiteAction,
     SuiteStep,
+    _finish_stage,
     _headline_state,
     _monte_carlo_results,
     _monte_carlo_stage_state,
+    _record_optimization_trial_attempts,
     build_suite_plan,
     execute_suite,
     reserve_suite_job,
@@ -364,6 +366,18 @@ def _complete_candidate_stage(
             changes["metadata"] = {"null_model": command.removeprefix("candidate_null_")}
         if command.startswith("candidate_monte_carlo_"):
             changes.update({"status": "clear", "source_run_id": "abcdef0123456789"})
+        if command == "candidate_optim":
+            changes["metadata"] = {
+                "trials": [
+                    {
+                        "trial": index,
+                        "total_round_trip_cost_bps": cost,
+                        "mean_net_return": 0.01 - cost / 10_000,
+                        "selected": cost == 40,
+                    }
+                    for index, cost in enumerate((20, 40, 60))
+                ]
+            }
         _publish_candidate_suite_run(
             tmp_path,
             run_id=run_id,
@@ -1039,6 +1053,32 @@ def test_hedged_basis_paper_preflight_is_a_non_authorizing_blocker(tmp_path: Pat
     assert plan.governance["places_orders"] is False
     assert _headline_state(tmp_path, plan, ()) == "fail"
 
+    calls: list[dict[str, object]] = []
+
+    class PaperStore:
+        def get_project(self, _: str) -> dict[str, object]:
+            return {
+                "stage_states": [
+                    {
+                        "experiment_id": experiment_id,
+                        "stage": "paper",
+                        "state": "running",
+                    }
+                ]
+            }
+
+        def complete_suite_journal_stage(self, *args: object, **kwargs: object) -> None:
+            calls.append({"args": args, **kwargs})
+
+    _finish_stage(
+        cast(ControlStore, PaperStore()),
+        plan,
+        "fail",
+        "unsupported by design",
+        job_id="00000000-0000-4000-8000-000000000001",
+    )
+    assert calls[0]["state"] == "fail"
+
 
 def _publish_candidate_suite_run(
     tmp_path: Path,
@@ -1249,6 +1289,21 @@ def test_candidate_optimization_and_portfolio_plans_keep_fixed_scope(tmp_path: P
         action="optimize_grid",
         stage="optimization",
         commands=("candidate_optim",),
+    )
+    with pytest.raises(DataError, match="exactly one canonical optimization run"):
+        _record_optimization_trial_attempts(
+            store,
+            optimization,
+            data_dir=tmp_path,
+            job_id="00000000-0000-4000-8000-000000000001",
+            run_ids=(),
+        )
+    _record_optimization_trial_attempts(
+        store,
+        optimization,
+        data_dir=tmp_path,
+        job_id="00000000-0000-4000-8000-000000000001",
+        run_ids=(hashlib.sha256(b"candidate_optim:0").hexdigest()[:16],),
     )
 
     portfolio = build_suite_plan(

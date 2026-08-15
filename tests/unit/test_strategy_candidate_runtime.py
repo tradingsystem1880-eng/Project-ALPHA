@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from alpha_cli import strategy_candidate_runtime
 from alpha_cli.strategy_candidate_runtime import (
     run_hedged_basis_candidate,
     validate_hedged_basis_candidate_artifacts,
@@ -254,3 +255,135 @@ def test_candidate_holdout_binds_exact_window_and_hash(tmp_path: Path) -> None:
         observations=observations,
         as_of=None,
     )
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"analysis": "unknown"}, "unsupported hedged basis analysis"),
+        ({"snapshot_id": "bad"}, "exact snapshot identities"),
+        ({"analysis": "monte_carlo_classical"}, "exact source validation run"),
+        ({"analysis": "holdout"}, "exact sealed window"),
+        (
+            {
+                "analysis": "holdout",
+                "holdout_start": datetime(2024, 1, 1, tzinfo=UTC).date(),
+                "holdout_end": datetime(2024, 1, 31, tzinfo=UTC).date(),
+                "holdout_spec_hash": "1" * 64,
+                "as_of": None,
+                "research_cutoff": None,
+            },
+            "no events inside the sealed window",
+        ),
+        (
+            {
+                "as_of": datetime(2024, 1, 1, tzinfo=UTC),
+                "research_cutoff": "2024-01-01",
+            },
+            "no causally available admitted events",
+        ),
+    ],
+)
+def test_candidate_runtime_denials_fail_before_publication(
+    tmp_path: Path, changes: dict[str, object], message: str
+) -> None:
+    kwargs: dict[str, object] = {
+        "snapshot_id": "d" * 64,
+        "snapshot_hash": "e" * 64,
+        "research_contract_id": f"rc_{'f' * 64}",
+        "observations": _observations(),
+        "analysis": "baseline",
+        "research_cutoff": "2025-01-31",
+        "as_of": datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    }
+    kwargs.update(changes)
+
+    with pytest.raises(DataError, match=message):
+        run_hedged_basis_candidate(tmp_path, **kwargs)  # type: ignore[arg-type]
+
+
+def test_candidate_validator_rejects_corrupt_typed_payloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    observations = _observations()
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        analysis="baseline",
+        research_cutoff="2025-01-31",
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )
+    run_dir = tmp_path / "runs" / str(manifest["run_id"])
+    monkeypatch.setattr(strategy_candidate_runtime, "verify_manifest_artifacts", lambda *_: None)
+    evaluation_path = run_dir / "candidate_evaluation.json"
+    analysis_path = run_dir / "candidate_analysis.json"
+    exact_evaluation = evaluation_path.read_text(encoding="utf-8")
+
+    with pytest.raises(DataError, match="not a registered sandbox candidate"):
+        validate_hedged_basis_candidate_artifacts(
+            run_dir,
+            {**manifest, "command": "forged"},
+            observations=observations,
+            as_of=datetime(2025, 2, 1, tzinfo=UTC),
+        )
+    with pytest.raises(DataError, match="does not bind"):
+        validate_hedged_basis_candidate_artifacts(
+            run_dir,
+            {**manifest, "source_fingerprint": "0" * 64},
+            observations=observations,
+            as_of=datetime(2025, 2, 1, tzinfo=UTC),
+        )
+
+    holdout = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        analysis="holdout",
+        holdout_start=datetime(2025, 1, 1, tzinfo=UTC).date(),
+        holdout_end=datetime(2025, 1, 3, tzinfo=UTC).date(),
+        holdout_spec_hash="1" * 64,
+        research_cutoff=None,
+        as_of=None,
+    )
+    holdout_dir = tmp_path / "runs" / str(holdout["run_id"])
+    with pytest.raises(DataError, match="holdout window is invalid"):
+        validate_hedged_basis_candidate_artifacts(
+            holdout_dir,
+            {**holdout, "holdout_start": "bad"},
+            observations=observations,
+            as_of=None,
+        )
+    with pytest.raises(DataError, match="contains no events"):
+        validate_hedged_basis_candidate_artifacts(
+            holdout_dir,
+            {**holdout, "holdout_start": "2024-01-01", "holdout_end": "2024-01-31"},
+            observations=observations,
+            as_of=None,
+        )
+
+    evaluation_path.write_text("not-json", encoding="utf-8")
+    with pytest.raises(DataError, match="evaluation is unreadable"):
+        validate_hedged_basis_candidate_artifacts(
+            run_dir, manifest, observations=observations, as_of=datetime(2025, 2, 1, tzinfo=UTC)
+        )
+    evaluation_path.write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="evaluation fails exact recomputation"):
+        validate_hedged_basis_candidate_artifacts(
+            run_dir, manifest, observations=observations, as_of=datetime(2025, 2, 1, tzinfo=UTC)
+        )
+    evaluation_path.write_text(exact_evaluation, encoding="utf-8")
+    analysis_path.write_text("not-json", encoding="utf-8")
+    with pytest.raises(DataError, match="analysis is unreadable"):
+        validate_hedged_basis_candidate_artifacts(
+            run_dir, manifest, observations=observations, as_of=datetime(2025, 2, 1, tzinfo=UTC)
+        )
+    analysis_path.write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="analysis fails exact recomputation"):
+        validate_hedged_basis_candidate_artifacts(
+            run_dir, manifest, observations=observations, as_of=datetime(2025, 2, 1, tzinfo=UTC)
+        )
