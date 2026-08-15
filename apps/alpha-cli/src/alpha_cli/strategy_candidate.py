@@ -25,7 +25,11 @@ class DevelopmentCandidateV1:
     schema_version: int = 1
 
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        payload = asdict(self)
+        # Contracts are persisted as JSON; emit the canonical JSON shape so a
+        # store round-trip cannot change the registered definition.
+        payload["required_venues"] = list(self.required_venues)
+        return payload
 
 
 def registered_hedged_basis_candidate() -> DevelopmentCandidateV1:

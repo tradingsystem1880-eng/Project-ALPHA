@@ -26,6 +26,10 @@ from typing import Final, Literal, cast
 from alpha_cli._schemas import specs_for
 from alpha_cli.control_store import AttemptStatus, ControlStore, StageState
 from alpha_cli.run_store import RESEARCH_GATE_OVERRIDE_WATERMARK
+from alpha_cli.strategy_candidate import (
+    registered_hedged_basis_candidate,
+    validate_hedged_basis_definition,
+)
 from alpha_core import DataError
 
 type SuiteAction = Literal[
@@ -635,8 +639,17 @@ def build_suite_plan(
     primary = universe[0]
     snapshot = _safe_id(experiment.get("snapshot_id"), "snapshot_id")
     strategy = str(version.get("strategy_name"))
-    specs_for(strategy)  # fail closed before building any argv
     definition = _object(version.get("definition"), "strategy definition")
+    hedged_basis = strategy == registered_hedged_basis_candidate().strategy_name
+    if hedged_basis:
+        validate_hedged_basis_definition(definition)
+        research_contract_id = version.get("research_contract_id")
+        if not isinstance(research_contract_id, str):
+            blockers.append("hedged basis candidate requires its promoted research contract")
+            research_contract_id = "<promoted-research-contract-required>"
+    else:
+        specs_for(strategy)  # fail closed before building any argv
+        research_contract_id = None
     parameter_space = _object(version.get("parameter_space"), "parameter space")
     split = _object(experiment.get("split_policy"), "split policy")
     costs = _object(experiment.get("costs"), "costs")
@@ -676,13 +689,17 @@ def build_suite_plan(
     # spec §15 / ADR-0026: an owner override is the only unlinked path through a governed gate;
     # every strategy run launched under it carries the permanent EXPLORATORY watermark.
     gate_overridden = project.get("research_gate_state") == "overridden"
-    common = _common(
-        symbol=primary,
-        strategy=strategy,
-        snapshot=snapshot,
-        costs=costs,
-        definition=definition,
-        gate_overridden=gate_overridden,
+    common = (
+        []
+        if hedged_basis
+        else _common(
+            symbol=primary,
+            strategy=strategy,
+            snapshot=snapshot,
+            costs=costs,
+            definition=definition,
+            gate_overridden=gate_overridden,
+        )
     )
     cutoff_value = research_cutoff or "<sealed-research-cutoff-required>"
     public_cutoff = cutoff_marker or "<sealed-research-cutoff-required>"
@@ -710,7 +727,61 @@ def build_suite_plan(
             }
         )
 
-    if action == "baseline":
+    args: tuple[str, ...]
+    if hedged_basis and action == "baseline":
+        args = (
+            "strategy-candidate",
+            "run",
+            snapshot,
+            "--research-contract-id",
+            str(research_contract_id),
+            "--analysis",
+            "baseline",
+            "--as-of",
+            cutoff_value,
+        )
+        steps.append(
+            SuiteStep(
+                "Sandbox two-leg baseline",
+                args,
+                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                "two_leg_return_replay_no_order_authority",
+                ((cutoff_value, public_cutoff),),
+            )
+        )
+        governance.update(
+            {
+                "deployment_scope": "sandbox_only",
+                "execution_model": "two_leg_return_replay",
+                "places_orders": False,
+                "paper_eligible": False,
+            }
+        )
+        workload = _workload(action, commands=1, canonical_runs=1)
+    elif hedged_basis and action == "paper_preflight":
+        args = ("strategy-candidate", "paper-preflight", "--json")
+        steps.append(
+            SuiteStep(
+                "Unsupported multi-venue paper boundary",
+                args,
+                args,
+                "blocked_as_designed_no_paper_credit",
+            )
+        )
+        governance.update(
+            {
+                "sandbox": True,
+                "places_orders": False,
+                "owner_only_launch": True,
+                "preflight_outcome": "UNSUPPORTED_MULTI_VENUE_PAPER",
+                "paper_readiness_credit": False,
+            }
+        )
+        workload = _workload(action, commands=1, canonical_runs=0)
+    elif hedged_basis:
+        blockers.append(f"hedged basis candidate analysis {action!r} is not implemented")
+        workload = _workload(action, commands=0, canonical_runs=0)
+    elif action == "baseline":
         args = ("backtest", "run", *research_common)
         steps.append(
             SuiteStep(

@@ -189,6 +189,7 @@ _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
         "forecast_eval",
         *_MONTE_CARLO_COMMANDS,
         "ml_replay",
+        "candidate_baseline",
     }
 )
 _GENERIC_EVIDENCE_RESEARCH_MARKERS: Final = frozenset(
@@ -225,7 +226,7 @@ _SUITE_JOB_KINDS: Final = frozenset(
     }
 )
 _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
-    "baseline": ("baseline", frozenset({"backtest_run"})),
+    "baseline": ("baseline", frozenset({"backtest_run", "candidate_baseline"})),
     "inner_oos": ("oos", frozenset({"backtest_oos"})),
     "three_null_families": ("robustness", frozenset({"validate"})),
     "monte_carlo": (
@@ -8404,6 +8405,31 @@ class ControlStore:
                 expected_hash = verified_snapshot_hash(self._data_dir, expected_snapshot)
                 if manifest.get("snapshot_hash") != expected_hash:
                     raise DataError("suite result snapshot hash does not match the experiment")
+                if manifest.get("command") == "candidate_baseline":
+                    candidate = connection.execute(
+                        """SELECT v.strategy_name, l.contract_id
+                        FROM experiment_specs e
+                        JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+                        LEFT JOIN research_contract_strategy_links l
+                          ON l.project_id = ? AND l.version_id = v.version_id
+                        WHERE e.experiment_id = ?""",
+                        (project_id, experiment_id),
+                    ).fetchone()
+                    inheritance = manifest.get("research_inheritance")
+                    if (
+                        candidate is None
+                        or candidate["strategy_name"] != "hedged_basis_crowding_v1"
+                        or candidate["contract_id"] is None
+                        or not isinstance(inheritance, Mapping)
+                        or inheritance.get("contract_id") != candidate["contract_id"]
+                        or manifest.get("deployment_scope") != "sandbox_only"
+                        or manifest.get("places_orders") is not False
+                        or manifest.get("paper_eligible") is not False
+                    ):
+                        raise DataError(
+                            "candidate suite evidence does not preserve its promoted research "
+                            "inheritance and sandbox boundary"
+                        )
                 if suite_action in {
                     "baseline",
                     "inner_oos",

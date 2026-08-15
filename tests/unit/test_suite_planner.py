@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -20,7 +21,13 @@ from alpha_cli._suite import (
     reserve_suite_job,
 )
 from alpha_cli.control_store import ControlStore, StageState
+from alpha_cli.strategy_candidate import registered_hedged_basis_candidate
 from alpha_core import DataError
+from alpha_data.crypto.contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoSnapshotMemberV1,
+    CryptoSnapshotV1,
+)
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 type TestRun = tuple[str, str, StageState, bool | None, str | None]
@@ -75,6 +82,105 @@ def _experiment(tmp_path: Path, *, seal: bool = True) -> tuple[ControlStore, str
             end_date="2026-06-30",
         )
     return store, project_id, experiment_id
+
+
+def _hedged_basis_experiment(tmp_path: Path) -> tuple[ControlStore, str, str, str, str]:
+    """Build the post-promotion projection without replaying the research program."""
+    dataset = CryptoDatasetIdentityV1(
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        family="funding",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="8h",
+        units="rate",
+        timestamp_convention="funding_time_utc",
+    )
+    snapshot = CryptoSnapshotV1.create(
+        members=(
+            CryptoSnapshotMemberV1(
+                dataset=dataset,
+                artifact_key="normalized/funding/bybit/BTCUSDT.parquet",
+                artifact_sha256="b" * 64,
+            ),
+        ),
+        asset_master_version="asset-master-v1",
+        qualification_versions=("crypto-quality-v1",),
+    )
+    snapshot_id = snapshot.snapshot_id
+    snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    snapshot_path.parent.mkdir(parents=True)
+    snapshot_path.write_text(
+        json.dumps(snapshot.to_dict(), sort_keys=True),
+        encoding="utf-8",
+    )
+    store = ControlStore(tmp_path)
+    project = store.create_project(
+        name="BTC hedged basis",
+        hypothesis="Crowded funding predicts mark underperformance.",
+        falsification_criterion="Reject when sealed confirmation does not clear costs.",
+        at=datetime(2026, 8, 5, 23, 59, tzinfo=UTC),
+    )
+    project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
+    candidate = registered_hedged_basis_candidate()
+    version = store.create_strategy_version(
+        project_id,
+        strategy_name=candidate.strategy_name,
+        source_fingerprint="git:hedged-basis-runtime-v1",
+        definition=candidate.to_dict(),
+        parameter_space={},
+    )
+    experiment = store.create_experiment_spec(
+        project_id,
+        strategy_version_id=str(version["version_id"]),
+        snapshot_id=snapshot_id,
+        universe=["BTCUSDT"],
+        split_policy={"topology": "group_atomic_60_20_20"},
+        costs={"total_round_trip_bps": 40.0},
+        seeds={"master": 7},
+    )
+    experiment_id = str(experiment["experiment_id"])
+    contract_id = f"rc_{'c' * 64}"
+    # This downstream planner fixture needs only the immutable post-promotion link.
+    # Research transition semantics have their own exhaustive acceptance tests.
+    with sqlite3.connect(store._database_path()) as connection:  # noqa: SLF001
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute(
+            "INSERT INTO research_contracts VALUES (?, ?, 'confirmation', NULL, ?, ?, ?, ?)",
+            (
+                contract_id,
+                project_id,
+                "{}",
+                "owner",
+                "human",
+                "2026-01-01T00:00:00Z",
+            ),
+        )
+        connection.execute(
+            "INSERT INTO research_contract_strategy_links VALUES (?, ?, ?, ?)",
+            (
+                project_id,
+                str(version["version_id"]),
+                contract_id,
+                "2026-01-01T00:00:00Z",
+            ),
+        )
+        connection.execute(
+            "INSERT INTO research_contract_experiment_links VALUES (?, ?, ?, ?)",
+            (project_id, experiment_id, contract_id, "2026-01-01T00:00:00Z"),
+        )
+    store.seal_holdout(
+        project_id,
+        experiment_id,
+        actor="owner",
+        reason="reserve the final fixture window",
+        start_date="2026-04-01",
+        end_date="2026-06-30",
+    )
+    return store, project_id, experiment_id, contract_id, snapshot_id
 
 
 def _complete_action(
@@ -834,3 +940,132 @@ def test_unoverridden_gates_never_inject_the_watermark_flag(tmp_path: Path) -> N
         for step in plan.steps:
             assert "--research-gate-override" not in step.argv, (action, step.label)
             assert "--research-gate-override" not in step.preview, (action, step.label)
+
+
+def test_hedged_basis_baseline_uses_only_the_registered_sandbox_runner(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+
+    plan = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+
+    assert plan.ready is True
+    assert len(plan.steps) == 1
+    step = plan.steps[0]
+    assert step.argv[:4] == (
+        "strategy-candidate",
+        "run",
+        snapshot_id,
+        "--research-contract-id",
+    )
+    assert step.argv[4] == contract_id
+    assert step.argv[-4:] == ("--analysis", "baseline", "--as-of", "2026-03-31")
+    assert "2026-03-31" not in step.preview
+    assert plan.governance["deployment_scope"] == "sandbox_only"
+    assert plan.governance["places_orders"] is False
+    assert plan.governance["paper_eligible"] is False
+
+
+def test_hedged_basis_paper_preflight_is_a_non_authorizing_blocker(tmp_path: Path) -> None:
+    store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
+
+    plan = build_suite_plan(store, project_id, experiment_id, "paper_preflight", data_dir=tmp_path)
+
+    assert plan.ready is False
+    assert "holdout stage must be pass or warning" in plan.blockers
+    assert [step.argv for step in plan.steps] == [
+        ("strategy-candidate", "paper-preflight", "--json")
+    ]
+    assert plan.governance["preflight_outcome"] == "UNSUPPORTED_MULTI_VENUE_PAPER"
+    assert plan.governance["paper_readiness_credit"] is False
+    assert plan.governance["places_orders"] is False
+
+
+def _publish_candidate_suite_run(
+    tmp_path: Path,
+    *,
+    run_id: str,
+    snapshot_id: str,
+    contract_id: str,
+    changes: dict[str, object] | None = None,
+) -> None:
+    snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    manifest: dict[str, object] = {
+        "schema_version": 3,
+        "artifact_contract_version": 3,
+        "run_identity_version": 3,
+        "run_id": run_id,
+        "command": "candidate_baseline",
+        "kind": "strategy_candidate",
+        "snapshot_id": snapshot_id,
+        "snapshot_hash": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+        "execution_fingerprint": "a" * 64,
+        "strategy_fingerprint": "b" * 64,
+        "source_fingerprint": "c" * 64,
+        "research_cutoff": "2026-03-31",
+        "research_inheritance": {"contract_id": contract_id},
+        "deployment_scope": "sandbox_only",
+        "places_orders": False,
+        "paper_eligible": False,
+        "artifacts": {},
+    }
+    manifest.update(changes or {})
+    run_dir = tmp_path / "runs" / run_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+def test_candidate_baseline_admission_preserves_research_and_sandbox_boundaries(
+    tmp_path: Path,
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    run_id = "3000000000000001"
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id=run_id,
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+    )
+
+    linked = store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="baseline",
+        stage="baseline",
+        state="pass",
+        run_id=run_id,
+    )
+
+    assert linked["run_id"] == run_id
+    assert linked["state"] == "pass"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"research_inheritance": {"contract_id": f"rc_{'e' * 64}"}},
+        {"deployment_scope": "paper"},
+        {"places_orders": True},
+        {"paper_eligible": True},
+    ],
+)
+def test_candidate_baseline_admission_rejects_forged_authority(
+    tmp_path: Path, changes: dict[str, object]
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    run_id = "3000000000000002"
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id=run_id,
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+        changes=changes,
+    )
+
+    with pytest.raises(DataError, match="sandbox boundary"):
+        store.link_suite_stage_run(
+            project_id,
+            experiment_id,
+            suite_action="baseline",
+            stage="baseline",
+            state="pass",
+            run_id=run_id,
+        )
