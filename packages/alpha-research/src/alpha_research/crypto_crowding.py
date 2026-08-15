@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Final, Literal
 
@@ -236,9 +236,158 @@ class CryptoCrowdingEvaluationV1:
         return len(self.primary_events)
 
 
+@dataclass(frozen=True)
+class CryptoCrowdingD0AcceptanceV1:
+    operator_fingerprint: str
+    fixture_definition_sha256: str
+    planted_event_count: int
+    null_event_count: int
+    confounded_event_count: int
+    confounder_recorded: bool
+    future_poison_rejected: bool
+    missing_required_suppressed: bool
+    correction_lineage_preserved: bool
+    correction_changes_result: bool
+    insufficient_sample_blocker: bool
+    schema: str = "CryptoCrowdingD0AcceptanceV1"
+    schema_version: Literal[1] = 1
+
+    @property
+    def passed(self) -> bool:
+        return (
+            self.planted_event_count == 1
+            and self.null_event_count == 0
+            and self.confounded_event_count == 1
+            and self.confounder_recorded
+            and self.future_poison_rejected
+            and self.missing_required_suppressed
+            and self.correction_lineage_preserved
+            and self.correction_changes_result
+            and self.insufficient_sample_blocker
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "schema_version": self.schema_version,
+            "operator_fingerprint": self.operator_fingerprint,
+            "fixture_definition_sha256": self.fixture_definition_sha256,
+            "planted_event_count": self.planted_event_count,
+            "null_event_count": self.null_event_count,
+            "confounded_event_count": self.confounded_event_count,
+            "confounder_recorded": self.confounder_recorded,
+            "future_poison_rejected": self.future_poison_rejected,
+            "missing_required_suppressed": self.missing_required_suppressed,
+            "correction_lineage_preserved": self.correction_lineage_preserved,
+            "correction_changes_result": self.correction_changes_result,
+            "insufficient_sample_blocker": self.insufficient_sample_blocker,
+            "passed": self.passed,
+            "evidence_zone": "D0",
+            "real_market_evidence": False,
+            "eligible_for_holdout_or_execution": False,
+        }
+
+
 def registered_crypto_crowding_plan() -> CryptoCrowdingResearchPlanV1:
     """Return the one immutable operator generation admitted by ADR-0033."""
     return CryptoCrowdingResearchPlanV1()
+
+
+def _d0_observations(
+    *,
+    event_index: int | None,
+    confounded: bool = False,
+) -> tuple[CryptoCrowdingObservationV1, ...]:
+    start = datetime(2025, 1, 1, tzinfo=UTC)
+    rows: list[CryptoCrowdingObservationV1] = []
+    for index in range(420):
+        funding_time = start + timedelta(hours=8 * index)
+        is_event = index == event_index
+        rows.append(
+            CryptoCrowdingObservationV1(
+                funding_time=funding_time,
+                funding_available_at=funding_time,
+                funding_rate=0.02 if is_event else 0.001 + index * 0.000001,
+                open_interest=120.0 + index + (25.0 if is_event else 0.0),
+                open_interest_available_at=funding_time,
+                premium=0.002 if is_event else -0.001,
+                premium_available_at=funding_time,
+                entry_time=funding_time + timedelta(hours=1),
+                entry_available_at=funding_time + timedelta(hours=1),
+                entry_mark=100.0,
+                entry_index=100.0,
+                exit_time=funding_time + timedelta(hours=8),
+                exit_available_at=funding_time + timedelta(hours=8),
+                exit_mark=99.8 if is_event else 100.0,
+                exit_index=100.0,
+                long_short_ratio=5.0 if is_event and confounded else 1.0,
+                recent_trend=0.01,
+                recent_volatility=0.02,
+                regime="normal",
+            )
+        )
+    return tuple(rows)
+
+
+def execute_crypto_crowding_d0() -> CryptoCrowdingD0AcceptanceV1:
+    """Recompute the closed synthetic acceptance suite; never read market evidence."""
+    plan = registered_crypto_crowding_plan()
+    planted_rows = _d0_observations(event_index=380)
+    planted = evaluate_crypto_crowding(planted_rows, evidence_zone="D1")
+    null = evaluate_crypto_crowding(_d0_observations(event_index=None), evidence_zone="D1")
+    confounded_rows = _d0_observations(event_index=380, confounded=True)
+    confounded = evaluate_crypto_crowding(confounded_rows, evidence_zone="D1")
+
+    future_poison_rejected = False
+    try:
+        replace(
+            planted_rows[380],
+            premium_available_at=planted_rows[380].funding_time + timedelta(hours=1),
+        )
+    except DataError:
+        future_poison_rejected = True
+
+    missing_rows = tuple(row for index, row in enumerate(planted_rows) if index != 377)
+    missing = evaluate_crypto_crowding(missing_rows, evidence_zone="D1")
+    corrected_rows = list(planted_rows)
+    corrected_rows[380] = replace(
+        corrected_rows[380],
+        exit_mark=100.2,
+        correction_lineage=("fixture-correction-v1",),
+    )
+    corrected = evaluate_crypto_crowding(tuple(corrected_rows), evidence_zone="D1")
+    original_event = planted.primary_events[0] if planted.primary_events else None
+    corrected_event = corrected.primary_events[0] if corrected.primary_events else None
+    fixture_definition = {
+        "schema": "CryptoCrowdingD0FixtureV1",
+        "operator_fingerprint": plan.operator_fingerprint,
+        "observation_count": 420,
+        "event_index": 380,
+        "missing_open_interest_index": 377,
+        "confounded_long_short_ratio": 5.0,
+        "corrected_exit_mark": 100.2,
+    }
+    return CryptoCrowdingD0AcceptanceV1(
+        operator_fingerprint=plan.operator_fingerprint,
+        fixture_definition_sha256=hashlib.sha256(_canonical(fixture_definition)).hexdigest(),
+        planted_event_count=planted.primary_event_count,
+        null_event_count=null.primary_event_count,
+        confounded_event_count=confounded.primary_event_count,
+        confounder_recorded=confounded_rows[380].long_short_ratio == 5.0,
+        future_poison_rejected=future_poison_rejected,
+        missing_required_suppressed=missing.primary_event_count == 0,
+        correction_lineage_preserved=(
+            corrected_rows[380].correction_lineage == ("fixture-correction-v1",)
+        ),
+        correction_changes_result=(
+            original_event is not None
+            and corrected_event is not None
+            and original_event.mark_minus_index_return != corrected_event.mark_minus_index_return
+            and original_event.clears_practical_hurdle
+            and not corrected_event.clears_practical_hurdle
+        ),
+        insufficient_sample_blocker=(planted.blockers == ("minimum_effective_events:1<50",)),
+    )
 
 
 def _percentile(values: tuple[float, ...], probability: float) -> float:
@@ -345,10 +494,12 @@ def evaluate_crypto_crowding(
 
 
 __all__ = [
+    "CryptoCrowdingD0AcceptanceV1",
     "CryptoCrowdingEvaluationV1",
     "CryptoCrowdingEventV1",
     "CryptoCrowdingObservationV1",
     "CryptoCrowdingResearchPlanV1",
+    "execute_crypto_crowding_d0",
     "evaluate_crypto_crowding",
     "registered_crypto_crowding_plan",
 ]

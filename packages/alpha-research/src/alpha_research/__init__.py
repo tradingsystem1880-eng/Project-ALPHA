@@ -40,11 +40,13 @@ from alpha_research.confirmation import (
     classify_confirmation,
 )
 from alpha_research.crypto_crowding import (
+    CryptoCrowdingD0AcceptanceV1,
     CryptoCrowdingEvaluationV1,
     CryptoCrowdingEventV1,
     CryptoCrowdingObservationV1,
     CryptoCrowdingResearchPlanV1,
     evaluate_crypto_crowding,
+    execute_crypto_crowding_d0,
     registered_crypto_crowding_plan,
 )
 from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
@@ -127,6 +129,7 @@ __all__ = [
     "ConfirmationEvidence",
     "ConfirmationOutcome",
     "ConfirmationStatus",
+    "CryptoCrowdingD0AcceptanceV1",
     "CryptoCrowdingEvaluationV1",
     "CryptoCrowdingEventV1",
     "CryptoCrowdingObservationV1",
@@ -179,6 +182,7 @@ __all__ = [
     "difference_in_means",
     "derive_market_state",
     "effective_sample_size",
+    "execute_crypto_crowding_d0",
     "evaluate_crypto_crowding",
     "evaluate_event_association",
     "evaluate_matched_association",

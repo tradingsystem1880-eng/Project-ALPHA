@@ -9,6 +9,7 @@ from alpha_core import DataError
 from alpha_research.crypto_crowding import (
     CryptoCrowdingObservationV1,
     evaluate_crypto_crowding,
+    execute_crypto_crowding_d0,
     registered_crypto_crowding_plan,
 )
 
@@ -115,3 +116,22 @@ def test_crypto_crowding_evaluator_rejects_noncausal_outcome_boundary() -> None:
     rows[380] = replace(rows[380], exit_time=rows[380].exit_time + timedelta(hours=1))
     with pytest.raises(DataError, match="next declared funding timestamp"):
         evaluate_crypto_crowding(tuple(rows), evidence_zone="D1")
+
+
+def test_crypto_crowding_d0_recomputes_every_registered_acceptance_scenario() -> None:
+    result = execute_crypto_crowding_d0()
+
+    assert result.schema == "CryptoCrowdingD0AcceptanceV1"
+    assert result.operator_fingerprint == registered_crypto_crowding_plan().operator_fingerprint
+    assert len(result.fixture_definition_sha256) == 64
+    assert result.planted_event_count == 1
+    assert result.null_event_count == 0
+    assert result.confounded_event_count == 1
+    assert result.confounder_recorded is True
+    assert result.future_poison_rejected is True
+    assert result.missing_required_suppressed is True
+    assert result.correction_lineage_preserved is True
+    assert result.correction_changes_result is True
+    assert result.insufficient_sample_blocker is True
+    assert result.passed is True
+    assert result.to_dict()["real_market_evidence"] is False
