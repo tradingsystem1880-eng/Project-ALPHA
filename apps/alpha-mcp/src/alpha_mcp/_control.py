@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import uuid
 from collections.abc import Mapping, Sequence
@@ -815,7 +814,7 @@ def launch_suite(
         "suite reservation",
     )
     plan = _object(reservation.get("plan"), "suite reservation plan")
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    env = _invoke._cli_environment(data_dir)
     try:
         subprocess.Popen(
             [

@@ -682,6 +682,7 @@ def test_mcp_control_validates_bounds_json_and_suite_launch(
         return {"status": "failed"}
 
     monkeypatch.setattr(_mcp_invoke, "run_json", reservation)
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "must-not-reach-suite-child")
 
     def popen_failure(*args: object, **kwargs: object) -> NoReturn:
         del args, kwargs
@@ -704,6 +705,7 @@ def test_mcp_control_validates_bounds_json_and_suite_launch(
     assert cast(list[str], captured["args"])[:3] == ["alpha", "suite", "run"]
     environment = cast(dict[str, str], cast(dict[str, object], captured["kwargs"])["env"])
     assert environment["ALPHA_DATA_DIR"] == str(tmp_path)
+    assert "ALPHA_TIINGO_API_KEY" not in environment
 
 
 def test_ml_process_helpers_parse_sanitize_and_propagate_environment(
