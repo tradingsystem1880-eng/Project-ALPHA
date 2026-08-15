@@ -61,11 +61,17 @@ def macos_volume_uuid(path: Path) -> str:
     """Read a mounted volume UUID without parsing localized human output."""
     try:
         mount_point = _containing_mount_point(path)
+        environment = {
+            name: value
+            for name, value in os.environ.items()
+            if name in {"LANG", "LC_ALL", "LC_CTYPE", "PATH", "TMPDIR", "TZ"}
+        }
         completed = subprocess.run(
             ["diskutil", "info", "-plist", str(mount_point)],
             check=True,
             capture_output=True,
             timeout=10,
+            env=environment,
         )
         raw = plistlib.loads(completed.stdout)
     except (OSError, subprocess.SubprocessError, plistlib.InvalidFileException) as exc:

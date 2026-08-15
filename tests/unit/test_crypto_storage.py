@@ -46,10 +46,15 @@ def test_macos_volume_uuid_queries_containing_mount_point(
     monkeypatch.setattr(
         "alpha_data.crypto.storage.os.path.ismount", lambda path: Path(path) == volume
     )
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "must-not-cross-diskutil-boundary")
     observed: list[list[str]] = []
+    observed_environment: dict[str, str] = {}
 
-    def fake_run(args: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         observed.append(args)
+        environment = kwargs.get("env")
+        assert isinstance(environment, dict)
+        observed_environment.update(environment)
         return subprocess.CompletedProcess(
             args,
             0,
@@ -61,6 +66,7 @@ def test_macos_volume_uuid_queries_containing_mount_point(
 
     assert storage.macos_volume_uuid(nested) == UUID
     assert observed == [["diskutil", "info", "-plist", str(volume)]]
+    assert "ALPHA_COINGECKO_API_KEY" not in observed_environment
 
 
 def _store(tmp_path: Path, *, actual_uuid: str = UUID, free: int = 1_000_000) -> CryptoBulkStore:
