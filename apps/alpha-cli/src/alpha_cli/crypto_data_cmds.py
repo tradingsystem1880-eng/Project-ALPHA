@@ -1630,6 +1630,124 @@ def _fetch_coingecko(
     )
 
 
+def _fetch_geckoterminal(
+    family: CryptoFamily,
+    *,
+    base: str,
+    quote: str,
+    frequency: str,
+    network: str | None,
+    pool_address: str | None,
+    fetched_at: datetime,
+) -> _FetchedAcquisition | _FetchedPagedAcquisition:
+    if network is None:
+        raise DataError("GeckoTerminal acquisition requires --network")
+    base_value = base.strip().upper()
+    quote_value = quote.strip().upper()
+    keys: tuple[str, ...]
+    parser: Callable[[bytes], pl.DataFrame]
+    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None
+    if family == "dex_pools":
+        params: dict[str, str | int | bool] = {"page": 1}
+        parser = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
+        parser_at = partial(_top_pools_parser_at, network=network)
+        observed_column = "fetched_at"
+        keys = ("network", "pool_address")
+        endpoint = "top_pools"
+        frequency_value = "daily_catalog"
+    elif family in {"dex_ohlcv", "dex_transactions"}:
+        parser_at = None
+        if pool_address is None:
+            raise DataError("pool data acquisition requires --pool-address")
+        if family == "dex_ohlcv":
+            timeframe = {"1d": "day", "1h": "hour", "1m": "minute"}.get(frequency)
+            if timeframe is None:
+                raise DataError("GeckoTerminal OHLCV frequency must be 1m, 1h, or 1d")
+            params = {"aggregate": 1, "limit": 1_000, "currency": "usd"}
+            url = geckoterminal_public_url(
+                "ohlcv",
+                network=network,
+                pool_address=pool_address,
+                timeframe=timeframe,
+                params=params,
+            )
+            parser = partial(parse_pool_ohlcv, network=network, pool_address=pool_address)
+            keys = ("network", "pool_address", "timestamp")
+            endpoint = "ohlcv"
+        else:
+            params = {}
+            url = geckoterminal_public_url(
+                "trades", network=network, pool_address=pool_address, params=params
+            )
+            parser = partial(parse_pool_trades, network=network, pool_address=pool_address)
+            keys = ("network", "pool_address", "trade_id")
+            endpoint = "trades"
+        payload = fetch_geckoterminal_public(url)
+        observed_column = "timestamp"
+        frequency_value = frequency
+    else:
+        raise DataError(f"GeckoTerminal is not authoritative for {family}")
+    plan = _AcquisitionPlan(
+        endpoint=endpoint,
+        params={
+            key: int(value) if isinstance(value, bool) else value for key, value in params.items()
+        },
+        dataset=CryptoDatasetIdentityV1(
+            provider="geckoterminal",
+            venue=network,
+            market_type="dex",
+            family=family,
+            instrument=pool_address or network,
+            base_asset=base_value if pool_address else None,
+            quote_asset=quote_value if pool_address else None,
+            frequency=frequency_value,
+            units="provider_native_dex",
+            timestamp_convention="provider_observation_utc",
+        ),
+        parser=parser,
+        observed_column=observed_column,
+        key_columns=keys,
+        parser_at=parser_at,
+    )
+    if family == "dex_pools":
+        pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+        page_parsers: list[Callable[[bytes], pl.DataFrame]] = []
+        for page_number in range(1, 6):
+            page_params: dict[str, str | int | bool] = {"page": page_number}
+            url = geckoterminal_public_url("top_pools", network=network, params=page_params)
+            page_payload = fetch_geckoterminal_public(url)
+            page_parser = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
+            if page_parser(page_payload).height != 20:
+                raise DataError("GeckoTerminal top-100 catalog page is incomplete")
+            pages.append(
+                (
+                    page_payload,
+                    (("page", str(page_number)),),
+                    (f"page={page_number}",),
+                )
+            )
+            page_parsers.append(page_parser)
+            if page_number < 5:
+                _pause_geckoterminal_page()
+        return _FetchedPagedAcquisition(
+            plan=plan,
+            pages=tuple(pages),
+            page_parsers=tuple(page_parsers),
+            upstream_checksums=tuple(None for _ in pages),
+            combine_frames=None,
+            provider_schema="geckoterminal-v2",
+            parser_version="geckoterminal-public-v1",
+            logical_name=f"{family}.json",
+        )
+    return _FetchedAcquisition(
+        plan=plan,
+        payload=payload,
+        provider_schema="geckoterminal-v2",
+        parser_version="geckoterminal-public-v1",
+        logical_name=f"{family}.json",
+    )
+
+
 def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
@@ -1653,7 +1771,6 @@ def _fetch_non_bybit(
     if not base_value.isalnum() or not quote_value.isalnum() or not instrument_value:
         raise DataError("crypto acquisition identity is invalid")
     keys: tuple[str, ...]
-    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None
 
     if provider == "ccxt:coinbase":
         return _fetch_coinbase_comparison(
@@ -1678,6 +1795,17 @@ def _fetch_non_bybit(
             instrument,
             base=base,
             quote=quote,
+            fetched_at=fetched_at,
+        )
+
+    if provider == "geckoterminal":
+        return _fetch_geckoterminal(
+            family,
+            base=base,
+            quote=quote,
+            frequency=frequency,
+            network=network,
+            pool_address=pool_address,
             fetched_at=fetched_at,
         )
 
@@ -1924,110 +2052,6 @@ def _fetch_non_bybit(
             upstream_checksum=hashlib.sha256(archive_payload).hexdigest(),
             expected_cadence_seconds=cadence_seconds,
             period_start_timestamps=family == "market_bars",
-        )
-
-    if provider == "geckoterminal":
-        if network is None:
-            raise DataError("GeckoTerminal acquisition requires --network")
-        if family == "dex_pools":
-            params_gt: dict[str, str | int | bool] = {"page": 1}
-            parser = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
-            parser_at = partial(_top_pools_parser_at, network=network)
-            observed_column = "fetched_at"
-            keys = ("network", "pool_address")
-            endpoint = "top_pools"
-            frequency_value = "daily_catalog"
-        elif family in {"dex_ohlcv", "dex_transactions"}:
-            parser_at = None
-            if pool_address is None:
-                raise DataError("pool data acquisition requires --pool-address")
-            if family == "dex_ohlcv":
-                timeframe = {"1d": "day", "1h": "hour", "1m": "minute"}.get(frequency)
-                if timeframe is None:
-                    raise DataError("GeckoTerminal OHLCV frequency must be 1m, 1h, or 1d")
-                params_gt = {"aggregate": 1, "limit": 1_000, "currency": "usd"}
-                url = geckoterminal_public_url(
-                    "ohlcv",
-                    network=network,
-                    pool_address=pool_address,
-                    timeframe=timeframe,
-                    params=params_gt,
-                )
-                parser = partial(parse_pool_ohlcv, network=network, pool_address=pool_address)
-                keys = ("network", "pool_address", "timestamp")
-                endpoint = "ohlcv"
-            else:
-                params_gt = {}
-                url = geckoterminal_public_url(
-                    "trades", network=network, pool_address=pool_address, params=params_gt
-                )
-                parser = partial(parse_pool_trades, network=network, pool_address=pool_address)
-                keys = ("network", "pool_address", "trade_id")
-                endpoint = "trades"
-            payload = fetch_geckoterminal_public(url)
-            observed_column = "timestamp"
-            frequency_value = frequency
-        else:
-            raise DataError(f"GeckoTerminal is not authoritative for {family}")
-        plan = _AcquisitionPlan(
-            endpoint=endpoint,
-            params={
-                key: int(value) if isinstance(value, bool) else value
-                for key, value in params_gt.items()
-            },
-            dataset=CryptoDatasetIdentityV1(
-                provider="geckoterminal",
-                venue=network,
-                market_type="dex",
-                family=family,
-                instrument=pool_address or network,
-                base_asset=base_value if pool_address else None,
-                quote_asset=quote_value if pool_address else None,
-                frequency=frequency_value,
-                units="provider_native_dex",
-                timestamp_convention="provider_observation_utc",
-            ),
-            parser=parser,
-            observed_column=observed_column,
-            key_columns=keys,
-            parser_at=parser_at,
-        )
-        if family == "dex_pools":
-            pages_gt: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
-            page_parsers_gt: list[Callable[[bytes], pl.DataFrame]] = []
-            for page_number in range(1, 6):
-                page_params_gt: dict[str, str | int | bool] = {"page": page_number}
-                url = geckoterminal_public_url("top_pools", network=network, params=page_params_gt)
-                page_payload = fetch_geckoterminal_public(url)
-                page_parser_gt = partial(_top_pools_frame, network=network, fetched_at=fetched_at)
-                if page_parser_gt(page_payload).height != 20:
-                    raise DataError("GeckoTerminal top-100 catalog page is incomplete")
-                pages_gt.append(
-                    (
-                        page_payload,
-                        (("page", str(page_number)),),
-                        (f"page={page_number}",),
-                    )
-                )
-                page_parsers_gt.append(page_parser_gt)
-                if page_number < 5:
-                    _pause_geckoterminal_page()
-            return _FetchedPagedAcquisition(
-                plan=plan,
-                pages=tuple(pages_gt),
-                page_parsers=tuple(page_parsers_gt),
-                upstream_checksums=tuple(None for _ in pages_gt),
-                combine_frames=None,
-                provider_schema="geckoterminal-v2",
-                parser_version="geckoterminal-public-v1",
-                logical_name=f"{family}.json",
-            )
-        return _FetchedAcquisition(
-            plan=plan,
-            payload=payload,
-            provider_schema="geckoterminal-v2",
-            parser_version="geckoterminal-public-v1",
-            logical_name=f"{family}.json",
         )
 
     if provider == "coinmetrics":
