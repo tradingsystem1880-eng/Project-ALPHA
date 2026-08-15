@@ -1884,6 +1884,269 @@ def _fetch_coinmetrics(
     )
 
 
+def _fetch_binance(
+    family: CryptoFamily,
+    instrument: str,
+    staging_root: Path,
+    *,
+    base: str,
+    quote: str,
+    category: str,
+    frequency: str,
+    period: str | None,
+    start: str | None,
+    end: str | None,
+    fetched_at: datetime,
+) -> _FetchedAcquisition | _FetchedPagedAcquisition:
+    base_value = base.strip().upper()
+    quote_value = quote.strip().upper()
+    instrument_value = instrument.strip()
+    keys: tuple[str, ...]
+    if category not in {"spot", "linear", "inverse"}:
+        raise DataError("Binance category must be spot, linear, or inverse")
+    category_value = cast(Literal["spot", "linear", "inverse"], category)
+    symbol = instrument_value.upper()
+    if family == "market_membership":
+        if any(value is not None for value in (period, start, end)):
+            raise DataError("Binance market membership does not accept a time range")
+        membership_params: dict[str, str | int] = {}
+        url = binance_public_api_url(category_value, "exchangeInfo", membership_params)
+        payload = fetch_binance_public_api(url)
+        plan = _AcquisitionPlan(
+            endpoint="exchangeInfo",
+            params=membership_params,
+            dataset=CryptoDatasetIdentityV1(
+                provider="binance",
+                venue="binance",
+                market_type=category_value,
+                family="market_membership",
+                instrument=category_value,
+                base_asset=None,
+                quote_asset=None,
+                frequency="catalog_snapshot",
+                units="provider_native_market_identity",
+                timestamp_convention="provider_observation_utc",
+            ),
+            parser=partial(
+                parse_binance_exchange_info,
+                category=category_value,
+                fetched_at=fetched_at,
+            ),
+            observed_column="fetched_at",
+            key_columns=("category", "symbol"),
+            availability_column="fetched_at",
+            parser_at=partial(_binance_membership_parser_at, category=category_value),
+        )
+        return _FetchedAcquisition(
+            plan=plan,
+            payload=payload,
+            provider_schema="binance-public-exchange-info-v1",
+            parser_version="binance-market-membership-v1",
+            logical_name="market_membership.json",
+        )
+    if family == "book_snapshots":
+        if period is not None or start is not None or end is not None:
+            raise DataError("Binance book snapshots do not accept period or time ranges")
+        depth_params: dict[str, str | int] = {"symbol": symbol, "limit": 1_000}
+        url = binance_public_api_url(category_value, "depth", depth_params)
+        payload = fetch_binance_public_api(url)
+        plan = _AcquisitionPlan(
+            endpoint="depth",
+            params=depth_params,
+            dataset=CryptoDatasetIdentityV1(
+                provider="binance",
+                venue="binance",
+                market_type=category_value,
+                family="book_snapshots",
+                instrument=symbol,
+                base_asset=base_value,
+                quote_asset=quote_value,
+                frequency="point_in_time_book",
+                units="provider_native_price_quantity",
+                timestamp_convention="fetch_knowledge_utc",
+            ),
+            parser=partial(
+                parse_binance_book_snapshot,
+                symbol=symbol,
+                category=category_value,
+                fetched_at=fetched_at,
+            ),
+            observed_column="observed_at",
+            key_columns=("observed_at", "side", "level"),
+            availability_column="observed_at",
+            parser_at=partial(
+                _binance_book_parser_at,
+                symbol=symbol,
+                category=category_value,
+            ),
+        )
+        return _FetchedAcquisition(
+            plan=plan,
+            payload=payload,
+            provider_schema="binance-public-depth-v1",
+            parser_version="binance-book-v1",
+            logical_name="book_snapshots.json",
+        )
+    archive_family_by_dataset: dict[CryptoFamily, Literal["klines", "trades", "aggTrades"]] = {
+        "market_bars": "klines",
+        "trades": "trades",
+        "aggregate_trades": "aggTrades",
+    }
+    archive_family = archive_family_by_dataset.get(family)
+    if archive_family is None:
+        raise DataError(
+            "this Binance archive acquisition accepts market_bars, trades, or aggregate_trades"
+        )
+    bounded_range = _binance_range(start, end, fetched_at=fetched_at)
+    if family != "market_bars" and bounded_range is not None:
+        raise DataError("Binance trade archives do not accept --start or --end")
+    if period is not None and re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", period) is None:
+        raise DataError("Binance archive acquisition requires --period YYYY-MM")
+    if period is None and (family != "market_bars" or bounded_range is None):
+        raise DataError(
+            "Binance archives require --period YYYY-MM; market_bars may instead use "
+            "a bounded --start/--end REST tail"
+        )
+    market = {"spot": "spot", "linear": "um", "inverse": "cm"}[category]
+    interval = frequency if archive_family == "klines" else ""
+    archive_payload: bytes | None = None
+    archive_params: dict[str, str | int] | None = None
+    if period is not None:
+        url = archive_url(
+            cast(Literal["spot", "um", "cm"], market),
+            archive_family,
+            symbol,
+            interval,
+            period,
+        )
+        checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
+        expected_checksum = archive_checksum_sha256(checksum)
+        archive_payload = fetch_binance_archive(url, staging_root, expected_checksum)
+        verify_archive_checksum(archive_payload, checksum)
+        archive_params = {
+            "market": market,
+            "family": archive_family,
+            "symbol": symbol,
+            "period": period,
+            **({"interval": interval} if interval else {}),
+        }
+    if family == "market_bars":
+        cadence_seconds = {
+            "1d": 86_400,
+            "1h": 3_600,
+            "5m": 300,
+            "1m": 60,
+        }.get(frequency)
+        if cadence_seconds is None:
+            raise DataError("Binance kline frequency must be 1m, 5m, 1h, or 1d")
+        parser = parse_binance_archive_zip
+        observed_column = "open_time"
+        keys = ("open_time",)
+        frequency_value = frequency
+        units = "provider_native_ohlcv"
+        timestamp_convention = "interval_start_utc"
+    elif family == "trades":
+        cadence_seconds = None
+        parser = partial(parse_binance_archive_zip, family="trades")
+        observed_column = "timestamp"
+        keys = ("trade_id",)
+        frequency_value = "trade_events"
+        units = "provider_native_trade"
+        timestamp_convention = "provider_event_utc"
+    else:
+        cadence_seconds = None
+        parser = partial(parse_binance_archive_zip, family="aggTrades")
+        observed_column = "timestamp"
+        keys = ("aggregate_trade_id",)
+        frequency_value = "aggregate_trade_events"
+        units = "provider_native_aggregate_trade"
+        timestamp_convention = "provider_event_utc"
+    plan = _AcquisitionPlan(
+        endpoint=(
+            "monthly_archive_and_rest_tail"
+            if archive_payload is not None and bounded_range is not None
+            else "monthly_archive"
+            if archive_payload is not None
+            else "rest_tail"
+        ),
+        params=archive_params
+        or {
+            "symbol": symbol,
+            "interval": frequency,
+            "startTime": bounded_range[0] if bounded_range is not None else 0,
+            "endTime": bounded_range[1] if bounded_range is not None else 0,
+        },
+        dataset=CryptoDatasetIdentityV1(
+            provider="binance",
+            venue="binance",
+            market_type=cast(CryptoMarketType, category),
+            family=family,
+            instrument=symbol,
+            base_asset=base_value,
+            quote_asset=quote_value,
+            frequency=frequency_value,
+            units=units,
+            timestamp_convention=timestamp_convention,
+        ),
+        parser=parser,
+        observed_column=observed_column,
+        key_columns=keys,
+    )
+    if family == "market_bars" and bounded_range is not None:
+        tail_pages = _fetch_binance_tail_pages(
+            category=category_value,
+            symbol=symbol,
+            frequency=frequency,
+            start_ms=bounded_range[0],
+            end_ms=bounded_range[1],
+        )
+        pages = tail_pages
+        page_parsers: tuple[Callable[[bytes], pl.DataFrame], ...] = tuple(
+            partial(parse_binance_klines, source="rest_json") for _ in tail_pages
+        )
+        upstream_checksums: tuple[str | None, ...] = tuple(None for _ in tail_pages)
+        if archive_payload is not None:
+            assert archive_params is not None
+            pages = (
+                (
+                    archive_payload,
+                    tuple((key, str(value)) for key, value in sorted(archive_params.items())),
+                    ("archive",),
+                ),
+                *tail_pages,
+            )
+            page_parsers = (parse_binance_archive_zip, *page_parsers)
+            upstream_checksums = (
+                hashlib.sha256(archive_payload).hexdigest(),
+                *upstream_checksums,
+            )
+        return _FetchedPagedAcquisition(
+            plan=plan,
+            pages=pages,
+            page_parsers=page_parsers,
+            upstream_checksums=upstream_checksums,
+            combine_frames=_combine_binance_archive_tail,
+            provider_schema="binance-public-archive-rest-v1"
+            if archive_payload is not None
+            else "binance-public-rest-v1",
+            parser_version="binance-archive-rest-v1",
+            logical_name="market_bars.bin",
+            expected_cadence_seconds=cadence_seconds,
+            period_start_timestamps=True,
+        )
+    assert archive_payload is not None
+    return _FetchedAcquisition(
+        plan=plan,
+        payload=archive_payload,
+        provider_schema="binance-public-archive-v1",
+        parser_version="binance-archive-v1",
+        logical_name=f"{family}.zip",
+        upstream_checksum=hashlib.sha256(archive_payload).hexdigest(),
+        expected_cadence_seconds=cadence_seconds,
+        period_start_timestamps=family == "market_bars",
+    )
+
+
 def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
@@ -1906,7 +2169,6 @@ def _fetch_non_bybit(
     instrument_value = instrument.strip()
     if not base_value.isalnum() or not quote_value.isalnum() or not instrument_value:
         raise DataError("crypto acquisition identity is invalid")
-    keys: tuple[str, ...]
 
     if provider == "ccxt:coinbase":
         return _fetch_coinbase_comparison(
@@ -1958,250 +2220,19 @@ def _fetch_non_bybit(
         )
 
     if provider == "binance":
-        if category not in {"spot", "linear", "inverse"}:
-            raise DataError("Binance category must be spot, linear, or inverse")
-        category_value = cast(Literal["spot", "linear", "inverse"], category)
-        symbol = instrument_value.upper()
-        if family == "market_membership":
-            if any(value is not None for value in (period, start, end)):
-                raise DataError("Binance market membership does not accept a time range")
-            membership_params: dict[str, str | int] = {}
-            url = binance_public_api_url(category_value, "exchangeInfo", membership_params)
-            payload = fetch_binance_public_api(url)
-            plan = _AcquisitionPlan(
-                endpoint="exchangeInfo",
-                params=membership_params,
-                dataset=CryptoDatasetIdentityV1(
-                    provider="binance",
-                    venue="binance",
-                    market_type=category_value,
-                    family="market_membership",
-                    instrument=category_value,
-                    base_asset=None,
-                    quote_asset=None,
-                    frequency="catalog_snapshot",
-                    units="provider_native_market_identity",
-                    timestamp_convention="provider_observation_utc",
-                ),
-                parser=partial(
-                    parse_binance_exchange_info,
-                    category=category_value,
-                    fetched_at=fetched_at,
-                ),
-                observed_column="fetched_at",
-                key_columns=("category", "symbol"),
-                availability_column="fetched_at",
-                parser_at=partial(_binance_membership_parser_at, category=category_value),
-            )
-            return _FetchedAcquisition(
-                plan=plan,
-                payload=payload,
-                provider_schema="binance-public-exchange-info-v1",
-                parser_version="binance-market-membership-v1",
-                logical_name="market_membership.json",
-            )
-        if family == "book_snapshots":
-            if period is not None or start is not None or end is not None:
-                raise DataError("Binance book snapshots do not accept period or time ranges")
-            depth_params: dict[str, str | int] = {"symbol": symbol, "limit": 1_000}
-            url = binance_public_api_url(category_value, "depth", depth_params)
-            payload = fetch_binance_public_api(url)
-            plan = _AcquisitionPlan(
-                endpoint="depth",
-                params=depth_params,
-                dataset=CryptoDatasetIdentityV1(
-                    provider="binance",
-                    venue="binance",
-                    market_type=category_value,
-                    family="book_snapshots",
-                    instrument=symbol,
-                    base_asset=base_value,
-                    quote_asset=quote_value,
-                    frequency="point_in_time_book",
-                    units="provider_native_price_quantity",
-                    timestamp_convention="fetch_knowledge_utc",
-                ),
-                parser=partial(
-                    parse_binance_book_snapshot,
-                    symbol=symbol,
-                    category=category_value,
-                    fetched_at=fetched_at,
-                ),
-                observed_column="observed_at",
-                key_columns=("observed_at", "side", "level"),
-                availability_column="observed_at",
-                parser_at=partial(
-                    _binance_book_parser_at,
-                    symbol=symbol,
-                    category=category_value,
-                ),
-            )
-            return _FetchedAcquisition(
-                plan=plan,
-                payload=payload,
-                provider_schema="binance-public-depth-v1",
-                parser_version="binance-book-v1",
-                logical_name="book_snapshots.json",
-            )
-        archive_family_by_dataset: dict[CryptoFamily, Literal["klines", "trades", "aggTrades"]] = {
-            "market_bars": "klines",
-            "trades": "trades",
-            "aggregate_trades": "aggTrades",
-        }
-        archive_family = archive_family_by_dataset.get(family)
-        if archive_family is None:
-            raise DataError(
-                "this Binance archive acquisition accepts market_bars, trades, or aggregate_trades"
-            )
-        bounded_range = _binance_range(start, end, fetched_at=fetched_at)
-        if family != "market_bars" and bounded_range is not None:
-            raise DataError("Binance trade archives do not accept --start or --end")
-        if period is not None and re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", period) is None:
-            raise DataError("Binance archive acquisition requires --period YYYY-MM")
-        if period is None and (family != "market_bars" or bounded_range is None):
-            raise DataError(
-                "Binance archives require --period YYYY-MM; market_bars may instead use "
-                "a bounded --start/--end REST tail"
-            )
-        market = {"spot": "spot", "linear": "um", "inverse": "cm"}[category]
-        interval = frequency if archive_family == "klines" else ""
-        archive_payload: bytes | None = None
-        archive_params: dict[str, str | int] | None = None
-        if period is not None:
-            url = archive_url(
-                cast(Literal["spot", "um", "cm"], market),
-                archive_family,
-                symbol,
-                interval,
-                period,
-            )
-            checksum = fetch_binance_checksum(f"{url}.CHECKSUM")
-            expected_checksum = archive_checksum_sha256(checksum)
-            archive_payload = fetch_binance_archive(url, staging_root, expected_checksum)
-            verify_archive_checksum(archive_payload, checksum)
-            archive_params = {
-                "market": market,
-                "family": archive_family,
-                "symbol": symbol,
-                "period": period,
-                **({"interval": interval} if interval else {}),
-            }
-        if family == "market_bars":
-            cadence_seconds = {
-                "1d": 86_400,
-                "1h": 3_600,
-                "5m": 300,
-                "1m": 60,
-            }.get(frequency)
-            if cadence_seconds is None:
-                raise DataError("Binance kline frequency must be 1m, 5m, 1h, or 1d")
-            parser = parse_binance_archive_zip
-            observed_column = "open_time"
-            keys = ("open_time",)
-            frequency_value = frequency
-            units = "provider_native_ohlcv"
-            timestamp_convention = "interval_start_utc"
-        elif family == "trades":
-            cadence_seconds = None
-            parser = partial(parse_binance_archive_zip, family="trades")
-            observed_column = "timestamp"
-            keys = ("trade_id",)
-            frequency_value = "trade_events"
-            units = "provider_native_trade"
-            timestamp_convention = "provider_event_utc"
-        else:
-            cadence_seconds = None
-            parser = partial(parse_binance_archive_zip, family="aggTrades")
-            observed_column = "timestamp"
-            keys = ("aggregate_trade_id",)
-            frequency_value = "aggregate_trade_events"
-            units = "provider_native_aggregate_trade"
-            timestamp_convention = "provider_event_utc"
-        plan = _AcquisitionPlan(
-            endpoint=(
-                "monthly_archive_and_rest_tail"
-                if archive_payload is not None and bounded_range is not None
-                else "monthly_archive"
-                if archive_payload is not None
-                else "rest_tail"
-            ),
-            params=archive_params
-            or {
-                "symbol": symbol,
-                "interval": frequency,
-                "startTime": bounded_range[0] if bounded_range is not None else 0,
-                "endTime": bounded_range[1] if bounded_range is not None else 0,
-            },
-            dataset=CryptoDatasetIdentityV1(
-                provider="binance",
-                venue="binance",
-                market_type=cast(CryptoMarketType, category),
-                family=family,
-                instrument=symbol,
-                base_asset=base_value,
-                quote_asset=quote_value,
-                frequency=frequency_value,
-                units=units,
-                timestamp_convention=timestamp_convention,
-            ),
-            parser=parser,
-            observed_column=observed_column,
-            key_columns=keys,
+        return _fetch_binance(
+            family,
+            instrument,
+            staging_root,
+            base=base,
+            quote=quote,
+            category=category,
+            frequency=frequency,
+            period=period,
+            start=start,
+            end=end,
+            fetched_at=fetched_at,
         )
-        if family == "market_bars" and bounded_range is not None:
-            tail_pages = _fetch_binance_tail_pages(
-                category=category_value,
-                symbol=symbol,
-                frequency=frequency,
-                start_ms=bounded_range[0],
-                end_ms=bounded_range[1],
-            )
-            pages = tail_pages
-            page_parsers: tuple[Callable[[bytes], pl.DataFrame], ...] = tuple(
-                partial(parse_binance_klines, source="rest_json") for _ in tail_pages
-            )
-            upstream_checksums: tuple[str | None, ...] = tuple(None for _ in tail_pages)
-            if archive_payload is not None:
-                assert archive_params is not None
-                pages = (
-                    (
-                        archive_payload,
-                        tuple((key, str(value)) for key, value in sorted(archive_params.items())),
-                        ("archive",),
-                    ),
-                    *tail_pages,
-                )
-                page_parsers = (parse_binance_archive_zip, *page_parsers)
-                upstream_checksums = (
-                    hashlib.sha256(archive_payload).hexdigest(),
-                    *upstream_checksums,
-                )
-            return _FetchedPagedAcquisition(
-                plan=plan,
-                pages=pages,
-                page_parsers=page_parsers,
-                upstream_checksums=upstream_checksums,
-                combine_frames=_combine_binance_archive_tail,
-                provider_schema="binance-public-archive-rest-v1"
-                if archive_payload is not None
-                else "binance-public-rest-v1",
-                parser_version="binance-archive-rest-v1",
-                logical_name="market_bars.bin",
-                expected_cadence_seconds=cadence_seconds,
-                period_start_timestamps=True,
-            )
-        assert archive_payload is not None
-        return _FetchedAcquisition(
-            plan=plan,
-            payload=archive_payload,
-            provider_schema="binance-public-archive-v1",
-            parser_version="binance-archive-v1",
-            logical_name=f"{family}.zip",
-            upstream_checksum=hashlib.sha256(archive_payload).hexdigest(),
-            expected_cadence_seconds=cadence_seconds,
-            period_start_timestamps=family == "market_bars",
-        )
-
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
 
 
