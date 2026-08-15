@@ -112,6 +112,37 @@ def test_candidate_runtime_fails_before_publication_on_invalid_scope(tmp_path: P
 
 
 @pytest.mark.parametrize(
+    "analysis",
+    ["baseline", "qlib_fixture", "kronos_eval_fixture", "monte_carlo_kronos_fixture"],
+)
+def test_candidate_single_event_diagnostics_are_explicit(tmp_path: Path, analysis: str) -> None:
+    source_run_id = "1234567890abcdef" if analysis.startswith("monte_carlo_") else None
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=_observations()[:1],
+        analysis=analysis,
+        source_run_id=source_run_id,
+        research_cutoff="2025-01-31",
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )
+
+    evaluation = json.loads(
+        (tmp_path / "runs" / str(manifest["run_id"]) / "candidate_evaluation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert evaluation["annualized_volatility"] is None
+    assert evaluation["annualized_sharpe"] is None
+    if analysis == "qlib_fixture":
+        assert manifest["metadata"]["directional_accuracy"] is None
+    if analysis == "kronos_eval_fixture":
+        assert manifest["metadata"]["mean_absolute_error"] is None
+
+
+@pytest.mark.parametrize(
     ("analysis", "command"),
     [
         ("inner_oos", "candidate_oos"),
