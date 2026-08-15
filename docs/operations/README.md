@@ -26,9 +26,17 @@ launcher action:
 scripts/alpha-with-keychain-provider coingecko catalog
 ```
 
-This action cannot accept arbitrary provider, family, instrument, or output arguments. It freezes
-the exact response and qualification receipt; the key remains process-local and is absent from the
-request receipt, manifest, logs, and command arguments.
+Acquire the broad USD market-reference universe through its own fixed action:
+
+```bash
+scripts/alpha-with-keychain-provider coingecko reference
+```
+
+Neither action accepts arbitrary provider, family, instrument, or output arguments. Each freezes
+the exact paginated responses and qualification receipt; the key remains process-local and is
+absent from request receipts, manifests, logs, and command arguments. The reference universe is
+supplemental research context and cannot satisfy venue-price, validation-price, or execution-price
+requirements.
 
 ## 1. Use QuantPad for external historical research
 
