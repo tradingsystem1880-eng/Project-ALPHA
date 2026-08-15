@@ -40,6 +40,33 @@ projects contended for one isolated real-backend writer lock. Every repair has a
 is exercised by the applicable end-to-end gate. No critical or high finding remains open in the
 local review. Independent PR review and exact-SHA GitHub checks remain publication gates.
 
+## Branch-change ledger
+
+The ledger is generated from `git diff --numstat origin/main...b260e20`, immediately before this
+ledger-only documentation update. Generated OpenAPI, TypeScript, and production SPA assets
+materially inflate the frontend totals; counts are inventory, not a code-quality target.
+
+| Subsystem | Files | Added | Removed |
+|---|---:|---:|---:|
+| `alpha_cli` | 41 | 12,959 | 281 |
+| `alpha_data` | 17 | 6,464 | 6 |
+| `alpha_research` | 4 | 1,273 | 8 |
+| `alpha_strategies` | 1 | 383 | 0 |
+| `alpha_web` backend | 21 | 2,299 | 169 |
+| Workstation frontend, generated contracts, and static assets | 56 | 31,652 | 17,328 |
+| MCP | 4 | 31 | 4 |
+| Isolated workers | 12 | 668 | 8 |
+| Root tests | 78 | 19,475 | 153 |
+| Documentation | 24 | 2,474 | 116 |
+| Build/governance and other | 7 | 423 | 0 |
+
+Executable manifest inventory on this branch is **170 CLI leaf commands, 199 OpenAPI operations
+(44 automatic safe reads, 154 fixture-backed, 1 explicitly excluded external check), 62 MCP
+tools, and 83 Playwright tests in three specification files**. CLI definitions come from
+`alpha info commands`; REST and MCP counts come from `check_openapi_operations.py`; Playwright's
+own collector provides the browser inventory. Generated freshness tests prevent these counts from
+being maintained by hand in authority documentation.
+
 ## Public-surface coverage
 
 | Surface | Acceptance class | Current evidence |
