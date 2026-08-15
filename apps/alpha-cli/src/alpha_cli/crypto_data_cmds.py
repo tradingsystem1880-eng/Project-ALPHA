@@ -20,6 +20,7 @@ import polars as pl
 import typer
 
 from alpha_cli.control_store import ControlStore, research_case_revision
+from alpha_cli.research_crypto_data import load_crypto_crowding_observations
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.adapters.ccxt_adapter import CCXTAdapter, parse_ccxt_ohlcv
@@ -115,7 +116,11 @@ from alpha_data.crypto.research import (
     assess_crypto_snapshot,
 )
 from alpha_data.crypto.storage import CryptoBulkStore
-from alpha_research import CryptoCrowdingResearchPlanV1, registered_crypto_crowding_plan
+from alpha_research import (
+    CryptoCrowdingObservationV1,
+    CryptoCrowdingResearchPlanV1,
+    registered_crypto_crowding_plan,
+)
 
 crypto_data_app = typer.Typer(
     help="Provider-native crypto acquisition, qualification, snapshots, and storage."
@@ -193,6 +198,8 @@ class _AcquisitionPlan:
     next_cursor: Callable[[bytes], str | None] | None = None
     page_limit: int | None = None
     parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
+    expected_cadence_seconds: int | None = None
+    period_start_timestamps: bool = False
 
 
 @dataclass(frozen=True)
@@ -658,24 +665,41 @@ def _crypto_crowding_requirements(
     plan: CryptoCrowdingResearchPlanV1,
 ) -> tuple[CryptoDatasetRequirementV1, ...]:
     semantic_fields = {
-        "funding": ("funding_interval", "dimensionless_rate", "provider_event_utc"),
+        "funding": (
+            "funding_interval",
+            "dimensionless_rate",
+            plan.event_timestamp_convention,
+        ),
         "open_interest": (
             "1h",
             "base_coin_if_linear_quote_coin_if_inverse",
-            "provider_event_utc",
+            plan.event_timestamp_convention,
         ),
-        "premium_bars": ("1h", "quote_price", "provider_event_utc"),
-        "mark_bars": ("1h", "quote_price", "provider_event_utc"),
-        "index_bars": ("1h", "quote_price", "provider_event_utc"),
-        "derivative_bars": ("1h", "quote_price", "provider_event_utc"),
+        "premium_bars": (
+            plan.bar_frequency,
+            "quote_price",
+            plan.bar_timestamp_convention,
+        ),
+        "mark_bars": (plan.bar_frequency, "quote_price", plan.bar_timestamp_convention),
+        "index_bars": (plan.bar_frequency, "quote_price", plan.bar_timestamp_convention),
+        "derivative_bars": (
+            plan.bar_frequency,
+            "quote_price",
+            plan.bar_timestamp_convention,
+        ),
         "instrument_catalog": (
             "catalog_snapshot",
             "provider_native",
-            "fetch_knowledge_utc",
+            plan.catalog_timestamp_convention,
+        ),
+        "long_short_ratio": (
+            plan.bar_frequency,
+            "dimensionless_ratio",
+            plan.event_timestamp_convention,
         ),
     }
     requirements: list[CryptoDatasetRequirementV1] = []
-    for family_name in plan.required_families:
+    for family_name in (*plan.required_families, plan.confounder_family):
         family = _family(family_name)
         try:
             frequency, units, timestamp_convention = semantic_fields[family_name]
@@ -718,7 +742,9 @@ def _verified_crypto_crowding_snapshot(
     plan = registered_crypto_crowding_plan()
     snapshot, reports, _ = _verified_snapshot(
         snapshot_id,
-        required_families=tuple(_family(family) for family in plan.required_families),
+        required_families=tuple(
+            _family(family) for family in (*plan.required_families, plan.confounder_family)
+        ),
         purpose="research",
     )
     projection = assess_crypto_dataset_requirements(
@@ -740,6 +766,10 @@ def _verified_crypto_crowding_snapshot(
     )
     if len(observed) != 2 * len(reports):
         raise DataError("crypto crowding snapshot has an incomplete observed range")
+    if any(report.correction_lineage for report in reports.values()):
+        raise DataError(
+            "crypto crowding snapshot corrections lack row-level availability timestamps"
+        )
     master = _snapshot_asset_master(snapshot)
     for instant in (min(observed), max(observed)):
         identity = master.resolve_native(network="bitcoin", as_of=instant)
@@ -760,11 +790,21 @@ def crypto_crowding_snapshot_compatibility(snapshot_id: str) -> dict[str, object
         "operator_fingerprint": plan.operator_fingerprint,
         "asset_master_version": snapshot.asset_master_version,
         "qualification_versions": list(snapshot.qualification_versions),
-        "required_families": list(plan.required_families),
+        "required_families": [*plan.required_families, plan.confounder_family],
         "qualified_families": list(projection.qualified_families),
         "eligible": True,
         "execution_authority": False,
     }
+
+
+def crypto_crowding_observations(snapshot_id: str) -> tuple[CryptoCrowdingObservationV1, ...]:
+    """Reverify and compose one exact snapshot without creating an attempt or evidence."""
+    snapshot, reports, _, _ = _verified_crypto_crowding_snapshot(snapshot_id)
+    return load_crypto_crowding_observations(
+        snapshot,
+        reports,
+        bulk_root=_bulk_store().bulk_root,
+    )
 
 
 def _integrity_verified_snapshot(snapshot_id: str) -> tuple[CryptoSnapshotV1, bool]:
@@ -1331,6 +1371,8 @@ def _bybit_plan(
     dataset_base: str | None = base_value
     dataset_quote: str | None = quote_value
     timestamp_convention = "provider_event_utc"
+    expected_cadence_seconds: int | None = None
+    period_start_timestamps = False
     next_cursor: Callable[[bytes], str | None] | None = None
     page_limit: int | None = None
     parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
@@ -1356,6 +1398,9 @@ def _bybit_plan(
         parser = partial(parse_price_klines, family="trade")
         units = "quote_per_base_and_base_volume"
         page_limit = 1_000
+        expected_cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}[frequency]
+        period_start_timestamps = True
+        timestamp_convention = "interval_start_utc"
     elif family == "instrument_catalog":
         endpoint = "instruments"
         params = {"category": category}
@@ -1450,6 +1495,9 @@ def _bybit_plan(
         parser = partial(parse_price_klines, family=price_family)
         units = "quote_price"
         page_limit = 1_000
+        expected_cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}[frequency]
+        period_start_timestamps = True
+        timestamp_convention = "interval_start_utc"
     else:
         raise DataError(f"Bybit acquisition is not implemented for {family}")
 
@@ -1477,6 +1525,8 @@ def _bybit_plan(
         next_cursor=next_cursor,
         page_limit=page_limit,
         parser_at=parser_at,
+        expected_cadence_seconds=expected_cadence_seconds,
+        period_start_timestamps=period_start_timestamps,
     )
 
 
@@ -2632,6 +2682,14 @@ def _acquire_result(
                 observed_column=plan.observed_column,
                 key_columns=plan.key_columns,
                 availability_column=plan.availability_column,
+                expected_cadence=(
+                    timedelta(seconds=plan.expected_cadence_seconds)
+                    if plan.expected_cadence_seconds is not None
+                    else None
+                ),
+                period_start_timestamps=plan.period_start_timestamps,
+                correction_lineage=correction_lineage,
+                unexplained_revision=bool(correction_lineage),
                 acquisition_scope=acquisition_scope,
             )
             quality = paged_result.quality
@@ -2644,8 +2702,8 @@ def _acquire_result(
                 parser_version = "bybit-public-v1"
                 logical_name = f"{dataset_family}.json"
                 upstream_checksum = None
-                expected_cadence_seconds = None
-                period_start_timestamps = False
+                expected_cadence_seconds = plan.expected_cadence_seconds
+                period_start_timestamps = plan.period_start_timestamps
             else:
                 assert fetched is not None
                 payload = fetched.payload
@@ -4511,6 +4569,7 @@ def snapshot_verify_crowding(
 
 
 __all__ = [
+    "crypto_crowding_observations",
     "crypto_crowding_snapshot_compatibility",
     "crypto_data_app",
     "crypto_snapshot_registration",

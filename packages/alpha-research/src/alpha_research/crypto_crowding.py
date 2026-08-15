@@ -76,6 +76,11 @@ class CryptoCrowdingResearchPlanV1:
     percentile_method: str = "linear_type7_v1"
     open_interest_lookback_hours: int = 24
     entry_delay_hours: int = 1
+    bar_frequency: str = "1h"
+    bar_timestamp_convention: str = "interval_start_utc"
+    event_timestamp_convention: str = "provider_event_utc"
+    catalog_timestamp_convention: str = "fetch_knowledge_utc"
+    funding_interval_source: str = "instrument_catalog"
     practical_hurdle_return: float = -0.0005
     minimum_effective_events: int = 50
     minimum_confirmation_events: int = 10
@@ -110,6 +115,11 @@ class CryptoCrowdingResearchPlanV1:
             or self.percentile_method != "linear_type7_v1"
             or self.open_interest_lookback_hours != 24
             or self.entry_delay_hours != 1
+            or self.bar_frequency != "1h"
+            or self.bar_timestamp_convention != "interval_start_utc"
+            or self.event_timestamp_convention != "provider_event_utc"
+            or self.catalog_timestamp_convention != "fetch_knowledge_utc"
+            or self.funding_interval_source != "instrument_catalog"
             or self.practical_hurdle_return != -0.0005
             or self.minimum_effective_events != 50
             or self.minimum_confirmation_events != 10
@@ -145,6 +155,11 @@ class CryptoCrowdingResearchPlanV1:
             "percentile_method": self.percentile_method,
             "open_interest_lookback_hours": self.open_interest_lookback_hours,
             "entry_delay_hours": self.entry_delay_hours,
+            "bar_frequency": self.bar_frequency,
+            "bar_timestamp_convention": self.bar_timestamp_convention,
+            "event_timestamp_convention": self.event_timestamp_convention,
+            "catalog_timestamp_convention": self.catalog_timestamp_convention,
+            "funding_interval_source": self.funding_interval_source,
             "practical_hurdle_return": self.practical_hurdle_return,
             "minimum_effective_events": self.minimum_effective_events,
             "minimum_confirmation_events": self.minimum_confirmation_events,
@@ -496,7 +511,7 @@ def _events_for_percentile(
     by_time = {item.funding_time: item for item in observations}
     accepted: list[CryptoCrowdingEventV1] = []
     last_exit: datetime | None = None
-    for index in range(plan.history_observations, len(observations) - 1):
+    for index in range(plan.history_observations, len(observations)):
         current = observations[index]
         history = observations[index - plan.history_observations : index]
         threshold = _percentile(tuple(item.funding_rate for item in history), percentile)
@@ -510,8 +525,10 @@ def _events_for_percentile(
             continue
         if last_exit is not None and current.funding_time <= last_exit:
             continue
-        next_funding = observations[index + 1].funding_time
-        if current.exit_time != next_funding:
+        if (
+            index + 1 < len(observations)
+            and current.exit_time != observations[index + 1].funding_time
+        ):
             raise DataError("crypto crowding exit is not the next declared funding timestamp")
         mark_return = current.exit_mark / current.entry_mark - 1
         index_return = current.exit_index / current.entry_index - 1
@@ -614,7 +631,7 @@ def _matched_estimate(
     plan: CryptoCrowdingResearchPlanV1,
 ) -> CryptoCrowdingEstimateV1 | None:
     event_indices = {item.observation_index for item in events}
-    eligible = range(plan.history_observations, len(observations) - 1)
+    eligible = range(plan.history_observations, len(observations))
     event_rows = tuple(
         _study_observation(observations, index=index, is_event=True, plan=plan)
         for index in sorted(event_indices)
@@ -698,24 +715,23 @@ def _shifted_date_placebo(
 ) -> CryptoCrowdingShiftedPlaceboV1 | None:
     if not events:
         return None
-    outcomes = tuple(
-        (item.exit_mark / item.entry_mark - 1) - (item.exit_index / item.entry_index - 1)
+    outcomes = {
+        item.funding_time: (item.exit_mark / item.entry_mark - 1)
+        - (item.exit_index / item.entry_index - 1)
         for item in observations
-    )
+    }
     observed = sum(item.mark_minus_index_return for item in events) / len(events)
     means: list[float] = []
     for days in plan.shifted_placebo_days:
         for direction in (-1, 1):
-            shift = direction * days * 3
+            shift = timedelta(days=direction * days)
             shifted = [
-                item.observation_index + shift
+                observations[item.observation_index].funding_time + shift
                 for item in events
-                if plan.history_observations
-                <= item.observation_index + shift
-                < len(observations) - 1
+                if observations[item.observation_index].funding_time + shift in outcomes
             ]
             if shifted:
-                means.append(sum(outcomes[index] for index in shifted) / len(shifted))
+                means.append(sum(outcomes[timestamp] for timestamp in shifted) / len(shifted))
     if not means:
         return None
     p_value = (sum(abs(value) >= abs(observed) for value in means) + 1) / (len(means) + 1)
@@ -737,7 +753,7 @@ def _diagnostics(
     tuple[CryptoCrowdingRegimeDiagnosticV1, ...],
 ]:
     event_indices = {item.observation_index for item in events}
-    eligible = range(plan.history_observations, len(observations) - 1)
+    eligible = range(plan.history_observations, len(observations))
     event_ratios = [
         ratio
         for index in event_indices

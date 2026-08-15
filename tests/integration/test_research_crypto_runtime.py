@@ -74,8 +74,8 @@ def test_crypto_d0_runtime_publishes_idempotent_recomputable_non_evidence(
     assert manifest["snapshot_id"] is None
     assert manifest["d0_operator"] == registered_crypto_d0_operator()
     fixture = manifest["d0_operator"]["fixture"]
-    assert fixture["fixture_id"] == "bybit_btcusdt_crowding_d0_v2"
-    assert fixture["fixture_version"] == 2
+    assert fixture["fixture_id"] == "bybit_btcusdt_crowding_d0_v3"
+    assert fixture["fixture_version"] == 3
     acceptance = validate_crypto_d0_acceptance_artifact(
         tmp_path / "runs" / str(manifest["run_id"]),
         manifest,

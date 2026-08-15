@@ -93,6 +93,8 @@ def test_registered_crypto_crowding_plan_is_exact_and_content_addressed() -> Non
     assert plan.primary_percentile == 0.95
     assert plan.sensitivity_percentiles == (0.9, 0.975)
     assert plan.sensitivity_multiplicity == "holm_v1"
+    assert plan.bar_frequency == "1h"
+    assert plan.bar_timestamp_convention == "interval_start_utc"
     assert len(plan.operator_fingerprint) == 64
     assert plan.to_dict()["operator_fingerprint"] == plan.operator_fingerprint
     with pytest.raises(DataError, match="registered generation"):

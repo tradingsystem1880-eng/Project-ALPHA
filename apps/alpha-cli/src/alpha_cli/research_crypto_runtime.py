@@ -28,9 +28,9 @@ _CONTRACT_ID: Final = re.compile(r"rc_[0-9a-f]{64}")
 _SHA256: Final = re.compile(r"[0-9a-f]{64}")
 _ACCEPTANCE_ARTIFACT: Final = "d0_acceptance.json"
 _MAX_ACCEPTANCE_BYTES: Final = 128 * 1024
-_RUNTIME_VERSION: Final = 2
-_FIXTURE_ID: Final = "bybit_btcusdt_crowding_d0_v2"
-_FIXTURE_VERSION: Final = 2
+_RUNTIME_VERSION: Final = 3
+_FIXTURE_ID: Final = "bybit_btcusdt_crowding_d0_v3"
+_FIXTURE_VERSION: Final = 3
 
 
 def _canonical(value: object) -> str:

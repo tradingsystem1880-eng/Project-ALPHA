@@ -441,6 +441,24 @@ def test_bybit_option_families_require_truthful_option_category() -> None:
             )
 
 
+def test_bybit_price_bars_declare_interval_start_and_completion_rule() -> None:
+    plan = crypto_data_cmds._bybit_plan(
+        "mark_bars",
+        "BTCUSDT",
+        base="BTC",
+        quote="USDT",
+        category="linear",
+        frequency="1h",
+        start=None,
+        end=None,
+        fetched_at=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    assert plan.dataset.timestamp_convention == "interval_start_utc"
+    assert plan.expected_cadence_seconds == 3_600
+    assert plan.period_start_timestamps is True
+
+
 def test_crypto_data_acquire_freezes_one_bounded_bybit_family_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

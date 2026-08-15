@@ -24,16 +24,17 @@ SEMANTICS = {
         "base_coin_if_linear_quote_coin_if_inverse",
         "provider_event_utc",
     ),
-    "premium_bars": ("1h", "quote_price", "provider_event_utc"),
-    "mark_bars": ("1h", "quote_price", "provider_event_utc"),
-    "index_bars": ("1h", "quote_price", "provider_event_utc"),
-    "derivative_bars": ("1h", "quote_price", "provider_event_utc"),
+    "premium_bars": ("1h", "quote_price", "interval_start_utc"),
+    "mark_bars": ("1h", "quote_price", "interval_start_utc"),
+    "index_bars": ("1h", "quote_price", "interval_start_utc"),
+    "derivative_bars": ("1h", "quote_price", "interval_start_utc"),
     "instrument_catalog": ("catalog_snapshot", "provider_native", "fetch_knowledge_utc"),
+    "long_short_ratio": ("1h", "dimensionless_ratio", "provider_event_utc"),
 }
 
 
 def _snapshot(
-    *, quote_asset: str = "USDT"
+    *, quote_asset: str = "USDT", correction_lineage: tuple[str, ...] = ()
 ) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1]]:
     members: list[CryptoSnapshotMemberV1] = []
     reports: dict[str, CryptoQualityReportV1] = {}
@@ -67,7 +68,7 @@ def _snapshot(
             observed_start=NOW,
             observed_end=NOW,
             row_count=1,
-            correction_lineage=(),
+            correction_lineage=correction_lineage,
         )
     return (
         CryptoSnapshotV1.create(
@@ -101,14 +102,19 @@ def test_registered_crowding_plan_projects_exact_dataset_semantics() -> None:
     plan = registered_crypto_crowding_plan()
     requirements = crypto_data_cmds._crypto_crowding_requirements(plan)
 
-    assert tuple(requirement.family for requirement in requirements) == plan.required_families
+    assert tuple(requirement.family for requirement in requirements) == (
+        *plan.required_families,
+        plan.confounder_family,
+    )
     assert all(requirement.provider == "bybit" for requirement in requirements)
     assert all(requirement.venue == "bybit" for requirement in requirements)
     assert all(requirement.market_type == "linear" for requirement in requirements)
     assert requirements[0].frequency == "funding_interval"
-    assert requirements[-1].instrument == "linear"
-    assert requirements[-1].base_asset is None
-    assert requirements[-1].quote_asset is None
+    assert requirements[-2].instrument == "linear"
+    assert requirements[-2].base_asset is None
+    assert requirements[-2].quote_asset is None
+    assert requirements[-1].instrument == "BTCUSDT"
+    assert requirements[-1].frequency == "1h"
 
 
 def test_crowding_compatibility_binds_snapshot_plan_and_asset_master(
@@ -134,4 +140,14 @@ def test_crowding_compatibility_rejects_mixed_quote_before_evidence(
     _install_verified_snapshot(monkeypatch, snapshot, reports)
 
     with pytest.raises(DataError, match="dataset_mismatch:.*:quote_asset"):
+        crypto_data_cmds.crypto_crowding_snapshot_compatibility(snapshot.snapshot_id)
+
+
+def test_crowding_compatibility_rejects_corrections_without_row_availability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot, reports = _snapshot(correction_lineage=("prior-provider-bytes",))
+    _install_verified_snapshot(monkeypatch, snapshot, reports)
+
+    with pytest.raises(DataError, match="row-level availability"):
         crypto_data_cmds.crypto_crowding_snapshot_compatibility(snapshot.snapshot_id)
