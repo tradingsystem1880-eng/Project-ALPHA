@@ -39,6 +39,14 @@ from alpha_research.confirmation import (
     ConfirmationStatus,
     classify_confirmation,
 )
+from alpha_research.crypto_crowding import (
+    CryptoCrowdingEvaluationV1,
+    CryptoCrowdingEventV1,
+    CryptoCrowdingObservationV1,
+    CryptoCrowdingResearchPlanV1,
+    evaluate_crypto_crowding,
+    registered_crypto_crowding_plan,
+)
 from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
 from alpha_research.descriptives import (
     AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
@@ -119,6 +127,10 @@ __all__ = [
     "ConfirmationEvidence",
     "ConfirmationOutcome",
     "ConfirmationStatus",
+    "CryptoCrowdingEvaluationV1",
+    "CryptoCrowdingEventV1",
+    "CryptoCrowdingObservationV1",
+    "CryptoCrowdingResearchPlanV1",
     "DoubleBottomEvent",
     "DoubleBottomSpec",
     "EqualDurationResearchBars",
@@ -167,6 +179,7 @@ __all__ = [
     "difference_in_means",
     "derive_market_state",
     "effective_sample_size",
+    "evaluate_crypto_crowding",
     "evaluate_event_association",
     "evaluate_matched_association",
     "forward_returns",
@@ -181,6 +194,7 @@ __all__ = [
     "render_research_line_chart",
     "required_observations_known_sigma",
     "return_distribution",
+    "registered_crypto_crowding_plan",
     "research_d2_boundary_from_dict",
     "rolling_effect_size",
     "rolling_rank_ic",
