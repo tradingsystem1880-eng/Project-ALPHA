@@ -1770,6 +1770,8 @@ def _fetch_non_bybit(
                 request = coingecko_demo_request("markets", params, api_key=api_key)
                 payload = fetch_coingecko_demo(request)
         elif family == "asset_metadata":
+            if instrument_value != "all":
+                raise DataError("CoinGecko asset metadata requires instrument all")
             params = {"include_platform": True}
             request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
             payload = fetch_coingecko_demo(request)

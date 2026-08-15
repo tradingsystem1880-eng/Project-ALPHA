@@ -1439,6 +1439,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === '/api/crypto-data/catalog') {
     return {
       families: [
+        { family: 'asset_metadata', provider: 'coingecko', role: 'primary_acquisition' },
         { family: 'funding', provider: 'bybit', role: 'primary_acquisition' },
         { family: 'instrument_catalog', provider: 'bybit', role: 'primary_acquisition' },
         { family: 'derivative_bars', provider: 'bybit', role: 'primary_acquisition' },
@@ -2310,6 +2311,8 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   const center = page.getByRole('region', { name: 'Crypto Data Center' })
   await expect(center.getByText('Select qualified datasets for one exact frozen snapshot.')).toBeVisible()
   await center.getByRole('tab', { name: 'Assets & Contracts', exact: true }).click()
+  await expect(center.getByLabel('Dataset family')).toHaveValue('asset_metadata')
+  await expect(center.getByLabel('Instrument')).toHaveValue('all')
   await center.getByRole('button', { name: 'Build from latest qualified catalogs', exact: true }).click()
   await expect(center.getByText('FROZEN · 1 contract mappings', { exact: true })).toBeVisible()
   await center.getByLabel('Contract address').fill('0xusdc')

@@ -222,6 +222,35 @@ def test_geckoterminal_pool_history_and_transactions_build_exact_offline_plans(
         )
 
 
+def test_coingecko_full_asset_catalog_cannot_be_labeled_as_one_asset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "fixture-key")
+
+    def unexpected_fetch(*_args: object, **_kwargs: object) -> bytes:
+        raise AssertionError("provider request must not start for a false catalog identity")
+
+    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", unexpected_fetch)
+    with pytest.raises(DataError, match="instrument all"):
+        crypto_data_cmds._fetch_non_bybit(
+            "coingecko",
+            "asset_metadata",
+            "bitcoin",
+            tmp_path,
+            base="BTC",
+            quote="USD",
+            category="spot",
+            frequency="catalog_snapshot",
+            period=None,
+            network=None,
+            pool_address=None,
+            metrics=None,
+            start=None,
+            end=None,
+            fetched_at=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+        )
+
+
 def test_latest_profile_and_hourly_sources_are_selected_from_immutable_artifacts(
     tmp_path: Path,
 ) -> None:
