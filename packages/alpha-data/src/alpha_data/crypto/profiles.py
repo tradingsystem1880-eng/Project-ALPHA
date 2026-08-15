@@ -409,22 +409,10 @@ def _task(
     )
 
 
-def build_default_coverage_tasks(
-    *,
-    linear_catalog: pl.DataFrame,
-    inverse_catalog: pl.DataFrame,
-    option_catalog: pl.DataFrame,
-    option_open_interest: dict[tuple[str, str], float],
-    coinmetrics_catalog: pl.DataFrame,
-    as_of: datetime,
-    binance_memberships: tuple[pl.DataFrame, ...] = (),
-    binance_hourly_memberships: tuple[pl.DataFrame, ...] = (),
-) -> tuple[CryptoCoverageTaskV1, ...]:
-    """Build the fixed public-data profile without fetching or granting authority."""
-    if as_of.tzinfo is None or as_of.utcoffset() is None:
-        raise DataError("crypto coverage profile as_of must be timezone-aware")
-    as_of = as_of.astimezone(UTC)
-    tasks: list[CryptoCoverageTaskV1] = [
+def _reference_tasks(
+    coinmetrics_catalog: pl.DataFrame, *, as_of: datetime
+) -> list[CryptoCoverageTaskV1]:
+    tasks = [
         _task(
             "coingecko",
             "asset_metadata",
@@ -460,8 +448,8 @@ def build_default_coverage_tasks(
         )
         for network in sorted(NETWORKS)
     )
-    required_catalog_columns = {"asset", "metric", "family", "frequency", "fetched_at"}
-    if not required_catalog_columns.issubset(coinmetrics_catalog.columns):
+    required_columns = {"asset", "metric", "family", "frequency", "fetched_at"}
+    if not required_columns.issubset(coinmetrics_catalog.columns):
         raise DataError("Coin Metrics Community catalog schema is incomplete")
     tasks.append(
         _task(
@@ -498,10 +486,22 @@ def build_default_coverage_tasks(
                 lookback_days=30,
             )
         )
-    tasks.extend(
+    return tasks
+
+
+def _binance_tasks(
+    memberships: tuple[pl.DataFrame, ...],
+    hourly_memberships: tuple[pl.DataFrame, ...],
+    *,
+    as_of: datetime,
+) -> list[CryptoCoverageTaskV1]:
+    if not memberships:
+        return []
+    active = active_binance_markets(memberships, as_of=as_of)
+    tasks = [
         _task(
-            "bybit",
-            "instrument_catalog",
+            "binance",
+            "market_membership",
             category,
             base=None,
             quote=None,
@@ -509,89 +509,78 @@ def build_default_coverage_tasks(
             frequency="catalog_snapshot",
             cadence="daily",
         )
-        for category in ("spot", "linear", "inverse", "option")
+        for category in ("spot", "linear", "inverse")
+    ]
+    tasks.extend(
+        _task(
+            "binance",
+            "market_bars",
+            symbol,
+            base=base,
+            quote=quote,
+            category=category,
+            frequency="1d",
+            cadence="daily",
+        )
+        for symbol, base, quote, category in active
     )
-
-    if binance_memberships:
-        active_binance = active_binance_markets(binance_memberships, as_of=as_of)
-        tasks.extend(
-            _task(
-                "binance",
-                "market_membership",
-                category,
-                base=None,
-                quote=None,
-                category=category,
-                frequency="catalog_snapshot",
-                cadence="daily",
+    active_ids = set(active)
+    seen_scopes: set[tuple[str, str]] = set()
+    required_columns = {
+        "session",
+        "rank",
+        "category",
+        "symbol",
+        "base_asset",
+        "quote_asset",
+        "liquidity_score",
+        "liquidity_units",
+    }
+    for membership in hourly_memberships:
+        if not required_columns.issubset(membership.columns) or not 1 <= membership.height <= 250:
+            raise DataError("Binance hourly membership schema is invalid")
+        categories = set(membership["category"].to_list())
+        quotes = set(membership["quote_asset"].to_list())
+        if len(categories) != 1 or len(quotes) != 1:
+            raise DataError("Binance hourly membership mixes unit scopes")
+        scope = (str(next(iter(categories))), str(next(iter(quotes))))
+        if scope in seen_scopes:
+            raise DataError("Binance hourly membership scope is duplicated")
+        seen_scopes.add(scope)
+        if membership["rank"].to_list() != list(range(1, membership.height + 1)):
+            raise DataError("Binance hourly membership ranks are invalid")
+        sessions = membership["session"].to_list()
+        if len(set(sessions)) != 1 or any(
+            not isinstance(session, datetime) or session >= as_of for session in sessions
+        ):
+            raise DataError("Binance hourly membership session is not point-in-time")
+        for row in membership.iter_rows(named=True):
+            identity = (
+                str(row["symbol"]),
+                str(row["base_asset"]),
+                str(row["quote_asset"]),
+                str(row["category"]),
             )
-            for category in ("spot", "linear", "inverse")
-        )
-        tasks.extend(
-            _task(
-                "binance",
-                "market_bars",
-                symbol,
-                base=base,
-                quote=quote,
-                category=category,
-                frequency="1d",
-                cadence="daily",
+            if identity not in active_ids:
+                raise DataError("Binance hourly membership is outside active venue membership")
+            tasks.append(
+                _task(
+                    "binance",
+                    "market_bars",
+                    identity[0],
+                    base=identity[1],
+                    quote=identity[2],
+                    category=identity[3],
+                    frequency="1h",
+                    cadence="hourly",
+                )
             )
-            for symbol, base, quote, category in active_binance
-        )
-        active_ids = set(active_binance)
-        seen_scopes: set[tuple[str, str]] = set()
-        for membership in binance_hourly_memberships:
-            required = {
-                "session",
-                "rank",
-                "category",
-                "symbol",
-                "base_asset",
-                "quote_asset",
-                "liquidity_score",
-                "liquidity_units",
-            }
-            if not required.issubset(membership.columns) or not 1 <= membership.height <= 250:
-                raise DataError("Binance hourly membership schema is invalid")
-            categories = set(membership["category"].to_list())
-            quotes = set(membership["quote_asset"].to_list())
-            if len(categories) != 1 or len(quotes) != 1:
-                raise DataError("Binance hourly membership mixes unit scopes")
-            scope = (str(next(iter(categories))), str(next(iter(quotes))))
-            if scope in seen_scopes:
-                raise DataError("Binance hourly membership scope is duplicated")
-            seen_scopes.add(scope)
-            if membership["rank"].to_list() != list(range(1, membership.height + 1)):
-                raise DataError("Binance hourly membership ranks are invalid")
-            sessions = membership["session"].to_list()
-            if len(set(sessions)) != 1 or any(
-                not isinstance(session, datetime) or session >= as_of for session in sessions
-            ):
-                raise DataError("Binance hourly membership session is not point-in-time")
-            for row in membership.iter_rows(named=True):
-                identity = (
-                    str(row["symbol"]),
-                    str(row["base_asset"]),
-                    str(row["quote_asset"]),
-                    str(row["category"]),
-                )
-                if identity not in active_ids:
-                    raise DataError("Binance hourly membership is outside active venue membership")
-                tasks.append(
-                    _task(
-                        "binance",
-                        "market_bars",
-                        identity[0],
-                        base=identity[1],
-                        quote=identity[2],
-                        category=identity[3],
-                        frequency="1h",
-                        cadence="hourly",
-                    )
-                )
+    return tasks
 
+
+def _bybit_perpetual_tasks(
+    linear_catalog: pl.DataFrame, inverse_catalog: pl.DataFrame, *, as_of: datetime
+) -> list[CryptoCoverageTaskV1]:
     perpetuals = (
         *_active_perpetuals(linear_catalog, category="linear", as_of=as_of),
         *_active_perpetuals(inverse_catalog, category="inverse", as_of=as_of),
@@ -605,30 +594,38 @@ def build_default_coverage_tasks(
         ("index_bars", "1h", "hourly"),
         ("premium_bars", "1h", "hourly"),
     )
-    for symbol, base, quote, category in perpetuals:
-        tasks.extend(
-            _task(
-                "bybit",
-                family,
-                symbol,
-                base=base,
-                quote=quote,
-                category=category,
-                frequency=frequency,
-                cadence=cadence,
-            )
-            for family, frequency, cadence in families
+    return [
+        _task(
+            "bybit",
+            family,
+            symbol,
+            base=base,
+            quote=quote,
+            category=category,
+            frequency=frequency,
+            cadence=cadence,
         )
+        for symbol, base, quote, category in perpetuals
+        for family, frequency, cadence in families
+    ]
 
-    option_markets = active_option_markets(option_catalog, as_of=as_of)
-    if set(option_open_interest) != set(option_markets) or any(
+
+def _bybit_option_tasks(
+    option_catalog: pl.DataFrame,
+    option_open_interest: dict[tuple[str, str], float],
+    *,
+    as_of: datetime,
+) -> list[CryptoCoverageTaskV1]:
+    markets = active_option_markets(option_catalog, as_of=as_of)
+    if set(option_open_interest) != set(markets) or any(
         not isinstance(value, int | float)
         or isinstance(value, bool)
         or not 0 <= float(value) < float("inf")
         for value in option_open_interest.values()
     ):
         raise DataError("Bybit option open-interest coverage is incomplete")
-    for base, quote in option_markets:
+    tasks: list[CryptoCoverageTaskV1] = []
+    for base, quote in markets:
         instrument = f"{base}-OPTIONS"
         tasks.extend(
             (
@@ -667,7 +664,7 @@ def build_default_coverage_tasks(
     ranked = sorted(
         (
             (float(option_open_interest.get(market, 0.0)), market)
-            for market in option_markets
+            for market in markets
             if float(option_open_interest.get(market, 0.0)) > 0
         ),
         key=lambda item: (-item[0], item[1]),
@@ -684,6 +681,59 @@ def build_default_coverage_tasks(
             cadence="five_minute",
         )
         for _, (base, quote) in ranked
+    )
+    return tasks
+
+
+def build_default_coverage_tasks(
+    *,
+    linear_catalog: pl.DataFrame,
+    inverse_catalog: pl.DataFrame,
+    option_catalog: pl.DataFrame,
+    option_open_interest: dict[tuple[str, str], float],
+    coinmetrics_catalog: pl.DataFrame,
+    as_of: datetime,
+    binance_memberships: tuple[pl.DataFrame, ...] = (),
+    binance_hourly_memberships: tuple[pl.DataFrame, ...] = (),
+) -> tuple[CryptoCoverageTaskV1, ...]:
+    """Build the fixed public-data profile without fetching or granting authority."""
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise DataError("crypto coverage profile as_of must be timezone-aware")
+    as_of = as_of.astimezone(UTC)
+    tasks = _reference_tasks(coinmetrics_catalog, as_of=as_of)
+    tasks.extend(
+        _task(
+            "bybit",
+            "instrument_catalog",
+            category,
+            base=None,
+            quote=None,
+            category=category,
+            frequency="catalog_snapshot",
+            cadence="daily",
+        )
+        for category in ("spot", "linear", "inverse", "option")
+    )
+    tasks.extend(
+        _binance_tasks(
+            binance_memberships,
+            binance_hourly_memberships,
+            as_of=as_of,
+        )
+    )
+    tasks.extend(
+        _bybit_perpetual_tasks(
+            linear_catalog,
+            inverse_catalog,
+            as_of=as_of,
+        )
+    )
+    tasks.extend(
+        _bybit_option_tasks(
+            option_catalog,
+            option_open_interest,
+            as_of=as_of,
+        )
     )
     if len({task.task_id for task in tasks}) != len(tasks):
         raise DataError("crypto coverage profile contains duplicate tasks")
