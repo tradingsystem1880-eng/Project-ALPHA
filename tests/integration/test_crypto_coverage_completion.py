@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import cast
+from urllib.request import Request
 
 import polars as pl
 import pytest
@@ -13,7 +14,11 @@ from typer.testing import CliRunner
 from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
-from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoFamily
+from alpha_data.crypto.contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoFamily,
+    CryptoQualityReportV1,
+)
 from alpha_data.crypto.ingestion import ingest_provider_payload
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
@@ -222,32 +227,95 @@ def test_geckoterminal_pool_history_and_transactions_build_exact_offline_plans(
         )
 
 
-def test_coingecko_full_asset_catalog_cannot_be_labeled_as_one_asset(
+def test_coingecko_requested_asset_detail_is_not_mislabeled_as_the_full_catalog(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "fixture-key")
+    requested_urls: list[str] = []
 
-    def unexpected_fetch(*_args: object, **_kwargs: object) -> bytes:
-        raise AssertionError("provider request must not start for a false catalog identity")
+    def fetch(request: Request) -> bytes:
+        requested_urls.append(request.full_url)
+        return json.dumps(
+            {
+                "id": "bitcoin",
+                "symbol": "btc",
+                "name": "Bitcoin",
+                "categories": ["Layer 1"],
+                "genesis_date": "2009-01-03",
+            }
+        ).encode()
 
-    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", unexpected_fetch)
-    with pytest.raises(DataError, match="instrument all"):
-        crypto_data_cmds._fetch_non_bybit(
-            "coingecko",
-            "asset_metadata",
-            "bitcoin",
-            tmp_path,
-            base="BTC",
-            quote="USD",
-            category="spot",
-            frequency="catalog_snapshot",
-            period=None,
-            network=None,
-            pool_address=None,
-            metrics=None,
-            start=None,
-            end=None,
-            fetched_at=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", fetch)
+    fetched = crypto_data_cmds._fetch_non_bybit(
+        "coingecko",
+        "asset_metadata",
+        "bitcoin",
+        tmp_path,
+        base="BTC",
+        quote="USD",
+        category="spot",
+        frequency="catalog_snapshot",
+        period=None,
+        network=None,
+        pool_address=None,
+        metrics=None,
+        start=None,
+        end=None,
+        fetched_at=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+    )
+
+    assert isinstance(fetched, crypto_data_cmds._FetchedAcquisition)
+    assert fetched.plan.endpoint == "coin_detail"
+    assert fetched.plan.dataset.instrument == "bitcoin"
+    assert fetched.plan.dataset.frequency == "point_in_time_detail"
+    assert fetched.plan.dataset.base_asset == "BTC"
+    assert fetched.parser_version == "coingecko-detail-v1"
+    assert "/coins/bitcoin?" in requested_urls[0]
+    assert "market_data=False" in requested_urls[0]
+
+
+def test_asset_master_rejects_requested_detail_as_a_catalog_source(tmp_path: Path) -> None:
+    dataset = CryptoDatasetIdentityV1(
+        provider="coingecko",
+        venue="coingecko",
+        market_type="reference",
+        family="asset_metadata",
+        instrument="bitcoin",
+        base_asset="BTC",
+        quote_asset=None,
+        frequency="point_in_time_detail",
+        units="reference_only",
+        timestamp_convention="provider_observation_utc",
+    )
+    quality = CryptoQualityReportV1(
+        dataset_sha256=dataset.content_sha256,
+        state="qualified",
+        failures=(),
+        warnings=(),
+        observed_start=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+        observed_end=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+        row_count=1,
+        correction_lineage=(),
+        method_version="crypto-quality-v1",
+    )
+
+    class DetailStore:
+        bulk_root = tmp_path
+
+        def verify_manifest(self, _manifest_id: str) -> dict[str, object]:
+            return {
+                "artifact_kind": "normalized",
+                "dataset": dataset.to_dict(),
+                "quality": quality.to_dict(),
+                "artifact_key": "not-read.parquet",
+            }
+
+    with pytest.raises(DataError, match="authoritative asset_metadata"):
+        crypto_data_cmds._qualified_normalized_frame(
+            cast(CryptoBulkStore, DetailStore()),
+            "b" * 64,
+            family="asset_metadata",
+            instrument="all",
         )
 
 

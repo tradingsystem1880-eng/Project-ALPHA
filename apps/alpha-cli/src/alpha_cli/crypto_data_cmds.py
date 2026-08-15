@@ -88,6 +88,7 @@ from alpha_data.crypto.providers.coingecko import (
     coingecko_demo_request,
     fetch_coingecko_demo,
     parse_asset_catalog,
+    parse_asset_detail,
     parse_market_universe,
 )
 from alpha_data.crypto.providers.coinmetrics import (
@@ -357,6 +358,10 @@ def _market_reference_parser_at(
 
 def _asset_catalog_parser_at(completed_at: datetime) -> Callable[[bytes], pl.DataFrame]:
     return partial(_asset_catalog_frame, fetched_at=completed_at)
+
+
+def _asset_detail_parser_at(completed_at: datetime) -> Callable[[bytes], pl.DataFrame]:
+    return partial(parse_asset_detail, fetched_at=completed_at)
 
 
 def _top_pools_parser_at(
@@ -1747,6 +1752,7 @@ def _fetch_non_bybit(
         if not api_key:
             raise DataError("CoinGecko Demo key requires scoped process injection")
         if family == "market_reference":
+            parser_version_value = "coingecko-reference-v1"
             params: dict[str, str | int | bool] = {
                 "vs_currency": quote_value.lower(),
                 "order": "market_cap_desc",
@@ -1770,17 +1776,34 @@ def _fetch_non_bybit(
                 request = coingecko_demo_request("markets", params, api_key=api_key)
                 payload = fetch_coingecko_demo(request)
         elif family == "asset_metadata":
-            if instrument_value != "all":
-                raise DataError("CoinGecko asset metadata requires instrument all")
-            params = {"include_platform": True}
-            request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
+            if instrument_value == "all":
+                params = {"include_platform": True}
+                request = coingecko_demo_request("asset_catalog", params, api_key=api_key)
+                parser = partial(_asset_catalog_frame, fetched_at=fetched_at)
+                parser_at = _asset_catalog_parser_at
+                keys = ("coingecko_id", "network", "contract_address")
+                endpoint = "asset_catalog"
+                frequency_value = "catalog_snapshot"
+                parser_version_value = "coingecko-catalog-v1"
+            else:
+                params = {
+                    "localization": False,
+                    "tickers": False,
+                    "market_data": False,
+                    "community_data": False,
+                    "developer_data": False,
+                }
+                request = coingecko_demo_request(
+                    "coin_detail", params, api_key=api_key, coin_id=instrument_value
+                )
+                parser = partial(parse_asset_detail, fetched_at=fetched_at)
+                parser_at = _asset_detail_parser_at
+                keys = ("coingecko_id",)
+                endpoint = "coin_detail"
+                frequency_value = "point_in_time_detail"
+                parser_version_value = "coingecko-detail-v1"
             payload = fetch_coingecko_demo(request)
-            parser = partial(_asset_catalog_frame, fetched_at=fetched_at)
-            parser_at = _asset_catalog_parser_at
             observed_column = "fetched_at"
-            keys = ("coingecko_id", "network", "contract_address")
-            endpoint = "asset_catalog"
-            frequency_value = "catalog_snapshot"
         else:
             raise DataError(f"CoinGecko is not authoritative for {family}")
         plan = _AcquisitionPlan(
@@ -1795,9 +1818,7 @@ def _fetch_non_bybit(
                 market_type="reference",
                 family=family,
                 instrument=instrument_value,
-                base_asset=(
-                    None if family == "asset_metadata" or instrument_value == "all" else base_value
-                ),
+                base_asset=(None if instrument_value == "all" else base_value),
                 quote_asset=quote_value if family == "market_reference" else None,
                 frequency=frequency_value,
                 units="reference_only",
@@ -1840,7 +1861,7 @@ def _fetch_non_bybit(
                         upstream_checksums=tuple(None for _ in market_pages),
                         combine_frames=None,
                         provider_schema="coingecko-demo-v3",
-                        parser_version="coingecko-reference-v1",
+                        parser_version=parser_version_value,
                         logical_name=f"{family}.json",
                     )
             raise DataError("CoinGecko market universe exceeded the 100-page safety limit")
@@ -1848,7 +1869,7 @@ def _fetch_non_bybit(
             plan=plan,
             payload=payload,
             provider_schema="coingecko-demo-v3",
-            parser_version="coingecko-reference-v1",
+            parser_version=parser_version_value,
             logical_name=f"{family}.json",
         )
 
@@ -2859,14 +2880,22 @@ def compare(
 
 
 def _qualified_normalized_frame(
-    store: CryptoBulkStore, manifest_id: str, *, family: CryptoFamily
+    store: CryptoBulkStore,
+    manifest_id: str,
+    *,
+    family: CryptoFamily,
+    instrument: str | None = None,
 ) -> tuple[pl.DataFrame, CryptoQualityReportV1]:
     manifest = store.verify_manifest(manifest_id)
     if manifest.get("artifact_kind") != "normalized":
         raise DataError("crypto asset-master sources must be normalized artifacts")
     dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
     quality_report = CryptoQualityReportV1.from_dict(manifest.get("quality"))
-    if dataset.family != family or dataset.provider != FAMILY_AUTHORITIES[family]:
+    if (
+        dataset.family != family
+        or dataset.provider != FAMILY_AUTHORITIES[family]
+        or (instrument is not None and dataset.instrument != instrument)
+    ):
         raise DataError(f"crypto asset-master source is not authoritative {family}")
     if quality_report.state != "qualified":
         raise DataError("crypto asset-master sources must be mechanically qualified")
@@ -3901,7 +3930,7 @@ def asset_master_create(
         store = _bulk_store()
         store.verify_ready(required_bytes=0)
         coingecko, quality_report = _qualified_normalized_frame(
-            store, coingecko_manifest_id, family="asset_metadata"
+            store, coingecko_manifest_id, family="asset_metadata", instrument="all"
         )
         pools = tuple(
             _qualified_normalized_frame(store, manifest_id, family="dex_pools")[0]

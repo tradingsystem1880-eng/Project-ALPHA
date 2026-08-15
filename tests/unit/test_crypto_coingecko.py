@@ -13,6 +13,7 @@ from alpha_data.crypto.providers.coingecko import (
     coingecko_demo_request,
     fetch_coingecko_demo,
     parse_asset_catalog,
+    parse_asset_detail,
     parse_market_universe,
 )
 
@@ -82,6 +83,63 @@ def test_asset_catalog_does_not_lose_contract_identity_when_optional_symbol_is_e
     row = parse_asset_catalog(payload).row(0, named=True)
     assert row["coingecko_id"] == "contract-only"
     assert row["symbol"] == ""
+
+
+def test_requested_asset_detail_preserves_bounded_descriptive_metadata() -> None:
+    fetched_at = datetime(2026, 8, 15, tzinfo=UTC)
+    payload = json.dumps(
+        {
+            "id": "bitcoin",
+            "symbol": "btc",
+            "name": "Bitcoin",
+            "asset_platform_id": None,
+            "block_time_in_minutes": 10,
+            "hashing_algorithm": "SHA-256",
+            "categories": ["Layer 1", "Proof of Work", "Layer 1"],
+            "genesis_date": "2009-01-03",
+            "market_cap_rank": 1,
+            "watchlist_portfolio_users": 123,
+            "sentiment_votes_up_percentage": 75.5,
+            "sentiment_votes_down_percentage": 24.5,
+            "public_interest_score": 0.9,
+            "last_updated": "2026-08-15T00:00:00Z",
+            "description": {"en": "untrusted prose is deliberately excluded"},
+            "links": {"homepage": ["https://example.invalid"]},
+        }
+    ).encode()
+
+    row = parse_asset_detail(payload, fetched_at=fetched_at).row(0, named=True)
+
+    assert row["coingecko_id"] == "bitcoin"
+    assert row["symbol"] == "BTC"
+    assert row["categories_json"] == '["Layer 1","Proof of Work"]'
+    assert row["genesis_date"] == "2009-01-03"
+    assert row["last_updated"] == fetched_at
+    assert "description" not in row and "links" not in row
+
+
+def test_requested_asset_detail_rejects_unbounded_or_invalid_metadata() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    with pytest.raises(DataError, match="timezone"):
+        parse_asset_detail(
+            b'{"id":"bitcoin","symbol":"btc","name":"Bitcoin","categories":[]}',
+            fetched_at=datetime(2026, 8, 15),
+        )
+    for patch, message in (
+        ({"categories": ["x"] * 501}, "categories"),
+        ({"genesis_date": "yesterday"}, "genesis date"),
+        ({"sentiment_votes_up_percentage": 101}, "sentiment_votes_up_percentage"),
+        ({"public_interest_score": -0.1}, "public_interest_score"),
+    ):
+        value = {
+            "id": "bitcoin",
+            "symbol": "btc",
+            "name": "Bitcoin",
+            "categories": [],
+            **patch,
+        }
+        with pytest.raises(DataError, match=message):
+            parse_asset_detail(json.dumps(value).encode(), fetched_at=now)
 
 
 class _Response:

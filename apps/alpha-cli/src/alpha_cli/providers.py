@@ -460,8 +460,8 @@ def provider_definitions(
             limitations=(
                 "Keyless public pool observations are manipulable and require explicit quality "
                 "checks.",
-                "Only reviewed networks and case-bound pool history are acquired; no all-pool "
-                "mirror.",
+                "Only reviewed networks and exact owner-requested pool history are acquired; "
+                "the immutable receipt records the pool and no all-pool mirror exists.",
             ),
             asset_classes=("crypto",),
             timeframes=("1m", "1h", "1D", "snapshot"),

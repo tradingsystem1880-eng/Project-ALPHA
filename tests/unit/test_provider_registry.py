@@ -195,6 +195,10 @@ def test_crypto_reference_providers_have_distinct_family_authority() -> None:
         "crypto_dex_ohlcv",
         "crypto_dex_transactions",
     )
+    assert any(
+        "exact owner-requested pool" in limitation
+        for limitation in definitions["geckoterminal"].limitations
+    )
     assert definitions["coinmetrics"].capabilities == ("crypto_onchain_metrics",)
     assert all(
         definitions[provider].research_authority and not definitions[provider].paper_execution

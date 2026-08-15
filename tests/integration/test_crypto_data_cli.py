@@ -1055,7 +1055,22 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
             }
         ]
     ).encode()
-    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", lambda *_args: coingecko_payload)
+    coingecko_detail_payload = json.dumps(
+        {
+            "id": "bitcoin",
+            "symbol": "btc",
+            "name": "Bitcoin",
+            "categories": ["Layer 1"],
+            "genesis_date": "2009-01-03",
+        }
+    ).encode()
+
+    def fetch_coingecko(request: Request) -> bytes:
+        return (
+            coingecko_detail_payload if "/coins/bitcoin?" in request.full_url else coingecko_payload
+        )
+
+    monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", fetch_coingecko)
 
     def fetch_geckoterminal(url: str) -> bytes:
         page = int(url.split("page=")[1].split("&", 1)[0])
@@ -1171,6 +1186,15 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
             "USD",
         ],
         [
+            "coingecko",
+            "asset_metadata",
+            "bitcoin",
+            "--base",
+            "BTC",
+            "--quote",
+            "USD",
+        ],
+        [
             "geckoterminal",
             "dex_pools",
             "ethereum",
@@ -1240,7 +1264,7 @@ def test_crypto_data_acquires_each_non_bybit_authority_offline(
     request_pairs = raw_catalog_page["receipt"]["request"]
     assert isinstance(request_pairs, list)
     assert dict(request_pairs)["page_size"] == "1000"
-    assert len(store.inventory()) == 17
+    assert len(store.inventory()) == 19
     inventory_json = json.dumps(store.inventory())
     assert "injected-only-for-test" not in inventory_json
 

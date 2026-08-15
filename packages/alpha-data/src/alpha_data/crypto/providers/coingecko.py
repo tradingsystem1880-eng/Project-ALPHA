@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Final
 from urllib.parse import urlencode
 from urllib.request import Request
@@ -103,6 +103,16 @@ def _decode_list(payload: bytes) -> list[dict[str, object]]:
     return raw
 
 
+def _decode_object(payload: bytes) -> dict[str, object]:
+    try:
+        raw = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DataError("CoinGecko response is malformed") from exc
+    if not isinstance(raw, dict):
+        raise DataError("CoinGecko response must be an object")
+    return raw
+
+
 def _number(row: dict[str, object], key: str) -> float | None:
     value = row.get(key)
     if value is None:
@@ -113,6 +123,24 @@ def _number(row: dict[str, object], key: str) -> float | None:
     if not math.isfinite(result):
         raise DataError(f"CoinGecko field {key} is not finite")
     return result
+
+
+def _optional_text(row: dict[str, object], key: str, *, limit: int = 500) -> str | None:
+    value = row.get(key)
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or len(value) > limit:
+        raise DataError(f"CoinGecko field {key} is invalid")
+    return value
+
+
+def _optional_count(row: dict[str, object], key: str) -> int | None:
+    value = row.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise DataError(f"CoinGecko field {key} is invalid")
+    return value
 
 
 def parse_market_universe(
@@ -195,9 +223,72 @@ def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
+def parse_asset_detail(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
+    """Normalize one requested asset's bounded descriptive metadata without prose or links."""
+    if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
+        raise DataError("CoinGecko fetch time must be timezone-aware")
+    item = _decode_object(payload)
+    coin_id, symbol, name = item.get("id"), item.get("symbol"), item.get("name")
+    if not all(isinstance(value, str) and value for value in (coin_id, symbol, name)):
+        raise DataError("CoinGecko asset detail identity is invalid")
+    categories = item.get("categories")
+    if (
+        not isinstance(categories, list)
+        or len(categories) > 500
+        or any(not isinstance(value, str) or not value or len(value) > 200 for value in categories)
+    ):
+        raise DataError("CoinGecko asset detail categories are invalid")
+    genesis_date = _optional_text(item, "genesis_date", limit=10)
+    if genesis_date is not None:
+        try:
+            date.fromisoformat(genesis_date)
+        except ValueError as exc:
+            raise DataError("CoinGecko asset detail genesis date is invalid") from exc
+    raw_updated = _optional_text(item, "last_updated", limit=64)
+    last_updated: datetime | None = None
+    if raw_updated is not None:
+        try:
+            last_updated = datetime.fromisoformat(raw_updated.replace("Z", "+00:00")).astimezone(
+                UTC
+            )
+        except ValueError as exc:
+            raise DataError("CoinGecko asset detail update time is invalid") from exc
+    for field in ("sentiment_votes_up_percentage", "sentiment_votes_down_percentage"):
+        value = _number(item, field)
+        if value is not None and not 0 <= value <= 100:
+            raise DataError(f"CoinGecko field {field} is invalid")
+    public_interest_score = _number(item, "public_interest_score")
+    if public_interest_score is not None and public_interest_score < 0:
+        raise DataError("CoinGecko field public_interest_score is invalid")
+    return pl.DataFrame(
+        [
+            {
+                "coingecko_id": coin_id,
+                "symbol": str(symbol).upper(),
+                "name": name,
+                "asset_platform_id": _optional_text(item, "asset_platform_id"),
+                "block_time_minutes": _optional_count(item, "block_time_in_minutes"),
+                "hashing_algorithm": _optional_text(item, "hashing_algorithm"),
+                "categories_json": json.dumps(
+                    sorted(set(categories)), separators=(",", ":"), ensure_ascii=False
+                ),
+                "genesis_date": genesis_date,
+                "market_cap_rank": _optional_count(item, "market_cap_rank"),
+                "watchlist_users": _optional_count(item, "watchlist_portfolio_users"),
+                "sentiment_up_pct": _number(item, "sentiment_votes_up_percentage"),
+                "sentiment_down_pct": _number(item, "sentiment_votes_down_percentage"),
+                "public_interest_score": public_interest_score,
+                "last_updated": last_updated,
+                "fetched_at": fetched_at.astimezone(UTC),
+            }
+        ]
+    )
+
+
 __all__ = [
     "coingecko_demo_request",
     "fetch_coingecko_demo",
+    "parse_asset_detail",
     "parse_asset_catalog",
     "parse_market_universe",
 ]

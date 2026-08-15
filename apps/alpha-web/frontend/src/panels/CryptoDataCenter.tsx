@@ -437,7 +437,9 @@ export function CryptoDataCenter({
   async function freezeAssetMaster(): Promise<void> {
     const latestFor = (target: CryptoFamily): CryptoCoverageItem[] => {
       const candidates = (coverage?.items ?? []).filter(
-        (item) => item.family === target && item.state === 'qualified',
+        (item) => item.family === target
+          && item.state === 'qualified'
+          && (target !== 'asset_metadata' || item.instrument === 'all'),
       )
       const latest = latestCryptoManifestIds(candidates)
       return candidates.filter((item) => latest.has(item.manifest_id))

@@ -1085,6 +1085,7 @@ const CRYPTO_QUARANTINED_ID = '8'.repeat(64)
 const CRYPTO_SNAPSHOT_ID = '9'.repeat(64)
 const CRYPTO_ASSET_MASTER_ID = 'd'.repeat(64)
 const CRYPTO_COINGECKO_MANIFEST_ID = 'e'.repeat(64)
+const CRYPTO_COINGECKO_DETAIL_MANIFEST_ID = '4'.repeat(64)
 const CRYPTO_POOL_MANIFEST_ID = 'f'.repeat(64)
 const CRYPTO_SOLANA_POOL_MANIFEST_ID = '0'.repeat(64)
 const CRYPTO_PROFILE_ID = '1'.repeat(64)
@@ -1159,14 +1160,36 @@ const CRYPTO_COVERAGE: components['schemas']['CryptoCoverageResponse'] = {
       fetched_at: null,
     },
     {
+      manifest_id: CRYPTO_COINGECKO_DETAIL_MANIFEST_ID,
+      provider: 'coingecko',
+      venue: 'coingecko',
+      market_type: 'reference',
+      family: 'asset_metadata',
+      instrument: 'bitcoin',
+      base_asset: 'BTC',
+      quote_asset: null,
+      frequency: 'point_in_time_detail',
+      units: 'reference_only',
+      timestamp_convention: 'provider_observation_utc',
+      state: 'qualified',
+      failures: [],
+      warnings: [],
+      observed_start: '2026-08-15T00:01:00Z',
+      observed_end: '2026-08-15T00:01:00Z',
+      row_count: 1,
+      artifact_sha256: '4'.repeat(64),
+      method_version: 'crypto-quality-v1',
+      fetched_at: '2026-08-15T00:01:00Z',
+    },
+    {
       manifest_id: CRYPTO_COINGECKO_MANIFEST_ID,
       provider: 'coingecko',
       venue: 'coingecko',
       market_type: 'reference',
       family: 'asset_metadata',
       instrument: 'all',
-      base_asset: 'BTC',
-      quote_asset: 'USD',
+      base_asset: null,
+      quote_asset: null,
       frequency: 'catalog_snapshot',
       units: 'metadata',
       timestamp_convention: 'fetch_knowledge_utc',
