@@ -16,6 +16,16 @@ qualification and all separately authorized paper-acceptance scenarios remain pe
 
 ### Added
 
+- ADR-0033 and the registered `bybit_btcusdt_crowding_reversal_v1` research operator, including
+  exact qualified-snapshot preflight, causal funding/OI/premium/mark/index observations, mechanical
+  D0 acceptance scenarios, the existing group-atomic D1/D2 boundary, and honest insufficient-event
+  classification. The separate `hedged_basis_crowding_v1` fixture exercises the complete sandbox
+  development suite with exact Bybit-perpetual/Binance-spot lineage, 40 bp costs, crypto calendar
+  semantics, and a mandatory `UNSUPPORTED_MULTI_VENUE_PAPER` terminal preflight.
+- Repair-program Stages 3–5: one-action Touch ID research ceremonies, bounded lawful literature
+  discovery/acquisition/extraction with verifiable text anchors, cited non-authoritative research
+  recommendations, explicit provider verification receipts, mechanically recomputed
+  `PaperAcceptanceV2`, and a non-crediting IBKR paper-account what-if preview.
 - Crypto data-house Stages 0–3: dataset-family authority and retention governance; additive
   family/venue/unit-aware receipts, quality/snapshot contracts; UUID- and reserve-gated Expansion
   storage with resumable external-first publication; native checksum-verified Binance
@@ -67,6 +77,11 @@ qualification and all separately authorized paper-acceptance scenarios remain pe
 
 ### Changed
 
+- Crypto acquisition planning now lives behind a focused private module while retaining the
+  existing Typer commands and historical import seams; the Workstation acquisition form is a
+  focused view rather than another monolithic Crypto Data Center render block. CLI children,
+  Qlib workers, MCP/web children, candle projections, and macOS volume verification receive only
+  the environment required for their exact task instead of unrelated provider credentials.
 - Fixed Crypto Data House volume verification for nested directories on the reviewed Expansion
   mount without weakening UUID enforcement. Live Bybit acceptance now preserves provider-native
   premium-index tuples, permits valid same-time option cross-sections, filters option contracts by
