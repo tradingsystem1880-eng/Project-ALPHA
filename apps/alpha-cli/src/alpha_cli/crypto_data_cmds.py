@@ -19,6 +19,15 @@ from typing import Annotated, Final, Literal, cast
 import polars as pl
 import typer
 
+from alpha_cli._crypto_acquisition import (
+    AcquisitionPlan as _AcquisitionPlan,
+)
+from alpha_cli._crypto_acquisition import (
+    bybit_plan as _bybit_plan,
+)
+from alpha_cli._crypto_acquisition import (
+    option_quote_frame as _option_quote_frame,
+)
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
 from alpha_cli.research_crypto_strategy import load_hedged_basis_observations
@@ -76,14 +85,10 @@ from alpha_data.crypto.providers.bybit import (
     BybitCategory,
     PriceFamily,
     fetch_bybit_public,
-    parse_funding_history,
-    parse_historical_volatility,
     parse_instruments,
     parse_long_short_ratio,
     parse_open_interest,
-    parse_option_tickers,
     parse_orderbook_snapshot,
-    parse_price_klines,
     parse_recent_trades,
 )
 from alpha_data.crypto.providers.coingecko import (
@@ -186,22 +191,6 @@ _CASE_BOUND_EVENT_FAMILIES: Final = frozenset({"derivative_trades", "derivative_
 
 class _LegacyUnscopedEventError(DataError):
     """Historical bytes are valid but cannot qualify as governed research evidence."""
-
-
-@dataclass(frozen=True)
-class _AcquisitionPlan:
-    endpoint: str
-    params: dict[str, str | int]
-    dataset: CryptoDatasetIdentityV1
-    parser: Callable[[bytes], pl.DataFrame]
-    observed_column: str
-    key_columns: tuple[str, ...]
-    availability_column: str | None = None
-    next_cursor: Callable[[bytes], str | None] | None = None
-    page_limit: int | None = None
-    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
-    expected_cadence_seconds: int | None = None
-    period_start_timestamps: bool = False
 
 
 @dataclass(frozen=True)
@@ -412,28 +401,6 @@ def _parse_ccxt_comparison(payload: bytes, *, symbol: str) -> pl.DataFrame:
     if not isinstance(raw, list) or any(not isinstance(row, list) for row in raw):
         raise DataError("CCXT comparison payload is invalid")
     return parse_ccxt_ohlcv(raw, symbol).bars.rename({"ts": "timestamp"})
-
-
-def _option_symbol_assets(symbol: str) -> tuple[str, str]:
-    parts = symbol.split("-")
-    if len(parts) == 4 and parts[0] and parts[3] in {"C", "P"}:
-        return parts[0], "USD"
-    if len(parts) == 5 and parts[0] and parts[3] in {"C", "P"} and parts[4]:
-        return parts[0], parts[4]
-    raise DataError("Bybit option symbol cannot establish exact base and quote identity")
-
-
-def _option_quote_frame(
-    payload: bytes, *, fetched_at_ms: int, base: str, quote: str
-) -> pl.DataFrame:
-    frame = parse_option_tickers(payload, fetched_at_ms=fetched_at_ms)[0]
-    identities = [_option_symbol_assets(symbol) for symbol in frame["symbol"].to_list()]
-    selected = frame.filter(
-        pl.Series([identity == (base, quote) for identity in identities], dtype=pl.Boolean)
-    )
-    if selected.is_empty():
-        raise DataError("Bybit option page has no contracts for the requested base and quote")
-    return selected
 
 
 def _asset_catalog_frame(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
@@ -1279,343 +1246,6 @@ def asset_contract(
     except (ValueError, DataError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(identity.to_dict(), json_out=json_out)
-
-
-def _validated_bybit_identity(
-    family: CryptoFamily,
-    instrument: str,
-    *,
-    base: str,
-    quote: str,
-    category: str,
-) -> tuple[Literal["linear", "inverse"], CryptoMarketType, str, str, str]:
-    diagnostic_spot = family == "comparison_bars" and category == "spot"
-    if FAMILY_AUTHORITIES[family] != "bybit" and not diagnostic_spot:
-        raise DataError(f"{family} is not a Bybit-authoritative dataset family")
-    if diagnostic_spot:
-        pass
-    elif family == "instrument_catalog":
-        if category not in {"spot", "linear", "inverse", "option"}:
-            raise DataError(
-                "Bybit instrument catalog category must be spot, linear, inverse, or option"
-            )
-    elif family in {"derivative_trades", "derivative_book_snapshots"}:
-        if category not in {"linear", "inverse", "option"}:
-            raise DataError("Bybit derivative event category must be linear, inverse, or option")
-    elif family in {"option_instruments", "option_quotes", "historical_volatility"}:
-        if category != "option":
-            raise DataError(f"Bybit {family} requires the option category")
-    elif category not in {"linear", "inverse"}:
-        raise DataError("Bybit derivative category must be linear or inverse")
-    category_value = cast(Literal["linear", "inverse"], category)
-    market_type = cast(CryptoMarketType, category)
-    base_value, quote_value = base.strip().upper(), quote.strip().upper()
-    symbol = instrument.strip().upper()
-    if (
-        not base_value.isalnum()
-        or not quote_value.isalnum()
-        or not symbol.replace("-", "").isalnum()
-    ):
-        raise DataError("Bybit instrument, base, or quote identity is invalid")
-    return category_value, market_type, base_value, quote_value, symbol
-
-
-def _apply_bybit_range(
-    family: CryptoFamily,
-    params: dict[str, str | int],
-    bounded_range: tuple[int, int] | None,
-) -> None:
-    if bounded_range is None:
-        return
-    if family in {
-        "instrument_catalog",
-        "derivative_trades",
-        "derivative_book_snapshots",
-        "option_instruments",
-        "option_quotes",
-    }:
-        raise DataError(f"Bybit {family} is a point-in-time snapshot and rejects a time range")
-    start_ms, end_ms = bounded_range
-    if family in _BYBIT_PRICE_FAMILIES or family == "comparison_bars":
-        params.update({"start": start_ms, "end": end_ms})
-    else:
-        params.update({"startTime": start_ms, "endTime": end_ms})
-    if family == "historical_volatility" and end_ms - start_ms > 30 * 86_400_000:
-        raise DataError("Bybit historical volatility windows cannot exceed 30 days")
-
-
-def _bybit_option_plan(
-    family: Literal["option_instruments", "option_quotes", "historical_volatility"],
-    symbol: str,
-    *,
-    base: str,
-    quote: str,
-    frequency: str,
-    bounded_range: tuple[int, int] | None,
-    fetched_at: datetime,
-) -> _AcquisitionPlan:
-    observed_column = "timestamp"
-    key_columns: tuple[str, ...] = ("timestamp", "symbol")
-    availability_column: str | None = None
-    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
-    next_cursor: Callable[[bytes], str | None] | None = None
-    dataset_frequency = frequency
-    if family == "option_instruments":
-        endpoint = "instruments"
-        params: dict[str, str | int] = {
-            "category": "option",
-            "baseCoin": base,
-            "limit": 1_000,
-        }
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(
-            _instrument_frame,
-            fetched_at_ms=fetched_at_ms,
-            base=base,
-            quote=quote,
-        )
-        parser_at = partial(_option_instrument_parser_at, base=base, quote=quote)
-        observed_column = "fetched_at"
-        key_columns = ("symbol",)
-        dataset_frequency = "catalog_snapshot"
-        next_cursor = partial(_instrument_cursor, fetched_at_ms=fetched_at_ms)
-    elif family == "option_quotes":
-        endpoint = "option_tickers"
-        params = {"category": "option", "baseCoin": base}
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(
-            _option_quote_frame,
-            fetched_at_ms=fetched_at_ms,
-            base=base,
-            quote=quote,
-        )
-        parser_at = partial(_option_quote_parser_at, base=base, quote=quote)
-        observed_column = "available_at"
-        availability_column = "available_at"
-        key_columns = ("available_at", "symbol")
-        dataset_frequency = "point_in_time_chain"
-    else:
-        endpoint = "historical_volatility"
-        params = {"category": "option", "baseCoin": base, "quoteCoin": quote}
-        parser = partial(
-            parse_historical_volatility,
-            base_coin=base,
-            quote_coin=cast(Literal["USD", "USDT"], quote),
-        )
-        key_columns = ("timestamp", "period_days")
-    _apply_bybit_range(family, params, bounded_range)
-    return _AcquisitionPlan(
-        endpoint=endpoint,
-        params=params,
-        dataset=CryptoDatasetIdentityV1(
-            provider="bybit",
-            venue="bybit",
-            market_type="option",
-            family=family,
-            instrument=symbol,
-            base_asset=base,
-            quote_asset=quote,
-            frequency=dataset_frequency,
-            units="provider_native",
-            timestamp_convention="provider_event_utc",
-        ),
-        parser=parser,
-        observed_column=observed_column,
-        key_columns=key_columns,
-        availability_column=availability_column,
-        next_cursor=next_cursor,
-        parser_at=parser_at,
-    )
-
-
-def _bybit_plan(
-    family: CryptoFamily,
-    instrument: str,
-    *,
-    base: str,
-    quote: str,
-    category: str,
-    frequency: str,
-    start: str | None,
-    end: str | None,
-    fetched_at: datetime,
-) -> _AcquisitionPlan:
-    category_value, market_type, base_value, quote_value, symbol = _validated_bybit_identity(
-        family,
-        instrument,
-        base=base,
-        quote=quote,
-        category=category,
-    )
-    endpoint: str
-    params: dict[str, str | int]
-    parser: Callable[[bytes], pl.DataFrame]
-    observed_column = "timestamp"
-    key_columns: tuple[str, ...] = ("timestamp", "symbol")
-    availability_column: str | None = None
-    units = "provider_native"
-    dataset_frequency = frequency
-    dataset_instrument = symbol
-    dataset_base: str | None = base_value
-    dataset_quote: str | None = quote_value
-    timestamp_convention = "provider_event_utc"
-    expected_cadence_seconds: int | None = None
-    period_start_timestamps = False
-    next_cursor: Callable[[bytes], str | None] | None = None
-    page_limit: int | None = None
-    parser_at: Callable[[datetime], Callable[[bytes], pl.DataFrame]] | None = None
-    bounded_range = _bybit_range(start, end, fetched_at=fetched_at)
-
-    if family in {"option_instruments", "option_quotes", "historical_volatility"}:
-        return _bybit_option_plan(
-            cast(Literal["option_instruments", "option_quotes", "historical_volatility"], family),
-            symbol,
-            base=base_value,
-            quote=quote_value,
-            frequency=frequency,
-            bounded_range=bounded_range,
-            fetched_at=fetched_at,
-        )
-
-    if family == "comparison_bars":
-        endpoint = "trade_kline"
-        interval = {"1h": "60", "1d": "D", "5m": "5", "1m": "1"}.get(frequency)
-        if interval is None:
-            raise DataError("Bybit spot comparison frequency must be 1m, 5m, 1h, or 1d")
-        params = {"category": "spot", "symbol": symbol, "interval": interval, "limit": 1_000}
-        parser = partial(parse_price_klines, family="trade")
-        units = "quote_per_base_and_base_volume"
-        page_limit = 1_000
-        expected_cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}[frequency]
-        period_start_timestamps = True
-        timestamp_convention = "interval_start_utc"
-    elif family == "instrument_catalog":
-        endpoint = "instruments"
-        params = {"category": category}
-        if category != "spot":
-            params["limit"] = 1_000
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        catalog_category = cast(BybitCategory, category)
-        parser = partial(
-            _catalog_frame,
-            category=catalog_category,
-            fetched_at_ms=fetched_at_ms,
-        )
-        parser_at = partial(_catalog_parser_at, category=catalog_category)
-        observed_column = "fetched_at"
-        key_columns = ("symbol",)
-        dataset_frequency = "catalog_snapshot"
-        dataset_instrument = category
-        dataset_base = None
-        dataset_quote = None
-        timestamp_convention = "fetch_knowledge_utc"
-        if category != "spot":
-            next_cursor = partial(
-                _catalog_cursor,
-                category=catalog_category,
-                fetched_at_ms=fetched_at_ms,
-            )
-    elif family == "derivative_trades":
-        endpoint = "recent_trades"
-        params = {"category": category, "symbol": symbol, "limit": 1_000}
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(parse_recent_trades, fetched_at_ms=fetched_at_ms)
-        parser_at = _recent_trades_parser_at
-        key_columns = ("timestamp", "trade_id")
-        availability_column = "available_at"
-        units = "provider_native_price_quantity"
-        dataset_frequency = "recent_trade_snapshot"
-    elif family == "derivative_book_snapshots":
-        endpoint = "orderbook"
-        params = {
-            "category": category,
-            "symbol": symbol,
-            "limit": 25 if category == "option" else 1_000,
-        }
-        fetched_at_ms = int(fetched_at.timestamp() * 1_000)
-        parser = partial(
-            parse_orderbook_snapshot,
-            category=cast(BybitCategory, category),
-            fetched_at_ms=fetched_at_ms,
-        )
-        parser_at = partial(_orderbook_parser_at, category=cast(BybitCategory, category))
-        observed_column = "observed_at"
-        key_columns = ("observed_at", "side", "level")
-        availability_column = "available_at"
-        units = "provider_native_price_quantity"
-        dataset_frequency = "point_in_time_book"
-        timestamp_convention = "provider_generation_utc"
-    elif family == "funding":
-        endpoint = "funding"
-        params = {"category": category, "symbol": symbol, "limit": 200}
-        parser = parse_funding_history
-        units = "dimensionless_rate"
-        dataset_frequency = "funding_interval"
-        page_limit = 200
-    elif family == "open_interest":
-        endpoint = "open_interest"
-        params = {
-            "category": category,
-            "symbol": symbol,
-            "intervalTime": frequency,
-            "limit": 200,
-        }
-        parser = _open_interest_frame
-        next_cursor = _open_interest_cursor
-        units = "base_coin_if_linear_quote_coin_if_inverse"
-    elif family == "long_short_ratio":
-        endpoint = "long_short_ratio"
-        params = {
-            "category": category,
-            "symbol": symbol,
-            "period": frequency,
-            "limit": 200,
-        }
-        parser = partial(_long_short_frame, category=category_value)
-        next_cursor = partial(_long_short_cursor, category=category_value)
-        units = "dimensionless_ratio"
-    elif family in _BYBIT_PRICE_FAMILIES:
-        endpoint, price_family = _BYBIT_PRICE_FAMILIES[family]
-        interval = {"1h": "60", "1d": "D", "5m": "5", "1m": "1"}.get(frequency)
-        if interval is None:
-            raise DataError("Bybit price-bar frequency must be 1m, 5m, 1h, or 1d")
-        params = {"category": category, "symbol": symbol, "interval": interval, "limit": 1_000}
-        parser = partial(parse_price_klines, family=price_family)
-        units = "quote_price"
-        page_limit = 1_000
-        expected_cadence_seconds = {"1m": 60, "5m": 300, "1h": 3_600, "1d": 86_400}[frequency]
-        period_start_timestamps = True
-        timestamp_convention = "interval_start_utc"
-    else:
-        raise DataError(f"Bybit acquisition is not implemented for {family}")
-
-    _apply_bybit_range(family, params, bounded_range)
-
-    return _AcquisitionPlan(
-        endpoint=endpoint,
-        params=params,
-        dataset=CryptoDatasetIdentityV1(
-            provider="bybit",
-            venue="bybit",
-            market_type=market_type,
-            family=family,
-            instrument=dataset_instrument,
-            base_asset=dataset_base,
-            quote_asset=dataset_quote,
-            frequency=dataset_frequency,
-            units=units,
-            timestamp_convention=timestamp_convention,
-        ),
-        parser=parser,
-        observed_column=observed_column,
-        key_columns=key_columns,
-        availability_column=availability_column,
-        next_cursor=next_cursor,
-        page_limit=page_limit,
-        parser_at=parser_at,
-        expected_cadence_seconds=expected_cadence_seconds,
-        period_start_timestamps=period_start_timestamps,
-    )
 
 
 def _fetch_bybit_pages(
