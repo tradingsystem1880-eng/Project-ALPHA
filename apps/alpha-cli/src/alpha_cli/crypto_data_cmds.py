@@ -26,7 +26,7 @@ from alpha_cli._crypto_acquisition import (
     bybit_plan as _bybit_plan,
 )
 from alpha_cli._crypto_acquisition import (
-    option_quote_frame as _option_quote_frame,
+    option_quote_frame as _option_quote_frame,  # noqa: F401 - compatibility seam
 )
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
@@ -82,14 +82,7 @@ from alpha_data.crypto.providers.binance import (
     verify_archive_checksum,
 )
 from alpha_data.crypto.providers.bybit import (
-    BybitCategory,
-    PriceFamily,
     fetch_bybit_public,
-    parse_instruments,
-    parse_long_short_ratio,
-    parse_open_interest,
-    parse_orderbook_snapshot,
-    parse_recent_trades,
 )
 from alpha_data.crypto.providers.coingecko import (
     coingecko_demo_request,
@@ -180,12 +173,6 @@ _OBSERVATIONS_PER_DAY: Final = {
 }
 _NATIVE_NETWORKS: Final = {"BTC": "bitcoin", "ETH": "ethereum"}
 _SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
-_BYBIT_PRICE_FAMILIES: Final[dict[CryptoFamily, tuple[str, PriceFamily]]] = {
-    "derivative_bars": ("trade_kline", "trade"),
-    "mark_bars": ("mark_kline", "mark"),
-    "index_bars": ("index_kline", "index"),
-    "premium_bars": ("premium_kline", "premium"),
-}
 _CASE_BOUND_EVENT_FAMILIES: Final = frozenset({"derivative_trades", "derivative_book_snapshots"})
 
 
@@ -217,116 +204,6 @@ class _FetchedPagedAcquisition:
     logical_name: str
     expected_cadence_seconds: int | None = None
     period_start_timestamps: bool = False
-
-
-def _open_interest_frame(payload: bytes) -> pl.DataFrame:
-    return parse_open_interest(payload)[0]
-
-
-def _open_interest_cursor(payload: bytes) -> str | None:
-    return parse_open_interest(payload)[1]
-
-
-def _long_short_frame(payload: bytes, *, category: Literal["linear", "inverse"]) -> pl.DataFrame:
-    if category not in {"linear", "inverse"}:
-        raise DataError("Bybit ratio category must be linear or inverse")
-    return parse_long_short_ratio(payload, category=category)[0]
-
-
-def _long_short_cursor(payload: bytes, *, category: Literal["linear", "inverse"]) -> str | None:
-    return parse_long_short_ratio(payload, category=category)[1]
-
-
-def _iso_milliseconds(value: str, *, label: str) -> int:
-    try:
-        instant = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise DataError(f"Bybit {label} must be an ISO-8601 timestamp") from exc
-    if instant.tzinfo is None:
-        raise DataError(f"Bybit {label} must include a timezone")
-    return int(instant.astimezone(UTC).timestamp() * 1_000)
-
-
-def _bybit_range(
-    start: str | None, end: str | None, *, fetched_at: datetime
-) -> tuple[int, int] | None:
-    if (start is None) != (end is None):
-        raise DataError("Bybit --start and --end must be supplied together")
-    if start is None or end is None:
-        return None
-    start_ms = _iso_milliseconds(start, label="start")
-    end_ms = _iso_milliseconds(end, label="end")
-    if end_ms <= start_ms:
-        raise DataError("Bybit end must be later than start")
-    if end_ms > int(fetched_at.timestamp() * 1_000):
-        raise DataError("Bybit end exceeds the acquisition knowledge time")
-    return start_ms, end_ms
-
-
-def _instrument_frame(payload: bytes, *, fetched_at_ms: int, base: str, quote: str) -> pl.DataFrame:
-    frame = parse_instruments(payload, category="option", fetched_at_ms=fetched_at_ms)[0]
-    selected = frame.filter((pl.col("base_coin") == base) & (pl.col("quote_coin") == quote))
-    if selected.is_empty():
-        raise DataError("Bybit option page has no contracts for the requested base and quote")
-    return selected
-
-
-def _instrument_cursor(payload: bytes, *, fetched_at_ms: int) -> str | None:
-    return parse_instruments(payload, category="option", fetched_at_ms=fetched_at_ms)[1]
-
-
-def _catalog_frame(payload: bytes, *, category: BybitCategory, fetched_at_ms: int) -> pl.DataFrame:
-    return parse_instruments(payload, category=category, fetched_at_ms=fetched_at_ms)[0]
-
-
-def _catalog_cursor(payload: bytes, *, category: BybitCategory, fetched_at_ms: int) -> str | None:
-    return parse_instruments(payload, category=category, fetched_at_ms=fetched_at_ms)[1]
-
-
-def _catalog_parser_at(
-    completed_at: datetime, *, category: BybitCategory
-) -> Callable[[bytes], pl.DataFrame]:
-    return partial(
-        _catalog_frame,
-        category=category,
-        fetched_at_ms=int(completed_at.timestamp() * 1_000),
-    )
-
-
-def _recent_trades_parser_at(completed_at: datetime) -> Callable[[bytes], pl.DataFrame]:
-    return partial(parse_recent_trades, fetched_at_ms=int(completed_at.timestamp() * 1_000))
-
-
-def _orderbook_parser_at(
-    completed_at: datetime, *, category: BybitCategory
-) -> Callable[[bytes], pl.DataFrame]:
-    return partial(
-        parse_orderbook_snapshot,
-        category=category,
-        fetched_at_ms=int(completed_at.timestamp() * 1_000),
-    )
-
-
-def _option_instrument_parser_at(
-    completed_at: datetime, *, base: str, quote: str
-) -> Callable[[bytes], pl.DataFrame]:
-    return partial(
-        _instrument_frame,
-        fetched_at_ms=int(completed_at.timestamp() * 1_000),
-        base=base,
-        quote=quote,
-    )
-
-
-def _option_quote_parser_at(
-    completed_at: datetime, *, base: str, quote: str
-) -> Callable[[bytes], pl.DataFrame]:
-    return partial(
-        _option_quote_frame,
-        fetched_at_ms=int(completed_at.timestamp() * 1_000),
-        base=base,
-        quote=quote,
-    )
 
 
 def _binance_book_parser_at(
