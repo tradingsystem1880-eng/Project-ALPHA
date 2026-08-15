@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -66,6 +67,32 @@ def test_provider_configuration_reports_credential_presence_but_never_values() -
     serialized = json.dumps([provider.to_dict() for provider in present])
     assert "ALPHA_FINNHUB_API_KEY" in serialized
     assert secret not in serialized
+
+
+def test_verified_provider_without_current_injection_keeps_an_actionable_recovery(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "alpha_cli.provider_readiness.last_check_status",
+        lambda _data_dir, _provider_id: {
+            "verification_state": "verified",
+            "verified_at": "2026-08-15T00:00:00Z",
+            "last_receipt_id": "a" * 64,
+            "granted_capabilities": ["asset_metadata"],
+            "recovery_action": "No action required.",
+        },
+    )
+
+    coingecko = next(
+        provider
+        for provider in provider_definitions(
+            environ={}, module_available=lambda _: True, data_dir=tmp_path
+        )
+        if provider.id == "coingecko"
+    )
+
+    assert coingecko.configuration_state == "needs_process_injection"
+    assert "Keychain launcher" in coingecko.recovery_action
 
 
 def test_provider_installation_is_part_of_configuration() -> None:

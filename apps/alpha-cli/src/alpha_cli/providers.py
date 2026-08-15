@@ -152,6 +152,14 @@ def _definition(
         configuration_state = "process_injected_unverified"
     else:
         configuration_state = "available_without_credentials"
+    recovery_action = str(verification["recovery_action"])
+    if configuration_state == "needs_process_injection" and verification["verification_state"] in {
+        "unverified",
+        "verified",
+    }:
+        recovery_action = (
+            "Use the provider's Keychain launcher before acquisition or a new explicit check."
+        )
     return ProviderDefinition(
         id=provider_id,
         label=label,
@@ -174,7 +182,7 @@ def _definition(
             str(verification["last_receipt_id"]) if verification["last_receipt_id"] else None
         ),
         granted_capabilities=tuple(str(item) for item in granted),
-        recovery_action=str(verification["recovery_action"]),
+        recovery_action=recovery_action,
         historical_adapter_factory=factory,
     )
 
