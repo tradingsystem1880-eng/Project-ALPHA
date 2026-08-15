@@ -339,6 +339,50 @@ def test_keyless_envelope_and_pool_validation_fail_loud() -> None:
     with pytest.raises(DataError, match="activity"):
         parse_top_pools(json.dumps(bad_pool).encode(), network="eth")
 
+    valid_attributes = {
+        "address": "0xPool",
+        "name": "USDC / WETH",
+        "pool_created_at": "2021-12-30T20:32:10Z",
+        "base_token_price_usd": "1",
+        "quote_token_price_usd": "2000",
+        "reserve_in_usd": "1000",
+        "volume_usd": {"h24": "100"},
+        "transactions": {"h24": {"buys": 1, "sells": 1}},
+    }
+    relationships = {
+        "base_token": {"data": {"id": "eth_0xBase"}},
+        "quote_token": {"data": {"id": "eth_0xQuote"}},
+        "dex": {"data": {"id": "uniswap_v3"}},
+    }
+    wrong_pool_id = {
+        "data": [
+            {
+                "id": "eth_0xOther",
+                "type": "pool",
+                "attributes": valid_attributes,
+                "relationships": relationships,
+            }
+        ]
+    }
+    with pytest.raises(DataError, match="pool identity"):
+        parse_top_pools(json.dumps(wrong_pool_id).encode(), network="eth")
+
+    wrong_token_network = {
+        "data": [
+            {
+                "id": "eth_0xPool",
+                "type": "pool",
+                "attributes": valid_attributes,
+                "relationships": {
+                    **relationships,
+                    "base_token": {"data": {"id": "bsc_0xBase"}},
+                },
+            }
+        ]
+    }
+    with pytest.raises(DataError, match="relationship network"):
+        parse_top_pools(json.dumps(wrong_token_network).encode(), network="eth")
+
 
 def test_keyless_ohlcv_and_trade_validation_fail_loud() -> None:
     with pytest.raises(DataError, match="OHLCV data"):

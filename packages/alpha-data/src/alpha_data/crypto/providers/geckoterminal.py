@@ -140,6 +140,8 @@ def _relationship(record: dict[str, object], name: str, network: str) -> str:
         raise DataError("GeckoTerminal pool relationship identity is invalid")
     identity = str(data["id"])
     prefix = f"{network}_"
+    if name != "dex" and not identity.startswith(prefix):
+        raise DataError("GeckoTerminal pool relationship network is invalid")
     value = identity[len(prefix) :] if identity.startswith(prefix) else identity
     return normalize_crypto_address(network, value)
 
@@ -170,6 +172,14 @@ def parse_top_pools(payload: bytes, *, network: str) -> pl.DataFrame:
         h24 = transactions.get("h24")
         if not isinstance(h24, dict):
             raise DataError("GeckoTerminal pool transaction window is invalid")
+        record_id = record.get("id")
+        prefix = f"{network}_"
+        if not isinstance(record_id, str) or not record_id.startswith(prefix):
+            raise DataError("GeckoTerminal pool identity is invalid")
+        if normalize_crypto_address(network, record_id[len(prefix) :]) != normalize_crypto_address(
+            network, str(address)
+        ):
+            raise DataError("GeckoTerminal pool identity is invalid")
         try:
             created_at = datetime.fromisoformat(str(created).replace("Z", "+00:00")).astimezone(UTC)
         except ValueError as exc:
