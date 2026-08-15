@@ -407,6 +407,55 @@ def test_tampered_staging_metadata_fails_before_publication(tmp_path: Path) -> N
         store.resume_staging(handle.staging_id)
 
 
+def test_staging_rejects_symlinked_payload(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="r_symlink", logical_name="options.json", expected_bytes=3
+    )
+    outside = tmp_path / "outside.part"
+    outside.write_bytes(b"")
+    payload = store.staging_root / handle.staging_id / "payload.part"
+    payload.unlink()
+    payload.symlink_to(outside)
+
+    with pytest.raises(DataError, match="unsafe"):
+        store.resume_staging(handle.staging_id)
+
+
+def test_publication_rejects_symlinked_artifact_parent(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="r_parent", logical_name="options.json", expected_bytes=3
+    )
+    handle = store.append_staging(handle, b"raw")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    raw_root = store.bulk_root / "raw"
+    raw_root.mkdir()
+    raw_root.joinpath("bybit").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(DataError, match="unsafe"):
+        store.publish_staging(handle, expected_sha256=hashlib.sha256(b"raw").hexdigest())
+    assert tuple(outside.iterdir()) == ()
+
+
+def test_manifest_verification_rejects_symlinked_artifact(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="r_artifact", logical_name="options.json", expected_bytes=3
+    )
+    handle = store.append_staging(handle, b"raw")
+    manifest = store.publish_staging(handle, expected_sha256=hashlib.sha256(b"raw").hexdigest())
+    artifact = store.bulk_root / str(manifest["artifact_key"])
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(b"raw")
+    artifact.unlink()
+    artifact.symlink_to(outside)
+
+    with pytest.raises(DataError, match="unsafe"):
+        store.verify_manifest(manifest["manifest_id"])
+
+
 def test_cache_inventory_and_cleanup_are_confined_to_removable_cache(tmp_path: Path) -> None:
     store = _store(tmp_path)
     cache = store.bulk_root / "cache"

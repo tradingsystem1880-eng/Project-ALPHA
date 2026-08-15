@@ -94,6 +94,36 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _reject_symlink_path(root: Path, path: Path) -> None:
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise DataError("crypto storage path escapes its root") from exc
+    current = root
+    if current.is_symlink():
+        raise DataError("crypto storage path is unsafe")
+    for component in relative.parts:
+        current /= component
+        if current.is_symlink():
+            raise DataError("crypto storage path is unsafe")
+
+
+def _mkdir_confined(root: Path, directory: Path) -> None:
+    _reject_symlink_path(root, directory)
+    try:
+        relative = directory.relative_to(root)
+    except ValueError as exc:
+        raise DataError("crypto storage path escapes its root") from exc
+    current = root
+    for component in relative.parts:
+        current /= component
+        try:
+            current.mkdir()
+        except FileExistsError:
+            if current.is_symlink() or not current.is_dir():
+                raise DataError("crypto storage path is unsafe") from None
+
+
 class CryptoBulkStore:
     """Coordinate external content publication and internal immutable manifests."""
 
@@ -176,14 +206,20 @@ class CryptoBulkStore:
             "logical_name": logical_name,
             "expected_bytes": expected_bytes,
         }
-        root.mkdir(parents=True, exist_ok=True)
+        _mkdir_confined(self.bulk_root, root)
+        _reject_symlink_path(self.bulk_root, metadata)
+        _reject_symlink_path(self.bulk_root, payload)
         rendered = json.dumps(expected, sort_keys=True, indent=2, allow_nan=False) + "\n"
+        if metadata.exists() and not metadata.is_file():
+            raise DataError("crypto staging metadata path is unsafe")
         if metadata.exists() and metadata.read_text(encoding="utf-8") != rendered:
             raise DataError("crypto staging identity collision")
         if not metadata.exists():
             temporary = root / "staging.json.tmp"
             temporary.write_text(rendered, encoding="utf-8")
             os.replace(temporary, metadata)
+        if payload.exists() and not payload.is_file():
+            raise DataError("crypto staging payload path is unsafe")
         payload.touch(exist_ok=True)
         return self.resume_staging(staging_id)
 
@@ -192,9 +228,16 @@ class CryptoBulkStore:
 
     def resume_staging(self, staging_id: str) -> StagingHandle:
         root = self._staging_path(staging_id)
+        metadata = root / "staging.json"
+        payload = root / "payload.part"
+        _reject_symlink_path(self.bulk_root, root)
+        _reject_symlink_path(self.bulk_root, metadata)
+        _reject_symlink_path(self.bulk_root, payload)
+        if not root.is_dir() or not metadata.is_file() or not payload.is_file():
+            raise DataError("crypto staging path is unsafe")
         try:
-            raw = json.loads((root / "staging.json").read_text(encoding="utf-8"))
-            size = (root / "payload.part").stat().st_size
+            raw = json.loads(metadata.read_text(encoding="utf-8"))
+            size = payload.stat().st_size
         except (OSError, json.JSONDecodeError) as exc:
             raise DataError("crypto staging metadata is unavailable or corrupt") from exc
         if not isinstance(raw, dict) or raw.get("schema_version") != 1:
@@ -275,7 +318,8 @@ class CryptoBulkStore:
             raise DataError("crypto staging payload hash does not match")
         artifact_key = f"raw/{current.provider}/{current.receipt_id}/{current.logical_name}"
         destination = self.bulk_root / artifact_key
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        _mkdir_confined(self.bulk_root, destination.parent)
+        _reject_symlink_path(self.bulk_root, destination)
         if destination.exists():
             if _sha256(destination) != actual_hash:
                 raise DataError("crypto external artifact identity collision")
@@ -365,7 +409,8 @@ class CryptoBulkStore:
             f"normalized/{dataset.family}/{dataset.content_sha256}/{artifact_hash}.parquet"
         )
         destination = self.bulk_root / artifact_key
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        _mkdir_confined(self.bulk_root, destination.parent)
+        _reject_symlink_path(self.bulk_root, destination)
         if destination.exists():
             if destination.stat().st_size != len(payload) or _sha256(destination) != artifact_hash:
                 raise DataError("crypto normalized artifact identity collision")
@@ -420,7 +465,8 @@ class CryptoBulkStore:
         self.verify_ready(required_bytes=len(payload))
         artifact_key = f"normalized/derived/{kind}/{artifact_hash}.parquet"
         destination = self.bulk_root / artifact_key
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        _mkdir_confined(self.bulk_root, destination.parent)
+        _reject_symlink_path(self.bulk_root, destination)
         if destination.exists():
             if destination.stat().st_size != len(payload) or _sha256(destination) != artifact_hash:
                 raise DataError("crypto derived artifact identity collision")
@@ -471,6 +517,7 @@ class CryptoBulkStore:
         ):
             raise DataError("crypto manifest artifact key is invalid")
         artifact = self.bulk_root / artifact_key
+        _reject_symlink_path(self.bulk_root, artifact)
         if (
             not artifact.is_file()
             or not isinstance(artifact_hash, str)
