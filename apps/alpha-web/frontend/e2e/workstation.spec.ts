@@ -1305,6 +1305,16 @@ const UNGATED_PROJECT = {
   research_gate_state: 'not_required',
 } satisfies components['schemas']['ProjectSummary']
 
+const CANDIDATE_VERSION_ID = 'strategy-version-hedged-basis'
+const CANDIDATE_EXPERIMENT_ID = 'experiment-hedged-basis'
+const CANDIDATE_PROJECT = {
+  ...UNGATED_PROJECT,
+  project_id: 'project-hedged-basis',
+  name: 'BTCUSDT hedged basis candidate',
+  current_version_id: CANDIDATE_VERSION_ID,
+  current_experiment_id: CANDIDATE_EXPERIMENT_ID,
+} satisfies components['schemas']['ProjectSummary']
+
 function projectDetail(
   summary: components['schemas']['ProjectSummary'],
 ): components['schemas']['ProjectDetail'] {
@@ -1335,6 +1345,44 @@ function projectDetail(
   }
 }
 
+const CANDIDATE_DETAIL = {
+  ...projectDetail(CANDIDATE_PROJECT),
+  versions: [
+    {
+      version_id: CANDIDATE_VERSION_ID,
+      strategy_name: 'hedged_basis_crowding_v1',
+      source_fingerprint: 'git:fixture',
+      definition: {
+        strategy_name: 'hedged_basis_crowding_v1',
+        required_instrument: 'BTCUSDT',
+        required_quote_asset: 'USDT',
+        required_venues: ['bybit', 'binance'],
+        total_round_trip_cost_bps: 40,
+        periods_per_year: 1095,
+        execution_model: 'two_leg_return_replay',
+        deployment_scope: 'sandbox_only',
+        paper_blocker: 'UNSUPPORTED_MULTI_VENUE_PAPER',
+        places_orders: false,
+      },
+      parameter_space: {},
+      created_at: '2026-08-15T00:00:00Z',
+    },
+  ],
+  experiments: [
+    {
+      experiment_id: CANDIDATE_EXPERIMENT_ID,
+      strategy_version_id: CANDIDATE_VERSION_ID,
+      snapshot_id: 'crypto-snapshot-fixture',
+      universe: ['BTCUSDT'],
+      split_policy: { topology: 'group_atomic_60_20_20' },
+      costs: { total_round_trip_bps: 40 },
+      seeds: { master: 7 },
+      stage_config: {},
+      created_at: '2026-08-15T00:00:00Z',
+    },
+  ],
+} satisfies components['schemas']['ProjectDetail']
+
 interface MockOptions {
   chartBundle?: unknown
   trades?: unknown[]
@@ -1342,6 +1390,7 @@ interface MockOptions {
   jobs?: unknown[]
   researchGateOverride?: boolean
   researchGateLock?: boolean
+  candidateProject?: boolean
   /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
   runs?: unknown[]
   capturedOwnerAction?: (body: Record<string, unknown>) => void
@@ -1931,6 +1980,38 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (options.researchGateLock && url.pathname === `/api/projects/${UNGATED_PROJECT.project_id}`) {
     return projectDetail(UNGATED_PROJECT)
+  }
+  if (options.candidateProject && url.pathname === '/api/projects') {
+    return { items: [CANDIDATE_PROJECT], limit: 100, offset: 0, has_more: false }
+  }
+  if (options.candidateProject && url.pathname === `/api/projects/${CANDIDATE_PROJECT.project_id}`) {
+    return CANDIDATE_DETAIL
+  }
+  const candidatePlanMatch = url.pathname.match(
+    /^\/api\/projects\/project-hedged-basis\/experiments\/experiment-hedged-basis\/suite\/([^/]+)\/plan$/,
+  )
+  if (options.candidateProject && candidatePlanMatch) {
+    const action = candidatePlanMatch[1] as components['schemas']['SuiteActionValue']
+    return {
+      schema_version: 1,
+      project_id: CANDIDATE_PROJECT.project_id,
+      experiment_id: CANDIDATE_EXPERIMENT_ID,
+      action,
+      stage: action === 'holdout_reveal' ? 'holdout' : 'baseline',
+      current_stage_state: 'not_started',
+      ready: action === 'holdout_reveal',
+      blockers: action === 'holdout_reveal' ? [] : ['Fixture preview is intentionally blocked.'],
+      steps: action === 'holdout_reveal' ? [{
+        index: 1,
+        label: 'Reveal exact one-shot fixture holdout',
+        command: ['alpha', 'suite', 'run', '--action', 'holdout_reveal'],
+        evidence_role: 'fixture_holdout',
+      }] : [],
+      estimated_workload: { class: 'bounded', description: 'One local immutable fixture step.' },
+      governance: { owner_only_launch: true, browser_authority: false },
+      resolved_experiment: CANDIDATE_DETAIL.experiments[0],
+      resolved_strategy_version: CANDIDATE_DETAIL.versions[0],
+    } satisfies components['schemas']['SuitePlan']
   }
   if (url.pathname === `/api/projects/${RESEARCH_CASE.project_id}`) {
     return projectDetail(GATED_PROJECT)
@@ -2685,6 +2766,32 @@ test('open research gates lock strategy affordances on Develop and link to the c
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeEnabled()
   await page.getByRole('tab', { name: 'Development Next Step', exact: true }).click()
   await expect(preps.nth(1)).toBeEnabled()
+})
+
+test('sandbox candidate exposes exact lineage and keeps owner actions on trusted CLI', async ({ page }) => {
+  await preparePage(page, { candidateProject: true })
+  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
+
+  const candidate = page.getByRole('region', { name: 'Sandbox hedged basis candidate' })
+  await expect(candidate.getByText('Hedged basis candidate', { exact: true })).toBeVisible()
+  await expect(candidate.getByText('SHORT BYBIT LINEAR PERPETUAL', { exact: true })).toBeVisible()
+  await expect(candidate.getByText('LONG BINANCE SPOT', { exact: true })).toBeVisible()
+  await expect(candidate.getByText('40 bp total round trip', { exact: true })).toBeVisible()
+  await expect(candidate.getByText('365-DAY CRYPTO / 1,095 PERIODS', { exact: true })).toBeVisible()
+  await expect(candidate.getByText('two_leg_return_replay', { exact: true })).toBeVisible()
+  await expect(candidate.getByText('UNSUPPORTED_MULTI_VENUE_PAPER', { exact: true })).toBeVisible()
+  await expect(
+    candidate.getByText('Promoted contract and exact snapshot are reverified by the server for every run.'),
+  ).toBeVisible()
+
+  await expect(page.getByText('Owner checkpoints · trusted CLI only', { exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /owner/i })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /freeze candidate/i })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Holdout reveal · trusted CLI' }).click()
+  await expect(page.getByText('TRUSTED CLI OWNER CHECKPOINT', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Trusted CLI required' })).toBeDisabled()
+  await expectReleaseAccessibility(page)
 })
 
 test('@reference-only cold shell and screen switch meet workstation latency budgets', async ({ page }) => {
