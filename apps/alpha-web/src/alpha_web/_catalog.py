@@ -26,6 +26,55 @@ DEFAULT_TIMEOUT_SECONDS = 60.0
 # sequences terminated by BEL or ST). Strip both before output lands in an HTTP error detail.
 _ANSI_CSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 _ANSI_OSC = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+_PROCESS_ENV_NAMES = frozenset(
+    {"LANG", "LC_ALL", "LC_CTYPE", "PATH", "PYTHONPATH", "TMPDIR", "TZ", "VIRTUAL_ENV"}
+)
+_DATA_ENV_NAMES = frozenset({"ALPHA_BULK_DATA_DIR", "ALPHA_BULK_VOLUME_UUID"})
+_PROVIDER_ENV_NAMES = {
+    "coingecko": frozenset({"ALPHA_COINGECKO_API_KEY"}),
+    "ibkr": frozenset({"ALPHA_IBKR_GATEWAY_IMAGE", "ALPHA_IBKR_PAPER_ACCOUNT"}),
+    "quantpad": frozenset({"QUANTPAD_API_KEY"}),
+    "tiingo": frozenset({"ALPHA_TIINGO_API_KEY"}),
+}
+
+
+def _credential_names_for_command(args: list[str]) -> frozenset[str]:
+    if args[:2] == ["info", "providers"]:
+        return frozenset().union(*_PROVIDER_ENV_NAMES.values(), {"ALPHA_FINNHUB_API_KEY"})
+    if args[:2] == ["provider", "check"] and len(args) > 2:
+        return _PROVIDER_ENV_NAMES.get(args[2].strip().lower(), frozenset())
+    if args[:2] == ["data", "pull"] and "--source" in args:
+        source_index = args.index("--source") + 1
+        if source_index < len(args):
+            return _PROVIDER_ENV_NAMES.get(args[source_index].strip().lower(), frozenset())
+    if args[:2] == ["crypto-data", "acquire"] and len(args) > 2:
+        return _PROVIDER_ENV_NAMES.get(args[2].strip().lower(), frozenset())
+    if tuple(args[:2]) in {
+        ("crypto-data", "profile-run"),
+        ("crypto-data", "profile-resume"),
+    }:
+        return _PROVIDER_ENV_NAMES["coingecko"]
+    return frozenset()
+
+
+def _cli_environment(
+    data_dir: Path,
+    args: list[str],
+    *,
+    run_context: dict[str, object] | None = None,
+) -> dict[str, str]:
+    """Build the command-scoped environment allowed to cross the web-to-CLI boundary."""
+    allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES | _credential_names_for_command(args)
+    environment = {name: value for name, value in os.environ.items() if name in allowed}
+    environment["ALPHA_DATA_DIR"] = str(data_dir)
+    if run_context is not None:
+        environment[RUN_CONTEXT_ENV] = json.dumps(
+            run_context,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    return environment
 
 
 def _strip_ansi(text: str) -> str:
@@ -45,14 +94,7 @@ def _run_json(
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     run_context: dict[str, object] | None = None,
 ) -> Any:
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
-    if run_context is not None:
-        env[RUN_CONTEXT_ENV] = json.dumps(
-            run_context,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        )
+    env = _cli_environment(data_dir, args, run_context=run_context)
     try:
         proc = subprocess.run(
             _command(args),

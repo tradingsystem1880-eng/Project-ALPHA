@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import math
-import os
 import re
 import subprocess
 import threading
@@ -34,7 +33,7 @@ from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KIN
 from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
-from alpha_web._catalog import _command, _run_json, _strip_ansi
+from alpha_web._catalog import _cli_environment, _command, _run_json, _strip_ansi
 from alpha_web._catalog import commands as _catalog_commands
 
 MlAction = Literal[
@@ -997,7 +996,7 @@ def _run_process(
     timeout_seconds: int,
     job_id: str | None = None,
 ) -> tuple[int, str, str]:
-    environment = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    environment = _cli_environment(data_dir, args)
     if job_id is not None:
         process = subprocess.Popen(
             _command(args),

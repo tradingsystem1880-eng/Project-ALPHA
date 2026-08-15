@@ -33,7 +33,7 @@ from alpha_cli.durable_lease import (
     terminate_and_reap,
 )
 from alpha_cli.job_capacity import heavyweight_job_kind_for_command
-from alpha_web._catalog import _run_json
+from alpha_web._catalog import _cli_environment, _run_json
 
 _ALPHA_BIN = "alpha"  # console script on the venv PATH
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
@@ -48,7 +48,6 @@ _DURABLE_HEARTBEAT_INTERVAL_S = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
 _DURABLE_HEARTBEAT_TIMEOUT_S = 5.0
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 _UI_HEAVYWEIGHT_NICE = 10
-_RUN_CONTEXT_ENV = "ALPHA_RUN_CONTEXT_JSON"
 
 
 def _command(args: list[str]) -> list[str]:
@@ -340,14 +339,7 @@ def launch(
     durable_job_id = _reserve_heavyweight_job(args, data_dir=data_dir)
     job = Job(args, run_type, job_id=durable_job_id, durable=durable_job_id is not None)
     JOBS[job.job_id] = job
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
-    if run_context is not None:
-        env[_RUN_CONTEXT_ENV] = json.dumps(
-            run_context,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        )
+    env = _cli_environment(data_dir, args, run_context=run_context)
     try:
         proc = subprocess.Popen(
             _command(args),
