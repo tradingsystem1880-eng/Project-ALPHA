@@ -1748,6 +1748,142 @@ def _fetch_geckoterminal(
     )
 
 
+def _fetch_coinmetrics(
+    family: CryptoFamily,
+    instrument: str,
+    *,
+    base: str,
+    frequency: str,
+    metrics: str | None,
+    start: str | None,
+    end: str | None,
+    fetched_at: datetime,
+) -> _FetchedAcquisition | _FetchedPagedAcquisition:
+    instrument_value = instrument.strip()
+    if family == "onchain_catalog":
+        catalog_page_size = 1_000
+        catalog_params: dict[str, str | int] = {"page_size": catalog_page_size}
+        parser = partial(_coinmetrics_catalog_frame, fetched_at=fetched_at)
+        plan = _AcquisitionPlan(
+            endpoint="catalog",
+            params=catalog_params,
+            dataset=CryptoDatasetIdentityV1(
+                provider="coinmetrics",
+                venue="coinmetrics-community",
+                market_type="network",
+                family="onchain_catalog",
+                instrument="community",
+                base_asset=None,
+                quote_asset=None,
+                frequency="catalog_snapshot",
+                units="provider_native_metric_identity",
+                timestamp_convention="provider_observation_utc",
+            ),
+            parser=parser,
+            observed_column="fetched_at",
+            key_columns=("asset", "metric", "frequency"),
+            availability_column="fetched_at",
+            parser_at=_coinmetrics_catalog_parser_at,
+        )
+        pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
+        page_parsers: list[Callable[[bytes], pl.DataFrame]] = []
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+        for page_number in range(1, 101):
+            page_params = dict(catalog_params)
+            if page_token is not None:
+                page_params["next_page_token"] = page_token
+            payload = fetch_coinmetrics_community(coinmetrics_community_url("catalog", page_params))
+            if parser(payload).is_empty():
+                raise DataError("Coin Metrics Community catalog page has no reviewed metrics")
+            pages.append(
+                (
+                    payload,
+                    (
+                        ("page", str(page_number)),
+                        ("page_size", str(catalog_page_size)),
+                        *(
+                            (
+                                (
+                                    "cursor_sha256",
+                                    hashlib.sha256(page_token.encode()).hexdigest(),
+                                ),
+                            )
+                            if page_token is not None
+                            else ()
+                        ),
+                    ),
+                    (f"page={page_number}",),
+                )
+            )
+            page_parsers.append(parser)
+            next_token = coinmetrics_next_page_token(payload)
+            if next_token is None:
+                return _FetchedPagedAcquisition(
+                    plan=plan,
+                    pages=tuple(pages),
+                    page_parsers=tuple(page_parsers),
+                    upstream_checksums=tuple(None for _ in pages),
+                    combine_frames=None,
+                    provider_schema="coinmetrics-community-v4",
+                    parser_version="coinmetrics-community-catalog-v1",
+                    logical_name="onchain_catalog.json",
+                )
+            if next_token in seen_tokens:
+                raise DataError("Coin Metrics Community catalog cursor repeated")
+            seen_tokens.add(next_token)
+            page_token = next_token
+        raise DataError("Coin Metrics Community catalog exceeded the 100-page safety limit")
+    if family != "onchain_metrics":
+        raise DataError(f"Coin Metrics Community is not authoritative for {family}")
+    selected_metrics = tuple(item.strip() for item in (metrics or "").split(",") if item.strip())
+    if not selected_metrics or any(
+        item not in REVIEWED_COMMUNITY_METRICS for item in selected_metrics
+    ):
+        raise DataError("Coin Metrics requires reviewed --metrics values")
+    if not start or not end:
+        raise DataError("Coin Metrics acquisition requires --start and --end")
+    params: dict[str, str | int] = {
+        "assets": instrument_value.lower(),
+        "metrics": ",".join(selected_metrics),
+        "frequency": frequency,
+        "start_time": start,
+        "end_time": end,
+        "page_size": 10_000,
+    }
+    payload = fetch_coinmetrics_community(coinmetrics_community_url("asset_metrics", params))
+    plan = _AcquisitionPlan(
+        endpoint="asset_metrics",
+        params=params,
+        dataset=CryptoDatasetIdentityV1(
+            provider="coinmetrics",
+            venue="coinmetrics-community",
+            market_type="network",
+            family="onchain_metrics",
+            instrument=instrument_value.lower(),
+            base_asset=base.strip().upper(),
+            quote_asset=None,
+            frequency=frequency,
+            units="metric_native",
+            timestamp_convention="provider_observation_utc",
+        ),
+        parser=partial(
+            parse_asset_metrics,
+            assets=(instrument_value.lower(),),
+            metrics=selected_metrics,
+        ),
+        observed_column="timestamp",
+        key_columns=("asset", "timestamp", "metric"),
+    )
+    return _FetchedAcquisition(
+        plan=plan,
+        payload=payload,
+        provider_schema="coinmetrics-community-v4",
+        parser_version="coinmetrics-community-v1",
+        logical_name="onchain_metrics.json",
+    )
+
+
 def _fetch_non_bybit(
     provider: str,
     family: CryptoFamily,
@@ -1806,6 +1942,18 @@ def _fetch_non_bybit(
             frequency=frequency,
             network=network,
             pool_address=pool_address,
+            fetched_at=fetched_at,
+        )
+
+    if provider == "coinmetrics":
+        return _fetch_coinmetrics(
+            family,
+            instrument,
+            base=base,
+            frequency=frequency,
+            metrics=metrics,
+            start=start,
+            end=end,
             fetched_at=fetched_at,
         )
 
@@ -2052,135 +2200,6 @@ def _fetch_non_bybit(
             upstream_checksum=hashlib.sha256(archive_payload).hexdigest(),
             expected_cadence_seconds=cadence_seconds,
             period_start_timestamps=family == "market_bars",
-        )
-
-    if provider == "coinmetrics":
-        if family == "onchain_catalog":
-            catalog_page_size = 1_000
-            catalog_params: dict[str, str | int] = {"page_size": catalog_page_size}
-            parser = partial(_coinmetrics_catalog_frame, fetched_at=fetched_at)
-            plan = _AcquisitionPlan(
-                endpoint="catalog",
-                params=catalog_params,
-                dataset=CryptoDatasetIdentityV1(
-                    provider="coinmetrics",
-                    venue="coinmetrics-community",
-                    market_type="network",
-                    family="onchain_catalog",
-                    instrument="community",
-                    base_asset=None,
-                    quote_asset=None,
-                    frequency="catalog_snapshot",
-                    units="provider_native_metric_identity",
-                    timestamp_convention="provider_observation_utc",
-                ),
-                parser=parser,
-                observed_column="fetched_at",
-                key_columns=("asset", "metric", "frequency"),
-                availability_column="fetched_at",
-                parser_at=_coinmetrics_catalog_parser_at,
-            )
-            pages_cm: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
-            parsers_cm: list[Callable[[bytes], pl.DataFrame]] = []
-            page_token: str | None = None
-            seen_tokens: set[str] = set()
-            for page_number in range(1, 101):
-                page_params_cm = dict(catalog_params)
-                if page_token is not None:
-                    page_params_cm["next_page_token"] = page_token
-                payload = fetch_coinmetrics_community(
-                    coinmetrics_community_url("catalog", page_params_cm)
-                )
-                if parser(payload).is_empty():
-                    raise DataError("Coin Metrics Community catalog page has no reviewed metrics")
-                pages_cm.append(
-                    (
-                        payload,
-                        (
-                            ("page", str(page_number)),
-                            ("page_size", str(catalog_page_size)),
-                            *(
-                                (
-                                    (
-                                        "cursor_sha256",
-                                        hashlib.sha256(page_token.encode()).hexdigest(),
-                                    ),
-                                )
-                                if page_token is not None
-                                else ()
-                            ),
-                        ),
-                        (f"page={page_number}",),
-                    )
-                )
-                parsers_cm.append(parser)
-                next_token = coinmetrics_next_page_token(payload)
-                if next_token is None:
-                    return _FetchedPagedAcquisition(
-                        plan=plan,
-                        pages=tuple(pages_cm),
-                        page_parsers=tuple(parsers_cm),
-                        upstream_checksums=tuple(None for _ in pages_cm),
-                        combine_frames=None,
-                        provider_schema="coinmetrics-community-v4",
-                        parser_version="coinmetrics-community-catalog-v1",
-                        logical_name="onchain_catalog.json",
-                    )
-                if next_token in seen_tokens:
-                    raise DataError("Coin Metrics Community catalog cursor repeated")
-                seen_tokens.add(next_token)
-                page_token = next_token
-            raise DataError("Coin Metrics Community catalog exceeded the 100-page safety limit")
-        if family != "onchain_metrics":
-            raise DataError(f"Coin Metrics Community is not authoritative for {family}")
-        selected_metrics = tuple(
-            item.strip() for item in (metrics or "").split(",") if item.strip()
-        )
-        if not selected_metrics or any(
-            item not in REVIEWED_COMMUNITY_METRICS for item in selected_metrics
-        ):
-            raise DataError("Coin Metrics requires reviewed --metrics values")
-        if not start or not end:
-            raise DataError("Coin Metrics acquisition requires --start and --end")
-        params_cm: dict[str, str | int] = {
-            "assets": instrument_value.lower(),
-            "metrics": ",".join(selected_metrics),
-            "frequency": frequency,
-            "start_time": start,
-            "end_time": end,
-            "page_size": 10_000,
-        }
-        url = coinmetrics_community_url("asset_metrics", params_cm)
-        payload = fetch_coinmetrics_community(url)
-        plan = _AcquisitionPlan(
-            endpoint="asset_metrics",
-            params=params_cm,
-            dataset=CryptoDatasetIdentityV1(
-                provider="coinmetrics",
-                venue="coinmetrics-community",
-                market_type="network",
-                family="onchain_metrics",
-                instrument=instrument_value.lower(),
-                base_asset=base_value,
-                quote_asset=None,
-                frequency=frequency,
-                units="metric_native",
-                timestamp_convention="provider_observation_utc",
-            ),
-            parser=partial(
-                parse_asset_metrics,
-                assets=(instrument_value.lower(),),
-                metrics=selected_metrics,
-            ),
-            observed_column="timestamp",
-            key_columns=("asset", "timestamp", "metric"),
-        )
-        return _FetchedAcquisition(
-            plan=plan,
-            payload=payload,
-            provider_schema="coinmetrics-community-v4",
-            parser_version="coinmetrics-community-v1",
-            logical_name="onchain_metrics.json",
         )
 
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
