@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from alpha_cli.strategy_candidate import (
     validate_hedged_basis_definition,
 )
 from alpha_core import DataError
+from alpha_strategies.hedged_basis import HedgedBasisObservationV1, HedgedBasisPlanV1
 
 
 def test_hedged_basis_candidate_definition_is_closed_and_sandbox_only() -> None:
@@ -34,6 +36,13 @@ def test_hedged_basis_candidate_definition_is_closed_and_sandbox_only() -> None:
         assert "differs from the registered candidate" in str(exc)
     else:  # pragma: no cover - the fail-closed assertion above is the behavior under test.
         raise AssertionError("drifted candidate definition was accepted")
+
+
+def test_hedged_basis_typed_contracts_reject_boundary_drift() -> None:
+    with pytest.raises(DataError, match="differs from the registered sandbox candidate"):
+        HedgedBasisPlanV1(total_round_trip_cost_bps=20.0)
+    with pytest.raises(DataError, match="must be timezone-aware"):
+        HedgedBasisObservationV1.create(event_time=datetime(2025, 1, 1))
 
 
 def test_hedged_basis_paper_preflight_is_actionably_blocked_without_side_effects() -> None:
