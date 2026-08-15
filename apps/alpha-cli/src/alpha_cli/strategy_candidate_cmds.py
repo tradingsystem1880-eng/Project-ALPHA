@@ -23,6 +23,7 @@ def run(
     snapshot_id: str,
     research_contract_id: str = typer.Option(...),
     analysis: str = typer.Option("baseline", help="registered candidate analysis"),
+    source_run_id: str | None = typer.Option(None, help="exact upstream validation run"),
     as_of: str | None = typer.Option(None, help="inclusive pre-holdout cutoff YYYY-MM-DD"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
@@ -38,6 +39,7 @@ def run(
             research_contract_id=research_contract_id,
             observations=observations,
             analysis=analysis,
+            source_run_id=source_run_id,
             research_cutoff=as_of,
             as_of=cutoff,
         )

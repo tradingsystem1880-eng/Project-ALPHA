@@ -174,8 +174,16 @@ _MONTE_CARLO_COMMANDS: Final = frozenset({"monte_carlo_classical", "monte_carlo_
 _CANDIDATE_NULL_COMMANDS: Final = frozenset(
     {"candidate_null_bootstrap", "candidate_null_student_t", "candidate_null_garch"}
 )
+_CANDIDATE_MONTE_CARLO_COMMANDS: Final = frozenset(
+    {"candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"}
+)
 _CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
-    {"candidate_baseline", "candidate_oos", *_CANDIDATE_NULL_COMMANDS}
+    {
+        "candidate_baseline",
+        "candidate_oos",
+        *_CANDIDATE_NULL_COMMANDS,
+        *_CANDIDATE_MONTE_CARLO_COMMANDS,
+    }
 )
 
 _ASSOCIATION_TOKEN_MARKERS: Final = ("associat", "correlat", "kendall", "pearson", "spearman")
@@ -240,7 +248,7 @@ _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
     ),
     "monte_carlo": (
         "monte_carlo",
-        _MONTE_CARLO_COMMANDS,
+        _MONTE_CARLO_COMMANDS | _CANDIDATE_MONTE_CARLO_COMMANDS,
     ),
     "optimize_grid": ("optimization", frozenset({"optim_grid"})),
     "portfolio_cross_asset": (
@@ -8676,7 +8684,12 @@ class ControlStore:
                 )
             return
         if suite_action == "monte_carlo":
-            if commands != _MONTE_CARLO_COMMANDS:
+            family = (
+                _CANDIDATE_MONTE_CARLO_COMMANDS
+                if not commands.isdisjoint(_CANDIDATE_MONTE_CARLO_COMMANDS)
+                else _MONTE_CARLO_COMMANDS
+            )
+            if commands != family:
                 raise DataError(
                     "Monte Carlo completion requires classical and Kronos canonical runs"
                 )

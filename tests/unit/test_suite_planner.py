@@ -1164,3 +1164,30 @@ def test_candidate_oos_and_null_plans_use_distinct_registered_commands(tmp_path:
         "null_garch",
     ]
     assert nulls.governance["aggregation"] == "no_majority_vote"
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="three_null_families",
+        stage="robustness",
+        commands=(
+            "candidate_null_bootstrap",
+            "candidate_null_student_t",
+            "candidate_null_garch",
+        ),
+    )
+
+    monte_carlo = build_suite_plan(
+        store, project_id, experiment_id, "monte_carlo", data_dir=tmp_path
+    )
+    assert monte_carlo.ready is True
+    assert [step.argv[6] for step in monte_carlo.steps] == [
+        "monte_carlo_classical",
+        "monte_carlo_kronos_fixture",
+    ]
+    source_runs = {step.argv[8] for step in monte_carlo.steps}
+    assert len(source_runs) == 1
+    assert monte_carlo.governance["kronos_role"] == ("disclosed_fake_fixture_not_market_oracle")

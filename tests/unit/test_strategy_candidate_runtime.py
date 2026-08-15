@@ -153,3 +153,39 @@ def test_candidate_pre_holdout_analyses_recompute_exactly(
         observations=observations,
         as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
     )
+
+
+@pytest.mark.parametrize(
+    ("analysis", "command", "model"),
+    [
+        ("monte_carlo_classical", "candidate_monte_carlo_classical", "classical_iid"),
+        ("monte_carlo_kronos_fixture", "candidate_monte_carlo_kronos", "fake"),
+    ],
+)
+def test_candidate_monte_carlo_binds_source_and_discloses_model_role(
+    tmp_path: Path, analysis: str, command: str, model: str
+) -> None:
+    observations = _observations()
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        analysis=analysis,
+        source_run_id="1234567890abcdef",
+        research_cutoff="2025-01-31",
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )
+
+    assert manifest["command"] == command
+    assert manifest["source_run_id"] == "1234567890abcdef"
+    assert manifest["status"] in {"clear", "warning"}
+    metadata = manifest["metadata"]
+    assert isinstance(metadata, dict) and metadata["model"] == model
+    validate_hedged_basis_candidate_artifacts(
+        tmp_path / "runs" / str(manifest["run_id"]),
+        manifest,
+        observations=observations,
+        as_of=datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC),
+    )

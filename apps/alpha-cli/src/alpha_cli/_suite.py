@@ -808,6 +808,59 @@ def build_suite_plan(
             )
         governance["aggregation"] = "no_majority_vote"
         workload = _workload(action, commands=3, canonical_runs=3)
+    elif hedged_basis and action == "monte_carlo":
+        source = _latest_run_for_command(
+            project,
+            experiment_id,
+            ("robustness",),
+            data_dir=data_dir,
+            commands=frozenset({"candidate_null_bootstrap"}),
+        )
+        source_run = None if source is None else source[0]
+        if source_run is None:
+            blockers.append("candidate Monte Carlo requires the completed headline null run")
+            source_run = "<required-validation-run>"
+        for analysis, label, role in (
+            (
+                "monte_carlo_classical",
+                "Classical event-return Monte Carlo",
+                "iid_event_return_bootstrap",
+            ),
+            (
+                "monte_carlo_kronos_fixture",
+                "Disclosed fake model-family fixture",
+                "fake_ar1_fixture_not_observed_evidence",
+            ),
+        ):
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                analysis,
+                "--source-run-id",
+                source_run,
+                "--as-of",
+                cutoff_value,
+            )
+            steps.append(
+                SuiteStep(
+                    label,
+                    args,
+                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                    role,
+                    ((cutoff_value, public_cutoff),),
+                )
+            )
+        governance.update(
+            {
+                "aggregation": "no_majority_vote",
+                "kronos_role": "disclosed_fake_fixture_not_market_oracle",
+            }
+        )
+        workload = _workload(action, commands=2, canonical_runs=2)
     elif hedged_basis and action == "paper_preflight":
         args = ("strategy-candidate", "paper-preflight", "--json")
         steps.append(

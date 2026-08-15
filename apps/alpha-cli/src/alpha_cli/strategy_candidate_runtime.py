@@ -29,6 +29,8 @@ _COMMANDS: Final = {
     "null_bootstrap": "candidate_null_bootstrap",
     "null_student_t": "candidate_null_student_t",
     "null_garch": "candidate_null_garch",
+    "monte_carlo_classical": "candidate_monte_carlo_classical",
+    "monte_carlo_kronos_fixture": "candidate_monte_carlo_kronos",
 }
 _ANALYSES: Final = frozenset(_COMMANDS)
 
@@ -126,6 +128,48 @@ def _analysis_result(
             "mean_net_return": float(np.mean(selected)),
         }, passed
 
+    if analysis in {"monte_carlo_classical", "monte_carlo_kronos_fixture"}:
+        paths = 2048
+        rng = np.random.default_rng(9413 if analysis == "monte_carlo_classical" else 9419)
+        if analysis == "monte_carlo_classical":
+            simulated = rng.choice(returns, size=(paths, returns.size), replace=True)
+            method = "iid_event_return_bootstrap_v1"
+            model = "classical_iid"
+        else:
+            # The deterministic acceptance fixture deliberately does not claim a
+            # downloaded Kronos model. It exercises the model-family boundary with
+            # a disclosed AR(1) generator calibrated only on the admitted returns.
+            lag = returns[:-1]
+            lead = returns[1:]
+            denominator = float(np.dot(lag, lag)) if lag.size else 0.0
+            phi = (
+                0.0
+                if denominator == 0.0
+                else float(np.clip(np.dot(lag, lead) / denominator, -0.95, 0.95))
+            )
+            residuals = lead - phi * lag if lead.size else returns
+            scale = float(np.std(residuals, ddof=1)) if residuals.size >= 2 else 0.0
+            simulated = np.empty((paths, returns.size), dtype=np.float64)
+            simulated[:, 0] = rng.choice(returns, size=paths)
+            for index in range(1, returns.size):
+                simulated[:, index] = phi * simulated[:, index - 1] + rng.normal(
+                    0.0, scale, size=paths
+                )
+            method = "disclosed_fake_ar1_generator_v1"
+            model = "fake"
+        terminal = np.prod(1.0 + simulated, axis=1) - 1.0
+        loss_probability = float(np.mean(terminal <= 0.0))
+        status = "clear" if loss_probability <= 0.25 else "warning"
+        return {
+            "method": method,
+            "model": model,
+            "paths": paths,
+            "seed": 9413 if analysis == "monte_carlo_classical" else 9419,
+            "loss_probability": loss_probability,
+            "terminal_return_p05": float(np.quantile(terminal, 0.05)),
+            "status": status,
+        }, status == "clear"
+
     centered = returns - float(np.mean(returns))
     observed = abs(float(np.mean(returns)))
     rng = np.random.default_rng(7331)
@@ -177,6 +221,7 @@ def run_hedged_basis_candidate(
     research_contract_id: str,
     observations: tuple[HedgedBasisObservationV1, ...],
     analysis: str,
+    source_run_id: str | None = None,
     research_cutoff: str | None,
     as_of: datetime | None,
 ) -> dict[str, Any]:
@@ -198,6 +243,10 @@ def run_hedged_basis_candidate(
         "research_inheritance": {"contract_id": research_contract_id},
         "candidate_plan": registered_hedged_basis_plan().to_dict(),
     }
+    if analysis.startswith("monte_carlo_"):
+        if source_run_id is None or len(source_run_id) != 16:
+            raise DataError("candidate Monte Carlo requires its exact source validation run")
+        identity_payload["source_run_id"] = source_run_id
     identity = _runner.run_identity_for(
         identity_payload,
         source_fingerprint=source,
@@ -243,6 +292,9 @@ def run_hedged_basis_candidate(
         "candidate_analysis_artifact": "candidate_analysis.json",
         "returns_artifact": "returns.parquet",
     }
+    if analysis.startswith("monte_carlo_"):
+        manifest["source_run_id"] = source_run_id
+        manifest["status"] = analysis_result["status"]
     _artifacts.write_manifest(run_dir, manifest)
     return _artifacts.read_manifest(run_dir)
 
@@ -262,15 +314,18 @@ def validate_hedged_basis_candidate_artifacts(
     if analysis is None or manifest.get("deployment_scope") != "sandbox_only":
         raise DataError("hedged basis manifest is not a registered sandbox candidate run")
     admitted = _admit(observations, as_of=as_of)
+    expected_payload: dict[str, object] = {
+        "command": _COMMANDS[analysis],
+        "strategy_name": "hedged_basis_crowding_v1",
+        "snapshot_id": manifest.get("snapshot_id"),
+        "research_cutoff": manifest.get("research_cutoff"),
+        "research_inheritance": manifest.get("research_inheritance"),
+        "candidate_plan": registered_hedged_basis_plan().to_dict(),
+    }
+    if analysis.startswith("monte_carlo_"):
+        expected_payload["source_run_id"] = manifest.get("source_run_id")
     expected_identity = _runner.run_identity_for(
-        {
-            "command": _COMMANDS[analysis],
-            "strategy_name": "hedged_basis_crowding_v1",
-            "snapshot_id": manifest.get("snapshot_id"),
-            "research_cutoff": manifest.get("research_cutoff"),
-            "research_inheritance": manifest.get("research_inheritance"),
-            "candidate_plan": registered_hedged_basis_plan().to_dict(),
-        },
+        expected_payload,
         source_fingerprint=_source_fingerprint(admitted),
         snapshot_hash=str(manifest.get("snapshot_hash")),
     )
