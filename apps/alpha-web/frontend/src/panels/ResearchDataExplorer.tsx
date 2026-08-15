@@ -123,7 +123,11 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
         </section>
         <section aria-label="Globally available research datasets">
           <div className="rd-head">Globally available · not automatically bound</div>
-          {datasets !== null && datasets.length === 0 ? (
+          {datasets === null ? (
+            <Placeholder big="REFRESHING REGISTERED DATASETS">
+              Rechecking registered research refs and their immutable origins.
+            </Placeholder>
+          ) : datasets.length === 0 ? (
             <Placeholder big="NO REGISTERED DATASETS">
               Freeze, verify, and register a crypto snapshot above, or register legacy data
               fail-closed against its exact receipt or provenance bytes from the trusted CLI.
@@ -133,9 +137,12 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
         </section>
         <section aria-label="Stored symbol inventory">
           <div className="rd-head">
-            Stored symbols <span className="muted">({symbols?.length ?? 0})</span>
+            Stored symbols{' '}
+            <span className="muted">({symbols === null ? 'loading…' : symbols.length})</span>
           </div>
-          {symbols !== null && symbols.length === 0 ? (
+          {symbols === null ? (
+            <Placeholder>Loading stored symbol inventory…</Placeholder>
+          ) : symbols.length === 0 ? (
             <p className="muted">The canonical store holds no symbols yet.</p>
           ) : null}
           <div className="scorecard-strip">

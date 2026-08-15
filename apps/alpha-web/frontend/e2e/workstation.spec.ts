@@ -1345,6 +1345,7 @@ interface MockOptions {
   /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
   runs?: unknown[]
   capturedOwnerAction?: (body: Record<string, unknown>) => void
+  researchDataRefreshDelayMs?: number
 }
 
 const LIBRARY_RUN = {
@@ -2052,8 +2053,15 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
     await route.continue()
   })
   let capturedInThisPage = false
+  let researchDatasetReadCount = 0
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname === '/api/research/datasets') {
+      researchDatasetReadCount += 1
+      if (researchDatasetReadCount > 1 && options.researchDataRefreshDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.researchDataRefreshDelayMs))
+      }
+    }
     if (url.pathname === '/api/research/cases' && route.request().method() === 'POST') {
       capturedInThisPage = true
     }
@@ -2328,7 +2336,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
 })
 
 test('crypto data center guides acquisition, quality, and exact snapshot verification', async ({ page }) => {
-  await preparePage(page)
+  await preparePage(page, { researchDataRefreshDelayMs: 400 })
 
   await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
   const center = page.getByRole('region', { name: 'Crypto Data Center' })
@@ -2384,6 +2392,8 @@ test('crypto data center guides acquisition, quality, and exact snapshot verific
   await expect(center.getByText(new RegExp(CRYPTO_SNAPSHOT_ID))).toBeHidden()
   await center.getByRole('button', { name: 'Register research-only dataset', exact: true }).click()
   await expect(center.getByText('REGISTERED · RESEARCH ONLY', { exact: true })).toBeVisible()
+  await expect(page.getByText('REFRESHING REGISTERED DATASETS', { exact: true })).toBeVisible()
+  await expect(page.getByText('Loading stored symbol inventory…', { exact: true })).toBeVisible()
   await expect(center.getByText(/does not make an incompatible case executable/)).toBeVisible()
   await expect(center.getByText(new RegExp(`rd_${'c'.repeat(64)}`))).toBeHidden()
 
