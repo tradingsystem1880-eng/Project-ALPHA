@@ -44,17 +44,14 @@ def _graph(tmp_path: Path, client: TestClient) -> tuple[str, str]:
             "stage_config": {},
         },
     ).json()
-    sealed = client.post(
-        f"/api/projects/{project_id}/holdouts/seal",
-        json={
-            "experiment_id": experiment["experiment_id"],
-            "actor": "owner",
-            "reason": "reserve the final period before suite research",
-            "start_date": "2026-04-01",
-            "end_date": "2026-06-30",
-        },
+    store.seal_holdout(
+        project_id,
+        str(experiment["experiment_id"]),
+        actor="fixture-owner",
+        reason="reserve the final period before suite research",
+        start_date="2026-04-01",
+        end_date="2026-06-30",
     )
-    assert sealed.status_code == 200, sealed.text
     return project_id, str(experiment["experiment_id"])
 
 
@@ -108,7 +105,7 @@ def test_suite_plan_and_launch_are_typed_and_allowlisted(
     assert cancelled.json()["status"] == "cancellation_requested"
 
 
-def test_suite_rest_rejects_free_form_and_requires_owner_holdout_confirmation(
+def test_suite_rest_rejects_free_form_and_web_holdout_authority(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
@@ -122,5 +119,12 @@ def test_suite_rest_rejects_free_form_and_requires_owner_holdout_confirmation(
     )
     assert unsafe.status_code == 422
     holdout = client.post(f"{path}/holdout_reveal/run", json={})
-    assert holdout.status_code == 422
-    assert "owner_actor" in holdout.text
+    assert holdout.status_code == 403
+    assert holdout.json()["code"] == "forbidden"
+    assert "explicit local alpha CLI owner ceremony" in holdout.json()["message"]
+    caller_actor = client.post(
+        f"{path}/baseline/run",
+        json={"owner_actor": "owner", "owner_reason": "pretend authority"},
+    )
+    assert caller_actor.status_code == 422
+    assert "owner_actor" in caller_actor.text

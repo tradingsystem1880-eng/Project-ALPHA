@@ -1454,7 +1454,7 @@ export interface paths {
         put?: never;
         /**
          * Freeze Decision Packet
-         * @description Freeze an explicit owner decision; acceptance remains sandbox-only.
+         * @description Deny caller-asserted owner decisions; the trusted local CLI owns this record.
          */
         post: operations["freeze_decision_packet_api_projects__project_id__experiments__experiment_id__decision_post"];
         delete?: never;
@@ -1514,7 +1514,7 @@ export interface paths {
         put?: never;
         /**
          * Run Suite Action
-         * @description Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields.
+         * @description Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only.
          */
         post: operations["run_suite_action_api_projects__project_id__experiments__experiment_id__suite__action__run_post"];
         delete?: never;
@@ -1534,7 +1534,7 @@ export interface paths {
         put?: never;
         /**
          * Seal Holdout
-         * @description Seal a final holdout before selection; no endpoint reveals the holdout.
+         * @description Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony.
          */
         post: operations["seal_holdout_api_projects__project_id__holdouts_seal_post"];
         delete?: never;
@@ -3243,7 +3243,7 @@ export interface paths {
         put?: never;
         /**
          * V3 Freeze Decision Packet
-         * @description Freeze an explicit owner decision; acceptance remains sandbox-only.
+         * @description Deny caller-asserted owner decisions; the trusted local CLI owns this record.
          *
          *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/decision`.
          */
@@ -3309,7 +3309,7 @@ export interface paths {
         put?: never;
         /**
          * V3 Run Suite Action
-         * @description Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields.
+         * @description Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only.
          *
          *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run`.
          */
@@ -3331,7 +3331,7 @@ export interface paths {
         put?: never;
         /**
          * V3 Seal Holdout
-         * @description Seal a final holdout before selection; no endpoint reveals the holdout.
+         * @description Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony.
          *
          *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/holdouts/seal`.
          */
@@ -9554,13 +9554,11 @@ export interface components {
             /** Steps */
             steps: components["schemas"]["SuiteStep"][];
         };
-        /** SuiteRunRequest */
-        SuiteRunRequest: {
-            /** Owner Actor */
-            owner_actor?: string | null;
-            /** Owner Reason */
-            owner_reason?: string | null;
-        };
+        /**
+         * SuiteRunRequest
+         * @description Empty by design: the web suite launcher accepts no caller-asserted authority.
+         */
+        SuiteRunRequest: Record<string, never>;
         /** SuiteStep */
         SuiteStep: {
             /** Command */

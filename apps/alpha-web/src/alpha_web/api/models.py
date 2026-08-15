@@ -1591,8 +1591,7 @@ class SuitePlan(StrictModel):
 
 
 class SuiteRunRequest(StrictModel):
-    owner_actor: str | None = Field(default=None, min_length=1, max_length=200)
-    owner_reason: str | None = Field(default=None, min_length=1, max_length=8192)
+    """Empty by design: the web suite launcher accepts no caller-asserted authority."""
 
 
 class SuiteLaunch(StrictModel):

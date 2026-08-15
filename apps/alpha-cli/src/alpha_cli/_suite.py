@@ -1081,7 +1081,7 @@ def build_suite_plan(
             {
                 "sandbox": True,
                 "places_orders": False,
-                "owner_only_launch": True,
+                "owner_only_launch": False,
                 "preflight_outcome": "UNSUPPORTED_MULTI_VENUE_PAPER",
                 "paper_readiness_credit": False,
             }

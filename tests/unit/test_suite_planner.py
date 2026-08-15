@@ -1053,6 +1053,7 @@ def test_hedged_basis_paper_preflight_is_a_non_authorizing_blocker(tmp_path: Pat
     assert plan.governance["preflight_outcome"] == "UNSUPPORTED_MULTI_VENUE_PAPER"
     assert plan.governance["paper_readiness_credit"] is False
     assert plan.governance["places_orders"] is False
+    assert plan.governance["owner_only_launch"] is False
     assert _headline_state(tmp_path, plan, ()) == "fail"
 
     calls: list[dict[str, object]] = []

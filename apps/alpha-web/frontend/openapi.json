@@ -18012,34 +18012,8 @@
       },
       "SuiteRunRequest": {
         "additionalProperties": false,
-        "properties": {
-          "owner_actor": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Actor"
-          },
-          "owner_reason": {
-            "anyOf": [
-              {
-                "maxLength": 8192,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Reason"
-          }
-        },
+        "description": "Empty by design: the web suite launcher accepts no caller-asserted authority.",
+        "properties": {},
         "title": "SuiteRunRequest",
         "type": "object"
       },
@@ -22916,7 +22890,7 @@
     },
     "/api/projects/{project_id}/experiments/{experiment_id}/decision": {
       "post": {
-        "description": "Freeze an explicit owner decision; acceptance remains sandbox-only.",
+        "description": "Deny caller-asserted owner decisions; the trusted local CLI owns this record.",
         "operationId": "freeze_decision_packet_api_projects__project_id__experiments__experiment_id__decision_post",
         "parameters": [
           {
@@ -23140,7 +23114,7 @@
     },
     "/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run": {
       "post": {
-        "description": "Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields.",
+        "description": "Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only.",
         "operationId": "run_suite_action_api_projects__project_id__experiments__experiment_id__suite__action__run_post",
         "parameters": [
           {
@@ -23224,7 +23198,7 @@
     },
     "/api/projects/{project_id}/holdouts/seal": {
       "post": {
-        "description": "Seal a final holdout before selection; no endpoint reveals the holdout.",
+        "description": "Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony.",
         "operationId": "seal_holdout_api_projects__project_id__holdouts_seal_post",
         "parameters": [
           {
@@ -27940,7 +27914,7 @@
     },
     "/api/v3/projects/{project_id}/experiments/{experiment_id}/decision": {
       "post": {
-        "description": "Freeze an explicit owner decision; acceptance remains sandbox-only.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/decision`.",
+        "description": "Deny caller-asserted owner decisions; the trusted local CLI owns this record.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/decision`.",
         "operationId": "v3_freeze_decision_packet_api_v3_projects__project_id__experiments__experiment_id__decision_post",
         "parameters": [
           {
@@ -28167,7 +28141,7 @@
     },
     "/api/v3/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run": {
       "post": {
-        "description": "Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run`.",
+        "description": "Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run`.",
         "operationId": "v3_run_suite_action_api_v3_projects__project_id__experiments__experiment_id__suite__action__run_post",
         "parameters": [
           {
@@ -28252,7 +28226,7 @@
     },
     "/api/v3/projects/{project_id}/holdouts/seal": {
       "post": {
-        "description": "Seal a final holdout before selection; no endpoint reveals the holdout.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/holdouts/seal`.",
+        "description": "Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/holdouts/seal`.",
         "operationId": "v3_seal_holdout_api_v3_projects__project_id__holdouts_seal_post",
         "parameters": [
           {

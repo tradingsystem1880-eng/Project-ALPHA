@@ -37,7 +37,6 @@ import type {
   CryptoStorageInventory,
   CryptoStorageVerify,
   CryptoCacheClean,
-  DecisionPacket,
   EvidencePage,
   EquitySeries,
   ExperimentSpec,
@@ -604,9 +603,8 @@ export const api = {
     projectId: string,
     experimentId: string,
     action: SuiteAction,
-    body: { owner_actor?: string; owner_reason?: string },
   ): Promise<SuiteLaunch> =>
-    postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/suite/${encodeURIComponent(action)}/run`, body),
+    postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/suite/${encodeURIComponent(action)}/run`, {}),
   suiteJob: (jobId: string): Promise<ControlJobDetail> =>
     getJSON(`/api/development/suite-jobs/${encodeURIComponent(jobId)}?event_tail=true`),
   async cancelDevelopmentJob(jobId: string): Promise<SuiteCancelResponse> {
@@ -614,36 +612,6 @@ export const api = {
     if (!res.ok) throw await responseError(res)
     return (await res.json()) as SuiteCancelResponse
   },
-  sealHoldout: (
-    projectId: string,
-    body: {
-      experiment_id: string
-      actor: string
-      reason: string
-      start_date: string
-      end_date: string
-    },
-  ) => postJSON(`/api/projects/${encodeURIComponent(projectId)}/holdouts/seal`, body),
-  transitionExperimentStage: (
-    projectId: string,
-    experimentId: string,
-    stage: string,
-    body: {
-      state: 'ready' | 'queued' | 'running' | 'pass' | 'warning' | 'fail' | 'stale'
-      reason: string
-    },
-  ) => postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/stages/${encodeURIComponent(stage)}/state`, body),
-  freezeDecision: (
-    projectId: string,
-    experimentId: string,
-    body: {
-      verdict: 'accept' | 'reject' | 'revise'
-      actor: string
-      reason: string
-      negative_results_acknowledged: true
-    },
-  ): Promise<DecisionPacket> =>
-    postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/decision`, body),
   agentBrief: (projectId: string, evidenceLimit = 50): Promise<AgentBrief> =>
     getJSON(`/api/projects/${encodeURIComponent(projectId)}/agent-brief?evidence_limit=${evidenceLimit}`),
   evidence: (query: {

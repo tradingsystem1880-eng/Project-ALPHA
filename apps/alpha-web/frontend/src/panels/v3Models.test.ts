@@ -15,6 +15,7 @@ import {
   evidenceForDecision,
   matchesRunScope,
   projectStageRows,
+  sandboxCandidateSummary,
   visibleEvidenceMarkers,
   terminalReturns,
   type EvidenceMarker,
@@ -369,5 +370,40 @@ describe('development lifecycle projection', () => {
       runId: '0123456789abcdef',
     })
     expect(stages.find((row) => row.id === 'oos')?.state).toBe('not_started')
+
+    const definition = {
+      schema_version: 1,
+      strategy_name: 'hedged_basis_crowding_v1',
+      required_instrument: 'BTCUSDT',
+      required_quote_asset: 'USDT',
+      required_venues: ['bybit', 'binance'],
+      total_round_trip_cost_bps: 40,
+      periods_per_year: 1095,
+      execution_model: 'two_leg_return_replay',
+      deployment_scope: 'sandbox_only',
+      paper_blocker: 'UNSUPPORTED_MULTI_VENUE_PAPER',
+      places_orders: false,
+    }
+    const candidate = {
+      ...project,
+      versions: [{
+        version_id: 'sv_1',
+        strategy_name: 'hedged_basis_crowding_v1',
+        source_fingerprint: 'git:fixture',
+        definition,
+        parameter_space: {},
+        created_at: '2026-01-01T00:00:00+00:00',
+      }],
+    } satisfies ProjectDetail
+    expect(sandboxCandidateSummary(candidate)).toMatchObject({
+      perpLeg: 'SHORT BYBIT LINEAR PERPETUAL',
+      spotLeg: 'LONG BINANCE SPOT',
+      totalRoundTripCostBps: 40,
+      paperBlocker: 'UNSUPPORTED_MULTI_VENUE_PAPER',
+    })
+    expect(sandboxCandidateSummary({
+      ...candidate,
+      versions: [{ ...candidate.versions[0], definition: { ...definition, required_quote_asset: 'USD' } }],
+    })).toBeNull()
   })
 })

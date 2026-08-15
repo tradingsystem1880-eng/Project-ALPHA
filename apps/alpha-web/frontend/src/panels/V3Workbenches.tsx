@@ -18,7 +18,7 @@ import { setLinked, useLinked } from '../context/linked'
 import { fmtPct, shortId } from '../util/format'
 import { isActiveControlJob, refreshDurableJobs } from './durableJobs'
 import { strategyGateLock } from './researchGateModel'
-import { projectStageRows } from './v3Models'
+import { projectStageRows, sandboxCandidateSummary } from './v3Models'
 
 function ContextLine() {
   const linked = useLinked()
@@ -47,8 +47,8 @@ const STAGE_ACTIONS: { id: SuiteAction; label: string }[] = [
   { id: 'portfolio_cross_asset', label: 'Run portfolio / cross-asset' },
   { id: 'qlib', label: 'Generate / train Qlib' },
   { id: 'kronos', label: 'Run / evaluate Kronos' },
-  { id: 'holdout_reveal', label: 'Reveal final holdout' },
-  { id: 'paper_preflight', label: 'Paper preflight' },
+  { id: 'holdout_reveal', label: 'Holdout reveal · trusted CLI' },
+  { id: 'paper_preflight', label: 'Paper preflight · no authority' },
 ] as const
 
 function ProjectCreate({ onCreated }: { onCreated: (project: ProjectSummary) => void }) {
@@ -215,15 +215,6 @@ export function DevelopmentCenter() {
   const [jobsReady, setJobsReady] = useState(false)
   const [jobPollError, setJobPollError] = useState<string | null>(null)
   const [jobRefresh, setJobRefresh] = useState(0)
-  const [ownerActor, setOwnerActor] = useState('owner')
-  const [ownerReason, setOwnerReason] = useState('Candidate frozen; owner approved one-shot holdout reveal.')
-  const [governanceBusy, setGovernanceBusy] = useState(false)
-  const [holdoutStart, setHoldoutStart] = useState('')
-  const [holdoutEnd, setHoldoutEnd] = useState('')
-  const [holdoutReason, setHoldoutReason] = useState('Final evaluation window reserved before model selection.')
-  const [decisionVerdict, setDecisionVerdict] = useState<'accept' | 'reject' | 'revise'>('revise')
-  const [decisionReason, setDecisionReason] = useState('')
-  const [negativeAcknowledged, setNegativeAcknowledged] = useState(false)
   const [briefBusy, setBriefBusy] = useState(false)
   const [briefStatus, setBriefStatus] = useState<string | null>(null)
 
@@ -367,6 +358,7 @@ export function DevelopmentCenter() {
   const monteCarloReview = detail?.monte_carlo_reviews.find((row) => row.experiment_id === experimentId)
   const monteCarloStage = detail?.stage_states.find((row) => row.experiment_id === experimentId && row.stage === 'monte_carlo')
   const candidate = detail?.stage_states.find((row) => row.experiment_id === experimentId && row.stage === 'candidate')
+  const sandboxCandidate = sandboxCandidateSummary(detail)
   const candidatePrerequisites = ['baseline', 'oos', 'robustness', 'optimization', 'portfolio']
   const monteCarloReady = monteCarloStage?.state === 'pass' || (monteCarloStage?.state === 'warning' && monteCarloReview?.decision === 'continue')
   const candidateReady = monteCarloReady && candidatePrerequisites.every((stage) => detail?.stage_states.some((row) => row.experiment_id === experimentId && row.stage === stage && ['pass', 'warning'].includes(row.state)))
@@ -402,18 +394,19 @@ export function DevelopmentCenter() {
   }
 
   async function launchSelected() {
-    if (gateLock || !detail?.current_experiment_id || !selectedPlan?.ready) return
+    if (
+      gateLock
+      || !detail?.current_experiment_id
+      || !selectedPlan?.ready
+      || selectedAction === 'holdout_reveal'
+    ) return
     setLaunching(true)
     setError(null)
     try {
-      const owner = selectedAction === 'holdout_reveal'
-        ? { owner_actor: ownerActor.trim(), owner_reason: ownerReason.trim() }
-        : {}
       await api.runSuite(
         detail.project_id,
         detail.current_experiment_id,
         selectedAction,
-        owner,
       )
       setJobRefresh((value) => value + 1)
     } catch (reason) {
@@ -428,63 +421,6 @@ export function DevelopmentCenter() {
       setJobRefresh((value) => value + 1)
     } catch (reason) {
       setError(String(reason))
-    }
-  }
-
-  async function sealFinalHoldout() {
-    if (!detail || !experimentId || !holdoutStart || !holdoutEnd || !holdoutReason.trim() || !ownerActor.trim()) return
-    setGovernanceBusy(true); setError(null)
-    try {
-      await api.sealHoldout(detail.project_id, {
-        experiment_id: experimentId,
-        actor: ownerActor.trim(),
-        reason: holdoutReason.trim(),
-        start_date: holdoutStart,
-        end_date: holdoutEnd,
-      })
-      await reloadDetail()
-    } catch (reason) {
-      setError(String(reason))
-    } finally {
-      setGovernanceBusy(false)
-    }
-  }
-
-  async function freezeCandidate() {
-    if (!detail || !experimentId || !candidateReady || !candidate || ['pass', 'warning'].includes(candidate.state)) return
-    setGovernanceBusy(true); setError(null)
-    try {
-      const states = ['ready', 'queued', 'running', 'pass'] as const
-      const current = states.indexOf(candidate.state as typeof states[number])
-      for (const state of states.slice(current + 1)) {
-        await api.transitionExperimentStage(detail.project_id, experimentId, 'candidate', {
-          state,
-          reason: 'Owner froze the candidate after reviewing all pre-holdout research evidence.',
-        })
-      }
-      await reloadDetail()
-    } catch (reason) {
-      setError(String(reason))
-    } finally {
-      setGovernanceBusy(false)
-    }
-  }
-
-  async function freezeDecision() {
-    if (!detail || !experimentId || !negativeAcknowledged || !decisionReason.trim() || !ownerActor.trim()) return
-    setGovernanceBusy(true); setError(null)
-    try {
-      await api.freezeDecision(detail.project_id, experimentId, {
-        verdict: decisionVerdict,
-        actor: ownerActor.trim(),
-        reason: decisionReason.trim(),
-        negative_results_acknowledged: true,
-      })
-      await reloadDetail()
-    } catch (reason) {
-      setError(String(reason))
-    } finally {
-      setGovernanceBusy(false)
     }
   }
 
@@ -509,6 +445,24 @@ export function DevelopmentCenter() {
         {!selectedId ? <Placeholder big="NO PROJECT">Create or select a project to inspect immutable strategy-development lineage.</Placeholder> : !detail ? <div className="skeleton" style={{ height: 300 }} /> : (
           <>
             <ExperimentSummary project={detail} />
+            {sandboxCandidate ? (
+              <section className="governance-block" aria-label="Sandbox hedged basis candidate">
+                <div className="governance-title">
+                  <span>Hedged basis candidate</span>
+                  <span className="chip fail">SANDBOX ONLY · PAPER BLOCKED</span>
+                </div>
+                <div className="development-spec">
+                  <div><span className="eyebrow">Perpetual leg</span><span>{sandboxCandidate.perpLeg}</span></div>
+                  <div><span className="eyebrow">Hedge leg</span><span>{sandboxCandidate.spotLeg}</span></div>
+                  <div><span className="eyebrow">Instrument / quote</span><span className="mono">{sandboxCandidate.instrument} / {sandboxCandidate.quoteAsset}</span></div>
+                  <div><span className="eyebrow">Costs</span><span>{sandboxCandidate.totalRoundTripCostBps} bp total round trip</span></div>
+                  <div><span className="eyebrow">Calendar</span><span>{sandboxCandidate.annualization}</span></div>
+                  <div><span className="eyebrow">Execution model</span><span className="mono">{sandboxCandidate.executionModel}</span></div>
+                  <div><span className="eyebrow">Research lineage</span><span>Promoted contract and exact snapshot are reverified by the server for every run.</span></div>
+                  <div><span className="eyebrow">Paper boundary</span><span className="mono neg">{sandboxCandidate.paperBlocker}</span></div>
+                </div>
+              </section>
+            ) : null}
             {gateLock ? <ResearchGateLockNotice lock={gateLock} projectId={detail.project_id} projectName={detail.name} /> : null}
             <div className="agent-brief-bar">
               <div><span className="eyebrow">Typed AgentBrief</span><span>Current hypothesis, allowed scope, cited evidence, stage state, warnings, and required tests.</span></div>
@@ -544,7 +498,7 @@ export function DevelopmentCenter() {
                   {STAGE_ACTIONS.map((action) => {
                     const plan = plans[action.id]
                     const title = plan?.ready ? `Preview ${plan.steps.length} allowlisted command${plan.steps.length === 1 ? '' : 's'}` : plan?.blockers.join('; ') || planErrors[action.id] || 'No current immutable experiment'
-                    return <button className={`btn ${selectedAction === action.id ? 'primary' : ''}`} disabled={Boolean(gateLock) || !plan?.ready || launching || !jobsReady} key={action.id} title={gateLock ? gateLock.reason : title} onClick={() => setSelectedAction(action.id)}>{action.label}</button>
+                    return <button className={`btn ${selectedAction === action.id ? 'primary' : ''}`} disabled={!plan || launching} key={action.id} title={gateLock ? `${gateLock.reason} Preview remains read-only.` : title} onClick={() => setSelectedAction(action.id)}>{action.label}</button>
                   })}
                 </div>
                 {selectedPlan ? (
@@ -562,8 +516,8 @@ export function DevelopmentCenter() {
                     <ol className="suite-command-list">
                       {selectedPlan.steps.map((step) => <li key={step.index}><span>{step.label}</span><code>{step.command.join(' ')}</code><small>{step.evidence_role.replaceAll('_', ' ')}</small></li>)}
                     </ol>
-                    {selectedAction === 'holdout_reveal' ? <div className="suite-owner-confirm"><label><span className="eyebrow">Owner</span><input className="field" value={ownerActor} onChange={(event) => setOwnerActor(event.target.value)} /></label><label><span className="eyebrow">Permanent audit reason</span><textarea className="field" value={ownerReason} onChange={(event) => setOwnerReason(event.target.value)} /></label></div> : null}
-                    <button className="btn primary" disabled={Boolean(gateLock) || !selectedPlan.ready || launching || !jobsReady || (selectedAction === 'holdout_reveal' && (!ownerActor.trim() || !ownerReason.trim()))} title={gateLock?.reason} onClick={launchSelected}>{!jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
+                    {selectedAction === 'holdout_reveal' ? <div className="workbench-notice"><strong>TRUSTED CLI OWNER CHECKPOINT</strong><span>The browser cannot assert an owner name or reveal the sealed holdout. Run the previewed <code>alpha suite run</code> command in the local terminal with a fresh reason.</span></div> : null}
+                    <button className="btn primary" disabled={Boolean(gateLock) || !selectedPlan.ready || launching || !jobsReady || selectedAction === 'holdout_reveal'} title={selectedAction === 'holdout_reveal' ? 'Trusted local CLI ceremony required' : gateLock?.reason} onClick={launchSelected}>{selectedAction === 'holdout_reveal' ? 'Trusted CLI required' : !jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
                   </div>
                 ) : null}
                 <div className="rd-head">Durable development journals</div>
@@ -571,16 +525,15 @@ export function DevelopmentCenter() {
               </section>
             </div>
             <section className="owner-governance">
-              <div className="rd-head">Owner governance · irreversible records</div>
+              <div className="rd-head">Owner checkpoints · trusted CLI only</div>
               <div className="governance-grid">
                 <div className="governance-block">
                   <div className="governance-title"><span>Final holdout</span><span className={`chip ${holdout?.contaminated_at ? 'fail' : holdout ? 'pass' : ''}`}>{holdout ? holdout.contaminated_at ? 'CONTAMINATED' : holdout.revealed_at ? 'REVEALED' : 'SEALED' : 'NOT SEALED'}</span></div>
-                  {holdout ? <><span className="mono muted">SPEC {holdout.holdout_spec_hash ? shortId(holdout.holdout_spec_hash) : 'WINDOW NOT DEFINED'}</span><p>{holdout.revealed_at ? `${holdout.start_date} → ${holdout.end_date}` : 'Date boundaries remain redacted until the audited reveal.'}</p></> : <div className="governance-form"><label><span className="eyebrow">Start</span><input className="field" type="date" value={holdoutStart} onChange={(event) => setHoldoutStart(event.target.value)} /></label><label><span className="eyebrow">End</span><input className="field" type="date" value={holdoutEnd} onChange={(event) => setHoldoutEnd(event.target.value)} /></label><label className="span-two"><span className="eyebrow">Seal reason</span><textarea className="field" value={holdoutReason} onChange={(event) => setHoldoutReason(event.target.value)} /></label><button className="btn primary span-two" disabled={governanceBusy || !holdoutStart || !holdoutEnd || !ownerActor.trim() || !holdoutReason.trim()} onClick={sealFinalHoldout}>Seal immutable holdout</button></div>}
+                  {holdout ? <><span className="mono muted">SPEC {holdout.holdout_spec_hash ? shortId(holdout.holdout_spec_hash) : 'WINDOW NOT DEFINED'}</span><p>{holdout.revealed_at ? `${holdout.start_date} → ${holdout.end_date}` : 'Date boundaries remain redacted until the audited reveal.'}</p></> : <p>Seal the dated holdout with <code>alpha project seal-holdout</code>. The Workstation cannot accept a caller-provided owner identity.</p>}
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Candidate freeze</span><span className={`chip ${candidate?.state === 'pass' ? 'pass' : ''}`}>{candidate?.state ?? 'NOT STARTED'}</span></div>
-                  <p>Freezes the current strategy and experiment only after baseline, OOS, robustness, four-family Monte Carlo, optimization, and portfolio research clear.</p>
-                  <button className="btn primary" disabled={governanceBusy || !candidateReady || candidate?.state === 'pass'} onClick={freezeCandidate}>{candidate?.state === 'pass' ? 'Candidate frozen' : 'Freeze candidate'}</button>
+                  <p>{candidateReady ? 'All mechanical prerequisites are present.' : 'Baseline, OOS, robustness, Monte Carlo, optimization, and portfolio evidence must clear first.'} Freeze through <code>alpha project stage-transition</code>; the browser remains read-only.</p>
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Monte Carlo review</span><span className={`chip ${monteCarloReview?.decision === 'continue' ? 'pass' : monteCarloReview ? 'fail' : ''}`}>{monteCarloReview?.decision.toUpperCase() ?? (monteCarloStage?.state === 'warning' ? 'OWNER REVIEW REQUIRED' : monteCarloStage?.state?.toUpperCase() ?? 'NOT STARTED')}</span></div>
@@ -588,7 +541,7 @@ export function DevelopmentCenter() {
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Decision packet</span><span className={`chip ${decision?.verdict === 'accept' ? 'pass' : decision?.verdict === 'reject' ? 'fail' : ''}`}>{decision?.verdict?.toUpperCase() ?? 'OPEN'}</span></div>
-                  {decision ? <><span className="mono">{shortId(decision.packet_id)}</span><p>{decision.reason}</p><span className="mono muted">{decision.negative_result_attempt_ids.length} NEGATIVE RESULTS ACKNOWLEDGED · SANDBOX ONLY</span></> : <div className="governance-form"><label><span className="eyebrow">Owner</span><input className="field" value={ownerActor} onChange={(event) => setOwnerActor(event.target.value)} /></label><label><span className="eyebrow">Verdict</span><select className="field" value={decisionVerdict} onChange={(event) => setDecisionVerdict(event.target.value as 'accept' | 'reject' | 'revise')}><option value="revise">Revise</option><option value="reject">Reject</option><option value="accept">Accept · sandbox</option></select></label><label className="span-two"><span className="eyebrow">Decision rationale</span><textarea className="field" value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} /></label><label className="governance-ack span-two"><input type="checkbox" checked={negativeAcknowledged} onChange={(event) => setNegativeAcknowledged(event.target.checked)} /><span>I reviewed all failed, pruned, rejected, and cancelled attempts.</span></label><button className="btn primary span-two" disabled={governanceBusy || !negativeAcknowledged || !decisionReason.trim() || !ownerActor.trim()} onClick={freezeDecision}>Freeze {decisionVerdict} packet · sandbox only</button></div>}
+                  {decision ? <><span className="mono">{shortId(decision.packet_id)}</span><p>{decision.reason}</p><span className="mono muted">{decision.negative_result_attempt_ids.length} NEGATIVE RESULTS ACKNOWLEDGED · SANDBOX ONLY</span></> : <p>Record accept, reject, or revise with <code>alpha project decide</code> after reviewing every negative attempt. No browser call can impersonate the owner.</p>}
                 </div>
               </div>
             </section>

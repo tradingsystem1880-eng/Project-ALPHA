@@ -57,6 +57,16 @@ def _bad_request(exc: RuntimeError) -> HTTPException:
     return HTTPException(status_code=422, detail=str(exc))
 
 
+def _trusted_cli_only(action: str) -> HTTPException:
+    return HTTPException(
+        status_code=403,
+        detail=(
+            f"{action} is not authorized from the Workstation web API. "
+            "Use the explicit local alpha CLI owner ceremony."
+        ),
+    )
+
+
 @router.get("/projects", response_model=ProjectPage)
 def list_projects(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
@@ -160,18 +170,10 @@ def run_suite_action(
     action: SuiteActionValue,
     body: SuiteRunRequest,
 ) -> dict[str, object]:
-    """Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields."""
+    """Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only."""
+    del body
     if action == "holdout_reveal":
-        if body.owner_actor is None or body.owner_reason is None:
-            raise HTTPException(
-                status_code=422,
-                detail="holdout reveal requires an explicit owner_actor and owner_reason",
-            )
-    elif body.owner_actor is not None or body.owner_reason is not None:
-        raise HTTPException(
-            status_code=422,
-            detail="owner confirmation fields apply only to holdout reveal",
-        )
+        raise _trusted_cli_only("Final holdout reveal")
     try:
         plan = _development.suite_plan(
             project_id,
@@ -198,15 +200,6 @@ def run_suite_action(
     except RuntimeError as exc:
         raise _bad_request(exc) from exc
     args = ["suite", "run", project_id, experiment_id, action, "--job-id", job_id, "--json"]
-    if action == "holdout_reveal":
-        args.extend(
-            [
-                "--owner-actor",
-                str(body.owner_actor),
-                "--owner-reason",
-                str(body.owner_reason),
-            ]
-        )
     try:
         _invoke.launch(args, data_dir=data_dir(), run_type=None)
     except OSError as exc:
@@ -344,6 +337,8 @@ def update_experiment_stage_state(
     body: ExperimentStageTransitionRequest,
 ) -> dict[str, object]:
     """Append one legal experiment lifecycle transition before a run link exists."""
+    if stage == "candidate":
+        raise _trusted_cli_only("Candidate freeze")
     try:
         return _development.update_experiment_stage_state(
             project_id,
@@ -378,19 +373,9 @@ def record_attempt(project_id: str, body: AttemptCreateRequest) -> dict[str, obj
 
 @router.post("/projects/{project_id}/holdouts/seal", response_model=HoldoutState)
 def seal_holdout(project_id: str, body: HoldoutSealRequest) -> dict[str, object]:
-    """Seal a final holdout before selection; no endpoint reveals the holdout."""
-    try:
-        return _development.seal_holdout(
-            project_id,
-            data_dir=data_dir(),
-            experiment_id=body.experiment_id,
-            actor=body.actor,
-            reason=body.reason,
-            start_date=body.start_date,
-            end_date=body.end_date,
-        )
-    except RuntimeError as exc:
-        raise _bad_request(exc) from exc
+    """Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony."""
+    del project_id, body
+    raise _trusted_cli_only("Final holdout seal")
 
 
 @router.post(
@@ -402,16 +387,9 @@ def freeze_decision_packet(
     experiment_id: str,
     body: DecisionRequest,
 ) -> dict[str, object]:
-    """Freeze an explicit owner decision; acceptance remains sandbox-only."""
-    try:
-        return _development.freeze_decision(
-            project_id,
-            experiment_id,
-            body.model_dump(),
-            data_dir=data_dir(),
-        )
-    except RuntimeError as exc:
-        raise _bad_request(exc) from exc
+    """Deny caller-asserted owner decisions; the trusted local CLI owns this record."""
+    del project_id, experiment_id, body
+    raise _trusted_cli_only("Final sandbox decision")
 
 
 @router.get("/projects/{project_id}/agent-brief", response_model=AgentBrief)
