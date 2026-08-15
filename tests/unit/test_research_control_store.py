@@ -4348,6 +4348,7 @@ def test_data_audit_reverifies_registered_crypto_crowding_snapshot(
         "crypto_crowding_observations",
         lambda requested: observations if requested == snapshot_id else (),
     )
+    snapshot_hash = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     ref = {
         "ref_id": "rd_" + "2" * 64,
         "dataset_kind": "snapshot",
@@ -4359,7 +4360,7 @@ def test_data_audit_reverifies_registered_crypto_crowding_snapshot(
         "origin": {
             "snapshot_id": snapshot_id,
             "snapshot_schema": "CryptoSnapshotV1",
-            "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+            "manifest_sha256": snapshot_hash,
         },
     }
 
@@ -4367,7 +4368,7 @@ def test_data_audit_reverifies_registered_crypto_crowding_snapshot(
 
     assert result["summary"]["blocking_count"] == 0
     assert result["manifest"]["snapshot_id"] == snapshot_id
-    assert result["manifest"]["snapshot_hash"] == ref["origin"]["manifest_sha256"]
+    assert result["manifest"]["snapshot_hash"] == snapshot_hash
     run_dir = tmp_path / "runs" / result["manifest"]["run_id"]
     descriptives = json.loads((run_dir / "descriptives.json").read_text(encoding="utf-8"))
     assert descriptives["funding_rate_distribution"]["n"] == 40
