@@ -24,6 +24,7 @@ from alpha_cli.report_cmds import report as _report
 from alpha_cli.research_cmds import research_app
 from alpha_cli.risk_cmds import risk_app
 from alpha_cli.screener_cmds import screener_app
+from alpha_cli.strategy_candidate_cmds import strategy_candidate_app
 from alpha_cli.suite_cmds import suite_app
 from alpha_cli.validate_cmds import validate as _validate
 
@@ -48,6 +49,7 @@ app.add_typer(evidence_app, name="evidence")
 app.add_typer(ml_app, name="ml")
 app.add_typer(monte_carlo_app, name="monte-carlo")
 app.add_typer(suite_app, name="suite")
+app.add_typer(strategy_candidate_app, name="strategy-candidate")
 app.command(name="validate")(_validate)
 app.command(name="report")(_report)
 
