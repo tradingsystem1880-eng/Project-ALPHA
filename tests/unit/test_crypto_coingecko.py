@@ -64,6 +64,37 @@ def test_market_universe_preserves_reference_units_and_nulls() -> None:
     assert row["fully_diluted_valuation"] is None
 
 
+def test_market_universe_accepts_mixed_integer_and_float_provider_values() -> None:
+    rows = [
+        {
+            "id": f"asset-{index}",
+            "symbol": f"a{index}",
+            "name": f"Asset {index}",
+            "current_price": index,
+            "market_cap": index,
+            "market_cap_rank": index + 1,
+            "fully_diluted_valuation": index,
+            "total_volume": index,
+            "circulating_supply": index,
+            "total_supply": index,
+            "max_supply": index,
+            "last_updated": "2026-08-14T00:00:00Z",
+        }
+        for index in range(100)
+    ]
+    rows.append({**rows[-1], "id": "float-asset", "current_price": 10081.5})
+
+    frame = parse_market_universe(
+        json.dumps(rows).encode(),
+        vs_currency="usd",
+        fetched_at=datetime(2026, 8, 15, tzinfo=UTC),
+    )
+
+    assert frame.height == 101
+    assert frame["current_price"].dtype.is_float()
+    assert frame.row(-1, named=True)["current_price"] == 10081.5
+
+
 def test_asset_catalog_explodes_contracts_without_ticker_join() -> None:
     payload = json.dumps(
         [

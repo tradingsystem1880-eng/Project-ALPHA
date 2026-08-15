@@ -187,7 +187,19 @@ def parse_market_universe(
                 "fetched_at": fetched_at.astimezone(UTC),
             }
         )
-    return pl.DataFrame(rows)
+    return pl.DataFrame(
+        rows,
+        schema_overrides={
+            "current_price": pl.Float64,
+            "market_cap": pl.Float64,
+            "market_cap_rank": pl.Float64,
+            "fully_diluted_valuation": pl.Float64,
+            "total_volume": pl.Float64,
+            "circulating_supply": pl.Float64,
+            "total_supply": pl.Float64,
+            "max_supply": pl.Float64,
+        },
+    )
 
 
 def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
