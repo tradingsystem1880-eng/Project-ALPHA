@@ -1353,7 +1353,12 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
         url = request.full_url
         page = int(url.split("page=")[1].split("&", 1)[0])
         coin_pages.append(page)
-        rows = [market_row(index) for index in range(250)] if page == 1 else [market_row(250)]
+        if page == 1:
+            rows = [market_row(index) for index in range(250)]
+        else:
+            moved_asset = market_row(249)
+            moved_asset["last_updated"] = "2026-08-14T00:01:00Z"
+            rows = [moved_asset, market_row(250)]
         return json.dumps(rows).encode()
 
     monkeypatch.setattr(crypto_data_cmds, "fetch_coingecko_demo", fetch_coingecko)
@@ -1379,7 +1384,8 @@ def test_public_reference_catalogs_freeze_every_ordered_page(
     coingecko_manifest = _manifest(
         store.verify_manifest(coingecko_receipt["normalized_manifest_id"])
     )
-    assert coingecko_manifest["quality"]["row_count"] == 251
+    assert coingecko_manifest["quality"]["row_count"] == 252
+    assert coingecko_manifest["quality"]["state"] == "qualified"
     assert coingecko_manifest["dataset"]["instrument"] == "all"
     assert coingecko_manifest["dataset"]["base_asset"] is None
 

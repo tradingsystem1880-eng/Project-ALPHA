@@ -1769,7 +1769,7 @@ def _fetch_non_bybit(
             )
             parser_at = partial(_market_reference_parser_at, quote=quote_value)
             observed_column = "observed_at"
-            keys = ("coingecko_id", "quote_asset")
+            keys = ("observed_at", "coingecko_id", "quote_asset")
             endpoint = "markets"
             frequency_value = "point_in_time_reference"
             if instrument_value != "all":
