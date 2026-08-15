@@ -13,19 +13,40 @@ from alpha_data.crypto.contracts import (
     CryptoSnapshotMemberV1,
     CryptoSnapshotV1,
 )
-from alpha_data.crypto.research import assess_crypto_snapshot, require_crypto_snapshot
+from alpha_data.crypto.research import (
+    CryptoDatasetRequirementV1,
+    assess_crypto_dataset_requirements,
+    assess_crypto_snapshot,
+    require_crypto_dataset_requirements,
+    require_crypto_snapshot,
+)
 
 NOW = datetime(2026, 8, 15, tzinfo=UTC)
 
 
 def _member(
-    family: CryptoFamily, digest: str, *, provider: str | None = None
+    family: CryptoFamily,
+    digest: str,
+    *,
+    provider: str | None = None,
+    instrument: str = "BTCUSDT",
+    base_asset: str | None = "BTC",
+    quote_asset: str | None = "USDT",
+    frequency: str = "1h",
+    units: str = "native",
+    timestamp_convention: str = "interval_end_utc",
 ) -> CryptoSnapshotMemberV1:
     authorities = {
         "market_bars": "binance",
         "market_reference": "coingecko",
         "asset_metadata": "coingecko",
         "funding": "bybit",
+        "open_interest": "bybit",
+        "premium_bars": "bybit",
+        "mark_bars": "bybit",
+        "index_bars": "bybit",
+        "derivative_bars": "bybit",
+        "instrument_catalog": "bybit",
     }
     resolved_provider = provider or authorities[family]
     market_type: CryptoMarketType = (
@@ -37,12 +58,12 @@ def _member(
             venue=resolved_provider,
             market_type=market_type,
             family=family,
-            instrument="BTCUSDT",
-            base_asset="BTC",
-            quote_asset="USDT" if market_type == "linear" else None,
-            frequency="1d",
-            units="native",
-            timestamp_convention="interval_end_utc",
+            instrument=instrument,
+            base_asset=base_asset,
+            quote_asset=quote_asset if market_type == "linear" else None,
+            frequency=frequency,
+            units=units,
+            timestamp_convention=timestamp_convention,
         ),
         artifact_key=f"normalized/{family}/{digest}.parquet",
         artifact_sha256=digest,
@@ -215,3 +236,148 @@ def test_snapshot_detects_duplicate_artifacts_and_report_hash_mismatch() -> None
 
     assert "duplicate_snapshot_artifact" in projection.blockers
     assert f"qualification_hash_mismatch:{market.artifact_sha256}" in projection.blockers
+
+
+def test_exact_requirements_accept_one_matching_member_per_family() -> None:
+    funding = _member(
+        "funding",
+        "a" * 64,
+        frequency="funding_interval",
+        units="dimensionless_rate",
+        timestamp_convention="provider_event_utc",
+    )
+    catalog = _member(
+        "instrument_catalog",
+        "b" * 64,
+        instrument="linear",
+        base_asset=None,
+        quote_asset=None,
+        frequency="catalog_snapshot",
+        units="provider_native",
+        timestamp_convention="fetch_knowledge_utc",
+    )
+    snapshot = _snapshot(funding, catalog)
+    reports = {
+        member.artifact_sha256: _report(member.artifact_sha256) for member in snapshot.members
+    }
+    requirements = (
+        CryptoDatasetRequirementV1(
+            family="funding",
+            provider="bybit",
+            venue="bybit",
+            market_type="linear",
+            instrument="BTCUSDT",
+            base_asset="BTC",
+            quote_asset="USDT",
+            frequency="funding_interval",
+            units="dimensionless_rate",
+            timestamp_convention="provider_event_utc",
+        ),
+        CryptoDatasetRequirementV1(
+            family="instrument_catalog",
+            provider="bybit",
+            venue="bybit",
+            market_type="linear",
+            instrument="linear",
+            base_asset=None,
+            quote_asset=None,
+            frequency="catalog_snapshot",
+            units="provider_native",
+            timestamp_convention="fetch_knowledge_utc",
+        ),
+    )
+
+    projection = assess_crypto_dataset_requirements(
+        snapshot,
+        quality_reports=reports,
+        requirements=requirements,
+        purpose="research",
+    )
+
+    assert projection.eligible is True
+    assert projection.blockers == ()
+    assert (
+        require_crypto_dataset_requirements(
+            snapshot,
+            quality_reports=reports,
+            requirements=requirements,
+            purpose="research",
+        )
+        == projection
+    )
+
+
+@pytest.mark.parametrize(
+    ("override", "field"),
+    [
+        ({"provider": "binance"}, "provider"),
+        ({"quote_asset": "USDC"}, "quote_asset"),
+        ({"frequency": "1d"}, "frequency"),
+        ({"units": "contracts"}, "units"),
+        ({"timestamp_convention": "fetch_knowledge_utc"}, "timestamp_convention"),
+    ],
+)
+def test_exact_requirements_reject_identity_or_semantic_substitution(
+    override: dict[str, str], field: str
+) -> None:
+    member = _member("funding", "a" * 64, **override)
+    snapshot = _snapshot(member)
+    requirement = CryptoDatasetRequirementV1(
+        family="funding",
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="funding_interval",
+        units="dimensionless_rate",
+        timestamp_convention="provider_event_utc",
+    )
+
+    projection = assess_crypto_dataset_requirements(
+        snapshot,
+        quality_reports={member.artifact_sha256: _report(member.artifact_sha256)},
+        requirements=(requirement,),
+        purpose="research",
+    )
+
+    assert projection.eligible is False
+    assert f"dataset_mismatch:funding:{field}" in projection.blockers
+
+
+def test_exact_requirements_reject_duplicate_family_and_duplicate_requirements() -> None:
+    first = _member("funding", "a" * 64)
+    second = _member("funding", "b" * 64)
+    snapshot = _snapshot(first, second)
+    requirement = CryptoDatasetRequirementV1(
+        family="funding",
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="1h",
+        units="native",
+        timestamp_convention="interval_end_utc",
+    )
+    reports = {
+        member.artifact_sha256: _report(member.artifact_sha256) for member in snapshot.members
+    }
+
+    projection = assess_crypto_dataset_requirements(
+        snapshot,
+        quality_reports=reports,
+        requirements=(requirement,),
+        purpose="research",
+    )
+    assert "duplicate_required_family:funding" in projection.blockers
+
+    with pytest.raises(DataError, match="requirements are invalid"):
+        assess_crypto_dataset_requirements(
+            snapshot,
+            quality_reports=reports,
+            requirements=(requirement, requirement),
+            purpose="research",
+        )

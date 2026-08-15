@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final, Literal
 
 from alpha_core import DataError
@@ -46,6 +46,44 @@ class CryptoResearchEligibilityV1:
     blockers: tuple[str, ...]
     eligible: bool
     schema_version: int = 1
+
+
+@dataclass(frozen=True)
+class CryptoDatasetRequirementV1:
+    """Exact dataset semantics required by one registered research operator."""
+
+    family: CryptoFamily
+    provider: str
+    venue: str
+    market_type: str
+    instrument: str
+    base_asset: str | None
+    quote_asset: str | None
+    frequency: str
+    units: str
+    timestamp_convention: str
+    schema_version: int = 1
+
+    def __post_init__(self) -> None:
+        text_fields = (
+            self.provider,
+            self.venue,
+            self.market_type,
+            self.instrument,
+            self.frequency,
+            self.units,
+            self.timestamp_convention,
+        )
+        if (
+            self.family not in FAMILY_AUTHORITIES
+            or any(not isinstance(value, str) or not value.strip() for value in text_fields)
+            or any(
+                value is not None and (not isinstance(value, str) or not value.strip())
+                for value in (self.base_asset, self.quote_asset)
+            )
+            or self.schema_version != 1
+        ):
+            raise DataError("crypto dataset requirement is invalid")
 
 
 def assess_crypto_snapshot(
@@ -132,9 +170,82 @@ def require_crypto_snapshot(
     return projection
 
 
+def assess_crypto_dataset_requirements(
+    snapshot: CryptoSnapshotV1,
+    *,
+    quality_reports: Mapping[str, CryptoQualityReportV1],
+    requirements: tuple[CryptoDatasetRequirementV1, ...],
+    purpose: CryptoResearchPurpose,
+) -> CryptoResearchEligibilityV1:
+    """Require one qualified snapshot member matching every exact dataset contract."""
+    families = tuple(requirement.family for requirement in requirements)
+    if not requirements or len(set(families)) != len(families):
+        raise DataError("crypto dataset requirements are invalid")
+    projection = assess_crypto_snapshot(
+        snapshot,
+        quality_reports=quality_reports,
+        required_families=families,
+        purpose=purpose,
+    )
+    blockers = set(projection.blockers)
+    fields = (
+        "provider",
+        "venue",
+        "market_type",
+        "instrument",
+        "base_asset",
+        "quote_asset",
+        "frequency",
+        "units",
+        "timestamp_convention",
+    )
+    for requirement in requirements:
+        members = tuple(
+            member for member in snapshot.members if member.dataset.family == requirement.family
+        )
+        if len(members) > 1:
+            blockers.add(f"duplicate_required_family:{requirement.family}")
+        if len(members) != 1:
+            continue
+        dataset = members[0].dataset
+        for field in fields:
+            if getattr(dataset, field) != getattr(requirement, field):
+                blockers.add(f"dataset_mismatch:{requirement.family}:{field}")
+    ordered_blockers = tuple(sorted(blockers))
+    return replace(
+        projection,
+        blockers=ordered_blockers,
+        eligible=not ordered_blockers,
+    )
+
+
+def require_crypto_dataset_requirements(
+    snapshot: CryptoSnapshotV1,
+    *,
+    quality_reports: Mapping[str, CryptoQualityReportV1],
+    requirements: tuple[CryptoDatasetRequirementV1, ...],
+    purpose: CryptoResearchPurpose,
+) -> CryptoResearchEligibilityV1:
+    projection = assess_crypto_dataset_requirements(
+        snapshot,
+        quality_reports=quality_reports,
+        requirements=requirements,
+        purpose=purpose,
+    )
+    if not projection.eligible:
+        raise DataError(
+            f"crypto snapshot does not satisfy exact dataset requirements: "
+            f"{', '.join(projection.blockers)}"
+        )
+    return projection
+
+
 __all__ = [
+    "CryptoDatasetRequirementV1",
     "CryptoResearchEligibilityV1",
     "CryptoResearchPurpose",
+    "assess_crypto_dataset_requirements",
     "assess_crypto_snapshot",
+    "require_crypto_dataset_requirements",
     "require_crypto_snapshot",
 ]
