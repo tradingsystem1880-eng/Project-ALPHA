@@ -238,6 +238,31 @@ def test_receipt_quality_and_capability_contracts_are_honest() -> None:
     with pytest.raises(DataError, match="row_count"):
         CryptoQualityReportV1(**{**report.__dict__, "row_count": -1})
 
+
+def test_quality_contract_rejects_impossible_coverage_and_malformed_lists() -> None:
+    report = CryptoQualityReportV1(
+        dataset_sha256=_dataset().content_sha256,
+        method_version="quality-v1",
+        state="warning",
+        failures=("cadence_gap",),
+        warnings=("partial_tail",),
+        observed_start=datetime(2020, 1, 1, tzinfo=UTC),
+        observed_end=datetime(2026, 1, 1, tzinfo=UTC),
+        row_count=100,
+        correction_lineage=("receipt-old",),
+    )
+
+    for change, message in (
+        ({"row_count": True}, "row_count"),
+        ({"observed_start": datetime(2020, 1, 1)}, "timezone-aware"),
+        ({"observed_end": datetime(2010, 1, 1, tzinfo=UTC)}, "precedes"),
+        ({"failures": ["cadence_gap"]}, "failures"),
+        ({"warnings": ("",)}, "warnings"),
+        ({"correction_lineage": (1,)}, "correction lineage"),
+    ):
+        with pytest.raises(DataError, match=message):
+            CryptoQualityReportV1(**{**report.__dict__, **change})
+
     capability = ProviderDatasetCapabilityV1(
         provider="bybit",
         family="funding",

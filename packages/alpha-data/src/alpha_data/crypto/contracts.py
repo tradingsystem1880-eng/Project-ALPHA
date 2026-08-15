@@ -482,10 +482,33 @@ class CryptoQualityReportV1:
         _text(self.method_version, "quality method version")
         if self.state not in {"unverified", "qualified", "warning", "quarantined", "unavailable"}:
             raise DataError("invalid crypto qualification state")
+        for values, label in (
+            (self.failures, "failures"),
+            (self.warnings, "warnings"),
+            (self.correction_lineage, "correction lineage"),
+        ):
+            if not isinstance(values, tuple) or any(
+                not isinstance(value, str) or not value.strip() for value in values
+            ):
+                raise DataError(f"crypto quality {label} must contain non-empty strings")
         if self.state == "qualified" and self.failures:
             raise DataError("qualified crypto quality report cannot contain failures")
-        if not isinstance(self.row_count, int) or self.row_count < 0:
+        if (
+            not isinstance(self.row_count, int)
+            or isinstance(self.row_count, bool)
+            or self.row_count < 0
+        ):
             raise DataError("crypto quality row_count must be non-negative")
+        if self.observed_start is not None:
+            object.__setattr__(self, "observed_start", _time(self.observed_start, "observed_start"))
+        if self.observed_end is not None:
+            object.__setattr__(self, "observed_end", _time(self.observed_end, "observed_end"))
+        if (
+            self.observed_start is not None
+            and self.observed_end is not None
+            and self.observed_end < self.observed_start
+        ):
+            raise DataError("crypto quality observed_end precedes observed_start")
 
     def to_dict(self) -> dict[str, object]:
         return {
