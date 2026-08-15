@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -25,12 +25,14 @@ from alpha_cli._suite import (
 )
 from alpha_cli.control_store import ControlStore, StageState
 from alpha_cli.strategy_candidate import registered_hedged_basis_candidate
+from alpha_cli.strategy_candidate_runtime import run_hedged_basis_candidate
 from alpha_core import DataError
 from alpha_data.crypto.contracts import (
     CryptoDatasetIdentityV1,
     CryptoSnapshotMemberV1,
     CryptoSnapshotV1,
 )
+from alpha_strategies.hedged_basis import HedgedBasisObservationV1
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 type TestRun = tuple[str, str, StageState, bool | None, str | None]
@@ -1543,5 +1545,135 @@ def test_candidate_freeze_rebuilds_the_complete_distinct_evidence_family(tmp_pat
     assert holdout.steps[1].argv[6] == "holdout"
     assert "2026-04-01" in holdout.steps[1].argv
     assert "2026-04-01" not in holdout.steps[1].preview
+
+
+def test_candidate_suite_executes_complete_sandbox_fixture_and_blocked_paper(
+    tmp_path: Path,
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    snapshot_hash = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+
+    def observation(event: datetime) -> HedgedBasisObservationV1:
+        return HedgedBasisObservationV1.create(
+            event_time=event,
+            event_available_at=event,
+            entry_time=event + timedelta(hours=1),
+            entry_available_at=event + timedelta(hours=1),
+            exit_time=event + timedelta(hours=8),
+            exit_available_at=event + timedelta(hours=8),
+            bybit_perp_entry=100.0,
+            bybit_perp_exit=99.0,
+            binance_spot_entry=100.0,
+            binance_spot_exit=100.0,
+            funding_rate=0.001,
+            funding_available_at=event,
+            perp_quantity_btc=-1.0,
+            spot_quantity_btc=1.0,
+            input_sha256=(("binance_spot", "a" * 64), ("bybit_linear", "b" * 64)),
+            event_operator_fingerprint="c" * 64,
+            correction_lineage=(),
+        )
+
+    observations = tuple(
+        observation(datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=16 * index))
+        for index in range(60)
+    ) + tuple(
+        observation(datetime(2026, 4, 1, tzinfo=UTC) + timedelta(hours=16 * index))
+        for index in range(12)
+    )
+
+    def option(argv: tuple[str, ...], name: str) -> str | None:
+        return argv[argv.index(name) + 1] if name in argv else None
+
+    def run_step(
+        step: SuiteStep,
+        _job_id: str,
+        _control: ControlStore,
+        _cancelled: object,
+    ) -> StepExecution:
+        if step.argv[:2] == ("strategy-candidate", "paper-preflight"):
+            return StepExecution(returncode=0, run_ids=())
+        assert step.argv[:2] == ("strategy-candidate", "run")
+        analysis = option(step.argv, "--analysis")
+        assert analysis is not None
+        holdout_start = option(step.argv, "--holdout-start")
+        holdout_end = option(step.argv, "--holdout-end")
+        as_of = option(step.argv, "--as-of")
+        manifest = run_hedged_basis_candidate(
+            tmp_path,
+            snapshot_id=snapshot_id,
+            snapshot_hash=snapshot_hash,
+            research_contract_id=contract_id,
+            observations=observations,
+            analysis=analysis,
+            source_run_id=option(step.argv, "--source-run-id"),
+            holdout_start=None if holdout_start is None else date.fromisoformat(holdout_start),
+            holdout_end=None if holdout_end is None else date.fromisoformat(holdout_end),
+            holdout_spec_hash=option(step.argv, "--holdout-spec-hash"),
+            research_cutoff=as_of,
+            as_of=(
+                None
+                if as_of is None
+                else datetime.combine(date.fromisoformat(as_of), datetime.max.time(), tzinfo=UTC)
+            ),
+        )
+        return StepExecution(returncode=0, run_ids=(str(manifest["run_id"]),))
+
+    actions = (
+        "baseline",
+        "inner_oos",
+        "three_null_families",
+        "monte_carlo",
+        "optimize_grid",
+        "portfolio_cross_asset",
+        "fixed_stress",
+        "qlib",
+        "kronos",
+    )
+    for action in actions:
+        plan = build_suite_plan(
+            store, project_id, experiment_id, cast(SuiteAction, action), data_dir=tmp_path
+        )
+        assert plan.ready is True, (action, plan.blockers)
+        completed = execute_suite(store, plan, data_dir=tmp_path, step_runner=run_step)
+        assert completed["status"] == "succeeded"
+
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "ready", reason="fixture evidence complete"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "queued", reason="fixture freeze queued"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "running", reason="fixture freeze verifying"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "pass", reason="fixture candidate frozen"
+    )
+
+    holdout = build_suite_plan(
+        store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path
+    )
+    assert holdout.ready is True
+    completed_holdout = execute_suite(
+        store,
+        holdout,
+        data_dir=tmp_path,
+        owner_actor="fixture-owner",
+        owner_reason="exercise the sealed deterministic fixture",
+        step_runner=run_step,
+    )
+    holdout_result = cast(dict[str, object], completed_holdout["result"])
+    assert holdout_result["stage_state"] == "pass"
+
+    paper = build_suite_plan(store, project_id, experiment_id, "paper_preflight", data_dir=tmp_path)
+    assert paper.ready is True
+    completed_paper = execute_suite(store, paper, data_dir=tmp_path, step_runner=run_step)
+    paper_result = cast(dict[str, object], completed_paper["result"])
+    assert paper_result["stage_state"] == "fail"
+    assert paper_result["run_ids"] == []
+    assert paper.governance["preflight_outcome"] == "UNSUPPORTED_MULTI_VENUE_PAPER"
+    assert paper.governance["paper_readiness_credit"] is False
     assert holdout.governance["owner_only"] is True
     assert holdout.governance["places_orders"] is False
