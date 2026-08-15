@@ -493,6 +493,10 @@ class CryptoQualityReportV1:
                 raise DataError(f"crypto quality {label} must contain non-empty strings")
         if self.state == "qualified" and self.failures:
             raise DataError("qualified crypto quality report cannot contain failures")
+        if self.state == "qualified" and self.warnings:
+            raise DataError("qualified crypto quality report cannot contain warnings")
+        if self.state == "warning" and self.failures:
+            raise DataError("warning crypto quality report cannot contain failures")
         if (
             not isinstance(self.row_count, int)
             or isinstance(self.row_count, bool)
@@ -609,7 +613,15 @@ class CryptoSnapshotV1:
         if not isinstance(self.members, tuple) or not self.members:
             raise DataError("crypto snapshot requires ordered membership")
         _text(self.asset_master_version, "asset master version")
-        if not isinstance(self.qualification_versions, tuple) or not self.qualification_versions:
+        if (
+            not isinstance(self.qualification_versions, tuple)
+            or not self.qualification_versions
+            or any(
+                not isinstance(version, str) or not version.strip()
+                for version in self.qualification_versions
+            )
+            or len(set(self.qualification_versions)) != len(self.qualification_versions)
+        ):
             raise DataError("crypto snapshot requires qualification versions")
         expected = self._identity(
             self.members, self.asset_master_version, self.qualification_versions
@@ -661,13 +673,16 @@ class CryptoSnapshotV1:
             raise DataError("invalid CryptoSnapshotV1")
         try:
             raw_members = value["members"]
+            raw_versions = value["qualification_versions"]
             if not isinstance(raw_members, list):
                 raise DataError("invalid CryptoSnapshotV1 members")
+            if not isinstance(raw_versions, list):
+                raise DataError("invalid CryptoSnapshotV1 qualification versions")
             return cls(
                 snapshot_id=value["snapshot_id"],
                 members=tuple(CryptoSnapshotMemberV1.from_dict(item) for item in raw_members),
                 asset_master_version=value["asset_master_version"],
-                qualification_versions=tuple(value["qualification_versions"]),
+                qualification_versions=tuple(raw_versions),
             )
         except (KeyError, TypeError) as exc:
             raise DataError("invalid CryptoSnapshotV1") from exc
@@ -690,10 +705,29 @@ class ProviderDatasetCapabilityV1:
         _text(self.provider, "capability provider")
         if self.family not in FAMILY_AUTHORITIES:
             raise DataError("invalid crypto capability family")
+        if self.authentication not in {"none", "demo_key"}:
+            raise DataError("invalid crypto capability authentication")
+        if self.qualification_state not in {
+            "unverified",
+            "qualified",
+            "warning",
+            "quarantined",
+            "unavailable",
+        }:
+            raise DataError("invalid crypto capability qualification state")
+        for values, label in (
+            (self.frequencies, "frequencies"),
+            (self.limits, "limits"),
+        ):
+            if not isinstance(values, tuple) or any(
+                not isinstance(value, str) or not value.strip() for value in values
+            ):
+                raise DataError(f"crypto capability {label} must contain non-empty strings")
+        _text(self.verification_state, "capability verification state")
         if self.earliest is not None:
-            _time(self.earliest, "capability earliest")
+            object.__setattr__(self, "earliest", _time(self.earliest, "capability earliest"))
         if self.latest is not None:
-            _time(self.latest, "capability latest")
+            object.__setattr__(self, "latest", _time(self.latest, "capability latest"))
         if self.earliest and self.latest and self.latest < self.earliest:
             raise DataError("crypto capability latest precedes earliest")
 

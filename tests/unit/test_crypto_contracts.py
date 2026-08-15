@@ -223,7 +223,7 @@ def test_receipt_quality_and_capability_contracts_are_honest() -> None:
     report = CryptoQualityReportV1(
         dataset_sha256=_dataset().content_sha256,
         method_version="quality-v1",
-        state="warning",
+        state="quarantined",
         failures=("cadence_gap",),
         warnings=("partial_tail",),
         observed_start=datetime(2020, 1, 1, tzinfo=UTC),
@@ -243,7 +243,7 @@ def test_quality_contract_rejects_impossible_coverage_and_malformed_lists() -> N
     report = CryptoQualityReportV1(
         dataset_sha256=_dataset().content_sha256,
         method_version="quality-v1",
-        state="warning",
+        state="quarantined",
         failures=("cadence_gap",),
         warnings=("partial_tail",),
         observed_start=datetime(2020, 1, 1, tzinfo=UTC),
@@ -282,6 +282,70 @@ def test_quality_contract_rejects_impossible_coverage_and_malformed_lists() -> N
                 "latest": datetime(2019, 1, 1, tzinfo=UTC),
             }
         )
+
+
+def test_quality_and_capability_contracts_reject_contradictory_states() -> None:
+    report = CryptoQualityReportV1(
+        dataset_sha256=_dataset().content_sha256,
+        method_version="quality-v1",
+        state="qualified",
+        failures=(),
+        warnings=(),
+        observed_start=datetime(2020, 1, 1, tzinfo=UTC),
+        observed_end=datetime(2026, 1, 1, tzinfo=UTC),
+        row_count=100,
+        correction_lineage=(),
+    )
+    with pytest.raises(DataError, match="cannot contain warnings"):
+        CryptoQualityReportV1(**{**report.__dict__, "warnings": ("cadence_gap",)})
+    with pytest.raises(DataError, match="warning.*cannot contain failures"):
+        CryptoQualityReportV1(
+            **{
+                **report.__dict__,
+                "state": "warning",
+                "failures": ("duplicate_observation",),
+                "warnings": ("cadence_gap",),
+            }
+        )
+
+    capability = ProviderDatasetCapabilityV1(
+        provider="bybit",
+        family="funding",
+        authentication="none",
+        earliest=datetime(2020, 1, 1, tzinfo=UTC),
+        latest=datetime(2026, 1, 1, tzinfo=UTC),
+        frequencies=("funding_interval",),
+        limits=("200_per_page",),
+        verification_state="verified",
+        qualification_state="qualified",
+    )
+    for change, message in (
+        ({"authentication": "password"}, "authentication"),
+        ({"qualification_state": "ready"}, "qualification state"),
+        ({"frequencies": "1h"}, "frequencies"),
+        ({"limits": ("",)}, "limits"),
+        ({"verification_state": ""}, "verification state"),
+    ):
+        with pytest.raises(DataError, match=message):
+            ProviderDatasetCapabilityV1(**{**capability.__dict__, **change})
+
+
+def test_snapshot_contract_rejects_malformed_version_collections() -> None:
+    member = CryptoSnapshotMemberV1(
+        dataset=_dataset(), artifact_key="raw/binance/a", artifact_sha256="a" * 64
+    )
+    snapshot = CryptoSnapshotV1.create(
+        members=(member,), asset_master_version="am_1", qualification_versions=("q1",)
+    )
+    for versions in ("q1", ("",), ("q1", "q1")):
+        with pytest.raises(DataError, match="qualification versions"):
+            CryptoSnapshotV1.create(
+                members=(member,),
+                asset_master_version="am_1",
+                qualification_versions=versions,  # type: ignore[arg-type]
+            )
+    with pytest.raises(DataError, match="qualification versions"):
+        CryptoSnapshotV1.from_dict({**snapshot.to_dict(), "qualification_versions": "quality-v1"})
 
 
 def test_receipt_and_snapshot_reject_malformed_values() -> None:
