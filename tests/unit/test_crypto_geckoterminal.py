@@ -209,9 +209,15 @@ def test_solana_pool_and_token_addresses_remain_case_sensitive() -> None:
 
 
 class _Response:
-    def __init__(self, payload: bytes, mime: str = "application/json") -> None:
+    def __init__(
+        self,
+        payload: bytes,
+        mime: str = "application/json",
+        url: str = "https://api.geckoterminal.com/api/v2/networks/eth/pools",
+    ) -> None:
         self.payload = payload
         self.headers = {"Content-Type": mime}
+        self.url = url
 
     def __enter__(self) -> _Response:
         return self
@@ -221,6 +227,9 @@ class _Response:
 
     def read(self, _: int) -> bytes:
         return self.payload
+
+    def geturl(self) -> str:
+        return self.url
 
 
 def test_keyless_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -233,6 +242,14 @@ def test_keyless_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPatc
         fetch_geckoterminal_public(url, timeout_seconds=0)
     with pytest.raises(DataError, match="host"):
         fetch_geckoterminal_public("https://example.com/api/v2/pools")
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *_args, **_kwargs: _Response(
+            b'{"data":[]}', url="https://attacker.invalid/provider-data"
+        ),
+    )
+    with pytest.raises(DataError, match="redirect host"):
+        fetch_geckoterminal_public(url)
     monkeypatch.setattr(
         "urllib.request.urlopen", lambda *_args, **_kwargs: _Response(b"x", "text/html")
     )

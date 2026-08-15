@@ -74,9 +74,15 @@ def test_metric_parser_preserves_provider_status_and_null_semantics() -> None:
 
 
 class _Response:
-    def __init__(self, payload: bytes, mime: str = "application/json") -> None:
+    def __init__(
+        self,
+        payload: bytes,
+        mime: str = "application/json",
+        url: str = "https://community-api.coinmetrics.io/v4/catalog/assets",
+    ) -> None:
         self.payload = payload
         self.headers = {"Content-Type": mime}
+        self.url = url
 
     def __enter__(self) -> _Response:
         return self
@@ -86,6 +92,9 @@ class _Response:
 
     def read(self, _: int) -> bytes:
         return self.payload
+
+    def geturl(self) -> str:
+        return self.url
 
 
 def test_community_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -98,6 +107,14 @@ def test_community_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPa
         fetch_coinmetrics_community(url, timeout_seconds=0)
     with pytest.raises(DataError, match="host"):
         fetch_coinmetrics_community("https://example.com/v4/catalog")
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *_args, **_kwargs: _Response(
+            b'{"data":[]}', url="https://attacker.invalid/provider-data"
+        ),
+    )
+    with pytest.raises(DataError, match="redirect host"):
+        fetch_coinmetrics_community(url)
     monkeypatch.setattr(
         "urllib.request.urlopen", lambda *_args, **_kwargs: _Response(b"x", "text/html")
     )

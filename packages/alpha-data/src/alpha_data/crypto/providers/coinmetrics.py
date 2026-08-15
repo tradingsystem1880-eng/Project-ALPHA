@@ -74,6 +74,8 @@ def fetch_coinmetrics_community(url: str, *, timeout_seconds: int = 30) -> bytes
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            if not str(response.geturl()).startswith("https://community-api.coinmetrics.io/v4/"):
+                raise DataError("Coin Metrics Community redirect host is invalid")
             content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
             if content_type not in {"application/json", "text/json"}:
                 raise DataError("Coin Metrics Community response MIME is not JSON")

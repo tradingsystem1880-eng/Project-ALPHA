@@ -82,6 +82,8 @@ def fetch_geckoterminal_public(url: str, *, timeout_seconds: int = 30) -> bytes:
     for attempt in range(max_attempts):
         try:
             with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+                if not str(response.geturl()).startswith("https://api.geckoterminal.com/api/v2/"):
+                    raise DataError("GeckoTerminal redirect host is invalid")
                 content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
                 if content_type not in {"application/json", "text/json"}:
                     raise DataError("GeckoTerminal response MIME is not JSON")

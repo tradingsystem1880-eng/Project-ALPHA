@@ -498,6 +498,9 @@ def test_public_fetch_is_bounded_and_returns_exact_bytes(monkeypatch: pytest.Mon
     class Response:
         headers = {"Content-Type": "application/json; charset=utf-8"}
 
+        def __init__(self, url: str = "https://api.bybit.com/v5/market/funding/history") -> None:
+            self.url = url
+
         def __enter__(self) -> Response:
             return self
 
@@ -507,9 +510,18 @@ def test_public_fetch_is_bounded_and_returns_exact_bytes(monkeypatch: pytest.Mon
         def read(self, _: int) -> bytes:
             return expected
 
+        def geturl(self) -> str:
+            return self.url
+
     monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: Response())
 
     assert fetch_bybit_public("funding", {"category": "linear"}) == expected
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda request, timeout: Response("https://attacker.invalid/provider-data"),
+    )
+    with pytest.raises(DataError, match="redirect host"):
+        fetch_bybit_public("funding", {"category": "linear"})
     with pytest.raises(DataError, match="timeout"):
         fetch_bybit_public("funding", {}, timeout_seconds=0)
 
@@ -530,6 +542,9 @@ def test_public_fetch_rejects_wrong_mime_and_oversize(
 
         def read(self, _: int) -> bytes:
             return self._payload
+
+        def geturl(self) -> str:
+            return "https://api.bybit.com/v5/market/funding/history"
 
     monkeypatch.setattr(
         "urllib.request.urlopen",

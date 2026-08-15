@@ -84,6 +84,8 @@ def fetch_coingecko_demo(request: Request, *, timeout_seconds: int = 30) -> byte
 
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            if not str(response.geturl()).startswith("https://api.coingecko.com/api/v3/"):
+                raise DataError("CoinGecko Demo redirect host is invalid")
             content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
             if content_type not in {"application/json", "text/json"}:
                 raise DataError("CoinGecko Demo response MIME is not JSON")

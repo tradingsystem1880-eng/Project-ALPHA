@@ -208,9 +208,15 @@ def test_requested_asset_detail_rejects_unbounded_or_invalid_metadata() -> None:
 
 
 class _Response:
-    def __init__(self, payload: bytes, mime: str = "application/json") -> None:
+    def __init__(
+        self,
+        payload: bytes,
+        mime: str = "application/json",
+        url: str = "https://api.coingecko.com/api/v3/ping",
+    ) -> None:
         self.payload = payload
         self.headers = {"Content-Type": mime}
+        self.url = url
 
     def __enter__(self) -> _Response:
         return self
@@ -221,6 +227,9 @@ class _Response:
     def read(self, _: int) -> bytes:
         return self.payload
 
+    def geturl(self) -> str:
+        return self.url
+
 
 def test_demo_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPatch) -> None:
     request = coingecko_demo_request("ping", {}, api_key="key")
@@ -230,6 +239,12 @@ def test_demo_fetch_is_bounded_and_host_pinned(monkeypatch: pytest.MonkeyPatch) 
         fetch_coingecko_demo(request, timeout_seconds=0)
     with pytest.raises(DataError, match="host"):
         fetch_coingecko_demo(Request("https://example.com/api/v3/ping"))
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *_args, **_kwargs: _Response(b"{}", url="https://attacker.invalid/data"),
+    )
+    with pytest.raises(DataError, match="redirect host"):
+        fetch_coingecko_demo(request)
     monkeypatch.setattr(
         "urllib.request.urlopen", lambda *_args, **_kwargs: _Response(b"x", "text/html")
     )

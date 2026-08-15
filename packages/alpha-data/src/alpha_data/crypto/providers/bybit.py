@@ -104,6 +104,8 @@ def fetch_bybit_public(
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            if not str(response.geturl()).startswith("https://api.bybit.com/v5/"):
+                raise DataError("Bybit public redirect host is invalid")
             content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
             if content_type not in {"application/json", "text/json"}:
                 raise DataError("Bybit public response MIME is not JSON")
