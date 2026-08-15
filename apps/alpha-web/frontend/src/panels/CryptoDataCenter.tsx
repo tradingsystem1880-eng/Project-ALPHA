@@ -33,13 +33,13 @@ import type {
   CryptoCacheClean,
 } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
-import { shortId } from '../util/format'
+import { fmtBytes, shortId } from '../util/format'
+import { CryptoAcquisitionView } from './CryptoAcquisitionView'
 import { CryptoAssetsView } from './CryptoAssetsView'
 import { CryptoCoverageView } from './CryptoCoverageView'
 import { CryptoQualityView } from './CryptoQualityView'
 import {
   cryptoCanonicalAction,
-  cryptoCoverageStateClass,
   cryptoFeatureInputSelection,
   cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
@@ -97,18 +97,6 @@ function defaultInstrument(family: CryptoFamily): string {
   if (family === 'onchain_metrics') return 'btc'
   if (family.startsWith('option_') || family === 'historical_volatility') return 'BTC'
   return 'BTCUSDT'
-}
-
-function bytesLabel(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '—'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let size = value
-  let unit = 0
-  while (size >= 1000 && unit < units.length - 1) {
-    size /= 1000
-    unit += 1
-  }
-  return `${size.toFixed(unit < 2 ? 0 : 1)} ${units[unit]}`
 }
 
 export function CryptoDataCenter({
@@ -819,53 +807,49 @@ export function CryptoDataCenter({
         onInspectContractAsset={() => void inspectContractAsset()}
       />
 
-      {familyRows.length > 0 ? (
-        <section className="crypto-acquire provider-card" aria-label="Bounded acquisition">
-          <div className="provider-card-head">
-            <div className="rd-head">Bounded acquisition</div>
-            <span className="chip kind">{provider ?? 'NO AUTHORITY'}</span>
-          </div>
-          {capability ? (
-            <div className="crypto-detail" aria-label="Provider dataset capability">
-              <span>
-                <span className="chip kind">SUPPORTED</span>{' '}
-                <span className={capability.verification_state === 'receipt_verified' ? 'chip pass' : 'chip'}>
-                  {capability.verification_state === 'receipt_verified' ? 'RECEIPT VERIFIED' : 'NOT VERIFIED'}
-                </span>{' '}
-                <span className={cryptoCoverageStateClass(capability.qualification_state)}>
-                  {capability.qualification_state.toUpperCase()}
-                </span>
-              </span>
-              <span>
-                Stored coverage: {capability.earliest ?? 'none'} → {capability.latest ?? 'none'}
-              </span>
-              <span className="advanced-only">Supported frequencies: {capability.frequencies.join(' · ')}</span>
-              <span className="advanced-only">Limits: {capability.limits.join(' · ')}</span>
-            </div>
-          ) : null}
-          <div className="crypto-form-grid">
-            <label><span className="eyebrow">Dataset family</span><select className="field" value={family} onChange={(event) => { const next = event.target.value as CryptoFamily; setFamily(next); setInstrument(defaultInstrument(next)) }}>{familyRows.map((row) => <option key={row.family} value={row.family}>{row.family.replaceAll('_', ' ')}</option>)}</select></label>
-            <label><span className="eyebrow">Instrument</span><input className="field mono" value={instrument} onChange={(event) => setInstrument(event.target.value)} /></label>
-            <label><span className="eyebrow">Base asset</span><input className="field mono" value={base} onChange={(event) => setBase(event.target.value.toUpperCase())} /></label>
-            <label><span className="eyebrow">Quote asset</span><input className="field mono" value={quote} onChange={(event) => setQuote(event.target.value.toUpperCase())} /></label>
-            <label><span className="eyebrow">Market</span><select className="field" value={category} onChange={(event) => setCategory(event.target.value as CryptoAcquisitionRequest['category'])}>{categoryChoices.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-            <label><span className="eyebrow">Frequency</span><select className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as CryptoAcquisitionRequest['frequency'])}>{frequencyChoices.map((item) => <option key={item} value={item}>{item === '1d' ? 'daily' : item === '1h' ? 'hourly' : item}</option>)}</select></label>
-            <label><span className="eyebrow">Estimate days</span><input className="field" type="number" min={1} max={3650} value={days} onChange={(event) => setDays(Number(event.target.value))} /></label>
-            {provider === 'binance' ? <label><span className="eyebrow">Archive month</span><input className="field mono" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label> : null}
-            {provider === 'geckoterminal' ? <><label><span className="eyebrow">Network</span><input className="field mono" value={network} onChange={(event) => setNetwork(event.target.value)} /></label><label><span className="eyebrow">Pool address</span><input className="field mono" value={poolAddress} onChange={(event) => setPoolAddress(event.target.value)} /></label></> : null}
-            {provider === 'coinmetrics' && family === 'onchain_metrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => setMetrics(event.target.value)} /></label> : null}
-            {(provider === 'coinmetrics' && family === 'onchain_metrics') || provider === 'ccxt:coinbase' || (provider === 'bybit' && BYBIT_RANGED_FAMILIES.has(family)) ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => setEnd(event.target.value)} /></label></> : null}
-            {caseBoundEvent ? <label><span className="eyebrow">Event-capture reason</span><input className="field" value={eventReason} onChange={(event) => setEventReason(event.target.value)} /></label> : null}
-          </div>
-          <div className="crypto-actions">
-            <button className="btn" type="button" disabled={busyAction !== null} onClick={() => void estimateAcquisition()}>{busyAction === 'estimate' ? 'Estimating…' : 'Estimate storage'}</button>
-            <button className="btn primary" type="button" disabled={storage?.state !== 'ready' || !provider || busyAction !== null || !eventCaptureReady} onClick={() => void acquire()}>{busyAction === 'acquire' ? 'Starting…' : 'Acquire & qualify'}</button>
-            {estimate ? <span className="muted">{estimate.estimated_rows.toLocaleString()} rows · about {bytesLabel(estimate.estimated_bytes)}</span> : null}
-          </div>
-          {caseBoundEvent && !eventCaptureReady ? <div className="workbench-notice" role="note"><strong>SELECT A RESEARCH CASE</strong><span>Derivative trades and books must be bound to the current case revision before any provider request.</span></div> : null}
-          <p className="mono muted advanced-only">alpha crypto-data acquire {provider} {family} {instrument} --base {base} --quote {quote} …</p>
-        </section>
-      ) : null}
+      <CryptoAcquisitionView
+        familyRows={familyRows}
+        provider={provider}
+        capability={capability}
+        family={family}
+        instrument={instrument}
+        base={base}
+        quote={quote}
+        category={category}
+        categoryChoices={categoryChoices}
+        frequency={frequency}
+        frequencyChoices={frequencyChoices}
+        days={days}
+        period={period}
+        network={network}
+        poolAddress={poolAddress}
+        metrics={metrics}
+        start={start}
+        end={end}
+        caseBoundEvent={caseBoundEvent}
+        eventReason={eventReason}
+        eventCaptureReady={eventCaptureReady}
+        storageReady={storage?.state === 'ready'}
+        estimate={estimate}
+        busyAction={busyAction}
+        rangedBybitFamily={BYBIT_RANGED_FAMILIES.has(family)}
+        onFamilyChange={(next) => { setFamily(next); setInstrument(defaultInstrument(next)) }}
+        onInstrumentChange={setInstrument}
+        onBaseChange={setBase}
+        onQuoteChange={setQuote}
+        onCategoryChange={setCategory}
+        onFrequencyChange={setFrequency}
+        onDaysChange={setDays}
+        onPeriodChange={setPeriod}
+        onNetworkChange={setNetwork}
+        onPoolAddressChange={setPoolAddress}
+        onMetricsChange={setMetrics}
+        onStartChange={setStart}
+        onEndChange={setEnd}
+        onEventReasonChange={setEventReason}
+        onEstimate={() => void estimateAcquisition()}
+        onAcquire={() => void acquire()}
+      />
 
       {jobId ? <section className="crypto-job"><div className="rd-head">{jobKind === 'profile' ? 'Coverage batch job' : 'Acquisition job'}</div><div className="workbench-notice" role="status"><strong>{jobFinished ? 'FINISHED' : 'RUNNING'}</strong><span>{jobFinished ? 'Coverage refreshed. Review the new mechanical qualification below.' : jobKind === 'profile' ? 'Running at most 25 exact tasks from the frozen profile with an atomic checkpoint after each task.' : 'Fetching one bounded provider response and freezing its exact bytes.'}</span></div><div className="advanced-only"><JobConsole jobId={jobId} onDone={() => { setJobFinished(true); void load(true) }} /></div></section> : null}
 
@@ -1013,13 +997,13 @@ export function CryptoDataCenter({
 
         <section className="provider-card">
           <div className="rd-head">Expansion storage</div>
-          <div className="crypto-storage-stats"><span className={storage.state === 'ready' ? 'chip pass' : 'chip fail'}>{storage.state.toUpperCase()}</span><span>{bytesLabel(storage.free_bytes)} free of {bytesLabel(storage.total_bytes)}</span><span>{storage.manifest_count} immutable manifests</span><span>{bytesLabel(storage.cache_bytes)} removable cache</span><span>Reserve {storage.reserve_fraction == null ? '—' : `${Math.round(storage.reserve_fraction * 100)}%`} · minimum {bytesLabel(storage.minimum_free_bytes)}</span></div>
+          <div className="crypto-storage-stats"><span className={storage.state === 'ready' ? 'chip pass' : 'chip fail'}>{storage.state.toUpperCase()}</span><span>{fmtBytes(storage.free_bytes)} free of {fmtBytes(storage.total_bytes)}</span><span>{storage.manifest_count} immutable manifests</span><span>{fmtBytes(storage.cache_bytes)} removable cache</span><span>Reserve {storage.reserve_fraction == null ? '—' : `${Math.round(storage.reserve_fraction * 100)}%`} · minimum {fmtBytes(storage.minimum_free_bytes)}</span></div>
           <p className="muted">The browser receives only the volume label and capacity—not the private absolute path. Missing or substituted media fails closed.</p>
           <div className="crypto-actions"><button className="btn" type="button" disabled={busyAction !== null} onClick={() => void inspectStorage()}>{busyAction === 'storage-inventory' ? 'Inspecting…' : 'Inspect storage inventory'}</button><button className="btn" type="button" disabled={busyAction !== null} onClick={() => void verifyStorage()}>{busyAction === 'storage-verify' ? 'Verifying every artifact…' : 'Verify all immutable data'}</button><button className={cleanupArmed ? 'btn danger' : 'btn'} type="button" disabled={busyAction !== null || storage.cache_bytes === 0} onClick={() => void cleanCache()}>{busyAction === 'cache-clean' ? 'Cleaning cache…' : cleanupArmed ? 'Confirm clean removable cache' : 'Review cache cleanup'}</button></div>
-          {cleanupArmed ? <div className="workbench-notice fail" role="alert"><strong>CONFIRM CACHE CLEANUP</strong><span>Only {bytesLabel(storage.cache_bytes)} under the disposable cache tree will be deleted. Raw, normalized, staged, snapshot, and control artifacts are excluded.</span></div> : null}
-          {storageInventory ? <div className="crypto-detail"><strong>INVENTORY</strong><span>{storageInventory.manifest_count} manifests · {storageInventory.snapshot_count} snapshots · {storageInventory.staging_count} staged downloads</span><span>{bytesLabel(storageInventory.cache_bytes)} removable cache</span><span className="mono muted advanced-only">{JSON.stringify(storageInventory.counts_by_kind)}</span></div> : null}
+          {cleanupArmed ? <div className="workbench-notice fail" role="alert"><strong>CONFIRM CACHE CLEANUP</strong><span>Only {fmtBytes(storage.cache_bytes)} under the disposable cache tree will be deleted. Raw, normalized, staged, snapshot, and control artifacts are excluded.</span></div> : null}
+          {storageInventory ? <div className="crypto-detail"><strong>INVENTORY</strong><span>{storageInventory.manifest_count} manifests · {storageInventory.snapshot_count} snapshots · {storageInventory.staging_count} staged downloads</span><span>{fmtBytes(storageInventory.cache_bytes)} removable cache</span><span className="mono muted advanced-only">{JSON.stringify(storageInventory.counts_by_kind)}</span></div> : null}
           {storageVerification ? <div className="workbench-notice" role="status"><strong>VERIFIED</strong><span>{storageVerification.manifest_count} manifests and {storageVerification.snapshot_count} snapshots re-hashed · {storageVerification.research_eligible_snapshot_count} research eligible</span></div> : null}
-          {cacheResult ? <div className="workbench-notice" role="status"><strong>CACHE CLEANED</strong><span>{bytesLabel(cacheResult.removed_bytes)} removed · immutable artifacts removed: 0</span></div> : null}
+          {cacheResult ? <div className="workbench-notice" role="status"><strong>CACHE CLEANED</strong><span>{fmtBytes(cacheResult.removed_bytes)} removed · immutable artifacts removed: 0</span></div> : null}
         </section>
         </>
       ) : null}
