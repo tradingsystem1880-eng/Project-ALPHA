@@ -127,6 +127,9 @@ pythonpath = [".", "scripts"]
 markers = [
     "bias_guard: tests that mechanically prevent look-ahead / survivorship bias (gated in CI)",
     "network: tests that hit the live network (skipped in CI / offline runs)",
+    "oracle: fast metamorphic / differential oracle tests over statistical primitives",
+    "slow_oracle: known-truth calibration and coverage oracles (nightly + on-touch of quant modules)",
+    "holdout: hidden behaviour tests the authoring agent never reads or edits (tests/holdout)",
 ]
 filterwarnings = [
     "error",

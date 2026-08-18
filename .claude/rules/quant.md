@@ -4,6 +4,7 @@ paths:
   - "packages/alpha-research/**"
   - "apps/alpha-cli/src/alpha_cli/_gauntlet.py"
   - "apps/alpha-cli/src/alpha_cli/_optim.py"
+  - "tests/oracles/**"
 ---
 # Quant-tier rules (statistical code has oracles, not just tests)
 
@@ -12,6 +13,7 @@ Verbatim relocation of the pre-v2 CLAUDE.md `Validation gauntlet gates` section,
 - Every public statistical primitive must be *wrong-detectable*: metamorphic relations, a known-truth calibration, or a differential oracle in `tests/oracles/` (markers `oracle`, `slow_oracle`), with a primary-source citation in the docstring.
 - `/verify-quant` (PASS `QuantVerificationReport` bound to the scoped diff hash) is owed before Stop; `/review-gate` APPROVE before commit. Never `float ==` in tests; tolerances come from documented Wilson/binomial bounds.
 - Suppression growth (`# noqa`, `type: ignore`) in quant modules is blocked by `gate.py lint-harness` unless the baseline is re-approved.
+- A changed quant SOURCE module must hold a mutation kill-rate ≥ 0.90 (or its recorded `.claude/mutation-baseline.json` floor for a legacy module) — `gate.py full` runs `gate.py mutate` and the slow oracles on-touch; `.semgrep/alpha.yml` bans bare/`pass` excepts, negative shifts, wall-clock reads, unseeded RNG, unsanctioned pandas, and float-literal equality here.
 
 ## Validation gauntlet gates (spec §8) — produced by `build_outcomes` → `ValidationOutcome`s
 - `walk_forward_oos` (gate 2): passes on a finite OOS Sharpe. Fold geometry comes from the session calendar; the fixed rule strategy is causally primed on prior history without an engine, then a **fresh portfolio** executes once from the prior close through the contiguous OOS sessions. Metrics, equity, decisions, orders, fills, trades, indicators, and annotations are scoped from that same execution. Rule parameters are not refit; Qlib refits separately inside each fold.
