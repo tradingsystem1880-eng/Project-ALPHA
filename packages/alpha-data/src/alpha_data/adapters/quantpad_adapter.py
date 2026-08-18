@@ -10,12 +10,14 @@ drift fails loud with an explicit qualification message instead of guessing.
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import os
 import urllib.parse
 import urllib.request
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Final
 
@@ -27,6 +29,7 @@ from alpha_data.adapters.base import DatasetIdentity, FetchReceipt, FetchResult
 QUANTPAD_BASE_URL: Final = "https://api.quantpad.ai"
 _EXPECTED_SCHEMA_VERSION: Final = 1
 _BAR_FIELDS: Final = ("t", "o", "h", "l", "c", "v")
+_CSV_FIELDS: Final = (*_BAR_FIELDS, "instrument_id")
 
 
 def _drift(detail: str) -> DataError:
@@ -98,12 +101,69 @@ def parse_quantpad_bars(payload: bytes, symbol: str) -> FetchResult:
     return FetchResult(symbol=symbol, bars=frame, actions=[], identity=identity)
 
 
+def parse_quantpad_csv_bars(payload: bytes, symbol: str) -> FetchResult:
+    """Parse the current REST ``format=csv`` daily-bar response without a pandas edge."""
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise _drift("CSV response is not valid UTF-8") from exc
+    reader = csv.DictReader(io.StringIO(text))
+    if tuple(reader.fieldnames or ()) != _CSV_FIELDS:
+        raise _drift(f"CSV fields {tuple(reader.fieldnames or ())!r} != {_CSV_FIELDS!r}")
+    records: list[dict[str, object]] = []
+    previous: datetime | None = None
+    try:
+        for row in reader:
+            stamp = datetime.fromtimestamp(int(row["t"]) / 1_000, tz=UTC)
+            values = {
+                target: float(row[source])
+                for source, target in (
+                    ("o", "open"),
+                    ("h", "high"),
+                    ("l", "low"),
+                    ("c", "close"),
+                    ("v", "volume"),
+                )
+            }
+            if any(values[name] <= 0 for name in ("open", "high", "low", "close")):
+                raise ValueError("non-positive OHLC")
+            if values["volume"] < 0:
+                raise ValueError("negative volume")
+            if previous is not None and stamp <= previous:
+                raise DataError(
+                    f"QuantPad bars for {symbol!r} are not strictly ordered unique timestamps"
+                )
+            previous = stamp
+            records.append({"ts": stamp, **values})
+    except (TypeError, ValueError) as exc:
+        raise _drift("CSV bar values are malformed") from exc
+    if not records:
+        raise DataError(f"QuantPad returned no bars for {symbol!r} in the requested range")
+    identity = DatasetIdentity(
+        symbol=symbol,
+        provider="quantpad",
+        provider_symbol=symbol,
+        venue="QUANTPAD",
+        asset_class="stock",
+        timeframe="1D",
+        calendar="XNYS",
+        currency="USD",
+        price_basis="raw",
+    )
+    return FetchResult(
+        symbol=symbol,
+        bars=pl.DataFrame(records),
+        actions=[],
+        identity=identity,
+    )
+
+
 class QuantPadAdapter:
     """Official-REST daily-bar adapter; research authority only, never canonical."""
 
     name = "quantpad"
-    version = "1"
-    parser_version = "1"
+    version = "2"
+    parser_version = "2"
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         api_key = os.environ.get("QUANTPAD_API_KEY", "")
@@ -112,12 +172,19 @@ class QuantPadAdapter:
                 "QuantPad fetch requires QUANTPAD_API_KEY (macOS keychain service "
                 "'project-alpha-quantpad'); the adapter never embeds credentials"
             )
-        url = (
-            f"{QUANTPAD_BASE_URL}/v1/bars?symbol={urllib.parse.quote(symbol)}"
-            f"&interval=1d&start={start.isoformat()}&end={end.isoformat()}"
+        params = urllib.parse.urlencode(
+            {
+                "symbol": symbol,
+                "timeframe": "1d",
+                "start": int(datetime.combine(start, time.min, tzinfo=UTC).timestamp() * 1_000),
+                "end": int(datetime.combine(end, time.min, tzinfo=UTC).timestamp() * 1_000),
+                "format": "csv",
+            }
         )
+        url = f"{QUANTPAD_BASE_URL}/v1/bars?{params}"
         request = urllib.request.Request(  # noqa: S310 - pinned https host per ADR-0018
-            url, headers={"Authorization": f"Bearer {api_key}"}
+            url,
+            headers={"X-API-Key": api_key, "Accept": "text/csv"},
         )
         try:
             with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
@@ -129,7 +196,7 @@ class QuantPadAdapter:
                 }
         except OSError as exc:
             raise DataError(f"QuantPad request failed for {symbol!r}: {exc}") from exc
-        result = parse_quantpad_bars(raw, symbol)
+        result = parse_quantpad_csv_bars(raw, symbol)
         if result.identity is None:  # pragma: no cover - parser always sets identity
             raise DataError("QuantPad parser returned no dataset identity")
         receipt = FetchReceipt.create(
@@ -143,7 +210,7 @@ class QuantPadAdapter:
             response_bytes=len(raw),
             row_count=result.bars.height,
             action_count=0,
-            request_metadata={"endpoint": "/v1/bars", "interval": "1d", **rate_limit},
+            request_metadata={"endpoint": "/v1/bars", "timeframe": "1d", **rate_limit},
         )
         return FetchResult(
             symbol=symbol,
@@ -185,5 +252,6 @@ __all__ = [
     "QUANTPAD_BASE_URL",
     "QuantPadAdapter",
     "parse_quantpad_bars",
+    "parse_quantpad_csv_bars",
     "persist_research_fetch",
 ]

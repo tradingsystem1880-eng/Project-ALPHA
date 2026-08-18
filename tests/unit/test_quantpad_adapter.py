@@ -12,6 +12,7 @@ from alpha_core import DataError
 from alpha_data.adapters.quantpad_adapter import (
     QuantPadAdapter,
     parse_quantpad_bars,
+    parse_quantpad_csv_bars,
     persist_research_fetch,
 )
 
@@ -35,6 +36,14 @@ def _payload(rows: list[dict[str, object]] | None = None) -> dict[str, object]:
     return {"schema_version": 1, "symbol": "AAPL", "interval": "1d", "bars": bars}
 
 
+def _csv_payload() -> bytes:
+    return (
+        b'"t","o","h","l","c","v","instrument_id"\n'
+        b"1767571200000,100,101,99,100.5,1000,38\n"
+        b"1767657600000,100.5,102,100,101.5,1100,38\n"
+    )
+
+
 def test_parser_returns_utc_sorted_daily_bars_with_receipt_inputs() -> None:
     result = parse_quantpad_bars(json.dumps(_payload()).encode("utf-8"), "AAPL")
     assert result.symbol == "AAPL"
@@ -43,6 +52,16 @@ def test_parser_returns_utc_sorted_daily_bars_with_receipt_inputs() -> None:
     assert result.identity is not None
     assert result.identity.provider == "quantpad"
     assert result.actions == []
+
+
+def test_current_csv_parser_returns_the_same_stable_daily_seam() -> None:
+    result = parse_quantpad_csv_bars(_csv_payload(), "AAPL")
+    assert result.symbol == "AAPL"
+    assert result.bars.height == 2
+    assert result.bars["ts"].dtype.time_zone == "UTC"
+    assert list(result.bars.columns) == ["ts", "open", "high", "low", "close", "volume"]
+    assert result.identity is not None
+    assert result.identity.provider_symbol == "AAPL"
 
 
 def test_parser_fails_loud_on_wire_schema_drift() -> None:
@@ -156,7 +175,7 @@ def test_fetch_builds_a_receipted_result_from_a_pinned_response(
     import io
     import urllib.request
 
-    raw = json.dumps(_payload()).encode("utf-8")
+    raw = _csv_payload()
 
     class _Response(io.BytesIO):
         headers = {"X-RateLimit-Remaining": "99"}
@@ -171,7 +190,8 @@ def test_fetch_builds_a_receipted_result_from_a_pinned_response(
 
     def _fake_urlopen(request: urllib.request.Request, timeout: float) -> _Response:
         captured["url"] = request.full_url
-        captured["auth"] = request.get_header("Authorization")
+        captured["api_key"] = request.get_header("X-api-key")
+        captured["legacy_auth"] = request.get_header("Authorization")
         captured["timeout"] = timeout
         return _Response(raw)
 
@@ -179,7 +199,11 @@ def test_fetch_builds_a_receipted_result_from_a_pinned_response(
     monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
     result = QuantPadAdapter().fetch("AAPL", date(2026, 1, 5), date(2026, 1, 6))
     assert str(captured["url"]).startswith("https://api.quantpad.ai/v1/bars?symbol=AAPL")
-    assert captured["auth"] == "Bearer secret-key"
+    assert "timeframe=1d" in str(captured["url"])
+    assert "format=csv" in str(captured["url"])
+    assert "start=" in str(captured["url"]) and "end=" in str(captured["url"])
+    assert captured["api_key"] == "secret-key"
+    assert captured["legacy_auth"] is None
     receipt = result.receipt
     assert receipt is not None
     import hashlib as _hashlib
