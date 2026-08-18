@@ -615,6 +615,12 @@ def hook_tool_log(payload: dict[str, Any], root: Path) -> HookResult:
 # hooks: PreToolUse
 
 
+# git subcommands that may name tests/holdout/ without rendering file content
+_GIT_HOLDOUT_SAFE = frozenset(
+    {"mv", "add", "rm", "status", "ls-files", "commit", "restore", "checkout", "reset"}
+)
+
+
 def _holdout_block(rel: str, verb: str) -> HookResult:
     return (
         2,
@@ -685,6 +691,14 @@ def hook_pre_bash_guard(payload: dict[str, Any], root: Path) -> HookResult:
                 rel = _rel_path_from(root, cwd, token)
                 if rel and gate.is_hidden_holdout(rel) and not gate.owner_present(root):
                     return _holdout_block(rel, "read or modify via Bash")
+        elif "git" in tokens and not gate.owner_present(root):
+            # git may move/stage/commit holdout files but never print their content
+            # (show/diff/log -p/blame/grep/cat-file all render bytes the author must not see)
+            sub = next((t for t in tokens[tokens.index("git") + 1 :] if not t.startswith("-")), "")
+            if sub not in _GIT_HOLDOUT_SAFE and any(
+                "tests/holdout/" in t or t.endswith("tests/holdout") for t in tokens
+            ):
+                return _holdout_block("tests/holdout/", f"read via `git {sub}`")
 
     # A5: shell writes into control-plane / holdout paths follow the Edit policy.
     for rel in bash_write_targets(command, root, cwd):

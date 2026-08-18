@@ -530,6 +530,24 @@ class TestHiddenHoldout:
         )
         assert code == 0, "running the holdout suite is allowed; reading it is not"
 
+    def test_git_may_move_but_never_render_holdout_content(self, repo: Path) -> None:
+        self._holdout_file(repo)
+        for cmd in (
+            "git show HEAD:tests/holdout/test_secret.py",
+            "git diff HEAD -- tests/holdout",
+            "git log -p -- tests/holdout/test_secret.py",
+            "git grep -n threshold tests/holdout/",
+        ):
+            code, msg = claude_hooks.hook_pre_bash_guard(
+                _payload(tool_input={"command": cmd}, cwd=str(repo)), repo
+            )
+            assert code == 2 and "HIDDEN HOLDOUT" in msg, cmd
+        for cmd in ("git mv tests/holdout_seed tests/holdout", "git add tests/holdout"):
+            code, _ = claude_hooks.hook_pre_bash_guard(
+                _payload(tool_input={"command": cmd}, cwd=str(repo)), repo
+            )
+            assert code == 0, cmd
+
     def test_reviewer_agent_may_read(self, repo: Path) -> None:
         target = self._holdout_file(repo)
         payload = _payload(tool_input={"file_path": str(target)}, agent_type="independent-reviewer")
