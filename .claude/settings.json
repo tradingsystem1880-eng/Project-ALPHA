@@ -4,6 +4,9 @@
     "allow": [
       "Bash(python3 scripts/gate.py*)",
       "Bash(uv run python scripts/gate.py*)",
+      "Bash(python3 scripts/codex_bridge.py*)",
+      "Bash(uv run python scripts/codex_bridge.py*)",
+      "Bash(codex login status)",
       "Bash(uv run pytest*)",
       "Bash(uv run mypy*)",
       "Bash(uv run ruff*)",
@@ -19,6 +22,11 @@
       "Read(.env.*)",
       "Bash(git push --force*)",
       "Bash(git push -f*)",
+      "Bash(git commit --amend*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git stash drop*)",
       "Bash(uv run alpha research approve*)",
       "Bash(uv run alpha research reject*)",
       "Bash(uv run alpha research decide*)",
@@ -53,12 +61,32 @@
         ]
       },
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-read-guard",
+            "timeout": 15
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-bash-guard",
             "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__alpha__.*|mcp__codex__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-mcp-guard",
+            "timeout": 15
           }
         ]
       }
@@ -73,6 +101,82 @@
             "timeout": 90
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-bash",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" tool-log",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-tool-failure",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" subagent-stop",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" task-completed",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" config-change",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" instructions-loaded",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "Stop": [
@@ -82,6 +186,11 @@
             "type": "command",
             "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" stop-guard",
             "timeout": 60
+          },
+          {
+            "type": "prompt",
+            "prompt": "You are an advisory Karpathy/honesty judge for a coding session that is about to stop. Read the final assistant message and recent transcript: $ARGUMENTS\n\nAnswer with JSON {\"ok\": true} unless BOTH of the following hold: (a) source code was edited in this session, and (b) the final message either claims tests pass / work is done using hedged, unverified language (e.g. 'should work', 'probably passes', 'I believe this is correct') without showing a check that was actually run, OR it never states its assumptions and never mentions the simpler alternative it rejected. If a previous stop was already blocked by this judge for the same issue, answer {\"ok\": true}. Otherwise answer {\"ok\": false, \"reason\": \"<one sentence: which claim is unverified or which Karpathy step (assumptions / simpler alternative / surgical scope) is missing; instruct to run the check or state UNVERIFIED:>\"}.",
+            "timeout": 30
           }
         ]
       }
@@ -115,6 +224,17 @@
             "type": "command",
             "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-compact",
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-compact",
+            "timeout": 30
           }
         ]
       }
