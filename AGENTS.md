@@ -6,3 +6,6 @@ state.
 
 Do not duplicate those instructions here. If behavior changes, update `CLAUDE.md` and the relevant
 current-state documentation in the same change.
+
+Canonical agent-agnostic quality gate: `uv run python scripts/gate.py full` (mirrors CI, stamps the
+tree). Claude Code sessions run under a mechanical hook harness — see `docs/operations/claude-code-harness.md`.

@@ -50,6 +50,12 @@ uv run alpha info        # smoke test: prints resolved settings + core version
 
 ## The full quality gate (run before every commit; mirrors CI)
 
+One command runs the whole chain below and stamps the tree on success:
+`uv run python scripts/gate.py full` (`fast` for the lint/type subset). Claude Code sessions in
+this repo are governed by a mechanical hook harness built on that gate — commit/stop guards,
+independent review and academic quant verification tiers, and an append-only audit journal; see
+`docs/operations/claude-code-harness.md`.
+
 ```bash
 uv lock --check && uv sync --locked \
   && uv run ruff check . && uv run ruff format --check . && uv run lint-imports \
