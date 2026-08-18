@@ -51,6 +51,9 @@ execution feed.
   bulk volume. External bytes are published before content-addressed internal manifests, remain
   `research_only`, and must reverify before use. A key, absolute path, or raw vendor error is never
   part of the archive identity.
+- Archive transport retries only transient failures, rate limits, and 5xx responses, for at most
+  three attempts. A `Retry-After` value is honored within a one-to-sixty-second bound; other 4xx
+  responses are explicit unavailable/rejected gaps, never silently retried or represented as data.
 
 ## Implementation anchors
 

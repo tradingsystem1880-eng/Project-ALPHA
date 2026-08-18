@@ -13,9 +13,11 @@ import re
 import shutil
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable
+from contextlib import suppress
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Final
@@ -344,6 +346,18 @@ def fetch_quantpad_archive(
                 return store.publish(request, chunks())
         except DataError:
             raise
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 and not 500 <= exc.code < 600:
+                raise DataError("QuantPad archive request was rejected") from exc
+            if attempt == 2:
+                raise DataError(
+                    "QuantPad archive request failed; retry the bounded request"
+                ) from exc
+            delay = float(attempt + 1)
+            if exc.code == 429:
+                with suppress(TypeError, ValueError):
+                    delay = float(exc.headers.get("Retry-After", delay))
+            sleep(min(max(delay, 1.0), 60.0))
         except (OSError, TimeoutError) as exc:
             if attempt == 2:
                 raise DataError(

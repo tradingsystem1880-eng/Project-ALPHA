@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -211,3 +212,42 @@ def test_transport_retries_one_transient_failure_without_publishing_partial_byte
     )
     assert calls == 2
     assert result["artifact_bytes"] == 2
+
+
+def test_transport_honours_bounded_rate_limit_retry_after(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(
+        endpoint="coverage", symbol="AAPL", response_format="json"
+    )
+    calls = 0
+    sleeps: list[float] = []
+
+    class Response(io.BytesIO):
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            self.close()
+
+        def geturl(self) -> str:
+            return "https://api.quantpad.ai/v1/coverage?symbol=AAPL"
+
+    def opener(*_args: object, **_kwargs: object) -> Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise urllib.error.HTTPError(
+                "https://api.quantpad.ai/v1/coverage?symbol=AAPL",
+                429,
+                "rate limited",
+                {"Retry-After": "4"},
+                None,
+            )
+        return Response(b"{}")
+
+    assert fetch_quantpad_archive(
+        _store(tmp_path), request, api_key="secret", opener=opener, sleep=sleeps.append
+    )["artifact_bytes"] == 2
+    assert calls == 2
+    assert sleeps == [4.0]
