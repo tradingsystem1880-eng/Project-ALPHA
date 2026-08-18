@@ -8,4 +8,8 @@ Do not duplicate those instructions here. If behavior changes, update `CLAUDE.md
 current-state documentation in the same change.
 
 Canonical agent-agnostic quality gate: `uv run python scripts/gate.py full` (mirrors CI, stamps the
-tree). Claude Code sessions run under a mechanical hook harness — see `docs/operations/claude-code-harness.md`.
+tree). Claude Code sessions run under a mechanical hook harness (v2, ADR-0030) — see
+`docs/operations/claude-code-harness.md`. Path-scoped rules live in `.claude/rules/*.md`; any agent
+(including Codex reviewing this repo via `scripts/codex_bridge.py` or the `.mcp.json` `codex`
+server) reads the same rules directory. Codex is an optional second opinion only: it never
+attests, writes, or approves.

@@ -34,7 +34,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 
 ## Rules (path-scoped, `.claude/rules/`; load when matching files are touched)
 `00-karpathy.md` (always) · `alpha-core.md` · `alpha-data.md` · `alpha-strategies.md` · `alpha-backtest.md` · `alpha-validation.md` · `alpha-research.md` · `alpha-forecast.md` · `alpha-analytics.md` (options/screener) · `alpha-patterns.md` · `alpha-cli.md` (full CLI surface + module map) · `alpha-mcp.md` · `alpha-web.md` (+ frontend) · `quant.md` (gauntlet gates + oracle duties) · `tests.md` · `docs.md`. The MODULE MAP and CLI surface were relocated there verbatim (`tests/unit/test_claude_md_relocation.py` proves zero loss against `tests/fixtures/claude_md_v1.md`). Generated awareness: `uv run python scripts/gate.py brief` (session brief) and `gate.py index` (`.claude/state/repo-index.json`).
-- ADRs: `docs/adr/` holds ADRs 0001-0029 (index `docs/adr/README.md`); latest ADR-0029 four-family Monte Carlo validation. Every ADR id must be referenced here or in a rule.
+- ADRs: `docs/adr/` holds ADRs 0001-0030 (index `docs/adr/README.md`); ADR-0029 four-family Monte Carlo validation; latest ADR-0030 agent operating system v2 (harness). Every ADR id must be referenced here or in a rule.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
 `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, `alpha_screener`, `alpha_research` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_core` + public `alpha_cli` seams (top of DAG).
