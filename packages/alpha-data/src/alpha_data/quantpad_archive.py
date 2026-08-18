@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable
@@ -282,6 +283,7 @@ def fetch_quantpad_archive(
     *,
     api_key: str,
     opener: Callable[..., object] = urllib.request.urlopen,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> dict[str, object]:
     """Stream one closed QuantPad request into immutable storage."""
     if not api_key:
@@ -312,31 +314,43 @@ def fetch_quantpad_archive(
         "arrow": "application/vnd.apache.arrow.stream, application/octet-stream",
     }[request.response_format]
     wire_request = urllib.request.Request(url, headers={"X-API-Key": api_key, "Accept": accept})
-    try:
-        response = opener(wire_request, timeout=120)
-        with response:  # type: ignore[attr-defined]
-            final_url = response.geturl()  # type: ignore[attr-defined]
-            parsed = urllib.parse.urlparse(final_url)
-            if parsed.scheme != "https" or parsed.hostname != "api.quantpad.ai":
-                raise DataError("QuantPad archive redirect left the pinned HTTPS host")
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0].lower()  # type: ignore[attr-defined]
-            allowed_types = {
-                "json": {"application/json"},
-                "csv": {"text/csv", "application/csv"},
-                "arrow": {"application/vnd.apache.arrow.stream", "application/octet-stream"},
-            }[request.response_format]
-            if content_type not in allowed_types:
-                raise DataError("QuantPad archive response MIME does not match the request")
+    for attempt in range(3):
+        try:
+            response = opener(wire_request, timeout=120)
+            with response:  # type: ignore[attr-defined]
+                final_url = response.geturl()  # type: ignore[attr-defined]
+                parsed = urllib.parse.urlparse(final_url)
+                if parsed.scheme != "https" or parsed.hostname != "api.quantpad.ai":
+                    raise DataError("QuantPad archive redirect left the pinned HTTPS host")
+                content_type = (
+                    str(response.headers.get("Content-Type", ""))  # type: ignore[attr-defined]
+                    .split(";", 1)[0]
+                    .lower()
+                )
+                allowed_types = {
+                    "json": {"application/json"},
+                    "csv": {"text/csv", "application/csv"},
+                    "arrow": {"application/vnd.apache.arrow.stream", "application/octet-stream"},
+                }[request.response_format]
+                if content_type not in allowed_types:
+                    raise DataError("QuantPad archive response MIME does not match the request")
 
-            def chunks() -> Iterable[bytes]:
-                while chunk := response.read(1024 * 1024):  # type: ignore[attr-defined]
-                    yield chunk
+                reader = response.read  # type: ignore[attr-defined]
 
-            return store.publish(request, chunks())
-    except DataError:
-        raise
-    except (OSError, TimeoutError) as exc:
-        raise DataError("QuantPad archive request failed; retry the bounded request") from exc
+                def chunks(reader: Callable[[int], bytes] = reader) -> Iterable[bytes]:
+                    while chunk := reader(1024 * 1024):
+                        yield chunk
+
+                return store.publish(request, chunks())
+        except DataError:
+            raise
+        except (OSError, TimeoutError) as exc:
+            if attempt == 2:
+                raise DataError(
+                    "QuantPad archive request failed; retry the bounded request"
+                ) from exc
+            sleep(float(attempt + 1))
+    raise AssertionError("unreachable")
 
 
 __all__ = ["QuantPadArchiveRequestV1", "QuantPadArchiveStore", "fetch_quantpad_archive"]

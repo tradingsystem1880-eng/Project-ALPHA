@@ -29,6 +29,24 @@ def _epoch_ms(value: str) -> int:
     return int(datetime.combine(parsed, time.min, tzinfo=UTC).timestamp() * 1_000)
 
 
+def _bounds(
+    start: str | None, end: str | None, start_ms: int | None, end_ms: int | None
+) -> tuple[int | None, int | None]:
+    has_dates = start is not None or end is not None
+    has_epoch = start_ms is not None or end_ms is not None
+    if has_dates and has_epoch:
+        raise DataError("use either --start/--end or --start-ms/--end-ms, not both")
+    if not has_dates and not has_epoch:
+        return None, None
+    if has_dates:
+        if start is None or end is None:
+            raise DataError("QuantPad archive requires both --start and --end")
+        return _epoch_ms(start), _epoch_ms(end)
+    if start_ms is None or end_ms is None or end_ms <= start_ms:
+        raise DataError("QuantPad archive requires ordered --start-ms and --end-ms")
+    return start_ms, end_ms
+
+
 def _store(settings: AlphaSettings) -> QuantPadArchiveStore:
     if not settings.bulk_volume_uuid:
         raise DataError("ALPHA_BULK_VOLUME_UUID is required for QuantPad archival")
@@ -54,6 +72,8 @@ def archive(
     symbol: str = typer.Argument(help="exact QuantPad symbol"),
     start: Annotated[str | None, typer.Option("--start")] = None,
     end: Annotated[str | None, typer.Option("--end")] = None,
+    start_ms: int | None = typer.Option(None, "--start-ms"),
+    end_ms: int | None = typer.Option(None, "--end-ms"),
     timeframe: str | None = typer.Option(None, "--timeframe"),
     schema: str | None = typer.Option(None, "--schema"),
     response_format: str | None = typer.Option(None, "--format"),
@@ -67,11 +87,12 @@ def archive(
         "json" if endpoint in {"coverage", "universe"} else "csv" if endpoint == "bars" else "arrow"
     )
     try:
+        requested_start_ms, requested_end_ms = _bounds(start, end, start_ms, end_ms)
         request = QuantPadArchiveRequestV1(
             endpoint=endpoint,
             symbol=symbol,
-            start_ms=_epoch_ms(start) if start is not None else None,
-            end_ms=_epoch_ms(end) if end is not None else None,
+            start_ms=requested_start_ms,
+            end_ms=requested_end_ms,
             timeframe=timeframe,
             schema=schema,
             response_format=selected_format,
