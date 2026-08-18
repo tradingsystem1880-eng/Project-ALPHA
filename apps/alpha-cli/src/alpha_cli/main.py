@@ -20,6 +20,7 @@ from alpha_cli.paper_cmds import paper_app
 from alpha_cli.project_cmds import project_app
 from alpha_cli.propfirm_cmds import propfirm_app
 from alpha_cli.provider_cmds import provider_app
+from alpha_cli.quantpad_data_cmds import quantpad_data_app
 from alpha_cli.report_cmds import report as _report
 from alpha_cli.research_cmds import research_app
 from alpha_cli.risk_cmds import risk_app
@@ -37,6 +38,7 @@ app.add_typer(optim_app, name="optim")
 app.add_typer(paper_app, name="paper")
 app.add_typer(propfirm_app, name="propfirm")
 app.add_typer(provider_app, name="provider")
+app.add_typer(quantpad_data_app, name="quantpad-data")
 app.add_typer(info_app, name="info")
 app.add_typer(options_app, name="options")
 app.add_typer(owner_auth_app, name="owner-auth")

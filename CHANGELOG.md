@@ -5,6 +5,11 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
+- Correct the live QuantPad REST contract (`X-API-Key`, epoch-ms dates, current CSV bars), add a
+  UUID-pinned exact-byte research archive with internal content-addressed manifests and offline
+  verification, and record the owner-attested written private-retention basis without repository
+  storage of the correspondence or identifiers.
+
 **Private local-use state:** The research-first R1–R6 program is integrated and scientifically
 hardened as of 2026-08-11. ALPHA is permanently a private, single-owner application for the owner's
 local device; production, sale, distribution, hosting, and multi-user release work are out of scope.

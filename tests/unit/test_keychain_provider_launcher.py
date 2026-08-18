@@ -83,6 +83,50 @@ def test_unsupported_catalog_action_fails_before_keychain_lookup(tmp_path: Path)
     assert not marker.exists()
 
 
+def test_quantpad_archive_launcher_passes_only_explicit_archive_arguments(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    capture = tmp_path / "capture"
+    _executable(fake_bin / "security", "#!/bin/sh\nset -eu\nprintf '%s\\n' 'sentinel-secret'\n")
+    _executable(
+        fake_bin / "uv",
+        "#!/bin/sh\nset -eu\n"
+        'printf \'%s\\n\' "$QUANTPAD_API_KEY" "$@" > "$ALPHA_LAUNCHER_CAPTURE"\n',
+    )
+    repository = Path(__file__).resolve().parents[2]
+    result = subprocess.run(
+        [
+            str(repository / "scripts" / "alpha-with-keychain-provider"),
+            "quantpad",
+            "archive",
+            "coverage",
+            "AAPL",
+            "--json",
+        ],
+        cwd=repository,
+        env={
+            **os.environ,
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "ALPHA_LAUNCHER_CAPTURE": str(capture),
+        },
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "sentinel-secret" not in result.stdout + result.stderr
+    assert capture.read_text().splitlines() == [
+        "sentinel-secret",
+        "run",
+        "alpha",
+        "quantpad-data",
+        "archive",
+        "coverage",
+        "AAPL",
+        "--json",
+    ]
+
+
 def test_coingecko_reference_launcher_uses_fixed_full_market_command(tmp_path: Path) -> None:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()

@@ -57,11 +57,27 @@ exact check or Workstation process:
 scripts/alpha-with-keychain-provider quantpad check
 ```
 
+After the explicit check succeeds, archive only a closed symbol/family/time contract. Exact bytes
+go to the sibling `quantpad-data` directory on the UUID-pinned bulk volume; manifests remain under
+the internal ALPHA data root:
+
+```bash
+scripts/alpha-with-keychain-provider quantpad archive coverage AAPL --json
+scripts/alpha-with-keychain-provider quantpad archive bars AAPL \
+  --start 2018-01-01 --end 2026-08-18 --timeframe 1d --json
+uv run alpha quantpad-data verify MANIFEST_ID --json
+```
+
+The API is symbol-scoped and does not expose a complete paginated universe export. Maintain an
+explicit coverage backlog; never describe a set of guessed symbols as a complete provider dump.
+Large tick requests must be partitioned into bounded intervals. Archive receipts remain
+`research_only` and do not qualify or promote data automatically.
+
 Use `get_coverage` before every bulk request and project only required order-book columns. Store
 bulk results outside tracked repository paths. They remain research scratch data until ALPHA has a
 tested receipt/candidate/quality adapter; they must not be relabeled as canonical data or paper
 evidence. Website scraping, nonpublic endpoints, redistribution, public display, and model training
-are prohibited. Obtain written QuantPad permission before permanent bulk archiving or retention
+are prohibited. Written QuantPad permission is required before permanent bulk archiving or retention
 after a subscription ends. See ADR-0018.
 
 ## 2. Configure daily Tiingo work
