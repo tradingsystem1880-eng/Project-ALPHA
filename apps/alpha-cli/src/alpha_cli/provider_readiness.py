@@ -55,6 +55,7 @@ _DETAIL_KEYS: Final = frozenset(
         "docker_cli",
         "docker_daemon",
         "image_digest_reviewed",
+        "signed_local_app_reviewed",
         "account_alias",
         "gateway_reachable",
         "host",
@@ -278,10 +279,39 @@ def _verified_what_if_receipt(data_dir: Path, account_alias: str, account_finger
     return verified
 
 
+def _signed_local_ibkr_gateway(app_path: str) -> bool:
+    """Verify the official local Gateway without exposing its private path in a receipt."""
+    candidate = Path(app_path).expanduser()
+    if not candidate.is_dir() or candidate.is_symlink():
+        return False
+    try:
+        verified = subprocess.run(
+            ["codesign", "--verify", "--deep", "--strict", str(candidate)],
+            capture_output=True,
+            timeout=15,
+            check=False,
+        ).returncode == 0
+        identity = subprocess.run(
+            ["codesign", "-dv", "--verbose=4", str(candidate)],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return verified and identity.returncode == 0 and "TeamIdentifier=L6H6D9Q7DY" in identity.stderr
+
+
 def _ibkr_check(data_dir: Path | None = None) -> tuple[tuple[str, ...], dict[str, object]]:
     import os
 
     image = os.environ.get("ALPHA_IBKR_GATEWAY_IMAGE", "")
+    from alpha_core.config import AlphaSettings
+
+    local_app = os.environ.get("ALPHA_IBKR_GATEWAY_APP", "") or (
+        "" if image else str(AlphaSettings().ibkr_gateway_app or "")
+    )
     account = os.environ.get("ALPHA_IBKR_PAPER_ACCOUNT", "").strip().upper()
     docker_cli = shutil.which("docker") is not None
     docker_daemon = False
@@ -305,13 +335,16 @@ def _ibkr_check(data_dir: Path | None = None) -> tuple[tuple[str, ...], dict[str
             reachable = True
     except OSError:
         pass
-    reviewed = bool(re.fullmatch(r"[A-Za-z0-9._/:+-]+@sha256:[0-9a-f]{64}", image))
+    image_reviewed = bool(re.fullmatch(r"[A-Za-z0-9._/:+-]+@sha256:[0-9a-f]{64}", image))
+    local_app_reviewed = _signed_local_ibkr_gateway(local_app) if local_app else False
+    reviewed = image_reviewed or local_app_reviewed
     alias = f"DU…{account[-4:]}" if re.fullmatch(r"DU[A-Z0-9]+", account) else None
     details: dict[str, object] = {
         "interface": "paper_gateway",
         "docker_cli": docker_cli,
         "docker_daemon": docker_daemon,
-        "image_digest_reviewed": reviewed,
+        "image_digest_reviewed": image_reviewed,
+        "signed_local_app_reviewed": local_app_reviewed,
         "account_alias": alias,
         "gateway_reachable": reachable,
         "host": "127.0.0.1",
@@ -319,8 +352,10 @@ def _ibkr_check(data_dir: Path | None = None) -> tuple[tuple[str, ...], dict[str
         "permissions": "unknown",
         "market_data": "unknown",
     }
-    if not all((docker_cli, docker_daemon, reviewed, alias, reachable)):
+    if not all((reviewed, reachable)):
         raise ProviderCheckFailure("connectivity_failed", details)
+    if alias is None:
+        raise ProviderCheckFailure("unverified", details)
     if (
         data_dir is not None
         and isinstance(alias, str)

@@ -115,13 +115,16 @@ qualify data: ingestion, audit, and promotion remain separate steps.
 
 ## 3. Prepare IBKR Paper
 
-Owner prerequisites are an IBKR paper account, permissions/subscriptions, Docker, and an independently
-reviewed IB Gateway image digest. Inject `TWS_USERNAME`/`TWS_PASSWORD` using Docker secrets or an OS
-keychain-backed wrapper. Set only process-local values for:
+Owner prerequisites are an IBKR paper account and permissions/subscriptions. Use either a reviewed
+container image or the official signed/notarized local IB Gateway application; ALPHA never starts or
+stops Docker. Inject `TWS_USERNAME`/`TWS_PASSWORD` only through the Gateway login or a secure wrapper.
+Set only machine-local/process-local values for one installation mode:
 
 ```text
 ALPHA_IBKR_PAPER_ACCOUNT=DU...
 ALPHA_IBKR_GATEWAY_IMAGE=registry/image@sha256:<reviewed-64-hex-digest>
+# or
+ALPHA_IBKR_GATEWAY_APP=/Applications/IB Gateway <version>/IB Gateway <version>.app
 ```
 
 Verify the boundary without enabling orders:
@@ -130,9 +133,9 @@ Verify the boundary without enabling orders:
 uv run alpha paper ibkr-preflight SPY.ARCA --asset-class etf
 ```
 
-`alpha provider check ibkr` reports Docker CLI, daemon, reviewed image digest, masked DU account,
-loopback port 4002 reachability, permissions, and market-data state without starting or stopping
-Docker. Freeze a non-transmitting preview contract offline with:
+`alpha provider check ibkr` reports Docker CLI/daemon, reviewed image digest or signed local-app
+verification, masked DU account, loopback port 4002 reachability, permissions, and market-data
+state without starting or stopping Docker. Freeze a non-transmitting preview contract offline with:
 
 ```bash
 uv run alpha paper ibkr-what-if-plan \

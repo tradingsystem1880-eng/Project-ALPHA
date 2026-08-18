@@ -37,6 +37,13 @@ def test_bulk_storage_settings_are_explicit_and_ci_safe(monkeypatch: pytest.Monk
     assert isolated.bulk_volume_uuid is None
 
 
+def test_local_ibkr_gateway_path_is_machine_local_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_APP", "/Applications/IB Gateway.app")
+    assert AlphaSettings(_env_file=None).ibkr_gateway_app == Path("/Applications/IB Gateway.app")
+
+
 def test_macos_volume_uuid_queries_containing_mount_point(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

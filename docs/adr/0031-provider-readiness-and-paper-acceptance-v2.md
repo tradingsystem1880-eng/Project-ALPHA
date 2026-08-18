@@ -14,9 +14,11 @@ Explicit checks produce immutable, content-addressed `ProviderCheckReceiptV1` re
 contain no credential value, raw response, absolute path, token, or full broker account. Tiingo and
 QuantPad REST are separate checks; Codex-managed QuantPad OAuth is descriptive discovery only and
 does not prove REST access. Finnhub without a credential is `optional_disabled`. IBKR readiness is
-a set of local diagnostic facts (Docker CLI, daemon, reviewed digest, masked DU account, loopback
-paper endpoint, permissions, and market data), never a single inferred boolean. ALPHA never starts
-or stops Docker.
+a set of local diagnostic facts (Docker CLI/daemon and reviewed digest when containerized, or a
+codesign-verified and Apple-notarized official local Gateway application; masked DU account,
+loopback paper endpoint, permissions, and market data), never a single inferred boolean. The local
+application path is machine configuration and is never recorded. ALPHA never starts or stops
+Docker.
 
 macOS Keychain access belongs only to a narrow shell launcher. Python and the browser do not invoke
 Keychain APIs. The launcher disables tracing, retrieves exactly one named item into an environment
@@ -30,7 +32,8 @@ accepted nor stored. Legacy paper journals remain monitoring history only and ca
 There is no generic REST, MCP, or CLI fact-append route.
 
 `IBKRWhatIfPlanV2` is separate from paper acceptance. It permits only a SPY one-share DAY limit
-preview on a masked DU paper account at `127.0.0.1:4002`, with a reviewed image digest,
+preview on a masked DU paper account at `127.0.0.1:4002`, with either a reviewed image digest or
+a codesign-verified official local Gateway installation,
 `whatIf=true`, the IBKR-required wire-level `transmit=true`, a fixed price collar, expiry, and a
 one-shot plan hash. The contract separately records `broker_order_transmitted=false`: IBKR requires
 the wire flag to process a what-if request, while `whatIf=true` prevents order placement. V1 plans

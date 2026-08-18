@@ -112,6 +112,30 @@ def test_reachable_ibkr_gateway_stays_unverified_without_broker_callbacks(
     assert details["account_alias"] == "DU…3456"
 
 
+def test_signed_local_ibkr_gateway_is_a_reviewed_installation_without_docker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Connection:
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: Connection())
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_APP", "/Applications/IB Gateway.app")
+    monkeypatch.setattr(provider_readiness, "_signed_local_ibkr_gateway", lambda _: True)
+
+    receipt = provider_readiness.run_explicit_check(tmp_path, "ibkr")
+
+    assert receipt["verification_state"] == "unverified"
+    details = cast(dict[str, object], receipt["details"])
+    assert details["signed_local_app_reviewed"] is True
+    assert details["gateway_reachable"] is True
+    assert details["docker_cli"] is False
+
+
 def test_ibkr_verified_what_if_receipt_grants_only_preview_capability(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

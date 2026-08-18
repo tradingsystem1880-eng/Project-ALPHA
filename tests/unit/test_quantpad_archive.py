@@ -20,7 +20,7 @@ from alpha_data.quantpad_archive import (
 
 def _store(tmp_path: Path) -> QuantPadArchiveStore:
     bulk = tmp_path / "bulk"
-    bulk.mkdir()
+    bulk.mkdir(exist_ok=True)
     return QuantPadArchiveStore(
         bulk_root=bulk,
         manifest_root=tmp_path / "internal" / "manifests",
@@ -130,6 +130,12 @@ def test_transport_pins_key_header_host_and_mime(tmp_path: Path) -> None:
     assert isinstance(wire_request, urllib.request.Request)
     assert wire_request.get_header("X-api-key") == "sentinel-secret"
     assert "sentinel-secret" not in json.dumps(manifest)
+    assert fetch_quantpad_archive(
+        _store(tmp_path),
+        request,
+        api_key="sentinel-secret",
+        opener=lambda *_a, **_k: pytest.fail("completed requests must not refetch"),
+    ) == manifest
 
 
 def test_transport_rejects_html_and_cross_host_redirects(tmp_path: Path) -> None:

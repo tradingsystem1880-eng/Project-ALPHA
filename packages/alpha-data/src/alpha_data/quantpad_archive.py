@@ -67,15 +67,21 @@ class QuantPadArchiveRequestV1:
     end_ms: int | None = None
     timeframe: str | None = None
     schema: str | None = None
+    compression: str = "none"
+    roll_adjust: str = "none"
 
     def __post_init__(self) -> None:
         if self.endpoint not in _ENDPOINTS or _SYMBOL.fullmatch(self.symbol) is None:
             raise DataError("unsupported or unsafe QuantPad archive request")
         if self.response_format not in {"json", "csv", "arrow"}:
             raise DataError("unsupported QuantPad archive response format")
+        if self.compression not in {"none", "zstd", "lz4"}:
+            raise DataError("unsupported QuantPad archive compression")
+        if self.roll_adjust not in {"none", "back", "ratio"}:
+            raise DataError("unsupported QuantPad futures roll adjustment")
         if self.endpoint == "bars":
-            if not self.timeframe or self.schema is not None or self.response_format != "csv":
-                raise DataError("QuantPad bars archive requires timeframe and CSV")
+            if not self.timeframe or self.schema is not None or self.response_format == "json":
+                raise DataError("QuantPad bars archive requires timeframe and Arrow or CSV")
         elif self.endpoint == "ticks":
             if self.schema not in _TICK_SCHEMAS or self.timeframe is not None:
                 raise DataError("QuantPad ticks archive requires a supported schema")
@@ -83,7 +89,7 @@ class QuantPadArchiveRequestV1:
                 raise DataError("QuantPad ticks archive requires Arrow")
         elif any(
             value is not None for value in (self.start_ms, self.end_ms, self.timeframe, self.schema)
-        ):
+        ) or (self.compression, self.roll_adjust) != ("none", "none"):
             raise DataError("QuantPad coverage archive accepts only a symbol")
         if self.endpoint != "coverage" and (
             not isinstance(self.start_ms, int)
@@ -236,6 +242,19 @@ class QuantPadArchiveStore:
             raise DataError("QuantPad external artifact integrity failure")
         return raw
 
+    def find_request(self, request_id: str) -> dict[str, object] | None:
+        """Return a verified completed request so interrupted plans resume without refetching."""
+        if not self.manifest_root.exists():
+            return None
+        for path in sorted(self.manifest_root.glob("*.json")):
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise DataError("QuantPad archive manifest is unavailable or corrupt") from exc
+            if isinstance(raw, dict) and raw.get("request_id") == request_id:
+                return self.verify(path.stem)
+        return None
+
 
 def fetch_quantpad_archive(
     store: QuantPadArchiveStore,
@@ -247,6 +266,9 @@ def fetch_quantpad_archive(
     """Stream one closed QuantPad request into immutable storage."""
     if not api_key:
         raise DataError("QuantPad archive requires scoped Keychain injection")
+    existing = store.find_request(request.request_id)
+    if existing is not None:
+        return existing
     params: dict[str, object] = {"symbol": request.symbol}
     if request.endpoint != "coverage":
         params.update({"start": request.start_ms, "end": request.end_ms})
@@ -256,6 +278,9 @@ def fetch_quantpad_archive(
         params["schema"] = request.schema
     if request.endpoint in {"bars", "ticks"}:
         params["format"] = request.response_format
+        params["compression"] = request.compression
+    if request.endpoint == "bars":
+        params["roll_adjust"] = request.roll_adjust
     url = f"{_BASE_URL}/v1/{request.endpoint}?{urllib.parse.urlencode(params)}"
     accept = {
         "json": "application/json",

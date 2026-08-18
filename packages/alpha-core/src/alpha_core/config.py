@@ -24,6 +24,9 @@ class AlphaSettings(BaseSettings):
     # Independent IBKR order-authority flag. Both flags must be true before execution clients may
     # be constructed; read-only preflight remains available while this is false.
     ibkr_paper_enabled: bool = False
+    # A signed local Gateway is an alternative reviewed installation to a pinned container image.
+    # Its path stays machine-local and never enters receipts or manifests.
+    ibkr_gateway_app: Path | None = None
 
     # Kronos forecasting (alpha_forecast). "main" revisions are recorded verbatim in every
     # manifest; pin to HF commit hashes via env for byte-stable provenance. Device defaults

@@ -115,9 +115,10 @@ The following are intentionally not converted into green software results:
 2. **QuantPad REST:** the Keychain credential currently returns `authentication_failed`. The owner
    must rotate `project-alpha-quantpad`, then run one new explicit bounded check. OAuth discovery
    does not substitute for REST readiness.
-3. **IBKR:** Docker CLI is present, but the daemon/gateway is not running, no reviewed image digest
-   or masked paper account is injected, and `127.0.0.1:4002` is unreachable. The owner must manually
-   start and log into the reviewed paper gateway. ALPHA will not start Docker.
+3. **IBKR (updated 2026-08-18):** the owner installed the official signed/notarized Apple Silicon
+   IB Gateway and logged into paper mode; `127.0.0.1:4002` is reachable and the local application
+   signature is verified. Account masking, broker callbacks, and market-data entitlement remain
+   deliberately unverified; neither a running Gateway nor this receipt earns paper-readiness credit.
 4. **Owner research decisions:** source screening, pack freeze, exploration approval, any eligible
    one-shot D2 launch, and final disposition each require a fresh owner assertion. The agent cannot
    perform or impersonate them.
