@@ -9,6 +9,12 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
   UUID-pinned exact-byte research archive with internal content-addressed manifests and offline
   verification, and record the owner-attested written private-retention basis without repository
   storage of the correspondence or identifiers.
+- Add archived QuantPad universe-search receipts and resumable compressed Arrow acquisition for
+  provider-native futures bars. A current 53-symbol futures catalog is complete only because every
+  alphanumeric search page stayed below the documented 50-result cap; data remains research-only.
+- Recognize a codesign-verified official local IB Gateway as a reviewed installation alternative to
+  a container digest. Its machine-local path is never persisted; paper authorization, market data,
+  and paper readiness remain separate checks.
 
 **Private local-use state:** The research-first R1–R6 program is integrated and scientifically
 hardened as of 2026-08-11. ALPHA is permanently a private, single-owner application for the owner's
