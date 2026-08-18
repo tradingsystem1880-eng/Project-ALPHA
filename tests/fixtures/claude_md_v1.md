@@ -1,0 +1,389 @@
+# Project ALPHA — Agent Operating Manual
+
+$0/free, institutional-grade Python quant research platform. **Written and operated entirely by AI agents.** This file is authoritative and OVERRIDES default behavior. Be terse, fail loud, never violate the architecture DAG.
+
+- Baseline spec: `docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`
+- Current post-v2 delta: `docs/superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`
+  + `docs/audit/2026-07-19-post-v2-architecture-audit.md`
+- Daily-data/broker-paper extension:
+  `docs/superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md` (ADR-0017)
+- External QuantPad research-data boundary:
+  `docs/adr/0018-quantpad-external-research-data-boundary.md`
+- Research Scientist program:
+  `docs/superpowers/specs/2026-08-06-research-scientist-program-design.md` (ADRs 0019-0020)
+- Research-first workstation program (design approved 2026-08-07; R1-R6 implemented and
+  accepted 2026-08-10): `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md`
+  (ADRs 0021-0026, Accepted; phase plans `docs/superpowers/plans/2026-08-07-research-first-R1..R6-*.md`)
+- Workstation v3 program: `docs/superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`
+  + `2026-07-19-workstation-v3-development-control-plane-design.md`
+  + `2026-07-19-workstation-v3-evidence-agent-design.md`
+  + `2026-07-19-workstation-v3-qlib-worker-design.md` (ADRs 0013-0016)
+- Governance: `docs/governance/2026-07-19-dependency-license-matrix.md`
+  + `docs/governance/2026-07-19-post-v2-risk-register.md`
+- Research: `research/00-SYNTHESIS.md` (+ `research/01..07-*.md`)
+- Repository research skills: `.agents/skills/alpha-research-scientist/`
+  + `.agents/skills/alpha-adversarial-reviewer/`
+- Repository development skills: `.agents/skills/karpathy-guidelines/`
+  + `.agents/skills/incremental-implementation/`
+  + `.agents/skills/code-simplification/`
+  + `.agents/skills/code-review-and-quality/`
+  + `.agents/skills/verification-before-completion/`
+- Phase plans: `docs/superpowers/plans/2026-*.md`
+- Python 3.12, `uv` virtual workspace (root is not a package). Members: `packages/*`, `apps/*`.
+
+## Architecture DAG (import-linter enforced — NEVER violate)
+`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, `alpha_screener`, `alpha_research` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_core` + public `alpha_cli` seams (top of DAG).
+- `alpha_core` imports nothing internal.
+- `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_forecast` → core only (only `alpha_cli` may import it). `alpha_options` → core only. `alpha_screener` → core only. `alpha_research` → core only. `alpha_backtest` → core + data only.
+- `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
+- `alpha_mcp` and `alpha_web` sit atop the DAG and compose nothing — actions plus provider/system and engine-backed projections subprocess the `alpha` CLI. Their in-process reads are limited to supported public CLI seams (catalog/run store, artifact contract/run projection, job capacity/durable lease, and paper store) plus bounded Polars artifact projection. They never import or execute the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Nothing imports either surface.
+- Contracts live in root `pyproject.toml` `[tool.importlinter]` (14 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
+
+## Golden rules (invariants)
+- **Engineering workflow discipline.** Before writing, reviewing, or refactoring code, load
+  `karpathy-guidelines`. Also load `incremental-implementation` for multi-file work,
+  `code-simplification` for behavior-preserving refactors, `code-review-and-quality` before merge,
+  and `verification-before-completion` before claiming work is complete, fixed, or passing. This
+  manual takes precedence if any general skill conflicts with a Project ALPHA invariant.
+- **TDD.** Failing test → minimal code → green → commit. Small, atomic, conventional commits (`feat(scope):`, `fix(...)`, `test(...)`, `build(...)`, `chore(...)`, `docs:`).
+- **No look-ahead, ever.** Strategies/backtests read data ONLY via the point-in-time accessor `as_of`. Every data/strategy unit gets a `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
+- **Execution convention:** decide on close of bar `t`, fill at open of `t+1`. Mechanism: `feed.to_execution_feed` emits an open-priced `QuoteTick` (at `bar.ts`) + a close-stamped (+23h) decision `Bar`; venue runs `bar_execution=False` so only quotes fill.
+- **No empty `except`.** Raise/propagate typed `AlphaError`/`DataError`/`LookAheadError` with context, or re-raise. Fail loud on data gaps / NaN / inf / disorder / degenerate stats.
+- **Polars** is the default dataframe. pandas ONLY at three sanctioned vendor/library edges: the yfinance adapter/parser (`alpha_data.adapters.yfinance_adapter` — the vendor returns DataFrames), the tear-sheet renderer (`alpha_validation.tearsheet`, with `quantstats_lumi`), and the Kronos model facade (`alpha_forecast.kronos` — upstream API speaks DataFrames). `numpy`/`scipy.stats.norm` and deterministic Matplotlib rendering are sanctioned in the `alpha_validation` and pure `alpha_research` layers; numpy/torch also live inside `alpha_forecast` internals (never at its public seam, which is plain floats/tuples).
+- **Strong typing.** `mypy --strict` is a CI gate. Overrides (do not "fix"): `nautilus_trader.*`, `scipy.*`, `quantstats_lumi.*` are `ignore_missing_imports` (no loadable stubs); nautilus Cython base classes get `# type: ignore[misc]`.
+- **Determinism (spec §11.4 + ADR-0013).** All seeds derive from `AlphaSettings.random_seed` (default 7). New v3 stochastic work derives seeds from stable semantic namespaces (family/tier/fold/iteration), never positional list order. A v3 `run_id` hashes normalized configuration, snapshot hash, seed, and strategy source/execution fingerprint. Manifests, causal traces, and QuantStats-Lumi HTML are byte-stable; a completed run directory is immutable and an identity-matched byte conflict fails loudly.
+- **Private local-use scope.** ALPHA is permanently a single-owner application for the owner's local device. It is not a product, service, public project, or distributable package, so a root project license and distribution-release review are out of scope. Keep third-party notices, provider terms, and data-retention restrictions intact; reopen distribution governance only if the owner explicitly changes this scope. See `docs/governance/2026-07-19-dependency-license-matrix.md`.
+- **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application (a known-but-future split does NOT rescale prices yet). Splits adjust the price series; dividends are decoupled cash events **credited by the engine at `pay_date`** against the pre-ex holding (shorts debited; never folded into prices; threaded through every run path incl. Tier-2 nulls — Tier-1 stays price-only by design). Yahoo serves split-adjusted OHLCV, so the yfinance parser reconstructs RAW prices from in-window split events (fails loud if the vendor convention drifts). See spec §6.1.
+- **Research before strategy.** A raw market observation uses the `alpha-research-scientist` skill to preserve the idea, draft competing explanations, inspect source/data feasibility, and freeze a bounded falsifiable contract before strategy code or hypothesis-specific sweeps. The `alpha-adversarial-reviewer` attacks every gate. Every fresh `alpha project create` automatically captures a research-required case; only pre-launch projects already present at the schema-v2 migration are grandfathered. The deterministic Gate 1 schema/intake/dossier, D0 research primitives, and bounded CLI/MCP/REST/Cockpit walking skeleton grant no autonomous-runner, strategy, holdout, paper, or execution authority. The R5 D1 runner (`alpha research run deep`, ADR-0025) is owner-CLI-launched only, executes the frozen analysis plan strictly on the discovery share, and is mechanically re-verified at admission. The R6d one-shot D2 (`alpha research run confirm`, ADR-0026) is live: owner `approve confirmation` authorizes the sealed share, the frozen primary reads it exactly once, every admission and read re-verifies by exact recomputation, and a pre-flight integrity failure contaminates the share (owner INVALID-only exit). The R6e owner decision view (`alpha research decision-view --json`) assembles the fourteen-question spec-§10.1 edge-validation checklist (typed finding statuses or explicit NOT_TESTED — never a numeric aggregate), the full readiness scorecard, the terminal gate packet (closed cases only), and the append-only decision history. The R6f promotion plane records the lossless spec-§11 `strategy_promotion` dossier atomically inside the closing phase transition whenever the owner decision is `advance_to_strategy` (HypothesisCard, terminal gate-packet id+hash, registered datasets, screened claims, confounder/falsification/stability/attempt ledgers, verified chart references, open questions), and `alpha project agent-brief` embeds the as-of-filtered `research_promotion` reference. The R6g research gate makes spec-§15 anti-premature-backtesting visible and governable: `research_gate_state ∈ {not_required, open, passed, overridden}` is derived strictly from governance/decision/override records (passed supersedes overridden), owner overrides are append-only actor+reason events, an overridden gate is the only unlinked path through `create_strategy_version`, and every run launched under an override is permanently watermarked (manifest `research_gate` block, forked run identity, suite-injected flag, CLI/REST/SPA rendering on ≥3 surfaces plus the Operations overrides list). The R6h SPA gate locks every Develop-desk strategy-creation/optimisation affordance while the linked project's `research_gate_state` is `open` (relay-only — the SPA never derives state; a failed projection read fails open because the CLI/store enforce), surfacing the reason and a one-shot deep link to the research case. The R6i program acceptance suite (`tests/integration/test_research_program_acceptance.py`) proves the spec-§17 composites end-to-end through the public CLI: capture→D1→one-shot D2→SUPPORTED→promotion with the dossier reaching the strategy AgentBrief byte-identically, SUPPORTED-without-advance never promoting (gate stays locked), and honest pre-D2 parks that cannot claim support. The research-first program (R1-R6) is complete; ADR-0021..0026 are Accepted.
+
+- **Research D0 read integrity.** Completed-D0 recovery, status/dossier, phase, and packet
+  projections repeat the exact acceptance recomputation and bind the SQLite-stored acceptance
+  selector to the current manifest; post-admission artifact/manifest rewrites fail closed.
+  Changing ANY registered D0 constant (detector spec, fixture lows, power parameters/seed,
+  runtime version) is a breaking generation change that MUST bump `_D0_FIXTURE_VERSION`; a
+  well-formed foreign generation fails with an explicit generation-mismatch error, never one
+  implying tampering. The D0 power seed is protocol-frozen by design — NEVER derive it from
+  `AlphaSettings.random_seed` (acceptance is re-verified by exact recomputation on every reader,
+  so a settings-derived seed would break machine-independent verification).
+- **Research migration integrity.** The v1→v2 path holds one SQLite writer lock from before the
+  exact rollback snapshot through additive DDL and the v2 marker commit; a waiting migrator
+  re-reads the version under that lock.
+
+## Commands
+- Install: `uv sync`
+- Full Python gate (run before every commit; mirrors CI `.github/workflows/ci.yml`):
+  `uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run lint-imports && uv run mypy packages apps tests && uv run pytest -q -m "not network" --cov --cov-report=term-missing && uv run python scripts/generate_web_openapi.py --check && uv build --all-packages` followed by reinstall/import smoke for all 13 built wheels (see CI for the exact module assertion).
+- Frontend gate: `cd apps/alpha-web/frontend && npm ci && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npx playwright install chromium && npm run test:e2e` (`test:e2e` builds the production SPA; generated contracts and `static/app` must stay clean; Playwright/axe covers six desks, the three required viewport sizes, keyboard use, and serious/critical accessibility failures).
+- Isolated literature worker gate: `cd workers/literature && uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest -q -m "not network"`. Stdlib-only; deliberately not a root workspace member.
+- Isolated Qlib worker gate: `cd workers/qlib && uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest -q`. It is deliberately not a root workspace member.
+- Bias guards only: `uv run pytest -m bias_guard -q`
+- Live-network tests (off by default, hit real APIs): `uv run pytest -m network -q`
+- CLI smoke: `uv run alpha info`
+- Ruff: line-length 100, target py312, rules `E,F,I,B,UP,SIM`. Markers (`--strict-markers` on): `bias_guard` (look-ahead/survivorship guards, gated in CI), `network` (skipped in CI/offline).
+
+## CLI surface (`apps/alpha-cli/src/alpha_cli/`)
+Entry point `alpha = alpha_cli.main:main`. `data`/`backtest`/`optim`/`paper`/`info`/`options`/`risk`/`screener`/`research`/`project`/`suite`/`evidence`/`ml` are Typer sub-apps; `validate`/`report` are root commands. Machine-readable projections (`--json`) back the Workstation SPA and typed MCP surface.
+- `alpha info` — print resolved `AlphaSettings` + core version.
+- `alpha info strategies [--json]` — registered strategies + tunable `--param` axes (from `_schemas.STRATEGY_PARAM_SCHEMA`) + `has_tier1_surrogate` + `supports_live_paper`.
+- `alpha info commands [--json]` — the Typer→Click command tree (flags + defaults, introspected from the real signatures) for the SPA's dynamic new-run form.
+- `alpha info providers [--json]` · `alpha info system [--json]` — redacted provider capabilities/configuration and local-only readiness (data-dir access/free space, counts, Nautilus pin, Kronos cache, separate paper opt-ins); never probe the network.
+- `alpha data pull SYMBOL --source {tiingo,yfinance,ccxt,stooq} [--exchange coinbase|binance] [--asset-class stock|etf --venue --calendar --currency] --start --end` — Tiingo uses receipt→candidate→quality→canonical promotion; Yahoo/Stooq remain comparison-only once Tiingo is authoritative; `--exchange` applies only to CCXT.
+- `alpha data source-status SYMBOL [--json]` · `alpha data audit PROVIDER RECEIPT_ID [--json]` · `alpha data repair PROVIDER RECEIPT_ID --approve-differences` · `alpha data rollback-promotion SYMBOL --acknowledge` — inspect qualification, explicitly approve one quarantine, or restore exact pre-promotion bytes after an interrupted promotion.
+- `alpha data snapshot SNAPSHOT_ID SYMBOLS... [--source --exchange coinbase|binance]` — freeze store → immutable hashed snapshot; CCXT provenance is venue-qualified (`ccxt:coinbase|binance`).
+- `alpha data verify SNAPSHOT_ID` — re-hash snapshot vs manifest.
+- `alpha data snapshots [--json]` — every immutable snapshot's manifest summary (id, source, symbols, manifest hash) in deterministic id order.
+- `alpha data candles SYMBOL [--start --end --snapshot --json]` — point-in-time OHLCV (split-adjusted; `--end` is an as-of cutoff, via `_runner.load_bars`'s `as_of`) for the SPA price chart; reads through the same look-ahead firewall a backtest uses (bias-guarded).
+- `alpha data symbols [--json]` — every symbol with stored bars (the SPA symbol picker).
+- `alpha options greeks SPOT STRIKE --vol [--days --rate --kind --json]` · `alpha options iv SPOT STRIKE --price [...]` · `alpha options curve STRIKE --vol [--width --points ...]` — Black-Scholes price/greeks/implied-vol (pure `alpha_options`; no store, no look-ahead surface).
+- `alpha risk scenario --from-run RUN_ID [--confidence --periods-per-year --json]` — stress a stored run's realized return stream (vol-scaling + tail shocks) via `alpha_validation.scenario_metrics`; no engine re-run.
+- `alpha screener quote SYMBOL [--json]` · `alpha screener news SYMBOL [--days --limit --json]` — finnhub quotes/news (opt-in; fails loud without `ALPHA_FINNHUB_API_KEY`).
+- `alpha research capture IDEA` · `sources add|screen|freeze|search|fetch|claim add|list|screen` · `draft` · `approve|reject` · `run pilot|deep|confirm` · `list` · `status|report|decision-view` · `evidence-hub` · `context build|show|list` · `note add|list` · `protocols list|show` · `brief` · `data register|list|audit` · `export|verify` · `pause|resume|cancel` · `decide|revise` — the governed Research Case CLI. `data register` binds a `research_only` `rd_<sha256>` ref fail-closed to exact snapshot-manifest/provenance/QuantPad-receipt bytes; `data audit` runs a bounded descriptive audit (coverage/gaps/distribution/seasonality/causal regime tags/effective sample via pure `alpha_research.descriptives`) publishing an immutable EXPLORATORY `research_data_audit` run whose findings feed ONLY the data dimension. `list --json` pages bounded backlog rows newest-research-activity-first (ADR-0021 read plane); `status --json` additively carries `hypothesis_card` (spec §5.1) and `scorecard` (spec §10.2 — enumerated states, never a numeric aggregate); `evidence-hub --json` projects the eleven spec-§6.2 sections with honest NOT_TESTED empty states. The dossier-embedded `research_case_summary` shape itself never gains keys (byte-hash pinned). Gate 1 runs only the contract-bound canonical `double_bottom` + `second_trough_confirmable` D0 fixture; unsupported/neckline contracts remain draftable but fail before execution. `run deep` (ADR-0025) executes the approval-frozen `analysis_plan` (`ResearchAnalysisPlanV1`: registered families, bounded grids, one primary + frozen Holm/falsification multiplicity, blanket batteries rejected) as a governed `research:event-study` durable job strictly inside the discovery (D1) share — publishing raw `d1_analyses.json` measurements plus a `research_gate_evidence.json` (`ResearchGateEvidenceV1`) whose finding statuses are MECHANICALLY derived from the raw measurements and re-verified at every admission and read (producer flags never authority; protocol-frozen bootstrap seed 7, same policy as the D0 power seed); crash recovery is exact re-execution (identical bytes, same run id). Completed D0 now routes to `deep_research`; `decide` still closes early from there. `draft-confirmation` (R6c) freezes the one-shot D2 contract mechanically from admitted clearing D1 evidence (one-variant primary family, direction, minimum effect, frozen 0.05/0.90 multiplicity; degenerate discovery intervals fail loud; same boundary hash as the exploration parent). `run confirm` (R6d, ADR-0026) executes the owner-approved one-shot D2 as a governed durable job: `approve confirmation` authorizes the sealed share and enters `sealed_confirmation`; the deterministic executor verifies boundary/data-hash alignment, reads the D2 share exactly once (protocol-frozen seed 7, weekday-matched cluster bootstrap), and publishes raw `d2_analyses.json` + a mechanically derived `research_gate_evidence.json` under a REGISTERED CONFIRMATORY watermark; success consumes D2 and routes to `research_decision` where `decide` is bound to the mechanical classification (`advance_to_strategy` requires SUPPORTED). Crash recovery is exact re-execution of the identical immutable run (initial attempt + two safe retries, then blocked); implementation drift or sealed-dataset byte drift CONTAMINATES the share pre-read (snapshot payload files are fully re-hashed at load) and the only exit is owner INVALID with revise/park/reject. Evidence-free or D0-only early decisions are limited to `INCONCLUSIVE|INVALID` and cannot advance; `CONTRADICTED` requires lineage-bound typed non-synthetic evidence. A pre-D2 `revise` may reuse only a never-authorized sealed boundary; exposed D2 requires later non-overlapping or external data. Generated dossiers default to `data_dir/research/projects/<project_id>/`.
+- Research `approve`, `reject`, and `decide` are trusted-local owner-authority operations absent from MCP/REST/Cockpit. Their recorded actor string is audit semantics, not cryptographic identity or verified owner presence; do not claim otherwise.
+- `alpha research compare SYMBOL [--strategies --json]` — backtest each already-implemented registered strategy (kronos excluded — needs a cache) and rank by total return (the legacy AI-desk "analyst lanes"); it is not a Research Case empirical runner.
+- `alpha backtest run SYMBOL [--strategy ts_momentum|ma_crossover|mean_reversion|breakout|kronos, --param name=value, --periods-per-year, --size-on-equity, --halt-drawdown F, ...params, snapshot]` — one fixed-param run → artifacts. Slash symbols (`BTC/USD`) dispatch to a 5-decimal crypto instrument and require `--account-type MARGIN`. `--size-on-equity` re-bases vol sizing on current net-liq; `--halt-drawdown F` is a flatten-for-good kill-switch at `peak×(1−F)` (both opt-in; REJECTED by `validate`/`optim` — Tier-1 can't model equity-path-dependent sizing). `kronos` params (floats): `context/horizon/samples/temperature/top_p/top_k/min_edge/band`; model selection via `ALPHA_FORECAST_*` env (never params); the CLI auto-precomputes the signal cache (`data_dir/forecasts/<key>`) before entering the engine.
+- `alpha forecast run SYMBOL [--horizon 21 --samples 100 --context --model --device --as-of --seed]` — probabilistic outcome cone (sampled OHLCV paths + close quantiles) → `data_dir/forecast/<run_id>/{manifest.json, paths.parquet, quantiles.parquet, history.parquet}`. `--model fake` = offline test double. Pre-cutoff windows warn loud + set `pretrain.overlap` (ADR-0009).
+- `alpha forecast eval SYMBOL [--horizon --stride --samples ...]` — rolling-origin forecast skill: CRPS/pinball/coverage/hit-rate vs RW-drift + stationary-bootstrap baselines, split pre/post `forecast_pretrain_cutoff`.
+- `alpha backtest portfolio SYMBOLS... [--strategy, --weighting equal|inverse_vol, --seed, ...params]` — diversified basket (canonical sorted symbol order): per-symbol OOS streams combined (inverse-vol weights are CAUSAL — per-date trailing vol, never full-sample) → portfolio metrics + PSR + BCa CIs + manifest (`data_dir/portfolio/<run_id>`).
+- `alpha backtest cross-sectional SYMBOLS... [--top-quantile, --no-long-short, --fee-bps, --slippage-bps, --seed, ...params]` — relative-strength book: rank the universe (canonical sorted order), long winners / short losers, vol-targeted, fee+slippage charged on rebalance turnover → OOS metrics + PSR + CIs + manifest (`data_dir/cross_sectional/<run_id>`).
+- `alpha validate SYMBOL [--strategy, --param, ...params, train_size=504, test_size=63, embargo=5, tier1_paths=1000, tier2_paths=64, n_resamples=2000, mean_block=5.0, threshold=0.95, --null-model bootstrap|student_t|garch, tier1_divergence_tol=0.25, --tier2-mode replay|model (kronos only), periods_per_year=252, seed, max_workers, snapshot]` — full gauntlet → manifest + parquet + HTML tear sheet. NOTE: `train_size` must clear the strategy's warmup floor or it fails loud. `--allow-short` defaults by account: MARGIN→short-ok, CASH→long-flat; an explicit `--allow-short` on CASH fails loud (the venue denies short sells wholesale). `--snapshot` verifies + reads the frozen snapshot (not the live store). `run_id` excludes `max_workers` (execution-only). For `kronos`: Tier-1 + default Tier-2 REPLAY the observed signal cache (association test, flagged in `manifest["forecast"].tier2_policy`); `--tier2-mode model` re-forecasts every synthetic path (parent-process caches; ~tier2_paths × model cost).
+- `alpha optim grid SYMBOL --grid name=v1,v2,... [--strategy, ...params, pbo_blocks, n_resamples, dsr_threshold, alpha, seed, max_workers]` — parameter sweep judged for overfitting (Deflated Sharpe + PBO + Reality-Check/SPA) → manifest (`data_dir/optim/<run_id>`).
+- `alpha paper preflight BASE/USDT [--strategy --starting-cash --param]` — construct the public Binance-data + local Nautilus sandbox-execution configuration and the parity strategy offline, without connecting.
+- `alpha paper run BASE/USDT --provider binance --snapshot SNAPSHOT_ID [--strategy --param ...]` — opt-in (`ALPHA_PAPER_ENABLED=true`) public Binance `LIVE` data + local sandbox orders only. Requires a fresh, verified, same-symbol `ccxt:binance` snapshot; rule strategies only (Kronos rejected). Never constructs Binance execution or accepts real-order credentials.
+- `alpha paper ibkr-preflight INSTRUMENT_ID [--asset-class stock|etf|future]` — offline/read-only native Nautilus IB boundary construction; loopback paper port, DU account, approved client IDs/instruments, and digest-pinned gateway only.
+- `alpha paper ibkr-run SYMBOL --instrument-id ID --snapshot SNAPSHOT --expected-session DATE --next-session DATE --order-cutoff UTC --intent SHA256 --nav NAV` — dual-opt-in (`ALPHA_PAPER_ENABLED` + `ALPHA_IBKR_PAPER_ENABLED`) stock/ETF release of the exact scheduler intent through native IBKR Paper after broker/journal reconciliation. Live ports/accounts and strategy futures are rejected; no live-capital route exists.
+- `alpha paper scheduler-tick|scheduler-status --config FILE` · `alpha paper scheduler-repair SYMBOL SESSION --config FILE --acknowledge` — five-minute launchd-compatible Tiingo→snapshot→Nautilus→intent daily cycle and exact crash-marker recovery.
+- `alpha paper sessions [--json]` · `alpha paper show SESSION_ID [--json]` · `alpha paper reconcile SESSION_ID [--json]` · `alpha paper stop SESSION_ID` · `alpha paper readiness [--json]` — operational journal/readiness controls; safe stop cancels ALPHA DAY orders but never flattens, and elapsed time cannot pass readiness.
+- `alpha project ...` — create/read projects, immutable strategy versions and experiment specs; link attempts/runs; transition lifecycle stages; seal/reveal the final holdout; freeze accept/reject/revise decision packets; create/read/cancel/reconcile durable jobs; inspect exact shared heavyweight occupancy with `job-capacity`; export a bounded, point-in-time `AgentBrief`. `review-monte-carlo PROJECT EXPERIMENT --decision continue|revise|reject --actor --reason` is the trusted-local, append-only exact-evidence disposition for a warning Monte Carlo stage and is intentionally absent from REST/MCP. `project create` also creates the required Research Case and enters triage. A governed strategy version requires the approved confirmation contract and owner `advance_to_strategy` decision; only migrated pre-launch projects are explicitly grandfathered. `override-research-gate` appends a trusted-local owner override event (actor + reason; fail-closed on grandfathered or already-passed gates; a later pass re-locks); `research-gate-overrides` lists active overrides. Runs launched under an override carry `--research-gate-override` and a permanent identity-forking `EXPLORATORY / RESEARCH GATE NOT COMPLETED` manifest watermark (spec §15).
+- `alpha suite actions|plan|run|status ...` — resolve and execute the named v3 development workflows (baseline, OOS, three separately reported null families, required four-family `monte_carlo`, deterministic grid, fixed stress, portfolio/cross-asset, Qlib, Kronos, locked holdout, and paper preflight) through durable attempt/job lineage.
+- `alpha monte-carlo classical --from-run RUN_ID` · `kronos --from-run RUN_ID --forecast-eval-run RUN_ID` — immutable single-symbol daily path-risk evidence. Classical publishes 10,000 IID empirical, causal two-state regime Markov, and Student-t account-return paths. Kronos publishes 128 exact-calendar synthetic OHLCV tails with raw/projected candles and fresh full-engine strategy replay. These are scenario-risk analyses, not randomized-price nulls or edge proof.
+- `alpha evidence add|revise|show|list ...` — append-only cited evidence revisions with separate market cutoff and knowledge timestamps, exact artifact selectors, contradiction links, and as-of-safe asset search.
+- `alpha ml export-input|prepare|train|import|evaluate|prepare-replay|replay ...` — build the locked Qlib exchange contract, invoke the isolated worker, validate timestamped OOS predictions, and replay them through ALPHA's canonical engine. The CLI never imports Qlib or deserializes a model object.
+- `alpha propfirm run [SYMBOL] [--firm topstep|apex|takeprofit, --from-run RUN_ID, --account-size, --profit-target, --max-drawdown, --daily-loss, --profit-split, --min-trading-days, --n-paths, --mean-block, --horizon, seed, ...backtest params]` — prop-firm Monte Carlo: resample a strategy's daily return stream (fresh backtest of SYMBOL, or `--from-run`'s stored equity curve) and walk it through a firm's eval→funded→payout rules (return-scaled, EOD granularity) → pass/bust/payout probabilities + expected payout → manifest (`data_dir/propfirm/<run_id>`). Exactly one of SYMBOL / `--from-run`. Presets are illustrative, not authoritative firm terms.
+- `alpha report RUN_ID` — re-display any stored run (runs/optim/portfolio/cross_sectional/propfirm/forecast) from its manifest (no engine re-run).
+- `alpha figures list [--run RUN_ID] [--json]` · `render RUN_ID [--figure ID]… [--format svg|png] [--force]` · `path RUN_ID --figure ID` · `theme [--json]` · `export RUN_ID --figure ID --out PATH` · `clean [RUN_ID] [--all|--stale]` — render the 34-figure catalogue for any stored run. Figures are a **derived cache** at `data_dir/figures/<run_id>/<figure_id>.<key>.{svg,png,json}`, never run artifacts: the immutable v3 manifest declares an exact file set, and writing into a run directory would break it and leave every historical run figure-less. The key is a sha256 over renderer identity plus the run's own declared artifact digests (legacy v1/v2 runs fall back to size+mtime, tagged so the two regimes can never collide), so it is a strong ETag by construction. Image is written first, sidecar last as the completion marker. `list --json` also publishes the key environment so the web process can compute keys without importing the renderer. These commands are excluded from `info commands` — they produce no run and must not appear in the SPA's new-run form.
+Artifacts: new observed runs use manifest/schema, run-identity, and artifact-contract version 3. Alongside existing `equity_curve.parquet`, `trades.parquet`, `nulls.parquet`, and deterministic `tearsheet.html`, v3 backtests emit `decision_trace.parquet`, `orders.parquet`, `fills.parquet`, `indicator_series.parquet`, `chart_annotations.parquet`, and native typed tear-sheet series. The manifest records each artifact's schema, hash, size, and row count. Required sidecars publish atomically before the immutable manifest completion marker. V1/v2 readers remain supported and report `trace_unavailable`; historical runs are never rewritten. The CLI-owned mutable control plane lives at `data_dir/control/workstation.sqlite3`, outside immutable runs. Workstation-managed Qlib exchanges live below `data_dir/control/ml/`; operational paper sessions remain at `data_dir/paper/<uuid>/` (ADRs 0012-0016).
+
+## MODULE MAP
+
+### `alpha_core` (`packages/alpha-core/src/alpha_core/`) — domain types, protocols, errors, config. Imports nothing internal.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `types.py` | Frozen domain values | `Bar` (OHLCV), `ValidationOutcome`, causal `DecisionTrace`/`IndicatorTrace`, deterministic vector `ChartAnchor`/`ChartAnnotationTrace` |
+| `errors.py` | Typed error hierarchy | `AlphaError` ← `DataError`, `LookAheadError` |
+| `protocols.py` | Structural interfaces | `DataSource` (`available_symbols`, `as_of`), `Validator`, `ExecutionEventSink` (flat low-volume operational events only) |
+| `config.py` | Typed settings (env `ALPHA_*`/`.env`) | `AlphaSettings(data_dir=Path("data"), random_seed=7, paper_enabled=False, ibkr_paper_enabled=False)`; `forecast_hub_cache`/`forecast_local_only` = machine-local HF weight cache + no-network loading (never in run ids/manifests; ADR-0010) |
+| `corporate.py` | Corporate-action types (two-clock) | `ActionType` (SPLIT/DIVIDEND/REDENOMINATION/SYMBOL_MIGRATION), `CorporateAction` (`knowledge_time`, `knowledge_is_estimated`) |
+
+### `alpha_data` (`packages/alpha-data/src/alpha_data/`) — ingestion, PIT storage, snapshots.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `store.py` | Raw unadjusted Parquet store + fail-closed promotion markers and v1/v2 per-symbol provenance | `ParquetStore(root)`: bars/actions methods + provenance/promotion methods |
+| `pit.py` | **Look-ahead firewall** (frame-level) | `PointInTimeReader.as_of` (split-adjusted, future-excluded), `.dividends_as_of` |
+| `source.py` | Typed PIT `DataSource` seam | `PointInTimeSource.as_of` → `list[Bar]`, `.dividends_as_of` |
+| `corporate.py` | Two-clock split/div math | `known_actions`, `cash_dividends`, `split_factor` |
+| `snapshot.py` | Immutable hashed snapshots + manifest; copies/hashes legacy or v2 provenance sidecars and rejects source relabelling | `create_snapshot`, `verify_snapshot` |
+| `ingest.py` | Persist a `FetchResult` | `store_fetch_result` |
+| `adapters/base.py` | Adapter seam + versioned source identity/receipt | `DatasetIdentity`, `FetchReceipt`, `FetchResult`, `DataAdapter` protocol |
+| `adapters/tiingo_adapter.py` | Authoritative stock/ETF EOD: raw OHLCV, explicit split/dividend actions, adjusted-field consistency check, redacted receipt | `TiingoAdapter`, `parse_tiingo_eod` (pure) |
+| `pipeline.py` | Immutable receipt/candidate/quarantine, calendar/correction/cross-source quality gate, merged promotion backup/recovery | `stage_and_promote`, `promote_quarantined`, `rollback_interrupted_promotion` |
+| `adapters/yfinance_adapter.py` | Equities (splits+divs); reconstructs RAW prices from Yahoo's split-adjusted series, fail-loud discontinuity check | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
+| `adapters/ccxt_adapter.py` | Crypto daily OHLCV (UTC; validated `coinbase|binance`; **paginated** past per-call caps; venue-qualified provenance) | `SUPPORTED_CCXT_EXCHANGES`, `CCXTAdapter`, `parse_ccxt_ohlcv` (pure) |
+| `adapters/stooq_adapter.py` | Comparison-only EOD OHLCV (FX/commodity/index/ETF; provider-adjusted, no actions). **Anti-bot gated:** browser-UA + SHA-256 PoW solve, then **fails loud** (`_csv_or_raise`) on Stooq's per-IP "Access denied"; never replaces authoritative Tiingo stock/ETF history | `StooqAdapter`, `parse_stooq_csv` (pure) |
+| `adapters/quantpad_adapter.py` | **Research-only** daily bulk sub-slice (ADR-0018/0023): official `api.quantpad.ai` REST only, pinned wire schema that fails loud on drift, content-bound receipts, receipted scratch persistence for `rd_` dataset registration. Never in `data pull`/`_ADAPTERS`; provider capability `research_bars`, `research_authority: false` | `QuantPadAdapter`, `parse_quantpad_bars` (pure), `persist_research_fetch` |
+
+### `alpha_strategies` (`packages/alpha-strategies/src/alpha_strategies/`) — nautilus Strategy + pure decision fns. core only.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `signals.py` | Pure signals (all `{-1,0,1}`, trailing-window only) | `ts_momentum_signal`, `ma_crossover_signal(closes, fast, slow)`, `zscore_reversion_signal(closes, window, entry_z)`, `breakout_signal(highs, lows, closes, window)` |
+| `sizing.py` | Pure vol-target sizing | `realized_volatility(closes, *, periods_per_year)`, `vol_target_size(signal, price, vol, *, target_vol, capital, max_leverage)` |
+| `base.py` | Shared Nautilus lifecycle for vol-targeted signals (+ opt-in `size_on_equity`, `halt_drawdown`; paper-only priming, exact intent release, reconciliation/risk, venue normalization) | `VolTargetStrategy` (`prime_history`, `configure_paper_risk`, `release_paper_intent`; subclasses implement `_signal()`), `PaperRiskLimits`, `normalize_order_quantity` |
+| `ts_momentum.py` | TS-momentum (a `VolTargetStrategy` subclass since the 2026-07 audit) | `TimeSeriesMomentum` |
+| `signal_replay.py` | Replay a precomputed per-bar signal sequence (the kronos engine strategy; fail-loud on uncovered indices) | `SignalReplay(VolTargetStrategy)` |
+| `ma_crossover.py` · `mean_reversion.py` · `breakout.py` | `VolTargetStrategy` subclasses | `MovingAverageCrossover`, `MeanReversion`, `DonchianBreakout` |
+
+### `alpha_backtest` (`packages/alpha-backtest/src/alpha_backtest/`) — nautilus run harness. core + data only.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `feed.py` | Bar → nautilus feed (t+1-fill encoding) | `to_execution_feed(bars, bar_type, *, slippage_bps=...)`, `daily_bar_type(symbol, venue="SIM")` |
+| `engine.py` | `BacktestEngine` harness (`bar_execution=False`; credits dividend cash at pay_date) | `run_backtest(instrument, data, strategy, *, starting_cash, account_type, leverage, fee_bps, dividends)` → `BacktestResult` |
+| `instruments.py` | Per-asset instruments (slash pairs → 5-decimal crypto) | `instrument_for(symbol)`, `equity_instrument`, `crypto_instrument` |
+| `frictions.py` | Per-notional fee model | `BpsFeeModel(fee_bps)` (slippage modeled separately in `feed`) |
+| `results.py` | Canonical result + causal trace schema | `BacktestResult(orders, fills, trades, equity_curve, decision_trace, indicator_trace, chart_annotations, order_trace, fill_trace, portfolio_state_trace, benchmark_curve)`, `Trade`, `OrderTrace`, `FillTrace`, `PortfolioStateTrace` |
+
+### `alpha_validation` (`packages/alpha-validation/src/alpha_validation/`) — engine-agnostic stats primitives + tear sheet. core only (+ numpy/scipy; pandas/quantstats at the tearsheet edge).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `metrics.py` | Pure numpy return/risk metrics | `to_returns`, `sharpe_ratio`, `annualized_volatility`, `cagr`, `max_drawdown`, `FloatArray`/`FloatSeq` |
+| `walkforward.py` | Causal purged/embargoed splitter | `walk_forward_splits(n, *, train_size, test_size, embargo, anchored) -> list[Split]` |
+| `cpcv.py` | Combinatorial purged cross-validation | `combinatorial_purged_splits(n, *, n_groups, n_test_groups, embargo)`, `CPCVSplit`, `n_cpcv_splits` |
+| `bootstrap.py` | Stationary-bootstrap BCa CIs | `stationary_bootstrap_indices`, `block_bootstrap_ci`, `ConfidenceInterval`, `Statistic` |
+| `montecarlo.py` | Randomized-price null + fat-tailed generators | `randomized_price_null`, `parametric_price_null`, `student_t_paths`, `garch_paths`, `NullResult`, `StrategyFn` |
+| `path_montecarlo.py` | Scenario/path-risk simulation over canonical OOS account returns | `empirical_return_paths`, `regime_switching_return_paths`, `student_t_return_paths`, `summarize_path_family`, `MonteCarloFamilySummaryV1`, `MonteCarloReviewV1` |
+| `dsr.py` | Probabilistic + Deflated Sharpe (Bailey–LdP) | `probabilistic_sharpe_ratio`, `deflated_sharpe`, `expected_max_sharpe`, `DeflatedSharpeResult` |
+| `overfitting.py` | PBO via CSCV (Bailey et al.) | `probability_of_backtest_overfitting`, `PBOResult` |
+| `propfirm.py` | Prop-firm Monte Carlo (return-scaled, multi-phase eval→funded→payout; reuses `stationary_bootstrap_indices`) | `PropFirmRules`, `PropFirmResult`, `simulate_propfirm`, `FIRM_PRESETS` |
+| `scenario.py` | Stress/what-if over a return stream (mean-preserving vol scaling + tail shocks; reuses `metrics`) | `scenario_metrics(returns, *, periods_per_year, confidence)`, `ScenarioSummary`, `scale_volatility`, `append_shock` |
+| `verdict.py` | A–F grade over the computed gates (pure, threshold-banded) | `VerdictSummary`, `grade_verdict` |
+| `reality_check.py` | White's Reality Check + Hansen's SPA | `reality_check`, `spa_test`, `DataSnoopingResult` |
+| `tearsheet.py` | Report schema + render (pandas/quantstats edge) | `GauntletReport`, `RunMetadata`, `FoldSummary`, `NullSummary`, `CISummary`, `DSRSummary`, `CPCVSummary`, `build_outcomes`, `report_to_manifest`, `render_tearsheet_html` |
+| `native_tearsheet.py` | Python-authoritative dark-report metrics/series (no frontend calculation) | `NativeTearSheet`, `build_native_tearsheet`; calendar, distribution/Q-Q, rolling, benchmark, exposure/turnover, and trade-stat records |
+
+### `alpha_research` (`packages/alpha-research/src/alpha_research/`) — pure deterministic Gate 1/D0 and D1 analysis-family primitives. core only; no network, persistence, credentials, broker, scheduler, or dynamic-code surface. The D2 confirmation primitives are consumed by the CLI's one-shot sealed executor (R6d, ADR-0026).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `data.py` | Research-only fixed-duration bar and dataset identity; never a daily snapshot/execution feed | `ResearchDatasetRef`, `ResearchBar`, `EqualDurationResearchBars` |
+| `topology.py` · `boundary.py` | Group-atomic chronological topology and content-bound D2 commitment; default 60/20/20, alternative shares require later event-blind owner approval and D3 ≥ 20% | `EvidenceDependencyGroup`, `ResearchEvidenceTopology`; `ResearchEvidenceSharesV1`, `ResearchD2BoundaryV1` |
+| `patterns.py` · `event_study.py` | Causal double-bottom detection and point-in-time predictive-association primitives with overlap purge/exact pre-event matching | `detect_double_bottom_events`; `evaluate_event_association`, `evaluate_matched_association` |
+| `power.py` · `confirmation.py` · `multiple_testing.py` | Prospective synthetic power, mechanical confirmation classification, and a frozen Holm secondary family | `simulate_prospective_power_known_sigma`; `classify_confirmation`; `holm_adjust_secondary_family` |
+| `artifacts.py` · `rendering.py` · `gate_packet.py` | Typed lineage-bound chart data, byte-stable Matplotlib rendering, and fail-closed terminal packet construction | `ResearchChartData`, `render_research_line_chart`, `build_research_gate_packet` |
+| `conditional_returns.py` · `ic.py` · `stability.py` · `leadlag.py` | Pure D1 analysis families (ADR-0025): forward returns with explicit `None` tails, conditional summaries, diff-in-means/quantile breakdowns; Spearman rank IC + trailing rolling IC (bias-guarded); chronological splits, deterministic subsample sign agreement, trailing rolling effect size (bias-guarded); non-overlapping-window lead-lag profile + advisory leakage diagnostic | `forward_returns`, `difference_in_means`, `quantile_breakdown`; `rank_ic`, `rolling_rank_ic`; `temporal_split_effects`, `subsample_consistency`, `rolling_effect_size`; `leadlag_profile`, `leakage_diagnostic` |
+| `descriptives.py` | Pure pre-hypothesis descriptive analytics: coverage/gap structure (reports problems instead of crashing on them), return moments/quantiles, autocorrelation, weekday seasonality, **causal** expanding-tercile volatility regime tags (bias-guarded), AR(1) effective sample size | `coverage_summary`, `return_distribution`, `autocorrelation`, `seasonality_by_weekday`, `volatility_regime_tags`, `effective_sample_size` |
+| `figures/` | The Workstation **figure engine**: a declarative spec the renderer cannot add to. It draws; it never computes — every number arrives pre-computed from `alpha_validation` or an immutable parquet. `theme.py` loads the one committed `themes/alpha_dark.json` (also the source of the SPA's CSS tokens, drift-guarded); `spec.py` declares 11 marks under a closed role/unit vocabulary and **structurally cannot express a secondary y-axis**; `render.py` is pure (no filesystem, clock, or network) and byte-stable — `Agg`, seeded from `rcParamsDefault`, `svg.hashsalt` per figure, no `tight_layout`, pinned DejaVu, timestamp metadata stripped and asserted absent; `catalog.py` carries each figure's question, uncertainty and caveat, so a figure is never shipped without the text that makes it readable | `FigureSpec`, `Panel`, `Role`, the mark types, `render_figure`, `load_theme`, `FIGURES`, `figures_for_command`, `RENDERER_VERSION` |
+
+### `alpha_forecast` (`packages/alpha-forecast/src/alpha_forecast/`) — Kronos foundation-model forecasting. core only; only `alpha_cli` may import it. Importing the package never imports torch (facade imports are method-level).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `types.py` | Frozen forecast values + protocol (numpy-free seam) | `SampledPath` (finite, close>0; OHLC coherence deliberately NOT enforced on model output), `ForecastResult(symbol, origin_ts, horizon, step_ts, samples)`, `Forecaster` protocol |
+| `timestamps.py` | Future session timestamps | `future_session_ts(recent_ts, horizon)` — weekend bar in history ⇒ calendar cadence (crypto), else Mon–Fri; no holiday calendar (documented approximation) |
+| `quantiles.py` | Per-step close quantiles across samples | `close_quantiles(result, qs=DEFAULT_QS)`, `DEFAULT_QS=(.05,.25,.5,.75,.95)` |
+| `signals.py` | Pure quantile→signal rule | `kronos_signal(origin_close, q25_end, q50_end, q75_end, *, min_edge, require_band_agreement)` → {-1,0,1} |
+| `fake.py` | Offline deterministic test double (rng keyed on seed + window content hash — window-pure by construction) | `FakeForecaster(vol_scale)` |
+| `kronos.py` | **torch/pandas edge**; lazy-loads the vendored model | `KronosForecaster(model_id, model_revision, tokenizer_id, tokenizer_revision, device, max_context, clip, cache_dir, local_files_only)` (local cache + offline: missing weights raise `DataError` before any HTTP; both knobs excluded from provenance), `.provenance()`, `VENDORED_KRONOS_SHA`. Upstream `predict(sample_count=S)` AVERAGES paths → facade uses `predict_batch` with S copies @ `sample_count=1` (chunk 32, per-chunk torch seeds). cpu = bit-exact; mps/cuda best-effort |
+| `_vendor/kronos/` | Pinned upstream model code (@ `67b630e6`, MIT; ruff/mypy-excluded) | `Kronos`, `KronosTokenizer`, `KronosPredictor` — facade-only import |
+
+### `alpha_options` (`packages/alpha-options/src/alpha_options/`) — options & derivatives analytics. core only (+ numpy/scipy).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `black_scholes.py` | Pure European-option pricing/greeks/IV (no market data, no look-ahead surface) | `bs_price`, `bs_greeks` (vega/1pt, theta/day, rho/1%), `implied_vol`, `Greeks` |
+
+### `alpha_screener` (`packages/alpha-screener/src/alpha_screener/`) — screener & news via finnhub (opt-in, API-key-gated). core only; the one network edge.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `models.py` | Frozen response values | `Quote`, `NewsItem` |
+| `parse.py` | Pure finnhub-response parsers (fail loud on malformed / unknown-symbol bodies) | `parse_quote`, `parse_news` |
+| `finnhub.py` | The one network edge (lazy `import finnhub`; gated on `ALPHA_FINNHUB_API_KEY`) | `fetch_quote`, `fetch_news` |
+
+### `alpha_cli` (`apps/alpha-cli/src/alpha_cli/`) — orchestration ONLY (allowed to compose engine + gauntlet). Engine imports are lazy. Package root exports `RUN_DIRS` (the run-type subdir tuple; polars-free so the MCP/web clients import it cheaply).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `main.py` | Typer app wiring (mounts every sub-app) | `app`, `main` |
+| `info_cmds.py` | `alpha info` (+ `strategies`/`commands`/`providers`/`system` JSON projections) | `info_app`; `_strategy_catalog`, `_command_catalog` (Typer→Click introspection) |
+| `providers.py` · `system_status.py` | One redacted provider/capability/option registry + local-only readiness | `ProviderDefinition`, `provider_definitions`, `historical_adapter_factories`, `provider_catalog`; `system_status`, `PINNED_NAUTILUS_VERSION` |
+| `data_cmds.py` | `alpha data ...` (Tiingo qualification/repair, comparison adapters, CCXT provenance, PIT candles + symbols) | `data_app`; `_ADAPTERS` registry (monkeypatched in tests) |
+| `backtest_cmds.py` | `alpha backtest run` / `oos` / locked `holdout` / `portfolio` | `backtest_app`; `_load_bars` seam; v3 causal/native-artifact publication |
+| `validate_cmds.py` | `alpha validate` | `validate` |
+| `monte_carlo_cmds.py` | `alpha monte-carlo classical` / heavyweight `kronos`; immutable four-family path-risk publication and full-engine model replay | `monte_carlo_app` |
+| `optim_cmds.py` | `alpha optim grid` | `optim_app` |
+| `paper_cmds.py` | Binance Sandbox, native IBKR Paper intent release, reconcile/safe-stop/readiness, and scheduler commands | `paper_app` |
+| `paper_store.py` | Schema-v2 `local_sandbox`/`ibkr_paper` operational journal with schema-v1 Binance readability | `PaperEventSink`, session/event/reconciliation/safe-stop readers and writers |
+| `_ibkr_paper.py` | Native Nautilus IB paper-only boundary, exact order-intent and reconciliation assembly | `IBKRPaperBoundary`, `OrderIntent`, `run_ibkr_paper` |
+| `daily_scheduler.py` · `paper_readiness.py` | Exchange-calendar wake-safe Tiingo→Nautilus→intent cycles and machine-evidence acceptance | `scheduler_tick`, `scheduler_status`, `readiness_report` |
+| `propfirm_cmds.py` | `alpha propfirm run` | `propfirm_app` |
+| `options_cmds.py` | `alpha options greeks/iv/curve` (Black-Scholes `--json`) | `options_app` |
+| `risk_cmds.py` | `alpha risk scenario --from-run` (stress a stored run) | `risk_app` |
+| `screener_cmds.py` | `alpha screener quote/news` (finnhub, key-gated) | `screener_app` |
+| `research_cmds.py` | Governed Research Case capture/source/draft/review/D0/D1/one-shot-D2/status/report/dossier/execution/decision CLI plus legacy `compare` | `research_app`, `sources_app` |
+| `research_intake.py` · `research_dossier.py` | Deterministic natural-language intake and tamper-checked Markdown projection | `draft_exploration_contract`; `export_research_dossier`, `verify_research_dossier` |
+| `research_runtime.py` · `research_gate_packet.py` | Immutable D0 run publication/verification and Python-authoritative packet/hub/scorecard/checklist/readiness/decision-view projections (open cases go live from the latest store-verified typed D1 evidence — no terminal packet required) | `run_synthetic_pilot`; `research_report_projection`, `research_evidence_hub_projection`, `derive_research_checklist`, `research_decision_view_projection` |
+| `research_analysis_plan.py` · `research_d1.py` | Frozen `ResearchAnalysisPlanV1` validation (registered families/grids/multiplicity, approval-time enforcement) and the deterministic D1 deep-research executor: discovery-share-only execution, raw-measurement artifacts, one shared mechanical findings classifier for write AND admission, the registered synthetic-null fixture, and the fail-closed Gate-4 Tiingo-daily dataset loader | `validate_analysis_plan`, `default_analysis_plan`; `run_deep_research`, `derive_d1_findings`, `validate_d1_evidence_artifacts`, `load_registered_research_bars` |
+| `research_d2.py` | The deterministic one-shot sealed D2 confirmation executor (R6d, ADR-0026): frozen-contract validation, confirmation-share-only data view (D3 never materialized), protocol-frozen seed-7 weekday-matched cluster bootstrap, raw `d2_analyses.json` + mechanically derived evidence (one classifier for write AND every admission/read; producer flags never authority; INVALID unreachable from evidence — contamination only), REGISTERED CONFIRMATORY manifests, content-derived run identity, and fail-closed artifact re-verification | `run_confirmation`, `derive_d2_findings`, `validate_d2_evidence_artifacts`, `d2_execution_fingerprint` |
+| `research_acquisition.py` | Fail-closed URL/DNS/MIME/size/receipt validation primitives only; performs no request or download | request/response validation records |
+| `report_cmds.py` | `alpha report` (all run types) | `report` |
+| `_schemas.py` | Declarative strategy `--param` catalog (the one place naming knobs; mirrors `_strategies` defaults) for `info strategies --json` | `STRATEGY_PARAM_SCHEMA`, `ParamSpec` |
+| `_strategies.py` | Strategy registry (dispatch + validation/live-paper metadata) | `STRATEGIES` (four rule strategies `supports_live_paper`; `kronos` cache replay rejected for paper), `build_strategy`, `warmup_for`, `surrogate_for`, `known_strategies` |
+| `forecast_cmds.py` | `alpha forecast run` / `eval`; optional experiment-bound state derivation and validation-frozen calibration/candidate artifacts | `forecast_app`; `--model fake` sentinel |
+| `_forecast.py` | Forecast-run glue (PIT slice, pretrain overlap, artifacts) + forecaster factory/provenance | `run_forecast`, `write_forecast_run`, `pretrain_overlap`, `forecast_seed`, `FORECAST_SEED_NS` |
+| `_forecast_eval.py` | Rolling-origin skill eval retaining model/random-walk samples for later frozen calibration (stride-independent per-origin seeds, cutoff split) | `run_forecast_eval`, `origin_indices`, `ForecastEvalOutput` |
+| `_forecast_cache.py` | Content-addressed kronos signal caches (`data_dir/forecasts/<key>`; schedule-exact, idempotent; model identity from settings) | `ensure_forecast_cache`, `prepare_spec_for_engine`, `signal_indices`, `cache_key`, `read_signals` |
+| `_runner.py` | Engine↔gauntlet glue, OOS stitch, run id | `RunSpec` (`strategy_name`, `strategy_params`, `param()`), `load_bars` (opt `as_of` knowledge cutoff — `alpha data candles` passes `--end`), `load_dividends`, `parse_strategy_params`, `resolve_allow_short`, `run_full_backtest`, `walk_forward_oos`/`_for_spec`, `OOSResult`, `run_id_for` |
+| `_gauntlet.py` | Full gauntlet assembly (+ DSR, CPCV, null-model) | `run_gauntlet`, `GauntletParams`, `GauntletOutput` |
+| `_optim.py` | Parameter sweep + overfitting verdict | `run_optimization`, `expand_grid`, `OptimResult` |
+| `_portfolio.py` | Diversified-basket backtest | `run_portfolio`, `PortfolioResult`, `LegSummary` |
+| `_cross_sectional.py` | Cross-sectional momentum (returns-level panel) | `run_cross_sectional`, `CrossSectionalResult` |
+| `_paper.py` | Crypto paper composer: same-venue PIT warmup, public Binance data, local sandbox factory, graceful lifecycle | `binance_instrument_id`, `build_binance_data_config`, `load_paper_warmup`, `build_sandbox_exec_config`, `build_paper_node_config`, `run_paper` |
+| `_propfirm.py` | Prop-firm run glue (resolve returns from fresh backtest / `--from-run`; resolve preset + overrides) | `run_propfirm`, `resolve_rules`, `PropFirmRunResult` |
+| `_surrogate.py` | Tier-1 engine-free surrogates (weights exposed for the convention-divergence guard) | `Surrogate`, `make_surrogate` (generic), `make_ts_momentum_surrogate` |
+| `_synth.py` | Tier-2 synthetic OHLCV paths + full-engine null | `synthetic_bar_paths`, `full_engine_null` (spawn pool, order-preserving, deterministic) |
+| `_artifacts.py` · `artifact_contract.py` · `_identity.py` · `_seeds.py` | Atomic immutable run publication, v1/v2 compatibility, v3 artifact metadata, execution/source fingerprinting, semantic seed derivation | `run_dir`, `write_run`, `write_manifest`, `artifact_metadata`, `execution_fingerprint`, `strategy_fingerprint`, `semantic_seed` |
+| `_native_tearsheet.py` · `run_projection.py` | Python-authoritative native analytics and bounded chart/run projections; PIT candles are obtained through `alpha data candles --json` | `write_native_tearsheet`, `chart_bundle`, `compare_runs` |
+| `control_store.py` · `job_capacity.py` · `project_cmds.py` | WAL-backed CLI-owned project/version/experiment/stage/attempt/holdout/job/evidence control plane with atomic mutations, append-only project-scope selection events, exact-hash Monte Carlo reviews, and one transactional Qlib/Kronos capacity class | `ControlStore`, `HEAVYWEIGHT_JOB_KINDS`, `project_app`; immutable revisions, holdout audit, Monte Carlo reviews, decision packets, point-in-time `AgentBrief` |
+| `durable_lease.py` | Caller-owned, whole-process-group heartbeat/cancellation lease; guarded post-spawn start, bounded renewal interval, TERM→grace→KILL/reap, and fail-loud journal callbacks | `DurableJobLease`, `DurableJobLease.start_for_process`, `DurableLeaseError`, `DurableLeaseCancelled`, `terminate_and_reap` |
+| `_suite.py` · `suite_cmds.py` | Declarative development actions, resolved workload plans, durable heartbeat/cancellation polling, child-process-group reaping, and reconciliation | `SUITE_ACTIONS`, `build_suite_plan`, `execute_suite`, `suite_app` |
+| `evidence_cmds.py` | Append-only evidence command surface and as-of-safe cited search | `evidence_app` |
+| `ml_contract.py` · `ml_input.py` · `_ml_replay.py` · `ml_cmds.py` | Locked JSON/Parquet v1/v2 validation, close-stamped availability, worker subprocess boundary, canonical multi-asset OOS replay, ensemble diagnostics, feature stability, cost sensitivity, and ML tear-sheet artifacts | `ValidatedRequest`, `ValidatedResult`, `validate_result_bundle`, `replay_signal_frame`, `MlReplayRun`, `run_ml_replay`, `ml_app` |
+| `catalog.py` · `run_store.py` | Lightweight supported seams for top-of-DAG surfaces (no numeric/engine imports) | strategy/command metadata; `RUN_DIRS`, run-ID validation, manifest discovery/read |
+| `figures/` · `figures_cmds.py` · `figure_cache.py` | Compose immutable run artifacts into `FigureSpec`s and publish rendered figures. `figures/_sources.py` reads bounded parquet into plain tuples; `figures/_builders.py` holds one builder per catalogue entry; `figures/__init__.py` resolves availability with an honest reason (`artifact_missing:`, `artifact_empty:`, `legacy_contract_vN`, `snapshot_unavailable`). `figure_cache.py` is a **polars/matplotlib-free seam** the web process imports to compute a content-addressed key and locate a cache entry (a test enforces the import ban) | `available_figures`, `build_figure_spec`, `figures_app`; `CacheKeyInputs`, `figure_paths`, `input_digest`, `is_cached` |
+
+### `alpha_mcp` (`apps/alpha-mcp/src/alpha_mcp/`) — MCP server (top of DAG; subprocesses the `alpha` CLI, composes nothing). Launch: `uv run alpha-mcp` (repo `.mcp.json` auto-launches it in Claude Code).
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `server.py` | FastMCP instance + 59 bounded tools + `main()` (stdio): 12 retained generic tools, 30 typed v3 tools, six Research Scientist capture/get/propose/launch/status/report tools, six ADR-0022 Codex-seam tools (get_research_brief, build/get_research_context_packet, add_research_note agent-authored-only, list/get_research_protocol), and five ADR-0023 read-only data-inventory tools (get_data_inventory/quality/candles ≤500 bars, list_snapshots, get_provider_registry). Research MCP cannot approve/decide or consume D2; no MCP tool reveals a holdout or places an order. | legacy actions/reads plus typed v3 control, evidence, and bounded research resources |
+| `_invoke.py` | Subprocess core: run `alpha`, parse `-> run <id>`, read manifest, and lease/cancel/reap direct heavyweight children (fail-loud on non-zero exit or lease failure) | `run_alpha(args, *, data_dir, run_type)` |
+| `_control.py` · `_types.py` | Subprocess typed CLI projections and strict bounded MCP response models | project/job/evidence/suite/chart projection helpers and Pydantic outputs |
+| `_runs.py` | Filesystem reads over the run store | `get_run`, `list_runs` |
+
+Retained action tools take typed common knobs plus a deprecated `options` compatibility dict whose
+keys come from a closed, bounded per-tool vocabulary (`{"lookback":"5"}` → `--lookback 5`); it
+does not accept arbitrary CLI flags. Strategy `params` are bounded and restricted to declared
+`--param name=value` fields. Managed model/tokenizer values reject filesystem-like paths, and
+run-producing action responses use capped manifest reads with declared v3 artifact verification.
+Adding/removing a CLI command? Update `server.py`'s tool surface and compatibility allowlists to
+match.
+
+### `alpha_web` (`apps/alpha-web/src/alpha_web/`) — the **ALPHA Workstation**: a thin JSON+SSE backend serving a built SPA (top of DAG; subprocesses CLI actions and status projections, composes nothing). Launch: `uv run alpha-web` → http://127.0.0.1:8800 (loopback only). Its platform imports are `alpha_core.config` plus supported public CLI seams for catalog/run-store, artifact contracts/projections, job capacity/durable leases, and the paper journal; bounded artifact reads may use Polars. Provider/system, control-plane, engine-backed, Qlib, and Kronos work stays behind CLI/out-of-process boundaries. The web process never imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `app.py` | FastAPI factory: mount `/api` routers, serve the SPA (catch-all), `/healthz`, `main()` (uvicorn) | `create_app`, `main` |
+| `api/` | Thin JSON routers | existing run/job/activity/catalog/control/paper/candle/analytics/workspace routes plus `development.py` (projects, immutable setup, suites, holdouts, jobs, evidence, AgentBrief), `ml.py` (worker readiness, exchanges, durable jobs, evaluations, tear sheets), and the six bounded Research Case operations in `research.py` |
+| `api/models.py` | Strict stable JSON response contracts; OpenAPI source | Pydantic models including `ChartBundle`, native tear sheets, project lineage, stage/jobs, evidence, ML exchange/evaluation, and bounded Research Case contracts |
+| `_invoke.py` | Background job runner: spawn `alpha` in its own process group, guard lease/pump initialization, keep descendant groups leased after leader exit, poll audited cancellation, tail stdout, parse run/session ids, publish SSE with `Last-Event-ID` replay, and project exact elapsed/current activity plus explicitly evidence-bounded same-session ETA | `Job`, `launch`, `event_stream`, `list_jobs`, `cancel_job`, `JOBS`, `RUN_TYPE` |
+| `_activity.py` | **Live desk**: per-connection polling SSE diff of the run store + job registry (stat-only mtime scan; manifest read only on change) — runs launched ANYWHERE (UI/CLI/MCP) surface live | `activity_events`, `snapshot_runs`, `job_states`, `clamp_poll` |
+| `_runs.py` | Bounded filesystem reads over the run store (incl. native analytics and legacy projections) | `query_runs`, `run_detail`, readable-completion checks, equity/trades/forecast/null/trial/propfirm/origin projections |
+| `_development.py` · `_ml.py` | Thin subprocess adapters for CLI-owned development/evidence state and isolated ML exchange/jobs | project/suite/evidence projections; worker status/launch/import/evaluation projections; direct and governed-suite ML job-lineage reconciliation |
+| `_catalog.py` · `_candles.py` | Subprocess `alpha … --json` (strategy/command/symbol/provider/system projections; PIT candles cached on parquet mtime) | `_run_json`; `strategies`, `commands`, `symbols`, `providers`, `system`; `candles` |
+| `_options.py` · `_risk.py` · `_screener.py` · `_research.py` | Subprocess the matching `alpha` sub-command → `--json` for the SPA panels | `greeks`/`iv`/`curve`; `scenario`; `quote`/`news`; `compare` plus bounded Research Case capture/get/propose/pilot/status/report |
+| `_figures.py` · `api/figures.py` | Serve rendered figures **without matplotlib in the web process**: derive the cache key from `alpha_cli.figure_cache` plus a key environment the CLI publishes, serve on hit, subprocess `alpha figures render` on miss behind a single-flight lock. Bare `…/image` gets `ETag` + `must-revalidate`; `?key=` gets `immutable`; a stale key 409s with the current one rather than silently returning different bytes at one URL. It must never import `alpha_research` — a DAG contract enforces this | `key_environment`, `figure`, `metadata`; three bounded endpoints |
+| `_workspaces.py` | Named research-context store (`data_dir/web/workspaces/<slug>.json`; traversal-guarded). A workspace is the symbol/window/project/snapshot you were working in, not a window arrangement; legacy documents keep an ignored `dockview` blob | `save_workspace`, `load_workspace`, `list_workspaces` |
+| `static/app/` | The **committed** built SPA assets served by the Python wheel; frontend CI rebuilds them and rejects a dirty asset diff | — |
+| `../frontend/` | SPA source (Vite + React + TS + Lightweight Charts + TanStack Table/Virtual + cmdk; self-hosted fontsource Inter/JetBrains Mono variable); excluded from ruff/mypy/pytest. Local ritual for frontend changes: `npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npm run build && npm run test:e2e`; every step is a CI gate (install Playwright Chromium once per machine). | — |
+| `../frontend/src/shell/` | The shell: `screens.tsx` declares **six fixed screens** (Explore · Build · Results · Compare · Studios · Operate) and which panels fill each area — docking is gone, and only the active screen mounts, so nothing polls behind a hidden tab. `LibraryRail.tsx` is the always-present Runs/Symbols/Projects/Workspaces tree; `ContextBar.tsx` is the single symbol/window/project/run editor that replaced five top-bar controls; `PanelHost.tsx` gives a panel its parameter handle without a layout engine | `SCREENS`, `screen`, `areasOf`, `LibraryRail`, `ContextBar`, `PanelHost` |
+| `../frontend/src/components/FigureCard.tsx` · `../frontend/src/panels/FigureReport.tsx` | Every analytical chart is now a server-rendered figure. `svg.fonttype="path"` makes the figure's own text invisible to a screen reader, so the card carries the accessible copy in real HTML: alt text, the question it answers, its uncertainty and caveat, and a panel/unit/legend table | `FigureCard`, `FigureReport` |
+| `../frontend/src/explain/` | The **explanation engine**: pure TS turning manifest numbers into dual-voice narratives (narrative/terse toggle) — gate stories, verdict band mirror (`bands.ts` ↔ `verdict.py`, drift-guarded by vitest fixtures of real manifests), rule-based next-step suggestions, metric glossary | `gateStories`, `verdictStories`, `suggestions`, `GLOSSARY`, `recomputeVerdict` |
+| `../frontend/src/components/ChartAnnotationPrimitive.ts` | One Lightweight Charts series primitive for deterministic line/zone/polyline/swing anchors; avoids one chart series per annotation | `ChartAnnotationPrimitive` |
+| `../frontend/src/panels/{runBrowserModel,jobProgress,v3Models,mlTearsheetModel,researchCockpitModel}.ts` | Pure typed panel models for capability-scoped run selection, honest job timing/ETA, v3/research lifecycle state, and ML diagnostics; colocated Vitest files own branch semantics | bounded render-state projections only; no metric or verdict composition |
+| `../frontend/src/panels/ProviderSystem.tsx` · `PaperMonitor.tsx` · `JobMonitor.tsx` | Provider/system readiness, durable sandbox monitoring, and running-first job cards with exact elapsed/current-operation/output state, accessible progress, evidence-bounded ETA, live logs, and known-job cancel | `ProviderSystem`, `PaperMonitor`, `JobMonitor` |
+| `../frontend/src/panels/ResearchCockpit.tsx` | Generated-contract client for the safe Research Case operations plus the ADR-0021 read plane; sticky case header, Python-authoritative HypothesisCard/scorecard, linked-context follow, New Idea focus, and the R6e Decision tab with checklist, gate packet, and append-only decision history | no source-pack screening, approval, owner decision, D2, paper, or order authority |
+| `../frontend/src/panels/{ResearchBacklog,EvidenceHub,ResearchDataExplorer,CodexBench}.tsx` · `researchBacklogModel.ts` · `researchChipModel.ts` | Research-first views embedded in the fixed Explore/Build screens: bounded backlog, evidence hub, registered data inventory, and context-packet collaboration; all scorecard and checklist semantics come from Python projections | read-only; New Idea capture asks for zero trading-rule inputs |
+| `../frontend/src/panels/V3Workbenches.tsx` · `KronosStudio.tsx` | 15 exposed stage IDs (13 core lifecycle + Kronos/ML tracks), immutable setup/AgentBrief/Findings, required Monte Carlo launch/read surfaces, and complete-sample Kronos K-lines and calibration | professional v3 workstation panels |
+| `../frontend/src/panels/ChartDataAlternative.tsx` | The price chart is a canvas, so a screen reader sees an empty box. This is the same bars as real markup, paginated, with an exact CSV of what was returned — it is why the chart is allowed to be a canvas | `ChartDataAlternative` |
+
+Server = thin JSON+SSE orchestrator; all composition stays behind `alpha`. Actions plus provider/system and engine-backed projections subprocess `alpha`; research reads come from artifacts, and paper reads from the public operational journal. The real conversational path is `alpha_mcp`, not an in-app LLM (the AI Console panel points to it). OpenAPI, generated TypeScript, frontend coverage/lint/build, and committed `static/app` freshness are mandatory CI gates.
+
+## Validation gauntlet gates (spec §8) — produced by `build_outcomes` → `ValidationOutcome`s
+- `walk_forward_oos` (gate 2): passes on a finite OOS Sharpe. Fold geometry comes from the session calendar; the fixed rule strategy is causally primed on prior history without an engine, then a **fresh portfolio** executes once from the prior close through the contiguous OOS sessions. Metrics, equity, decisions, orders, fills, trades, indicators, and annotations are scoped from that same execution. Rule parameters are not refit; Qlib refits separately inside each fold.
+- `randomized_price_null` (gate 3, headline): two tiers — Tier 1 `returns_level` (surrogate on resampled returns, scored on the walk-forward OOS window; `--null-model` selects bootstrap/student_t/garch) + Tier 2 `full_engine` (real engine on level-continuous synthetic OHLCV paths). Passes only if observed beats the `threshold` percentile in **every** tier (conservative) — except that a Tier-1 FAIL is demoted to advisory (`flagged_low_fidelity`, reported but not vetoing) when Tier-2 passed AND the measured close-fill vs t+1-open-fill `convention_divergence` of the same surrogate weights exceeds `tier1_divergence_tol` (the documented Tier-1 crediting bias for high-turnover strategies; see `docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md`). A Tier-2 fail is never rescued.
+- `bootstrap_ci` (gate 4): passes when the Sharpe BCa lower bound > 0.
+- `deflated_sharpe`: PSR/DSR of the OOS stream (single run → n_trials=1, DSR=PSR); passes when DSR ≥ `dsr_threshold`.
+- `cpcv_oos`: distribution of OOS Sharpe across combinatorial purged CV folds of the OOS stream; passes when the mean fold Sharpe > 0.
+A degenerate (flat/zero-variance) OOS short-circuits to a clean FAIL (degenerate gates), never an undefined-Sharpe crash. Overall `passed` = all gates pass.
+- **Multi-trial gates (`alpha optim`):** Deflated Sharpe (deflated by the trial-Sharpe variance), PBO via CSCV, and White/Hansen Reality-Check/SPA judge a parameter sweep for selection bias — they only become meaningful with many configs, so they live in `_optim`, not the single-run gauntlet.
+
+## Where do I add X?
+- **New strategy** → `alpha_strategies`: pure decision fn(s) in a new module + a `nautilus Strategy` subclass; bias-guard test required. Wire defaults via `_runner.RunSpec` / CLI flags.
+- **New data source** → `alpha_data/adapters/<name>_adapter.py`: a pure parser fn + a `DataAdapter` class (`name`/`version`/`parser_version`); add one evidence-gated `ProviderDefinition` so `data_cmds` derives it. Live-net code under `@pytest.mark.network`.
+- **New validation gate / statistic** → `alpha_validation`: engine-agnostic primitive (numpy/scipy, fail-loud), then wire into `alpha_cli/_gauntlet.py` and extend `tearsheet.build_outcomes`/the report schema.
+- **Anything composing engine + gauntlet / multi-package orchestration** → `alpha_cli` ONLY (the DAG forbids it elsewhere). Keep engine imports lazy.
+- **New domain type / error / protocol / setting** → `alpha_core` (export via `__init__.py`).
+- **New net-new analytics module** (e.g. options/screener) → a new core-only `packages/alpha-*` + its own import-linter "depends only on core" contract + an `alpha_cli/<x>_cmds.py` sub-app emitting `--json` (register in `main.py`).
+- **New Workstation panel** → a manifest/artifact read and/or `alpha ... --json` projection + an `alpha_web/api/` router + a `frontend/src/panels/` component placed on a screen in `shell/screens.tsx`. Operational state needs a separately governed public seam (never `RUN_DIRS` by default). Then run the frontend gate and commit `static/app`.
+- **New figure** → a `FigureDefinition` in `alpha_research/figures/catalog.py` (its question, uncertainty and caveat are required, not optional) + one builder in `alpha_cli/figures/_builders.py` that reads declared artifacts and computes nothing the renderer could not have been handed. Never draw in the SPA: an analytical chart the user can export belongs in Python, where it is byte-stable and carries its own title, units and provenance.
+- **New trading observation/research idea** → use `.agents/skills/alpha-research-scientist/SKILL.md`; keep it upstream of strategy development and within ADR-0019/0020. If the required Research Scientist gate is unimplemented, return the missing capability instead of creating an ad hoc authoritative path.
+
+## Build status
+**Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
+scientific-authority hardening in ADR-0027 is complete. The private local implementation is
+complete; production, distribution, sale, hosting, and multi-user readiness are permanently out of
+scope. The owner real-case pilot remains an empirical-validation action, not a software release gate.
+Python is the sole readiness authority; the temporary D1/D2 admission flags and duplicate
+TypeScript scorecard/checklist derivations are retired. Research now lives in the fixed six-screen
+Workstation, the MCP surface remains pinned at 62 tools, and immutable D1 chart/table evidence is
+rendered through the server figure system. ADR-0028's modeling capabilities are implemented:
+immutable `MarketStateV1`, validation-frozen Kronos calibration and `kronos_calibrated` candidate
+assessments, additive Qlib `rank_ensemble_v1` exchanges, and six server-rendered modeling
+diagnostics. These remain research-only capabilities, not evidence of profitable improvement; the
+candidate-promotion gates still apply. The dated implementation
+narratives below are retained as historical delivery records; where they conflict, this paragraph
+and ADR-0027/0028 govern.
+
+The full dated delivery history (phases, live-data verification, audits, Kronos,
+paper trading, QuantPad, Workstation v1–v4, Research Scientist program, research-first
+R1–R6, four-family Monte Carlo) is relocated verbatim to `docs/BUILD-STATUS.md` —
+consult it before changing any governed surface; append new delivery records there.
+
+## Claude Code harness (mechanical enforcement)
+Claude Code sessions in this repo run under a hard-blocking hook harness (full doc:
+`docs/operations/claude-code-harness.md`). The prose rules above stay authoritative; the harness
+makes the load-bearing ones mechanical:
+- **Gate stamps.** `uv run python scripts/gate.py fast|full` runs the tiered gate and stamps the
+  current tree CONTENT (`full` mirrors CI incl. the 13-wheel smoke). Stopping a session after
+  source edits requires a fast stamp; any `git commit` requires a full stamp (docs-only commits
+  waived). Stamps invalidate on any content change and survive pure commits.
+- **Commit guard.** Conventional commit message enforced; >1000 changed non-docs lines blocked;
+  staged risk-tier paths (quant paths + `packages/alpha-backtest/src` + the seven `alpha_cli`
+  modules `_gauntlet/_optim/_seeds/_identity/_surrogate/_synth/_runner`) additionally require an
+  APPROVE `ReviewVerdict` bound to the current tree (`/review-gate`).
+- **Quant attestation.** Edits under `packages/alpha-validation/src`, `packages/alpha-research/src`,
+  or any dsr/psr/pbo/deflated/bootstrap/reality_check/spa/montecarlo/walkforward/cpcv/
+  multiple_testing/overfitting module require a PASS `QuantVerificationReport` (`/verify-quant`;
+  primary-source cross-check per `.agents/skills/quant-source-verification/`) before Stop.
+- **Protected control plane.** `scripts/{gate,claude_hooks,harness_models}.py`,
+  `.claude/settings.json`, `.claude/skills/**`, `tests/bias_guards/**`, `.github/workflows/ci.yml`,
+  `CLAUDE.md`, and `pyproject.toml` edits touching import-linter/coverage/mypy-strict config each
+  need a one-shot audited `gate.py ack` — the harness cannot be silently weakened.
+- **Escape hatches (all audited to `.claude/state/harness-audit.jsonl`):**
+  `uv run python scripts/gate.py override --reason "..."` (one commit), `ack --reason "..."` (one
+  control-plane edit), env `ALPHA_HARNESS_DISABLE=1` (emergencies). `python3 scripts/gate.py doctor`
+  verifies the wiring. Subagent team: navigator · test-architect · quant-verifier ·
+  invariants-auditor · independent-reviewer · adversarial-reviewer. Feature pipeline:
+  `.agents/skills/alpha-feature-workflow/` with `/plan-feature` `/implement` `/gate` `/gate-fast`
+  `/verify-quant` `/review-gate` `/adversarial-review` `/harness-doctor` `/codex-review`.
