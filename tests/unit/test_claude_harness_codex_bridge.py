@@ -108,7 +108,7 @@ class TestProbeAndModel:
 
     def test_probe_available(self, fake_codex: Path) -> None:
         info = codex_bridge.probe("gpt-5.3-codex-spark")
-        assert info["available"] is True and info["version"] == "codex-cli 0.146.0"
+        assert info["available"] is True and "Logged in using ChatGPT" in info["login"]
 
     def test_probe_unavailable_paths(
         self, fake_codex: Path, monkeypatch: pytest.MonkeyPatch
@@ -168,7 +168,7 @@ class TestReview:
     ) -> None:
         monkeypatch.setenv("FAKE_CODEX_MODE", "hang")
         result = codex_bridge.review(
-            repo, diff="+x\n", model="gpt-5.3-codex-spark", effort="low", timeout=1.0
+            repo, diff="+x\n", model="gpt-5.3-codex-spark", effort="low", timeout=0.3
         )
         assert result["available"] is False and "wall-clock cap" in result["unavailable_reason"]
 
@@ -235,10 +235,25 @@ class TestCli:
         assert _calls(fake_codex) == []
         assert "available=False" in gate.read_audit(repo, kind="codex_call")[-1]["detail"]
 
-    def test_schemas_are_valid_json_and_named_by_bridge(self) -> None:
-        for name in ("codex_review.json", "codex_research.json"):
-            data = json.loads((codex_bridge.SCHEMA_DIR / name).read_text())
-            assert data["type"] == "object" and data["additionalProperties"] is False
+    @pytest.mark.parametrize(
+        ("name", "list_key", "item_model", "level_field"),
+        [
+            ("codex_review.json", "findings", "CodexFinding", "severity"),
+            ("codex_research.json", "claims", "CodexClaim", "confidence"),
+        ],
+    )
+    def test_schema_matches_harness_model(
+        self, name: str, list_key: str, item_model: str, level_field: str
+    ) -> None:
+        """The hand-written JSON schema Codex is told to emit must not drift from the model."""
+        import harness_models
+
+        data = json.loads((codex_bridge.SCHEMA_DIR / name).read_text())
+        assert data["type"] == "object" and data["additionalProperties"] is False
+        item = data["properties"][list_key]["items"]
+        fields = getattr(harness_models, item_model).model_fields
+        assert set(item["properties"]) == set(fields)
+        assert set(item["properties"][level_field]["enum"]) == set(codex_bridge._LEVELS)
 
 
 @pytest.mark.network

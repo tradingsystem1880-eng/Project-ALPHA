@@ -65,19 +65,22 @@ JSON_AGENT_SCHEMAS = {
     "red-team-code": "Counterexamples",
     "codex-liaison": "CodexReview|CodexResearch",  # either, per the request kind
 }
-# Sandboxed subagents: every Bash segment must start with one of these token prefixes
-# (the last prefix token matches by startswith so paths under it are allowed). Hook payloads
-# carry `agent_type` inside a subagent; the main session (no agent_type) is unaffected.
-_GIT_READ_ONLY = (
-    ("git", "diff"),
-    ("git", "log"),
-    ("git", "show"),
-    ("git", "status"),
-    ("git", "grep"),
-    ("git", "blame"),
-    ("git", "ls-files"),
-    ("git", "rev-parse"),
+# Sandboxed subagents: every Bash segment must start with one of these token prefixes.
+# Tokens match exactly, except a path-like last token (contains "/") matches by startswith so
+# files under it are allowed. Hook payloads carry `agent_type` inside a subagent; the main
+# session (no agent_type) is unaffected.
+_GIT_READ_ONLY = tuple(
+    ("git", sub)
+    for sub in ("diff", "log", "show", "status", "grep", "blame", "ls-files", "rev-parse")
 )
+
+
+def _py(*args: str) -> tuple[tuple[str, ...], ...]:
+    """Both launcher spellings of a python invocation."""
+    return (("python3", *args), ("uv", "run", "python", *args))
+
+
+_PY_INLINE = _py("-c")
 _READ_ONLY_TOOLS = (
     ("grep",),
     ("rg",),
@@ -88,34 +91,18 @@ _READ_ONLY_TOOLS = (
     ("wc",),
     ("find",),
     ("uv", "run", "pytest"),
-    ("uv", "run", "python", "-c"),
-    ("python3", "-c"),
-    ("uv", "run", "python", "scripts/gate.py", "audit"),
-    ("uv", "run", "python", "scripts/gate.py", "check"),
-    ("uv", "run", "python", "scripts/gate.py", "brief"),
-    ("uv", "run", "python", "scripts/gate.py", "index"),
-    ("uv", "run", "python", "scripts/gate.py", "semgrep"),
-    ("uv", "run", "python", "scripts/gate.py", "raise-cov"),
-    ("python3", "scripts/gate.py", "audit"),
-    ("python3", "scripts/gate.py", "check"),
-)
-_CODEX_BRIDGE = (
-    ("python3", "scripts/codex_bridge.py"),
-    ("uv", "run", "python", "scripts/codex_bridge.py"),
-)
-_NUMERIC_TOOLS = (
-    ("uv", "run", "pytest", "tests/oracles"),
-    ("uv", "run", "python", "-c"),
-    ("python3", "-c"),
-)
-AGENT_BASH_ALLOW: dict[str, tuple[tuple[str, ...], ...]] = {
-    "quant-verifier": (
-        *_NUMERIC_TOOLS,
-        ("python3", "scripts/codex_bridge.py", "research"),
-        ("uv", "run", "python", "scripts/codex_bridge.py", "research"),
+    *_PY_INLINE,
+    *(
+        p
+        for sub in ("audit", "check", "brief", "index", "semgrep", "raise-cov")
+        for p in _py("scripts/gate.py", sub)
     ),
+)
+_NUMERIC_TOOLS = (("uv", "run", "pytest", "tests/oracles"), *_PY_INLINE)
+AGENT_BASH_ALLOW: dict[str, tuple[tuple[str, ...], ...]] = {
+    "quant-verifier": (*_NUMERIC_TOOLS, *_py("scripts/codex_bridge.py", "research")),
     "numerical-verifier": _NUMERIC_TOOLS,
-    "codex-liaison": _CODEX_BRIDGE,
+    "codex-liaison": _py("scripts/codex_bridge.py"),
     "independent-reviewer": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
     "invariants-auditor": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
     "docs-drift-checker": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
@@ -732,17 +719,18 @@ def _prefix_matches(tokens: list[str], prefix: tuple[str, ...]) -> bool:
     if len(tokens) < len(prefix):
         return False
     head, last = prefix[:-1], prefix[-1]
-    return list(tokens[: len(head)]) == list(head) and tokens[len(head)].startswith(last)
+    tail_ok = tokens[len(head)].startswith(last) if "/" in last else tokens[len(head)] == last
+    return tokens[: len(head)] == list(head) and tail_ok
 
 
-def agent_bash_violation(agent_type: str, command: str) -> str | None:
+def agent_bash_violation(agent_type: str, command: str, segments: list[list[str]]) -> str | None:
     """Reason a sandboxed subagent may not run `command`, or None when every segment is allowed."""
     allowed = AGENT_BASH_ALLOW.get(agent_type)
     if allowed is None:
         return None
     if any(marker in command for marker in (">", "$(", "`")):
         return "redirections and command substitution are not allowed in a sandboxed agent"
-    for tokens in extract_commands(command):
+    for tokens in segments:
         if not any(_prefix_matches(tokens, prefix) for prefix in allowed):
             return f"`{' '.join(tokens[:4])}` is outside the {agent_type} sandbox"
     return None
@@ -755,7 +743,7 @@ def hook_pre_bash_guard(payload: dict[str, Any], root: Path) -> HookResult:
     segments = extract_commands(command)
 
     agent_type = str(payload.get("agent_type", ""))
-    violation = agent_bash_violation(agent_type, command)
+    violation = agent_bash_violation(agent_type, command, segments)
     if violation:
         allowed_list = ", ".join(" ".join(p) for p in AGENT_BASH_ALLOW[agent_type])
         return (2, f"BLOCKED: {violation}. Allowed prefixes: {allowed_list}")
@@ -900,10 +888,13 @@ def hook_subagent_stop(payload: dict[str, Any], root: Path) -> HookResult:
     if int(state.get(key, 0)) >= SUBAGENT_BLOCK_BUDGET:
         return (0, "")
     message = str(payload.get("last_assistant_message", ""))
-    errors = [validate_against_schema(root, name, message) for name in schema.split("|")]
-    if any(e is None for e in errors):
-        return (0, "")
-    error = "; ".join(str(e) for e in errors)
+    errors: list[str] = []
+    for name in schema.split("|"):
+        problem = validate_against_schema(root, name, message)
+        if problem is None:
+            return (0, "")
+        errors.append(problem)
+    error = "; ".join(errors)
     state[key] = int(state.get(key, 0)) + 1
     _save_session(root, state)
     return (

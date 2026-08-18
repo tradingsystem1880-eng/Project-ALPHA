@@ -795,8 +795,9 @@ class TestAgentBashSandbox:
         )
 
     def test_main_session_and_unlisted_agents_are_unaffected(self, repo: Path) -> None:
-        assert claude_hooks.agent_bash_violation("", "rm -rf build") is None
-        assert claude_hooks.agent_bash_violation("navigator", "uv sync") is None
+        for agent, cmd in (("", "rm -rf build"), ("navigator", "uv sync")):
+            segments = claude_hooks.extract_commands(cmd)
+            assert claude_hooks.agent_bash_violation(agent, cmd, segments) is None
 
     @pytest.mark.parametrize(
         ("agent", "cmd"),
@@ -824,6 +825,7 @@ class TestAgentBashSandbox:
             ("independent-reviewer", "uv run python scripts/gate.py override --reason x"),
             ("numerical-verifier", "python3 -c 'print(1)' > out.txt"),
             ("red-team-code", "echo $(cat tracked.py)"),
+            ("red-team-code", "lsof -i"),  # tokens match exactly; only paths use startswith
         ],
     )
     def test_out_of_sandbox_commands_are_blocked(self, repo: Path, agent: str, cmd: str) -> None:

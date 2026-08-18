@@ -14,8 +14,8 @@ models cache, quota/rate limit, timeout, malformed output) yields ``available: f
 
 Model resolution: ``--model`` > ``ALPHA_CODEX_MODEL`` > ``gpt-5.3-codex-spark``; the model must
 be present in ``$CODEX_HOME/models_cache.json``. Effort defaults to ``xhigh``. Every call is
-audited as ``codex_call``. Stdlib only (runs from any agent's sandbox); pydantic validation is
-applied when the project venv is importable, structural validation always.
+audited as ``codex_call``. Stdlib only (runs from any agent's sandbox); output fields are
+coerced to the schema here and re-validated by the SubagentStop hook.
 """
 
 from __future__ import annotations
@@ -24,15 +24,15 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gate  # noqa: E402  (sibling module: repo_root, append_audit)
+import gate  # noqa: E402  (sibling module: repo_root, append_audit, codex_probe)
 
 DEFAULT_MODEL = "gpt-5.3-codex-spark"
 MODEL_ENV = "ALPHA_CODEX_MODEL"
@@ -78,10 +78,7 @@ _INJECTION = re.compile(
     r"gate\.py (ack|override)|ALPHA_HARNESS_DISABLE)",
     re.IGNORECASE,
 )
-
-
-def _codex_home() -> Path:
-    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+_LEVELS = ("high", "medium", "low")
 
 
 def resolve_model(explicit: str | None) -> str:
@@ -89,40 +86,17 @@ def resolve_model(explicit: str | None) -> str:
 
 
 def cached_models() -> list[str]:
-    cache = _codex_home() / "models_cache.json"
-    try:
-        data = json.loads(cache.read_text())
-    except (OSError, ValueError):
-        return []
-    models = data.get("models", []) if isinstance(data, dict) else []
-    return [str(m.get("slug", "")) for m in models if isinstance(m, dict) and m.get("slug")]
+    home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    data = gate.read_json(home / "models_cache.json") or {}
+    models = data.get("models", [])
+    return [str(m["slug"]) for m in models if isinstance(m, dict) and m.get("slug")]
 
 
 def probe(model: str) -> dict[str, Any]:
     """Availability only — never calls the model."""
-    binary = shutil.which("codex")
-    if binary is None:
-        return {"available": False, "reason": "unavailable: codex CLI not on PATH", "model": model}
-    try:
-        version = subprocess.run(
-            ["codex", "--version"], capture_output=True, text=True, timeout=20, check=False
-        ).stdout.strip()
-        login = subprocess.run(
-            ["codex", "login", "status"], capture_output=True, text=True, timeout=20, check=False
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        return {
-            "available": False,
-            "reason": f"unavailable: codex probe failed: {exc!r}",
-            "model": model,
-        }
-    text = (login.stdout + login.stderr).strip()
-    if login.returncode != 0 or "logged in" not in text.lower():
-        return {
-            "available": False,
-            "reason": f"unavailable: not logged in ({text[:80]})",
-            "model": model,
-        }
+    ok, detail = gate.codex_probe()
+    if not ok:
+        return {"available": False, "reason": f"unavailable: {detail}", "model": model}
     models = cached_models()
     if models and model not in models:
         return {
@@ -130,11 +104,16 @@ def probe(model: str) -> dict[str, Any]:
             "reason": f"unavailable: model {model!r} not in models cache ({', '.join(models[:8])})",
             "model": model,
         }
-    return {"available": True, "reason": "", "model": model, "version": version, "login": text}
+    return {"available": True, "reason": "", "model": model, "login": detail}
 
 
 def sanitize(text: str) -> str:
     return "[stripped: instruction-shaped text]" if _INJECTION.search(text) else text
+
+
+def _level(value: Any) -> str:
+    level = str(value).lower()
+    return level if level in _LEVELS else "low"
 
 
 def _run_codex(
@@ -199,18 +178,31 @@ def _parse_object(text: str) -> dict[str, Any] | None:
     return obj if isinstance(obj, dict) else None
 
 
-def _validate(kind: str, payload: dict[str, Any]) -> str | None:
-    """Pydantic when importable (project venv), structural check otherwise."""
-    try:
-        import harness_models
-    except ImportError:
-        return None
-    model = harness_models.CodexReview if kind == "review" else harness_models.CodexResearch
-    try:
-        model.model_validate(payload)
-    except ValueError as exc:
-        return str(exc)
-    return None
+def _finding(item: dict[str, Any]) -> dict[str, Any]:
+    line = item.get("line")
+    return {
+        "severity": _level(item.get("severity", "low")),
+        "file": str(item.get("file", "")),
+        "line": int(line) if isinstance(line, int | float) else None,
+        "summary": sanitize(str(item.get("summary", ""))),
+        "axis": str(item.get("axis", "unspecified")),
+    }
+
+
+def _claim(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "claim": sanitize(str(item.get("claim", ""))),
+        "source": sanitize(str(item.get("source", ""))),
+        "quote": sanitize(str(item.get("quote", ""))),
+        "confidence": _level(item.get("confidence", "low")),
+    }
+
+
+# kind -> (schema file, list key, extra codex -c flags, item coercer)
+_KINDS: dict[str, tuple[str, str, list[str], Callable[[dict[str, Any]], dict[str, Any]]]] = {
+    "review": ("codex_review.json", "findings", [], _finding),
+    "research": ("codex_research.json", "claims", ["-c", 'web_search="live"'], _claim),
+}
 
 
 def _unavailable(kind: str, model: str, reason: str, question: str = "") -> dict[str, Any]:
@@ -221,12 +213,41 @@ def _unavailable(kind: str, model: str, reason: str, question: str = "") -> dict
         "unavailable_reason": reason,
         "summary": "",
     }
-    if kind == "review":
-        base["findings"] = []
-    else:
+    if kind == "research":
         base["question"] = question
-        base["claims"] = []
+    base[_KINDS[kind][1]] = []
     return base
+
+
+def _call(
+    kind: str,
+    root: Path,
+    prompt: str,
+    model: str,
+    effort: str,
+    timeout: float,
+    question: str = "",
+) -> dict[str, Any]:
+    schema_name, list_key, extra, coerce = _KINDS[kind]
+    text, error = _run_codex(root, prompt, SCHEMA_DIR / schema_name, model, effort, timeout, extra)
+    if text is None:
+        return _unavailable(kind, model, error, question)
+    raw = _parse_object(text)
+    if raw is None or not isinstance(raw.get(list_key), list):
+        return _unavailable(
+            kind, model, f"unavailable: codex output was not the {kind} schema", question
+        )
+    result: dict[str, Any] = {
+        "schema_version": 1,
+        "model": model,
+        "available": True,
+        "unavailable_reason": None,
+    }
+    if kind == "research":
+        result["question"] = question
+    result[list_key] = [coerce(item) for item in raw[list_key] if isinstance(item, dict)]
+    result["summary"] = sanitize(str(raw.get("summary", "")))
+    return result
 
 
 def review(
@@ -236,47 +257,7 @@ def review(
         return _unavailable("review", model, "unavailable: empty diff — nothing to review")
     if len(diff.encode()) > MAX_DIFF_BYTES:
         diff = diff.encode()[:MAX_DIFF_BYTES].decode(errors="ignore") + "\n[diff truncated]\n"
-    text, error = _run_codex(
-        root,
-        _REVIEW_PROMPT.format(diff=diff),
-        SCHEMA_DIR / "codex_review.json",
-        model,
-        effort,
-        timeout,
-        [],
-    )
-    if text is None:
-        return _unavailable("review", model, error)
-    raw = _parse_object(text)
-    if raw is None or not isinstance(raw.get("findings"), list):
-        return _unavailable("review", model, "unavailable: codex output was not the review schema")
-    findings: list[dict[str, Any]] = []
-    for item in raw["findings"]:
-        if not isinstance(item, dict):
-            continue
-        severity = str(item.get("severity", "low")).lower()
-        line = item.get("line")
-        findings.append(
-            {
-                "severity": severity if severity in ("high", "medium", "low") else "low",
-                "file": str(item.get("file", "")),
-                "line": int(line) if isinstance(line, int | float) and line is not None else None,
-                "summary": sanitize(str(item.get("summary", ""))),
-                "axis": str(item.get("axis", "unspecified")),
-            }
-        )
-    result: dict[str, Any] = {
-        "schema_version": 1,
-        "model": model,
-        "available": True,
-        "unavailable_reason": None,
-        "findings": findings,
-        "summary": sanitize(str(raw.get("summary", ""))),
-    }
-    problem = _validate("review", result)
-    if problem:
-        return _unavailable("review", model, f"unavailable: schema rejection: {problem[:200]}")
-    return result
+    return _call("review", root, _REVIEW_PROMPT.format(diff=diff), model, effort, timeout)
 
 
 def research(
@@ -284,50 +265,8 @@ def research(
 ) -> dict[str, Any]:
     if not question.strip():
         return _unavailable("research", model, "unavailable: empty question", question)
-    text, error = _run_codex(
-        root,
-        _RESEARCH_PROMPT.format(question=question),
-        SCHEMA_DIR / "codex_research.json",
-        model,
-        effort,
-        timeout,
-        ["-c", 'web_search="live"'],
-    )
-    if text is None:
-        return _unavailable("research", model, error, question)
-    raw = _parse_object(text)
-    if raw is None or not isinstance(raw.get("claims"), list):
-        return _unavailable(
-            "research", model, "unavailable: codex output was not the research schema", question
-        )
-    claims: list[dict[str, Any]] = []
-    for item in raw["claims"]:
-        if not isinstance(item, dict):
-            continue
-        confidence = str(item.get("confidence", "low")).lower()
-        claims.append(
-            {
-                "claim": sanitize(str(item.get("claim", ""))),
-                "source": sanitize(str(item.get("source", ""))),
-                "quote": sanitize(str(item.get("quote", ""))),
-                "confidence": confidence if confidence in ("high", "medium", "low") else "low",
-            }
-        )
-    result: dict[str, Any] = {
-        "schema_version": 1,
-        "model": model,
-        "available": True,
-        "unavailable_reason": None,
-        "question": question,
-        "claims": claims,
-        "summary": sanitize(str(raw.get("summary", ""))),
-    }
-    problem = _validate("research", result)
-    if problem:
-        return _unavailable(
-            "research", model, f"unavailable: schema rejection: {problem[:200]}", question
-        )
-    return result
+    prompt = _RESEARCH_PROMPT.format(question=question)
+    return _call("research", root, prompt, model, effort, timeout, question)
 
 
 def _audit(root: Path, kind: str, model: str, result: dict[str, Any]) -> None:
@@ -343,37 +282,33 @@ def _audit(root: Path, kind: str, model: str, result: dict[str, Any]) -> None:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="codex_bridge.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    for name in ("probe", "review", "research"):
+    sub.add_parser("probe").add_argument("--model", default=None)
+    for name, default_timeout in (("review", REVIEW_TIMEOUT), ("research", RESEARCH_TIMEOUT)):
         p = sub.add_parser(name)
         p.add_argument("--model", default=None)
         p.add_argument("--effort", default=DEFAULT_EFFORT)
+        p.add_argument("--timeout", type=float, default=default_timeout)
         if name == "review":
             p.add_argument("--uncommitted", action="store_true")
             p.add_argument("--diff", default=None, help="file holding the diff to review")
-            p.add_argument("--timeout", type=float, default=REVIEW_TIMEOUT)
-        if name == "research":
+        else:
             p.add_argument("--question", required=True)
-            p.add_argument("--timeout", type=float, default=RESEARCH_TIMEOUT)
     args = parser.parse_args(argv)
     model = resolve_model(args.model)
     root = gate.repo_root()
 
     if args.cmd == "probe":
-        info = probe(model)
-        print(json.dumps(info, indent=2))
+        print(json.dumps(probe(model), indent=2))
         return 0
 
     avail = probe(model)
     if not avail["available"]:
-        question = getattr(args, "question", "")
-        result = _unavailable(args.cmd, model, avail["reason"], question)
+        result = _unavailable(args.cmd, model, avail["reason"], getattr(args, "question", ""))
     elif args.cmd == "review":
         if args.diff:
             diff = Path(args.diff).read_text()
         elif args.uncommitted:
-            diff = subprocess.run(
-                ["git", "diff", "HEAD"], capture_output=True, text=True, cwd=root, check=False
-            ).stdout
+            diff = gate._git(root, "diff", "HEAD", check=False)
         else:
             parser.error("review needs --uncommitted or --diff FILE")
         result = review(root, diff=diff, model=model, effort=args.effort, timeout=args.timeout)
