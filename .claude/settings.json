@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(python3 scripts/gate.py*)",
+      "Bash(uv run python scripts/gate.py*)",
+      "Bash(uv run pytest*)",
+      "Bash(uv run mypy*)",
+      "Bash(uv run ruff*)",
+      "Bash(uv run lint-imports*)",
+      "Bash(uv lock --check*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(uv run alpha research approve*)",
+      "Bash(uv run alpha research reject*)",
+      "Bash(uv run alpha research decide*)",
+      "Bash(uv run alpha project override-research-gate*)",
+      "Bash(uv run alpha project reveal-holdout*)",
+      "Bash(alpha research approve*)",
+      "Bash(alpha research reject*)",
+      "Bash(alpha research decide*)",
+      "Bash(alpha project override-research-gate*)",
+      "Bash(alpha project reveal-holdout*)",
+      "Bash(.venv/bin/alpha research approve*)",
+      "Bash(.venv/bin/alpha research reject*)",
+      "Bash(.venv/bin/alpha research decide*)",
+      "Bash(.venv/bin/alpha project override-research-gate*)",
+      "Bash(.venv/bin/alpha project reveal-holdout*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "s=\"$CLAUDE_PROJECT_DIR/.claude/statusline.py\"; [ -f \"$s\" ] || s=.claude/statusline.py; [ -f \"$s\" ] || exit 0; python3 \"$s\""
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-edit-guard",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-bash-guard",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-edit",
+            "timeout": 90
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" stop-guard",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" session-start",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" prompt-context",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-compact",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
