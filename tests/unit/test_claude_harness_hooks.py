@@ -135,8 +135,13 @@ class TestCommitMessageConvention:
 
 class TestDocsOnly:
     def test_docs_paths_waived(self) -> None:
-        assert claude_hooks.docs_only(["README.md", "docs/x.md", ".claude/settings.json"])
+        assert claude_hooks.docs_only(["README.md", "docs/x.md", "docs/adr/0001.md"])
         assert claude_hooks.docs_only([".agents/skills/x/SKILL.md"])
+
+    def test_control_plane_never_waived(self) -> None:
+        assert not claude_hooks.docs_only([".claude/settings.json"])
+        assert not claude_hooks.docs_only([".claude/agents/navigator.md"])
+        assert not claude_hooks.docs_only([".codex/config.toml"])
 
     def test_source_paths_not_waived(self) -> None:
         assert not claude_hooks.docs_only(["docs/x.md", "packages/alpha-core/src/a.py"])
@@ -192,7 +197,8 @@ class TestPreBashGuard:
         verdict = {
             "verdict": "APPROVE",
             "findings": [],
-            "reviewed_tree_hash": gate.compute_tree_hash(repo),
+            "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
+            "files_reviewed": ["packages/alpha-backtest/src/alpha_backtest/engine.py"],
         }
         assert gate.attest(repo, "review", json.dumps(verdict)) == 0
         code, _ = self._guard(repo, "git commit -m 'feat: risky'")
@@ -391,3 +397,322 @@ class TestContextHooks:
         code, text = claude_hooks.hook_pre_compact(_payload(), repo)
         assert code == 0
         assert "failing tests" in text.lower()
+
+
+class TestCommitMessageForms:
+    def test_combined_short_flags(self) -> None:
+        assert claude_hooks.commit_message_of("git commit -am 'feat: x'") == "feat: x"
+        assert claude_hooks.commit_message_of("git commit -qm 'fix: y'") == "fix: y"
+
+    def test_heredoc_body_unwrapped(self) -> None:
+        cmd = "git commit -m \"$(cat <<'EOF'\nfeat(x): heredoc subject\n\nbody\nEOF\n)\""
+        assert claude_hooks.commit_message_of(cmd) == "feat(x): heredoc subject\n\nbody"
+
+    def test_file_message_undeterminable(self) -> None:
+        assert claude_hooks.commit_message_of("git commit -F msg.txt") is None
+
+
+class TestDestructiveVerbs:
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "git commit --amend -m 'fix: x'",
+            "git commit --no-verify -m 'fix: x'",
+            "git commit -n -m 'fix: x'",
+            "git reset --hard HEAD~1",
+            "git checkout -- .",
+            "git restore .",
+            "git clean -fd",
+            "git stash drop",
+            "git push --force origin main",
+            "rm -rf packages",
+            "rm -r /Users/someone/project",
+        ],
+    )
+    def test_blocked(self, repo: Path, command: str) -> None:
+        code, message = claude_hooks.hook_pre_bash_guard(
+            _payload(tool_input={"command": command}, cwd=str(repo)), repo
+        )
+        assert code == 2, message
+        assert "BLOCKED" in message
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "git commit -m 'feat: x'",
+            "git checkout main",
+            "git restore --staged a.py",
+            "git stash list",
+            "rm -rf /tmp/claude-501/scratch/thing",
+            "rm file.txt",
+            "git reset HEAD a.py",
+        ],
+    )
+    def test_not_flagged(self, repo: Path, command: str) -> None:
+        tokens = claude_hooks.extract_commands(command)[0]
+        assert claude_hooks.destructive_reason(tokens, repo, repo) is None
+
+    def test_chmod_on_control_plane_blocked(self, repo: Path) -> None:
+        (repo / "scripts").mkdir()
+        (repo / "scripts" / "gate.py").write_text("")
+        tokens = ["chmod", "+x", "scripts/gate.py"]
+        assert claude_hooks.destructive_reason(tokens, repo, repo)
+        assert claude_hooks.destructive_reason(["chmod", "+x", "run.sh"], repo, repo) is None
+
+
+class TestBashWriteDetection:
+    def test_targets_detected(self, repo: Path) -> None:
+        py_open = "python3 -c \"open('scripts/gate.py','w').write('x')\""
+        py_path = "python3 -c \"Path('a.md').write_text('x')\""
+        cases = {
+            "echo hi > out.txt": ["out.txt"],
+            "cat a >> notes.log": ["notes.log"],
+            "sed -i '' 's/a/b/' scripts/gate.py": ["scripts/gate.py"],
+            "uv run ruff format scripts/gate.py": ["scripts/gate.py"],
+            "uv run ruff format --check scripts/gate.py": [],
+            "uv run ruff check --fix scripts/x.py": ["scripts/x.py"],
+            py_open: ["scripts/gate.py"],
+            "cp a.py b.py": ["b.py"],
+            "echo x | tee -a t.txt": ["t.txt"],
+            "echo hi > /dev/null": [],
+            py_path: ["a.md"],
+        }
+        for command, expected in cases.items():
+            assert claude_hooks.bash_write_targets(command, repo, repo) == expected, command
+
+    def test_out_of_repo_targets_ignored(self, repo: Path, tmp_path: Path) -> None:
+        other = tmp_path / "elsewhere.txt"
+        assert claude_hooks.bash_write_targets(f"echo hi > {other}", repo, repo) == []
+
+    def test_protected_shell_write_needs_ack(self, repo: Path) -> None:
+        payload = _payload(tool_input={"command": "echo x > scripts/gate.py"}, cwd=str(repo))
+        code, message = claude_hooks.hook_pre_bash_guard(payload, repo)
+        assert code == 2 and "ack" in message
+        gate.write_ack(repo, reason="r", path="scripts/gate.py")
+        code, _ = claude_hooks.hook_pre_bash_guard(payload, repo)
+        assert code == 0
+
+    def test_post_bash_records_edit(self, repo: Path) -> None:
+        payload = _payload(tool_input={"command": "echo x > tracked.py"}, cwd=str(repo))
+        code, _ = claude_hooks.hook_post_bash(payload, repo)
+        assert code == 0
+        state = claude_hooks.load_session(repo, "s1")
+        assert "tracked.py" in state["edited_files"]
+        assert "tracked.py" in state["bash_writes"]
+
+
+class TestHiddenHoldout:
+    def _holdout_file(self, repo: Path) -> Path:
+        holdout = repo / "tests" / "holdout"
+        holdout.mkdir(parents=True)
+        target = holdout / "test_secret.py"
+        target.write_text("def test_x(): pass\n")
+        return target
+
+    def test_read_edit_bash_denied_without_owner(self, repo: Path) -> None:
+        target = self._holdout_file(repo)
+        tool = {"file_path": str(target)}
+        code, msg = claude_hooks.hook_pre_read_guard(_payload(tool_input=tool), repo)
+        assert code == 2 and "HIDDEN HOLDOUT" in msg
+        code, _ = claude_hooks.hook_pre_edit_guard(_payload(tool_input=tool), repo)
+        assert code == 2
+        code, _ = claude_hooks.hook_pre_bash_guard(
+            _payload(tool_input={"command": "cat tests/holdout/test_secret.py"}, cwd=str(repo)),
+            repo,
+        )
+        assert code == 2
+        code, _ = claude_hooks.hook_pre_bash_guard(
+            _payload(
+                tool_input={"command": "uv run pytest tests/holdout/test_secret.py"},
+                cwd=str(repo),
+            ),
+            repo,
+        )
+        assert code == 0, "running the holdout suite is allowed; reading it is not"
+
+    def test_reviewer_agent_may_read(self, repo: Path) -> None:
+        target = self._holdout_file(repo)
+        payload = _payload(tool_input={"file_path": str(target)}, agent_type="independent-reviewer")
+        assert claude_hooks.hook_pre_read_guard(payload, repo)[0] == 0
+
+    def test_owner_may_edit(self, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        gate.owner_init(repo, "correct-horse-battery")
+        monkeypatch.setenv(gate.OWNER_TOKEN_ENV, "correct-horse-battery")
+        target = self._holdout_file(repo)
+        code, _ = claude_hooks.hook_pre_edit_guard(
+            _payload(tool_input={"file_path": str(target)}), repo
+        )
+        assert code == 0
+
+
+class TestMcpGuard:
+    def test_owner_verbs_denied(self, repo: Path) -> None:
+        for tool in ("mcp__alpha__research_approve", "mcp__alpha__reveal_holdout"):
+            code, msg = claude_hooks.hook_pre_mcp_guard(_payload(tool_name=tool), repo)
+            assert code == 2 and "owner-authority" in msg
+
+    def test_ordinary_tools_allowed_and_codex_logged(self, repo: Path) -> None:
+        code, _ = claude_hooks.hook_pre_mcp_guard(_payload(tool_name="mcp__alpha__get_run"), repo)
+        assert code == 0
+        code, _ = claude_hooks.hook_pre_mcp_guard(_payload(tool_name="mcp__codex__codex"), repo)
+        assert code == 0
+        assert claude_hooks.load_session(repo, "s1")["codex_calls"] == 1
+        assert [e["event"] for e in gate.read_audit(repo, kind="codex_call")] == ["codex_call"]
+
+
+class TestSubagentStop:
+    def test_non_json_agent_ignored(self, repo: Path) -> None:
+        payload = _payload(agent_type="navigator", last_assistant_message="prose")
+        assert claude_hooks.hook_subagent_stop(payload, repo) == (0, "")
+
+    def test_json_agent_validated(self, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls: list[str] = []
+
+        def fake(root: Path, schema: str, text: str) -> str | None:
+            calls.append(schema)
+            return None if text.strip().startswith("{") else "not json"
+
+        monkeypatch.setattr(claude_hooks, "validate_against_schema", fake)
+        payload = _payload(
+            agent_type="independent-reviewer", agent_id="a1", last_assistant_message="prose"
+        )
+        code, msg = claude_hooks.hook_subagent_stop(payload, repo)
+        assert code == 2 and "ReviewVerdict" in msg
+        code, _ = claude_hooks.hook_subagent_stop(payload, repo)
+        assert code == 2
+        code, _ = claude_hooks.hook_subagent_stop(payload, repo)
+        assert code == 0, "block budget per agent exhausted -> allow"
+        payload["last_assistant_message"] = '{"verdict": "APPROVE"}'
+        payload["agent_id"] = "a2"
+        assert claude_hooks.hook_subagent_stop(payload, repo) == (0, "")
+        assert calls and set(calls) == {"ReviewVerdict"}
+
+    def test_real_validation_against_models(self, repo: Path) -> None:
+        root = Path(__file__).resolve().parents[2]
+        if not (root / ".venv" / "bin" / "python").is_file():
+            pytest.skip("project venv unavailable")
+        good = json.dumps(
+            {
+                "verdict": "APPROVE",
+                "findings": [],
+                "reviewed_diff_hash": "0" * 64,
+                "files_reviewed": [],
+            }
+        )
+        assert claude_hooks.validate_against_schema(root, "ReviewVerdict", good) is None
+        fenced = "```json\n" + good + "\n```"
+        assert claude_hooks.validate_against_schema(root, "ReviewVerdict", fenced) is None
+        assert claude_hooks.validate_against_schema(root, "ReviewVerdict", '{"verdict": "MAYBE"}')
+
+
+class TestTaskCompleted:
+    def test_no_test_reference_allows(self, repo: Path) -> None:
+        assert claude_hooks.hook_task_completed(_payload(task_title="do thing"), repo) == (0, "")
+
+    def test_failing_named_test_blocks(self, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tests = repo / "tests" / "unit"
+        tests.mkdir(parents=True)
+        (tests / "test_thing.py").write_text("def test_x():\n    assert False\n")
+
+        class Result:
+            returncode = 1
+            stdout = "FAILED tests/unit/test_thing.py::test_x"
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **k: Result())
+        code, msg = claude_hooks.hook_task_completed(
+            _payload(task_title="Fix tests/unit/test_thing.py"), repo
+        )
+        assert code == 2 and "FAIL" in msg
+
+
+class TestConfigChange:
+    def test_recent_ack_allows(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="r")
+        gate.consume_ack(repo)
+        payload = _payload(config_source="project_settings", config_path=".claude/settings.json")
+        assert claude_hooks.hook_config_change(payload, repo)[0] == 0
+
+    def test_unacked_change_blocked(self, repo: Path) -> None:
+        payload = _payload(config_source="skills", config_path=".claude/skills/x/SKILL.md")
+        code, msg = claude_hooks.hook_config_change(payload, repo)
+        assert code == 2 and "ack" in msg
+        assert gate.read_audit(repo, kind="config_change_unacked")
+
+    def test_policy_settings_never_blocked(self, repo: Path) -> None:
+        payload = _payload(config_source="policy_settings", config_path="x")
+        assert claude_hooks.hook_config_change(payload, repo)[0] == 0
+
+
+class TestTelemetryHooks:
+    def test_failure_and_instructions_recorded(self, repo: Path) -> None:
+        claude_hooks.hook_post_tool_failure(
+            _payload(tool_name="Bash", tool_input={}, error="boom"), repo
+        )
+        claude_hooks.hook_instructions_loaded(
+            _payload(load_reason="session_start", file_path=str(repo / "CLAUDE.md")), repo
+        )
+        state = claude_hooks.load_session(repo, "s1")
+        assert state["failures"][0]["tool"] == "Bash"
+        assert state["instructions_loaded"] == ["session_start:CLAUDE.md"]
+
+    def test_tool_log_audits_dispatch(self, repo: Path) -> None:
+        claude_hooks.hook_tool_log(
+            _payload(tool_name="Agent", tool_input={"subagent_type": "navigator"}), repo
+        )
+        events = gate.read_audit(repo, kind="dispatch")
+        assert events and "navigator" in events[0]["detail"]
+
+
+class TestStopBudgetAudit:
+    def test_exhaustion_is_audited_and_flagged(self, repo: Path) -> None:
+        claude_hooks.record_edit(repo, "s1", "packages/alpha-core/src/a.py")
+        for _ in range(claude_hooks.STOP_BLOCK_BUDGET):
+            claude_hooks.hook_stop_guard(_payload(), repo)
+        code, msg = claude_hooks.hook_stop_guard(_payload(), repo)
+        assert code == 0 and "UNVERIFIED" in msg
+        assert claude_hooks.load_session(repo, "s1")["stop_budget_exhausted"] is True
+        assert len(gate.read_audit(repo, kind="stop_budget_exhausted")) == 1
+        claude_hooks.hook_stop_guard(_payload(), repo)
+        assert len(gate.read_audit(repo, kind="stop_budget_exhausted")) == 1, "audited once"
+        _, brief = claude_hooks.hook_prompt_context(_payload(), repo)
+        assert "stop-budget:EXHAUSTED" in brief
+
+    def test_non_lintable_source_edit_counts(self, repo: Path) -> None:
+        # A13: any tracked non-docs edit counts as a source edit at Stop.
+        claude_hooks.hook_post_edit(
+            _payload(tool_input={"file_path": str(repo / "pyproject.toml")}),
+            repo,
+            run_lint=lambda p: None,
+        )
+        code, _ = claude_hooks.hook_stop_guard(_payload(), repo)
+        assert code == 2
+
+
+class TestKarpathyAlwaysOn:
+    def test_session_start_and_post_compact_inject_block(self, repo: Path) -> None:
+        _, start = claude_hooks.hook_session_start(_payload(), repo)
+        _, post = claude_hooks.hook_post_compact(_payload(), repo)
+        for text in (start, post):
+            assert "KARPATHY GUIDELINES" in text
+            for heading in (
+                "Think Before Coding",
+                "Simplicity First",
+                "Surgical Changes",
+                "Goal-Driven Execution",
+            ):
+                assert heading in text
+        assert "OWNER TOKEN NOT CONFIGURED" in start
+
+    def test_prompt_brief_reminder(self, repo: Path) -> None:
+        _, brief = claude_hooks.hook_prompt_context(_payload(), repo)
+        assert "karpathy: think→simplify→surgical→goal-verify" in brief
+        assert "owner-token:UNSET" in brief
+
+    def test_post_compact_lists_obligations(self, repo: Path) -> None:
+        claude_hooks.record_edit(
+            repo, "s1", "packages/alpha-validation/src/alpha_validation/dsr.py"
+        )
+        _, post = claude_hooks.hook_post_compact(_payload(), repo)
+        assert "OWED: /verify-quant" in post
+        assert "dsr.py" in post

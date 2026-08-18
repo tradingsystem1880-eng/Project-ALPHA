@@ -42,6 +42,42 @@ jobs:
           uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
           .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web))'
 
+  harness:
+    # The Claude Code harness verifies itself: a control that is not tested is prose.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --locked
+      - name: Harness doctor
+        run: uv run python scripts/gate.py doctor --json
+      - name: Harness weakening scanner
+        run: uv run python scripts/gate.py lint-harness
+      - name: Harness types
+        run: uv run mypy --strict scripts/gate.py scripts/claude_hooks.py scripts/harness_models.py .claude/statusline.py
+      - name: Harness contract tests
+        run: uv run pytest -q -p no:cacheprovider tests/unit/test_claude_harness_gate.py tests/unit/test_claude_harness_hooks.py tests/unit/test_claude_harness_hooks_subprocess.py tests/unit/test_claude_harness_settings.py tests/unit/test_claude_harness_skills.py
+      - name: Block smoke (real hooks must refuse the three canonical bypasses)
+        run: |
+          set -u
+          git config user.email ci@example.com && git config user.name CI
+          echo "smoke = 1" > smoke_ci.py && git add smoke_ci.py
+          # 1. commit without a gate stamp
+          if echo '{"cwd":"'$PWD'","session_id":"ci","tool_input":{"command":"git commit -m \"feat: smoke\""}}' | python3 scripts/claude_hooks.py pre-bash-guard; then echo "commit without stamp was NOT blocked" >&2; exit 1; fi
+          # 2. protected edit without ack
+          if echo '{"cwd":"'$PWD'","session_id":"ci","tool_input":{"file_path":"'$PWD'/.claude/settings.json","content":"{}"}}' | python3 scripts/claude_hooks.py pre-edit-guard; then echo "protected edit without ack was NOT blocked" >&2; exit 1; fi
+          # 3. malformed attestation
+          if echo '{"verdict":"MAYBE"}' | uv run python scripts/gate.py attest --kind review; then echo "malformed attestation was NOT rejected" >&2; exit 1; fi
+          git rm -q --cached smoke_ci.py && rm smoke_ci.py
+          echo "block smoke OK"
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
