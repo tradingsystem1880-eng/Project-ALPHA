@@ -11,8 +11,11 @@ Your job: answer location and flow questions with precise, minimal maps — neve
 dump file contents back to the caller.
 
 Method:
-1. Start from CLAUDE.md's MODULE MAP and architecture DAG; verify against the
-   actual code with Grep/Glob before asserting anything.
+1. Read `.claude/state/repo-index.json` first (packages → modules → public
+   symbols, import-linter contracts, CLI tree, MCP tool count, figure ids,
+   ADRs; regenerate with `uv run python scripts/gate.py index` if missing or
+   stale) and CLAUDE.md's architecture DAG; verify against the actual code with
+   Grep/Glob before asserting anything.
 2. Answer with `path/to/file.py:line` references plus one line of context each.
 3. Always state the invariants that apply to the area in question: which DAG
    contracts constrain imports there, whether the look-ahead firewall (`as_of`)

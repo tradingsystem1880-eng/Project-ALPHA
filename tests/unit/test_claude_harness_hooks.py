@@ -704,6 +704,14 @@ class TestKarpathyAlwaysOn:
                 assert heading in text
         assert "OWNER TOKEN NOT CONFIGURED" in start
 
+    def test_session_start_and_post_compact_carry_repo_brief(self, repo: Path) -> None:
+        _, start = claude_hooks.hook_session_start(_payload(), repo)
+        _, post = claude_hooks.hook_post_compact(_payload(), repo)
+        for text in (start, post):
+            assert "REPO BRIEF" in text
+            assert "recent commits:" in text
+        assert (repo / ".claude" / "state" / gate.BRIEF_FILE).exists()
+
     def test_prompt_brief_reminder(self, repo: Path) -> None:
         _, brief = claude_hooks.hook_prompt_context(_payload(), repo)
         assert "karpathy: think→simplify→surgical→goal-verify" in brief
@@ -716,3 +724,25 @@ class TestKarpathyAlwaysOn:
         _, post = claude_hooks.hook_post_compact(_payload(), repo)
         assert "OWED: /verify-quant" in post
         assert "dsr.py" in post
+
+    def test_over_eager_edit_is_warned_and_audited_never_blocked(self, repo: Path) -> None:
+        plans = repo / "docs" / "superpowers" / "plans"
+        plans.mkdir(parents=True)
+        block = json.dumps({"files": ["packages/alpha-core/src/alpha_core/x.py"], "slices": []})
+        (plans / "2026-02-01-open.md").write_text(f"# Open\n\n```json\n{block}\n```\n")
+        in_scope = "packages/alpha-core/src/alpha_core/x.py"
+        out_of_scope = "packages/alpha-core/src/alpha_core/y.py"
+        claude_hooks.record_edit(repo, "s1", in_scope)
+        claude_hooks.record_edit(repo, "s1", out_of_scope)
+        claude_hooks.record_edit(repo, "s1", "docs/notes.md")  # docs are never over-eager
+        state = claude_hooks.load_session(repo, "s1")
+        assert state["over_eager"] == [out_of_scope]
+        events = [e["detail"] for e in gate.read_audit(repo, kind="over_eager_edit")]
+        assert events == [out_of_scope]
+        code, post = claude_hooks.hook_post_compact(_payload(), repo)
+        assert code == 0
+        assert "SCOPE WARNING: 1 edit(s)" in post and out_of_scope in post
+        # No declared scope (plan without a block) => the warn is disarmed.
+        (plans / "2026-02-01-open.md").write_text("# Open plan, no front block\n")
+        claude_hooks.record_edit(repo, "s2", out_of_scope)
+        assert claude_hooks.load_session(repo, "s2")["over_eager"] == []

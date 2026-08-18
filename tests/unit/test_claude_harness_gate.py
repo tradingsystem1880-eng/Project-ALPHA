@@ -661,3 +661,167 @@ class TestScopedPaths:
             "packages/alpha-validation/src/alpha_validation/dsr.py"
         ]
         assert gate.scoped_changed_paths(repo, lambda p: p == "tracked.py") == ["tracked.py"]
+
+
+def _brief_repo(repo: Path) -> None:
+    """Populate a throwaway repo with the awareness inputs `gate.py brief` reads."""
+    (repo / "docs" / "adr").mkdir(parents=True)
+    (repo / "docs" / "adr" / "0001-first.md").write_text("# ADR-0001 first\n")
+    (repo / "docs" / "adr" / "0002-second.md").write_text("# ADR-0002 second\n")
+    (repo / "docs" / "adr" / "README.md").write_text("index\n")
+    plans = repo / "docs" / "superpowers" / "plans"
+    plans.mkdir(parents=True)
+    (plans / "2026-01-01-old.md").write_text("# Old plan\n\n**Delivery state:** Completed.\n")
+    (plans / "2026-02-01-open.md").write_text("# Open plan\n\nGoal: ship it.\n")
+    retro = repo / "docs" / "operations" / "retrospectives"
+    retro.mkdir(parents=True)
+    (retro / "2026-01-05-a.md").write_text("# A\n\n## Watch-outs\n- old one\n")
+    (retro / "2026-01-09-b.md").write_text(
+        "# B\n\n## What the harness caught\n- x\n\n"
+        "## Watch-outs\n- newest watch\n- second\n\n## Next\n"
+    )
+    (repo / "CLAUDE.md").write_text("see ADR-0001 only\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "--quiet", "-m", "docs: awareness fixtures")
+
+
+class TestBrief:
+    def test_brief_reports_tree_facts(self, repo: Path) -> None:
+        _brief_repo(repo)
+        text = gate.build_brief(repo)
+        assert "REPO BRIEF" in text
+        assert "docs: awareness fixtures" in text  # recent commits
+        assert "2026-02-01-open.md" in text  # newest plan not marked completed
+        assert "2026-01-01-old.md" not in text
+        assert "newest watch" in text and "second" in text and "old one" not in text
+        assert "ADRs: 2 (latest 0002-second.md)" in text
+        assert "ADR-0002" in text and "not referenced" in text  # drift alert
+
+    def test_brief_cached_by_tree_hash(self, repo: Path) -> None:
+        _brief_repo(repo)
+        first = gate.repo_brief(repo)
+        cache = repo / ".claude" / "state" / gate.BRIEF_FILE
+        assert cache.exists()
+        (repo / "CLAUDE.md").write_text("see ADR-0001 and ADR-0002\n")
+        second = gate.repo_brief(repo)
+        assert first != second
+        assert "not referenced" not in second
+        assert gate.repo_brief(repo) == second  # cache hit is byte-identical
+
+    def test_adr_mentions_understand_ranges(self) -> None:
+        text = "ADR-0013 and ADRs 0019-0020 plus ADR-0021..0026 (ADRs 0013-0016)"
+        assert gate.referenced_adr_ids(text) == {13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26}
+
+    def test_only_newest_plan_is_considered(self, repo: Path) -> None:
+        _brief_repo(repo)
+        plans = repo / "docs" / "superpowers" / "plans"
+        (plans / "2026-03-01-done.md").write_text("# Done\n\n**Delivery state:** Completed.\n")
+        assert gate.open_plan(repo) is None
+
+    def test_brief_survives_missing_inputs(self, repo: Path) -> None:
+        text = gate.build_brief(repo)
+        assert "REPO BRIEF" in text
+        assert "ADRs: 0" in text
+
+
+class TestIndex:
+    def test_index_lists_public_symbols_contracts_and_adrs(self, repo: Path) -> None:
+        _brief_repo(repo)
+        pkg = repo / "packages" / "alpha-core" / "src" / "alpha_core"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text('__all__ = ["Bar"]\n')
+        (pkg / "types.py").write_text(
+            "class Bar:\n    pass\n\ndef _private() -> None:\n    pass\n\ndef public_fn() -> int:\n"
+            "    return 1\n"
+        )
+        (repo / "pyproject.toml").write_text(
+            "[tool.importlinter]\nroot_packages = ['alpha_core']\n"
+            "[[tool.importlinter.contracts]]\nname = 'alpha_core imports nothing internal'\n"
+            "type = 'forbidden'\n"
+        )
+        index = gate.build_index(repo, cli=False)
+        assert index["packages"]["alpha_core"]["types.py"] == ["Bar", "public_fn"]
+        assert index["packages"]["alpha_core"]["__init__.py"] == ["Bar"]
+        assert index["import_linter_contracts"] == ["alpha_core imports nothing internal"]
+        assert index["adrs"] == ["0001-first.md", "0002-second.md"]
+        assert index["cli_commands"] == {"unavailable": "cli=False"}
+        path = gate.write_index(repo, cli=False)
+        assert path == repo / ".claude" / "state" / gate.INDEX_FILE
+        assert json.loads(path.read_text())["tree_hash"] == gate.compute_tree_hash(repo)
+
+
+_VALID_PLAN: dict[str, Any] = {
+    "title": "Add X",
+    "context": "why",
+    "assumptions": [{"statement": "Y holds", "verified_by": "grep Y"}],
+    "alternatives_considered": ["do nothing (rejected: Z)"],
+    "pre_mortem": ["fails if A", "fails if B"],
+    "slices": [
+        {
+            "title": "s1",
+            "verify": "uv run pytest tests/unit/test_x.py",
+            "expected": "1 passed",
+            "rollback": "git checkout -- packages/alpha-core/src/alpha_core/x.py",
+            "files": ["packages/alpha-core/src/alpha_core/x.py"],
+        },
+        {"title": "s2", "verify": "gate.py fast", "expected": "stamp", "rollback": "revert"},
+    ],
+    "tier_impact": ["none"],
+    "docs_to_update": ["CLAUDE.md"],
+    "out_of_scope": ["the SPA"],
+    "files": ["tests/unit/test_x.py"],
+}
+
+
+def _plan_doc(block: dict[str, Any] | str) -> str:
+    body = block if isinstance(block, str) else json.dumps(block, indent=2)
+    return f"# Plan\n\n```json\n{body}\n```\n\n## Slices\n"
+
+
+class TestPlanCheck:
+    def test_valid_plan_passes_and_summarizes(self, tmp_path: Path) -> None:
+        plan = tmp_path / "2026-03-01-x.md"
+        plan.write_text(_plan_doc(_VALID_PLAN))
+        ok, message = gate.plan_check(plan)
+        assert ok, message
+        assert "2 slice(s), 0 done" in message
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("pre_mortem", ["only one"]),
+            ("alternatives_considered", []),
+            ("slices", [_VALID_PLAN["slices"][0]]),
+            ("assumptions", [{"statement": "unverified"}]),
+            ("tier_impact", ["cosmic"]),
+        ],
+    )
+    def test_missing_reasoning_fields_fail(self, tmp_path: Path, field: str, value: Any) -> None:
+        plan = tmp_path / "p.md"
+        plan.write_text(_plan_doc({**_VALID_PLAN, field: value}))
+        ok, message = gate.plan_check(plan)
+        assert not ok
+        assert "FeaturePlan invalid" in message
+
+    def test_no_front_block_fails(self, tmp_path: Path) -> None:
+        plan = tmp_path / "p.md"
+        plan.write_text("# Plan without a block\n\n```json\nnot json\n```\n")
+        ok, message = gate.plan_check(plan)
+        assert not ok and "no fenced" in message
+        assert gate.plan_front_block("no fences at all") is None
+
+    def test_active_plan_scope_reads_without_pydantic(self, repo: Path) -> None:
+        plans = repo / "docs" / "superpowers" / "plans"
+        plans.mkdir(parents=True)
+        (plans / "2026-01-01-old.md").write_text("# Old\n\n**Delivery state:** Completed.\n")
+        (plans / "2026-02-01-open.md").write_text(_plan_doc(_VALID_PLAN))
+        name, scope = gate.active_plan_scope(repo)
+        assert name == "2026-02-01-open.md"
+        assert scope == ["tests/unit/test_x.py", "packages/alpha-core/src/alpha_core/x.py"]
+        assert gate.in_plan_scope("tests/unit/test_x.py", scope)
+        assert gate.in_plan_scope("packages/alpha-core/src/alpha_core/x.py", scope)
+        assert not gate.in_plan_scope("packages/alpha-core/src/alpha_core/y.py", scope)
+        assert gate.in_plan_scope("apps/a/b.py", ["apps/a/", "z"])
+        assert gate.in_plan_scope("apps/a/b.py", ["apps/*/b.py"])
+        (plans / "2026-02-01-open.md").write_text("# Open plan without a block\n")
+        assert gate.active_plan_scope(repo) == ("2026-02-01-open.md", [])

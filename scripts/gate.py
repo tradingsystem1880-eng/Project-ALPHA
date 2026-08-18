@@ -20,6 +20,9 @@ CLI:
     python3 scripts/gate.py lint-harness       # weakening scanner vs .claude/harness-baseline.json
     python3 scripts/gate.py baseline --reason  # rewrite the baseline (owner/ack authorized)
     python3 scripts/gate.py audit [--json --since ISO --kind K --verify]  # journal reader
+    python3 scripts/gate.py brief [--refresh]  # generated repo brief (cached by tree hash)
+    python3 scripts/gate.py index [--no-cli]   # regenerate .claude/state/repo-index.json
+    python3 scripts/gate.py plan-check PLAN.md # validate a plan's ```json FeaturePlan front block
     python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
     python3 scripts/gate.py selftest           # replay the harness test-suite
 """
@@ -27,6 +30,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import ast
 import fcntl
 import hashlib
 import json
@@ -37,6 +41,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1016,6 +1021,299 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
     return (0 if report["ok"] else 1, report)
 
 
+# ---------------------------------------------------------------------------
+# Repo awareness: generated brief + repo index (derived from the tree, never remembered)
+
+BRIEF_FILE = "brief.json"
+INDEX_FILE = "repo-index.json"
+_PLAN_DONE_RE = re.compile(r"delivery state:\*{0,2}\s*(completed|delivered|done)", re.I)
+_ADR_ID_RE = re.compile(r"^(\d{4})-")
+_WATCHOUT_HEADING_RE = re.compile(r"^##+\s*watch-?outs", re.I)
+
+
+def _git_lines(root: Path, *args: str) -> list[str]:
+    return [line for line in _git(root, *args, check=False).splitlines() if line.strip()]
+
+
+def adr_files(root: Path) -> list[str]:
+    """ADR filenames (``NNNN-*.md``) in docs/adr, sorted."""
+    adr_dir = root / "docs" / "adr"
+    if not adr_dir.is_dir():
+        return []
+    return sorted(p.name for p in adr_dir.glob("*.md") if _ADR_ID_RE.match(p.name))
+
+
+_ADR_MENTION_RE = re.compile(r"ADRs?[ -](\d{4})(?:(?:\.\.|-|–)(\d{4}))?")
+
+
+def referenced_adr_ids(text: str) -> set[int]:
+    """ADR numbers a document mentions: ``ADR-0013``, ``ADRs 0013-0016``, ``ADR-0021..0026``."""
+    ids: set[int] = set()
+    for start, end in _ADR_MENTION_RE.findall(text):
+        lo, hi = int(start), int(end or start)
+        ids.update(range(lo, hi + 1))
+    return ids
+
+
+def adr_drift(root: Path) -> list[str]:
+    """ADR ids that neither CLAUDE.md nor .claude/rules/*.md mention (awareness drift)."""
+    haystack = ""
+    claude_md = root / "CLAUDE.md"
+    if claude_md.exists():
+        haystack += claude_md.read_text(errors="replace")
+    for rule in sorted((root / ".claude" / "rules").glob("*.md")):
+        haystack += rule.read_text(errors="replace")
+    mentioned = referenced_adr_ids(haystack)
+    ids: list[str] = []
+    for name in adr_files(root):
+        match = _ADR_ID_RE.match(name)
+        assert match is not None
+        if int(match.group(1)) not in mentioned:
+            ids.append(f"ADR-{match.group(1)}")
+    return ids
+
+
+def open_plan(root: Path) -> str | None:
+    """The newest docs/superpowers/plans/*.md unless its header says Completed/Delivered/done.
+
+    Only the newest plan is considered: older plans predate the delivery-state
+    marker convention, so scanning further back would resurrect finished work.
+    """
+    plans = sorted((root / "docs" / "superpowers" / "plans").glob("*.md"), reverse=True)
+    if not plans:
+        return None
+    head = "\n".join(plans[0].read_text(errors="replace").splitlines()[:12])
+    return None if _PLAN_DONE_RE.search(head) else plans[0].name
+
+
+def latest_retrospective_watchouts(root: Path) -> tuple[str | None, list[str]]:
+    retros = sorted((root / "docs" / "operations" / "retrospectives").glob("*.md"), reverse=True)
+    if not retros:
+        return (None, [])
+    lines: list[str] = []
+    capturing = False
+    for line in retros[0].read_text(errors="replace").splitlines():
+        if _WATCHOUT_HEADING_RE.match(line):
+            capturing = True
+            continue
+        if capturing and line.startswith("#"):
+            break
+        if capturing and line.strip():
+            lines.append(line.strip())
+    return (retros[0].name, lines)
+
+
+def build_brief(root: Path) -> str:
+    """Compute the awareness brief from the tree (uncached)."""
+    branch = _git(root, "branch", "--show-current", check=False).strip() or "?"
+    dirty = len(_git_lines(root, "status", "--porcelain"))
+    if stamp_is_valid(root, "full"):
+        stamp = "full (valid)"
+    elif stamp_is_valid(root, "fast"):
+        stamp = "fast (valid; full needed to commit)"
+    else:
+        stamp = "none/stale"
+    lines = [
+        "REPO BRIEF (generated from the tree by gate.py brief):",
+        f"- branch {branch}, {dirty} dirty file(s), gate stamp {stamp}",
+    ]
+    commits = _git_lines(root, "log", "--oneline", "-5")
+    if commits:
+        lines.append("- recent commits: " + " | ".join(commits))
+    plan = open_plan(root)
+    lines.append(f"- open plan: docs/superpowers/plans/{plan}" if plan else "- open plan: none")
+    retro, watchouts = latest_retrospective_watchouts(root)
+    if retro:
+        joined = "; ".join(watchouts) if watchouts else "(no watch-outs section)"
+        lines.append(f"- last retrospective {retro}: {joined}")
+    adrs = adr_files(root)
+    latest = f" (latest {adrs[-1]})" if adrs else ""
+    lines.append(f"- ADRs: {len(adrs)}{latest}")
+    drift = adr_drift(root)
+    if drift:
+        lines.append(
+            f"- DRIFT: {', '.join(drift)} not referenced in CLAUDE.md/.claude/rules — fix the docs"
+        )
+    return "\n".join(lines)
+
+
+def repo_brief(root: Path, *, refresh: bool = False) -> str:
+    """The brief, cached at .claude/state/brief.json keyed by the current tree hash."""
+    tree = compute_tree_hash(root)
+    cache_path = _state_dir(root) / BRIEF_FILE
+    cached = read_json(cache_path)
+    if (
+        not refresh
+        and cached
+        and cached.get("tree_hash") == tree
+        and isinstance(cached.get("text"), str)
+    ):
+        return str(cached["text"])
+    text = build_brief(root)
+    write_json_atomic(cache_path, {"tree_hash": tree, "generated_at": _now(), "text": text})
+    return text
+
+
+def _public_symbols(path: Path) -> list[str]:
+    """Top-level public defs/classes (or ``__all__`` when declared); [] on syntax errors."""
+    try:
+        tree = ast.parse(path.read_text(errors="replace"))
+    except SyntaxError:
+        return []
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+        ):
+            try:
+                value = ast.literal_eval(node.value)
+            except ValueError:
+                break
+            return [str(v) for v in value] if isinstance(value, list | tuple) else []
+    names: list[str] = []
+    for node in tree.body:
+        if isinstance(
+            node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+        ) and not node.name.startswith("_"):
+            names.append(node.name)
+    return names
+
+
+def build_index(root: Path, *, cli: bool = True) -> dict[str, Any]:
+    """Repo index: packages -> modules -> public symbols, contracts, CLI tree, ADRs, figures."""
+    packages: dict[str, dict[str, list[str]]] = {}
+    for src in sorted([*root.glob("packages/*/src/*"), *root.glob("apps/*/src/*")]):
+        if not src.is_dir() or not (src / "__init__.py").exists() or "_vendor" in src.parts:
+            continue
+        modules: dict[str, list[str]] = {}
+        for py in sorted(src.rglob("*.py")):
+            if "_vendor" in py.parts:
+                continue
+            modules[str(py.relative_to(src))] = _public_symbols(py)
+        packages[src.name] = modules
+    contracts: list[str] = []
+    pyproject = root / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            data = tomllib.loads(pyproject.read_text())
+        except tomllib.TOMLDecodeError:
+            data = {}
+        for contract in data.get("tool", {}).get("importlinter", {}).get("contracts", []):
+            contracts.append(str(contract.get("name", "")))
+    figures: list[str] = []
+    catalog = root / "packages/alpha-research/src/alpha_research/figures/catalog.py"
+    if catalog.exists():
+        figures = re.findall(r'figure_id="([^"]+)"', catalog.read_text())
+    server = root / "apps/alpha-mcp/src/alpha_mcp/server.py"
+    mcp_tools = len(re.findall(r"@mcp\.tool", server.read_text())) if server.exists() else 0
+    cli_commands: dict[str, Any]
+    if not cli:
+        cli_commands = {"unavailable": "cli=False"}
+    else:
+        proc = subprocess.run(
+            ["uv", "run", "alpha", "info", "commands", "--json"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=300,
+        )
+        try:
+            cli_commands = json.loads(proc.stdout) if proc.returncode == 0 else {}
+        except json.JSONDecodeError:
+            cli_commands = {}
+        if not cli_commands:
+            cli_commands = {"unavailable": (proc.stderr or "alpha info commands failed")[-300:]}
+    return {
+        "tree_hash": compute_tree_hash(root),
+        "generated_at": _now(),
+        "packages": packages,
+        "import_linter_contracts": contracts,
+        "cli_commands": cli_commands,
+        "mcp_tool_count": mcp_tools,
+        "figure_ids": figures,
+        "adrs": adr_files(root),
+    }
+
+
+def write_index(root: Path, *, cli: bool = True) -> Path:
+    path = _state_dir(root) / INDEX_FILE
+    write_json_atomic(path, build_index(root, cli=cli))
+    return path
+
+
+# ---- feature plans (W4): a machine-checked front block in docs/superpowers/plans -----
+
+_PLAN_BLOCK_RE = re.compile(r"^```json[ \t]*\n(.*?)\n```", re.S | re.M)
+
+
+def plan_front_block(text: str) -> dict[str, Any] | None:
+    """The first fenced ```json block of a plan doc as a dict; None if absent/invalid JSON."""
+    match = _PLAN_BLOCK_RE.search(text)
+    if match is None:
+        return None
+    try:
+        data = json.loads(match.group(1))
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def plan_check(path: Path) -> tuple[bool, str]:
+    """Validate a plan doc's front block against ``FeaturePlan`` (pydantic required)."""
+    from harness_models import FeaturePlan
+    from pydantic import ValidationError
+
+    try:
+        text = path.read_text()
+    except OSError as exc:
+        return (False, f"cannot read {path}: {exc}")
+    block = plan_front_block(text)
+    if block is None:
+        return (False, f"{path.name}: no fenced ```json front block (or it is not a JSON object)")
+    try:
+        plan = FeaturePlan.model_validate(block)
+    except ValidationError as exc:
+        return (False, f"{path.name}: FeaturePlan invalid:\n{exc}")
+    done = sum(1 for s in plan.slices if s.status == "done")
+    return (
+        True,
+        f"{path.name}: FeaturePlan ok — {len(plan.slices)} slice(s), {done} done; "
+        f"tier impact {', '.join(plan.tier_impact)}; "
+        f"{len(plan.assumptions)} assumption(s), {len(plan.pre_mortem)} pre-mortem item(s)",
+    )
+
+
+def active_plan_scope(root: Path) -> tuple[str | None, list[str]]:
+    """(open plan name, declared file scope) read WITHOUT pydantic so hooks can use it.
+
+    Scope = the plan's ``files`` plus every slice's ``files``; empty when the open
+    plan has no front block, so the over-eager warn is only armed by explicit scope.
+    """
+    name = open_plan(root)
+    if name is None:
+        return (None, [])
+    block = plan_front_block((root / "docs" / "superpowers" / "plans" / name).read_text())
+    if block is None:
+        return (name, [])
+    scope: list[str] = []
+    slice_files = [f for sl in block.get("slices", []) for f in _slice_files(sl)]
+    for item in [*block.get("files", []), *slice_files]:
+        if isinstance(item, str) and item not in scope:
+            scope.append(item)
+    return (name, scope)
+
+
+def _slice_files(sl: Any) -> list[Any]:
+    return list(sl.get("files", [])) if isinstance(sl, dict) else []
+
+
+def in_plan_scope(rel: str, scope: list[str]) -> bool:
+    """A path is in scope when it equals, globs to, or lives under a declared entry."""
+    from fnmatch import fnmatch
+
+    return any(rel == p or fnmatch(rel, p) or rel.startswith(p.rstrip("/") + "/") for p in scope)
+
+
 HARNESS_TEST_GLOBS = (
     "tests/unit/test_claude_harness_*.py",
     "tests/unit/test_claude_md_relocation.py",
@@ -1084,13 +1382,19 @@ def main(argv: list[str] | None = None) -> int:
     audit_p.add_argument("--since", default=None)
     audit_p.add_argument("--kind", default=None)
     audit_p.add_argument("--verify", action="store_true")
+    brief_p = sub.add_parser("brief")
+    brief_p.add_argument("--refresh", action="store_true")
+    plan_p = sub.add_parser("plan-check")
+    plan_p.add_argument("plan", help="docs/superpowers/plans/<doc>.md with a ```json front block")
+    index_p = sub.add_parser("index")
+    index_p.add_argument("--no-cli", action="store_true")
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--json", action="store_true")
     sub.add_parser("selftest")
     args = parser.parse_args(argv)
 
     root = repo_root()
-    if args.command in ("attest", "override", "ack", "baseline"):
+    if args.command in ("attest", "override", "ack", "baseline", "plan-check"):
         _reexec_with_pydantic(root)
     if args.command in ("fast", "full"):
         return run_gate(root, args.command)
@@ -1157,6 +1461,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for item in events:
                 print(f"{item.get('ts')} {item.get('event')} {item.get('detail')}")
+        return 0
+    if args.command == "brief":
+        print(repo_brief(root, refresh=args.refresh))
+        return 0
+    if args.command == "plan-check":
+        ok, message = plan_check(Path(args.plan))
+        print(message, file=sys.stdout if ok else sys.stderr)
+        return 0 if ok else 1
+    if args.command == "index":
+        path = write_index(root, cli=not args.no_cli)
+        print(f"repo index written to {path.relative_to(root)}")
         return 0
     if args.command == "doctor":
         code, report = doctor(root)

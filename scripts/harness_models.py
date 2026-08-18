@@ -51,6 +51,7 @@ class SessionState(_Strict):
     stop_budget_exhausted: bool = False
     agent_acks_used: int = 0
     codex_calls: int = 0
+    over_eager: list[str] = []
 
 
 class QuantClaim(_Strict):

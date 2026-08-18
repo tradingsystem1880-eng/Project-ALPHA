@@ -341,6 +341,7 @@ _SESSION_DEFAULTS: dict[str, Any] = {
     "stop_budget_exhausted": False,
     "agent_acks_used": 0,
     "codex_calls": 0,
+    "over_eager": [],
 }
 
 
@@ -362,7 +363,19 @@ def record_edit(root: Path, session_id: str, rel_path: str, *, via_bash: bool = 
         state["edited_files"].append(rel_path)
     if via_bash and rel_path not in state["bash_writes"]:
         state["bash_writes"].append(rel_path)
+    if _over_eager(root, rel_path) and rel_path not in state["over_eager"]:
+        # W4 scope declaration: warn-only, audited; the retrospective counts them.
+        state["over_eager"].append(rel_path)
+        gate.append_audit(root, "over_eager_edit", rel_path, session_id)
     _save_session(root, state)
+
+
+def _over_eager(root: Path, rel_path: str) -> bool:
+    """A source edit outside the open plan's declared ``files`` scope (if it declares one)."""
+    if not _is_source_edit(rel_path):
+        return False
+    _, scope = gate.active_plan_scope(root)
+    return bool(scope) and not gate.in_plan_scope(rel_path, scope)
 
 
 def _record_stop_block(root: Path, session_id: str) -> int:
@@ -981,6 +994,12 @@ def _obligations(root: Path, state: dict[str, Any]) -> list[str]:
         lines.append(f"{len(failures)} tool failure(s) recorded this session (see retrospective)")
     if state.get("stop_budget_exhausted"):
         lines.append("STOP BUDGET EXHAUSTED earlier this session — work left unverified")
+    over_eager = state.get("over_eager", [])
+    if over_eager:
+        lines.append(
+            f"SCOPE WARNING: {len(over_eager)} edit(s) outside the open plan's declared files "
+            f"({', '.join(over_eager[:5])}) — justify in the plan or revert"
+        )
     return lines
 
 
@@ -993,7 +1012,16 @@ def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
     lines += _harness_brief()
     lines += _owner_warning(root)
     lines.append(KARPATHY_BLOCK)
+    lines.append(_repo_brief_or_reason(root))
     return (0, "\n".join(lines))
+
+
+def _repo_brief_or_reason(root: Path) -> str:
+    """The generated repo brief; awareness must never crash a context hook."""
+    try:
+        return gate.repo_brief(root)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        return f"REPO BRIEF unavailable: {exc!r} (run `gate.py brief --refresh`)"
 
 
 def hook_post_compact(payload: dict[str, Any], root: Path) -> HookResult:
@@ -1002,6 +1030,7 @@ def hook_post_compact(payload: dict[str, Any], root: Path) -> HookResult:
     lines += _harness_brief()
     lines += _owner_warning(root)
     lines.append(KARPATHY_BLOCK)
+    lines.append(_repo_brief_or_reason(root))
     edited = [p for p in state.get("edited_files", []) if isinstance(p, str)]
     if edited:
         lines.append("Files edited this session: " + ", ".join(edited[:30]))
