@@ -825,3 +825,183 @@ class TestPlanCheck:
         assert gate.in_plan_scope("apps/a/b.py", ["apps/*/b.py"])
         (plans / "2026-02-01-open.md").write_text("# Open plan without a block\n")
         assert gate.active_plan_scope(repo) == ("2026-02-01-open.md", [])
+
+
+class TestQuantRigorTooling:
+    """W5: mutation gate, semgrep, determinism double-run, raise-site coverage, on-touch steps."""
+
+    def _quant_module(self, repo: Path, name: str = "dsr", body: str = "X = 1\n") -> str:
+        rel = f"packages/alpha-validation/src/alpha_validation/{name}.py"
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(body)
+        return rel
+
+    def test_quant_source_modules_default_to_changed_tree(self, repo: Path) -> None:
+        rel = self._quant_module(repo)
+        (repo / "tests" / "oracles").mkdir(parents=True)
+        (repo / "tests" / "oracles" / "test_x.py").write_text("def test_x() -> None: ...\n")
+        assert gate.quant_source_modules(repo) == [rel]
+        assert gate.quant_source_modules(repo, ["packages/alpha-core/src/alpha_core/x.py"]) == []
+
+    def test_mutation_staging_layout_and_config(self, repo: Path) -> None:
+        rel = self._quant_module(repo)
+        (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
+        tests_dir = repo / "tests"
+        (tests_dir / "unit").mkdir(parents=True)
+        (tests_dir / "__init__.py").write_text("")
+        (tests_dir / "unit" / "test_dsr.py").write_text(
+            "import alpha_validation.dsr\nfrom tests.unit.helpers_dsr import fixture\n"
+        )
+        (tests_dir / "unit" / "helpers_dsr.py").write_text("fixture = 1\n")
+        (tests_dir / "unit" / "test_other.py").write_text("import gate\n")
+        (repo / "pyproject.toml").write_text('[tool.pytest.ini_options]\nmarkers = ["oracle: o"]\n')
+        staging = repo / ".claude" / "state" / "mutation"
+        only = gate.stage_mutation_tree(repo, [rel], staging)
+        assert only == ["src/alpha_validation/dsr.py"]
+        assert (staging / "src" / "alpha_validation" / "dsr.py").is_file()
+        assert (staging / rel).is_file()  # workspace layout mirrored for source-inspecting tests
+        assert (staging / "tests" / "unit" / "test_dsr.py").is_file()
+        assert (staging / "tests" / "unit" / "helpers_dsr.py").is_file()  # intra-tests import kept
+        assert not (staging / "tests" / "unit" / "test_other.py").exists()  # unrelated test dropped
+        cfg = (staging / "pyproject.toml").read_text()
+        assert 'only_mutate = ["src/alpha_validation/dsr.py"]' in cfg
+        assert 'also_copy = ["packages"]' in cfg
+        assert 'markers = ["oracle: o"]' in cfg
+        assert "use_git_change_detection = false" in cfg
+
+    def test_frontmatter_reads_yaml_block_lists(self) -> None:
+        text = '---\npaths:\n  - "packages/x/**"\n  - "apps/y/**"\nname: z\n---\nbody\n'
+        assert gate._frontmatter(text) == {
+            "paths": '["packages/x/**", "apps/y/**"]',
+            "name": "z",
+        }
+        assert gate._frontmatter("---\npaths: [a, b]\n---\n") == {"paths": "[a, b]"}
+
+    def test_staging_only_failures_become_deselect_and_ignore_args(self) -> None:
+        output = (
+            "FAILED tests/unit/test_theme_drift.py::test_css[bg] - FileNotFoundError: x.css\n"
+            "ERROR tests/unit/test_broken.py - ImportError\n"
+            "1 failed, 1 error in 0.1s\n"
+        )
+        assert gate.staging_only_failures(output) == [
+            "--deselect",
+            "tests/unit/test_theme_drift.py::test_css[bg]",
+            "--ignore",
+            "tests/unit/test_broken.py",
+        ]
+        assert gate.staging_only_failures("3 passed\n") == []
+
+    def test_mutation_verdict_thresholds(self, tmp_path: Path) -> None:
+        stats = {"killed": 155, "survived": 37, "total": 192, "skipped": 0}
+        assert gate.mutation_kill_rate(stats) == pytest.approx(155 / 192)
+        # no baseline: the 0.90 floor applies
+        assert gate.mutation_required("m.py", {}) == pytest.approx(gate.MUTATION_MIN_KILL)
+        # a module already below the floor must not regress below its recorded baseline
+        assert gate.mutation_required("m.py", {"m.py": 0.80}) == pytest.approx(0.80)
+        # a module above the floor is held to the floor, not to its own high-water mark
+        assert gate.mutation_required("m.py", {"m.py": 0.97}) == pytest.approx(0.90)
+
+    def test_mutate_reports_unavailable_when_runner_cannot_start(self, repo: Path) -> None:
+        rel = self._quant_module(repo)
+        (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
+        (repo / "tests").mkdir()
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            return (False, 0.0, "mutmut: command not found")
+
+        code, report = gate.mutate(repo, [rel], runner=runner)
+        assert code == 0  # tooling absence never blocks; it is reported loudly
+        assert report["modules"][rel]["status"].startswith("unavailable:")
+
+    def test_mutate_report_surfaces_unattributed_mutants_and_forwards_timeout(
+        self, repo: Path
+    ) -> None:
+        rel = self._quant_module(repo)
+        (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
+        (repo / "tests").mkdir()
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")
+        seen_timeouts: list[float] = []
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            seen_timeouts.append(kwargs["timeout"])
+            if cmd[-1] == "run":  # mutmut run: pretend it wrote its stats
+                stats = Path(kwargs["cwd"]) / "mutants" / "mutmut-cicd-stats.json"
+                stats.parent.mkdir(exist_ok=True)
+                cicd = {"killed": 1, "survived": 3, "total": 47, "no_tests": 42, "timeout": 1}
+                stats.write_text(json.dumps(cicd))
+            return (True, 1.0, "")
+
+        code, report = gate.mutate(repo, [rel], runner=runner, timeout=5400.0)
+        entry = report["modules"][rel]
+        assert code == 1 and entry["status"] == "fail"
+        # module-scope mutants mutmut cannot attribute are visible, and NOT credited as kills
+        assert entry["no_tests"] == 42 and entry["timeout"] == 1
+        assert entry["kill_rate"] == round(1 / 47, 4)
+        assert 5400.0 in seen_timeouts
+
+    def test_semgrep_command_and_scope(self, repo: Path) -> None:
+        for rel in ("packages/x.py", "docs/a.md", "tests/t.py"):
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (repo / rel).write_text("")
+        cmd = gate.semgrep_command(repo, ["packages/x.py", "docs/a.md", "tests/t.py", "gone.py"])
+        assert cmd[:2] == ["uvx", "semgrep"] and "--config" in cmd and ".semgrep/alpha.yml" in cmd
+        assert cmd[-2:] == ["packages/x.py", "tests/t.py"]  # only python targets
+        assert gate.semgrep_command(repo, []) == []
+
+    def test_raise_sites_are_found_by_ast(self, tmp_path: Path) -> None:
+        mod = tmp_path / "m.py"
+        mod.write_text(
+            "def f(x):\n    if x:\n        raise ValueError('a')\n    return 1\n\nraise SystemExit"
+        )
+        assert gate.raise_sites(mod) == [3, 6]
+
+    def test_uncovered_raise_sites_from_coverage_json(self, repo: Path) -> None:
+        body = "def f(x):\n    if x:\n        raise ValueError\n    return 1\n"
+        rel = self._quant_module(repo, body=body)
+        cov = {"files": {rel: {"missing_lines": [3]}}}
+        (repo / "cov.json").write_text(json.dumps(cov))
+        assert gate.uncovered_raise_sites(repo, repo / "cov.json", [rel]) == [f"{rel}:3"]
+        cov = {"files": {rel: {"missing_lines": []}}}
+        (repo / "cov.json").write_text(json.dumps(cov))
+        assert gate.uncovered_raise_sites(repo, repo / "cov.json", [rel]) == []
+
+    def test_determinism_runs_twice_under_perturbed_env(self, repo: Path) -> None:
+        (repo / "tests" / "integration").mkdir(parents=True)
+        (repo / "tests" / "integration" / "test_figure_determinism.py").write_text("")
+        seen: list[dict[str, str]] = []
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            env = kwargs.get("env") or {}
+            seen.append({k: env[k] for k in ("PYTHONHASHSEED", "TZ", "OMP_NUM_THREADS")})
+            assert cmd[-1].endswith("test_figure_determinism.py")
+            return (True, 0.1, "")
+
+        ok, detail = gate.determinism(repo, runner=runner)
+        assert ok and "2 passes" in detail
+        assert len(seen) == 2 and seen[0]["PYTHONHASHSEED"] != seen[1]["PYTHONHASHSEED"]
+        assert seen[0]["TZ"] != seen[1]["TZ"]
+        assert {s["OMP_NUM_THREADS"] for s in seen} == {"1"}
+
+    def test_determinism_reports_which_pass_failed(self, repo: Path) -> None:
+        (repo / "tests" / "unit").mkdir(parents=True)
+        (repo / "tests" / "unit" / "test_content_identity_goldens.py").write_text("")
+        calls = {"n": 0}
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            calls["n"] += 1
+            return (calls["n"] == 1, 0.1, "hash mismatch")
+
+        ok, detail = gate.determinism(repo, runner=runner)
+        assert not ok and "pass 2" in detail
+
+    def test_full_gate_adds_on_touch_steps_only_when_quant_source_changed(self, repo: Path) -> None:
+        names = [name for name, _ in gate.gate_steps("full", repo)]
+        assert "slow oracles" not in names and "mutation gate" not in names
+        self._quant_module(repo)
+        names = [name for name, _ in gate.gate_steps("full", repo)]
+        assert "slow oracles" in names and "mutation gate" in names
+        assert "semgrep" not in [name for name, _ in gate.gate_steps("fast", repo)]
+        (repo / ".semgrep").mkdir()
+        (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
+        assert "semgrep" in [name for name, _ in gate.gate_steps("fast", repo)]

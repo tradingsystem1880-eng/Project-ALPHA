@@ -1,0 +1,50 @@
+name: Nightly quant rigor
+
+# The slow half of the W5 quant-rigor layer: what `gate.py full` runs only on-touch (slow
+# oracles, mutation gate) plus the whole-repo sweeps that are informational per commit
+# (semgrep over every file, determinism double-run, raise-site coverage). Nothing here writes
+# back to the repo: the mutation report is an artifact for the owner to fold into
+# `.claude/mutation-baseline.json` with an acked `gate.py mutate --all --write-baseline`.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  harness-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --locked
+      - name: Slow oracles (known-truth calibration, differential references)
+        run: uv run pytest -q -p no:cacheprovider -m slow_oracle
+      - name: Semgrep (whole repo)
+        run: uv run python scripts/gate.py semgrep
+      - name: Determinism double-run (perturbed PYTHONHASHSEED / TZ, fresh processes)
+        run: uv run python scripts/gate.py determinism
+      # 2026-08-19 baseline: 177 of 576 raise sites unreached — report-only until that debt is
+      # paid down; switch to `raise-cov --fail` once the list is empty.
+      - name: Raise-site coverage (lists unexercised raise sites in quant modules)
+        run: uv run python scripts/gate.py raise-cov
+      - name: Mutation gate over every quant module (report is an artifact; baseline is owner-written)
+        run: uv run python scripts/gate.py mutate --all --timeout 5400 --json > mutation-report.json || echo "mutation gate reported failures (see artifact)"
+      - name: Show mutation report
+        run: cat mutation-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: mutation-report.json

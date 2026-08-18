@@ -1,0 +1,141 @@
+rules:
+  # ---- fail-loud discipline (CLAUDE.md "No empty except") --------------------------------
+  - id: alpha-bare-except
+    languages: [python]
+    severity: ERROR
+    message: "Bare `except:` swallows everything, including KeyboardInterrupt. Catch a typed error and re-raise/wrap as AlphaError."
+    paths:
+      include: ["/packages/", "/apps/"]
+    pattern: |
+      try:
+        ...
+      except:
+        ...
+
+  - id: alpha-except-pass
+    languages: [python]
+    severity: ERROR
+    message: "`except <X>: pass` is a silent failure. Raise/propagate a typed AlphaError with context, or re-raise."
+    paths:
+      include: ["/packages/", "/apps/"]
+    pattern-either:
+      - pattern: |
+          try:
+            ...
+          except $E:
+            pass
+      - pattern: |
+          try:
+            ...
+          except $E as $N:
+            pass
+      - pattern: |
+          try:
+            ...
+          except:
+            pass
+
+  # ---- look-ahead surface ------------------------------------------------------------------
+  - id: alpha-negative-shift
+    languages: [python]
+    severity: ERROR
+    message: "Negative shift reads the FUTURE row into the present (look-ahead). Only trailing windows are allowed in packages."
+    paths:
+      include: ["/packages/"]
+    pattern-either:
+      - pattern: $X.shift(-$N)
+      - pattern: $X.shift(n=-$N)
+
+  # ---- determinism (spec §11.4 / ADR-0013): no wall clock, no unseeded RNG in the platform ---
+  - id: alpha-wall-clock-in-packages
+    languages: [python]
+    severity: WARNING
+    message: "Wall-clock reads make outputs non-reproducible. Timestamps belong in the CLI/control plane, never in a run's identity or artifacts."
+    paths:
+      include: ["/packages/"]
+      # network adapters stamp fetch receipts with the wall clock by design (never in run identity)
+      exclude: ["/packages/alpha-data/src/alpha_data/adapters/"]
+    pattern-either:
+      - pattern: datetime.now(...)
+      - pattern: datetime.datetime.now(...)
+      - pattern: datetime.utcnow()
+      - pattern: datetime.datetime.utcnow()
+      - pattern: time.time()
+
+  - id: alpha-unseeded-rng
+    languages: [python]
+    severity: ERROR
+    message: "Unseeded RNG. Every seed derives from AlphaSettings.random_seed / a semantic namespace; use `np.random.default_rng(seed)`."
+    paths:
+      include: ["/packages/", "/apps/"]
+    pattern-either:
+      - pattern: np.random.default_rng()
+      - pattern: numpy.random.default_rng()
+      - pattern: np.random.seed(...)
+      - pattern: np.random.rand(...)
+      - pattern: np.random.randn(...)
+      - pattern: np.random.random(...)
+      - pattern: np.random.normal(...)
+      - pattern: np.random.choice(...)
+      - pattern: np.random.shuffle(...)
+      - pattern: np.random.permutation(...)
+      - pattern: random.random()
+      - pattern: random.randint(...)
+      - pattern: random.choice(...)
+      - pattern: random.shuffle(...)
+      - pattern: random.uniform(...)
+      - pattern: random.gauss(...)
+
+  # ---- sanctioned pandas edges only --------------------------------------------------------
+  - id: alpha-pandas-outside-sanctioned-edges
+    languages: [python]
+    severity: ERROR
+    message: "pandas is sanctioned ONLY at the yfinance adapter, the tear-sheet renderer, and the Kronos facade. Polars everywhere else."
+    paths:
+      include: ["/packages/", "/apps/"]
+      exclude:
+        - "/packages/alpha-data/src/alpha_data/adapters/yfinance_adapter.py"
+        - "/packages/alpha-validation/src/alpha_validation/tearsheet.py"
+        - "/packages/alpha-forecast/src/alpha_forecast/kronos.py"
+        - "/packages/alpha-forecast/src/alpha_forecast/_vendor/"
+    pattern-either:
+      - pattern: import pandas
+      - pattern: import pandas as $A
+      - pattern: from pandas import $X
+
+  # ---- exact float comparison in statistical code -----------------------------------------
+  - id: alpha-float-literal-equality
+    languages: [python]
+    severity: WARNING
+    message: "Exact equality against a non-trivial float literal is fragile; compare with a tolerance (math.isclose / np.isclose)."
+    paths:
+      include: ["/packages/alpha-validation/", "/packages/alpha-research/"]
+    patterns:
+      - pattern-either:
+          - pattern: $X == $F
+          - pattern: $X != $F
+      - metavariable-regex:
+          metavariable: $F
+          # a non-trivial float: has a non-zero fractional digit (so 0.0 / 1.0 endpoint checks pass)
+          regex: '^-?(\d*\.\d*[1-9]\d*|\d+\.\d*e[-+]?\d+)$'
+
+  # ---- suppression hygiene -----------------------------------------------------------------
+  - id: alpha-type-ignore-without-code
+    languages: [python]
+    severity: ERROR
+    message: "`# type: ignore` must name the error code (e.g. `# type: ignore[misc]`)."
+    paths:
+      include: ["/packages/", "/apps/", "/scripts/", "/tests/"]
+    # a real suppression comment: whitespace before `#`, nothing but EOL/another comment after
+    pattern-regex: '(?<=\s)#\s*type:\s*ignore(?=\s*(#|$))'
+
+  - id: alpha-skip-without-reason
+    languages: [python]
+    severity: ERROR
+    message: "A skipped test must say why: `pytest.mark.skip(reason=...)` / `pytest.skip(\"...\")`."
+    paths:
+      include: ["/tests/"]
+    pattern-either:
+      - pattern: pytest.mark.skip
+      - pattern: pytest.mark.skip()
+      - pattern: pytest.skip()

@@ -1,0 +1,6 @@
+# Project ALPHA overrides semgrep's default ignore list (which silently skips tests/).
+.venv/
+node_modules/
+mutants/
+_vendor/
+.claude/

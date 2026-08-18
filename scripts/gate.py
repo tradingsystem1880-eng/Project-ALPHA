@@ -25,6 +25,10 @@ CLI:
     python3 scripts/gate.py plan-check PLAN.md # validate a plan's ```json FeaturePlan front block
     python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
     python3 scripts/gate.py selftest           # replay the harness test-suite
+    python3 scripts/gate.py mutate [MODULES|--all] [--json --write-baseline REASON]  # mutmut gate
+    python3 scripts/gate.py semgrep [--changed] # .semgrep/alpha.yml banned constructs
+    python3 scripts/gate.py determinism        # byte-stability tests twice under perturbed env
+    python3 scripts/gate.py raise-cov [--fail] # `raise` lines in quant modules no test reached
 """
 
 from __future__ import annotations
@@ -101,6 +105,7 @@ _PROTECTED_EXACT = frozenset(
         ".claude/settings.json",
         ".claude/statusline.py",
         ".claude/harness-baseline.json",
+        ".claude/mutation-baseline.json",
         ".mcp.json",
         ".semgrep/alpha.yml",
         "CLAUDE.md",
@@ -821,15 +826,17 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
         ("mypy harness", ["uv", "run", "mypy", *harness_files]),
         ("harness lint", [sys.executable, "scripts/gate.py", "lint-harness"]),
     ]
+    if (base / SEMGREP_RULES).is_file():
+        fast.append(("semgrep", [sys.executable, "scripts/gate.py", "semgrep", "--changed"]))
     if tier == "fast":
         return fast
-    return [
+    full = [
         ("uv lock", ["uv", "lock", "--check"]),
         ("uv sync", ["uv", "sync", "--locked"]),
         *fast,
         (
             "pytest + coverage",
-            ["uv", "run", "pytest", "-q", "-m", "not network", "--cov"],
+            ["uv", "run", "pytest", "-q", "-m", "not network and not slow_oracle", "--cov"],
         ),
         (
             "openapi freshness",
@@ -838,6 +845,12 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
         ("build wheels", ["uv", "build", "--all-packages"]),
         ("wheel smoke", ["bash", "-c", _WHEEL_SMOKE_SH]),
     ]
+    # On-touch of quant-tier SOURCE (not tests): the slow known-truth oracles and the mutation
+    # gate join the full gate, so a statistical edit cannot be stamped on fast tests alone.
+    if root is not None and quant_source_modules(root):
+        full.append(("slow oracles", ["uv", "run", "pytest", "-q", "-m", "slow_oracle"]))
+        full.append(("mutation gate", [sys.executable, "scripts/gate.py", "mutate"]))
+    return full
 
 
 def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
@@ -873,10 +886,16 @@ def _frontmatter(text: str) -> dict[str, str]:
     if len(parts) < 3:
         return {}
     fields: dict[str, str] = {}
+    key = ""
     for line in parts[1].splitlines():
         if ":" in line and not line.startswith((" ", "\t")):
             key, value = line.split(":", 1)
-            fields[key.strip()] = value.strip()
+            key = key.strip()
+            fields[key] = value.strip()
+        elif key and line.lstrip().startswith("- "):  # YAML block list → inline "[a, b]"
+            item = line.lstrip()[2:].strip()
+            inner = fields[key].strip("[]")
+            fields[key] = f"[{inner}, {item}]" if inner else f"[{item}]"
     return fields
 
 
@@ -1334,6 +1353,379 @@ def selftest(root: Path) -> int:
 
 
 # ---------------------------------------------------------------------------
+# quant-rigor tooling (W5): mutation gate, semgrep, determinism double-run, raise-site coverage
+
+SEMGREP_RULES = Path(".semgrep") / "alpha.yml"
+MUTATION_BASELINE_FILE = Path(".claude") / "mutation-baseline.json"
+MUTATION_MIN_KILL = 0.90
+MUTATION_TOLERANCE = 0.005  # a mutant flipping on timing must not flap the verdict
+_MUTATION_TEST_DIRS = ("unit", "oracles", "bias_guards")
+_DETERMINISM_TEST_GLOBS = (
+    "tests/**/test_*determinism*.py",
+    "tests/**/test_*identity*.py",
+    "tests/**/test_*golden*.py",
+)
+_DETERMINISM_ENVS = (
+    {"PYTHONHASHSEED": "0", "TZ": "UTC", "OMP_NUM_THREADS": "1"},
+    {"PYTHONHASHSEED": "31337", "TZ": "Pacific/Kiritimati", "OMP_NUM_THREADS": "1"},
+)
+_QUANT_SRC_PREFIXES = ("packages/alpha-validation/src/", "packages/alpha-research/src/")
+
+EnvRunner = Callable[..., tuple[bool, float, str]]
+
+
+def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+    started = time.monotonic()
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, **kwargs)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return (False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
+    output = (result.stdout + result.stderr).strip()
+    return (result.returncode == 0, time.monotonic() - started, output)
+
+
+def quant_source_modules(root: Path, paths: list[str] | None = None) -> list[str]:
+    """Quant-tier SOURCE modules (default: those changed in the working tree). Tests excluded."""
+    candidates = paths if paths is not None else scoped_changed_paths(root, matches_quant)
+    return sorted(
+        p
+        for p in candidates
+        if matches_quant(p)
+        and "/src/" in p
+        and not p.rsplit("/", 1)[-1].startswith("__")
+        and (root / p).is_file()
+    )
+
+
+def all_quant_source_modules(root: Path) -> list[str]:
+    files = [
+        str(p.relative_to(root)).replace(os.sep, "/")
+        for prefix in _QUANT_SRC_PREFIXES
+        for p in sorted((root / prefix).rglob("*.py"))
+        if (root / prefix).is_dir()
+    ]
+    return quant_source_modules(root, files)
+
+
+def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[str]:
+    """Copy each module's package + the tests that mention it into ``staging`` for mutmut.
+
+    mutmut inserts only ``mutants/{.,src,source}`` into ``sys.path``, so the uv-workspace
+    layout (``packages/<pkg>/src/<pkg>``) is flattened to ``src/<pkg>``. Test selection is
+    textual on purpose (a test that never names the package cannot kill its mutants).
+    """
+    if staging.exists():
+        shutil.rmtree(staging)
+    (staging / "src").mkdir(parents=True)
+    only: list[str] = []
+    packages: set[str] = set()
+    for rel in modules:
+        pkg_root, _, inner = rel.partition("/src/")
+        pkg = inner.split("/")[0]
+        packages.add(pkg)
+        if not (staging / "src" / pkg).exists():
+            shutil.copytree(
+                root / pkg_root / "src" / pkg,
+                staging / "src" / pkg,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+            # tests that inspect source by repo-relative path (e.g. the figure renderer's
+            # "never twinx" AST scan) need the workspace layout mirrored too (unmutated copy)
+            shutil.copytree(
+                root / pkg_root / "src" / pkg,
+                staging / pkg_root / "src" / pkg,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        only.append(f"src/{inner}")
+    tests_root = root / "tests"
+    (staging / "tests").mkdir()
+    for top in tests_root.glob("*.py"):
+        shutil.copy2(top, staging / "tests" / top.name)
+    if (tests_root / "fixtures").is_dir():
+        shutil.copytree(tests_root / "fixtures", staging / "tests" / "fixtures")
+    candidates: dict[Path, str] = {}
+    for name in _MUTATION_TEST_DIRS:
+        source_dir = tests_root / name
+        if source_dir.is_dir():
+            for path in sorted(source_dir.rglob("*.py")):
+                candidates[path.relative_to(tests_root)] = path.read_text(errors="replace")
+    keep: set[Path] = {
+        rel_path
+        for rel_path, text in candidates.items()
+        if rel_path.name == "__init__.py"
+        or "_reference" in rel_path.parts
+        or any(
+            re.search(rf"^\s*(from|import)\s+{re.escape(pkg)}\b", text, re.M) for pkg in packages
+        )
+    }
+    # close over intra-``tests`` imports (``from tests.unit.x import helper``) so a kept test
+    # never fails on a sibling module that the textual selection left behind
+    frontier = list(keep)
+    while frontier:
+        text = candidates[frontier.pop()]
+        for dotted in re.findall(r"^\s*from\s+tests\.([\w.]+)\s+import", text, re.M):
+            sibling = Path(*dotted.split(".")).with_suffix(".py")
+            if sibling in candidates and sibling not in keep:
+                keep.add(sibling)
+                frontier.append(sibling)
+    for rel_path in sorted(keep):
+        target = staging / "tests" / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(tests_root / rel_path, target)
+    markers: list[str] = []
+    try:
+        pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+        markers = list(pyproject["tool"]["pytest"]["ini_options"].get("markers", []))
+    except (OSError, KeyError, tomllib.TOMLDecodeError):
+        markers = []
+    (staging / "pyproject.toml").write_text(
+        "[tool.mutmut]\n"
+        f"source_paths = {json.dumps([f'src/{pkg}' for pkg in sorted(packages)])}\n"
+        f"only_mutate = {json.dumps(only)}\n"
+        'also_copy = ["packages"]\n'
+        'pytest_add_cli_args_test_selection = ["tests"]\n'
+        f"pytest_add_cli_args = {json.dumps(_MUTATION_PYTEST_ARGS)}\n"
+        "use_git_change_detection = false\n"
+        "track_dependencies = false\n"
+        "\n[tool.pytest.ini_options]\n"
+        'addopts = "--strict-markers --import-mode=importlib"\n'
+        'pythonpath = [".", "src"]\n'
+        f"markers = {json.dumps(markers)}\n"
+    )
+    return only
+
+
+_MUTATION_PYTEST_ARGS = ["-p", "no:cacheprovider", "-q", "-x"]
+
+
+def staging_only_failures(output: str) -> list[str]:
+    """pytest ``-rfE`` short-summary lines → deselect/ignore args for tests that fail in staging.
+
+    A test that reads the repo by relative path (a stylesheet, a docs file, ``.claude/``) fails
+    in the flattened mutation tree through no fault of the module under test; excluding it is
+    conservative (fewer killers) and is recorded in the report, never silent.
+    """
+    args: list[str] = []
+    for line in output.splitlines():
+        if line.startswith("FAILED "):
+            args += ["--deselect", line[len("FAILED ") :].split(" - ", 1)[0].strip()]
+        elif line.startswith("ERROR "):
+            args += ["--ignore", line[len("ERROR ") :].split(" - ", 1)[0].split("::", 1)[0]]
+    return args
+
+
+def mutation_kill_rate(stats: dict[str, Any]) -> float:
+    denominator = int(stats.get("total", 0)) - int(stats.get("skipped", 0))
+    return int(stats.get("killed", 0)) / denominator if denominator > 0 else 0.0
+
+
+def mutation_required(module: str, baseline: dict[str, float]) -> float:
+    """Kill-rate floor: 0.90, or the recorded (lower) baseline so a legacy module cannot regress."""
+    recorded = baseline.get(module)
+    return MUTATION_MIN_KILL if recorded is None else min(MUTATION_MIN_KILL, float(recorded))
+
+
+def mutate(
+    root: Path,
+    modules: list[str] | None = None,
+    *,
+    runner: EnvRunner | None = None,
+    timeout: float = 1800.0,
+) -> tuple[int, dict[str, Any]]:
+    """Mutation-test each quant module in isolation; block on a kill-rate below its floor.
+
+    Tooling absence (no ``uvx``/network for mutmut, staged clean-run failure) is reported as
+    ``unavailable:<reason>`` and never blocks — but it is printed and audited, never silent.
+    """
+    run = runner or _env_runner
+    targets = quant_source_modules(root) if modules is None else quant_source_modules(root, modules)
+    baseline_raw = read_json(root / MUTATION_BASELINE_FILE) or {}
+    baseline = {k: float(v) for k, v in baseline_raw.get("kill_rates", {}).items()}
+    report: dict[str, Any] = {"modules": {}, "min_kill": MUTATION_MIN_KILL}
+    blocking = False
+    for rel in targets:
+        staging = _state_dir(root) / "mutation" / Path(rel).stem
+        stage_mutation_tree(root, [rel], staging)
+        entry: dict[str, Any] = {}
+        # staged clean run: exclude tests that fail only because of the flattened layout
+        preflight = ["uv", "run", "--project", str(root), "pytest", "-q", "-rfE"]
+        preflight += ["-p", "no:cacheprovider", "--continue-on-collection-errors", "tests"]
+        pre_ok, pre_seconds, pre_out = run(preflight, cwd=staging, timeout=timeout)
+        excluded = [] if pre_ok else staging_only_failures(pre_out)
+        if excluded:
+            entry["excluded_tests"] = sorted({t.split("[", 1)[0] for t in excluded[1::2]})
+            pyproject_path = staging / "pyproject.toml"
+            pyproject_path.write_text(
+                pyproject_path.read_text().replace(
+                    json.dumps(_MUTATION_PYTEST_ARGS),
+                    json.dumps([*_MUTATION_PYTEST_ARGS, *excluded]),
+                )
+            )
+        mutmut = ["uv", "run", "--project", str(root), "--with", "mutmut", "mutmut"]
+        ok, seconds, output = run([*mutmut, "run"], cwd=staging, timeout=timeout)
+        entry["seconds"] = round(seconds + pre_seconds, 1)
+        stats_path = staging / "mutants" / "mutmut-cicd-stats.json"
+        if ok:
+            run([*mutmut, "export-cicd-stats"], cwd=staging, timeout=120)
+        stats = read_json(stats_path) if ok else None
+        if stats is None:
+            entry["status"] = f"unavailable:{output[-300:] or 'mutmut produced no stats'}"
+        else:
+            rate = mutation_kill_rate(stats)
+            required = mutation_required(rel, baseline)
+            entry.update(
+                {
+                    "killed": stats.get("killed"),
+                    "survived": stats.get("survived"),
+                    "total": stats.get("total"),
+                    # module-scope mutants (constants, catalog data) that mutmut's function
+                    # tracer cannot attribute to a test; counted as NOT killed (conservative)
+                    "no_tests": stats.get("no_tests"),
+                    "timeout": stats.get("timeout"),
+                    "kill_rate": round(rate, 4),
+                    "required": round(required, 4),
+                }
+            )
+            if rate + MUTATION_TOLERANCE < required:
+                entry["status"] = "fail"
+                blocking = True
+            else:
+                entry["status"] = "pass"
+        report["modules"][rel] = entry
+        append_audit(root, "mutation_gate", f"module={rel} status={entry['status']}")
+    return (1 if blocking else 0), report
+
+
+def write_mutation_baseline(root: Path, report: dict[str, Any], *, reason: str, by: str) -> None:
+    current = read_json(root / MUTATION_BASELINE_FILE) or {}
+    rates = dict(current.get("kill_rates", {}))
+    for rel, entry in report.get("modules", {}).items():
+        if "kill_rate" in entry:
+            rates[rel] = entry["kill_rate"]
+    write_json_atomic(
+        root / MUTATION_BASELINE_FILE,
+        {"schema_version": 1, "kill_rates": dict(sorted(rates.items()))},
+    )
+    append_audit(root, "mutation_baseline_written", f"by={by} reason={reason!r}")
+
+
+def semgrep_command(root: Path, paths: list[str]) -> list[str]:
+    """``uvx semgrep`` over the given python paths (empty list ⇒ nothing to scan ⇒ ``[]``)."""
+    targets = sorted(p for p in paths if p.endswith(".py") and (root / p).is_file())
+    if not targets:
+        return []
+    return [
+        "uvx",
+        "semgrep",
+        "--config",
+        str(SEMGREP_RULES),
+        "--metrics=off",
+        "--quiet",
+        "--error",
+        *targets,
+    ]
+
+
+def semgrep(root: Path, *, changed_only: bool, runner: EnvRunner | None = None) -> int:
+    run = runner or _env_runner
+    if changed_only:
+        paths = scoped_changed_paths(root, lambda p: p.endswith(".py"))
+        cmd = semgrep_command(root, paths)
+    else:
+        cmd = semgrep_command(root, ["packages", "apps", "scripts", "tests"]) or [
+            "uvx",
+            "semgrep",
+            "--config",
+            str(SEMGREP_RULES),
+            "--metrics=off",
+            "--quiet",
+            "--error",
+            "packages",
+            "apps",
+            "scripts",
+            "tests",
+        ]
+    if not cmd:
+        print("[semgrep] no python changes to scan")
+        return 0
+    ok, seconds, output = run(cmd, cwd=root, timeout=600)
+    if ok:
+        print(f"[semgrep] ok ({seconds:.1f}s)")
+        return 0
+    if "command not found" in output or "No such file" in output or "OSError" in output:
+        print(f"[semgrep] unavailable: {output[-200:]}", file=sys.stderr)
+        append_audit(root, "semgrep_unavailable", output[-200:])
+        return 0
+    print(output[-4000:], file=sys.stderr)
+    return 1
+
+
+def raise_sites(path: Path) -> list[int]:
+    """Line numbers of every ``raise`` statement in a module (the fail-loud surface)."""
+    tree = ast.parse(path.read_text(errors="replace"))
+    return sorted(node.lineno for node in ast.walk(tree) if isinstance(node, ast.Raise))
+
+
+def uncovered_raise_sites(root: Path, coverage_json: Path, modules: list[str]) -> list[str]:
+    data = read_json(coverage_json) or {}
+    files = data.get("files", {})
+    out: list[str] = []
+    for rel in modules:
+        entry = files.get(rel) or files.get(str(root / rel)) or {}
+        missing = set(entry.get("missing_lines", []))
+        out.extend(f"{rel}:{ln}" for ln in raise_sites(root / rel) if ln in missing)
+    return out
+
+
+def raise_cov(root: Path, *, runner: EnvRunner | None = None) -> tuple[list[str], int]:
+    """Run the quant test tiers with branch coverage; list ``raise`` lines no test reached."""
+    run = runner or _env_runner
+    modules = all_quant_source_modules(root)
+    cov_json = _state_dir(root) / "raise-cov.json"
+    cov_json.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "uv", "run", "pytest", "-q", "-p", "no:cacheprovider",
+        "-m", "not network and not slow_oracle",
+        "--cov=alpha_validation", "--cov=alpha_research", "--cov-branch",
+        f"--cov-report=json:{cov_json}", "--cov-fail-under=0",
+        "tests/unit", "tests/oracles", "tests/bias_guards",
+    ]  # fmt: skip
+    ok, _, output = run(cmd, cwd=root, timeout=3600)
+    if not ok:
+        print(output[-4000:], file=sys.stderr)
+        return (["<test run failed>"], 0)
+    total = sum(len(raise_sites(root / rel)) for rel in modules)
+    return uncovered_raise_sites(root, cov_json, modules), total
+
+
+def determinism(root: Path, *, runner: EnvRunner | None = None) -> tuple[bool, str]:
+    """Run the byte-stability / identity / golden tests twice in fresh processes.
+
+    Each pass perturbs ``PYTHONHASHSEED``, ``TZ`` and pins ``OMP_NUM_THREADS=1``; the tests
+    themselves compare artifacts against committed goldens, so two green passes under different
+    process environments is the cross-process determinism evidence.
+    """
+    run = runner or _env_runner
+    files: list[str] = []
+    for pattern in _DETERMINISM_TEST_GLOBS:
+        files.extend(str(p.relative_to(root)) for p in sorted(root.glob(pattern)))
+    files = sorted(set(files))
+    if not files:
+        return (False, "no determinism tests found")
+    for i, overrides in enumerate(_DETERMINISM_ENVS, start=1):
+        env = {**os.environ, **overrides}
+        ok, seconds, output = run(
+            ["uv", "run", "pytest", "-q", "-p", "no:cacheprovider", *files],
+            cwd=root,
+            env=env,
+            timeout=3600,
+        )
+        if not ok:
+            return (False, f"pass {i} failed under {overrides}: {output[-1500:]}")
+    return (True, f"2 passes green over {len(files)} file(s) under perturbed env")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 
 
@@ -1391,6 +1783,17 @@ def main(argv: list[str] | None = None) -> int:
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--json", action="store_true")
     sub.add_parser("selftest")
+    mutate_p = sub.add_parser("mutate")
+    mutate_p.add_argument("modules", nargs="*", help="quant modules (default: changed in tree)")
+    mutate_p.add_argument("--all", action="store_true", help="every quant-tier source module")
+    mutate_p.add_argument("--json", action="store_true")
+    mutate_p.add_argument("--write-baseline", default=None, metavar="REASON")
+    mutate_p.add_argument("--timeout", type=float, default=1800.0, help="seconds per module")
+    semgrep_p = sub.add_parser("semgrep")
+    semgrep_p.add_argument("--changed", action="store_true", help="only changed .py files")
+    sub.add_parser("determinism")
+    raise_p = sub.add_parser("raise-cov")
+    raise_p.add_argument("--fail", action="store_true", help="exit 1 on any uncovered raise")
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -1484,6 +1887,38 @@ def main(argv: list[str] | None = None) -> int:
         return code
     if args.command == "selftest":
         return selftest(root)
+    if args.command == "mutate":
+        modules = all_quant_source_modules(root) if args.all else (args.modules or None)
+        code, report = mutate(root, modules, timeout=args.timeout)
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            for rel, entry in report["modules"].items():
+                print(f"[mutate] {entry['status']:<8} {rel} {entry}")
+            if not report["modules"]:
+                print("[mutate] no quant-tier source modules to mutate")
+        if args.write_baseline is not None:
+            allowed, who = authorize_escape(root, kind="baseline")
+            if not allowed and consume_ack(root, path=str(MUTATION_BASELINE_FILE)) is None:
+                print(f"mutation baseline refused: {who}", file=sys.stderr)
+                return 1
+            write_mutation_baseline(
+                root, report, reason=args.write_baseline, by=who if allowed else "ack"
+            )
+            print(f"mutation baseline written at {MUTATION_BASELINE_FILE} (loudly audited).")
+        return code
+    if args.command == "semgrep":
+        return semgrep(root, changed_only=args.changed)
+    if args.command == "determinism":
+        ok, detail = determinism(root)
+        print(f"[determinism] {'ok' if ok else 'FAIL'} {detail}")
+        return 0 if ok else 1
+    if args.command == "raise-cov":
+        uncovered, total = raise_cov(root)
+        for site in uncovered:
+            print(f"[raise-cov] uncovered {site}")
+        print(f"[raise-cov] {len(uncovered)} of {total} raise sites in quant modules unreached")
+        return 1 if (args.fail and uncovered) else 0
     return 2  # pragma: no cover - argparse enforces choices
 
 
