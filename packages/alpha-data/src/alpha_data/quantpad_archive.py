@@ -23,7 +23,7 @@ from alpha_core import DataError
 from alpha_data.crypto.storage import Capacity, macos_volume_uuid
 
 _SYMBOL: Final = re.compile(r"^[A-Za-z0-9._:-]{1,80}$")
-_ENDPOINTS: Final = frozenset({"bars", "ticks", "coverage"})
+_ENDPOINTS: Final = frozenset({"bars", "ticks", "coverage", "universe"})
 _TICK_SCHEMAS: Final = frozenset(
     {
         "trades",
@@ -69,6 +69,8 @@ class QuantPadArchiveRequestV1:
     schema: str | None = None
     compression: str = "none"
     roll_adjust: str = "none"
+    asset_class: str | None = None
+    limit: int | None = None
 
     def __post_init__(self) -> None:
         if self.endpoint not in _ENDPOINTS or _SYMBOL.fullmatch(self.symbol) is None:
@@ -87,11 +89,29 @@ class QuantPadArchiveRequestV1:
                 raise DataError("QuantPad ticks archive requires a supported schema")
             if self.response_format != "arrow":
                 raise DataError("QuantPad ticks archive requires Arrow")
+        elif self.endpoint == "universe":
+            if (
+                any(
+                    value is not None
+                    for value in (self.start_ms, self.end_ms, self.timeframe, self.schema)
+                )
+                or self.asset_class not in {"futures", "equity", "option", None}
+                or self.limit != 50
+                or (self.compression, self.roll_adjust) != ("none", "none")
+            ):
+                raise DataError(
+                    "QuantPad universe archive requires a query, optional asset class, and limit 50"
+                )
         elif any(
             value is not None for value in (self.start_ms, self.end_ms, self.timeframe, self.schema)
-        ) or (self.compression, self.roll_adjust) != ("none", "none"):
+        ) or (self.compression, self.roll_adjust, self.asset_class, self.limit) != (
+            "none",
+            "none",
+            None,
+            None,
+        ):
             raise DataError("QuantPad coverage archive accepts only a symbol")
-        if self.endpoint != "coverage" and (
+        if self.endpoint not in {"coverage", "universe"} and (
             not isinstance(self.start_ms, int)
             or isinstance(self.start_ms, bool)
             or not isinstance(self.end_ms, int)
@@ -270,6 +290,10 @@ def fetch_quantpad_archive(
     if existing is not None:
         return existing
     params: dict[str, object] = {"symbol": request.symbol}
+    if request.endpoint == "universe":
+        params = {"q": request.symbol, "limit": 50}
+        if request.asset_class is not None:
+            params["asset_class"] = request.asset_class
     if request.endpoint != "coverage":
         params.update({"start": request.start_ms, "end": request.end_ms})
     if request.timeframe is not None:

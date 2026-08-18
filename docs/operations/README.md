@@ -65,11 +65,15 @@ the internal ALPHA data root:
 scripts/alpha-with-keychain-provider quantpad archive coverage AAPL --json
 scripts/alpha-with-keychain-provider quantpad archive bars AAPL \
   --start 2018-01-01 --end 2026-08-18 --timeframe 1d --json
+scripts/alpha-with-keychain-provider quantpad archive universe a \
+  --asset-class futures --json
 uv run alpha quantpad-data verify MANIFEST_ID --json
 ```
 
-The API is symbol-scoped and does not expose a complete paginated universe export. Maintain an
-explicit coverage backlog; never describe a set of guessed symbols as a complete provider dump.
+The API is symbol-scoped and exposes ranked search pages of at most 50 records—not a universal
+export. A catalog can be mechanically complete only when every query is archived and none reaches
+that cap; otherwise maintain an explicit coverage backlog. Never describe a set of guessed symbols
+as a complete provider dump.
 Large tick requests must be partitioned into bounded intervals. Archive receipts remain
 `research_only` and do not qualify or promote data automatically.
 

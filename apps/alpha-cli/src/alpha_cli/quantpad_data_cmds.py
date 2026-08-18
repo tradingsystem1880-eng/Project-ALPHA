@@ -59,11 +59,12 @@ def archive(
     response_format: str | None = typer.Option(None, "--format"),
     compression: str = typer.Option("none", "--compression"),
     roll_adjust: str = typer.Option("none", "--roll-adjust"),
+    asset_class: str | None = typer.Option(None, "--asset-class"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
     """Archive one explicit provider response; it remains research-only."""
     selected_format = response_format or (
-        "json" if endpoint == "coverage" else "csv" if endpoint == "bars" else "arrow"
+        "json" if endpoint in {"coverage", "universe"} else "csv" if endpoint == "bars" else "arrow"
     )
     try:
         request = QuantPadArchiveRequestV1(
@@ -76,6 +77,8 @@ def archive(
             response_format=selected_format,
             compression=compression,
             roll_adjust=roll_adjust,
+            asset_class=asset_class,
+            limit=50 if endpoint == "universe" else None,
         )
         manifest = fetch_quantpad_archive(
             _store(AlphaSettings()),

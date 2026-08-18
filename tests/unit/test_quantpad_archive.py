@@ -44,6 +44,18 @@ def test_request_is_content_addressed_and_never_contains_a_key() -> None:
     assert "key" not in json.dumps(request.to_dict()).lower()
 
 
+def test_universe_request_keeps_search_query_and_asset_class_explicit() -> None:
+    request = QuantPadArchiveRequestV1(
+        endpoint="universe",
+        symbol="futures-a",
+        response_format="json",
+        asset_class="futures",
+        limit=50,
+    )
+    assert request.to_dict()["asset_class"] == "futures"
+    assert request.to_dict()["limit"] == 50
+
+
 def test_archive_publishes_external_bytes_then_internal_manifest(tmp_path: Path) -> None:
     store = _store(tmp_path)
     request = QuantPadArchiveRequestV1(
@@ -93,6 +105,12 @@ def test_archive_fails_closed_on_volume_substitution_and_tamper(tmp_path: Path) 
         {"endpoint": "ticks", "symbol": "../AAPL", "schema": "trades", "response_format": "arrow"},
         {"endpoint": "ticks", "symbol": "AAPL", "schema": "orders", "response_format": "arrow"},
         {"endpoint": "bars", "symbol": "AAPL", "response_format": "arrow"},
+        {
+            "endpoint": "universe",
+            "symbol": "AAPL",
+            "response_format": "json",
+            "asset_class": "not-a-class",
+        },
     ],
 )
 def test_request_rejects_unknown_or_unsafe_contracts(values: dict[str, object]) -> None:
