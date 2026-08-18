@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodexResearchResponse",
+  "description": "Final-response shape for `codex_bridge.py research` (the bridge wraps it into harness_models.CodexResearch).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claims", "summary"],
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "source", "quote", "confidence"],
+        "properties": {
+          "claim": {"type": "string"},
+          "source": {"type": "string"},
+          "quote": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      }
+    },
+    "summary": {"type": "string"}
+  }
+}
