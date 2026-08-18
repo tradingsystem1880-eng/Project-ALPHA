@@ -63,7 +63,64 @@ JSON_AGENT_SCHEMAS = {
     "invariants-auditor": "InvariantFindings",
     "docs-drift-checker": "DriftFindings",
     "red-team-code": "Counterexamples",
-    "codex-liaison": "CodexReview",
+    "codex-liaison": "CodexReview|CodexResearch",  # either, per the request kind
+}
+# Sandboxed subagents: every Bash segment must start with one of these token prefixes
+# (the last prefix token matches by startswith so paths under it are allowed). Hook payloads
+# carry `agent_type` inside a subagent; the main session (no agent_type) is unaffected.
+_GIT_READ_ONLY = (
+    ("git", "diff"),
+    ("git", "log"),
+    ("git", "show"),
+    ("git", "status"),
+    ("git", "grep"),
+    ("git", "blame"),
+    ("git", "ls-files"),
+    ("git", "rev-parse"),
+)
+_READ_ONLY_TOOLS = (
+    ("grep",),
+    ("rg",),
+    ("ls",),
+    ("cat",),
+    ("head",),
+    ("tail",),
+    ("wc",),
+    ("find",),
+    ("uv", "run", "pytest"),
+    ("uv", "run", "python", "-c"),
+    ("python3", "-c"),
+    ("uv", "run", "python", "scripts/gate.py", "audit"),
+    ("uv", "run", "python", "scripts/gate.py", "check"),
+    ("uv", "run", "python", "scripts/gate.py", "brief"),
+    ("uv", "run", "python", "scripts/gate.py", "index"),
+    ("uv", "run", "python", "scripts/gate.py", "semgrep"),
+    ("uv", "run", "python", "scripts/gate.py", "raise-cov"),
+    ("python3", "scripts/gate.py", "audit"),
+    ("python3", "scripts/gate.py", "check"),
+)
+_CODEX_BRIDGE = (
+    ("python3", "scripts/codex_bridge.py"),
+    ("uv", "run", "python", "scripts/codex_bridge.py"),
+)
+_NUMERIC_TOOLS = (
+    ("uv", "run", "pytest", "tests/oracles"),
+    ("uv", "run", "python", "-c"),
+    ("python3", "-c"),
+)
+AGENT_BASH_ALLOW: dict[str, tuple[tuple[str, ...], ...]] = {
+    "quant-verifier": (
+        *_NUMERIC_TOOLS,
+        ("python3", "scripts/codex_bridge.py", "research"),
+        ("uv", "run", "python", "scripts/codex_bridge.py", "research"),
+    ),
+    "numerical-verifier": _NUMERIC_TOOLS,
+    "codex-liaison": _CODEX_BRIDGE,
+    "independent-reviewer": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
+    "invariants-auditor": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
+    "docs-drift-checker": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
+    "red-team-code": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
+    "retrospective": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
 }
 # MCP tool-name fragments that are owner authority; denied by name, defense in depth.
 _MCP_OWNER_VERBS = re.compile(
@@ -671,11 +728,37 @@ def _push_present(command: str) -> bool:
     return any(_git_subcommand(t) == "push" for t in extract_commands(command))
 
 
+def _prefix_matches(tokens: list[str], prefix: tuple[str, ...]) -> bool:
+    if len(tokens) < len(prefix):
+        return False
+    head, last = prefix[:-1], prefix[-1]
+    return list(tokens[: len(head)]) == list(head) and tokens[len(head)].startswith(last)
+
+
+def agent_bash_violation(agent_type: str, command: str) -> str | None:
+    """Reason a sandboxed subagent may not run `command`, or None when every segment is allowed."""
+    allowed = AGENT_BASH_ALLOW.get(agent_type)
+    if allowed is None:
+        return None
+    if any(marker in command for marker in (">", "$(", "`")):
+        return "redirections and command substitution are not allowed in a sandboxed agent"
+    for tokens in extract_commands(command):
+        if not any(_prefix_matches(tokens, prefix) for prefix in allowed):
+            return f"`{' '.join(tokens[:4])}` is outside the {agent_type} sandbox"
+    return None
+
+
 def hook_pre_bash_guard(payload: dict[str, Any], root: Path) -> HookResult:
     tool_input = payload.get("tool_input") or {}
     command = str(tool_input.get("command", ""))
     cwd = _payload_cwd(payload, root)
     segments = extract_commands(command)
+
+    agent_type = str(payload.get("agent_type", ""))
+    violation = agent_bash_violation(agent_type, command)
+    if violation:
+        allowed_list = ", ".join(" ".join(p) for p in AGENT_BASH_ALLOW[agent_type])
+        return (2, f"BLOCKED: {violation}. Allowed prefixes: {allowed_list}")
 
     for tokens in segments:
         reason = destructive_reason(tokens, root, cwd)
@@ -816,9 +899,11 @@ def hook_subagent_stop(payload: dict[str, Any], root: Path) -> HookResult:
     key = f"subagent_blocks:{payload.get('agent_id', agent_type)}"
     if int(state.get(key, 0)) >= SUBAGENT_BLOCK_BUDGET:
         return (0, "")
-    error = validate_against_schema(root, schema, str(payload.get("last_assistant_message", "")))
-    if error is None:
+    message = str(payload.get("last_assistant_message", ""))
+    errors = [validate_against_schema(root, name, message) for name in schema.split("|")]
+    if any(e is None for e in errors):
         return (0, "")
+    error = "; ".join(str(e) for e in errors)
     state[key] = int(state.get(key, 0)) + 1
     _save_session(root, state)
     return (

@@ -605,6 +605,26 @@ class TestSubagentStop:
         assert claude_hooks.hook_subagent_stop(payload, repo) == (0, "")
         assert calls and set(calls) == {"ReviewVerdict"}
 
+    def test_codex_liaison_accepts_review_or_research(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        seen: list[str] = []
+
+        def fake(root: Path, schema: str, text: str) -> str | None:
+            seen.append(schema)
+            return None if schema in text else f"not a {schema}"
+
+        monkeypatch.setattr(claude_hooks, "validate_against_schema", fake)
+        for kind in ("CodexReview", "CodexResearch"):
+            payload = _payload(
+                agent_type="codex-liaison", agent_id=kind, last_assistant_message=kind
+            )
+            assert claude_hooks.hook_subagent_stop(payload, repo) == (0, "")
+        payload = _payload(agent_type="codex-liaison", agent_id="x", last_assistant_message="prose")
+        code, msg = claude_hooks.hook_subagent_stop(payload, repo)
+        assert code == 2 and "CodexReview|CodexResearch" in msg
+        assert set(seen) == {"CodexReview", "CodexResearch"}
+
     def test_real_validation_against_models(self, repo: Path) -> None:
         root = Path(__file__).resolve().parents[2]
         if not (root / ".venv" / "bin" / "python").is_file():
@@ -764,3 +784,48 @@ class TestKarpathyAlwaysOn:
         (plans / "2026-02-01-open.md").write_text("# Open plan, no front block\n")
         claude_hooks.record_edit(repo, "s2", out_of_scope)
         assert claude_hooks.load_session(repo, "s2")["over_eager"] == []
+
+
+class TestAgentBashSandbox:
+    """W6: sandboxed subagents may only run allow-listed command prefixes (payload agent_type)."""
+
+    def _run(self, repo: Path, agent: str, cmd: str) -> tuple[int, str]:
+        return claude_hooks.hook_pre_bash_guard(
+            _payload(tool_input={"command": cmd}, cwd=str(repo), agent_type=agent), repo
+        )
+
+    def test_main_session_and_unlisted_agents_are_unaffected(self, repo: Path) -> None:
+        assert claude_hooks.agent_bash_violation("", "rm -rf build") is None
+        assert claude_hooks.agent_bash_violation("navigator", "uv sync") is None
+
+    @pytest.mark.parametrize(
+        ("agent", "cmd"),
+        [
+            ("quant-verifier", "uv run pytest tests/oracles/test_metamorphic_dsr.py -q"),
+            ("quant-verifier", "uv run python -c 'import math; print(math.erf(1.0))'"),
+            ("quant-verifier", "python3 scripts/codex_bridge.py research --question 'DSR?'"),
+            ("numerical-verifier", "python3 -c 'print(1)'"),
+            ("codex-liaison", "python3 scripts/codex_bridge.py review --uncommitted"),
+            ("independent-reviewer", "git diff HEAD -- packages && uv run pytest tests/holdout -q"),
+            ("red-team-code", "rg -n 'shift\\(-' packages | head"),
+        ],
+    )
+    def test_allowed_prefixes_pass(self, repo: Path, agent: str, cmd: str) -> None:
+        assert self._run(repo, agent, cmd)[0] == 0, cmd
+
+    @pytest.mark.parametrize(
+        ("agent", "cmd"),
+        [
+            ("quant-verifier", "uv run pytest tests/unit -q"),  # only the oracle suites
+            ("quant-verifier", "python3 scripts/codex_bridge.py review --uncommitted"),
+            ("codex-liaison", "uv run pytest tests/oracles -q"),
+            ("codex-liaison", "codex exec 'hi'"),  # only through the bridge
+            ("independent-reviewer", "git commit -m 'feat: x'"),
+            ("independent-reviewer", "uv run python scripts/gate.py override --reason x"),
+            ("numerical-verifier", "python3 -c 'print(1)' > out.txt"),
+            ("red-team-code", "echo $(cat tracked.py)"),
+        ],
+    )
+    def test_out_of_sandbox_commands_are_blocked(self, repo: Path, agent: str, cmd: str) -> None:
+        code, msg = self._run(repo, agent, cmd)
+        assert code == 2 and "BLOCKED" in msg and "sandbox" in msg, cmd

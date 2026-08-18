@@ -40,3 +40,5 @@ data/
 .claude/*.local.json
 .claude/state/
 .claude/worktrees/
+.claude/agent-memory/
+.claude/agent-memory-local/
