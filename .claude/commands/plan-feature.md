@@ -1,5 +1,5 @@
 ---
-description: Drive the alpha-feature-workflow front half - explore via subagents, then draft a dated plan doc
+description: Drive the alpha-feature-workflow front half - explore via subagents, then draft a dated plan doc with a machine-checked FeaturePlan front block
 argument-hint: <feature or change description>
 ---
 
@@ -9,11 +9,29 @@ Follow `.agents/skills/alpha-feature-workflow/SKILL.md`. Steps:
 
 1. If this is a trivial single-file fix, STOP and say "no plan needed — just do
    it", then do it with TDD. Never produce a 1-step plan.
-2. Dispatch the `navigator` subagent with the concrete exploration questions;
-   for changes touching quant/risk-tier paths also dispatch `invariants-auditor`
-   in parallel. Do not explore inline — keep this context clean.
+2. Dispatch the `navigator` subagent with the concrete exploration questions
+   (it reads `.claude/state/repo-index.json` first); for changes touching
+   quant/risk-tier paths also dispatch `invariants-auditor` in parallel. Do not
+   explore inline — keep this context clean.
 3. Dispatch the `test-architect` subagent for the failing-test specification.
-4. Draft the dated plan doc at `docs/superpowers/plans/<today>-<slug>.md` (repo
-   convention): context, slices of ≤ ~100 lines each with a per-slice verify
-   command, explicit DAG / look-ahead / determinism impact, and the test plan.
-5. Present the plan summary and wait for approval before implementing.
+4. Draft the dated plan doc at `docs/superpowers/plans/<today>-<slug>.md`. It
+   MUST open with a fenced ```json front block that validates as
+   `scripts/harness_models.py::FeaturePlan` — this is Karpathy §1–§3 made
+   structural, and `/implement` refuses to start without it:
+   - `context` — the problem in one paragraph.
+   - `assumptions[]` — each with `verified_by` (the command/file:line that
+     proved it; "unverified" is allowed only if you say so and why).
+   - `alternatives_considered[≥1]` — including the simpler approach and why it
+     was rejected.
+   - `pre_mortem[≥2]` — concrete "this fails if …" statements.
+   - `slices[≥2]` — each ≤ ~100 lines with `verify` (exact command),
+     `expected` (what the output shows), `rollback`, `files[]`.
+   - `tier_impact` ⊆ {quant, risk, protected, dag, bias, determinism, none}.
+   - `docs_to_update[]`, `out_of_scope[]` (the over-eager guard warns on edits
+     outside `files[]` ∪ slice `files[]`), `files[]`.
+   Prose sections follow the block: context, slices, test plan, DAG /
+   look-ahead / determinism impact.
+5. Run `uv run python scripts/gate.py plan-check <plan doc>` and paste its
+   output; fix the block until it passes.
+6. Present the plan summary (assumptions, rejected alternative, pre-mortem,
+   slices) and wait for approval before implementing.

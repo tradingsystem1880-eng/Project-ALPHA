@@ -18,7 +18,9 @@ governance (append-only audit, authority denials, a self-protecting control plan
 | Statusline | `.claude/statusline.py` | branch · dirty count · stamp state · pending obligations |
 | Skill stubs | `.claude/skills/*/SKILL.md` | Auto-discovery stubs → canonical `.agents/skills/` (drift-guarded by test) |
 | Subagents | `.claude/agents/*.md` | navigator, test-architect, quant-verifier, invariants-auditor, independent-reviewer, adversarial-reviewer |
-| Commands | `.claude/commands/*.md` | plan-feature, implement, gate, gate-fast, verify-quant, review-gate, adversarial-review, harness-doctor, codex-review |
+| Commands | `.claude/commands/*.md` | plan-feature, implement, gate, gate-fast, verify-quant, review-gate, adversarial-review, harness-doctor, codex-review, retrospective |
+| Awareness (v2) | `gate.py brief` / `gate.py index` / `.claude/rules/*.md` | Generated session brief (SessionStart/PostCompact), `.claude/state/repo-index.json`, path-scoped rules holding the relocated MODULE MAP (drift-tested by `tests/unit/test_claude_md_relocation.py` and `test_repo_awareness_drift.py`) |
+| Reasoning (v2) | `gate.py plan-check` / `harness_models.FeaturePlan` | Plan docs open with a ```json front block (assumptions with `verified_by`, ≥1 alternative, ≥2 pre-mortem, slices with verify/expected/rollback, tier impact, out-of-scope); `/implement` refuses to start without a passing check; edits outside the open plan's declared `files[]` are warn-only `over_eager_edit` audit events surfaced in the Stop/PostCompact brief; `/retrospective` writes `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` whose `## Watch-outs` feed the next session brief |
 | Tests | `tests/unit/test_claude_harness_{gate,hooks,skills}.py` | TDD coverage of every decision function |
 
 ## Tree-hash stamp protocol
