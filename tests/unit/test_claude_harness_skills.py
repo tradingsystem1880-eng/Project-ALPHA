@@ -87,3 +87,50 @@ class TestNewCanonicalSkills:
         body = (CANONICAL_DIR / "alpha-feature-workflow" / "SKILL.md").read_text()
         for anchor in ("/plan-feature", "/review-gate", "/verify-quant", "bias_guard"):
             assert anchor in body, f"alpha-feature-workflow lost its {anchor} step"
+
+
+KARPATHY_PLUGIN_GLOB = (
+    ".claude/plugins/cache/andrej-karpathy-skills/karpathy-guidelines/*/skills/"
+    "karpathy-guidelines/SKILL.md"
+)
+KARPATHY_SECTIONS = (
+    "## 1. Think Before Coding",
+    "## 2. Simplicity First",
+    "## 3. Surgical Changes",
+    "## 4. Goal-Driven Execution",
+)
+
+
+class TestKarpathyAlwaysOn:
+    """W0: karpathy-guidelines is a mechanical constant, not a suggestion."""
+
+    def test_repo_canonical_has_all_four_sections(self) -> None:
+        body = (CANONICAL_DIR / "karpathy-guidelines" / "SKILL.md").read_text()
+        for heading in KARPATHY_SECTIONS:
+            assert heading in body, f"repo karpathy-guidelines lost {heading!r}"
+
+    def test_karpathy_matches_plugin(self) -> None:
+        candidates = sorted(Path.home().glob(KARPATHY_PLUGIN_GLOB))
+        if not candidates:
+            pytest.skip("andrej-karpathy-skills plugin not installed on this machine")
+        plugin = candidates[-1].read_text()
+        repo = (CANONICAL_DIR / "karpathy-guidelines" / "SKILL.md").read_text()
+        assert repo.split("---", 2)[2].strip() == plugin.split("---", 2)[2].strip(), (
+            "repo karpathy-guidelines body drifted from the plugin copy — re-sync it"
+        )
+
+    def test_hook_block_mirrors_the_four_sections(self) -> None:
+        import claude_hooks
+
+        for heading in KARPATHY_SECTIONS:
+            title = heading.split(". ", 1)[1]
+            assert title in claude_hooks.KARPATHY_BLOCK, f"KARPATHY_BLOCK lost {title!r}"
+
+    def test_every_agent_preloads_karpathy(self) -> None:
+        agents = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))
+        assert agents
+        for agent in agents:
+            fields = _frontmatter(agent.read_text())
+            assert "karpathy-guidelines" in fields.get("skills", ""), (
+                f"{agent.name} does not preload karpathy-guidelines"
+            )

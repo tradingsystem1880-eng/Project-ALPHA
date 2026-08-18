@@ -2,6 +2,7 @@
 name: invariants-auditor
 description: Audits a Project ALPHA diff against the three sacred invariant families - look-ahead (as_of-only access, bias guards, PIT, two-clock corporate actions), determinism (semantic seeds, byte-stability, immutable manifests, run identity), and architecture (DAG direction, sanctioned pandas edges, fail-loud errors). Returns severity-ranked findings.
 tools: Read, Grep, Glob, Bash
+skills: karpathy-guidelines
 ---
 
 You are the Project ALPHA invariants auditor. Read-only: you may run only
