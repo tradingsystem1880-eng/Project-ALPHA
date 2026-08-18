@@ -1,8 +1,10 @@
 """Claude Code harness gate runner for Project ALPHA.
 
 One source of truth for: the tree-hash stamp protocol, the three path tiers
-(quant / risk / protected control plane), attestation artifacts, one-shot
-override/ack tokens, the append-only audit journal, and the harness doctor.
+(quant / risk / protected control plane), attestation artifacts, owner-token
+authorization of escape hatches, one-shot override/ack tokens, the
+hash-chained append-only audit journal, the harness weakening scanner, and
+the harness doctor.
 
 Top level is stdlib-only so hook shims can import it before ``uv sync`` has
 ever run; pydantic validation (scripts/harness_models.py) is imported lazily
@@ -13,17 +15,24 @@ CLI:
     python3 scripts/gate.py check --tier fast  # exit 0 iff a valid stamp covers the tier
     python3 scripts/gate.py attest --kind quant|review   # JSON report on stdin
     python3 scripts/gate.py override --reason "..."      # one-shot commit-gate override
-    python3 scripts/gate.py ack --reason "..."           # one-shot control-plane edit ack
-    python3 scripts/gate.py doctor             # verify the harness wiring itself
+    python3 scripts/gate.py ack --reason "..." [--path P] # one-shot control-plane edit ack
+    python3 scripts/gate.py owner-init         # owner sets the escape-hatch token (interactive)
+    python3 scripts/gate.py lint-harness       # weakening scanner vs .claude/harness-baseline.json
+    python3 scripts/gate.py baseline --reason  # rewrite the baseline (owner/ack authorized)
+    python3 scripts/gate.py audit [--json --since ISO --kind K --verify]  # journal reader
+    python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
+    python3 scripts/gate.py selftest           # replay the harness test-suite
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -40,18 +49,33 @@ OVERRIDE_FILE = "commit-override.json"
 ACK_FILE = "governance-ack.json"
 QUANT_ATTESTATION_FILE = "quant-attestation.json"
 REVIEW_VERDICT_FILE = "review-verdict.json"
+AGENT_ACK_COUNT_FILE = "agent-ack-count.json"
+OWNER_FILE = Path(".claude") / "owner.local.json"
+BASELINE_FILE = Path(".claude") / "harness-baseline.json"
+OWNER_TOKEN_ENV = "ALPHA_OWNER_TOKEN"
+AGENT_ACK_LIMIT = 3
 
 TIER_RANK = {"fast": 1, "full": 2}
 
 # claude_hooks.py subcommands; doctor verifies every one is wired in settings.json.
 HOOK_NAMES = (
     "post-edit",
+    "post-bash",
+    "post-tool-failure",
     "pre-edit-guard",
+    "pre-read-guard",
     "pre-bash-guard",
+    "pre-mcp-guard",
+    "tool-log",
+    "subagent-stop",
+    "task-completed",
+    "config-change",
+    "instructions-loaded",
     "stop-guard",
     "session-start",
     "prompt-context",
     "pre-compact",
+    "post-compact",
 )
 
 _QUANT_NAME_RE = re.compile(
@@ -62,7 +86,39 @@ _RISK_CLI_FILES = frozenset(
     f"apps/alpha-cli/src/alpha_cli/{name}.py"
     for name in ("_gauntlet", "_optim", "_seeds", "_identity", "_surrogate", "_synth", "_runner")
 )
-_PYPROJECT_GUARDED = ("[tool.importlinter]", "fail_under", "strict")
+_PYPROJECT_GUARDED = ("[tool.importlinter]", "fail_under", "strict", "[tool.mutmut]", "addopts")
+_PROTECTED_EXACT = frozenset(
+    {
+        "scripts/gate.py",
+        "scripts/claude_hooks.py",
+        "scripts/harness_models.py",
+        "scripts/codex_bridge.py",
+        ".claude/settings.json",
+        ".claude/statusline.py",
+        ".claude/harness-baseline.json",
+        ".mcp.json",
+        ".semgrep/alpha.yml",
+        "CLAUDE.md",
+        "AGENTS.md",
+    }
+)
+_PROTECTED_PREFIXES = (
+    ".claude/skills/",
+    ".claude/agents/",
+    ".claude/commands/",
+    ".claude/rules/",
+    ".codex/",
+    ".github/workflows/",
+    "tests/bias_guards/",
+    "tests/holdout/",
+    "tests/oracles/",
+    "tests/unit/test_claude_harness_",
+    "tests/unit/test_claude_md_relocation",
+    "tests/unit/test_repo_awareness_drift",
+)
+# Edits an agent may ack for itself even when the owner token is configured.
+_AGENT_ACKABLE_PREFIXES = (".claude/agents/", ".claude/commands/", ".claude/rules/")
+HIDDEN_HOLDOUT_PREFIX = "tests/holdout/"
 
 Runner = Callable[[list[str]], tuple[bool, float, str]]
 
@@ -131,12 +187,25 @@ def compute_tree_hash(root: Path) -> str:
     return hashlib.sha256(tree.encode()).hexdigest()
 
 
+def scoped_changed_paths(root: Path, matcher: Callable[[str], bool]) -> list[str]:
+    """Working-tree paths (tracked-changed or untracked) accepted by ``matcher``."""
+    changed = _git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all")
+    paths: list[str] = []
+    for entry in changed.split("\0"):
+        if not entry:
+            continue
+        path = entry.split(" ")[-1] if not entry.startswith("? ") else entry[2:]
+        if matcher(path):
+            paths.append(path)
+    return sorted(set(paths))
+
+
 def scoped_diff_hash(root: Path, matcher: Callable[[str], bool]) -> str:
     """sha256 of the working diff restricted to paths accepted by ``matcher``.
 
-    Binds quant attestations to the quant-scope diff only, so out-of-scope
-    edits (docs, unrelated code) do not invalidate an attestation while any
-    in-scope change does.
+    Binds attestations to the in-scope diff only, so out-of-scope edits (docs,
+    unrelated code) do not invalidate an attestation while any in-scope change
+    does.
     """
     hasher = hashlib.sha256()
     changed = _git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all")
@@ -193,24 +262,24 @@ def matches_risk(path: str) -> bool:
 
 
 def protected_reason(path: str, content: str = "") -> str | None:
-    """Control-plane paths whose edits need a one-shot governance ack."""
+    """Control-plane paths whose edits need a governance ack (or the owner token)."""
     posix = path.replace("\\", "/")
-    if posix in (
-        "scripts/gate.py",
-        "scripts/claude_hooks.py",
-        "scripts/harness_models.py",
-        ".claude/settings.json",
-        ".github/workflows/ci.yml",
-        "CLAUDE.md",
-    ):
-        return f"{posix} is harness/governance control plane"
-    if posix.startswith((".claude/skills/", "tests/bias_guards/")):
+    if posix in _PROTECTED_EXACT or posix.startswith(_PROTECTED_PREFIXES):
         return f"{posix} is harness/governance control plane"
     if posix == "pyproject.toml":
         for marker in _PYPROJECT_GUARDED:
             if marker in content:
                 return f"pyproject.toml edit touches guarded config ({marker!r})"
     return None
+
+
+def agent_ackable(path: str) -> bool:
+    """Low-risk control-plane text an agent may ack for itself (bounded per session)."""
+    return path.replace("\\", "/").startswith(_AGENT_ACKABLE_PREFIXES)
+
+
+def is_hidden_holdout(path: str) -> bool:
+    return path.replace("\\", "/").startswith(HIDDEN_HOLDOUT_PREFIX)
 
 
 # ---------------------------------------------------------------------------
@@ -241,17 +310,182 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def append_audit(root: Path, event: str, detail: str, session_id: str = "") -> None:
-    line = {
-        "ts": _now(),
-        "session_id": session_id or os.environ.get("CLAUDE_SESSION_ID", ""),
-        "event": event,
-        "detail": detail,
-        "tree_hash": compute_tree_hash(root),
-    }
+def _last_audit_line(journal: Path) -> bytes:
+    try:
+        with journal.open("rb") as fh:
+            last = b""
+            for raw in fh:
+                if raw.strip():
+                    last = raw.rstrip(b"\n")
+            return last
+    except OSError:
+        return b""
+
+
+def append_audit(
+    root: Path, event: str, detail: str, session_id: str = "", *, authorized_by: str = ""
+) -> None:
+    """Append one hash-chained event; ``prev_hash`` binds each line to its predecessor."""
     journal = _state_dir(root) / AUDIT_FILE
+    tree_hash = compute_tree_hash(root)
+    # Hooks fire concurrently (e.g. ConfigChange alongside an ack consumption); the
+    # read-last + append pair must be atomic or two lines share one parent.
     with journal.open("a") as fh:
-        fh.write(json.dumps(line, sort_keys=True) + "\n")
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        try:
+            prev = _last_audit_line(journal)
+            line = {
+                "ts": _now(),
+                "session_id": session_id or os.environ.get("CLAUDE_SESSION_ID", ""),
+                "event": event,
+                "detail": detail,
+                "tree_hash": tree_hash,
+                "prev_hash": hashlib.sha256(prev).hexdigest() if prev else "",
+                "authorized_by": authorized_by,
+            }
+            fh.write(json.dumps(line, sort_keys=True) + "\n")
+            fh.flush()
+        finally:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+
+def read_audit(
+    root: Path, *, since: str | None = None, kind: str | None = None
+) -> list[dict[str, Any]]:
+    journal = _state_dir(root) / AUDIT_FILE
+    events: list[dict[str, Any]] = []
+    try:
+        lines = journal.read_text().splitlines()
+    except OSError:
+        return events
+    for raw in lines:
+        if not raw.strip():
+            continue
+        try:
+            item = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(item, dict):
+            continue
+        if since and str(item.get("ts", "")) < since:
+            continue
+        if kind and str(item.get("event", "")) != kind:
+            continue
+        events.append(item)
+    return events
+
+
+AUDIT_FORK_WINDOW_SECONDS = 5
+
+
+def _audit_ts(item: dict[str, Any]) -> float | None:
+    try:
+        return datetime.fromisoformat(str(item.get("ts"))).timestamp()
+    except ValueError:
+        return None
+
+
+def verify_audit_chain(root: Path) -> tuple[bool, str]:
+    """Recompute the hash chain; a truncated/rewritten line breaks it loudly.
+
+    Two hooks that fired concurrently before ``append_audit`` took its file lock
+    could both bind to the same parent (a *fork*: line N+1's ``prev_hash`` equals
+    line N's, and both were written within ``AUDIT_FORK_WINDOW_SECONDS``). Such a
+    pair is reported as a fork and the chain resumes from the later sibling; it is
+    not treated as tampering. Limitation (documented): deleting exactly one sibling
+    of a fork is undetectable by this check.
+    """
+    journal = _state_dir(root) / AUDIT_FILE
+    try:
+        raw_lines = [ln for ln in journal.read_bytes().split(b"\n") if ln.strip()]
+    except OSError:
+        return (True, "no journal")
+    prev = b""
+    prev_item: dict[str, Any] = {}
+    forks = 0
+    for index, raw in enumerate(raw_lines):
+        try:
+            item = json.loads(raw)
+        except ValueError:
+            return (False, f"line {index + 1}: not JSON")
+        expected = hashlib.sha256(prev).hexdigest() if prev else ""
+        recorded = item.get("prev_hash")
+        # Lines written before the chain existed carry no prev_hash; the chain
+        # starts at the first line that records one.
+        if recorded is not None and recorded != expected:
+            sibling = recorded == prev_item.get("prev_hash")
+            t_prev, t_cur = _audit_ts(prev_item), _audit_ts(item)
+            close = t_prev is not None and t_cur is not None
+            close = close and abs(t_cur - t_prev) <= AUDIT_FORK_WINDOW_SECONDS  # type: ignore[operator]
+            if not (sibling and close):
+                return (
+                    False,
+                    f"line {index + 1}: prev_hash mismatch (journal edited or truncated)",
+                )
+            forks += 1
+        prev, prev_item = raw, item
+    suffix = f", {forks} concurrent-append fork(s) tolerated" if forks else ""
+    return (True, f"{len(raw_lines)} events, chain intact{suffix}")
+
+
+# ---------------------------------------------------------------------------
+# owner token
+
+
+def owner_token_configured(root: Path) -> bool:
+    data = read_json(root / OWNER_FILE)
+    return bool(data and isinstance(data.get("ownerTokenHash"), str))
+
+
+def owner_present(root: Path) -> bool:
+    """True iff ``ALPHA_OWNER_TOKEN`` in the environment matches the configured hash."""
+    data = read_json(root / OWNER_FILE)
+    if not data:
+        return False
+    token = os.environ.get(OWNER_TOKEN_ENV, "")
+    if not token:
+        return False
+    return hashlib.sha256(token.encode()).hexdigest() == data.get("ownerTokenHash")
+
+
+def owner_init(root: Path, token: str) -> None:
+    if len(token) < 12:
+        raise ValueError("owner token must be at least 12 characters")
+    (root / OWNER_FILE).parent.mkdir(parents=True, exist_ok=True)
+    write_json_atomic(
+        root / OWNER_FILE,
+        {"ownerTokenHash": hashlib.sha256(token.encode()).hexdigest(), "created_at": _now()},
+    )
+    append_audit(root, "owner_token_configured", "escape hatches now require the owner token")
+
+
+def authorize_escape(root: Path, *, kind: str, path: str | None = None) -> tuple[bool, str]:
+    """Decide who may arm an escape hatch (override/ack/baseline).
+
+    Owner token configured  -> the env token must match, except an agent may
+    ack up to AGENT_ACK_LIMIT low-risk text edits per session.
+    Owner token unconfigured -> self-serve, audited as ``agent`` and flagged
+    loudly everywhere (statusline, brief, doctor) until the owner runs owner-init.
+    """
+    if owner_present(root):
+        return (True, "owner")
+    if not owner_token_configured(root):
+        return (True, "agent (owner token not configured)")
+    if kind == "ack" and path and agent_ackable(path):
+        counter = _state_dir(root) / AGENT_ACK_COUNT_FILE
+        session = os.environ.get("CLAUDE_SESSION_ID", "unknown")
+        data = read_json(counter) or {}
+        used = int(data.get(session, 0))
+        if used < AGENT_ACK_LIMIT:
+            data[session] = used + 1
+            write_json_atomic(counter, data)
+            return (True, f"agent (low-risk ack {used + 1}/{AGENT_ACK_LIMIT})")
+        return (False, f"agent low-risk ack budget exhausted ({AGENT_ACK_LIMIT}/session)")
+    return (
+        False,
+        f"{kind} requires the owner: export {OWNER_TOKEN_ENV}=<token> in the owner's shell "
+        "(configured via `gate.py owner-init`); the agent cannot authorize its own bypass",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -289,12 +523,23 @@ def stamp_is_valid(root: Path, tier: str) -> bool:
     return stamp.get("tree_hash") == compute_tree_hash(root)
 
 
+def stamp_age_seconds(root: Path) -> float | None:
+    stamp = read_json(_state_dir(root) / STAMP_FILE)
+    if stamp is None:
+        return None
+    try:
+        created = datetime.fromisoformat(str(stamp.get("created_at")))
+    except ValueError:
+        return None
+    return (datetime.now(UTC) - created).total_seconds()
+
+
 # ---------------------------------------------------------------------------
 # attestations
 
 
 def attest(root: Path, kind: str, payload_text: str) -> int:
-    """Validate an agent-produced report and persist it bound to current state."""
+    """Validate an agent-produced report and persist it bound to the in-scope diff."""
     try:
         payload = json.loads(payload_text)
     except ValueError as exc:
@@ -320,6 +565,16 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
         if report.overall != "PASS":
             print("attest rejected: overall must be PASS to attest", file=sys.stderr)
             return 1
+        missing = sorted(
+            set(scoped_changed_paths(root, matches_quant)) - set(report.files_reviewed)
+        )
+        if missing:
+            print(
+                "attest rejected: quant-tier files changed but absent from files_reviewed: "
+                + ", ".join(missing),
+                file=sys.stderr,
+            )
+            return 1
         artifact = QuantAttestation(
             created_at=_now(),
             bound_quant_diff_hash=scoped_diff_hash(root, matches_quant),
@@ -338,10 +593,20 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
         if verdict.verdict != "APPROVE":
             print("attest rejected: verdict must be APPROVE to attest", file=sys.stderr)
             return 1
-        if verdict.reviewed_tree_hash != compute_tree_hash(root):
+        if verdict.reviewed_diff_hash != scoped_diff_hash(root, matches_risk):
             print(
-                "attest rejected: reviewed_tree_hash is stale — the tree changed "
+                "attest rejected: reviewed_diff_hash is stale — a risk-tier file changed "
                 "since review; re-run /review-gate",
+                file=sys.stderr,
+            )
+            return 1
+        missing = sorted(
+            set(scoped_changed_paths(root, matches_risk)) - set(verdict.files_reviewed)
+        )
+        if missing:
+            print(
+                "attest rejected: risk-tier files changed but absent from files_reviewed: "
+                + ", ".join(missing),
                 file=sys.stderr,
             )
             return 1
@@ -368,27 +633,37 @@ def review_verdict_valid(root: Path) -> bool:
     verdict = artifact.get("verdict")
     if not isinstance(verdict, dict) or verdict.get("verdict") != "APPROVE":
         return False
-    return verdict.get("reviewed_tree_hash") == compute_tree_hash(root)
+    return verdict.get("reviewed_diff_hash") == scoped_diff_hash(root, matches_risk)
 
 
 # ---------------------------------------------------------------------------
 # one-shot tokens
 
 
-def _write_token(root: Path, filename: str, event: str, reason: str) -> None:
+def _write_token(
+    root: Path,
+    filename: str,
+    event: str,
+    reason: str,
+    *,
+    authorized_by: str,
+    path: str | None = None,
+) -> None:
     from harness_models import OnceToken
 
-    token = OnceToken(created_at=_now(), reason=reason)
+    token = OnceToken(created_at=_now(), reason=reason, authorized_by=authorized_by, path=path)
     write_json_atomic(_state_dir(root) / filename, token.model_dump())
-    append_audit(root, event, reason)
+    append_audit(root, event, reason, authorized_by=authorized_by)
 
 
-def write_override(root: Path, *, reason: str) -> None:
-    _write_token(root, OVERRIDE_FILE, "override_written", reason)
+def write_override(root: Path, *, reason: str, authorized_by: str = "agent") -> None:
+    _write_token(root, OVERRIDE_FILE, "override_written", reason, authorized_by=authorized_by)
 
 
-def write_ack(root: Path, *, reason: str) -> None:
-    _write_token(root, ACK_FILE, "ack_written", reason)
+def write_ack(
+    root: Path, *, reason: str, authorized_by: str = "agent", path: str | None = None
+) -> None:
+    _write_token(root, ACK_FILE, "ack_written", reason, authorized_by=authorized_by, path=path)
 
 
 def _consume(root: Path, filename: str, event: str) -> dict[str, Any] | None:
@@ -397,7 +672,9 @@ def _consume(root: Path, filename: str, event: str) -> dict[str, Any] | None:
     if token is None:
         return None
     path.unlink(missing_ok=True)
-    append_audit(root, event, str(token.get("reason", "")))
+    append_audit(
+        root, event, str(token.get("reason", "")), authorized_by=str(token.get("authorized_by", ""))
+    )
     return token
 
 
@@ -405,8 +682,97 @@ def consume_override(root: Path) -> dict[str, Any] | None:
     return _consume(root, OVERRIDE_FILE, "override_consumed")
 
 
-def consume_ack(root: Path) -> dict[str, Any] | None:
+def consume_ack(root: Path, *, path: str | None = None) -> dict[str, Any] | None:
+    """Consume the pending ack; a path-bound ack only clears an edit of that path."""
+    token = read_json(_state_dir(root) / ACK_FILE)
+    if token is None:
+        return None
+    bound = token.get("path")
+    if bound and path and bound != path:
+        return None
     return _consume(root, ACK_FILE, "ack_consumed")
+
+
+# ---------------------------------------------------------------------------
+# weakening scanner
+
+
+def harness_metrics(root: Path) -> dict[str, Any]:
+    """Current guardrail counts; compared against .claude/harness-baseline.json."""
+    settings = read_json(root / ".claude" / "settings.json") or {}
+    permissions = settings.get("permissions") or {}
+    deny = sorted(str(rule) for rule in permissions.get("deny") or [])
+    hook_events = sorted(str(k) for k in (settings.get("hooks") or {}))
+    pyproject = (root / "pyproject.toml").read_text() if (root / "pyproject.toml").is_file() else ""
+    fail_under = 0
+    match = re.search(r"^fail_under\s*=\s*(\d+)", pyproject, re.MULTILINE)
+    if match:
+        fail_under = int(match.group(1))
+    contracts = len(re.findall(r"^\[\[tool\.importlinter\.contracts\]\]", pyproject, re.MULTILINE))
+    strict_markers = "--strict-markers" in pyproject
+    bias_dir = root / "tests" / "bias_guards"
+    bias_tests = len(list(bias_dir.glob("test_*.py"))) if bias_dir.is_dir() else 0
+    suppressions = 0
+    for base in ("packages/alpha-validation/src", "packages/alpha-research/src"):
+        directory = root / base
+        if not directory.is_dir():
+            continue
+        for file in directory.rglob("*.py"):
+            text = file.read_text(errors="replace")
+            suppressions += text.count("# noqa") + text.count("# type: ignore")
+    return {
+        "schema_version": 1,
+        "deny_rules": deny,
+        "hook_events": hook_events,
+        "coverage_fail_under": fail_under,
+        "importlinter_contracts": contracts,
+        "bias_guard_tests": bias_tests,
+        "strict_markers": strict_markers,
+        "quant_suppressions": suppressions,
+    }
+
+
+def lint_harness(root: Path) -> list[str]:
+    """Return regressions of the current tree against the committed baseline."""
+    baseline = read_json(root / BASELINE_FILE)
+    if baseline is None:
+        return [f"{BASELINE_FILE} missing — run `gate.py baseline --reason ...`"]
+    current = harness_metrics(root)
+    problems: list[str] = []
+    for rule in set(baseline.get("deny_rules", [])) - set(current["deny_rules"]):
+        problems.append(f"deny rule removed: {rule}")
+    for event in set(baseline.get("hook_events", [])) - set(current["hook_events"]):
+        problems.append(f"hook event unwired: {event}")
+    if current["coverage_fail_under"] < int(baseline.get("coverage_fail_under", 0)):
+        problems.append(
+            f"coverage fail_under lowered: {baseline.get('coverage_fail_under')} -> "
+            f"{current['coverage_fail_under']}"
+        )
+    if current["importlinter_contracts"] < int(baseline.get("importlinter_contracts", 0)):
+        problems.append("import-linter contract deleted")
+    if current["bias_guard_tests"] < int(baseline.get("bias_guard_tests", 0)):
+        problems.append("bias-guard test file deleted")
+    if baseline.get("strict_markers") and not current["strict_markers"]:
+        problems.append("--strict-markers disabled")
+    if current["quant_suppressions"] > int(baseline.get("quant_suppressions", 0)):
+        problems.append(
+            f"quant-module suppressions grew: {baseline.get('quant_suppressions')} -> "
+            f"{current['quant_suppressions']} (# noqa / # type: ignore)"
+        )
+    ci = root / ".github" / "workflows" / "ci.yml"
+    if ci.is_file():
+        text = ci.read_text()
+        if re.search(r"pytest[^\n]*(--maxfail|\s-x\b)", text):
+            problems.append("CI pytest uses -x/--maxfail (hides later failures)")
+    return problems
+
+
+def write_baseline(root: Path, *, reason: str, authorized_by: str) -> None:
+    from harness_models import HarnessBaseline
+
+    baseline = HarnessBaseline.model_validate(harness_metrics(root))
+    write_json_atomic(root / BASELINE_FILE, baseline.model_dump())
+    append_audit(root, "baseline_written", reason, authorized_by=authorized_by)
 
 
 # ---------------------------------------------------------------------------
@@ -431,14 +797,24 @@ _WHEEL_SMOKE_SH = (
     "alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web))'"
 )
 
+HARNESS_SCRIPTS = (
+    "scripts/gate.py",
+    "scripts/claude_hooks.py",
+    "scripts/harness_models.py",
+    "scripts/codex_bridge.py",
+)
 
-def gate_steps(tier: str) -> list[tuple[str, list[str]]]:
+
+def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]]]:
+    base = root or Path.cwd()
+    harness_files = [rel for rel in HARNESS_SCRIPTS if (base / rel).is_file()]
     fast: list[tuple[str, list[str]]] = [
         ("ruff check", ["uv", "run", "ruff", "check", "."]),
         ("ruff format", ["uv", "run", "ruff", "format", "--check", "."]),
         ("import contracts", ["uv", "run", "lint-imports"]),
         ("mypy", ["uv", "run", "mypy", "packages", "apps", "tests"]),
-        ("mypy harness", ["uv", "run", "mypy", "scripts/gate.py", "scripts/claude_hooks.py"]),
+        ("mypy harness", ["uv", "run", "mypy", *harness_files]),
+        ("harness lint", [sys.executable, "scripts/gate.py", "lint-harness"]),
     ]
     if tier == "fast":
         return fast
@@ -465,7 +841,7 @@ def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
     clear_stamp(root)
     started = time.monotonic()
     steps: list[tuple[str, float, bool]] = []
-    for name, cmd in gate_steps(tier):
+    for name, cmd in gate_steps(tier, root):
         ok, seconds, output = run(cmd)
         steps.append((name, seconds, ok))
         marker = "PASS" if ok else "FAIL"
@@ -483,6 +859,37 @@ def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
 
 # ---------------------------------------------------------------------------
 # doctor
+
+
+def _frontmatter(text: str) -> dict[str, str]:
+    if not text.startswith("---"):
+        return {}
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    fields: dict[str, str] = {}
+    for line in parts[1].splitlines():
+        if ":" in line and not line.startswith((" ", "\t")):
+            key, value = line.split(":", 1)
+            fields[key.strip()] = value.strip()
+    return fields
+
+
+def codex_probe() -> tuple[bool, str]:
+    """Is the Codex CLI installed and logged in? Never calls the model."""
+    binary = shutil.which("codex")
+    if binary is None:
+        return (False, "codex CLI not on PATH (second-model review unavailable; gates unaffected)")
+    try:
+        status = subprocess.run(
+            ["codex", "login", "status"], capture_output=True, text=True, timeout=20, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return (False, f"codex login status failed: {exc!r}")
+    text = (status.stdout + status.stderr).strip()
+    if "logged in" in text.lower() and "not logged" not in text.lower():
+        return (True, f"{binary}: {text.splitlines()[0][:80]}")
+    return (False, f"codex present but not logged in: {text[:80]}")
 
 
 def doctor(root: Path) -> tuple[int, dict[str, Any]]:
@@ -524,6 +931,77 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
                 )
             )
 
+    agents_dir = root / ".claude" / "agents"
+    if agents_dir.is_dir():
+        for agent in sorted(agents_dir.glob("*.md")):
+            fields = _frontmatter(agent.read_text())
+            ok = bool(fields.get("name")) and bool(fields.get("description"))
+            skills = [
+                s.strip() for s in fields.get("skills", "").strip("[]").split(",") if s.strip()
+            ]
+            missing = [s for s in skills if not (skills_dir / s).is_dir()]
+            checks.append(
+                (
+                    f"agent frontmatter valid: {agent.stem}",
+                    ok and not missing,
+                    "missing skills: " + ", ".join(missing) if missing else "name+description",
+                )
+            )
+
+    rules_dir = root / ".claude" / "rules"
+    if rules_dir.is_dir():
+        for rule in sorted(rules_dir.glob("*.md")):
+            fields = _frontmatter(rule.read_text())
+            paths_field = fields.get("paths", "")
+            globs = [
+                g.strip().strip("\"'") for g in paths_field.strip("[]").split(",") if g.strip()
+            ]
+            unmatched = [g for g in globs if not any(root.glob(g))]
+            checks.append(
+                (
+                    f"rule paths resolve: {rule.stem}",
+                    not unmatched,
+                    "unmatched: " + ", ".join(unmatched)
+                    if unmatched
+                    else (paths_field or "unscoped"),
+                )
+            )
+
+    baseline_ok = (root / BASELINE_FILE).is_file()
+    checks.append(("harness baseline present", baseline_ok, str(BASELINE_FILE)))
+    if baseline_ok:
+        problems = lint_harness(root)
+        checks.append(
+            ("harness not weakened", not problems, "; ".join(problems) or "no regressions")
+        )
+
+    ok_chain, chain_detail = verify_audit_chain(root)
+    checks.append(("audit chain intact", ok_chain, chain_detail))
+
+    checks.append(
+        (
+            "owner token configured",
+            True,
+            "yes"
+            if owner_token_configured(root)
+            else "WARN: not configured — escape hatches are agent self-serve; run owner-init",
+        )
+    )
+
+    codex_ok, codex_detail = codex_probe()
+    checks.append(("codex second model", True, ("available: " if codex_ok else "") + codex_detail))
+
+    age = stamp_age_seconds(root)
+    checks.append(
+        (
+            "gate stamp",
+            True,
+            "none"
+            if age is None
+            else f"{age / 3600:.1f}h old, {'valid' if stamp_is_valid(root, 'fast') else 'stale'}",
+        )
+    )
+
     report = {
         "created_at": _now(),
         "checks": [{"name": name, "ok": ok, "detail": detail} for name, ok, detail in checks],
@@ -536,6 +1014,25 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
     except ImportError:
         pass  # doctor must still run pre-`uv sync`; validation is best-effort here
     return (0 if report["ok"] else 1, report)
+
+
+HARNESS_TEST_GLOBS = (
+    "tests/unit/test_claude_harness_*.py",
+    "tests/unit/test_claude_md_relocation.py",
+    "tests/unit/test_repo_awareness_drift.py",
+)
+
+
+def selftest(root: Path) -> int:
+    """Replay the harness's own test-suite (the same fixtures CI runs)."""
+    files: list[str] = []
+    for pattern in HARNESS_TEST_GLOBS:
+        files.extend(str(p.relative_to(root)) for p in sorted(root.glob(pattern)))
+    if not files:
+        print("selftest: no harness tests found", file=sys.stderr)
+        return 1
+    result = subprocess.run(["uv", "run", "pytest", "-q", *files], cwd=root, check=False)
+    return result.returncode
 
 
 # ---------------------------------------------------------------------------
@@ -576,11 +1073,24 @@ def main(argv: list[str] | None = None) -> int:
     override_p.add_argument("--reason", required=True)
     ack_p = sub.add_parser("ack")
     ack_p.add_argument("--reason", required=True)
-    sub.add_parser("doctor")
+    ack_p.add_argument("--path", default=None)
+    owner_p = sub.add_parser("owner-init")
+    owner_p.add_argument("--token", default=None, help="omit to be prompted (never echoed)")
+    sub.add_parser("lint-harness")
+    baseline_p = sub.add_parser("baseline")
+    baseline_p.add_argument("--reason", required=True)
+    audit_p = sub.add_parser("audit")
+    audit_p.add_argument("--json", action="store_true")
+    audit_p.add_argument("--since", default=None)
+    audit_p.add_argument("--kind", default=None)
+    audit_p.add_argument("--verify", action="store_true")
+    doctor_p = sub.add_parser("doctor")
+    doctor_p.add_argument("--json", action="store_true")
+    sub.add_parser("selftest")
     args = parser.parse_args(argv)
 
     root = repo_root()
-    if args.command in ("attest", "override", "ack"):
+    if args.command in ("attest", "override", "ack", "baseline"):
         _reexec_with_pydantic(root)
     if args.command in ("fast", "full"):
         return run_gate(root, args.command)
@@ -593,19 +1103,72 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "attest":
         return attest(root, args.kind, sys.stdin.read())
     if args.command == "override":
-        write_override(root, reason=args.reason)
-        print("one-shot commit override armed (loudly audited).")
+        allowed, who = authorize_escape(root, kind="override")
+        if not allowed:
+            print(f"override refused: {who}", file=sys.stderr)
+            return 1
+        write_override(root, reason=args.reason, authorized_by=who)
+        print(f"one-shot commit override armed by {who} (loudly audited).")
         return 0
     if args.command == "ack":
-        write_ack(root, reason=args.reason)
-        print("one-shot governance ack armed (loudly audited).")
+        allowed, who = authorize_escape(root, kind="ack", path=args.path)
+        if not allowed:
+            print(f"ack refused: {who}", file=sys.stderr)
+            return 1
+        write_ack(root, reason=args.reason, authorized_by=who, path=args.path)
+        print(f"one-shot governance ack armed by {who} (loudly audited).")
+        return 0
+    if args.command == "owner-init":
+        token = args.token
+        if token is None:
+            import getpass
+
+            token = getpass.getpass("owner token (min 12 chars, never stored in clear): ")
+        try:
+            owner_init(root, token)
+        except ValueError as exc:
+            print(f"owner-init refused: {exc}", file=sys.stderr)
+            return 1
+        print(f"owner token hash written to {OWNER_FILE}; export {OWNER_TOKEN_ENV} to authorize.")
+        return 0
+    if args.command == "lint-harness":
+        problems = lint_harness(root)
+        for problem in problems:
+            print(f"[harness-lint] FAIL {problem}", file=sys.stderr)
+        if not problems:
+            print("[harness-lint] ok — no guardrail regressions vs baseline")
+        return 1 if problems else 0
+    if args.command == "baseline":
+        allowed, who = authorize_escape(root, kind="baseline")
+        if not allowed and consume_ack(root, path=str(BASELINE_FILE)) is None:
+            print(f"baseline refused: {who}", file=sys.stderr)
+            return 1
+        write_baseline(root, reason=args.reason, authorized_by=who if allowed else "ack")
+        print(f"harness baseline rewritten at {BASELINE_FILE} (loudly audited).")
+        return 0
+    if args.command == "audit":
+        if args.verify:
+            ok, detail = verify_audit_chain(root)
+            print(f"[audit] {'ok' if ok else 'FAIL'} {detail}")
+            return 0 if ok else 1
+        events = read_audit(root, since=args.since, kind=args.kind)
+        if args.json:
+            print(json.dumps(events, indent=2, sort_keys=True))
+        else:
+            for item in events:
+                print(f"{item.get('ts')} {item.get('event')} {item.get('detail')}")
         return 0
     if args.command == "doctor":
         code, report = doctor(root)
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return code
         for check_row in report["checks"]:
             marker = "ok " if check_row["ok"] else "FAIL"
             print(f"[doctor] {marker} {check_row['name']} — {check_row['detail']}")
         return code
+    if args.command == "selftest":
+        return selftest(root)
     return 2  # pragma: no cover - argparse enforces choices
 
 

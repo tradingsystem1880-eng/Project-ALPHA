@@ -310,16 +310,31 @@ class TestAttest:
         verdict: dict[str, Any] = {
             "verdict": "APPROVE",
             "findings": [],
-            "reviewed_tree_hash": gate.compute_tree_hash(repo),
+            "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
+            "files_reviewed": gate.scoped_changed_paths(repo, gate.matches_risk),
         }
         verdict.update(overrides)
         return verdict
 
-    def test_review_attest_approve_binds_tree(self, repo: Path) -> None:
+    def test_review_attest_approve_binds_risk_diff(self, repo: Path) -> None:
         assert gate.attest(repo, "review", json.dumps(self._review(repo))) == 0
         assert gate.review_verdict_valid(repo)
         (repo / "tracked.py").write_text("x = 6\n")
-        assert not gate.review_verdict_valid(repo)
+        assert gate.review_verdict_valid(repo), "out-of-scope edit must not invalidate"
+        risky = repo / "packages" / "alpha-backtest" / "src" / "alpha_backtest"
+        risky.mkdir(parents=True)
+        (risky / "engine.py").write_text("e = 1\n")
+        assert not gate.review_verdict_valid(repo), "risk-tier edit after review invalidates"
+
+    def test_review_attest_rejects_unlisted_risk_file(self, repo: Path) -> None:
+        risky = repo / "packages" / "alpha-backtest" / "src" / "alpha_backtest"
+        risky.mkdir(parents=True)
+        (risky / "engine.py").write_text("e = 1\n")
+        verdict = self._review(repo, files_reviewed=[])
+        assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+        verdict = self._review(repo)
+        assert "packages/alpha-backtest/src/alpha_backtest/engine.py" in verdict["files_reviewed"]
+        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
 
     def test_review_attest_rejects_block(self, repo: Path) -> None:
         verdict = self._review(
@@ -337,9 +352,36 @@ class TestAttest:
         assert gate.attest(repo, "review", json.dumps(verdict)) != 0
         assert not gate.review_verdict_valid(repo)
 
-    def test_review_attest_rejects_stale_tree_hash(self, repo: Path) -> None:
-        verdict = self._review(repo, reviewed_tree_hash="0" * 64)
+    def test_review_attest_rejects_stale_diff_hash(self, repo: Path) -> None:
+        verdict = self._review(repo, reviewed_diff_hash="0" * 64)
         assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+
+    def test_quant_attest_rejects_unlisted_quant_file(self, repo: Path) -> None:
+        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
+        quant.mkdir(parents=True)
+        (quant / "dsr.py").write_text("a = 1\n")
+        assert gate.attest(repo, "quant", json.dumps(self._quant_report())) != 0
+        listed = self._quant_report(
+            files_reviewed=["packages/alpha-validation/src/alpha_validation/dsr.py"]
+        )
+        assert gate.attest(repo, "quant", json.dumps(listed)) == 0
+
+    def test_quant_attest_rejects_pass_with_failed_spot_check(self, repo: Path) -> None:
+        report = self._quant_report(
+            numeric_spot_checks=[
+                {
+                    "description": "PSR(0)",
+                    "expected": 0.5,
+                    "observed": 0.7,
+                    "tolerance": 1e-9,
+                    "ok": False,
+                }
+            ]
+        )
+        assert gate.attest(repo, "quant", json.dumps(report)) != 0
+        assert (
+            gate.attest(repo, "quant", json.dumps(self._quant_report(oracles_present=False))) != 0
+        )
 
 
 class TestOnceTokens:
@@ -378,38 +420,244 @@ class TestDoctor:
     def test_doctor_passes_on_wired_repo(self, repo: Path) -> None:
         claude = repo / ".claude"
         claude.mkdir(exist_ok=True)
-        hook_cmd = 'python3 "$CLAUDE_PROJECT_DIR"/scripts/claude_hooks.py'
-        settings = {
-            "hooks": {
-                "PreToolUse": [
-                    {
-                        "hooks": [
-                            {"type": "command", "command": f"{hook_cmd} {name}"}
-                            for name in ("pre-edit-guard", "pre-bash-guard")
-                        ]
-                    }
-                ],
-                "PostToolUse": [
-                    {"hooks": [{"type": "command", "command": f"{hook_cmd} post-edit"}]}
-                ],
-                "Stop": [{"hooks": [{"type": "command", "command": f"{hook_cmd} stop-guard"}]}],
-                "SessionStart": [
-                    {"hooks": [{"type": "command", "command": f"{hook_cmd} session-start"}]}
-                ],
-                "UserPromptSubmit": [
-                    {"hooks": [{"type": "command", "command": f"{hook_cmd} prompt-context"}]}
-                ],
-                "PreCompact": [
-                    {"hooks": [{"type": "command", "command": f"{hook_cmd} pre-compact"}]}
-                ],
-            }
-        }
-        (claude / "settings.json").write_text(json.dumps(settings))
-        (claude / "statusline.py").write_text("print('ok')\n")
-        scripts = repo / "scripts"
-        scripts.mkdir()
-        for name in ("gate.py", "claude_hooks.py", "harness_models.py"):
-            (scripts / name).write_text("# stub\n")
+        _wire_minimal_harness(repo)
         code, report = gate.doctor(repo)
         failing = [check for check in report["checks"] if not check["ok"]]
         assert code == 0, failing
+
+    def test_doctor_fails_when_a_hook_is_unwired(self, repo: Path) -> None:
+        _wire_minimal_harness(repo)
+        settings = json.loads((repo / ".claude" / "settings.json").read_text())
+        settings["hooks"]["PreToolUse"][0]["hooks"] = [
+            h
+            for h in settings["hooks"]["PreToolUse"][0]["hooks"]
+            if not h["command"].endswith("pre-mcp-guard")
+        ]
+        (repo / ".claude" / "settings.json").write_text(json.dumps(settings))
+        code, report = gate.doctor(repo)
+        assert code != 0
+        assert any(
+            c["name"] == "hook wired: pre-mcp-guard" and not c["ok"] for c in report["checks"]
+        )
+
+    def test_doctor_reports_weakening(self, repo: Path) -> None:
+        _wire_minimal_harness(repo)
+        settings = json.loads((repo / ".claude" / "settings.json").read_text())
+        settings["permissions"]["deny"] = []
+        (repo / ".claude" / "settings.json").write_text(json.dumps(settings))
+        code, report = gate.doctor(repo)
+        assert code != 0
+        weak = [c for c in report["checks"] if c["name"] == "harness not weakened"]
+        assert weak and not weak[0]["ok"] and "deny rule removed" in weak[0]["detail"]
+
+
+def _wire_minimal_harness(repo: Path) -> None:
+    claude = repo / ".claude"
+    claude.mkdir(exist_ok=True)
+    hook_cmd = 'python3 "$CLAUDE_PROJECT_DIR"/scripts/claude_hooks.py'
+    settings = {
+        "permissions": {"deny": ["Read(.env)", "Bash(git push --force*)"]},
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "hooks": [
+                        {"type": "command", "command": f"{hook_cmd} {name}"}
+                        for name in gate.HOOK_NAMES
+                    ]
+                }
+            ]
+        },
+    }
+    (claude / "settings.json").write_text(json.dumps(settings))
+    (claude / "statusline.py").write_text("print('ok')\n")
+    scripts = repo / "scripts"
+    scripts.mkdir(exist_ok=True)
+    for name in ("gate.py", "claude_hooks.py", "harness_models.py"):
+        (scripts / name).write_text("# stub\n")
+    gate.write_baseline(repo, reason="test", authorized_by="test")
+
+
+class TestOwnerToken:
+    def test_unconfigured_is_self_serve_but_labelled(self, repo: Path) -> None:
+        allowed, who = gate.authorize_escape(repo, kind="override")
+        assert allowed and "not configured" in who
+
+    def test_configured_requires_matching_env_token(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        gate.owner_init(repo, "correct-horse-battery")
+        monkeypatch.delenv(gate.OWNER_TOKEN_ENV, raising=False)
+        allowed, who = gate.authorize_escape(repo, kind="override")
+        assert not allowed and "owner" in who
+        monkeypatch.setenv(gate.OWNER_TOKEN_ENV, "wrong-token-value")
+        assert not gate.owner_present(repo)
+        monkeypatch.setenv(gate.OWNER_TOKEN_ENV, "correct-horse-battery")
+        assert gate.owner_present(repo)
+        allowed, who = gate.authorize_escape(repo, kind="override")
+        assert allowed and who == "owner"
+
+    def test_owner_file_stores_hash_not_token(self, repo: Path) -> None:
+        gate.owner_init(repo, "correct-horse-battery")
+        raw = (repo / gate.OWNER_FILE).read_text()
+        assert "correct-horse-battery" not in raw
+        assert "ownerTokenHash" in raw
+
+    def test_short_token_refused(self, repo: Path) -> None:
+        with pytest.raises(ValueError):
+            gate.owner_init(repo, "short")
+
+    def test_agent_low_risk_ack_budget(self, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        gate.owner_init(repo, "correct-horse-battery")
+        monkeypatch.delenv(gate.OWNER_TOKEN_ENV, raising=False)
+        monkeypatch.setenv("CLAUDE_SESSION_ID", "s1")
+        for _ in range(gate.AGENT_ACK_LIMIT):
+            allowed, _who = gate.authorize_escape(
+                repo, kind="ack", path=".claude/agents/navigator.md"
+            )
+            assert allowed
+        allowed, who = gate.authorize_escape(repo, kind="ack", path=".claude/agents/navigator.md")
+        assert not allowed and "budget" in who
+        allowed, _ = gate.authorize_escape(repo, kind="ack", path="scripts/gate.py")
+        assert not allowed, "gate.py is never agent-ackable once the owner token exists"
+
+
+class TestAckPathBinding:
+    def test_path_bound_ack_only_clears_that_path(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="r", path="scripts/gate.py")
+        assert gate.consume_ack(repo, path="scripts/claude_hooks.py") is None
+        assert gate.consume_ack(repo, path="scripts/gate.py") is not None
+        assert gate.consume_ack(repo, path="scripts/gate.py") is None
+
+    def test_unbound_ack_clears_any_path(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="r")
+        assert gate.consume_ack(repo, path="scripts/gate.py") is not None
+
+
+class TestAuditChain:
+    def test_chain_links_and_detects_tampering(self, repo: Path) -> None:
+        gate.append_audit(repo, "a", "1")
+        gate.append_audit(repo, "b", "2")
+        gate.append_audit(repo, "c", "3")
+        ok, detail = gate.verify_audit_chain(repo)
+        assert ok, detail
+        events = gate.read_audit(repo)
+        assert [e["event"] for e in events] == ["a", "b", "c"]
+        assert events[0]["prev_hash"] == "" and events[1]["prev_hash"] and events[2]["prev_hash"]
+        journal = repo / gate.STATE_DIR / gate.AUDIT_FILE
+        lines = journal.read_text().splitlines()
+        del lines[1]
+        journal.write_text("\n".join(lines) + "\n")
+        ok, detail = gate.verify_audit_chain(repo)
+        assert not ok and "mismatch" in detail
+
+    def test_read_audit_filters(self, repo: Path) -> None:
+        gate.append_audit(repo, "x", "1")
+        gate.append_audit(repo, "y", "2")
+        assert [e["event"] for e in gate.read_audit(repo, kind="y")] == ["y"]
+        assert gate.read_audit(repo, since="9999-01-01") == []
+
+    def test_concurrent_append_fork_is_reported_not_failed(self, repo: Path) -> None:
+        gate.append_audit(repo, "a", "1")
+        gate.append_audit(repo, "b", "2")
+        journal = repo / gate.STATE_DIR / gate.AUDIT_FILE
+        lines = journal.read_text().splitlines()
+        # Simulate the pre-lock race: a sibling of line 2 bound to the same parent.
+        sibling = json.loads(lines[1])
+        sibling["event"] = "b_sibling"
+        lines.append(json.dumps(sibling, sort_keys=True))
+        journal.write_text("\n".join(lines) + "\n")
+        ok, detail = gate.verify_audit_chain(repo)
+        assert ok, detail
+        assert "1 concurrent-append fork" in detail
+        # A sibling far apart in time is not a fork — it is a rewrite.
+        sibling["ts"] = "2000-01-01T00:00:00+00:00"
+        lines[-1] = json.dumps(sibling, sort_keys=True)
+        journal.write_text("\n".join(lines) + "\n")
+        ok, detail = gate.verify_audit_chain(repo)
+        assert not ok and "mismatch" in detail
+
+    def test_parallel_appends_keep_one_chain(self, repo: Path) -> None:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda i: gate.append_audit(repo, "par", str(i)), range(24)))
+        ok, detail = gate.verify_audit_chain(repo)
+        assert ok, detail
+        assert "fork" not in detail, detail
+        assert len(gate.read_audit(repo, kind="par")) == 24
+
+
+class TestProtectedPathsV2:
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ".claude/agents/navigator.md",
+            ".claude/commands/gate.md",
+            ".claude/rules/quant.md",
+            ".claude/statusline.py",
+            ".mcp.json",
+            ".codex/config.toml",
+            "scripts/codex_bridge.py",
+            "tests/unit/test_claude_harness_gate.py",
+            "tests/oracles/test_metamorphic_dsr.py",
+            "tests/holdout/test_gauntlet.py",
+            ".github/workflows/nightly.yml",
+            "AGENTS.md",
+        ],
+    )
+    def test_control_plane_extended(self, path: str) -> None:
+        assert gate.protected_reason(path) is not None
+
+    def test_hidden_holdout_predicate(self) -> None:
+        assert gate.is_hidden_holdout("tests/holdout/test_x.py")
+        assert not gate.is_hidden_holdout("tests/unit/test_x.py")
+
+    def test_agent_ackable_only_low_risk_text(self) -> None:
+        assert gate.agent_ackable(".claude/agents/x.md")
+        assert gate.agent_ackable(".claude/rules/x.md")
+        assert not gate.agent_ackable("scripts/gate.py")
+        assert not gate.agent_ackable(".claude/settings.json")
+
+
+class TestLintHarness:
+    def test_missing_baseline_reported(self, repo: Path) -> None:
+        problems = gate.lint_harness(repo)
+        assert problems and "missing" in problems[0]
+
+    def test_regressions_detected(self, repo: Path) -> None:
+        _wire_minimal_harness(repo)
+        assert gate.lint_harness(repo) == []
+        (repo / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\naddopts = '-q'\n[tool.coverage.report]\nfail_under = 93\n"
+        )
+        gate.write_baseline(repo, reason="t", authorized_by="t")
+        (repo / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\naddopts = '-q'\n[tool.coverage.report]\nfail_under = 80\n"
+        )
+        problems = gate.lint_harness(repo)
+        assert any("fail_under lowered" in p for p in problems)
+        settings = json.loads((repo / ".claude" / "settings.json").read_text())
+        settings["hooks"] = {}
+        (repo / ".claude" / "settings.json").write_text(json.dumps(settings))
+        problems = gate.lint_harness(repo)
+        assert any("hook event unwired" in p for p in problems)
+
+    def test_quant_suppression_growth_detected(self, repo: Path) -> None:
+        _wire_minimal_harness(repo)
+        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
+        quant.mkdir(parents=True)
+        (quant / "dsr.py").write_text("x = 1  # noqa: E501\n")
+        problems = gate.lint_harness(repo)
+        assert any("suppressions grew" in p for p in problems)
+
+
+class TestScopedPaths:
+    def test_scoped_changed_paths_tracked_and_untracked(self, repo: Path) -> None:
+        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
+        quant.mkdir(parents=True)
+        (quant / "dsr.py").write_text("a = 1\n")
+        (repo / "tracked.py").write_text("x = 9\n")
+        assert gate.scoped_changed_paths(repo, gate.matches_quant) == [
+            "packages/alpha-validation/src/alpha_validation/dsr.py"
+        ]
+        assert gate.scoped_changed_paths(repo, lambda p: p == "tracked.py") == ["tracked.py"]
