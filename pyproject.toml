@@ -83,6 +83,9 @@ strict = true
 warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 explicit_package_bases = true
+# scripts/ on the search path so tests (and the harness gate step) resolve the
+# top-level `gate` / `claude_hooks` / `harness_models` modules under scripts/.
+mypy_path = ["scripts"]
 exclude = '(^|/)_vendor/'
 
 [[tool.mypy.overrides]]
@@ -120,7 +123,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers --import-mode=importlib"
-pythonpath = ["."]
+pythonpath = [".", "scripts"]
 markers = [
     "bias_guard: tests that mechanically prevent look-ahead / survivorship bias (gated in CI)",
     "network: tests that hit the live network (skipped in CI / offline runs)",
