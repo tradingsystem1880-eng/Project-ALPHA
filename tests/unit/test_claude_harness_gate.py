@@ -73,6 +73,26 @@ class TestTreeHash:
         _git(repo, "add", "tracked.py")
         assert gate.compute_tree_hash(repo) != before
 
+    def test_invariant_across_pure_commit(self, repo: Path) -> None:
+        """A commit changes no file content, so it must not invalidate the hash.
+
+        Without this, every commit in an atomic sequence forces a full gate
+        re-run even though the certified content is byte-identical.
+        """
+        (repo / "tracked.py").write_text("x = 2\n")
+        _git(repo, "add", "-A")
+        before = gate.compute_tree_hash(repo)
+        _git(repo, "commit", "--quiet", "-m", "feat: change")
+        assert gate.compute_tree_hash(repo) == before
+
+    def test_stamp_survives_pure_commit(self, repo: Path) -> None:
+        (repo / "tracked.py").write_text("x = 2\n")
+        _git(repo, "add", "-A")
+        gate.write_stamp(repo, "full", steps=[("all", 1.0, True)], duration=1.0)
+        assert gate.stamp_is_valid(repo, "full")
+        _git(repo, "commit", "--quiet", "-m", "feat: change")
+        assert gate.stamp_is_valid(repo, "full")
+
 
 class TestScopedDiffHash:
     def test_stable_when_out_of_scope_changes(self, repo: Path) -> None:

@@ -26,6 +26,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -104,30 +105,30 @@ def _untracked_paths(root: Path) -> list[str]:
 
 
 def compute_tree_hash(root: Path) -> str:
-    """sha256 binding of HEAD + index + working tree + untracked file contents."""
-    hasher = hashlib.sha256()
-    head = _git(root, "rev-parse", "HEAD", check=False).strip() or "EMPTY"
-    hasher.update(head.encode())
-    hasher.update(b"\0")
-    hasher.update(_git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all").encode())
-    hasher.update(b"\0")
-    if head != "EMPTY":
-        diff = subprocess.run(
-            ["git", "-C", str(root), "diff", "HEAD", "--no-ext-diff", "--binary"],
+    """Content hash of the working tree (tracked + untracked, gitignore-respected).
+
+    Built by staging everything into a THROWAWAY git index and asking git for
+    the resulting tree object id — the real index, HEAD, and working tree are
+    never touched. Because the hash covers file content only, a pure
+    ``git commit`` (which changes no bytes on disk) never invalidates a stamp,
+    while any content edit — tracked, staged, or untracked — does.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, "GIT_INDEX_FILE": str(Path(tmp) / "index")}
+        subprocess.run(
+            ["git", "-C", str(root), "add", "-A"],
             capture_output=True,
             check=True,
+            env=env,
         )
-        hasher.update(diff.stdout)
-    hasher.update(b"\0")
-    for path in sorted(_untracked_paths(root)):
-        hasher.update(path.encode())
-        hasher.update(b"\0")
-        try:
-            hasher.update((root / path).read_bytes())
-        except OSError:
-            hasher.update(b"<unreadable>")
-        hasher.update(b"\0")
-    return hasher.hexdigest()
+        tree = subprocess.run(
+            ["git", "-C", str(root), "write-tree"],
+            capture_output=True,
+            text=True,
+            check=True,
+            env=env,
+        ).stdout.strip()
+    return hashlib.sha256(tree.encode()).hexdigest()
 
 
 def scoped_diff_hash(root: Path, matcher: Callable[[str], bool]) -> str:
@@ -541,6 +542,27 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
 # CLI
 
 
+def _reexec_with_pydantic(root: Path) -> None:
+    """Re-exec under the project venv when pydantic is unavailable.
+
+    Write paths (attest/override/ack) validate artifacts with pydantic, but the
+    hooks' block messages must work even when invoked as plain ``python3``.
+    """
+    try:
+        import pydantic  # noqa: F401
+
+        return
+    except ImportError:
+        pass
+    venv_python = root / ".venv" / "bin" / "python"
+    if venv_python.exists() and Path(sys.executable).resolve() != venv_python.resolve():
+        os.execv(str(venv_python), [str(venv_python), *sys.argv])
+    raise SystemExit(
+        "pydantic unavailable and no project venv found — run via: "
+        "uv run python scripts/gate.py ..."
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gate", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -558,6 +580,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = repo_root()
+    if args.command in ("attest", "override", "ack"):
+        _reexec_with_pydantic(root)
     if args.command in ("fast", "full"):
         return run_gate(root, args.command)
     if args.command == "check":
