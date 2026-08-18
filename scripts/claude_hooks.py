@@ -47,10 +47,44 @@ LintRunner = Callable[[Path], str | None]
 # command parsing
 
 
+def _split_top_level(command: str) -> list[str]:
+    """Split on unquoted &&, ||, ;, |, & and newlines — quoted operators stay put."""
+    chunks: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    escaped = False
+    i = 0
+    while i < len(command):
+        ch = command[i]
+        if escaped:
+            current.append(ch)
+            escaped = False
+        elif ch == "\\" and quote != "'":
+            current.append(ch)
+            escaped = True
+        elif quote is not None:
+            current.append(ch)
+            if ch == quote:
+                quote = None
+        elif ch in "'\"":
+            quote = ch
+            current.append(ch)
+        elif ch in ";|\n&":
+            chunks.append("".join(current))
+            current = []
+            if command.startswith(("&&", "||"), i):
+                i += 1
+        else:
+            current.append(ch)
+        i += 1
+    chunks.append("".join(current))
+    return chunks
+
+
 def extract_commands(command: str) -> list[list[str]]:
-    """Split a shell command on &&, ;, | and newlines into token lists."""
+    """Split a shell command into per-command token lists (quote-aware)."""
     segments: list[list[str]] = []
-    for chunk in re.split(r"&&|\|\||[;|\n]", command):
+    for chunk in _split_top_level(command):
         chunk = chunk.strip()
         if not chunk:
             continue
@@ -292,7 +326,7 @@ def hook_pre_edit_guard(payload: dict[str, Any], root: Path) -> HookResult:
     return (
         2,
         f"BLOCKED: {reason}. Control-plane files need a one-shot governance ack:\n"
-        f'  python3 scripts/gate.py ack --reason "<why this change is needed>"\n'
+        f'  uv run python scripts/gate.py ack --reason "<why this change is needed>"\n'
         "(the ack is appended to the audit journal for owner review), then retry the edit.",
     )
 
@@ -316,7 +350,7 @@ def hook_pre_bash_guard(payload: dict[str, Any], root: Path) -> HookResult:
             "BLOCKED: no full-tier gate stamp for the current tree. Run\n"
             "  uv run python scripts/gate.py full\n"
             "and commit only when it passes. Emergency escape (loudly audited):\n"
-            '  python3 scripts/gate.py override --reason "..."',
+            '  uv run python scripts/gate.py override --reason "..."',
         )
 
     message = commit_message_of(command)
@@ -335,7 +369,7 @@ def hook_pre_bash_guard(payload: dict[str, Any], root: Path) -> HookResult:
                 2,
                 f"BLOCKED: {changed} changed non-docs lines in one commit (>1000). "
                 "Split this into smaller, reviewable commits. Emergency escape:\n"
-                '  python3 scripts/gate.py override --reason "..."',
+                '  uv run python scripts/gate.py override --reason "..."',
             )
 
     risk_paths = [p for p in paths if gate.matches_risk(p)]
@@ -346,7 +380,7 @@ def hook_pre_bash_guard(payload: dict[str, Any], root: Path) -> HookResult:
             f"BLOCKED: risk-tier paths staged ({listed}) with no APPROVE review "
             "verdict for the current tree. Run /review-gate (independent reviewer "
             "subagent) first. Emergency escape (loudly audited):\n"
-            '  python3 scripts/gate.py override --reason "..."',
+            '  uv run python scripts/gate.py override --reason "..."',
         )
     return (0, "")
 

@@ -76,6 +76,22 @@ class TestCommandParsing:
     def test_ignores_non_commit(self, command: str) -> None:
         assert not claude_hooks.contains_git_commit(command)
 
+    def test_quoted_operators_stay_inside_message(self) -> None:
+        cmd = "git commit -m 'feat: add x; also y && z | w'"
+        assert len(claude_hooks.extract_commands(cmd)) == 1
+        assert claude_hooks.commit_message_of(cmd) == "feat: add x; also y && z | w"
+
+    def test_quoted_newline_stays_inside_message(self) -> None:
+        cmd = 'git add -A && git commit -q -m "feat(scope): summary\n\nbody; with semicolon"'
+        segments = claude_hooks.extract_commands(cmd)
+        assert len(segments) == 2
+        assert claude_hooks.commit_message_of(cmd) == "feat(scope): summary\n\nbody; with semicolon"
+
+    def test_unquoted_newline_splits_commands(self) -> None:
+        segments = claude_hooks.extract_commands("git add -A\ngit commit -m 'fix: y'")
+        assert len(segments) == 2
+        assert claude_hooks.contains_git_commit("git add -A\ngit commit -m 'fix: y'")
+
     def test_extracts_dash_m_message(self) -> None:
         assert (
             claude_hooks.commit_message_of("git commit -m 'feat(x): add thing'")
