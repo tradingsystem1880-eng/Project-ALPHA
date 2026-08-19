@@ -79,6 +79,7 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
     as_of = datetime(2026, 8, 15, tzinfo=UTC)
     linear = pl.DataFrame(
         {
+            "fetched_at": [as_of - timedelta(minutes=1)] * 3,
             "status": ["Trading", "Trading", "Trading"],
             "contract_type": ["LinearPerpetual", "LinearFutures", "LinearPerpetual"],
             "symbol": ["BTCUSDT", "BTC-30SEP26", "FUTUREUSDT"],
@@ -94,6 +95,7 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
     )
     inverse = pl.DataFrame(
         {
+            "fetched_at": [as_of - timedelta(minutes=1)],
             "status": ["Trading"],
             "contract_type": ["InversePerpetual"],
             "symbol": ["ETHUSD"],
@@ -105,6 +107,7 @@ def test_default_coverage_tasks_are_pit_bounded_and_provider_native() -> None:
     )
     options = pl.DataFrame(
         {
+            "fetched_at": [as_of - timedelta(minutes=1)] * 3,
             "status": ["Trading", "Trading", "Settled"],
             "symbol": ["BTC-C", "ETH-C", "SOL-C"],
             "base_coin": ["BTC", "ETH", "SOL"],
@@ -199,6 +202,7 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
     as_of = datetime(2026, 8, 15, tzinfo=UTC)
     empty_perpetual = pl.DataFrame(
         schema={
+            "fetched_at": pl.Datetime(time_zone="UTC"),
             "status": pl.String,
             "contract_type": pl.String,
             "symbol": pl.String,
@@ -211,6 +215,7 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
     bases = ["BTC", "ETH", "SOL", "XRP"]
     options = pl.DataFrame(
         {
+            "fetched_at": [as_of - timedelta(minutes=1)] * 4,
             "status": ["Trading"] * 4,
             "symbol": [f"{base}-C" for base in bases],
             "base_coin": bases,
@@ -231,6 +236,7 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
         },
         coinmetrics_catalog=_coinmetrics_catalog(as_of),
         as_of=as_of,
+        binance_memberships=_binance_memberships(as_of),
     )
     fast = [task.instrument for task in tasks if task.cadence == "five_minute"]
     assert fast == ["ETH-OPTIONS", "SOL-OPTIONS", "XRP-OPTIONS"]
@@ -252,6 +258,7 @@ def test_option_five_minute_profile_is_limited_to_top_three_aggregate_oi() -> No
             option_open_interest={("BTC", "USDT"): 100.0},
             coinmetrics_catalog=_coinmetrics_catalog(as_of),
             as_of=as_of,
+            binance_memberships=_binance_memberships(as_of),
         )
 
 
@@ -313,6 +320,7 @@ def test_coverage_catalog_and_membership_boundaries_fail_closed() -> None:
         active_option_markets(pl.DataFrame({"bad": [1]}), as_of=now)
     invalid_options = pl.DataFrame(
         {
+            "fetched_at": [now - timedelta(minutes=1)],
             "status": ["Trading"],
             "symbol": ["X"],
             "base_coin": [None],
@@ -335,6 +343,7 @@ def test_coverage_catalog_and_membership_boundaries_fail_closed() -> None:
 
     empty_perpetual = pl.DataFrame(
         schema={
+            "fetched_at": pl.Datetime(time_zone="UTC"),
             "status": pl.String,
             "contract_type": pl.String,
             "symbol": pl.String,
@@ -346,6 +355,7 @@ def test_coverage_catalog_and_membership_boundaries_fail_closed() -> None:
     )
     empty_options = pl.DataFrame(
         schema={
+            "fetched_at": pl.Datetime(time_zone="UTC"),
             "status": pl.String,
             "symbol": pl.String,
             "base_coin": pl.String,
@@ -363,6 +373,7 @@ def test_coverage_catalog_and_membership_boundaries_fail_closed() -> None:
             option_open_interest={},
             coinmetrics_catalog=coinmetrics,
             as_of=as_of,
+            binance_memberships=_binance_memberships(as_of),
         )
 
     with pytest.raises(DataError, match="timezone"):
@@ -371,3 +382,75 @@ def test_coverage_catalog_and_membership_boundaries_fail_closed() -> None:
         build(pl.DataFrame(), now)
     with pytest.raises(DataError, match="no daily ETH"):
         build(_coinmetrics_catalog(now).filter(pl.col("asset") == "btc"), now)
+
+
+def _bybit_catalogs(as_of: datetime) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """A linear, an inverse and an option catalog whose second row was fetched after ``as_of``."""
+    linear = pl.DataFrame(
+        {
+            "fetched_at": [as_of - timedelta(minutes=1), as_of + timedelta(minutes=1)],
+            "status": ["Trading"] * 2,
+            "contract_type": ["LinearPerpetual"] * 2,
+            "symbol": ["BTCUSDT", "LATEUSDT"],
+            "base_coin": ["BTC", "LATE"],
+            "quote_coin": ["USDT", "USDT"],
+            "launch_time": [as_of - timedelta(days=1_000)] * 2,
+            "delivery_time": [None, None],
+        }
+    )
+    inverse = linear.head(1).with_columns(
+        pl.lit("InversePerpetual").alias("contract_type"),
+        pl.lit("ETHUSD").alias("symbol"),
+        pl.lit("ETH").alias("base_coin"),
+        pl.lit("USD").alias("quote_coin"),
+    )
+    options = pl.DataFrame(
+        {
+            "fetched_at": [as_of - timedelta(minutes=1), as_of + timedelta(minutes=1)],
+            "status": ["Trading"] * 2,
+            "symbol": ["BTC-C", "LATE-C"],
+            "base_coin": ["BTC", "LATE"],
+            "quote_coin": ["USDT", "USDT"],
+            "launch_time": [as_of - timedelta(days=10)] * 2,
+            "delivery_time": [as_of + timedelta(days=10)] * 2,
+        }
+    )
+    return linear, inverse, options
+
+
+def test_bybit_selectors_exclude_catalog_rows_fetched_after_as_of() -> None:
+    as_of = datetime(2026, 8, 15, tzinfo=UTC)
+    linear, inverse, options = _bybit_catalogs(as_of)
+
+    assert active_option_markets(options, as_of=as_of) == (("BTC", "USDT"),)
+
+    tasks = build_default_coverage_tasks(
+        linear_catalog=linear,
+        inverse_catalog=inverse,
+        option_catalog=options,
+        option_open_interest={("BTC", "USDT"): 100.0},
+        coinmetrics_catalog=_coinmetrics_catalog(as_of),
+        as_of=as_of,
+        binance_memberships=_binance_memberships(as_of),
+    )
+    assert not any(task.instrument.startswith("LATE") for task in tasks)
+    assert any(task.instrument == "BTCUSDT" for task in tasks)
+
+    with pytest.raises(DataError, match="known at as_of"):
+        active_option_markets(options, as_of=as_of - timedelta(days=1))
+
+
+def test_profile_build_requires_binance_memberships() -> None:
+    as_of = datetime(2026, 8, 15, tzinfo=UTC)
+    linear, inverse, options = _bybit_catalogs(as_of)
+
+    with pytest.raises(DataError, match="market-membership source coverage"):
+        build_default_coverage_tasks(
+            linear_catalog=linear,
+            inverse_catalog=inverse,
+            option_catalog=options,
+            option_open_interest={("BTC", "USDT"): 100.0},
+            coinmetrics_catalog=_coinmetrics_catalog(as_of),
+            as_of=as_of,
+            binance_memberships=(),
+        )

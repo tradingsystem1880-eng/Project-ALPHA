@@ -273,6 +273,7 @@ class CryptoCoverageProfileV1:
 
 _PERPETUAL_COLUMNS = frozenset(
     {
+        "fetched_at",
         "status",
         "contract_type",
         "symbol",
@@ -283,8 +284,16 @@ _PERPETUAL_COLUMNS = frozenset(
     }
 )
 _OPTION_COLUMNS = frozenset(
-    {"status", "symbol", "base_coin", "quote_coin", "launch_time", "delivery_time"}
+    {"fetched_at", "status", "symbol", "base_coin", "quote_coin", "launch_time", "delivery_time"}
 )
+
+
+def _known_at(frame: pl.DataFrame, *, as_of: datetime, label: str) -> pl.DataFrame:
+    """Keep only catalog rows already fetched at ``as_of``; a fully-future catalog fails loud."""
+    known = frame.filter(pl.col("fetched_at") <= as_of)
+    if frame.height and not known.height:
+        raise DataError(f"Bybit {label} catalog has no rows known at as_of")
+    return known
 
 
 def _active_perpetuals(
@@ -293,7 +302,8 @@ def _active_perpetuals(
     if not _PERPETUAL_COLUMNS.issubset(frame.columns):
         raise DataError("Bybit perpetual catalog schema is incomplete")
     expected_type = "LinearPerpetual" if category == "linear" else "InversePerpetual"
-    selected = frame.filter(
+    known = _known_at(frame, as_of=as_of, label="perpetual")
+    selected = known.filter(
         (pl.col("status") == "Trading")
         & (pl.col("contract_type") == expected_type)
         & (pl.col("launch_time") <= as_of)
@@ -311,11 +321,15 @@ def _active_perpetuals(
 def active_option_markets(frame: pl.DataFrame, *, as_of: datetime) -> tuple[tuple[str, str], ...]:
     if not _OPTION_COLUMNS.issubset(frame.columns):
         raise DataError("Bybit option catalog schema is incomplete")
-    selected = frame.filter(
-        (pl.col("status") == "Trading")
-        & (pl.col("launch_time") <= as_of)
-        & (pl.col("delivery_time").is_null() | (pl.col("delivery_time") > as_of))
-    ).select("base_coin", "quote_coin")
+    selected = (
+        _known_at(frame, as_of=as_of, label="option")
+        .filter(
+            (pl.col("status") == "Trading")
+            & (pl.col("launch_time") <= as_of)
+            & (pl.col("delivery_time").is_null() | (pl.col("delivery_time") > as_of))
+        )
+        .select("base_coin", "quote_coin")
+    )
     markets: set[tuple[str, str]] = set()
     for base, quote in selected.iter_rows():
         if not isinstance(base, str) or not base or not isinstance(quote, str) or not quote:
@@ -496,7 +510,7 @@ def _binance_tasks(
     as_of: datetime,
 ) -> list[CryptoCoverageTaskV1]:
     if not memberships:
-        return []
+        raise DataError("Binance market-membership source coverage is incomplete")
     active = active_binance_markets(memberships, as_of=as_of)
     tasks = [
         _task(
@@ -693,7 +707,7 @@ def build_default_coverage_tasks(
     option_open_interest: dict[tuple[str, str], float],
     coinmetrics_catalog: pl.DataFrame,
     as_of: datetime,
-    binance_memberships: tuple[pl.DataFrame, ...] = (),
+    binance_memberships: tuple[pl.DataFrame, ...],
     binance_hourly_memberships: tuple[pl.DataFrame, ...] = (),
 ) -> tuple[CryptoCoverageTaskV1, ...]:
     """Build the fixed public-data profile without fetching or granting authority."""

@@ -253,11 +253,18 @@ def _artifact(
     )
 
 
+def _require_single_instrument(source: QualifiedCryptoFrame, label: str) -> None:
+    """These series accumulate ungrouped, so a multi-instrument frame must never be mixed."""
+    if "symbol" in source.frame.columns and source.frame["symbol"].n_unique() > 1:
+        raise DataError(f"crypto {label} features require a single instrument")
+
+
 def funding_features(
     source: QualifiedCryptoFrame, *, available_at: datetime
 ) -> tuple[pl.DataFrame, CryptoFeatureArtifactV1]:
     availability = _validate_sources((source,), ("funding",), available_at)
     _require_columns(source, ("timestamp", "funding_rate"))
+    _require_single_instrument(source, "funding")
     frame = (
         source.frame.select("timestamp", "funding_rate")
         .sort("timestamp")
@@ -275,12 +282,15 @@ def open_interest_features(
 ) -> tuple[pl.DataFrame, CryptoFeatureArtifactV1]:
     availability = _validate_sources((source,), ("open_interest",), available_at)
     _require_columns(source, ("timestamp", "open_interest"))
+    _require_single_instrument(source, "open interest")
     frame = (
         source.frame.select("timestamp", "open_interest")
         .sort("timestamp")
         .with_columns(
             pl.col("open_interest").diff().alias("open_interest_change"),
+            # nosemgrep: alpha-negative-shift
             pl.when(pl.col("open_interest").shift(1) > 0)
+            # nosemgrep: alpha-negative-shift
             .then(pl.col("open_interest").diff() / pl.col("open_interest").shift(1))
             .otherwise(None)
             .alias("open_interest_pct_change"),
@@ -433,9 +443,11 @@ def onchain_features(
         .sort("asset", "metric", "timestamp")
         .with_columns(
             pl.col("value").diff().over("asset", "metric").alias("value_change"),
+            # nosemgrep: alpha-negative-shift
             pl.when(pl.col("value").shift(1).over("asset", "metric") > 0)
             .then(
                 pl.col("value").diff().over("asset", "metric")
+                # nosemgrep: alpha-negative-shift
                 / pl.col("value").shift(1).over("asset", "metric")
             )
             .otherwise(None)

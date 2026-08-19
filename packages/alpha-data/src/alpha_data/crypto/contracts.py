@@ -379,6 +379,7 @@ class CryptoRawReceiptV1:
         upstream_checksum: str | None,
     ) -> CryptoRawReceiptV1:
         normalized_time = _time(fetched_at, "fetched_at")
+        request = _pairs(request, "request")
         body = {
             "dataset": dataset.to_dict(),
             "request": request,

@@ -374,3 +374,56 @@ def test_family_quality_rules_surface_invalid_native_values(
         as_of=NOW,
     )
     assert expected in report.failures or expected in report.warnings
+
+
+def test_negative_base_volume_quarantines_market_bars() -> None:
+    frame = pl.DataFrame(
+        {
+            "timestamp": [NOW - timedelta(hours=2), NOW - timedelta(hours=1)],
+            "open": [10.0, 11.0],
+            "high": [12.0, 13.0],
+            "low": [9.0, 10.0],
+            "close": [11.0, 12.0],
+            "base_volume": [5.0, 6.0],
+            "quote_volume": [50.0, -1.0],
+        }
+    )
+    report = qualify_crypto_frame(
+        _dataset("market_bars"),
+        frame,
+        artifact_sha256=SHA,
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+        knowledge_time=NOW,
+        as_of=NOW,
+        expected_cadence=timedelta(hours=1),
+        period_start_timestamps=True,
+    )
+
+    assert report.state == "quarantined"
+    assert "negative_volume" in report.failures
+
+
+def test_market_bars_without_any_volume_column_fail_loud() -> None:
+    frame = pl.DataFrame(
+        {
+            "timestamp": [NOW - timedelta(hours=2), NOW - timedelta(hours=1)],
+            "open": [10.0, 11.0],
+            "high": [12.0, 13.0],
+            "low": [9.0, 10.0],
+            "close": [11.0, 12.0],
+        }
+    )
+    report = qualify_crypto_frame(
+        _dataset("market_bars"),
+        frame,
+        artifact_sha256=SHA,
+        observed_column="timestamp",
+        key_columns=("timestamp",),
+        knowledge_time=NOW,
+        as_of=NOW,
+        expected_cadence=timedelta(hours=1),
+        period_start_timestamps=True,
+    )
+
+    assert "missing_required_column:volume" in report.failures

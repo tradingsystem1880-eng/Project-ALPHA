@@ -225,11 +225,9 @@ def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
         if not isinstance(platforms, dict):
             raise DataError("CoinGecko asset platforms are invalid")
         for network, contract in sorted(platforms.items()):
-            if (
-                not isinstance(network, str)
-                or not isinstance(contract, str)
-                or not contract.strip()
-            ):
+            if not isinstance(network, str) or not isinstance(contract, str):
+                raise DataError("CoinGecko platform mapping shape is invalid")
+            if not contract.strip():
                 continue
             rows.append(
                 {
@@ -240,6 +238,8 @@ def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
                     "contract_address": normalize_crypto_address(network, contract),
                 }
             )
+    if not rows:
+        raise DataError("CoinGecko asset catalog is empty")
     return pl.DataFrame(rows)
 
 

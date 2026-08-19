@@ -174,3 +174,23 @@ def test_community_timeseries_validation_fail_loud() -> None:
     for raw, message in cases:
         with pytest.raises(DataError, match=message):
             parse_asset_metrics(json.dumps(raw).encode(), assets=("btc",), metrics=("AdrActCnt",))
+
+
+def test_absent_metric_emits_null_row() -> None:
+    payload = json.dumps(
+        {
+            "data": [
+                {
+                    "asset": "btc",
+                    "time": "2026-08-14T00:00:00.000000000Z",
+                    "AdrActCnt": "123",
+                }
+            ]
+        }
+    ).encode()
+
+    frame = parse_asset_metrics(payload, assets=("btc",), metrics=("AdrActCnt", "FeeTotNtv"))
+    rows = {row["metric"]: row for row in frame.iter_rows(named=True)}
+
+    assert rows["FeeTotNtv"]["value"] is None
+    assert rows["FeeTotNtv"]["provider_status"] is None

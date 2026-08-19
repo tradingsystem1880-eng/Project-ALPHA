@@ -314,3 +314,39 @@ def test_feature_derivations_reject_wrong_shape_alignment_and_numeric_boundaries
     )
     with pytest.raises(DataError, match="reserve"):
         liquidity_features(zero_reserve, available_at=NOW)
+
+
+def test_funding_features_reject_multi_symbol_frame() -> None:
+    timestamps = [NOW - timedelta(hours=2), NOW - timedelta(hours=1)]
+    funding = _source(
+        "funding",
+        "funding",
+        pl.DataFrame(
+            {
+                "timestamp": timestamps,
+                "symbol": ["BTCUSDT", "ETHUSDT"],
+                "funding_rate": [0.0001, 0.0002],
+            }
+        ),
+        "a",
+    )
+    with pytest.raises(DataError, match="single instrument"):
+        funding_features(funding, available_at=NOW)
+
+
+def test_open_interest_features_reject_multi_symbol_frame() -> None:
+    timestamps = [NOW - timedelta(hours=2), NOW - timedelta(hours=1)]
+    open_interest = _source(
+        "open_interest",
+        "open_interest",
+        pl.DataFrame(
+            {
+                "timestamp": timestamps,
+                "symbol": ["BTCUSDT", "ETHUSDT"],
+                "open_interest": [10.0, 12.0],
+            }
+        ),
+        "b",
+    )
+    with pytest.raises(DataError, match="single instrument"):
+        open_interest_features(open_interest, available_at=NOW)

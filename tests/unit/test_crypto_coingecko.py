@@ -316,3 +316,17 @@ def test_market_and_catalog_field_validation_fail_loud() -> None:
         parse_market_universe(json.dumps([base]).encode(), vs_currency="usd", fetched_at=now)
     with pytest.raises(DataError, match="platforms"):
         parse_asset_catalog(b'[{"id":"x","symbol":"x","name":"X","platforms":[]}]')
+
+
+def test_asset_catalog_rejects_object_platform_values() -> None:
+    payload = json.dumps(
+        [{"id": "x", "symbol": "x", "name": "X", "platforms": {"ethereum": {"address": "0x1"}}}]
+    ).encode()
+
+    with pytest.raises(DataError, match="platform mapping shape"):
+        parse_asset_catalog(payload)
+
+
+def test_asset_catalog_rejects_empty_result() -> None:
+    with pytest.raises(DataError, match="asset catalog is empty"):
+        parse_asset_catalog(b"[]")

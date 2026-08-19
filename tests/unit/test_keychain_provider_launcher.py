@@ -244,3 +244,24 @@ def test_finnhub_check_points_at_the_bounded_probe_instead(tmp_path: Path) -> No
     assert result.returncode == 64
     assert "finnhub quote" in result.stderr
     assert captured == []
+
+
+def test_missing_keychain_item_reports_a_named_failure(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    _executable(
+        fake_bin / "security",
+        "#!/bin/sh\nset -eu\nexit 44\n",
+    )
+    repository = Path(__file__).resolve().parents[2]
+    result = subprocess.run(
+        [str(repository / "scripts" / "alpha-with-keychain-provider"), "coingecko", "check"],
+        cwd=repository,
+        env={**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}"},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 78
+    assert "unable to read the coingecko Keychain item" in result.stderr

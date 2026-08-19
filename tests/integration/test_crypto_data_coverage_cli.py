@@ -33,6 +33,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     as_of = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
     empty_catalog = pl.DataFrame(
         schema={
+            "fetched_at": pl.Datetime(time_zone="UTC"),
             "status": pl.String,
             "contract_type": pl.String,
             "symbol": pl.String,
@@ -44,6 +45,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     )
     linear = pl.DataFrame(
         {
+            "fetched_at": [as_of - timedelta(minutes=1)],
             "status": ["Trading"],
             "contract_type": ["LinearPerpetual"],
             "symbol": ["BTCUSDT"],
@@ -55,6 +57,7 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     )
     options = pl.DataFrame(
         {
+            "fetched_at": [as_of - timedelta(minutes=1)],
             "status": ["Trading"],
             "symbol": ["BTC-30AUG26-100000-C-USDT"],
             "base_coin": ["BTC"],

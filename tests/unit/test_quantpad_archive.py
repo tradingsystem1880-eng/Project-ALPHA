@@ -709,3 +709,40 @@ def test_server_error_reason_is_surfaced(tmp_path: Path) -> None:
         fetch_quantpad_archive(
             _store(tmp_path), request, api_key="secret", opener=opener, sleep=lambda _: None
         )
+
+
+def test_unparsable_content_length_fails_loud(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="AAPL", response_format="json")
+    Response = _response_class({"Content-Type": "application/json", "Content-Length": "abc"})
+
+    def opener(*_args: object, **_kwargs: object) -> io.BytesIO:
+        return Response(b"{}")
+
+    with pytest.raises(DataError, match="unparsable Content-Length"):
+        fetch_quantpad_archive(
+            _store(tmp_path), request, api_key="secret", opener=opener, sleep=lambda _: None
+        )
+    assert _store(tmp_path).find_request(request.request_id) is None
+
+
+def test_http_error_message_never_echoes_response_body(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="AAPL", response_format="json")
+
+    def opener(*_args: object, **_kwargs: object) -> object:
+        raise urllib.error.HTTPError(
+            "https://api.quantpad.ai/v1/coverage?symbol=AAPL",
+            429,
+            "slow down",
+            _headers({}),
+            io.BytesIO(b'{"error": "X-API-Key sk-secret-value rejected by the gateway"}'),
+        )
+
+    with pytest.raises(DataError) as failure:
+        fetch_quantpad_archive(
+            _store(tmp_path),
+            request,
+            api_key="sk-secret-value",
+            opener=opener,
+            sleep=lambda _: None,
+        )
+    assert "sk-secret-value" not in str(failure.value)

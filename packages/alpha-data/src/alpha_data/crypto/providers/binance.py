@@ -54,6 +54,10 @@ def _provider_symbol(value: object) -> bool:
     )
 
 
+_EARLIEST_INSTANT: Final = datetime(2010, 1, 1, tzinfo=UTC)
+_LATEST_INSTANT: Final = datetime(2100, 1, 1, tzinfo=UTC)
+
+
 def _boolean(value: WireScalar, *, label: str) -> bool:
     normalized = str(value).strip().lower()
     if normalized == "true":
@@ -63,16 +67,21 @@ def _boolean(value: WireScalar, *, label: str) -> bool:
     raise DataError(f"Binance {label} boolean is invalid")
 
 
-def _timestamp(raw: WireScalar) -> datetime:
+def _timestamp(raw: WireScalar, *, allow_future: bool = False) -> datetime:
     try:
         value = int(raw)
     except (TypeError, ValueError) as exc:
         raise DataError("Binance kline timestamp is invalid") from exc
     divisor = 1_000_000 if value >= 1_000_000_000_000_000 else 1_000
     try:
-        return datetime.fromtimestamp(value / divisor, tz=UTC)
+        instant = datetime.fromtimestamp(value / divisor, tz=UTC)
     except (OverflowError, OSError, ValueError) as exc:
-        raise DataError("Binance kline timestamp is outside the supported range") from exc
+        raise DataError("Binance timestamp is outside the supported range") from exc
+    if instant < _EARLIEST_INSTANT:
+        raise DataError("Binance timestamp is outside the supported range")
+    if not allow_future and instant > _LATEST_INSTANT:
+        raise DataError("Binance timestamp is outside the supported range")
+    return instant
 
 
 def _optional_timestamp(raw: object, *, label: str) -> datetime | None:
@@ -80,7 +89,7 @@ def _optional_timestamp(raw: object, *, label: str) -> datetime | None:
         return None
     if isinstance(raw, bool) or not isinstance(raw, str | int | float):
         raise DataError(f"Binance {label} timestamp is invalid")
-    return _timestamp(raw)
+    return _timestamp(raw, allow_future=True)
 
 
 def _rows(payload: bytes, source: BinanceKlineSource) -> list[list[WireScalar]]:

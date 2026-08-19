@@ -165,9 +165,7 @@ def parse_asset_metrics(
         except ValueError as exc:
             raise DataError("Coin Metrics timeseries timestamp is invalid") from exc
         for metric in metrics:
-            if metric not in record:
-                continue
-            raw_value = record[metric]
+            raw_value = record.get(metric)
             value: float | None
             if raw_value is None:
                 value = None

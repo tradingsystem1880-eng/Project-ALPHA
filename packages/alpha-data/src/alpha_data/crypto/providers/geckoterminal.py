@@ -131,6 +131,12 @@ def _finite(value: object, label: str) -> float | None:
     return number
 
 
+def _non_negative_int(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise DataError(f"GeckoTerminal {label} must be a non-negative integer")
+    return value
+
+
 def _relationship(record: dict[str, object], name: str, network: str) -> str:
     relationships = record.get("relationships")
     if not isinstance(relationships, dict) or not isinstance(relationships.get(name), dict):
@@ -203,8 +209,8 @@ def parse_top_pools(payload: bytes, *, network: str) -> pl.DataFrame:
                 ),
                 "reserve_usd": _finite(attributes.get("reserve_in_usd"), "reserve"),
                 "h24_volume_usd": _finite(volume.get("h24"), "24-hour volume"),
-                "h24_buys": h24.get("buys"),
-                "h24_sells": h24.get("sells"),
+                "h24_buys": _non_negative_int(h24.get("buys"), "24-hour buy transaction count"),
+                "h24_sells": _non_negative_int(h24.get("sells"), "24-hour sell transaction count"),
             }
         )
     return pl.DataFrame(rows)
@@ -231,6 +237,8 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
     base_address, quote_address = base.get("address"), quote.get("address")
     if not isinstance(base_address, str) or not isinstance(quote_address, str):
         raise DataError("GeckoTerminal OHLCV contract identity is invalid")
+    if not values:
+        raise DataError("GeckoTerminal pool OHLCV response is empty")
     rows: list[dict[str, object]] = []
     for provider_rank, point in enumerate(values):
         if not isinstance(point, list) or len(point) != 6:
@@ -238,6 +246,17 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
         timestamp = point[0]
         if not isinstance(timestamp, int) or isinstance(timestamp, bool) or timestamp < 0:
             raise DataError("GeckoTerminal OHLCV timestamp is invalid")
+        open_, high, low, close = (_finite(point[index], "price") for index in (1, 2, 3, 4))
+        if (
+            open_ is None
+            or high is None
+            or low is None
+            or close is None
+            or high < max(open_, close)
+            or low > min(open_, close)
+            or high < low
+        ):
+            raise DataError("GeckoTerminal pool OHLCV bar violates OHLC invariants")
         rows.append(
             {
                 "network": network,
@@ -246,10 +265,10 @@ def parse_pool_ohlcv(payload: bytes, *, network: str, pool_address: str) -> pl.D
                 "base_token_address": normalize_crypto_address(network, base_address),
                 "quote_token_address": normalize_crypto_address(network, quote_address),
                 "timestamp": datetime.fromtimestamp(timestamp, tz=UTC),
-                "open": _finite(point[1], "open"),
-                "high": _finite(point[2], "high"),
-                "low": _finite(point[3], "low"),
-                "close": _finite(point[4], "close"),
+                "open": open_,
+                "high": high,
+                "low": low,
+                "close": close,
                 "volume_usd": _finite(point[5], "volume"),
             }
         )
@@ -291,7 +310,9 @@ def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.
                 "network": network,
                 "provider_rank": provider_rank,
                 "pool_address": normalize_crypto_address(network, pool_address),
-                "block_number": attributes.get("block_number"),
+                "block_number": _non_negative_int(
+                    attributes.get("block_number"), "trade block number"
+                ),
                 "trade_id": trade_id,
                 "tx_hash": tx_hash,
                 "timestamp": observed,

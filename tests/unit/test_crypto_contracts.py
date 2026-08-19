@@ -393,3 +393,19 @@ def test_receipt_and_snapshot_reject_malformed_values() -> None:
         CryptoSnapshotV1.from_dict({"schema_version": 2})
     with pytest.raises(DataError, match="members"):
         CryptoSnapshotV1.from_dict({**snapshot.to_dict(), "members": "bad"})
+
+
+def test_receipt_identity_survives_whitespace_request() -> None:
+    receipt = CryptoRawReceiptV1.create(
+        dataset=_dataset(),
+        request=(("symbol", "BTCUSDT "),),
+        fetched_at=datetime(2026, 8, 14, tzinfo=UTC),
+        response_sha256="a" * 64,
+        response_bytes=10,
+        provider_schema="binance-klines-v1",
+        parser_version="1",
+        pagination=(),
+        upstream_checksum=None,
+    )
+
+    assert CryptoRawReceiptV1.from_dict(receipt.to_dict()) == receipt

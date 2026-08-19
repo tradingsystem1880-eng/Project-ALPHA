@@ -125,7 +125,10 @@ def _decode(payload: bytes) -> tuple[object, int | None]:
     if not isinstance(raw, dict):
         raise DataError("Bybit public response must be an object")
     if raw.get("retCode") != 0:
-        raise DataError("Bybit public response reported an error")
+        raise DataError(
+            "Bybit public response reported an error "
+            f"(retCode {raw.get('retCode')!r}: {str(raw.get('retMsg'))[:200]})"
+        )
     if "result" not in raw:
         raise DataError("Bybit public response has no result")
     response_time = raw.get("time")
@@ -535,8 +538,7 @@ def parse_historical_volatility(
 def parse_option_tickers(payload: bytes, *, fetched_at_ms: int) -> tuple[pl.DataFrame, str | None]:
     """Parse a full option-chain ticker page and retain provider IV/Greeks unchanged."""
     result, response_time = _result_object(payload)
-    if "category" in result:
-        _category(result.get("category"), "option")
+    _category(result.get("category"), "option")
     fetched_at = _timestamp(fetched_at_ms, "fetch")
     assert fetched_at is not None
     if response_time is not None and response_time > fetched_at_ms + 60_000:

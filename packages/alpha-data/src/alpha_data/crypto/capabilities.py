@@ -81,7 +81,7 @@ _LIMITS: Final[dict[CryptoFamily, tuple[str, ...]]] = {
 
 def _state(reports: list[CryptoQualityReportV1]) -> QualificationState:
     states = {report.state for report in reports}
-    for state in ("qualified", "warning", "quarantined", "unavailable"):
+    for state in ("unavailable", "quarantined", "warning", "qualified"):
         if state in states:
             return state
     return "unverified"

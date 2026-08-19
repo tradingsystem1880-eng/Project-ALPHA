@@ -1036,3 +1036,17 @@ def test_orderbook_rejects_malformed_provider_state(
             category=category,  # type: ignore[arg-type]
             fetched_at_ms=10,
         )
+
+
+def test_option_tickers_require_category() -> None:
+    payload = _payload({"list": []})
+
+    with pytest.raises(DataError, match="category"):
+        parse_option_tickers(payload, fetched_at_ms=1_787_878_400_000)
+
+
+def test_provider_error_envelope_names_the_return_code() -> None:
+    with pytest.raises(DataError, match=r"reported an error \(retCode 10001"):
+        parse_option_tickers(
+            b'{"retCode":10001,"retMsg":"invalid symbol","result":{}}', fetched_at_ms=1
+        )

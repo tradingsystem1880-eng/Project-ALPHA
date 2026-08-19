@@ -178,6 +178,9 @@ def _numeric_failures(frame: pl.DataFrame) -> set[str]:
     return set()
 
 
+_VOLUME_COLUMNS: Final = ("volume", "base_volume", "quote_volume", "volume_usd")
+
+
 def _family_checks(
     dataset: CryptoDatasetIdentityV1, frame: pl.DataFrame
 ) -> tuple[set[str], set[str]]:
@@ -224,12 +227,16 @@ def _family_checks(
                 or high_value < low_value
             ):
                 failures.add("invalid_ohlc")
-        if (
-            dataset.family != "index_bars"
-            and "volume" in frame.columns
-            and any(value is not None and value < 0 for value in frame["volume"].to_list())
-        ):
-            failures.add("negative_volume")
+        if dataset.family != "index_bars":
+            present = [name for name in _VOLUME_COLUMNS if name in frame.columns]
+            if not present:
+                failures.add("missing_required_column:volume")
+            elif any(
+                isinstance(value, int | float) and not isinstance(value, bool) and value < 0
+                for name in present
+                for value in frame[name].to_list()
+            ):
+                failures.add("negative_volume")
     elif dataset.family == "premium_bars":
         values("close")
     elif dataset.family == "instrument_catalog":

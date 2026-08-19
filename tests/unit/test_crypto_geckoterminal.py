@@ -424,3 +424,91 @@ def test_keyless_ohlcv_and_trade_validation_fail_loud() -> None:
     }
     with pytest.raises(DataError, match="identity"):
         parse_pool_trades(json.dumps(malformed).encode(), network="eth", pool_address="x")
+
+
+def _pool_payload(transactions: object, *, block_number: object = 124) -> bytes:
+    return json.dumps(
+        {
+            "data": [
+                {
+                    "id": "eth_0xpool",
+                    "type": "pool",
+                    "attributes": {
+                        "address": "0xPool",
+                        "name": "USDC / WETH",
+                        "pool_created_at": "2021-12-30T20:32:10Z",
+                        "base_token_price_usd": "1.0",
+                        "quote_token_price_usd": "2000",
+                        "reserve_in_usd": "4558978.84",
+                        "volume_usd": {"h24": "39081025"},
+                        "transactions": transactions,
+                    },
+                    "relationships": {
+                        "base_token": {"data": {"id": "eth_0xbase", "type": "token"}},
+                        "quote_token": {"data": {"id": "eth_0xquote", "type": "token"}},
+                        "dex": {"data": {"id": "uniswap_v3", "type": "dex"}},
+                    },
+                }
+            ]
+        }
+    ).encode()
+
+
+def _ohlcv_payload(points: list[list[object]]) -> bytes:
+    return json.dumps(
+        {
+            "data": {"attributes": {"ohlcv_list": points}},
+            "meta": {
+                "base": {"address": "0xBase"},
+                "quote": {"address": "0xQuote"},
+            },
+        }
+    ).encode()
+
+
+def test_pool_transaction_counts_must_be_non_negative_integers() -> None:
+    for transactions in (
+        {"h24": {"buys": "8", "sells": 7}},
+        {"h24": {"buys": 8, "sells": -1}},
+        {"h24": {"buys": True, "sells": 7}},
+    ):
+        with pytest.raises(DataError, match="transaction count"):
+            parse_top_pools(_pool_payload(transactions), network="eth")
+
+    trades = json.dumps(
+        {
+            "data": [
+                {
+                    "id": "eth_trade",
+                    "type": "trade",
+                    "attributes": {
+                        "block_number": "124",
+                        "tx_hash": "0xabc",
+                        "from_token_amount": "0.1",
+                        "to_token_amount": "200",
+                        "price_from_in_usd": "2000",
+                        "price_to_in_usd": "1",
+                        "block_timestamp": "2026-08-14T00:01:00Z",
+                        "kind": "buy",
+                        "volume_in_usd": "200",
+                        "from_token_address": "0xFrom",
+                        "to_token_address": "0xTo",
+                    },
+                }
+            ]
+        }
+    ).encode()
+    with pytest.raises(DataError, match="block number"):
+        parse_pool_trades(trades, network="eth", pool_address="0xPool")
+
+
+def test_pool_ohlcv_rejects_empty_and_incoherent_bars() -> None:
+    with pytest.raises(DataError, match="OHLCV response is empty"):
+        parse_pool_ohlcv(_ohlcv_payload([]), network="eth", pool_address="0xPool")
+
+    with pytest.raises(DataError, match="OHLC"):
+        parse_pool_ohlcv(
+            _ohlcv_payload([[1700000000, 1, 0.5, 0.4, 1.5, 10]]),
+            network="eth",
+            pool_address="0xPool",
+        )

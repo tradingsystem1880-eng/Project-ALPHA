@@ -48,23 +48,26 @@ class _TruncatedStream(DataError):
     """Body length disagreed with ``Content-Length``; a bounded retry is allowed."""
 
 
-def _http_error_reason(exc: urllib.error.HTTPError) -> str:
-    """Provider-supplied reason from a 429/5xx body (bounded to 512 chars), else the status."""
+_SAFE_REASON: Final = re.compile(r"^[A-Za-z0-9 ._-]{1,80}$")
+
+
+def _http_error_reason(exc: urllib.error.HTTPError, api_key: str) -> str:
+    """A short allowlisted provider reason, else the status; the body is never echoed."""
     try:
         body = exc.read().decode("utf-8", errors="replace").strip()
-    except OSError:
-        body = ""
-    if not body:
-        return str(exc.code)
+    except OSError as error:
+        raise DataError(
+            f"QuantPad archive error body could not be read (status: {exc.code})"
+        ) from error
     try:
         payload = json.loads(body)
     except ValueError:
-        return body[:512]
+        return str(exc.code)
     if isinstance(payload, dict):
         reason = payload.get("error")
-        if isinstance(reason, str):
+        if isinstance(reason, str) and _SAFE_REASON.match(reason) and api_key not in reason:
             return reason
-    return body[:512]
+    return str(exc.code)
 
 
 def _canonical(value: object) -> bytes:
@@ -352,8 +355,10 @@ def fetch_quantpad_archive(
                 if declared is not None:
                     try:
                         expected_bytes = int(declared)
-                    except (TypeError, ValueError):
-                        expected_bytes = None
+                    except (TypeError, ValueError) as error:
+                        raise DataError(
+                            "QuantPad archive declared an unparsable Content-Length"
+                        ) from error
                 content_type = (
                     str(response.headers.get("Content-Type", ""))  # type: ignore[attr-defined]
                     .split(";", 1)[0]
@@ -401,7 +406,7 @@ def fetch_quantpad_archive(
             if attempt == 2:
                 raise DataError(
                     "QuantPad archive request failed; retry the bounded request "
-                    f"(reason: {_http_error_reason(exc)})"
+                    f"(reason: {_http_error_reason(exc, api_key)})"
                 ) from exc
             delay = float(attempt + 1)
             if exc.code == 429:

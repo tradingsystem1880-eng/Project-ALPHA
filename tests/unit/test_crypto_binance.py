@@ -406,16 +406,17 @@ def test_rest_json_parser_and_malformed_rows_fail_loud() -> None:
         (b"not-json", "rest_json", "malformed"),
         (b"1,2,3\n", "archive_csv", "fewer than eleven"),
         (b"x,1,2,0.5,1.5,10,2,15,2,4,6\n", "archive_csv", "timestamp"),
-        (b"1,nope,2,0.5,1.5,10,2,15,2,4,6\n", "archive_csv", "numeric"),
-        (b"1,1,0.5,2,1.5,10,2,15,2,4,6\n", "archive_csv", "OHLC"),
-        (b"1,1,2,0.5,1.5,-1,2,15,2,4,6\n", "archive_csv", "non-negative"),
+        (b"1704067200000,nope,2,0.5,1.5,10,1704153599999,15,2,4,6\n", "archive_csv", "numeric"),
+        (b"1704067200000,1,0.5,2,1.5,10,1704153599999,15,2,4,6\n", "archive_csv", "OHLC"),
+        (b"1704067200000,1,2,0.5,1.5,-1,1704153599999,15,2,4,6\n", "archive_csv", "non-negative"),
         (b"", "archive_csv", "empty"),
     ]
     for payload, source, message in failures:
         with pytest.raises(DataError, match=message):
             parse_binance_klines(payload, source=source)  # type: ignore[arg-type]
 
-    duplicated = b"1,1,2,0.5,1.5,10,2,15,2,4,6\n1,1,2,0.5,1.5,10,2,15,2,4,6\n"
+    row = b"1704067200000,1,2,0.5,1.5,10,1704153599999,15,2,4,6\n"
+    duplicated = row + row
     with pytest.raises(DataError, match="duplicate"):
         parse_binance_klines(duplicated, source="archive_csv")
 
@@ -1201,3 +1202,10 @@ def test_remaining_binance_fetch_and_liquidity_edges(
             quote_asset="USDT",
             limit=1,
         )
+
+
+def test_seconds_resolution_timestamp_fails_loud() -> None:
+    payload = b"1704067200,42000,43000,41000,42500,12.5,1704153599,531250,42,6.1,259250,0\n"
+
+    with pytest.raises(DataError, match="outside the supported range"):
+        parse_binance_klines(payload, source="archive_csv")
