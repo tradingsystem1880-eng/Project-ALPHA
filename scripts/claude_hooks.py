@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 import gate
+import harness_awareness
 
 COMMIT_RE = re.compile(
     r"^(feat|fix|test|build|chore|docs|refactor|ci|style|data)"
@@ -411,8 +412,8 @@ def _over_eager(root: Path, rel_path: str) -> bool:
     """A source edit outside the open plan's declared ``files`` scope (if it declares one)."""
     if not _is_source_edit(rel_path):
         return False
-    _, scope = gate.active_plan_scope(root)
-    return bool(scope) and not gate.in_plan_scope(rel_path, scope)
+    _, scope = harness_awareness.active_plan_scope(root)
+    return bool(scope) and not harness_awareness.in_plan_scope(rel_path, scope)
 
 
 def _record_stop_block(root: Path, session_id: str) -> int:
@@ -1052,7 +1053,7 @@ def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
 def _repo_brief_or_reason(root: Path) -> str:
     """The generated repo brief; awareness must never crash a context hook."""
     try:
-        return gate.repo_brief(root)
+        return harness_awareness.repo_brief(root)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         return f"REPO BRIEF unavailable: {exc!r} (run `gate.py brief --refresh`)"
 

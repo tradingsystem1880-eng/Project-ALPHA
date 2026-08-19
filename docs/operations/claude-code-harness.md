@@ -21,6 +21,8 @@ oracles, not just tests; Karpathy guidelines are always on, mechanically.
 | Piece | Path | Role |
 |---|---|---|
 | Gate runner | `scripts/gate.py` | `fast\|full\|check\|attest\|override\|ack\|owner-init\|lint-harness\|baseline\|audit\|brief\|index\|plan-check\|doctor\|mutate\|semgrep\|determinism\|raise-cov`; tree hash; stamps; hash-chained audit journal |
+| Quant-rigor sweeps | `scripts/harness_quant.py` | The `mutate` / `semgrep` / `determinism` / `raise-cov` implementations, imported lazily by `gate.py` inside those dispatch branches (`import gate` stays stdlib-only and cheap for hooks) |
+| Repo awareness | `scripts/harness_awareness.py` | The `brief` / `index` / `plan-check` implementations (ADR drift, open plan, retrospective watch-outs, repo index, plan scope), imported lazily by `gate.py` and at module level by `claude_hooks.py` |
 | Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `DriftFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan` |
 | Hooks | `scripts/claude_hooks.py` | Sixteen stdlib-only hook entrypoints (argv dispatch) + one advisory `prompt` hook |
 | Wiring | `.claude/settings.json` | Permissions allow/deny (57 deny rules), hook registration, statusline (committed) |

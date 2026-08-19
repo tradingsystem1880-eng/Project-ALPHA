@@ -14,6 +14,7 @@ from typing import Any
 
 import claude_hooks
 import gate
+import harness_awareness
 import pytest
 
 from tests.unit._harness_support import git as _git
@@ -725,7 +726,7 @@ class TestKarpathyAlwaysOn:
         for text in (start, post):
             assert "REPO BRIEF" in text
             assert "recent commits:" in text
-        assert (repo / ".claude" / "state" / gate.BRIEF_FILE).exists()
+        assert (repo / ".claude" / "state" / harness_awareness.BRIEF_FILE).exists()
 
     def test_prompt_brief_reminder(self, repo: Path) -> None:
         _, brief = claude_hooks.hook_prompt_context(_payload(), repo)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import gate
+import harness_awareness
 import pytest
 
 from tests.unit._harness_support import REPO_ROOT as ROOT
@@ -25,11 +25,11 @@ def _docs_text() -> str:
 
 class TestAdrAwareness:
     def test_every_adr_is_referenced(self) -> None:
-        assert gate.adr_drift(ROOT) == []
+        assert harness_awareness.adr_drift(ROOT) == []
 
     def test_adr_0029_is_referenced(self) -> None:
         # The concrete omission that motivated this guard.
-        assert 29 in gate.referenced_adr_ids(_docs_text())
+        assert 29 in harness_awareness.referenced_adr_ids(_docs_text())
 
 
 class TestModuleMapAwareness:

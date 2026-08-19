@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import gate
+import harness_awareness
 import harness_quant
 import pytest
 
@@ -478,6 +479,7 @@ def _wire_minimal_harness(repo: Path) -> None:
     for name in (
         "gate.py",
         "claude_hooks.py",
+        "harness_awareness.py",
         "harness_models.py",
         "harness_quant.py",
         "codex_bridge.py",
@@ -697,7 +699,7 @@ def _brief_repo(repo: Path) -> None:
 class TestBrief:
     def test_brief_reports_tree_facts(self, repo: Path) -> None:
         _brief_repo(repo)
-        text = gate.build_brief(repo)
+        text = harness_awareness.build_brief(repo)
         assert "REPO BRIEF" in text
         assert "docs: awareness fixtures" in text  # recent commits
         assert "2026-02-01-open.md" in text  # newest plan not marked completed
@@ -708,14 +710,14 @@ class TestBrief:
 
     def test_brief_cached_by_tree_hash(self, repo: Path) -> None:
         _brief_repo(repo)
-        first = gate.repo_brief(repo)
-        cache = repo / ".claude" / "state" / gate.BRIEF_FILE
+        first = harness_awareness.repo_brief(repo)
+        cache = repo / ".claude" / "state" / harness_awareness.BRIEF_FILE
         assert cache.exists()
         (repo / "CLAUDE.md").write_text("see ADR-0001 and ADR-0002\n")
-        second = gate.repo_brief(repo)
+        second = harness_awareness.repo_brief(repo)
         assert first != second
         assert "not referenced" not in second
-        assert gate.repo_brief(repo) == second  # cache hit is byte-identical
+        assert harness_awareness.repo_brief(repo) == second  # cache hit is byte-identical
 
     def test_brief_cache_is_invalidated_by_a_commit(self, repo: Path) -> None:
         """A commit changes no byte on disk, so a content-only cache key would go stale.
@@ -727,7 +729,7 @@ class TestBrief:
         """
         _brief_repo(repo)
         (repo / "note.md").write_text("scratch\n")
-        before = gate.repo_brief(repo)
+        before = harness_awareness.repo_brief(repo)
         assert "1 dirty file(s)" in before
         assert "chore: commit the note" not in before
 
@@ -736,29 +738,42 @@ class TestBrief:
         _git(repo, "commit", "--quiet", "-m", "chore: commit the note")
 
         assert gate.compute_tree_hash(repo) == tree_before  # the byte content is unchanged
-        after = gate.repo_brief(repo)
+        after = harness_awareness.repo_brief(repo)
         assert "0 dirty file(s)" in after
         assert "chore: commit the note" in after
 
     def test_brief_cache_key_tracks_the_branch(self, repo: Path) -> None:
         _brief_repo(repo)
-        key = gate._brief_cache_key(repo)
+        key = harness_awareness._brief_cache_key(repo)
         _git(repo, "checkout", "--quiet", "-b", "some-other-branch")
-        assert gate._brief_cache_key(repo) != key
-        assert "some-other-branch" in gate.repo_brief(repo)
+        assert harness_awareness._brief_cache_key(repo) != key
+        assert "some-other-branch" in harness_awareness.repo_brief(repo)
 
     def test_adr_mentions_understand_ranges(self) -> None:
         text = "ADR-0013 and ADRs 0019-0020 plus ADR-0021..0026 (ADRs 0013-0016)"
-        assert gate.referenced_adr_ids(text) == {13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26}
+        assert harness_awareness.referenced_adr_ids(text) == {
+            13,
+            14,
+            15,
+            16,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+        }
 
     def test_only_newest_plan_is_considered(self, repo: Path) -> None:
         _brief_repo(repo)
         plans = repo / "docs" / "superpowers" / "plans"
         (plans / "2026-03-01-done.md").write_text("# Done\n\n**Delivery state:** Completed.\n")
-        assert gate.open_plan(repo) is None
+        assert harness_awareness.open_plan(repo) is None
 
     def test_brief_survives_missing_inputs(self, repo: Path) -> None:
-        text = gate.build_brief(repo)
+        text = harness_awareness.build_brief(repo)
         assert "REPO BRIEF" in text
         assert "ADRs: 0" in text
 
@@ -778,14 +793,14 @@ class TestIndex:
             "[[tool.importlinter.contracts]]\nname = 'alpha_core imports nothing internal'\n"
             "type = 'forbidden'\n"
         )
-        index = gate.build_index(repo, cli=False)
+        index = harness_awareness.build_index(repo, cli=False)
         assert index["packages"]["alpha_core"]["types.py"] == ["Bar", "public_fn"]
         assert index["packages"]["alpha_core"]["__init__.py"] == ["Bar"]
         assert index["import_linter_contracts"] == ["alpha_core imports nothing internal"]
         assert index["adrs"] == ["0001-first.md", "0002-second.md"]
         assert index["cli_commands"] == {"unavailable": "cli=False"}
-        path = gate.write_index(repo, cli=False)
-        assert path == repo / ".claude" / "state" / gate.INDEX_FILE
+        path = harness_awareness.write_index(repo, cli=False)
+        assert path == repo / ".claude" / "state" / harness_awareness.INDEX_FILE
         assert json.loads(path.read_text())["tree_hash"] == gate.compute_tree_hash(repo)
 
 
@@ -821,7 +836,7 @@ class TestPlanCheck:
     def test_valid_plan_passes_and_summarizes(self, tmp_path: Path) -> None:
         plan = tmp_path / "2026-03-01-x.md"
         plan.write_text(_plan_doc(_VALID_PLAN))
-        ok, message = gate.plan_check(plan)
+        ok, message = harness_awareness.plan_check(plan)
         assert ok, message
         assert "2 slice(s), 0 done" in message
 
@@ -838,32 +853,32 @@ class TestPlanCheck:
     def test_missing_reasoning_fields_fail(self, tmp_path: Path, field: str, value: Any) -> None:
         plan = tmp_path / "p.md"
         plan.write_text(_plan_doc({**_VALID_PLAN, field: value}))
-        ok, message = gate.plan_check(plan)
+        ok, message = harness_awareness.plan_check(plan)
         assert not ok
         assert "FeaturePlan invalid" in message
 
     def test_no_front_block_fails(self, tmp_path: Path) -> None:
         plan = tmp_path / "p.md"
         plan.write_text("# Plan without a block\n\n```json\nnot json\n```\n")
-        ok, message = gate.plan_check(plan)
+        ok, message = harness_awareness.plan_check(plan)
         assert not ok and "no fenced" in message
-        assert gate.plan_front_block("no fences at all") is None
+        assert harness_awareness.plan_front_block("no fences at all") is None
 
     def test_active_plan_scope_reads_without_pydantic(self, repo: Path) -> None:
         plans = repo / "docs" / "superpowers" / "plans"
         plans.mkdir(parents=True)
         (plans / "2026-01-01-old.md").write_text("# Old\n\n**Delivery state:** Completed.\n")
         (plans / "2026-02-01-open.md").write_text(_plan_doc(_VALID_PLAN))
-        name, scope = gate.active_plan_scope(repo)
+        name, scope = harness_awareness.active_plan_scope(repo)
         assert name == "2026-02-01-open.md"
         assert scope == ["tests/unit/test_x.py", "packages/alpha-core/src/alpha_core/x.py"]
-        assert gate.in_plan_scope("tests/unit/test_x.py", scope)
-        assert gate.in_plan_scope("packages/alpha-core/src/alpha_core/x.py", scope)
-        assert not gate.in_plan_scope("packages/alpha-core/src/alpha_core/y.py", scope)
-        assert gate.in_plan_scope("apps/a/b.py", ["apps/a/", "z"])
-        assert gate.in_plan_scope("apps/a/b.py", ["apps/*/b.py"])
+        assert harness_awareness.in_plan_scope("tests/unit/test_x.py", scope)
+        assert harness_awareness.in_plan_scope("packages/alpha-core/src/alpha_core/x.py", scope)
+        assert not harness_awareness.in_plan_scope("packages/alpha-core/src/alpha_core/y.py", scope)
+        assert harness_awareness.in_plan_scope("apps/a/b.py", ["apps/a/", "z"])
+        assert harness_awareness.in_plan_scope("apps/a/b.py", ["apps/*/b.py"])
         (plans / "2026-02-01-open.md").write_text("# Open plan without a block\n")
-        assert gate.active_plan_scope(repo) == ("2026-02-01-open.md", [])
+        assert harness_awareness.active_plan_scope(repo) == ("2026-02-01-open.md", [])
 
 
 class TestQuantRigorTooling:
