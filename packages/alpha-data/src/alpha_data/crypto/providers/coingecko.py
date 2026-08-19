@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 from datetime import UTC, date, datetime
 from typing import Final
 from urllib.parse import urlencode
@@ -14,6 +13,13 @@ import polars as pl
 from alpha_core import DataError
 
 from ..contracts import normalize_crypto_address, parse_iso8601_utc
+from ._wire import (
+    decode_json_list,
+    decode_json_object,
+    fetch_bounded,
+    finite_float,
+    resolve_endpoint,
+)
 
 type QueryScalar = str | int | bool
 
@@ -38,12 +44,7 @@ def coingecko_demo_request(
     api_key: str,
     coin_id: str | None = None,
 ) -> Request:
-    definition = _ENDPOINTS.get(endpoint)
-    if definition is None:
-        raise DataError(f"unsupported CoinGecko Demo endpoint {endpoint!r}")
-    path, allowed = definition
-    if set(params) - allowed:
-        raise DataError("unsupported CoinGecko Demo query parameters")
+    path, pairs = resolve_endpoint(_ENDPOINTS, endpoint, params, provider="CoinGecko Demo")
     if not api_key.strip():
         raise DataError("CoinGecko Demo key is not injected")
     if "{coin_id}" in path:
@@ -59,7 +60,7 @@ def coingecko_demo_request(
             raise DataError("CoinGecko page size is invalid")
     encoded_params = [
         (key, "true" if value is True else "false" if value is False else value)
-        for key, value in sorted(params.items())
+        for key, value in pairs
     ]
     query = urlencode(encoded_params).replace("%2C", ",")
     url = f"https://api.coingecko.com/api/v3{path}" + (f"?{query}" if query else "")
@@ -79,56 +80,30 @@ def fetch_coingecko_demo(request: Request, *, timeout_seconds: int = 30) -> byte
         raise DataError("CoinGecko Demo timeout must be between 1 and 60 seconds")
     if not request.full_url.startswith("https://api.coingecko.com/api/v3/"):
         raise DataError("CoinGecko Demo request host is invalid")
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
-
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-            if not str(response.geturl()).startswith("https://api.coingecko.com/api/v3/"):
-                raise DataError("CoinGecko Demo redirect host is invalid")
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-            if content_type not in {"application/json", "text/json"}:
-                raise DataError("CoinGecko Demo response MIME is not JSON")
-            payload = bytes(response.read(8 * 1024 * 1024 + 1))
-    except urllib.error.HTTPError as exc:
-        raise DataError(f"CoinGecko Demo request failed with HTTP {exc.code}") from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise DataError("CoinGecko Demo request failed") from exc
-    if len(payload) > 8 * 1024 * 1024:
-        raise DataError("CoinGecko Demo response exceeds the byte limit")
-    return payload
+    return fetch_bounded(
+        request,
+        provider="CoinGecko Demo",
+        host_prefix="https://api.coingecko.com/api/v3/",
+        content_types=frozenset({"application/json", "text/json"}),
+        max_bytes=8 * 1024 * 1024,
+        timeout_seconds=timeout_seconds,
+        report_http_code=True,
+    )
 
 
 def _decode_list(payload: bytes) -> list[dict[str, object]]:
-    try:
-        raw = json.loads(payload)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError("CoinGecko response is malformed") from exc
-    if not isinstance(raw, list) or any(not isinstance(row, dict) for row in raw):
-        raise DataError("CoinGecko response must be a list of objects")
-    return raw
+    return decode_json_list(payload, provider="CoinGecko")
 
 
 def _decode_object(payload: bytes) -> dict[str, object]:
-    try:
-        raw = json.loads(payload)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError("CoinGecko response is malformed") from exc
-    if not isinstance(raw, dict):
-        raise DataError("CoinGecko response must be an object")
-    return raw
+    return decode_json_object(payload, provider="CoinGecko")
 
 
 def _number(row: dict[str, object], key: str) -> float | None:
     value = row.get(key)
     if value is None:
         return None
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise DataError(f"CoinGecko field {key} is invalid")
-    result = float(value)
-    if not math.isfinite(result):
-        raise DataError(f"CoinGecko field {key} is not finite")
-    return result
+    return finite_float(value, f"CoinGecko field {key}", allow_text=False)
 
 
 def _optional_text(row: dict[str, object], key: str, *, limit: int = 500) -> str | None:

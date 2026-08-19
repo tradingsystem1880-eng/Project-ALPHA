@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
-import json
 import math
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Final, Literal
 from urllib.parse import urlencode
 
 import polars as pl
 
 from alpha_core import DataError
+
+from ._wire import (
+    decode_json_object,
+    epoch_ms_to_utc,
+    fetch_bounded,
+    finite_float,
+    resolve_endpoint,
+    validate_book_sides,
+)
 
 type BybitCategory = Literal["spot", "linear", "inverse", "option"]
 type PriceFamily = Literal["trade", "mark", "index", "premium"]
@@ -75,18 +83,15 @@ _ENDPOINTS: Final = {
 
 def bybit_public_url(endpoint: str, params: dict[str, QueryScalar]) -> str:
     """Build one closed, read-only Bybit public-market URL."""
-    definition = _ENDPOINTS.get(endpoint)
-    if definition is None:
-        raise DataError(f"unsupported Bybit public endpoint {endpoint!r}")
-    path, allowed = definition
-    unknown = set(params) - allowed
-    if unknown:
-        raise DataError(f"unsupported Bybit query parameters for {endpoint}")
-    if len(params) > 12 or any(
-        isinstance(value, bool) or not isinstance(value, str | int) for value in params.values()
-    ):
-        raise DataError("Bybit public query contains an unsupported value")
-    return f"https://api.bybit.com{path}?{urlencode(sorted(params.items()))}"
+    path, pairs = resolve_endpoint(
+        _ENDPOINTS,
+        endpoint,
+        params,
+        provider="Bybit public",
+        param_message=f"unsupported Bybit query parameters for {endpoint}",
+        max_params=12,
+    )
+    return f"https://api.bybit.com{path}?{urlencode(pairs)}"
 
 
 def fetch_bybit_public(
@@ -95,35 +100,18 @@ def fetch_bybit_public(
     """Fetch one bounded credential-free public response from the pinned Bybit host."""
     if not 1 <= timeout_seconds <= 60:
         raise DataError("Bybit public timeout must be between 1 and 60 seconds")
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
-
-    request = urllib.request.Request(
+    return fetch_bounded(
         bybit_public_url(endpoint, params),
-        headers={"Accept": "application/json", "User-Agent": "Project-ALPHA/1.0"},
+        provider="Bybit public",
+        host_prefix="https://api.bybit.com/v5/",
+        content_types=frozenset({"application/json", "text/json"}),
+        max_bytes=_MAX_RESPONSE_BYTES,
+        timeout_seconds=timeout_seconds,
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-            if not str(response.geturl()).startswith("https://api.bybit.com/v5/"):
-                raise DataError("Bybit public redirect host is invalid")
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-            if content_type not in {"application/json", "text/json"}:
-                raise DataError("Bybit public response MIME is not JSON")
-            payload = bytes(response.read(_MAX_RESPONSE_BYTES + 1))
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
-        raise DataError("Bybit public request failed") from exc
-    if len(payload) > _MAX_RESPONSE_BYTES:
-        raise DataError("Bybit public response exceeds the byte limit")
-    return payload
 
 
 def _decode(payload: bytes) -> tuple[object, int | None]:
-    try:
-        raw = json.loads(payload)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError("Bybit public response is malformed") from exc
-    if not isinstance(raw, dict):
-        raise DataError("Bybit public response must be an object")
+    raw = decode_json_object(payload, provider="Bybit public")
     if raw.get("retCode") != 0:
         raise DataError(
             "Bybit public response reported an error "
@@ -177,15 +165,7 @@ def _number(record: dict[str, object], name: str, *, optional: bool = False) -> 
     value = record.get(name)
     if optional and value in (None, ""):
         return None
-    if isinstance(value, bool) or not isinstance(value, str | int | float):
-        raise DataError(f"Bybit record field {name} is invalid")
-    try:
-        parsed = float(value)
-    except ValueError as exc:
-        raise DataError(f"Bybit record field {name} is invalid") from exc
-    if not math.isfinite(parsed):
-        raise DataError(f"Bybit record field {name} is not finite")
-    return parsed
+    return finite_float(value, f"Bybit record field {name}")
 
 
 def _integer(record: dict[str, object], name: str, *, optional: bool = False) -> int | None:
@@ -205,10 +185,7 @@ def _timestamp(value: int | None, label: str, *, allow_zero: bool = False) -> da
         return None
     if value < 0:
         raise DataError(f"Bybit {label} timestamp is invalid")
-    try:
-        return datetime.fromtimestamp(value / 1_000, tz=UTC)
-    except (OverflowError, OSError, ValueError) as exc:
-        raise DataError(f"Bybit {label} timestamp is outside the supported range") from exc
+    return epoch_ms_to_utc(value, f"Bybit {label} timestamp")
 
 
 def _category(value: object, expected: BybitCategory | None = None) -> BybitCategory:
@@ -707,12 +684,12 @@ def parse_orderbook_snapshot(
                     "cross_sequence": cross_sequence,
                 }
             )
-    if any(right >= left for left, right in zip(prices["bid"], prices["bid"][1:], strict=False)):
-        raise DataError("Bybit orderbook bids are not strictly descending")
-    if any(right <= left for left, right in zip(prices["ask"], prices["ask"][1:], strict=False)):
-        raise DataError("Bybit orderbook asks are not strictly ascending")
-    if prices["bid"][0] >= prices["ask"][0]:
-        raise DataError("Bybit orderbook is crossed or locked")
+    validate_book_sides(
+        prices["bid"],
+        prices["ask"],
+        provider="Bybit orderbook",
+        crossed_message="Bybit orderbook is crossed or locked",
+    )
     return pl.DataFrame(rows)
 
 

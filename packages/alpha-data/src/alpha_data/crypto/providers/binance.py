@@ -19,6 +19,7 @@ import polars as pl
 from alpha_core import DataError
 
 from ..storage import sha256_file
+from ._wire import epoch_ms_to_utc, fetch_bounded, validate_book_sides
 
 type BinanceArchiveMarket = Literal["spot", "um", "cm"]
 type BinanceKlineSource = Literal["archive_csv", "rest_json"]
@@ -56,10 +57,6 @@ def _provider_symbol(value: object) -> bool:
     )
 
 
-_EARLIEST_INSTANT: Final = datetime(2010, 1, 1, tzinfo=UTC)
-_LATEST_INSTANT: Final = datetime(2100, 1, 1, tzinfo=UTC)
-
-
 def _boolean(value: WireScalar, *, label: str) -> bool:
     normalized = str(value).strip().lower()
     if normalized == "true":
@@ -70,20 +67,14 @@ def _boolean(value: WireScalar, *, label: str) -> bool:
 
 
 def _timestamp(raw: WireScalar, *, allow_future: bool = False) -> datetime:
-    try:
-        value = int(raw)
-    except (TypeError, ValueError) as exc:
-        raise DataError("Binance kline timestamp is invalid") from exc
-    divisor = 1_000_000 if value >= 1_000_000_000_000_000 else 1_000
-    try:
-        instant = datetime.fromtimestamp(value / divisor, tz=UTC)
-    except (OverflowError, OSError, ValueError) as exc:
-        raise DataError("Binance timestamp is outside the supported range") from exc
-    if instant < _EARLIEST_INSTANT:
-        raise DataError("Binance timestamp is outside the supported range")
-    if not allow_future and instant > _LATEST_INSTANT:
-        raise DataError("Binance timestamp is outside the supported range")
-    return instant
+    return epoch_ms_to_utc(
+        raw,
+        "Binance kline timestamp",
+        range_label="Binance timestamp",
+        allow_microseconds=True,
+        enforce_window=True,
+        allow_future=allow_future,
+    )
 
 
 def _optional_timestamp(raw: object, *, label: str) -> datetime | None:
@@ -299,12 +290,12 @@ def parse_binance_book_snapshot(
         raise DataError("Binance book snapshot is empty")
     if len(set(bids)) != len(bids) or len(set(asks)) != len(asks):
         raise DataError("Binance book snapshot contains duplicate prices")
-    if any(right >= left for left, right in zip(bids, bids[1:], strict=False)):
-        raise DataError("Binance book snapshot bids are not strictly descending")
-    if any(right <= left for left, right in zip(asks, asks[1:], strict=False)):
-        raise DataError("Binance book snapshot asks are not strictly ascending")
-    if bids[0] >= asks[0]:
-        raise DataError("Binance book snapshot is crossed")
+    validate_book_sides(
+        bids,
+        asks,
+        provider="Binance book snapshot",
+        crossed_message="Binance book snapshot is crossed",
+    )
     return pl.DataFrame(parsed)
 
 
@@ -532,23 +523,17 @@ def fetch_binance_public_api(url: str, *, timeout_seconds: int = 30) -> bytes:
     if not url.startswith(allowed_prefixes):
         raise DataError("Binance public API host is invalid")
     max_bytes = 32 * 1024 * 1024 if url.endswith("/exchangeInfo") else 16 * 1024 * 1024
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+    from urllib.request import Request  # noqa: PLC0415
 
-    request = urllib.request.Request(url, headers={"User-Agent": "Project-ALPHA/1.0"})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-            if not str(response.geturl()).startswith(allowed_prefixes):
-                raise DataError("Binance public API redirect host is invalid")
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-            if content_type != "application/json":
-                raise DataError("Binance public API response MIME is invalid")
-            payload = bytes(response.read(max_bytes + 1))
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
-        raise DataError("Binance public API request failed") from exc
-    if len(payload) > max_bytes:
-        raise DataError("Binance public API response exceeds the byte limit")
-    return payload
+    return fetch_bounded(
+        Request(url, headers={"User-Agent": "Project-ALPHA/1.0"}),
+        provider="Binance public API",
+        host_prefix=allowed_prefixes,
+        content_types=frozenset({"application/json"}),
+        max_bytes=max_bytes,
+        timeout_seconds=timeout_seconds,
+        mime_message="response MIME is invalid",
+    )
 
 
 def _fetch_archive_resource(
@@ -562,23 +547,17 @@ def _fetch_archive_resource(
         raise DataError("Binance archive timeout must be between 1 and 120 seconds")
     if not url.startswith("https://data.binance.vision/data/"):
         raise DataError("Binance archive host is invalid")
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+    from urllib.request import Request  # noqa: PLC0415
 
-    request = urllib.request.Request(url, headers={"User-Agent": "Project-ALPHA/1.0"})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-            if not str(response.geturl()).startswith("https://data.binance.vision/data/"):
-                raise DataError("Binance archive redirect host is invalid")
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-            if content_type not in content_types:
-                raise DataError("Binance archive response MIME is invalid")
-            payload = bytes(response.read(max_bytes + 1))
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
-        raise DataError("Binance archive request failed") from exc
-    if len(payload) > max_bytes:
-        raise DataError("Binance archive response exceeds the byte limit")
-    return payload
+    return fetch_bounded(
+        Request(url, headers={"User-Agent": "Project-ALPHA/1.0"}),
+        provider="Binance archive",
+        host_prefix="https://data.binance.vision/data/",
+        content_types=content_types,
+        max_bytes=max_bytes,
+        timeout_seconds=timeout_seconds,
+        mime_message="response MIME is invalid",
+    )
 
 
 def _download_identity(url: str, expected_sha256: str, max_bytes: int) -> str:

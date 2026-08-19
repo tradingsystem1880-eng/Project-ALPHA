@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import math
-import time
 from datetime import UTC, datetime
 from typing import Final
 from urllib.parse import urlencode
@@ -14,6 +11,7 @@ import polars as pl
 from alpha_core import DataError
 
 from ..contracts import normalize_crypto_address, parse_iso8601_utc
+from ._wire import decode_json_object, fetch_bounded, finite_float, resolve_endpoint
 
 type QueryScalar = str | int | bool
 
@@ -39,12 +37,7 @@ def geckoterminal_public_url(
 ) -> str:
     if network not in NETWORKS:
         raise DataError("GeckoTerminal network is not a supported network")
-    definition = _ENDPOINTS.get(endpoint)
-    if definition is None:
-        raise DataError(f"unsupported GeckoTerminal endpoint {endpoint!r}")
-    path, allowed = definition
-    if set(params) - allowed:
-        raise DataError("unsupported GeckoTerminal query parameters")
+    path, pairs = resolve_endpoint(_ENDPOINTS, endpoint, params, provider="GeckoTerminal")
     if endpoint == "top_pools":
         page = params.get("page", 1)
         if not isinstance(page, int) or isinstance(page, bool) or not 1 <= page <= 5:
@@ -61,7 +54,7 @@ def geckoterminal_public_url(
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
             raise DataError("GeckoTerminal OHLCV limit is invalid")
     path = path.replace("{network}", network)
-    query = urlencode(sorted(params.items()))
+    query = urlencode(pairs)
     return f"https://api.geckoterminal.com/api/v2{path}" + (f"?{query}" if query else "")
 
 
@@ -71,64 +64,25 @@ def fetch_geckoterminal_public(url: str, *, timeout_seconds: int = 30) -> bytes:
         raise DataError("GeckoTerminal timeout must be between 1 and 60 seconds")
     if not url.startswith("https://api.geckoterminal.com/api/v2/"):
         raise DataError("GeckoTerminal request host is invalid")
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
-
-    request = urllib.request.Request(
-        url, headers={"Accept": "application/json", "User-Agent": "Project-ALPHA/1.0"}
+    return fetch_bounded(
+        url,
+        provider="GeckoTerminal",
+        host_prefix="https://api.geckoterminal.com/api/v2/",
+        content_types=frozenset({"application/json", "text/json"}),
+        max_bytes=8 * 1024 * 1024,
+        timeout_seconds=timeout_seconds,
+        retry_429=True,
     )
-    payload: bytes | None = None
-    max_attempts = 4
-    for attempt in range(max_attempts):
-        try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-                if not str(response.geturl()).startswith("https://api.geckoterminal.com/api/v2/"):
-                    raise DataError("GeckoTerminal redirect host is invalid")
-                content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-                if content_type not in {"application/json", "text/json"}:
-                    raise DataError("GeckoTerminal response MIME is not JSON")
-                payload = bytes(response.read(8 * 1024 * 1024 + 1))
-            break
-        except urllib.error.HTTPError as exc:
-            if exc.code != 429 or attempt == max_attempts - 1:
-                raise DataError("GeckoTerminal request failed") from exc
-            retry_header = exc.headers.get("Retry-After") if exc.headers is not None else None
-            try:
-                provider_delay = float(retry_header) if retry_header is not None else 0.0
-            except ValueError:
-                provider_delay = 0.0
-            time.sleep(min(10.0, max(2.1 * (2**attempt), provider_delay)))
-        except (urllib.error.URLError, TimeoutError) as exc:
-            raise DataError("GeckoTerminal request failed") from exc
-    if payload is None:
-        raise DataError("GeckoTerminal request failed")
-    if len(payload) > 8 * 1024 * 1024:
-        raise DataError("GeckoTerminal response exceeds the byte limit")
-    return payload
 
 
 def _decode(payload: bytes) -> dict[str, object]:
-    try:
-        raw = json.loads(payload)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError("GeckoTerminal response is malformed") from exc
-    if not isinstance(raw, dict):
-        raise DataError("GeckoTerminal response must be an object")
-    return raw
+    return decode_json_object(payload, provider="GeckoTerminal")
 
 
 def _finite(value: object, label: str) -> float | None:
     if value is None:
         return None
-    if isinstance(value, bool) or not isinstance(value, str | int | float):
-        raise DataError(f"GeckoTerminal {label} is invalid")
-    try:
-        number = float(value)
-    except ValueError as exc:
-        raise DataError(f"GeckoTerminal {label} is invalid") from exc
-    if not math.isfinite(number):
-        raise DataError(f"GeckoTerminal {label} is not finite")
-    return number
+    return finite_float(value, f"GeckoTerminal {label}")
 
 
 def _non_negative_int(value: object, label: str) -> int:

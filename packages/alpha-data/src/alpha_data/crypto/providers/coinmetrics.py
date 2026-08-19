@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 from typing import Final, cast
 from urllib.parse import urlencode
@@ -12,6 +11,7 @@ import polars as pl
 from alpha_core import DataError
 
 from ..contracts import parse_iso8601_utc
+from ._wire import decode_json_object, fetch_bounded, resolve_endpoint
 
 type QueryScalar = str | int
 
@@ -47,17 +47,10 @@ _ENDPOINTS: Final = {
 
 
 def coinmetrics_community_url(endpoint: str, params: dict[str, QueryScalar]) -> str:
-    definition = _ENDPOINTS.get(endpoint)
-    if definition is None:
-        raise DataError(f"unsupported Coin Metrics Community endpoint {endpoint!r}")
-    path, allowed = definition
-    if set(params) - allowed:
-        raise DataError("unsupported Coin Metrics Community query parameters")
-    if len(params) > 8 or any(
-        isinstance(value, bool) or not isinstance(value, str | int) for value in params.values()
-    ):
-        raise DataError("Coin Metrics Community query contains an unsupported value")
-    query = urlencode(sorted(params.items())).replace("%2C", ",")
+    path, pairs = resolve_endpoint(
+        _ENDPOINTS, endpoint, params, provider="Coin Metrics Community", max_params=8
+    )
+    query = urlencode(pairs).replace("%2C", ",")
     return f"https://community-api.coinmetrics.io/v4{path}" + (f"?{query}" if query else "")
 
 
@@ -67,33 +60,21 @@ def fetch_coinmetrics_community(url: str, *, timeout_seconds: int = 30) -> bytes
         raise DataError("Coin Metrics Community timeout must be between 1 and 60 seconds")
     if not url.startswith("https://community-api.coinmetrics.io/v4/"):
         raise DataError("Coin Metrics Community request host is invalid")
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
-
-    request = urllib.request.Request(
-        url, headers={"Accept": "application/json", "User-Agent": "Project-ALPHA/1.0"}
+    return fetch_bounded(
+        url,
+        provider="Coin Metrics Community",
+        host_prefix="https://community-api.coinmetrics.io/v4/",
+        content_types=frozenset({"application/json", "text/json"}),
+        max_bytes=16 * 1024 * 1024,
+        timeout_seconds=timeout_seconds,
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-            if not str(response.geturl()).startswith("https://community-api.coinmetrics.io/v4/"):
-                raise DataError("Coin Metrics Community redirect host is invalid")
-            content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-            if content_type not in {"application/json", "text/json"}:
-                raise DataError("Coin Metrics Community response MIME is not JSON")
-            payload = bytes(response.read(16 * 1024 * 1024 + 1))
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
-        raise DataError("Coin Metrics Community request failed") from exc
-    if len(payload) > 16 * 1024 * 1024:
-        raise DataError("Coin Metrics Community response exceeds the byte limit")
-    return payload
 
 
 def _decode(payload: bytes) -> dict[str, object]:
-    try:
-        raw = json.loads(payload)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError("Coin Metrics Community response is malformed") from exc
-    if not isinstance(raw, dict) or not isinstance(raw.get("data"), list):
+    raw = decode_json_object(
+        payload, provider="Coin Metrics Community", shape_message="has invalid data"
+    )
+    if not isinstance(raw.get("data"), list):
         raise DataError("Coin Metrics Community response has invalid data")
     return raw
 
