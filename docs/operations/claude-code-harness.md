@@ -84,15 +84,19 @@ crashing hook fails open — a broken harness must never brick the session.
 ## Owner-token authorization
 
 `override`, `ack`, and `baseline` require `ALPHA_OWNER_TOKEN` in the environment whose sha256
-matches `.claude/settings.local.json:ownerTokenHash` (gitignored). Setup, once, interactively:
+matches the hash stored in `.claude/owner.local.json` (gitignored). Setup, once, interactively:
 
 ```bash
 uv run python scripts/gate.py owner-init
 ```
 
-then `export ALPHA_OWNER_TOKEN=<token>` in the owner's shell. Until then every escape is
-agent self-serve, audited as `authorized_by: agent (owner token not configured)` and flagged
-in the statusline, session brief and doctor. With the token configured, an agent may still
+then `export ALPHA_OWNER_TOKEN=<token>` in the owner's own shell — never in the shell that
+launches Claude Code, since hooks inherit that environment and would grant the agent full owner
+authority.
+
+Until then every escape is agent self-serve, audited as
+`authorized_by: agent (owner token not configured)` and flagged in the statusline, session
+brief and doctor. With the token configured, an agent may still
 ack ≤ 3 low-risk text edits per session (`.claude/agents|commands|rules`) — nothing else.
 
 ## Path tiers
