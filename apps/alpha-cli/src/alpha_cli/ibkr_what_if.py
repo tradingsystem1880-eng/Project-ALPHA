@@ -125,6 +125,14 @@ def _validated_receipt(
         raise DataError("IBKR returned an invalid position during the what-if preview")
     if evidence.commission is not None and not math.isfinite(evidence.commission):
         raise DataError("IBKR returned an invalid preview commission")
+    if not all(
+        (
+            evidence.initial_margin_change,
+            evidence.maintenance_margin_change,
+            evidence.equity_with_loan_change,
+        )
+    ):
+        raise DataError("IBKR what-if returned no margin-impact evidence")
     receipt_body: dict[str, object] = {
         "schema_version": 2,
         "plan_hash": plan["plan_hash"],
@@ -369,6 +377,15 @@ class IBAPITransport:
             state = client.preview_state
             if state is None:
                 raise DataError("IBKR what-if returned no preview state")
+            for field in (
+                "commissionAndFees",
+                "initMarginChange",
+                "maintMarginChange",
+                "equityWithLoanChange",
+                "commissionAndFeesCurrency",
+            ):
+                if not hasattr(state, field):
+                    raise DataError(f"IBKR preview state is missing {field}; ibapi drifted")
             raw_commission = float(getattr(state, "commissionAndFees", float("nan")))
             commission = (
                 raw_commission

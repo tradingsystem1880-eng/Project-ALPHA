@@ -69,7 +69,11 @@ def create_coverage_batch(
     plan = {**body, "batch_id": batch_id}
     plan_path = batch_root / "plan.json"
     if plan_path.exists():
-        if json.loads(plan_path.read_text(encoding="utf-8")) != plan:
+        try:
+            existing = json.loads(plan_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DataError("crypto coverage-batch plan is unreadable") from exc
+        if existing != plan:
             raise DataError("crypto coverage-batch identity collision")
     else:
         write_batch_json(plan_path, plan)

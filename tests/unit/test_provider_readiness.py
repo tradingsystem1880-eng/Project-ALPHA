@@ -255,11 +255,11 @@ def test_receipt_collision_and_malformed_receipts_fail_closed(tmp_path: Path) ->
 @pytest.mark.parametrize(
     ("exc", "state"),
     [
-        (RuntimeError("HTTP 401"), "authentication_failed"),
-        (RuntimeError("error 403"), "entitlement_denied"),
-        (RuntimeError("HTTP 429"), "rate_limited"),
-        (RuntimeError("transport failed"), "connectivity_failed"),
-        (RuntimeError("unexpected payload"), "schema_drift"),
+        (DataError("HTTP 401"), "authentication_failed"),
+        (DataError("error 403"), "entitlement_denied"),
+        (DataError("HTTP 429"), "rate_limited"),
+        (DataError("transport failed"), "connectivity_failed"),
+        (DataError("unexpected payload"), "schema_drift"),
     ],
 )
 def test_explicit_check_redacts_vendor_errors_into_typed_receipts(
@@ -392,3 +392,18 @@ def test_ibkr_docker_probe_failure_is_redacted(
     assert receipt["verification_state"] == "connectivity_failed"
     assert details["docker_cli"] is True
     assert details["docker_daemon"] is False
+
+
+def test_internal_defect_propagates_instead_of_recording_schema_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def defective_check() -> tuple[tuple[str, ...], dict[str, object]]:
+        raise AttributeError("adapter object has no attribute 'bars'")
+
+    checkers = cast(dict[str, object], provider_readiness.__dict__["_CHECKERS"])
+    monkeypatch.setitem(checkers, "tiingo", defective_check)
+
+    with pytest.raises(AttributeError):
+        provider_readiness.run_explicit_check(tmp_path, "tiingo")
+
+    assert not (tmp_path / "provider-checks").exists()

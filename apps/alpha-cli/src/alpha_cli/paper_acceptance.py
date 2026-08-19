@@ -322,7 +322,8 @@ def acceptance_report(data_dir: Path) -> dict[str, object]:
         predicates = report["predicates"]
         if isinstance(predicates, dict):
             for key, value in predicates.items():
-                merged_predicates[str(key)] = bool(value)
+                name = str(key)
+                merged_predicates[name] = merged_predicates.get(name, True) and bool(value)
     return {
         "schema_version": 2,
         "status": "passed" if passed else "pending",

@@ -21,6 +21,7 @@ from alpha_data.crypto.features import (
     CryptoFeatureArtifactV1,
     QualifiedCryptoFrame,
     basis_features,
+    derive_available_at,
     feature_frame_bytes,
     funding_features,
     liquidity_features,
@@ -172,7 +173,7 @@ def create_feature(
     feature_name: str,
     *,
     inputs: tuple[tuple[str, str], ...],
-    available_at: datetime,
+    available_at: datetime | None,
 ) -> dict[str, object]:
     expected = _FEATURE_INPUT_NAMES.get(feature_name)
     if expected is None:
@@ -187,6 +188,8 @@ def create_feature(
         qualified_feature_source(store, name=name, manifest_id=manifest_id)
         for name, manifest_id in inputs
     )
+    if available_at is None:
+        available_at = derive_available_at(sources)
     if feature_name == "funding":
         frame, artifact = funding_features(sources[0], available_at=available_at)
     elif feature_name == "open_interest_change":

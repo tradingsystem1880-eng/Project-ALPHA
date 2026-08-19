@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import asdict
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -397,7 +398,7 @@ def run_hedged_basis_candidate(
             or holdout_end is None
             or holdout_end < holdout_start
             or holdout_spec_hash is None
-            or len(holdout_spec_hash) != 64
+            or re.fullmatch(r"[0-9a-f]{64}", holdout_spec_hash) is None
         ):
             raise DataError("candidate holdout requires its exact sealed window and hash")
         admitted = tuple(

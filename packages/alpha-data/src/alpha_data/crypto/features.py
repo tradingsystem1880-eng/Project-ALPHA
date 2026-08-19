@@ -210,6 +210,23 @@ def _require_columns(source: QualifiedCryptoFrame, columns: tuple[str, ...]) -> 
         raise DataError(f"crypto feature input is missing columns: {', '.join(missing)}")
 
 
+def derive_available_at(sources: tuple[QualifiedCryptoFrame, ...]) -> datetime:
+    """Derive availability from the ordered inputs so a feature id is a content address."""
+    bounds: list[datetime] = []
+    for source in sources:
+        observed_end = source.quality.observed_end
+        if observed_end is not None:
+            bounds.append(_utc(observed_end, "observed end"))
+        if "available_at" in source.frame.columns:
+            values = source.frame["available_at"].to_list()
+            if any(not isinstance(value, datetime) for value in values):
+                raise DataError("crypto feature input availability is invalid")
+            bounds.extend(_utc(value, "input availability") for value in values)
+    if not bounds:
+        raise DataError("crypto feature inputs carry no availability evidence")
+    return max(bounds)
+
+
 def _validate_sources(
     sources: tuple[QualifiedCryptoFrame, ...],
     expected_families: tuple[str, ...],

@@ -935,3 +935,46 @@ def test_what_if_plan_rejects_unsafe_inputs(
             expires_at=now + timedelta(minutes=expiry),
             now=now,
         )
+
+
+def test_receipt_requires_margin_evidence() -> None:
+    evidence = ibkr_what_if.PreviewEvidence(
+        broker_status="PreSubmitted",
+        commission=None,
+        commission_currency="",
+        initial_margin_change="",
+        maintenance_margin_change="",
+        equity_with_loan_change="",
+        position_before=1.0,
+        position_after=1.0,
+        order_status_callbacks=0,
+        execution_callbacks=0,
+    )
+    plan: dict[str, object] = {
+        "plan_hash": "a" * 64,
+        "account_alias": "DU…4567",
+        "account_fingerprint": "b" * 64,
+    }
+    with pytest.raises(DataError, match="no margin-impact evidence"):
+        ibkr_what_if._validated_receipt(plan, evidence, datetime(2026, 8, 13, tzinfo=UTC))
+
+
+def test_merged_predicates_are_conjunctive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    plans = tmp_path / "paper-acceptance-v2" / "plans"
+    plans.mkdir(parents=True)
+    reports: dict[str, dict[str, object]] = {
+        "a" * 64: {"paper_passed": False, "predicates": {"entry_exit": False}},
+        "b" * 64: {"paper_passed": True, "predicates": {"entry_exit": True}},
+    }
+    for plan_hash in reports:
+        (plans / f"{plan_hash}.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        paper_acceptance,
+        "_plan_report",
+        lambda _data_dir, plan_hash: reports[plan_hash],
+    )
+
+    report = paper_acceptance.acceptance_report(tmp_path)
+
+    assert report["predicates"] == {"entry_exit": False}
+    assert report["paper_passed"] is False

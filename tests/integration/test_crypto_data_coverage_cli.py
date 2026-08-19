@@ -10,10 +10,16 @@ import pytest
 from typer.testing import CliRunner
 
 from alpha_cli import crypto_data_cmds
+from alpha_cli._crypto_analysis import parquet_frame
+from alpha_cli._crypto_coverage import batch_directory, create_coverage_batch
 from alpha_cli.control_store import research_case_revision
 from alpha_cli.main import app
 from alpha_core import DataError
-from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoFamily
+from alpha_data.crypto.contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoFamily,
+    CryptoQualityReportV1,
+)
 from alpha_data.crypto.ingestion import ingest_provider_payload
 from alpha_data.crypto.profiles import CryptoCoverageProfileV1, CryptoCoverageTaskV1
 from alpha_data.crypto.providers.binance import parse_binance_exchange_info, parse_binance_klines
@@ -27,10 +33,14 @@ def _manifest(value: object) -> dict[str, Any]:
     return cast(dict[str, Any], value)
 
 
-def test_coverage_profile_create_pages_and_rejects_tamper(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def _install_profile_stubs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    as_of: datetime,
+    *,
+    option_quotes: pl.DataFrame | None = None,
 ) -> None:
-    as_of = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    """Install the exact bounded profile sources every profile-create test shares."""
     empty_catalog = pl.DataFrame(
         schema={
             "fetched_at": pl.Datetime(time_zone="UTC"),
@@ -66,7 +76,8 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
             "delivery_time": [datetime.fromisoformat("2026-08-30T00:00:00+00:00")],
         }
     )
-    option_quotes = pl.DataFrame({"open_interest": [10.0, 20.0]})
+    if option_quotes is None:
+        option_quotes = pl.DataFrame({"open_interest": [10.0, 20.0]})
     coinmetrics_catalog = pl.DataFrame(
         {
             "asset": ["btc", "eth"],
@@ -153,6 +164,13 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     monkeypatch.setattr(crypto_data_cmds, "_latest_profile_source", latest_source)
     monkeypatch.setattr(crypto_data_cmds, "_coverage_profile_root", lambda: tmp_path / "profiles")
     monkeypatch.setattr(crypto_data_cmds, "_now", lambda: as_of)
+
+
+def test_coverage_profile_create_pages_and_rejects_tamper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    as_of = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    _install_profile_stubs(monkeypatch, tmp_path, as_of)
     created = runner.invoke(
         app,
         [
@@ -238,9 +256,10 @@ def test_coverage_profile_create_pages_and_rejects_tamper(
     assert "identity" in rejected.output
 
 
-def test_liquidity_freeze_requires_complete_exact_daily_scope(
+def _liquidity_fixture(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+) -> tuple[CryptoBulkStore, CryptoCoverageProfileV1, list[str]]:
+    """Build the exact two-market Binance daily liquidity scope the freeze tests share."""
     bulk = tmp_path / "bulk"
     bulk.mkdir()
     store = CryptoBulkStore(
@@ -373,6 +392,13 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
     monkeypatch.setattr(crypto_data_cmds, "_coverage_profile_root", lambda: tmp_path / "profiles")
     crypto_data_cmds._write_coverage_profile(profile)
+    return store, profile, bar_manifest_ids
+
+
+def test_liquidity_freeze_requires_complete_exact_daily_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, profile, bar_manifest_ids = _liquidity_fixture(tmp_path, monkeypatch)
 
     frozen = runner.invoke(
         app,
@@ -497,9 +523,8 @@ def test_liquidity_freeze_requires_complete_exact_daily_scope(
     assert "incomplete for 1 of 2" in incomplete.output
 
 
-def test_feature_create_persists_and_reverifies_exact_lineage(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def _funding_feature_fixture(tmp_path: Path) -> tuple[CryptoBulkStore, str, datetime]:
+    """Publish the exact qualified funding source the feature-create tests share."""
     bulk = tmp_path / "bulk"
     bulk.mkdir()
     store = CryptoBulkStore(
@@ -541,6 +566,13 @@ def test_feature_create_persists_and_reverifies_exact_lineage(
         key_columns=("timestamp",),
     )
     source_id = str(source.normalized_manifest["manifest_id"])
+    return store, source_id, now
+
+
+def test_feature_create_persists_and_reverifies_exact_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, source_id, now = _funding_feature_fixture(tmp_path)
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
     monkeypatch.setattr(crypto_data_cmds, "_now", lambda: now)
 
@@ -748,3 +780,163 @@ def test_binance_daily_profile_task_uses_only_previous_complete_utc_day(
     )
     assert captured["kwargs"]["start"] == "2026-08-15T12:00:00+00:00"  # type: ignore[index]
     assert captured["kwargs"]["end"] == "2026-08-15T12:59:59.999000+00:00"  # type: ignore[index]
+
+
+def _untimed_normalized_manifest() -> dict[str, Any]:
+    dataset = CryptoDatasetIdentityV1(
+        provider="binance",
+        venue="binance",
+        market_type="spot",
+        family="market_membership",
+        instrument="spot",
+        base_asset=None,
+        quote_asset=None,
+        frequency="catalog_snapshot",
+        units="provider_native_market_identity",
+        timestamp_convention="provider_observation_utc",
+    )
+    quality = CryptoQualityReportV1(
+        dataset_sha256="a" * 64,
+        method_version="fixture-v1",
+        state="qualified",
+        failures=(),
+        warnings=(),
+        observed_start=None,
+        observed_end=None,
+        row_count=1,
+        correction_lineage=(),
+    )
+    return {
+        "artifact_kind": "normalized",
+        "manifest_id": "b" * 64,
+        "dataset": dataset.to_dict(),
+        "quality": quality.to_dict(),
+    }
+
+
+def test_profile_source_rejects_untimed_coverage_row() -> None:
+    manifest = _untimed_normalized_manifest()
+
+    class UntimedStore:
+        def inventory(self) -> tuple[dict[str, Any], ...]:
+            return (manifest,)
+
+    with pytest.raises(DataError, match="source time is invalid"):
+        crypto_data_cmds._latest_profile_source(
+            cast(Any, UntimedStore()),
+            provider="binance",
+            family="market_membership",
+            instrument="spot",
+            as_of=datetime.fromisoformat("2026-08-15T00:00:00+00:00"),
+        )
+
+
+def test_corrupt_batch_plan_raises_typed_error(tmp_path: Path) -> None:
+    run_at = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    profile = CryptoCoverageProfileV1.create(
+        as_of=run_at,
+        source_manifest_ids=("c" * 64,),
+        tasks=(
+            CryptoCoverageTaskV1(
+                provider="binance",
+                family="market_bars",
+                instrument="BTCUSDT",
+                base_asset="BTC",
+                quote_asset="USDT",
+                category="spot",
+                frequency="1d",
+                cadence="daily",
+            ),
+        ),
+    )
+    batch_id, _plan = create_coverage_batch(
+        tmp_path, profile, cadence="daily", offset=0, limit=1, run_at=run_at
+    )
+    (batch_directory(tmp_path, batch_id) / "plan.json").write_text("{", encoding="utf-8")
+
+    with pytest.raises(DataError, match="plan is unreadable"):
+        create_coverage_batch(tmp_path, profile, cadence="daily", offset=0, limit=1, run_at=run_at)
+
+
+def test_profile_create_rejects_null_option_open_interest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    as_of = datetime.fromisoformat("2026-08-15T00:00:00+00:00")
+    _install_profile_stubs(
+        monkeypatch,
+        tmp_path,
+        as_of,
+        option_quotes=pl.DataFrame({"open_interest": [10.0, None]}),
+    )
+
+    created = runner.invoke(
+        app, ["crypto-data", "profile-create", "--as-of", as_of.isoformat(), "--json"]
+    )
+
+    assert created.exit_code != 0
+    assert "null open-interest" in created.output
+
+
+def test_duplicate_liquidity_session_fails_loud(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _store, profile, _bar_manifest_ids = _liquidity_fixture(tmp_path, monkeypatch)
+
+    def duplicated_sessions(store: CryptoBulkStore, manifest: dict[str, Any]) -> pl.DataFrame:
+        frame = parquet_frame(store, manifest)
+        return pl.concat([frame, frame]) if "open_time" in frame.columns else frame
+
+    monkeypatch.setattr(crypto_data_cmds, "_parquet_frame", duplicated_sessions)
+
+    frozen = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "liquidity-freeze",
+            profile.profile_id,
+            "--category",
+            "spot",
+            "--quote-asset",
+            "USDT",
+            "--session",
+            "2026-08-14",
+            "--limit",
+            "1",
+            "--json",
+        ],
+    )
+
+    assert frozen.exit_code != 0
+    assert "duplicate sessions" in frozen.output
+
+
+def test_feature_create_is_idempotent_for_identical_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, source_id, now = _funding_feature_fixture(tmp_path)
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    command = [
+        "crypto-data",
+        "feature-create",
+        "funding",
+        "--input",
+        f"funding={source_id}",
+        "--json",
+    ]
+
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: now)
+    first = runner.invoke(app, command)
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: now + timedelta(days=3))
+    second = runner.invoke(app, command)
+
+    assert first.exit_code == 0, first.output
+    assert second.exit_code == 0, second.output
+    first_payload = json.loads(first.stdout)
+    second_payload = json.loads(second.stdout)
+    assert first_payload["feature_id"] == second_payload["feature_id"]
+    assert first_payload["artifact_sha256"] == second_payload["artifact_sha256"]
+    assert first_payload["available_at"] == "2026-08-14T23:00:00+00:00"
+
+    early = runner.invoke(app, [*command, "--available-at", "2026-08-01T00:00:00Z"])
+    assert early.exit_code != 0
+    assert "availability precedes" in early.output

@@ -1009,3 +1009,27 @@ def test_bybit_spot_bars_are_diagnostic_only_and_cannot_enter_a_snapshot(
     )
     assert rejected.exit_code != 0
     assert "wrong family authority" in rejected.output
+
+
+def test_storage_inventory_rejects_unsized_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = CryptoBulkStore(
+        bulk_root=tmp_path / "bulk",
+        manifest_root=tmp_path / "control" / "crypto" / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=2_000_000, free_bytes=1_000_000),
+        minimum_free_bytes=100,
+    )
+    store.bulk_root.mkdir()
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
+    monkeypatch.setattr(crypto_data_cmds, "_snapshot_root", lambda: tmp_path / "snapshots")
+    monkeypatch.setattr(
+        CryptoBulkStore, "inventory", lambda _self: ({"artifact_kind": "normalized"},)
+    )
+
+    inventory = runner.invoke(app, ["crypto-data", "storage-inventory", "--json"])
+
+    assert inventory.exit_code != 0
+    assert "artifact size is invalid" in inventory.output

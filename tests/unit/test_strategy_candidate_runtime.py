@@ -428,3 +428,20 @@ def test_candidate_validator_rejects_corrupt_typed_payloads(
         validate_hedged_basis_candidate_artifacts(
             run_dir, manifest, observations=observations, as_of=datetime(2025, 2, 1, tzinfo=UTC)
         )
+
+
+def test_non_hex_holdout_spec_hash_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(DataError, match="exact sealed window and hash"):
+        run_hedged_basis_candidate(
+            tmp_path,
+            snapshot_id="d" * 64,
+            snapshot_hash="e" * 64,
+            research_contract_id=f"rc_{'f' * 64}",
+            observations=_observations(),
+            analysis="holdout",
+            holdout_start=datetime(2025, 1, 1, tzinfo=UTC).date(),
+            holdout_end=datetime(2025, 1, 3, tzinfo=UTC).date(),
+            holdout_spec_hash="Z" * 64,
+            research_cutoff=None,
+            as_of=None,
+        )

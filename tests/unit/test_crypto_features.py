@@ -13,6 +13,7 @@ from alpha_data.crypto.features import (
     CryptoFeatureArtifactV1,
     QualifiedCryptoFrame,
     basis_features,
+    derive_available_at,
     feature_frame_bytes,
     funding_features,
     liquidity_features,
@@ -350,3 +351,28 @@ def test_open_interest_features_reject_multi_symbol_frame() -> None:
     )
     with pytest.raises(DataError, match="single instrument"):
         open_interest_features(open_interest, available_at=NOW)
+
+
+def test_derived_availability_comes_from_inputs_not_the_clock() -> None:
+    timestamps = [NOW - timedelta(hours=2), NOW - timedelta(hours=1)]
+    funding = _source(
+        "funding",
+        "funding",
+        pl.DataFrame({"timestamp": timestamps, "funding_rate": [0.001, -0.0005]}),
+        "a",
+    )
+    published = _source(
+        "open_interest",
+        "open_interest",
+        pl.DataFrame(
+            {
+                "timestamp": timestamps,
+                "open_interest": [100.0, 110.0],
+                "available_at": [NOW - timedelta(minutes=30)] * 2,
+            }
+        ),
+        "b",
+    )
+
+    assert derive_available_at((funding,)) == NOW - timedelta(hours=1)
+    assert derive_available_at((funding, published)) == NOW - timedelta(minutes=30)

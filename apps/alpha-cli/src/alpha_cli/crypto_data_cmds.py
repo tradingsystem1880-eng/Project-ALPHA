@@ -1057,8 +1057,9 @@ def storage_inventory(json_out: bool = typer.Option(False, "--json", help="emit 
             kind = str(manifest.get("artifact_kind", "unknown"))
             counts[kind] = counts.get(kind, 0) + 1
             size = manifest.get("artifact_bytes")
-            if isinstance(size, int) and not isinstance(size, bool):
-                artifact_bytes[kind] = artifact_bytes.get(kind, 0) + size
+            if not isinstance(size, int) or isinstance(size, bool):
+                raise DataError("crypto manifest artifact size is invalid")
+            artifact_bytes[kind] = artifact_bytes.get(kind, 0) + size
         snapshots = (
             tuple(sorted(_snapshot_root().glob("*.json"))) if _snapshot_root().exists() else ()
         )
@@ -2564,7 +2565,7 @@ def _create_feature(
     feature_name: str,
     *,
     inputs: tuple[tuple[str, str], ...],
-    available_at: datetime,
+    available_at: datetime | None,
 ) -> dict[str, object]:
     return _create_feature_with_store(
         _bulk_store(), feature_name, inputs=inputs, available_at=available_at
@@ -2578,9 +2579,24 @@ def feature_create(
         list[str] | None,
         typer.Option("--input", help="repeat exact NAME=MANIFEST_ID"),
     ] = None,
+    available_at: Annotated[
+        str | None,
+        typer.Option(
+            "--available-at",
+            help="exact UTC availability; defaults to the ordered inputs' own bound",
+        ),
+    ] = None,
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Materialize one immutable provenance-bound research feature."""
+    availability: datetime | None = None
+    if available_at is not None:
+        try:
+            availability = datetime.fromisoformat(available_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise typer.BadParameter("feature availability is invalid") from exc
+        if availability.tzinfo is None or availability.utcoffset() is None:
+            raise typer.BadParameter("feature availability must be timezone-aware")
     parsed: list[tuple[str, str]] = []
     for value in inputs or ():
         if "=" not in value:
@@ -2599,7 +2615,7 @@ def feature_create(
         )
     ordered = tuple((name, by_name[name]) for name in expected)
     try:
-        result = _create_feature(feature_name, inputs=ordered, available_at=_now())
+        result = _create_feature(feature_name, inputs=ordered, available_at=availability)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(result, json_out=json_out)
@@ -2805,7 +2821,7 @@ def _latest_profile_source(
         row = _coverage_row(manifest, store=store)
         fetched_at = row.get("fetched_at")
         if not isinstance(fetched_at, str):
-            continue
+            raise DataError("crypto coverage-profile source time is invalid")
         try:
             fetched = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
         except ValueError as exc:
@@ -2946,7 +2962,11 @@ def profile_create(
         for _manifest_id, market, frame in option_sources:
             if "open_interest" not in frame.columns:
                 raise DataError("Bybit option quote source has no open-interest observations")
-            total = frame.select(pl.col("open_interest").fill_null(0.0).sum()).item()
+            if frame.select(pl.col("open_interest").is_null().any()).item():
+                raise DataError(
+                    f"Bybit option quote source has null open-interest observations for {market}"
+                )
+            total = frame.select(pl.col("open_interest").sum()).item()
             if not isinstance(total, int | float) or isinstance(total, bool):
                 raise DataError("Bybit aggregate option open interest is invalid")
             option_oi[market] = float(total)
@@ -3160,6 +3180,8 @@ def _freeze_binance_liquidity(
         if not {"open_time", "base_volume", "quote_volume"}.issubset(frame.columns):
             raise DataError("Binance daily liquidity artifact schema is incomplete")
         row = frame.filter(pl.col("open_time") == session_at)
+        if row.height > 1:
+            raise DataError("Binance daily liquidity artifact has duplicate sessions")
         if row.height != 1:
             continue
         values = row.select("base_volume", "quote_volume").row(0, named=True)

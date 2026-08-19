@@ -12,6 +12,7 @@ import re
 import shutil
 import socket
 import subprocess
+import urllib.error
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -398,7 +399,7 @@ def run_explicit_check(data_dir: Path, provider_id: str) -> dict[str, object]:
         state = exc.state
         capabilities = ()
         details = dict(exc.details)
-    except Exception as exc:
+    except (OSError, urllib.error.URLError, DataError, json.JSONDecodeError) as exc:
         state = _failure_from_exception(exc)
         capabilities = ()
         details = {"interface": "rest" if provider != "ibkr" else "paper_gateway"}
