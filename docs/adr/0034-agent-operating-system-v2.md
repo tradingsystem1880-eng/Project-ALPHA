@@ -24,7 +24,9 @@ Karpathy guidelines always on mechanically; and Codex — via the ChatGPT-authen
 ## Decision
 
 1. **Owner-token authorization.** `gate.py override|ack|baseline` require `ALPHA_OWNER_TOKEN`
-   whose sha256 matches `.claude/settings.local.json:ownerTokenHash` (`gate.py owner-init`,
+   when the owner token is configured; unset (the owner's 2026-08-19 decision), every escape is
+   agent self-serve and audited — the logbook `gate.py audit --digest` is the control. When
+   configured, its sha256 matches `.claude/settings.local.json:ownerTokenHash` (`gate.py owner-init`,
    interactive, once). *(Correction, 2026-08-19: the implementation stores the hash in
    `.claude/owner.local.json`, not in `settings.local.json`. `gate.py:OWNER_FILE` is
    authoritative; see `docs/operations/claude-code-harness.md`.)*

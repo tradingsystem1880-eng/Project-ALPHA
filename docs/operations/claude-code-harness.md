@@ -35,7 +35,7 @@ oracles, not just tests; Karpathy guidelines are always on, mechanically.
 | Reasoning (v2) | `gate.py plan-check` / `harness_models.FeaturePlan` | Plan docs open with a ```json front block (assumptions with `verified_by`, ≥1 alternative, ≥2 pre-mortem, slices with verify/expected/rollback, tier impact, out-of-scope); `/implement` refuses to start without a passing check; edits outside the open plan's declared `files[]` are warn-only `over_eager_edit` audit events surfaced in the Stop/PostCompact brief; `/retrospective` writes `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` whose `## Watch-outs` feed the next session brief |
 | Codex seam (v2) | `scripts/codex_bridge.py`, `scripts/schemas/codex_*.json`, `.mcp.json` `codex` server | Optional second model (`gpt-5.3-codex-spark` via the ChatGPT-authenticated Codex CLI); read-only, ephemeral, schema-bound, audited, graceful skip |
 | Quant-rigor tests (v2) | `tests/oracles/**`, `tests/holdout/**`, `tests/bias_guards/**`, `.semgrep/alpha.yml`, `.claude/mutation-baseline.json` | Metamorphic / calibration / differential oracles, P&L re-derivation, hardened poison guards with leaky twins, hidden holdout, mutation + semgrep + determinism + raise-site sweeps |
-| Tests | `tests/unit/test_claude_harness_{gate,hooks,hooks_subprocess,settings,skills,codex_bridge}.py` | TDD coverage of every decision function; the subprocess suite drives the real hook script; CI `harness` job runs doctor + block-smoke + `mypy scripts` + `--cov=scripts` |
+| Tests | `tests/unit/test_claude_harness_{gate,hooks,hooks_subprocess,settings,skills,codex_bridge}.py` | TDD coverage of every decision function; the subprocess suite drives the real hook script; CI `harness` job runs doctor + block-smoke + `mypy scripts` |
 
 ## Tree-hash stamp protocol
 
@@ -130,8 +130,8 @@ ack ≤ 3 low-risk text edits per session (`.claude/agents|commands|rules`) — 
   invalidate it; a post-attest change to any quant file does).
 - **Risk** (`gate.matches_risk`): quant + `packages/alpha-backtest/src/**` + the seven
   `alpha_cli` modules `_gauntlet/_optim/_seeds/_identity/_surrogate/_synth/_runner`.
-  Requires an APPROVE `ReviewVerdict` bound to the exact current tree hash AND the
-  risk-scope diff hash.
+  Requires an APPROVE `ReviewVerdict` bound to the risk-scope diff hash
+  (`reviewed_diff_hash`).
 - **Protected control plane** (`gate.protected_reason`): the four harness scripts
   (`gate`, `claude_hooks`, `harness_models`, `codex_bridge`), `.claude/settings.json`,
   `.claude/statusline.py`, `.claude/{harness,mutation}-baseline.json`, `.mcp.json`,
@@ -278,8 +278,8 @@ consumed on use and audited at write and consume with `authorized_by`.
 ## Operations
 
 - `python3 scripts/gate.py doctor [--json]` — settings parse, all hooks wired both ways,
-  scripts present/executable, statusline, state dir, stub↔canonical sync, rules and agent
-  frontmatter validity, stale stamp age, orphan tokens, owner-token presence, Codex
+  scripts present, statusline, state dir, stub↔canonical sync, rules and agent
+  frontmatter validity, stale stamp age, owner-token presence, Codex
   availability probe (never calls the model). SessionStart runs it and warns loudly.
 - Statusline shows `branch · ±dirty · gate:tier✓/stale/none · needs:… · owner-token/budget flags`.
 - **Emergency recovery**: delete `.claude/state/` (stamps/tokens/session state; the

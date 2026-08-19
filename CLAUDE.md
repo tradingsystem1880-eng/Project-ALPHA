@@ -116,7 +116,7 @@ Relocated verbatim, one layer per path-scoped rule (`.claude/rules/alpha-*.md`, 
 - **New trading observation/research idea** → use `.agents/skills/alpha-research-scientist/SKILL.md`; keep it upstream of strategy development and within ADR-0019/0020. If the required Research Scientist gate is unimplemented, return the missing capability instead of creating an ad hoc authoritative path.
 
 ## Build status
-**Current research-program status (2026-08-13):** R1–R6 and the seven-stage repair program are
+**Current research-program status (2026-08-19):** R1–R6 and the seven-stage repair program are
 implemented. All empirical web launches require a server-verified governed or permanently
 unqualified context; generic jobs cannot exercise owner or broker authority. Guided Research is the
 default fixed-screen workflow, while Advanced mode adds inspection only. Material-question bundles,
@@ -132,8 +132,10 @@ immutable `MarketStateV1`, validation-frozen Kronos calibration and `kronos_cali
 assessments, additive Qlib `rank_ensemble_v1` exchanges, and six server-rendered modeling
 diagnostics. These remain research-only capabilities, not evidence of profitable improvement; the
 candidate-promotion gates still apply. The dated implementation
-narratives below are retained as historical delivery records; where they conflict, this paragraph,
-ADR-0027/0028/0030/0031, and the generated authority matrix govern.
+narratives below are retained in `docs/BUILD-STATUS.md` as historical delivery records; where
+they conflict, this paragraph, ADR-0027/0028/0030/0031, and the generated authority matrix
+govern. The harness (ADR-0034) and the Codex provider/crypto program (ADR-0030..0033) merged on
+2026-08-19; the branch cleanup plan is docs/superpowers/plans/2026-08-19-branch-cleanup-simplify-merge.md.
 
 The full dated delivery history (phases, live-data verification, audits, Kronos,
 paper trading, QuantPad, Workstation v1–v4, Research Scientist program, research-first
@@ -156,9 +158,13 @@ makes the load-bearing ones mechanical:
   or any dsr/psr/pbo/deflated/bootstrap/reality_check/spa/montecarlo/walkforward/cpcv/
   multiple_testing/overfitting module require a PASS `QuantVerificationReport` (`/verify-quant`;
   primary-source cross-check per `.agents/skills/quant-source-verification/`) before Stop.
-- **Protected control plane.** `scripts/{gate,claude_hooks,harness_models}.py`,
-  `.claude/settings.json`, `.claude/skills/**`, `tests/bias_guards/**`, `.github/workflows/ci.yml`,
-  `CLAUDE.md`, and `pyproject.toml` edits touching import-linter/coverage/mypy-strict config each
+- **Protected control plane.** `scripts/{gate,claude_hooks,harness_models,harness_quant,
+  harness_awareness,codex_bridge}.py`, `.claude/settings.json`, `.claude/statusline.py`,
+  `.claude/{harness,mutation}-baseline.json`, `.mcp.json`, `.semgrep/alpha.yml`,
+  `.claude/{skills,agents,commands,rules}/**`, `.codex/**`, `.github/workflows/**`,
+  `tests/{bias_guards,holdout,oracles}/**`, `tests/unit/test_claude_harness_*`,
+  `tests/unit/test_claude_md_relocation*`, `tests/unit/test_repo_awareness_drift*`, `CLAUDE.md`,
+  `AGENTS.md`, and `pyproject.toml` edits touching import-linter/coverage/mypy-strict config each
   need a one-shot audited `gate.py ack` — the harness cannot be silently weakened.
 - **Escape hatches (all audited to `.claude/state/harness-audit.jsonl`):**
   `uv run python scripts/gate.py override --reason "..."` (one commit), `ack --reason "..."` (one

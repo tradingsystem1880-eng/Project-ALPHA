@@ -5,6 +5,20 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
+- Add the Claude Code harness v2 agent operating system (ADR-0034): owner-token-gated
+  `gate.py override|ack|baseline` (agent self-serve and hash-chain-audited while the token is
+  unset), oracle test tiers for statistical code, a `< 200`-line `CLAUDE.md` core plus
+  path-scoped `.claude/rules/*.md`, and Codex (`gpt-5.3-codex-spark`) as an optional
+  read-only second-model review/research seam.
+- Land the Codex-assisted provider/crypto/paper-acceptance/owner-auth program (ADR-0030..0033):
+  Touch ID owner-presence for Workstation research actions, native Bybit/crypto market
+  families, the QuantPad research-data archive hardening, and further paper-acceptance
+  evidence.
+- Trim and split the harness (`scripts/gate.py` leaves now `scripts/harness_quant.py` and
+  `scripts/harness_awareness.py`), fold 48 confirmed review fixes across the crypto/CLI delta,
+  add bias guards for the new surfaces, and reconcile README/CLAUDE.md/BUILD-STATUS/harness
+  runbooks with the merged tree.
+
 - Correct the live QuantPad REST contract (`X-API-Key`, epoch-ms dates, current CSV bars), add a
   UUID-pinned exact-byte research archive with internal content-addressed manifests and offline
   verification, and record the owner-attested written private-retention basis without repository

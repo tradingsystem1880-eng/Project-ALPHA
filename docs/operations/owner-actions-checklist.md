@@ -186,6 +186,10 @@ That is intentional; push and open the PR from the main session, not from a fork
   in the journal — deleting the state file by hand leaves the journal implying it is still armed.
 - **`/usr/bin/python3` is 3.9** and has no `tomllib`. Stdlib-only harness scripts must run under
   `.venv/bin/python -S`.
-- **`.claude/state/mutation/` holds ~329 MB** of leftover mutation-testing staging in the
-  harness worktree. It is git-ignored and safe to delete when you want the disk back; nothing
-  reads it between runs.
+- **`mutate` no longer leaks its staging** (the leak that produced the leftover directory is
+  fixed in code), but the legacy `.claude/state/mutation/` directory it left behind — ~329 MB in
+  this worktree — is not cleaned automatically. It is git-ignored and safe to delete once when
+  you want the disk back; nothing reads it between runs.
+- **`.quantpad/` is git-ignored** (run-log directory for the QuantPad archive/completion lanes).
+  The five ad-hoc `quantpad_*` completion scripts under `scripts/` were retired 2026-08-19; the
+  Content-Length truncation guard in `alpha_data.quantpad_archive` supersedes them.

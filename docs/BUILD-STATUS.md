@@ -1,9 +1,9 @@
 # Project ALPHA — Build Status (delivery history)
 
-Relocated VERBATIM from `CLAUDE.md` `## Build status` on 2026-08-18 (harness v1
-CLAUDE.md diet). Zero content changes; the governing current-status paragraph is
-duplicated in CLAUDE.md and, with ADR-0027/0028, takes precedence over the dated
-narratives below wherever they conflict. Append new delivery records HERE.
+Relocated from `CLAUDE.md` on 2026-08-18; CLAUDE.md keeps only the governing
+current-status paragraph, which is maintained there and may be newer than the copy
+below. With ADR-0027/0028, that paragraph takes precedence over the dated narratives
+below wherever they conflict. Append new delivery records HERE.
 
 **Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
 scientific-authority hardening in ADR-0027 is complete. The private local implementation is

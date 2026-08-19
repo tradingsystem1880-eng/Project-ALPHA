@@ -431,12 +431,11 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Not yet built (intentional)
 
-- Research source-network/download worker and lawful document-retention plane.
-- Qualified real intraday research adapter or any production empirical D1/D2 runner. The default
+- Qualified real intraday research adapter. The default
   future split is 60/20/20 over indivisible chronological eligible date/session/dependency groups;
   an alternative must be event-blind, owner-approved before D1, and retain D3 at 20% or more.
-- Verified owner-presence authentication, autonomous research continuation, and research ML/
-  self-improvement. Local owner CLI fields are not cryptographic identity.
+- Autonomous research continuation and research ML/self-improvement. Local owner CLI fields are
+  not cryptographic identity.
 - Live or exchange-testnet order execution, paper venues beyond IBKR/local Sandbox, strategy futures,
   automatic rolls, and automated orphan recovery.
 - Kronos live-paper cache semantics (the four rule strategies are supported).
@@ -456,7 +455,8 @@ OpenAPI/generated TypeScript freshness, frontend V8 coverage, Playwright/axe at 
 root wheels, and the separately locked Qlib worker. Historical hardening evidence is recorded in
 [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md);
 exact 2026-07-19 v3 release evidence is recorded in the
-[post-v2 audit](docs/audit/2026-07-19-post-v2-architecture-audit.md). The root-license
-decision (R-22), durable Binance readiness evidence, UTC-rollover sandbox soak (R-24),
-current-universe Tiingo qualification, and every real IBKR Paper acceptance scenario remain
-pending. The standalone R-14 public-quote network smoke passed locally on 2026-08-04.
+[post-v2 audit](docs/audit/2026-07-19-post-v2-architecture-audit.md). R-22 is retired under the
+permanent private/local-only scope (see docs/BUILD-STATUS.md). Durable Binance readiness
+evidence, UTC-rollover sandbox soak (R-24), current-universe Tiingo qualification, and every real
+IBKR Paper acceptance scenario remain pending. The standalone R-14 public-quote network smoke
+passed locally on 2026-08-04.

@@ -19,7 +19,7 @@ codex logout && codex login && codex login status
 
 `codex login` prints a URL and waits; approve in the browser, and `login status` should end with
 a line containing `Logged in using ChatGPT`. That exact substring is what the harness looks for
-(`gate.codex_probe`, `scripts/gate.py:902` — it matches `logged in` and rejects `not logged`), so
+(`gate.codex_probe`, `scripts/gate.py` — it matches `logged in` and rejects `not logged`), so
 a successful re-login needs no repo change.
 
 Re-login is the fix for essentially every Codex problem. It is safe to run at any time; it
