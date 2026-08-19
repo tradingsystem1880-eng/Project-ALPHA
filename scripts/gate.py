@@ -95,7 +95,8 @@ _RISK_CLI_FILES = frozenset(
     f"apps/alpha-cli/src/alpha_cli/{name}.py"
     for name in ("_gauntlet", "_optim", "_seeds", "_identity", "_surrogate", "_synth", "_runner")
 )
-_PYPROJECT_GUARDED = ("[tool.importlinter]", "fail_under", "strict", "[tool.mutmut]", "addopts")
+_QUANT_SRC_PREFIXES = ("packages/alpha-validation/src/", "packages/alpha-research/src/")
+_PYPROJECT_GUARDED = ("[tool.importlinter]", "fail_under", "strict", "addopts")
 _PROTECTED_EXACT = frozenset(
     {
         "scripts/gate.py",
@@ -131,6 +132,7 @@ _AGENT_ACKABLE_PREFIXES = (".claude/agents/", ".claude/commands/", ".claude/rule
 HIDDEN_HOLDOUT_PREFIX = "tests/holdout/"
 
 Runner = Callable[[list[str]], tuple[bool, float, str]]
+EnvRunner = Callable[..., tuple[bool, float, str]]
 
 
 # ---------------------------------------------------------------------------
@@ -161,13 +163,16 @@ def repo_root(start: Path | None = None) -> Path:
     return Path(out.stdout.strip())
 
 
-def _untracked_paths(root: Path) -> list[str]:
+def _status_entries(root: Path) -> list[tuple[str, bool]]:
+    """``(path, untracked)`` for every changed or untracked working-tree entry."""
     status = _git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all")
-    untracked: list[str] = []
+    entries: list[tuple[str, bool]] = []
     for entry in status.split("\0"):
-        if entry.startswith("? "):
-            untracked.append(entry[2:])
-    return untracked
+        if not entry:
+            continue
+        untracked = entry.startswith("? ")
+        entries.append((entry[2:] if untracked else entry.split(" ")[-1], untracked))
+    return entries
 
 
 def compute_tree_hash(root: Path) -> str:
@@ -199,15 +204,7 @@ def compute_tree_hash(root: Path) -> str:
 
 def scoped_changed_paths(root: Path, matcher: Callable[[str], bool]) -> list[str]:
     """Working-tree paths (tracked-changed or untracked) accepted by ``matcher``."""
-    changed = _git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all")
-    paths: list[str] = []
-    for entry in changed.split("\0"):
-        if not entry:
-            continue
-        path = entry.split(" ")[-1] if not entry.startswith("? ") else entry[2:]
-        if matcher(path):
-            paths.append(path)
-    return sorted(set(paths))
+    return sorted({path for path, _ in _status_entries(root) if matcher(path)})
 
 
 def scoped_diff_hash(root: Path, matcher: Callable[[str], bool]) -> str:
@@ -218,23 +215,20 @@ def scoped_diff_hash(root: Path, matcher: Callable[[str], bool]) -> str:
     does.
     """
     hasher = hashlib.sha256()
-    changed = _git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all")
     scoped_tracked: list[str] = []
-    for entry in changed.split("\0"):
-        if not entry:
+    for path, untracked in _status_entries(root):
+        if not matcher(path):
             continue
-        path = entry.split(" ")[-1] if not entry.startswith("? ") else entry[2:]
-        if matcher(path):
-            if entry.startswith("? "):
-                hasher.update(path.encode())
-                hasher.update(b"\0")
-                try:
-                    hasher.update((root / path).read_bytes())
-                except OSError:
-                    hasher.update(b"<unreadable>")
-                hasher.update(b"\0")
-            else:
-                scoped_tracked.append(path)
+        if untracked:
+            hasher.update(path.encode())
+            hasher.update(b"\0")
+            try:
+                hasher.update((root / path).read_bytes())
+            except OSError:
+                hasher.update(b"<unreadable>")
+            hasher.update(b"\0")
+        else:
+            scoped_tracked.append(path)
     head = _git(root, "rev-parse", "HEAD", check=False).strip()
     if head and scoped_tracked:
         diff = subprocess.run(
@@ -251,10 +245,14 @@ def scoped_diff_hash(root: Path, matcher: Callable[[str], bool]) -> str:
 # path tiers
 
 
+def _posix(path: str) -> str:
+    return path.replace("\\", "/")
+
+
 def matches_quant(path: str) -> bool:
     """Statistical source code requiring academic verification before Stop."""
-    posix = path.replace("\\", "/")
-    if posix.startswith(("packages/alpha-validation/src/", "packages/alpha-research/src/")):
+    posix = _posix(path)
+    if posix.startswith(_QUANT_SRC_PREFIXES):
         return posix.endswith(".py")
     if posix.startswith("packages/") and "/src/" in posix and posix.endswith(".py"):
         return bool(_QUANT_NAME_RE.search(posix.rsplit("/", 1)[-1]))
@@ -263,7 +261,7 @@ def matches_quant(path: str) -> bool:
 
 def matches_risk(path: str) -> bool:
     """Risk-tier paths requiring an independent APPROVE review before commit."""
-    posix = path.replace("\\", "/")
+    posix = _posix(path)
     if matches_quant(posix):
         return True
     if posix.startswith("packages/alpha-backtest/src/") and posix.endswith(".py"):
@@ -273,7 +271,7 @@ def matches_risk(path: str) -> bool:
 
 def protected_reason(path: str, content: str = "") -> str | None:
     """Control-plane paths whose edits need a governance ack (or the owner token)."""
-    posix = path.replace("\\", "/")
+    posix = _posix(path)
     if posix in _PROTECTED_EXACT or posix.startswith(_PROTECTED_PREFIXES):
         return f"{posix} is harness/governance control plane"
     if posix == "pyproject.toml":
@@ -285,11 +283,11 @@ def protected_reason(path: str, content: str = "") -> str | None:
 
 def agent_ackable(path: str) -> bool:
     """Low-risk control-plane text an agent may ack for itself (bounded per session)."""
-    return path.replace("\\", "/").startswith(_AGENT_ACKABLE_PREFIXES)
+    return _posix(path).startswith(_AGENT_ACKABLE_PREFIXES)
 
 
 def is_hidden_holdout(path: str) -> bool:
-    return path.replace("\\", "/").startswith(HIDDEN_HOLDOUT_PREFIX)
+    return _posix(path).startswith(HIDDEN_HOLDOUT_PREFIX)
 
 
 # ---------------------------------------------------------------------------
@@ -566,81 +564,71 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
         print(f"attest unavailable: pydantic models not importable ({exc})", file=sys.stderr)
         return 1
 
+    # per-kind spec: (model, PASS-field, required value, tier label, matcher, state file, event)
+    model: type[QuantVerificationReport] | type[ReviewVerdict]
     if kind == "quant":
-        try:
-            report = QuantVerificationReport.model_validate(payload)
-        except ValueError as exc:
-            print(f"attest rejected: {exc}", file=sys.stderr)
-            return 1
-        if report.overall != "PASS":
-            print("attest rejected: overall must be PASS to attest", file=sys.stderr)
-            return 1
-        missing = sorted(
-            set(scoped_changed_paths(root, matches_quant)) - set(report.files_reviewed)
+        model, field, want = QuantVerificationReport, "overall", "PASS"
+        label, matcher, state_file, event = (
+            "quant-tier", matches_quant, QUANT_ATTESTATION_FILE, "quant_attested",
+        )  # fmt: skip
+    elif kind == "review":
+        model, field, want = ReviewVerdict, "verdict", "APPROVE"
+        label, matcher, state_file, event = (
+            "risk-tier", matches_risk, REVIEW_VERDICT_FILE, "review_attested",
+        )  # fmt: skip
+    else:
+        print(f"attest rejected: unknown kind {kind!r}", file=sys.stderr)
+        return 2
+
+    try:
+        report = model.model_validate(payload)
+    except ValueError as exc:
+        print(f"attest rejected: {exc}", file=sys.stderr)
+        return 1
+    if getattr(report, field) != want:
+        print(f"attest rejected: {field} must be {want} to attest", file=sys.stderr)
+        return 1
+    if isinstance(report, ReviewVerdict) and report.reviewed_diff_hash != scoped_diff_hash(
+        root, matches_risk
+    ):
+        print(
+            "attest rejected: reviewed_diff_hash is stale — a risk-tier file changed "
+            "since review; re-run /review-gate",
+            file=sys.stderr,
         )
-        if missing:
-            print(
-                "attest rejected: quant-tier files changed but absent from files_reviewed: "
-                + ", ".join(missing),
-                file=sys.stderr,
-            )
-            return 1
+        return 1
+    missing = sorted(set(scoped_changed_paths(root, matcher)) - set(report.files_reviewed))
+    if missing:
+        print(
+            f"attest rejected: {label} files changed but absent from files_reviewed: "
+            + ", ".join(missing),
+            file=sys.stderr,
+        )
+        return 1
+
+    artifact: QuantAttestation | ReviewAttestation
+    if isinstance(report, QuantVerificationReport):
         artifact = QuantAttestation(
             created_at=_now(),
             bound_quant_diff_hash=scoped_diff_hash(root, matches_quant),
             report=report,
         )
-        write_json_atomic(_state_dir(root) / QUANT_ATTESTATION_FILE, artifact.model_dump())
-        append_audit(root, "quant_attested", f"claims={len(report.claims)}")
-        return 0
-
-    if kind == "review":
-        try:
-            verdict = ReviewVerdict.model_validate(payload)
-        except ValueError as exc:
-            print(f"attest rejected: {exc}", file=sys.stderr)
-            return 1
-        if verdict.verdict != "APPROVE":
-            print("attest rejected: verdict must be APPROVE to attest", file=sys.stderr)
-            return 1
-        if verdict.reviewed_diff_hash != scoped_diff_hash(root, matches_risk):
-            print(
-                "attest rejected: reviewed_diff_hash is stale — a risk-tier file changed "
-                "since review; re-run /review-gate",
-                file=sys.stderr,
-            )
-            return 1
-        missing = sorted(
-            set(scoped_changed_paths(root, matches_risk)) - set(verdict.files_reviewed)
-        )
-        if missing:
-            print(
-                "attest rejected: risk-tier files changed but absent from files_reviewed: "
-                + ", ".join(missing),
-                file=sys.stderr,
-            )
-            return 1
-        review_artifact = ReviewAttestation(created_at=_now(), verdict=verdict)
-        write_json_atomic(_state_dir(root) / REVIEW_VERDICT_FILE, review_artifact.model_dump())
-        append_audit(root, "review_attested", f"findings={len(verdict.findings)}")
-        return 0
-
-    print(f"attest rejected: unknown kind {kind!r}", file=sys.stderr)
-    return 2
+        detail = f"claims={len(report.claims)}"
+    else:
+        artifact = ReviewAttestation(created_at=_now(), verdict=report)
+        detail = f"findings={len(report.findings)}"
+    write_json_atomic(_state_dir(root) / state_file, artifact.model_dump())
+    append_audit(root, event, detail)
+    return 0
 
 
 def quant_attestation_valid(root: Path) -> bool:
-    artifact = read_json(_state_dir(root) / QUANT_ATTESTATION_FILE)
-    if artifact is None:
-        return False
+    artifact = read_json(_state_dir(root) / QUANT_ATTESTATION_FILE) or {}
     return artifact.get("bound_quant_diff_hash") == scoped_diff_hash(root, matches_quant)
 
 
 def review_verdict_valid(root: Path) -> bool:
-    artifact = read_json(_state_dir(root) / REVIEW_VERDICT_FILE)
-    if artifact is None:
-        return False
-    verdict = artifact.get("verdict")
+    verdict = (read_json(_state_dir(root) / REVIEW_VERDICT_FILE) or {}).get("verdict")
     if not isinstance(verdict, dict) or verdict.get("verdict") != "APPROVE":
         return False
     return verdict.get("reviewed_diff_hash") == scoped_diff_hash(root, matches_risk)
@@ -789,9 +777,13 @@ def write_baseline(root: Path, *, reason: str, authorized_by: str) -> None:
 # gate execution
 
 
-def _default_runner(cmd: list[str]) -> tuple[bool, float, str]:
+def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+    """The one subprocess wrapper: (ok, seconds, combined output); never raises."""
     started = time.monotonic()
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, **kwargs)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return (False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
     output = (result.stdout + result.stderr).strip()
     return (result.returncode == 0, time.monotonic() - started, output)
 
@@ -855,7 +847,7 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
 
 def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
     """Run the tiered gate; stamp only on full success. Mirrors CI's check job."""
-    run = runner or _default_runner
+    run = runner or _env_runner
     clear_stamp(root)
     started = time.monotonic()
     steps: list[tuple[str, float, bool]] = []
@@ -897,6 +889,11 @@ def _frontmatter(text: str) -> dict[str, str]:
             inner = fields[key].strip("[]")
             fields[key] = f"[{inner}, {item}]" if inner else f"[{item}]"
     return fields
+
+
+def _bracket_list(value: str) -> list[str]:
+    """A frontmatter inline list (``[a, b]``) as items, brackets and quotes stripped."""
+    return [item.strip().strip("\"'") for item in value.strip("[]").split(",") if item.strip()]
 
 
 def codex_probe() -> tuple[bool, str]:
@@ -960,9 +957,7 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
         for agent in sorted(agents_dir.glob("*.md")):
             fields = _frontmatter(agent.read_text())
             ok = bool(fields.get("name")) and bool(fields.get("description"))
-            skills = [
-                s.strip() for s in fields.get("skills", "").strip("[]").split(",") if s.strip()
-            ]
+            skills = _bracket_list(fields.get("skills", ""))
             missing = [s for s in skills if not (skills_dir / s).is_dir()]
             checks.append(
                 (
@@ -977,10 +972,7 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
         for rule in sorted(rules_dir.glob("*.md")):
             fields = _frontmatter(rule.read_text())
             paths_field = fields.get("paths", "")
-            globs = [
-                g.strip().strip("\"'") for g in paths_field.strip("[]").split(",") if g.strip()
-            ]
-            unmatched = [g for g in globs if not any(root.glob(g))]
+            unmatched = [g for g in _bracket_list(paths_field) if not any(root.glob(g))]
             checks.append(
                 (
                     f"rule paths resolve: {rule.stem}",
@@ -1340,11 +1332,14 @@ HARNESS_TEST_GLOBS = (
 )
 
 
+def _glob_rel(root: Path, globs: tuple[str, ...]) -> list[str]:
+    """Repo-relative paths matching any of ``globs``, deduped and sorted."""
+    return sorted({str(p.relative_to(root)) for pattern in globs for p in root.glob(pattern)})
+
+
 def selftest(root: Path) -> int:
     """Replay the harness's own test-suite (the same fixtures CI runs)."""
-    files: list[str] = []
-    for pattern in HARNESS_TEST_GLOBS:
-        files.extend(str(p.relative_to(root)) for p in sorted(root.glob(pattern)))
+    files = _glob_rel(root, HARNESS_TEST_GLOBS)
     if not files:
         print("selftest: no harness tests found", file=sys.stderr)
         return 1
@@ -1369,19 +1364,6 @@ _DETERMINISM_ENVS = (
     {"PYTHONHASHSEED": "0", "TZ": "UTC", "OMP_NUM_THREADS": "1"},
     {"PYTHONHASHSEED": "31337", "TZ": "Pacific/Kiritimati", "OMP_NUM_THREADS": "1"},
 )
-_QUANT_SRC_PREFIXES = ("packages/alpha-validation/src/", "packages/alpha-research/src/")
-
-EnvRunner = Callable[..., tuple[bool, float, str]]
-
-
-def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
-    started = time.monotonic()
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False, **kwargs)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return (False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
-    output = (result.stdout + result.stderr).strip()
-    return (result.returncode == 0, time.monotonic() - started, output)
 
 
 def quant_source_modules(root: Path, paths: list[str] | None = None) -> list[str]:
@@ -1626,8 +1608,7 @@ def semgrep_command(root: Path, paths: list[str]) -> list[str]:
     ]
 
 
-def semgrep(root: Path, *, changed_only: bool, runner: EnvRunner | None = None) -> int:
-    run = runner or _env_runner
+def semgrep(root: Path, *, changed_only: bool) -> int:
     if changed_only:
         paths = scoped_changed_paths(root, lambda p: p.endswith(".py"))
         cmd = semgrep_command(root, paths)
@@ -1648,7 +1629,7 @@ def semgrep(root: Path, *, changed_only: bool, runner: EnvRunner | None = None) 
     if not cmd:
         print("[semgrep] no python changes to scan")
         return 0
-    ok, seconds, output = run(cmd, cwd=root, timeout=600)
+    ok, seconds, output = _env_runner(cmd, cwd=root, timeout=600)
     if ok:
         print(f"[semgrep] ok ({seconds:.1f}s)")
         return 0
@@ -1677,9 +1658,8 @@ def uncovered_raise_sites(root: Path, coverage_json: Path, modules: list[str]) -
     return out
 
 
-def raise_cov(root: Path, *, runner: EnvRunner | None = None) -> tuple[list[str], int]:
+def raise_cov(root: Path) -> tuple[list[str], int]:
     """Run the quant test tiers with branch coverage; list ``raise`` lines no test reached."""
-    run = runner or _env_runner
     modules = all_quant_source_modules(root)
     cov_json = _state_dir(root) / "raise-cov.json"
     cov_json.parent.mkdir(parents=True, exist_ok=True)
@@ -1690,7 +1670,7 @@ def raise_cov(root: Path, *, runner: EnvRunner | None = None) -> tuple[list[str]
         f"--cov-report=json:{cov_json}", "--cov-fail-under=0",
         "tests/unit", "tests/oracles", "tests/bias_guards",
     ]  # fmt: skip
-    ok, _, output = run(cmd, cwd=root, timeout=3600)
+    ok, _, output = _env_runner(cmd, cwd=root, timeout=3600)
     if not ok:
         print(output[-4000:], file=sys.stderr)
         return (["<test run failed>"], 0)
@@ -1706,10 +1686,7 @@ def determinism(root: Path, *, runner: EnvRunner | None = None) -> tuple[bool, s
     process environments is the cross-process determinism evidence.
     """
     run = runner or _env_runner
-    files: list[str] = []
-    for pattern in _DETERMINISM_TEST_GLOBS:
-        files.extend(str(p.relative_to(root)) for p in sorted(root.glob(pattern)))
-    files = sorted(set(files))
+    files = _glob_rel(root, _DETERMINISM_TEST_GLOBS)
     if not files:
         return (False, "no determinism tests found")
     for i, overrides in enumerate(_DETERMINISM_ENVS, start=1):
