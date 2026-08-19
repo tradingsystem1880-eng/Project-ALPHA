@@ -625,3 +625,87 @@ def test_fetch_falls_back_when_retry_after_is_not_a_number(tmp_path: Path) -> No
         _store(tmp_path), request, api_key="k", opener=opener, sleep=sleeps.append
     )
     assert sleeps == [1.0], "an unparseable Retry-After must fall back to the bounded default"
+
+
+def _response_class(headers: dict[str, str]) -> type[io.BytesIO]:
+    class Response(io.BytesIO):
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            self.close()
+
+        def geturl(self) -> str:
+            return "https://api.quantpad.ai/v1/coverage?symbol=AAPL"
+
+    Response.headers = headers  # type: ignore[attr-defined]
+    return Response
+
+
+def test_truncated_stream_fails_loud_after_bounded_retries(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="AAPL", response_format="json")
+    Response = _response_class({"Content-Type": "application/json", "Content-Length": "5"})
+    calls = 0
+    sleeps: list[float] = []
+
+    def opener(*_args: object, **_kwargs: object) -> io.BytesIO:
+        nonlocal calls
+        calls += 1
+        return Response(b"{}")  # 2 bytes delivered, 5 declared
+
+    with pytest.raises(DataError, match="truncated: expected 5 bytes, got 2"):
+        fetch_quantpad_archive(
+            _store(tmp_path), request, api_key="secret", opener=opener, sleep=sleeps.append
+        )
+    assert calls == 3
+    assert sleeps == [1.0, 2.0]
+    assert _store(tmp_path).find_request(request.request_id) is None
+
+
+def test_over_long_stream_fails_loud(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="AAPL", response_format="json")
+    Response = _response_class({"Content-Type": "application/json", "Content-Length": "1"})
+
+    def opener(*_args: object, **_kwargs: object) -> io.BytesIO:
+        return Response(b"{}")
+
+    with pytest.raises(DataError, match="longer than declared"):
+        fetch_quantpad_archive(
+            _store(tmp_path), request, api_key="secret", opener=opener, sleep=lambda _: None
+        )
+
+
+def test_truncated_stream_recovers_on_retry(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="AAPL", response_format="json")
+    Short = _response_class({"Content-Type": "application/json", "Content-Length": "5"})
+    Good = _response_class({"Content-Type": "application/json", "Content-Length": "2"})
+    calls = 0
+
+    def opener(*_args: object, **_kwargs: object) -> io.BytesIO:
+        nonlocal calls
+        calls += 1
+        return Short(b"{}") if calls == 1 else Good(b"{}")
+
+    result = fetch_quantpad_archive(
+        _store(tmp_path), request, api_key="secret", opener=opener, sleep=lambda _: None
+    )
+    assert calls == 2
+    assert result["artifact_bytes"] == 2
+
+
+def test_server_error_reason_is_surfaced(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="AAPL", response_format="json")
+
+    def opener(*_args: object, **_kwargs: object) -> object:
+        raise urllib.error.HTTPError(
+            "https://api.quantpad.ai/v1/coverage?symbol=AAPL",
+            503,
+            "unavailable",
+            _headers({}),
+            io.BytesIO(b'{"error": "quota exhausted"}'),
+        )
+
+    with pytest.raises(DataError, match=r"reason: quota exhausted"):
+        fetch_quantpad_archive(
+            _store(tmp_path), request, api_key="secret", opener=opener, sleep=lambda _: None
+        )

@@ -44,6 +44,29 @@ _TICK_SCHEMAS: Final = frozenset(
 _BASE_URL: Final = "https://api.quantpad.ai"
 
 
+class _TruncatedStream(DataError):
+    """Body length disagreed with ``Content-Length``; a bounded retry is allowed."""
+
+
+def _http_error_reason(exc: urllib.error.HTTPError) -> str:
+    """Provider-supplied reason from a 429/5xx body (bounded to 512 chars), else the status."""
+    try:
+        body = exc.read().decode("utf-8", errors="replace").strip()
+    except OSError:
+        body = ""
+    if not body:
+        return str(exc.code)
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return body[:512]
+    if isinstance(payload, dict):
+        reason = payload.get("error")
+        if isinstance(reason, str):
+            return reason
+    return body[:512]
+
+
 def _canonical(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
@@ -324,6 +347,13 @@ def fetch_quantpad_archive(
                 parsed = urllib.parse.urlparse(final_url)
                 if parsed.scheme != "https" or parsed.hostname != "api.quantpad.ai":
                     raise DataError("QuantPad archive redirect left the pinned HTTPS host")
+                expected_bytes: int | None = None
+                declared = response.headers.get("Content-Length")  # type: ignore[attr-defined]
+                if declared is not None:
+                    try:
+                        expected_bytes = int(declared)
+                    except (TypeError, ValueError):
+                        expected_bytes = None
                 content_type = (
                     str(response.headers.get("Content-Type", ""))  # type: ignore[attr-defined]
                     .split(";", 1)[0]
@@ -339,11 +369,30 @@ def fetch_quantpad_archive(
 
                 reader = response.read  # type: ignore[attr-defined]
 
-                def chunks(reader: Callable[[int], bytes] = reader) -> Iterable[bytes]:
+                def chunks(
+                    reader: Callable[[int], bytes] = reader,
+                    expected_bytes: int | None = expected_bytes,
+                ) -> Iterable[bytes]:
+                    downloaded = 0
                     while chunk := reader(1024 * 1024):
+                        downloaded += len(chunk)
+                        if expected_bytes is not None and downloaded > expected_bytes:
+                            raise _TruncatedStream(
+                                "QuantPad archive stream is longer than declared bytes "
+                                f"({downloaded} > {expected_bytes})"
+                            )
                         yield chunk
+                    if expected_bytes is not None and downloaded != expected_bytes:
+                        raise _TruncatedStream(
+                            "QuantPad archive stream is truncated: "
+                            f"expected {expected_bytes} bytes, got {downloaded}"
+                        )
 
                 return store.publish(request, chunks())
+        except _TruncatedStream:
+            if attempt == 2:
+                raise
+            sleep(float(attempt + 1))
         except DataError:
             raise
         except urllib.error.HTTPError as exc:
@@ -351,7 +400,8 @@ def fetch_quantpad_archive(
                 raise DataError("QuantPad archive request was rejected") from exc
             if attempt == 2:
                 raise DataError(
-                    "QuantPad archive request failed; retry the bounded request"
+                    "QuantPad archive request failed; retry the bounded request "
+                    f"(reason: {_http_error_reason(exc)})"
                 ) from exc
             delay = float(attempt + 1)
             if exc.code == 429:
