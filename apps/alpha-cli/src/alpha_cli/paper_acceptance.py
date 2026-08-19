@@ -59,12 +59,14 @@ _IMAGE = re.compile(r"^[A-Za-z0-9._/:+-]+@sha256:[0-9a-f]{64}$")
 _ACCOUNT = re.compile(r"^DU[A-Z0-9]+$")
 
 
-def _canonical(value: Mapping[str, object]) -> bytes:
+def canonical_bytes(value: Mapping[str, object]) -> bytes:
+    """Render the one canonical JSON encoding every paper receipt hash is taken over."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
-def _digest(value: Mapping[str, object]) -> str:
-    return hashlib.sha256(_canonical(value)).hexdigest()
+def digest(value: Mapping[str, object]) -> str:
+    """Digest the canonical encoding of ``value``."""
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
 def _stamp(value: datetime) -> str:
@@ -115,7 +117,7 @@ def freeze_acceptance_plan(
         ],
         "one_shot": True,
     }
-    plan_hash = _digest(body)
+    plan_hash = digest(body)
     plan = {**body, "plan_hash": plan_hash}
     root = Path(data_dir) / "paper-acceptance-v2" / "plans"
     path = root / f"{plan_hash}.json"
@@ -137,7 +139,7 @@ def _read_plan(data_dir: Path, plan_hash: str) -> dict[str, object]:
     if not isinstance(raw, dict) or raw.get("plan_hash") != plan_hash:
         raise DataError("paper acceptance plan failed identity verification")
     body = {key: value for key, value in raw.items() if key != "plan_hash"}
-    if _digest(body) != plan_hash:
+    if digest(body) != plan_hash:
         raise DataError("paper acceptance plan failed content verification")
     return raw
 
@@ -159,7 +161,7 @@ def _read_facts(data_dir: Path, plan_hash: str) -> list[dict[str, object]]:
             raise DataError("paper acceptance fact must be an object")
         fact_hash = raw.get("fact_hash")
         body = {key: value for key, value in raw.items() if key != "fact_hash"}
-        if not isinstance(fact_hash, str) or _digest(body) != fact_hash:
+        if not isinstance(fact_hash, str) or digest(body) != fact_hash:
             raise DataError("paper acceptance fact failed content verification")
         if raw.get("previous_fact_hash") != previous:
             raise DataError("paper acceptance fact chain is broken")
@@ -214,7 +216,7 @@ def record_callback_fact(
             "recorded_at": _stamp(recorded_at or datetime.now(UTC)),
             "raw_evidence": dict(raw_evidence),
         }
-        fact_hash = _digest(body)
+        fact_hash = digest(body)
         fact = {**body, "fact_hash": fact_hash}
         write_text(
             root / f"{sequence:06d}-{fact_hash}.json",
@@ -387,7 +389,7 @@ def create_ibkr_what_if_plan(
         "one_shot": True,
         "paper_acceptance_credit": False,
     }
-    plan_hash = _digest(body)
+    plan_hash = digest(body)
     plan = {**body, "plan_hash": plan_hash}
     root = Path(data_dir) / "ibkr-what-if-v2" / "plans"
     path = root / f"{plan_hash}.json"
@@ -418,14 +420,16 @@ def read_ibkr_what_if_plan(data_dir: Path, plan_hash: str) -> dict[str, object]:
     if not isinstance(raw, dict) or raw.get("plan_hash") != plan_hash:
         raise DataError("IBKR what-if plan failed identity verification")
     body = {key: value for key, value in raw.items() if key != "plan_hash"}
-    if _digest(body) != plan_hash:
+    if digest(body) != plan_hash:
         raise DataError("IBKR what-if plan failed content verification")
     return raw
 
 
 __all__ = [
     "acceptance_report",
+    "canonical_bytes",
     "create_ibkr_what_if_plan",
+    "digest",
     "freeze_acceptance_plan",
     "read_ibkr_what_if_plan",
     "record_callback_fact",

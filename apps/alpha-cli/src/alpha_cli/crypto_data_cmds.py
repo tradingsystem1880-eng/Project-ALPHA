@@ -502,12 +502,14 @@ def _read_snapshot(snapshot_id: str) -> CryptoSnapshotV1:
     return CryptoSnapshotV1.from_dict(raw)
 
 
-def _verified_snapshot(
+def _verify_snapshot_members(
     snapshot_id: str,
     *,
     required_families: tuple[CryptoFamily, ...],
     purpose: CryptoResearchPurpose,
-) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1]:
+    tolerate_legacy_scope: bool,
+) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1, bool]:
+    """Reverify one snapshot's bytes, identity, and member scope; report scope eligibility."""
     snapshot = _read_snapshot(snapshot_id)
     if snapshot.asset_master_version != "reviewed-native-v1":
         master = _read_asset_master(snapshot.asset_master_version)
@@ -519,18 +521,40 @@ def _verified_snapshot(
         for manifest in store.inventory()
         if manifest.get("artifact_kind") == "normalized"
     }
+    scope_eligible = True
     reports: dict[str, CryptoQualityReportV1] = {}
     for member in snapshot.members:
         manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
         if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
             raise DataError("crypto snapshot member manifest is missing or mismatched")
-        _manifest_acquisition_scope(manifest, member.dataset)
+        if tolerate_legacy_scope:
+            try:
+                _manifest_acquisition_scope(manifest, member.dataset)
+            except _LegacyUnscopedEventError:
+                scope_eligible = False
+        else:
+            _manifest_acquisition_scope(manifest, member.dataset)
         reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(manifest.get("quality"))
     projection = assess_crypto_snapshot(
         snapshot,
         quality_reports=reports,
         required_families=required_families,
         purpose=purpose,
+    )
+    return snapshot, reports, projection, scope_eligible
+
+
+def _verified_snapshot(
+    snapshot_id: str,
+    *,
+    required_families: tuple[CryptoFamily, ...],
+    purpose: CryptoResearchPurpose,
+) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1]:
+    snapshot, reports, projection, _ = _verify_snapshot_members(
+        snapshot_id,
+        required_families=required_families,
+        purpose=purpose,
+        tolerate_legacy_scope=False,
     )
     return snapshot, reports, projection
 
@@ -769,33 +793,11 @@ def crypto_hedged_basis_observations(
 
 def _integrity_verified_snapshot(snapshot_id: str) -> tuple[CryptoSnapshotV1, bool]:
     """Verify historical bytes and identity without promoting legacy scope into evidence."""
-    snapshot = _read_snapshot(snapshot_id)
-    if snapshot.asset_master_version != "reviewed-native-v1":
-        master = _read_asset_master(snapshot.asset_master_version)
-        if master.version != snapshot.asset_master_version:
-            raise DataError("crypto snapshot asset-master identity is mismatched")
-    store = _bulk_store()
-    by_membership = {
-        (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
-        for manifest in store.inventory()
-        if manifest.get("artifact_kind") == "normalized"
-    }
-    scope_eligible = True
-    reports: dict[str, CryptoQualityReportV1] = {}
-    for member in snapshot.members:
-        manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
-        if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
-            raise DataError("crypto snapshot member manifest is missing or mismatched")
-        try:
-            _manifest_acquisition_scope(manifest, member.dataset)
-        except _LegacyUnscopedEventError:
-            scope_eligible = False
-        reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(manifest.get("quality"))
-    projection = assess_crypto_snapshot(
-        snapshot,
-        quality_reports=reports,
+    snapshot, _, projection, scope_eligible = _verify_snapshot_members(
+        snapshot_id,
         required_families=(),
         purpose="research",
+        tolerate_legacy_scope=True,
     )
     return snapshot, scope_eligible and projection.eligible
 

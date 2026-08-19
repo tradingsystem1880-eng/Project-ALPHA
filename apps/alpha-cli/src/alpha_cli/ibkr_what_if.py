@@ -9,7 +9,6 @@ import os
 import re
 import threading
 import time
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -68,10 +67,6 @@ class PreviewTransport(Protocol):
         account_id: str,
         timeout_seconds: float,
     ) -> PreviewEvidence: ...
-
-
-def _canonical(value: Mapping[str, object]) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 def _stamp(value: datetime) -> str:
@@ -156,7 +151,7 @@ def _validated_receipt(
         "equity_with_loan_change": evidence.equity_with_loan_change,
         "paper_acceptance_credit": False,
     }
-    return {**receipt_body, "receipt_hash": hashlib.sha256(_canonical(receipt_body)).hexdigest()}
+    return {**receipt_body, "receipt_hash": paper_acceptance.digest(receipt_body)}
 
 
 def execute_preview(

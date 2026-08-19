@@ -369,6 +369,52 @@ def _analysis_result(
     }, passed
 
 
+def _identity_payload(
+    *,
+    analysis: str,
+    snapshot_id: object,
+    research_cutoff: object,
+    research_inheritance: object,
+    source_run_id: object,
+    holdout_start: object,
+    holdout_end: object,
+    holdout_spec_hash: object,
+) -> dict[str, Any]:
+    """Build the one run-identity payload publication and verification must agree on."""
+    payload: dict[str, Any] = {
+        "command": _COMMANDS[analysis],
+        "strategy_name": "hedged_basis_crowding_v1",
+        "snapshot_id": snapshot_id,
+        "research_cutoff": research_cutoff,
+        "research_inheritance": research_inheritance,
+        "candidate_plan": registered_hedged_basis_plan().to_dict(),
+    }
+    if analysis.startswith("monte_carlo_"):
+        payload["source_run_id"] = source_run_id
+    if analysis == "holdout":
+        payload.update(
+            {
+                "holdout_start": holdout_start,
+                "holdout_end": holdout_end,
+                "holdout_spec_hash": holdout_spec_hash,
+            }
+        )
+    return payload
+
+
+def _within_holdout(
+    observations: tuple[HedgedBasisObservationV1, ...],
+    holdout_start: date,
+    holdout_end: date,
+) -> tuple[HedgedBasisObservationV1, ...]:
+    """Keep only the observations inside the inclusive sealed holdout window."""
+    return tuple(
+        observation
+        for observation in observations
+        if holdout_start <= observation.event_time.date() <= holdout_end
+    )
+
+
 def run_hedged_basis_candidate(
     data_dir: Path,
     *,
@@ -401,37 +447,22 @@ def run_hedged_basis_candidate(
             or re.fullmatch(r"[0-9a-f]{64}", holdout_spec_hash) is None
         ):
             raise DataError("candidate holdout requires its exact sealed window and hash")
-        admitted = tuple(
-            observation
-            for observation in admitted
-            if holdout_start <= observation.event_time.date() <= holdout_end
-        )
+        admitted = _within_holdout(admitted, holdout_start, holdout_end)
         if not admitted:
             raise DataError("candidate holdout has no events inside the sealed window")
     source = _source_fingerprint(admitted)
-    command = _COMMANDS[analysis]
-    identity_payload = {
-        "command": command,
-        "strategy_name": "hedged_basis_crowding_v1",
-        "snapshot_id": snapshot_id,
-        "research_cutoff": research_cutoff,
-        "research_inheritance": {"contract_id": research_contract_id},
-        "candidate_plan": registered_hedged_basis_plan().to_dict(),
-    }
-    if analysis.startswith("monte_carlo_"):
-        if source_run_id is None or len(source_run_id) != 16:
-            raise DataError("candidate Monte Carlo requires its exact source validation run")
-        identity_payload["source_run_id"] = source_run_id
-    if analysis == "holdout":
-        assert holdout_start is not None
-        assert holdout_end is not None
-        identity_payload.update(
-            {
-                "holdout_start": holdout_start.isoformat(),
-                "holdout_end": holdout_end.isoformat(),
-                "holdout_spec_hash": holdout_spec_hash,
-            }
-        )
+    if analysis.startswith("monte_carlo_") and (source_run_id is None or len(source_run_id) != 16):
+        raise DataError("candidate Monte Carlo requires its exact source validation run")
+    identity_payload = _identity_payload(
+        analysis=analysis,
+        snapshot_id=snapshot_id,
+        research_cutoff=research_cutoff,
+        research_inheritance={"contract_id": research_contract_id},
+        source_run_id=source_run_id,
+        holdout_start=None if holdout_start is None else holdout_start.isoformat(),
+        holdout_end=None if holdout_end is None else holdout_end.isoformat(),
+        holdout_spec_hash=holdout_spec_hash,
+    )
     identity = _runner.run_identity_for(
         identity_payload,
         source_fingerprint=source,
@@ -511,31 +542,19 @@ def validate_hedged_basis_candidate_artifacts(
             holdout_end = date.fromisoformat(str(manifest["holdout_end"]))
         except (KeyError, ValueError) as exc:
             raise DataError("hedged basis holdout window is invalid") from exc
-        admitted = tuple(
-            observation
-            for observation in admitted
-            if holdout_start <= observation.event_time.date() <= holdout_end
-        )
+        admitted = _within_holdout(admitted, holdout_start, holdout_end)
         if not admitted:
             raise DataError("hedged basis holdout window contains no events")
-    expected_payload: dict[str, object] = {
-        "command": _COMMANDS[analysis],
-        "strategy_name": "hedged_basis_crowding_v1",
-        "snapshot_id": manifest.get("snapshot_id"),
-        "research_cutoff": manifest.get("research_cutoff"),
-        "research_inheritance": manifest.get("research_inheritance"),
-        "candidate_plan": registered_hedged_basis_plan().to_dict(),
-    }
-    if analysis.startswith("monte_carlo_"):
-        expected_payload["source_run_id"] = manifest.get("source_run_id")
-    if analysis == "holdout":
-        expected_payload.update(
-            {
-                "holdout_start": manifest.get("holdout_start"),
-                "holdout_end": manifest.get("holdout_end"),
-                "holdout_spec_hash": manifest.get("holdout_spec_hash"),
-            }
-        )
+    expected_payload = _identity_payload(
+        analysis=analysis,
+        snapshot_id=manifest.get("snapshot_id"),
+        research_cutoff=manifest.get("research_cutoff"),
+        research_inheritance=manifest.get("research_inheritance"),
+        source_run_id=manifest.get("source_run_id"),
+        holdout_start=manifest.get("holdout_start"),
+        holdout_end=manifest.get("holdout_end"),
+        holdout_spec_hash=manifest.get("holdout_spec_hash"),
+    )
     expected_identity = _runner.run_identity_for(
         expected_payload,
         source_fingerprint=_source_fingerprint(admitted),

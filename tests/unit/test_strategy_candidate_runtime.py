@@ -4,10 +4,11 @@ import json
 import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from alpha_cli import strategy_candidate_runtime
+from alpha_cli import _runner, strategy_candidate_runtime
 from alpha_cli.strategy_candidate_runtime import (
     run_hedged_basis_candidate,
     validate_hedged_basis_candidate_artifacts,
@@ -445,3 +446,58 @@ def test_non_hex_holdout_spec_hash_is_refused(tmp_path: Path) -> None:
             research_cutoff=None,
             as_of=None,
         )
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        {"analysis": "baseline", "research_cutoff": "2025-01-31"},
+        {
+            "analysis": "monte_carlo_classical",
+            "source_run_id": "1234567890abcdef",
+            "research_cutoff": "2025-01-31",
+        },
+        {
+            "analysis": "holdout",
+            "holdout_start": datetime(2025, 1, 1, tzinfo=UTC).date(),
+            "holdout_end": datetime(2025, 1, 3, tzinfo=UTC).date(),
+            "holdout_spec_hash": "1" * 64,
+            "research_cutoff": None,
+        },
+    ],
+    ids=["baseline", "monte_carlo", "holdout"],
+)
+def test_publish_and_verify_share_one_identity_payload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: dict[str, object]
+) -> None:
+    """Publication and re-verification must feed run identity the very same payload."""
+    observations = _observations()
+    as_of = None if case["analysis"] == "holdout" else datetime(2025, 1, 31, 23, 59, 59, tzinfo=UTC)
+    seen: list[dict[str, object]] = []
+    original = _runner.run_identity_for
+
+    def _spy(payload: dict[str, object], **kwargs: Any) -> object:
+        seen.append(dict(payload))
+        return original(payload, **kwargs)
+
+    monkeypatch.setattr(_runner, "run_identity_for", _spy)
+
+    manifest = run_hedged_basis_candidate(
+        tmp_path,
+        snapshot_id="d" * 64,
+        snapshot_hash="e" * 64,
+        research_contract_id=f"rc_{'f' * 64}",
+        observations=observations,
+        as_of=as_of,
+        **case,  # type: ignore[arg-type]
+    )
+    validate_hedged_basis_candidate_artifacts(
+        tmp_path / "runs" / str(manifest["run_id"]),
+        manifest,
+        observations=observations,
+        as_of=as_of,
+    )
+
+    published, verified = seen
+    assert list(published) == list(verified)
+    assert published == verified

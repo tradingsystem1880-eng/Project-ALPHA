@@ -11,9 +11,13 @@ from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
 from alpha_cli.research_crypto_runtime import (
+    ZoneSpec,
+    canonical,
     crypto_evaluation_payload,
+    sha,
     validate_crypto_d0_contract,
     validate_crypto_execution_inputs,
+    validate_zone_evidence,
 )
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_core import DataError
@@ -41,17 +45,15 @@ _PROJECT_ID: Final = re.compile(
 )
 _CONTRACT_ID: Final = re.compile(r"rc_[0-9a-f]{64}")
 _SHA256: Final = re.compile(r"[0-9a-f]{64}")
+_VALUE_LABEL: Final = "crypto D2 value"
 
 
 def _canonical(value: object) -> str:
-    try:
-        return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    except (TypeError, ValueError) as exc:
-        raise DataError("crypto D2 value is not canonical JSON") from exc
+    return canonical(value, label=_VALUE_LABEL)
 
 
 def _sha(value: object) -> str:
-    return hashlib.sha256(_canonical(value).encode()).hexdigest()
+    return sha(value, label=_VALUE_LABEL)
 
 
 def _validate_contract(contract: Mapping[str, object]) -> None:
@@ -389,26 +391,20 @@ def run_crypto_crowding_confirmation(
     return _artifacts.read_manifest(run_dir)
 
 
-def _read(path: Path, label: str) -> dict[str, object]:
-    if path.is_symlink() or not path.is_file() or path.stat().st_size > _MAX_ARTIFACT_BYTES:
-        raise DataError(f"{label} is missing, linked, or oversized")
-    try:
-        raw = path.read_text(encoding="utf-8")
-        parsed: object = json.loads(raw)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError(f"{label} is unreadable") from exc
-    if not isinstance(parsed, dict) or raw != _canonical(parsed):
-        raise DataError(f"{label} is not canonical JSON")
-    return parsed
-
-
-def _artifact_hash(manifest: Mapping[str, object], name: str) -> str:
-    artifacts = manifest.get("artifacts")
-    metadata = None if not isinstance(artifacts, Mapping) else artifacts.get(name)
-    digest = None if not isinstance(metadata, Mapping) else metadata.get("sha256")
-    if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
-        raise DataError(f"crypto D2 manifest does not bind {name}")
-    return digest
+_D2_ZONE: Final = ZoneSpec(
+    command="research_confirm",
+    zone="D2",
+    label="crypto D2",
+    analyses_artifact=D2_ANALYSES_ARTIFACT,
+    evidence_artifact=D2_EVIDENCE_ARTIFACT,
+    analyses_manifest_key="d2_analyses_artifact",
+    evidence_manifest_key="d2_evidence_artifact",
+    fingerprint=crypto_d2_execution_fingerprint,
+    payloads=lambda run_id, contract, observations, boundary: _payloads(
+        run_id=run_id, contract=contract, observations=observations, boundary=boundary
+    ),
+    max_artifact_bytes=_MAX_ARTIFACT_BYTES,
+)
 
 
 def validate_crypto_d2_evidence_artifacts(
@@ -422,45 +418,16 @@ def validate_crypto_d2_evidence_artifacts(
     boundary: ResearchD2BoundaryV2,
 ) -> dict[str, object]:
     """Recompute the one-shot classification from exact frozen inputs."""
-    if manifest.get("command") != "research_confirm" or manifest.get("evidence_zone") != "D2":
-        raise DataError("crypto D2 verification requires a research_confirm D2 manifest")
-    if (
-        manifest.get("project_id") != project_id
-        or manifest.get("research_contract_id") != contract_id
-    ):
-        raise DataError("crypto D2 verification authority does not match the manifest")
-    dataset_hash, _, _ = validate_crypto_execution_inputs(
-        contract, observations, boundary, evidence_zone="D2"
-    )
-    if (
-        manifest.get("dataset_hash") != dataset_hash
-        or manifest.get("contract_hash") != _sha(contract)
-        or manifest.get("execution_fingerprint") != crypto_d2_execution_fingerprint(contract)
-        or manifest.get("d2_evidence_artifact") != D2_EVIDENCE_ARTIFACT
-        or manifest.get("d2_analyses_artifact") != D2_ANALYSES_ARTIFACT
-    ):
-        raise DataError("crypto D2 manifest does not match the frozen execution")
-    analyses_path = run_dir / D2_ANALYSES_ARTIFACT
-    evidence_path = run_dir / D2_EVIDENCE_ARTIFACT
-    analyses = _read(analyses_path, "crypto D2 analyses artifact")
-    evidence = _read(evidence_path, "crypto D2 evidence artifact")
-    if hashlib.sha256(analyses_path.read_bytes()).hexdigest() != _artifact_hash(
-        manifest, D2_ANALYSES_ARTIFACT
-    ) or hashlib.sha256(evidence_path.read_bytes()).hexdigest() != _artifact_hash(
-        manifest, D2_EVIDENCE_ARTIFACT
-    ):
-        raise DataError("crypto D2 artifact does not match its immutable manifest hash")
-    expected_analyses, expected_evidence, _ = _payloads(
-        run_id=str(manifest.get("run_id", "")),
+    return validate_zone_evidence(
+        run_dir,
+        manifest,
+        zone=_D2_ZONE,
+        project_id=project_id,
+        contract_id=contract_id,
         contract=contract,
         observations=observations,
         boundary=boundary,
     )
-    if _canonical(analyses) != _canonical(expected_analyses):
-        raise DataError("crypto D2 analyses fail exact recomputation")
-    if _canonical(evidence) != _canonical(expected_evidence):
-        raise DataError("crypto D2 findings fail exact recomputation")
-    return evidence
 
 
 __all__ = [

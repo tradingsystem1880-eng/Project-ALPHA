@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final, cast
@@ -43,15 +43,17 @@ _FIXTURE_ID: Final = "bybit_btcusdt_crowding_d0_v3"
 _FIXTURE_VERSION: Final = 3
 
 
-def _canonical(value: object) -> str:
+def canonical(value: object, *, label: str = "crypto crowding runtime value") -> str:
+    """Render one canonical JSON string, failing loud under the caller's label."""
     try:
         return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError) as exc:
-        raise DataError("crypto crowding runtime value is not canonical JSON") from exc
+        raise DataError(f"{label} is not canonical JSON") from exc
 
 
-def _sha(value: object) -> str:
-    return hashlib.sha256(_canonical(value).encode()).hexdigest()
+def sha(value: object, *, label: str = "crypto crowding runtime value") -> str:
+    """Digest the canonical JSON rendering of ``value``."""
+    return hashlib.sha256(canonical(value, label=label).encode()).hexdigest()
 
 
 def _publish_json(path: Path, payload: object) -> None:
@@ -78,7 +80,7 @@ def registered_crypto_d0_operator() -> dict[str, object]:
             "definition_fingerprint": fixture.fixture_definition_sha256,
         },
     }
-    return {**body, "fingerprint": _sha(body)}
+    return {**body, "fingerprint": sha(body)}
 
 
 def validate_crypto_d0_contract(contract: Mapping[str, object]) -> dict[str, object]:
@@ -87,7 +89,7 @@ def validate_crypto_d0_contract(contract: Mapping[str, object]) -> dict[str, obj
     protocol = contract.get("protocol")
     binding = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
     expected = registered_crypto_d0_operator()
-    if not isinstance(binding, Mapping) or _canonical(binding) != _canonical(expected):
+    if not isinstance(binding, Mapping) or canonical(binding) != canonical(expected):
         raise DataError("crypto crowding D0 operator binding does not match the executable")
     hashes = contract.get("hashes")
     if not isinstance(hashes, Mapping) or any(
@@ -100,7 +102,7 @@ def validate_crypto_d0_contract(contract: Mapping[str, object]) -> dict[str, obj
 
 def crypto_d0_execution_fingerprint(contract: Mapping[str, object]) -> str:
     operator = validate_crypto_d0_contract(contract)
-    return _sha(
+    return sha(
         {
             "runtime": "alpha_cli.research_crypto_runtime.d0",
             "runtime_version": _RUNTIME_VERSION,
@@ -131,7 +133,7 @@ def _validated_d1_binding(
 
 def crypto_d1_execution_fingerprint(contract: Mapping[str, object]) -> str:
     dataset_hash, empirical = _validated_d1_binding(contract)
-    return _sha(
+    return sha(
         {
             "runtime": "alpha_cli.research_crypto_runtime.d1",
             "runtime_version": _D1_RUNTIME_VERSION,
@@ -190,7 +192,7 @@ def validate_crypto_execution_inputs(
     protocol = contract.get("protocol")
     topology = None if not isinstance(protocol, Mapping) else protocol.get("evidence_topology")
     frozen_boundary = None if not isinstance(topology, Mapping) else topology.get("boundary")
-    if not isinstance(frozen_boundary, Mapping) or _canonical(frozen_boundary) != _canonical(
+    if not isinstance(frozen_boundary, Mapping) or canonical(frozen_boundary) != canonical(
         boundary.to_dict()
     ):
         raise DataError("crypto crowding D1 boundary differs from the frozen contract")
@@ -314,7 +316,7 @@ def _d1_payloads(
             "budget": {"variants_used": 3},
         },
     }
-    analyses_sha = hashlib.sha256(_canonical(analyses).encode()).hexdigest()
+    analyses_sha = hashlib.sha256(canonical(analyses).encode()).hexdigest()
     evidence = {
         **_d1_findings(result),
         "artifact_links": [
@@ -371,7 +373,7 @@ def run_crypto_crowding_pilot(
     fixture = execute_crypto_crowding_d0()
     if not fixture.passed:
         raise DataError("crypto crowding deterministic D0 acceptance suite failed")
-    contract_hash = _sha(contract)
+    contract_hash = sha(contract)
     execution_fingerprint = crypto_d0_execution_fingerprint(contract)
     run_identity = {
         "command": "research_pilot",
@@ -381,7 +383,7 @@ def run_crypto_crowding_pilot(
         "dataset_hash": fixture.fixture_definition_sha256,
         "execution_fingerprint": execution_fingerprint,
     }
-    run_id = _sha(run_identity)[:16]
+    run_id = sha(run_identity)[:16]
     run_dir = _artifacts.run_dir(data_dir, run_id)
     acceptance = _acceptance_payload(
         run_id=run_id,
@@ -420,7 +422,7 @@ def run_crypto_crowding_pilot(
         caveat="Synthetic fixture results are not market evidence or a trading signal.",
         run_id=run_id,
         artifact_id="crypto-crowding-d0-scenarios",
-        artifact_sha256=_sha(scenario_rows),
+        artifact_sha256=sha(scenario_rows),
         series=(
             ResearchChartSeries(
                 series_id="scenario-pass",
@@ -463,7 +465,7 @@ def run_crypto_crowding_pilot(
     )
     _artifacts.publish_artifact(
         run_dir / _ACCEPTANCE_ARTIFACT,
-        lambda target: target.write_text(_canonical(acceptance), encoding="utf-8"),
+        lambda target: target.write_text(canonical(acceptance), encoding="utf-8"),
     )
     _artifacts.publish_artifact(
         run_dir / "report.md",
@@ -522,7 +524,7 @@ def validate_crypto_d0_acceptance_artifact(
         parsed: object = json.loads(raw)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise DataError("crypto crowding D0 acceptance artifact is unreadable") from exc
-    if not isinstance(parsed, dict) or raw != _canonical(parsed):
+    if not isinstance(parsed, dict) or raw != canonical(parsed):
         raise DataError("crypto crowding D0 acceptance artifact is not canonical")
     operator = registered_crypto_d0_operator()
     expected = _acceptance_payload(
@@ -533,7 +535,7 @@ def validate_crypto_d0_acceptance_artifact(
         execution_fingerprint=execution_fingerprint,
         operator=operator,
     )
-    if _canonical(parsed) != _canonical(expected) or manifest.get("d0_operator") != operator:
+    if canonical(parsed) != canonical(expected) or manifest.get("d0_operator") != operator:
         raise DataError("crypto crowding D0 acceptance fails exact recomputation")
     return parsed
 
@@ -554,7 +556,7 @@ def run_crypto_crowding_deep(
     dataset_hash, _, _ = validate_crypto_execution_inputs(
         contract, observations, boundary, evidence_zone="D1"
     )
-    contract_hash = _sha(contract)
+    contract_hash = sha(contract)
     execution_fingerprint = crypto_d1_execution_fingerprint(contract)
     run_identity = {
         "command": "research_deep",
@@ -564,7 +566,7 @@ def run_crypto_crowding_deep(
         "dataset_hash": dataset_hash,
         "execution_fingerprint": execution_fingerprint,
     }
-    run_id = _sha(run_identity)[:16]
+    run_id = sha(run_identity)[:16]
     run_dir = _artifacts.run_dir(data_dir, run_id)
     analyses, evidence, result = _d1_payloads(
         run_id=run_id,
@@ -575,11 +577,11 @@ def run_crypto_crowding_deep(
         on_checkpoint("d1:crypto_crowding:evaluated")
     _artifacts.publish_artifact(
         run_dir / _D1_ANALYSES_ARTIFACT,
-        lambda target: target.write_text(_canonical(analyses), encoding="utf-8"),
+        lambda target: target.write_text(canonical(analyses), encoding="utf-8"),
     )
     _artifacts.publish_artifact(
         run_dir / _D1_EVIDENCE_ARTIFACT,
-        lambda target: target.write_text(_canonical(evidence), encoding="utf-8"),
+        lambda target: target.write_text(canonical(evidence), encoding="utf-8"),
     )
 
     start, stop = _admission(boundary, "D1")
@@ -616,7 +618,7 @@ def run_crypto_crowding_deep(
         caveat="EXPLORATORY D1 evidence only; D2 and D3 were not admitted.",
         run_id=run_id,
         artifact_id="crypto-crowding-d1-series",
-        artifact_sha256=_sha(series.to_dict()),
+        artifact_sha256=sha(series.to_dict()),
         series=(series,),
     )
     _publish_json(run_dir / "chart-data.json", chart.to_dict())
@@ -663,26 +665,121 @@ def run_crypto_crowding_deep(
     return _artifacts.read_manifest(run_dir)
 
 
-def _read_canonical_d1_artifact(path: Path, label: str) -> dict[str, object]:
-    if path.is_symlink() or not path.is_file() or path.stat().st_size > _MAX_D1_ARTIFACT_BYTES:
+def read_canonical_artifact(path: Path, label: str, *, max_bytes: int) -> dict[str, object]:
+    """Read one immutable canonical-JSON evidence artifact, failing loud under ``label``."""
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > max_bytes:
         raise DataError(f"{label} is missing, linked, or oversized")
     try:
         raw = path.read_text(encoding="utf-8")
         parsed: object = json.loads(raw)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise DataError(f"{label} is unreadable") from exc
-    if not isinstance(parsed, dict) or raw != _canonical(parsed):
+    if not isinstance(parsed, dict) or raw != canonical(parsed):
         raise DataError(f"{label} is not canonical JSON")
     return parsed
 
 
-def _manifest_artifact_hash(manifest: Mapping[str, object], name: str) -> str:
+def manifest_artifact_hash(manifest: Mapping[str, object], name: str, *, label: str) -> str:
+    """Read the immutable manifest-bound sha256 of one declared artifact."""
     artifacts = manifest.get("artifacts")
     metadata = None if not isinstance(artifacts, Mapping) else artifacts.get(name)
     digest = None if not isinstance(metadata, Mapping) else metadata.get("sha256")
     if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
-        raise DataError(f"crypto D1 manifest does not bind {name}")
+        raise DataError(f"{label} manifest does not bind {name}")
     return digest
+
+
+ZonePayloadsFn = Callable[
+    [str, Mapping[str, object], tuple[CryptoCrowdingObservationV1, ...], ResearchD2BoundaryV2],
+    tuple[dict[str, object], dict[str, object], CryptoCrowdingEvaluationV1],
+]
+
+
+@dataclass(frozen=True, slots=True)
+class ZoneSpec:
+    """The frozen per-zone literals of one crypto evidence re-verification."""
+
+    command: str
+    zone: str
+    label: str
+    analyses_artifact: str
+    evidence_artifact: str
+    analyses_manifest_key: str
+    evidence_manifest_key: str
+    fingerprint: Callable[[Mapping[str, object]], str]
+    payloads: ZonePayloadsFn
+    max_artifact_bytes: int
+
+
+def validate_zone_evidence(
+    run_dir: Path,
+    manifest: Mapping[str, object],
+    *,
+    zone: ZoneSpec,
+    project_id: str,
+    contract_id: str,
+    contract: Mapping[str, object],
+    observations: tuple[CryptoCrowdingObservationV1, ...],
+    boundary: ResearchD2BoundaryV2,
+) -> dict[str, object]:
+    """Recompute one evidence zone's measurements and findings from exact frozen inputs."""
+    if manifest.get("command") != zone.command or manifest.get("evidence_zone") != zone.zone:
+        raise DataError(f"{zone.label} verification requires a {zone.command} {zone.zone} manifest")
+    if (
+        manifest.get("project_id") != project_id
+        or manifest.get("research_contract_id") != contract_id
+    ):
+        raise DataError(f"{zone.label} verification authority does not match the manifest")
+    dataset_hash, _, _ = validate_crypto_execution_inputs(
+        contract, observations, boundary, evidence_zone=zone.zone
+    )
+    if (
+        manifest.get("dataset_hash") != dataset_hash
+        or manifest.get("contract_hash") != sha(contract)
+        or manifest.get("execution_fingerprint") != zone.fingerprint(contract)
+        or manifest.get(zone.evidence_manifest_key) != zone.evidence_artifact
+        or manifest.get(zone.analyses_manifest_key) != zone.analyses_artifact
+    ):
+        raise DataError(f"{zone.label} manifest does not match the frozen execution")
+
+    analyses_path = run_dir / zone.analyses_artifact
+    evidence_path = run_dir / zone.evidence_artifact
+    analyses = read_canonical_artifact(
+        analyses_path, f"{zone.label} analyses artifact", max_bytes=zone.max_artifact_bytes
+    )
+    evidence = read_canonical_artifact(
+        evidence_path, f"{zone.label} evidence artifact", max_bytes=zone.max_artifact_bytes
+    )
+    if hashlib.sha256(analyses_path.read_bytes()).hexdigest() != manifest_artifact_hash(
+        manifest, zone.analyses_artifact, label=zone.label
+    ) or hashlib.sha256(evidence_path.read_bytes()).hexdigest() != manifest_artifact_hash(
+        manifest, zone.evidence_artifact, label=zone.label
+    ):
+        raise DataError(f"{zone.label} artifact does not match its immutable manifest hash")
+    expected_analyses, expected_evidence, _ = zone.payloads(
+        str(manifest.get("run_id", "")), contract, observations, boundary
+    )
+    if canonical(analyses) != canonical(expected_analyses):
+        raise DataError(f"{zone.label} analyses fail exact recomputation")
+    if canonical(evidence) != canonical(expected_evidence):
+        raise DataError(f"{zone.label} findings fail exact recomputation")
+    return evidence
+
+
+_D1_ZONE: Final = ZoneSpec(
+    command="research_deep",
+    zone="D1",
+    label="crypto D1",
+    analyses_artifact=_D1_ANALYSES_ARTIFACT,
+    evidence_artifact=_D1_EVIDENCE_ARTIFACT,
+    analyses_manifest_key="d1_analyses_artifact",
+    evidence_manifest_key="d1_evidence_artifact",
+    fingerprint=crypto_d1_execution_fingerprint,
+    payloads=lambda run_id, _contract, observations, boundary: _d1_payloads(
+        run_id=run_id, observations=observations, boundary=boundary
+    ),
+    max_artifact_bytes=_MAX_D1_ARTIFACT_BYTES,
+)
 
 
 def validate_crypto_d1_evidence_artifacts(
@@ -696,56 +793,33 @@ def validate_crypto_d1_evidence_artifacts(
     boundary: ResearchD2BoundaryV2,
 ) -> dict[str, object]:
     """Recompute D1 measurements and findings from exact frozen inputs."""
-    if manifest.get("command") != "research_deep" or manifest.get("evidence_zone") != "D1":
-        raise DataError("crypto D1 verification requires a research_deep D1 manifest")
-    if (
-        manifest.get("project_id") != project_id
-        or manifest.get("research_contract_id") != contract_id
-    ):
-        raise DataError("crypto D1 verification authority does not match the manifest")
-    dataset_hash, _, _ = validate_crypto_execution_inputs(
-        contract, observations, boundary, evidence_zone="D1"
-    )
-    if (
-        manifest.get("dataset_hash") != dataset_hash
-        or manifest.get("contract_hash") != _sha(contract)
-        or manifest.get("execution_fingerprint") != crypto_d1_execution_fingerprint(contract)
-        or manifest.get("d1_evidence_artifact") != _D1_EVIDENCE_ARTIFACT
-        or manifest.get("d1_analyses_artifact") != _D1_ANALYSES_ARTIFACT
-    ):
-        raise DataError("crypto D1 manifest does not match the frozen execution")
-
-    analyses_path = run_dir / _D1_ANALYSES_ARTIFACT
-    evidence_path = run_dir / _D1_EVIDENCE_ARTIFACT
-    analyses = _read_canonical_d1_artifact(analyses_path, "crypto D1 analyses artifact")
-    evidence = _read_canonical_d1_artifact(evidence_path, "crypto D1 evidence artifact")
-    if hashlib.sha256(analyses_path.read_bytes()).hexdigest() != _manifest_artifact_hash(
-        manifest, _D1_ANALYSES_ARTIFACT
-    ) or hashlib.sha256(evidence_path.read_bytes()).hexdigest() != _manifest_artifact_hash(
-        manifest, _D1_EVIDENCE_ARTIFACT
-    ):
-        raise DataError("crypto D1 artifact does not match its immutable manifest hash")
-    expected_analyses, expected_evidence, _ = _d1_payloads(
-        run_id=str(manifest.get("run_id", "")),
+    return validate_zone_evidence(
+        run_dir,
+        manifest,
+        zone=_D1_ZONE,
+        project_id=project_id,
+        contract_id=contract_id,
+        contract=contract,
         observations=observations,
         boundary=boundary,
     )
-    if _canonical(analyses) != _canonical(expected_analyses):
-        raise DataError("crypto D1 analyses fail exact recomputation")
-    if _canonical(evidence) != _canonical(expected_evidence):
-        raise DataError("crypto D1 findings fail exact recomputation")
-    return evidence
 
 
 __all__ = [
+    "ZoneSpec",
+    "canonical",
     "crypto_evaluation_payload",
     "crypto_d0_execution_fingerprint",
     "crypto_d1_execution_fingerprint",
+    "manifest_artifact_hash",
+    "read_canonical_artifact",
     "registered_crypto_d0_operator",
     "run_crypto_crowding_deep",
     "run_crypto_crowding_pilot",
+    "sha",
     "validate_crypto_d0_acceptance_artifact",
     "validate_crypto_d0_contract",
     "validate_crypto_d1_evidence_artifacts",
     "validate_crypto_execution_inputs",
+    "validate_zone_evidence",
 ]

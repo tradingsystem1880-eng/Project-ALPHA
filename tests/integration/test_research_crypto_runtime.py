@@ -7,11 +7,11 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
-from alpha_cli import research_cmds
+from alpha_cli import research_cmds, research_crypto_d2, research_crypto_runtime
 from alpha_cli.control_store import ControlStore
 from alpha_cli.research_crypto_binding import (
     load_crypto_empirical_d1,
@@ -31,6 +31,7 @@ from alpha_cli.research_crypto_runtime import (
     validate_crypto_d0_acceptance_artifact,
     validate_crypto_d0_contract,
     validate_crypto_d1_evidence_artifacts,
+    validate_zone_evidence,
 )
 from alpha_core import DataError
 from alpha_research import (
@@ -656,3 +657,75 @@ def test_crypto_d2_runtime_classifies_a_planted_sealed_effect(tmp_path: Path) ->
         )
     )
     assert evidence["confirmation_classification"] == "SUPPORTED"
+
+
+def test_d1_and_d2_verifiers_share_one_implementation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One zone verifier serves both admission authorities and rejects the same tampering."""
+    zones: list[str] = []
+
+    def _spy(run_dir: Path, manifest: Any, **kwargs: Any) -> Any:
+        zones.append(str(kwargs["zone"].zone))
+        return validate_zone_evidence(run_dir, manifest, **kwargs)
+
+    monkeypatch.setattr(research_crypto_runtime, "validate_zone_evidence", _spy)
+    monkeypatch.setattr(research_crypto_d2, "validate_zone_evidence", _spy)
+
+    d1_contract, d1_boundary = _empirical_contract()
+    d2_contract, d2_boundary = _confirmation_contract()
+    observations = _observations()
+    d1_manifest = run_crypto_crowding_deep(
+        tmp_path,
+        project_id=PROJECT_ID,
+        contract_id=CONTRACT_ID,
+        contract=d1_contract,
+        observations=observations,
+        boundary=d1_boundary,
+    )
+    d2_manifest = run_crypto_crowding_confirmation(
+        tmp_path,
+        project_id=PROJECT_ID,
+        contract_id=CONTRACT_ID,
+        contract=d2_contract,
+        observations=observations,
+        boundary=d2_boundary,
+    )
+
+    cases = (
+        (validate_crypto_d1_evidence_artifacts, d1_manifest, d1_contract, d1_boundary),
+        (validate_crypto_d2_evidence_artifacts, d2_manifest, d2_contract, d2_boundary),
+    )
+    for validate, manifest, contract, boundary in cases:
+        run_dir = tmp_path / "runs" / str(manifest["run_id"])
+        evidence_path = run_dir / "research_gate_evidence.json"
+        original = evidence_path.read_text(encoding="utf-8")
+        assert validate(
+            run_dir,
+            manifest,
+            project_id=PROJECT_ID,
+            contract_id=CONTRACT_ID,
+            contract=contract,
+            observations=observations,
+            boundary=boundary,
+        )
+        os.chmod(evidence_path, 0o600)
+        tampered = json.loads(original)
+        # One byte inside the canonical payload: the recorded zone label loses its digit.
+        tampered["evidence_zone"] = f"{str(tampered['evidence_zone'])[:-1]}9"
+        evidence_path.write_text(
+            json.dumps(tampered, sort_keys=True, separators=(",", ":"), allow_nan=False),
+            encoding="utf-8",
+        )
+        with pytest.raises(DataError, match="immutable manifest hash"):
+            validate(
+                run_dir,
+                manifest,
+                project_id=PROJECT_ID,
+                contract_id=CONTRACT_ID,
+                contract=contract,
+                observations=observations,
+                boundary=boundary,
+            )
+
+    assert zones == ["D1", "D1", "D2", "D2"]
