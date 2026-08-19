@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import gate
+import harness_quant
 import pytest
 
 from tests.unit._harness_support import git as _git
@@ -474,7 +475,13 @@ def _wire_minimal_harness(repo: Path) -> None:
     (claude / "statusline.py").write_text("print('ok')\n")
     scripts = repo / "scripts"
     scripts.mkdir(exist_ok=True)
-    for name in ("gate.py", "claude_hooks.py", "harness_models.py", "codex_bridge.py"):
+    for name in (
+        "gate.py",
+        "claude_hooks.py",
+        "harness_models.py",
+        "harness_quant.py",
+        "codex_bridge.py",
+    ):
         (scripts / name).write_text("# stub\n")
     gate.write_baseline(repo, reason="test", authorized_by="test")
 
@@ -888,7 +895,7 @@ class TestQuantRigorTooling:
         (tests_dir / "unit" / "test_other.py").write_text("import gate\n")
         (repo / "pyproject.toml").write_text('[tool.pytest.ini_options]\nmarkers = ["oracle: o"]\n')
         staging = repo / ".claude" / "state" / "mutation"
-        only = gate.stage_mutation_tree(repo, [rel], staging)
+        only = harness_quant.stage_mutation_tree(repo, [rel], staging)
         assert only == ["src/alpha_validation/dsr.py"]
         assert (staging / "src" / "alpha_validation" / "dsr.py").is_file()
         assert (staging / rel).is_file()  # workspace layout mirrored for source-inspecting tests
@@ -915,23 +922,25 @@ class TestQuantRigorTooling:
             "ERROR tests/unit/test_broken.py - ImportError\n"
             "1 failed, 1 error in 0.1s\n"
         )
-        assert gate.staging_only_failures(output) == [
+        assert harness_quant.staging_only_failures(output) == [
             "--deselect",
             "tests/unit/test_theme_drift.py::test_css[bg]",
             "--ignore",
             "tests/unit/test_broken.py",
         ]
-        assert gate.staging_only_failures("3 passed\n") == []
+        assert harness_quant.staging_only_failures("3 passed\n") == []
 
     def test_mutation_verdict_thresholds(self, tmp_path: Path) -> None:
         stats = {"killed": 155, "survived": 37, "total": 192, "skipped": 0}
-        assert gate.mutation_kill_rate(stats) == pytest.approx(155 / 192)
+        assert harness_quant.mutation_kill_rate(stats) == pytest.approx(155 / 192)
         # no baseline: the 0.90 floor applies
-        assert gate.mutation_required("m.py", {}) == pytest.approx(gate.MUTATION_MIN_KILL)
+        assert harness_quant.mutation_required("m.py", {}) == pytest.approx(
+            harness_quant.MUTATION_MIN_KILL
+        )
         # a module already below the floor must not regress below its recorded baseline
-        assert gate.mutation_required("m.py", {"m.py": 0.80}) == pytest.approx(0.80)
+        assert harness_quant.mutation_required("m.py", {"m.py": 0.80}) == pytest.approx(0.80)
         # a module above the floor is held to the floor, not to its own high-water mark
-        assert gate.mutation_required("m.py", {"m.py": 0.97}) == pytest.approx(0.90)
+        assert harness_quant.mutation_required("m.py", {"m.py": 0.97}) == pytest.approx(0.90)
 
     def test_mutate_reports_unavailable_when_runner_cannot_start(self, repo: Path) -> None:
         rel = self._quant_module(repo)
@@ -942,7 +951,7 @@ class TestQuantRigorTooling:
         def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
             return (False, 0.0, "mutmut: command not found")
 
-        code, report = gate.mutate(repo, [rel], runner=runner)
+        code, report = harness_quant.mutate(repo, [rel], runner=runner)
         assert code == 0  # tooling absence never blocks; it is reported loudly
         assert report["modules"][rel]["status"].startswith("unavailable:")
 
@@ -964,7 +973,7 @@ class TestQuantRigorTooling:
                 stats.write_text(json.dumps(cicd))
             return (True, 1.0, "")
 
-        code, report = gate.mutate(repo, [rel], runner=runner, timeout=5400.0)
+        code, report = harness_quant.mutate(repo, [rel], runner=runner, timeout=5400.0)
         entry = report["modules"][rel]
         assert code == 1 and entry["status"] == "fail"
         # module-scope mutants mutmut cannot attribute are visible, and NOT credited as kills
@@ -976,27 +985,29 @@ class TestQuantRigorTooling:
         for rel in ("packages/x.py", "docs/a.md", "tests/t.py"):
             (repo / rel).parent.mkdir(parents=True, exist_ok=True)
             (repo / rel).write_text("")
-        cmd = gate.semgrep_command(repo, ["packages/x.py", "docs/a.md", "tests/t.py", "gone.py"])
+        cmd = harness_quant.semgrep_command(
+            repo, ["packages/x.py", "docs/a.md", "tests/t.py", "gone.py"]
+        )
         assert cmd[:2] == ["uvx", "semgrep"] and "--config" in cmd and ".semgrep/alpha.yml" in cmd
         assert cmd[-2:] == ["packages/x.py", "tests/t.py"]  # only python targets
-        assert gate.semgrep_command(repo, []) == []
+        assert harness_quant.semgrep_command(repo, []) == []
 
     def test_raise_sites_are_found_by_ast(self, tmp_path: Path) -> None:
         mod = tmp_path / "m.py"
         mod.write_text(
             "def f(x):\n    if x:\n        raise ValueError('a')\n    return 1\n\nraise SystemExit"
         )
-        assert gate.raise_sites(mod) == [3, 6]
+        assert harness_quant.raise_sites(mod) == [3, 6]
 
     def test_uncovered_raise_sites_from_coverage_json(self, repo: Path) -> None:
         body = "def f(x):\n    if x:\n        raise ValueError\n    return 1\n"
         rel = self._quant_module(repo, body=body)
         cov = {"files": {rel: {"missing_lines": [3]}}}
         (repo / "cov.json").write_text(json.dumps(cov))
-        assert gate.uncovered_raise_sites(repo, repo / "cov.json", [rel]) == [f"{rel}:3"]
+        assert harness_quant.uncovered_raise_sites(repo, repo / "cov.json", [rel]) == [f"{rel}:3"]
         cov = {"files": {rel: {"missing_lines": []}}}
         (repo / "cov.json").write_text(json.dumps(cov))
-        assert gate.uncovered_raise_sites(repo, repo / "cov.json", [rel]) == []
+        assert harness_quant.uncovered_raise_sites(repo, repo / "cov.json", [rel]) == []
 
     def test_determinism_runs_twice_under_perturbed_env(self, repo: Path) -> None:
         (repo / "tests" / "integration").mkdir(parents=True)
@@ -1009,7 +1020,7 @@ class TestQuantRigorTooling:
             assert cmd[-1].endswith("test_figure_determinism.py")
             return (True, 0.1, "")
 
-        ok, detail = gate.determinism(repo, runner=runner)
+        ok, detail = harness_quant.determinism(repo, runner=runner)
         assert ok and "2 passes" in detail
         assert len(seen) == 2 and seen[0]["PYTHONHASHSEED"] != seen[1]["PYTHONHASHSEED"]
         assert seen[0]["TZ"] != seen[1]["TZ"]
@@ -1024,7 +1035,7 @@ class TestQuantRigorTooling:
             calls["n"] += 1
             return (calls["n"] == 1, 0.1, "hash mismatch")
 
-        ok, detail = gate.determinism(repo, runner=runner)
+        ok, detail = harness_quant.determinism(repo, runner=runner)
         assert not ok and "pass 2" in detail
 
     def test_full_gate_adds_on_touch_steps_only_when_quant_source_changed(self, repo: Path) -> None:
