@@ -428,10 +428,6 @@ def _record_stop_block(root: Path, session_id: str) -> int:
     return int(state["stop_blocks_used"])
 
 
-def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds")
-
-
 # ---------------------------------------------------------------------------
 # helpers
 
@@ -619,7 +615,7 @@ def hook_post_tool_failure(payload: dict[str, Any], root: Path) -> HookResult:
         {
             "tool": str(payload.get("tool_name", "")),
             "error": str(payload.get("error", ""))[:300],
-            "ts": _now(),
+            "ts": gate._now(),
         }
     )
     state["failures"] = state["failures"][-50:]
@@ -1051,7 +1047,7 @@ def _owner_warning(root: Path) -> list[str]:
     ]
 
 
-def _obligations(root: Path, state: dict[str, Any]) -> list[str]:
+def _obligations(root: Path, state: dict[str, Any], tier: str) -> list[str]:
     lines: list[str] = []
     edited = [p for p in state.get("edited_files", []) if isinstance(p, str)]
     quant = [p for p in edited if gate.matches_quant(p)]
@@ -1060,7 +1056,7 @@ def _obligations(root: Path, state: dict[str, Any]) -> list[str]:
         lines.append(f"OWED: /verify-quant for {', '.join(quant[:5])}")
     if risk and not gate.review_verdict_valid(root):
         lines.append(f"OWED before commit: /review-gate for {', '.join(risk[:5])}")
-    if any(_is_source_edit(p) for p in edited) and not gate.stamp_is_valid(root, "fast"):
+    if any(_is_source_edit(p) for p in edited) and tier == "none":
         lines.append("OWED before stop: gate.py fast (source edits this session, stamp stale)")
     failures = state.get("failures", [])
     if failures:
@@ -1107,21 +1103,20 @@ def hook_post_compact(payload: dict[str, Any], root: Path) -> HookResult:
     edited = [p for p in state.get("edited_files", []) if isinstance(p, str)]
     if edited:
         lines.append("Files edited this session: " + ", ".join(edited[:30]))
-    lines += _obligations(root, state)
+    lines += _obligations(root, state, gate.stamp_tier(root))
     return (0, "\n".join(lines))
 
 
 def hook_prompt_context(payload: dict[str, Any], root: Path) -> HookResult:
     branch = gate._git(root, "branch", "--show-current", check=False).strip()
     dirty = len(gate._git_lines(root, "status", "--porcelain"))
-    if gate.stamp_is_valid(root, "full"):
-        stamp = "full (valid for current tree)"
-    elif gate.stamp_is_valid(root, "fast"):
-        stamp = "fast (valid for current tree; full needed to commit)"
-    else:
-        stamp = "none/stale — gate required before commit or stop-after-edits"
+    tier = gate.stamp_tier(root)
+    stamp = {
+        "full": "full (valid for current tree)",
+        "fast": "fast (valid for current tree; full needed to commit)",
+    }.get(tier, "none/stale — gate required before commit or stop-after-edits")
     state = load_session(root, str(payload.get("session_id", "")))
-    obligations = _obligations(root, state)
+    obligations = _obligations(root, state, tier)
     flags: list[str] = []
     if not gate.owner_token_configured(root):
         flags.append("owner-token:UNSET")

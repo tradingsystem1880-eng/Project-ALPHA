@@ -814,3 +814,19 @@ class TestAgentBashSandbox:
     def test_out_of_sandbox_commands_are_blocked(self, repo: Path, agent: str, cmd: str) -> None:
         code, msg = self._run(repo, agent, cmd)
         assert code == 2 and "BLOCKED" in msg and "sandbox" in msg, cmd
+
+
+def test_prompt_context_hashes_the_tree_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    gate.write_stamp(repo, "fast", steps=[], duration=0.1)  # unstamped, nothing hashes at all
+    calls = 0
+    real = gate.compute_tree_hash
+
+    def counted(root: Path) -> str:
+        nonlocal calls
+        calls += 1
+        return real(root)
+
+    monkeypatch.setattr(gate, "compute_tree_hash", counted)
+    code, _ = claude_hooks.hook_prompt_context({"session_id": "s1"}, repo)
+    assert code == 0
+    assert calls == 1

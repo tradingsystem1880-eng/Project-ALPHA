@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import gate
 import pytest
 
 from tests.unit._harness_support import REPO_ROOT
@@ -20,17 +21,6 @@ CANONICAL_DIR = REPO_ROOT / ".agents" / "skills"
 # alpha-research-protocols is intentionally absent: its directory layout is
 # load-bearing for alpha_cli's protocol library and it is not an agent skill.
 NEVER_STUBBED = {"alpha-research-protocols"}
-
-
-def _frontmatter(text: str) -> dict[str, str]:
-    assert text.startswith("---\n"), "SKILL.md must open with YAML frontmatter"
-    block = text.split("---", 2)[1]
-    fields: dict[str, str] = {}
-    for line in block.strip().splitlines():
-        if ":" in line and not line.startswith(" "):
-            key, value = line.split(":", 1)
-            fields[key.strip()] = value.strip()
-    return fields
 
 
 def _stub_names() -> list[str]:
@@ -53,8 +43,8 @@ class TestStubRegistry:
 
     def test_stub_frontmatter_matches_canonical(self) -> None:
         for name in _stub_names():
-            stub = _frontmatter((STUB_DIR / name / "SKILL.md").read_text())
-            canonical = _frontmatter((CANONICAL_DIR / name / "SKILL.md").read_text())
+            stub = gate._frontmatter((STUB_DIR / name / "SKILL.md").read_text())
+            canonical = gate._frontmatter((CANONICAL_DIR / name / "SKILL.md").read_text())
             assert stub.get("name") == name, f"{name}: stub frontmatter name mismatch"
             assert canonical.get("name") == name, f"{name}: canonical frontmatter name mismatch"
             assert stub.get("description") == canonical.get("description"), (
@@ -74,7 +64,7 @@ class TestNewCanonicalSkills:
     @pytest.mark.parametrize("name", ["quant-source-verification", "alpha-feature-workflow"])
     def test_canonical_exists_with_frontmatter(self, name: str) -> None:
         text = (CANONICAL_DIR / name / "SKILL.md").read_text()
-        fields = _frontmatter(text)
+        fields = gate._frontmatter(text)
         assert fields.get("name") == name
         assert fields.get("description")
 
@@ -131,7 +121,7 @@ class TestKarpathyAlwaysOn:
         agents = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))
         assert agents
         for agent in agents:
-            fields = _frontmatter(agent.read_text())
+            fields = gate._frontmatter(agent.read_text())
             assert "karpathy-guidelines" in fields.get("skills", ""), (
                 f"{agent.name} does not preload karpathy-guidelines"
             )

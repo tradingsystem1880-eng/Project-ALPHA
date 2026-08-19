@@ -25,7 +25,6 @@ CLI:
     python3 scripts/gate.py index [--no-cli]   # regenerate .claude/state/repo-index.json
     python3 scripts/gate.py plan-check PLAN.md # validate a plan's ```json FeaturePlan front block
     python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
-    python3 scripts/gate.py selftest           # replay the harness test-suite
     python3 scripts/gate.py mutate [MODULES|--all] [--json --write-baseline REASON]  # mutmut gate
     python3 scripts/gate.py semgrep [--changed] # .semgrep/alpha.yml banned constructs
     python3 scripts/gate.py determinism        # byte-stability tests twice under perturbed env
@@ -619,9 +618,14 @@ def stamp_state(root: Path) -> tuple[str, bool]:
     return (str(stamp.get("tier")), stamp.get("tree_hash") == compute_tree_hash(root))
 
 
-def stamp_is_valid(root: Path, tier: str) -> bool:
+def stamp_tier(root: Path) -> str:
+    """Highest tier the stamp satisfies for the current tree; ``"none"`` if absent or stale."""
     have, fresh = stamp_state(root)
-    return fresh and TIER_RANK.get(have, 0) >= TIER_RANK[tier]
+    return have if fresh and have in TIER_RANK else "none"
+
+
+def stamp_is_valid(root: Path, tier: str) -> bool:
+    return TIER_RANK.get(stamp_tier(root), 0) >= TIER_RANK[tier]
 
 
 def stamp_age_seconds(root: Path) -> float | None:
@@ -911,6 +915,7 @@ HARNESS_SCRIPTS = (
     "scripts/claude_hooks.py",
     "scripts/harness_models.py",
     "scripts/codex_bridge.py",
+    ".claude/statusline.py",
 )
 
 
@@ -1031,7 +1036,7 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
     for name in HOOK_NAMES:
         checks.append((f"hook wired: {name}", name in wired, "settings.json hooks block"))
 
-    for rel in ("scripts/gate.py", "scripts/claude_hooks.py", "scripts/harness_models.py"):
+    for rel in HARNESS_SCRIPTS:
         checks.append((f"file present: {rel}", (root / rel).is_file(), rel))
 
     statusline = root / ".claude" / "statusline.py"
@@ -1225,12 +1230,10 @@ def build_brief(root: Path) -> str:
     """Compute the awareness brief from the tree (uncached)."""
     branch = _git(root, "branch", "--show-current", check=False).strip() or "?"
     dirty = len(_git_lines(root, "status", "--porcelain"))
-    if stamp_is_valid(root, "full"):
-        stamp = "full (valid)"
-    elif stamp_is_valid(root, "fast"):
-        stamp = "fast (valid; full needed to commit)"
-    else:
-        stamp = "none/stale"
+    stamp = {
+        "full": "full (valid)",
+        "fast": "fast (valid; full needed to commit)",
+    }.get(stamp_tier(root), "none/stale")
     lines = [
         "REPO BRIEF (generated from the tree by gate.py brief):",
         f"- branch {branch}, {dirty} dirty file(s), gate stamp {stamp}",
@@ -1460,26 +1463,9 @@ def in_plan_scope(rel: str, scope: list[str]) -> bool:
     return any(rel == p or fnmatch(rel, p) or rel.startswith(p.rstrip("/") + "/") for p in scope)
 
 
-HARNESS_TEST_GLOBS = (
-    "tests/unit/test_claude_harness_*.py",
-    "tests/unit/test_claude_md_relocation.py",
-    "tests/unit/test_repo_awareness_drift.py",
-)
-
-
 def _glob_rel(root: Path, globs: tuple[str, ...]) -> list[str]:
     """Repo-relative paths matching any of ``globs``, deduped and sorted."""
     return sorted({str(p.relative_to(root)) for pattern in globs for p in root.glob(pattern)})
-
-
-def selftest(root: Path) -> int:
-    """Replay the harness's own test-suite (the same fixtures CI runs)."""
-    files = _glob_rel(root, HARNESS_TEST_GLOBS)
-    if not files:
-        print("selftest: no harness tests found", file=sys.stderr)
-        return 1
-    result = subprocess.run(["uv", "run", "pytest", "-q", *files], cwd=root, check=False)
-    return result.returncode
 
 
 # ---------------------------------------------------------------------------
@@ -1710,6 +1696,7 @@ def mutate(
                 entry["status"] = "pass"
         report["modules"][rel] = entry
         append_audit(root, "mutation_gate", f"module={rel} status={entry['status']}")
+        shutil.rmtree(staging, ignore_errors=True)
     return (1 if blocking else 0), report
 
 
@@ -1726,21 +1713,21 @@ def write_mutation_baseline(root: Path, report: dict[str, Any], *, reason: str, 
     append_audit(root, "mutation_baseline_written", f"by={by} reason={reason!r}")
 
 
+_SEMGREP_BASE = (
+    "uvx",
+    "semgrep",
+    "--config",
+    str(SEMGREP_RULES),
+    "--metrics=off",
+    "--quiet",
+    "--error",
+)
+
+
 def semgrep_command(root: Path, paths: list[str]) -> list[str]:
     """``uvx semgrep`` over the given python paths (empty list ⇒ nothing to scan ⇒ ``[]``)."""
     targets = sorted(p for p in paths if p.endswith(".py") and (root / p).is_file())
-    if not targets:
-        return []
-    return [
-        "uvx",
-        "semgrep",
-        "--config",
-        str(SEMGREP_RULES),
-        "--metrics=off",
-        "--quiet",
-        "--error",
-        *targets,
-    ]
+    return [*_SEMGREP_BASE, *targets] if targets else []
 
 
 def semgrep(root: Path, *, changed_only: bool) -> int:
@@ -1748,19 +1735,7 @@ def semgrep(root: Path, *, changed_only: bool) -> int:
         paths = scoped_changed_paths(root, lambda p: p.endswith(".py"))
         cmd = semgrep_command(root, paths)
     else:
-        cmd = semgrep_command(root, ["packages", "apps", "scripts", "tests"]) or [
-            "uvx",
-            "semgrep",
-            "--config",
-            str(SEMGREP_RULES),
-            "--metrics=off",
-            "--quiet",
-            "--error",
-            "packages",
-            "apps",
-            "scripts",
-            "tests",
-        ]
+        cmd = [*_SEMGREP_BASE, "packages", "apps", "scripts", "tests"]
     if not cmd:
         print("[semgrep] no python changes to scan")
         return 0
@@ -1871,7 +1846,8 @@ def _clear_token(root: Path, kind: str) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The full CLI parser (built apart from ``main`` so every subcommand is testable)."""
     parser = argparse.ArgumentParser(prog="gate", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fast")
@@ -1911,7 +1887,6 @@ def main(argv: list[str] | None = None) -> int:
     index_p.add_argument("--no-cli", action="store_true")
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--json", action="store_true")
-    sub.add_parser("selftest")
     mutate_p = sub.add_parser("mutate")
     mutate_p.add_argument("modules", nargs="*", help="quant modules (default: changed in tree)")
     mutate_p.add_argument("--all", action="store_true", help="every quant-tier source module")
@@ -1923,7 +1898,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("determinism")
     raise_p = sub.add_parser("raise-cov")
     raise_p.add_argument("--fail", action="store_true", help="exit 1 on any uncovered raise")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
 
     root = repo_root()
     if args.command in ("attest", "override", "ack", "baseline", "plan-check"):
@@ -2025,8 +2004,6 @@ def main(argv: list[str] | None = None) -> int:
             marker = "ok " if check_row["ok"] else "FAIL"
             print(f"[doctor] {marker} {check_row['name']} — {check_row['detail']}")
         return code
-    if args.command == "selftest":
-        return selftest(root)
     if args.command == "mutate":
         modules = all_quant_source_modules(root) if args.all else (args.modules or None)
         code, report = mutate(root, modules, timeout=args.timeout)

@@ -20,7 +20,7 @@ oracles, not just tests; Karpathy guidelines are always on, mechanically.
 
 | Piece | Path | Role |
 |---|---|---|
-| Gate runner | `scripts/gate.py` | `fast\|full\|check\|attest\|override\|ack\|owner-init\|lint-harness\|baseline\|audit\|brief\|index\|plan-check\|doctor\|selftest\|mutate\|semgrep\|determinism\|raise-cov`; tree hash; stamps; hash-chained audit journal |
+| Gate runner | `scripts/gate.py` | `fast\|full\|check\|attest\|override\|ack\|owner-init\|lint-harness\|baseline\|audit\|brief\|index\|plan-check\|doctor\|mutate\|semgrep\|determinism\|raise-cov`; tree hash; stamps; hash-chained audit journal |
 | Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `DriftFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan` |
 | Hooks | `scripts/claude_hooks.py` | Seventeen stdlib-only hook entrypoints (argv dispatch) + one advisory `prompt` hook |
 | Wiring | `.claude/settings.json` | Permissions allow/deny (24 deny rules), hook registration, statusline (committed) |
@@ -280,7 +280,6 @@ consumed on use and audited at write and consume with `authorized_by`.
   scripts present/executable, statusline, state dir, stub↔canonical sync, rules and agent
   frontmatter validity, stale stamp age, orphan tokens, owner-token presence, Codex
   availability probe (never calls the model). SessionStart runs it and warns loudly.
-- `python3 scripts/gate.py selftest` — replays the harness test-suite (`/harness-doctor`).
 - Statusline shows `branch · ±dirty · gate:tier✓/stale/none · needs:… · owner-token/budget flags`.
 - **Emergency recovery**: delete `.claude/state/` (stamps/tokens/session state; the
   audit journal goes with it), or set `ALPHA_HARNESS_DISABLE=1` to bypass all hooks

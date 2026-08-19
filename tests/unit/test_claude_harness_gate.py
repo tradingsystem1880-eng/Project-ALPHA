@@ -474,7 +474,7 @@ def _wire_minimal_harness(repo: Path) -> None:
     (claude / "statusline.py").write_text("print('ok')\n")
     scripts = repo / "scripts"
     scripts.mkdir(exist_ok=True)
-    for name in ("gate.py", "claude_hooks.py", "harness_models.py"):
+    for name in ("gate.py", "claude_hooks.py", "harness_models.py", "codex_bridge.py"):
         (scripts / name).write_text("# stub\n")
     gate.write_baseline(repo, reason="test", authorized_by="test")
 
@@ -1105,3 +1105,38 @@ class TestAuditDigest:
         digest = gate.audit_digest(repo)
         assert "governance ack" in digest
         assert digest.count("scripts/gate.py") == 2, "once in the rollup, once as still-armed"
+
+
+def test_stamp_tier_reports_highest_fresh_tier(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert gate.stamp_tier(repo) == "none"
+    gate.write_stamp(repo, "fast", steps=[], duration=0.1)
+    assert gate.stamp_tier(repo) == "fast"
+    gate.write_stamp(repo, "full", steps=[], duration=0.1)
+    assert gate.stamp_tier(repo) == "full"
+    (repo / "poke.txt").write_text("x")  # tree changed → stale
+    assert gate.stamp_tier(repo) == "none"
+
+
+def test_stamp_is_valid_hashes_the_tree_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    gate.write_stamp(repo, "full", steps=[], duration=0.1)
+    calls = 0
+    real = gate.compute_tree_hash
+
+    def counted(root: Path) -> str:
+        nonlocal calls
+        calls += 1
+        return real(root)
+
+    monkeypatch.setattr(gate, "compute_tree_hash", counted)
+    assert gate.stamp_is_valid(repo, "fast") is True
+    assert calls == 1
+
+
+def test_every_gate_subcommand_has_working_help() -> None:
+    import argparse
+
+    parser = gate.build_parser()
+    subparsers = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    assert "selftest" not in subparsers.choices
+    for name, sub in subparsers.choices.items():
+        assert sub.format_help(), name
