@@ -1,4 +1,4 @@
-# ADR-0030: Agent operating system v2 — owner-token authorization, oracle test tiers, second-model review seam
+# ADR-0034: Agent operating system v2 — owner-token authorization, oracle test tiers, second-model review seam
 
 **Status:** Accepted
 **Date:** 2026-08-19

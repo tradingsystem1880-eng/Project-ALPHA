@@ -56,7 +56,7 @@ this repo are governed by a mechanical hook harness built on that gate — commi
 independent review and academic quant verification tiers, owner-token escape hatches, an oracle
 test layer (metamorphic/calibration/differential, hidden holdout, mutation gate), an optional Codex
 second-opinion seam, and a hash-chained audit journal; see
-`docs/operations/claude-code-harness.md` (ADR-0030).
+`docs/operations/claude-code-harness.md` (ADR-0034).
 
 ```bash
 uv lock --check && uv sync --locked \

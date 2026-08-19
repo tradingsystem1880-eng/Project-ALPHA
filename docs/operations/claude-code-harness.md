@@ -1,6 +1,6 @@
 # Claude Code Harness (agent operating system, harness v2)
 
-v1 installed 2026-08-18; v2 ("10x") landed 2026-08-19 (ADR-0030). The repo previously
+v1 installed 2026-08-18; v2 ("10x") landed 2026-08-19 (ADR-0034). The repo previously
 relied on prose (CLAUDE.md) that agents had to voluntarily obey; the harness makes the
 load-bearing rules mechanical, structured as SR 11-7's three lines of defense: development
 standards (tiered gate, TDD pipeline, per-edit lint, plan schema), independent validation
