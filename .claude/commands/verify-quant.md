@@ -3,11 +3,8 @@ description: Verify the quant-scope diff against primary academic sources (execu
 ---
 
 1. Compute the quant-scope diff: `git diff HEAD` restricted to
-   `packages/alpha-validation/src`, `packages/alpha-research/src`, and any
-   quant-named module (dsr/psr/pbo/deflated/bootstrap/reality_check/spa/
-   montecarlo/walkforward/cpcv/multiple_testing/overfitting) under
-   `packages/*/src`. If the diff is empty, say so and STOP — never attest an
-   empty scope. List the quant-tier files:
+   `gate.matches_quant` scope. If the diff is empty, say so and STOP — never
+   attest an empty scope. List the quant-tier files:
    `uv run python -c "import sys; sys.path.insert(0,'scripts'); import gate; print(sorted(gate.scoped_changed_paths(gate.repo_root(), gate.matches_quant)))"`.
 2. Dispatch the `quant-verifier` subagent with the diff and that file list. It
    follows `.agents/skills/quant-source-verification/SKILL.md`, EXECUTES the

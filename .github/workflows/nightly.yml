@@ -1,10 +1,11 @@
 name: Nightly quant rigor
 
-# The slow half of the W5 quant-rigor layer: what `gate.py full` runs only on-touch (slow
-# oracles, mutation gate) plus the whole-repo sweeps that are informational per commit
-# (semgrep over every file, determinism double-run, raise-site coverage). Nothing here writes
-# back to the repo: the mutation report is an artifact for the owner to fold into
-# `.claude/mutation-baseline.json` with an acked `gate.py mutate --all --write-baseline`.
+# The slow half of the W5 quant-rigor layer: what `gate.py full` runs only on-touch (mutation
+# gate; slow oracles already run every commit in CI's `check` job) plus the whole-repo sweeps
+# that are informational per commit (semgrep over every file, determinism double-run,
+# raise-site coverage). Nothing here writes back to the repo: the mutation report is an
+# artifact for the owner to fold into `.claude/mutation-baseline.json` with an acked
+# `gate.py mutate --all --write-baseline`.
 
 on:
   schedule:
@@ -29,8 +30,6 @@ jobs:
           enable-cache: true
       - name: Install (locked)
         run: uv sync --locked
-      - name: Slow oracles (known-truth calibration, differential references)
-        run: uv run pytest -q -p no:cacheprovider -m slow_oracle
       - name: Semgrep (whole repo)
         run: uv run python scripts/gate.py semgrep
       - name: Determinism double-run (perturbed PYTHONHASHSEED / TZ, fresh processes)

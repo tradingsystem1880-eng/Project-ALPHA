@@ -15,22 +15,11 @@ Follow `.agents/skills/alpha-feature-workflow/SKILL.md`. Steps:
    explore inline — keep this context clean.
 3. Dispatch the `test-architect` subagent for the failing-test specification.
 4. Draft the dated plan doc at `docs/superpowers/plans/<today>-<slug>.md`. It
-   MUST open with a fenced ```json front block that validates as
-   `scripts/harness_models.py::FeaturePlan` — this is Karpathy §1–§3 made
-   structural, and `/implement` refuses to start without it:
-   - `context` — the problem in one paragraph.
-   - `assumptions[]` — each with `verified_by` (the command/file:line that
-     proved it; "unverified" is allowed only if you say so and why).
-   - `alternatives_considered[≥1]` — including the simpler approach and why it
-     was rejected.
-   - `pre_mortem[≥2]` — concrete "this fails if …" statements.
-   - `slices[≥2]` — each ≤ ~100 lines with `verify` (exact command),
-     `expected` (what the output shows), `rollback`, `files[]`.
-   - `tier_impact` ⊆ {quant, risk, protected, dag, bias, determinism, none}.
-   - `docs_to_update[]`, `out_of_scope[]` (the over-eager guard warns on edits
-     outside `files[]` ∪ slice `files[]`), `files[]`.
-   Prose sections follow the block: context, slices, test plan, DAG /
-   look-ahead / determinism impact.
+   MUST open with a fenced ```json front block whose fields match
+   `scripts/harness_models.py::FeaturePlan` exactly — this is Karpathy §1–§3
+   made structural, and `/implement` refuses to start without it. Prose
+   sections follow the block: context, slices, test plan, DAG / look-ahead /
+   determinism impact.
 5. Run `uv run python scripts/gate.py plan-check <plan doc>` and paste its
    output; fix the block until it passes.
 6. Present the plan summary (assumptions, rejected alternative, pre-mortem,

@@ -2,10 +2,8 @@
 description: Independent review of the risk-tier diff (with an optional Codex second opinion), then attest the verdict
 ---
 
-1. Compute the risk-tier diff: `git diff HEAD` restricted to quant paths plus
-   `packages/alpha-backtest/src` and the seven risk-tier `alpha_cli` modules
-   (_gauntlet, _optim, _seeds, _identity, _surrogate, _synth, _runner). If
-   empty, say so and STOP.
+1. Compute the risk-tier diff: `git diff HEAD` restricted to `gate.matches_risk`
+   scope (see step 2 for the derivation). If empty, say so and STOP.
 2. Get the binding hashes:
    `uv run python -c "import sys; sys.path.insert(0,'scripts'); import gate; r=gate.repo_root(); print(gate.compute_tree_hash(r)); print(gate.scoped_diff_hash(r, gate.matches_risk)); print(sorted(gate.scoped_changed_paths(r, gate.matches_risk)))"`
    (tree hash, risk-tier diff hash, risk-tier files).

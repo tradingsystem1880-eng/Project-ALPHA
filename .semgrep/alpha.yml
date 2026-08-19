@@ -1,17 +1,7 @@
 rules:
   # ---- fail-loud discipline (CLAUDE.md "No empty except") --------------------------------
-  - id: alpha-bare-except
-    languages: [python]
-    severity: ERROR
-    message: "Bare `except:` swallows everything, including KeyboardInterrupt. Catch a typed error and re-raise/wrap as AlphaError."
-    paths:
-      include: ["/packages/", "/apps/"]
-    pattern: |
-      try:
-        ...
-      except:
-        ...
-
+  # alpha-bare-except was removed: ruff's E722 (bare `except:`) already covers it (ruff select
+  # includes "E" in pyproject.toml).
   - id: alpha-except-pass
     languages: [python]
     severity: ERROR
