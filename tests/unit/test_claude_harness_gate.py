@@ -19,11 +19,6 @@ import pytest
 from tests.unit._harness_support import git as _git
 
 
-@pytest.fixture()
-def repo(harness_repo: Path) -> Path:
-    return harness_repo
-
-
 class TestTreeHash:
     def test_deterministic(self, repo: Path) -> None:
         assert gate.compute_tree_hash(repo) == gate.compute_tree_hash(repo)

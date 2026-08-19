@@ -92,7 +92,7 @@ KARPATHY_SECTIONS = (
 )
 
 
-class TestKarpathyAlwaysOn:
+class TestKarpathyTextIsCanonical:
     """W0: karpathy-guidelines is a mechanical constant, not a suggestion."""
 
     def test_repo_canonical_has_all_four_sections(self) -> None:

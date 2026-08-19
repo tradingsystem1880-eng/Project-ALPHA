@@ -20,13 +20,9 @@ import gate
 import pytest
 
 from tests.unit._harness_support import REPO_ROOT
+from tests.unit._harness_support import hook_payload as _payload
 
 HOOK_SCRIPT = REPO_ROOT / "scripts" / "claude_hooks.py"
-
-
-@pytest.fixture()
-def repo(harness_repo: Path) -> Path:
-    return harness_repo
 
 
 def _run(
@@ -45,12 +41,6 @@ def _run(
         check=False,
         timeout=60,
     )
-
-
-def _payload(cwd: Path, **kwargs: Any) -> dict[str, Any]:
-    base: dict[str, Any] = {"session_id": "sub1", "cwd": str(cwd)}
-    base.update(kwargs)
-    return base
 
 
 def _blocked_pre_edit_guard(repo: Path) -> tuple[str, dict[str, Any]]:
@@ -122,7 +112,7 @@ class TestBlockContract:
         events = gate.read_audit(repo, kind="blocked_pre-bash-guard")
         assert len(events) == 1
         assert "reset --hard" in events[0]["detail"]
-        assert events[0]["session_id"] == "sub1"
+        assert events[0]["session_id"] == "s1"
 
     # Each decision below (block, ack/stamp/owner-token allow, one-shot
     # consumption) is already proven in-process in test_claude_harness_hooks.py

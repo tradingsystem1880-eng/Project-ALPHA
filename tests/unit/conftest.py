@@ -34,3 +34,9 @@ def harness_repo(_harness_repo_template: Path, tmp_path: Path) -> Path:
     dest = tmp_path / "repo"
     shutil.copytree(_harness_repo_template, dest, symlinks=True)
     return dest
+
+
+@pytest.fixture()
+def repo(harness_repo: Path) -> Path:
+    """Short alias every harness test module reads through."""
+    return harness_repo
