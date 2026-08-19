@@ -113,3 +113,82 @@ class TestAggregate:
     def test_rejects_empty(self) -> None:
         with pytest.raises(DataError):
             aggregate_outcomes([])
+
+
+class TestBarrierFailsLoud:
+    """A rejected setup is a study that would otherwise produce a confident wrong number."""
+
+    @pytest.mark.parametrize(
+        ("highs", "lows", "message"),
+        [
+            ([[1.0]], [[1.0]], "1-D highs/lows"),
+            ([101.0, 102.0], [99.0], "matching highs/lows"),
+            ([], [], "at least one forward bar"),
+            ([101.0, float("nan")], [99.0, 98.0], "finite highs/lows"),
+            ([101.0, 97.0], [99.0, 98.0], "high is below its low"),
+        ],
+    )
+    def test_rejects_a_malformed_path(
+        self, highs: list[object], lows: list[object], message: str
+    ) -> None:
+        with pytest.raises(DataError, match=message):
+            barrier_outcome(highs, lows, entry=100.0, stop=90.0, target=110.0)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        ("entry", "stop", "target", "message"),
+        [
+            (100.0, 90.0, float("inf"), "finite entry/stop/target"),
+            (0.0, -10.0, 10.0, "positive entry price"),
+            (100.0, 90.0, 100.0, "differ from entry"),
+            (100.0, 100.0, 110.0, "differ from entry"),
+            (100.0, 110.0, 120.0, "long setup needs stop < entry"),
+            (100.0, 90.0, 80.0, "short setup needs stop > entry"),
+        ],
+    )
+    def test_rejects_an_incoherent_setup(
+        self, entry: float, stop: float, target: float, message: str
+    ) -> None:
+        hi, lo = _path([101, 102], [99, 98])
+        with pytest.raises(DataError, match=message):
+            barrier_outcome(hi, lo, entry=entry, stop=stop, target=target)
+
+    def test_aggregate_and_quantiles_reject_an_empty_or_degenerate_family(self) -> None:
+        with pytest.raises(DataError, match="at least one result"):
+            aggregate_outcomes([])
+        with pytest.raises(DataError, match="at least one result"):
+            excursion_quantiles([])
+
+        hi, lo = _path([101, 111], [99, 105])
+        result = barrier_outcome(hi, lo, entry=100.0, stop=90.0, target=110.0)
+        with pytest.raises(DataError, match=r"quantiles must lie in \[0, 1\]"):
+            excursion_quantiles([result], quantiles=(0.5, 1.5))
+
+    def test_a_zero_risk_leg_is_refused_rather_than_dividing_by_zero(self) -> None:
+        degenerate = BarrierResult(
+            outcome="target",
+            bars_to_outcome=1,
+            mfe=0.1,
+            mae=0.0,
+            entry=100.0,
+            stop=100.0,
+            target=110.0,
+            is_long=True,
+        )
+        with pytest.raises(DataError, match="non-zero risk leg"):
+            aggregate_outcomes([degenerate])
+
+
+class TestBarrierCountsOnAnEmptyFamily:
+    def test_rates_are_zero_not_undefined(self) -> None:
+        from alpha_validation.barrier import BarrierCounts
+
+        empty = BarrierCounts(
+            target_first=0,
+            stop_first=0,
+            unresolved=0,
+            n=0,
+            breakeven_rate=0.5,
+            reward_risk=1.0,
+        )
+        assert empty.target_rate == 0.0
+        assert empty.expectancy_r == 0.0

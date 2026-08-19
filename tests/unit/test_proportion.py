@@ -154,3 +154,63 @@ class TestEffectiveSampleSize:
     def test_rejects_degenerate_input(self) -> None:
         with pytest.raises(DataError):
             autocorrelation_effective_size(np.ones(50))
+
+
+class TestProportionFailsLoud:
+    @pytest.mark.parametrize("confidence", [0.0, 1.0, -0.5, 1.5])
+    def test_confidence_must_be_a_probability(self, confidence: float) -> None:
+        with pytest.raises(DataError, match=r"confidence must be in \(0, 1\)"):
+            wilson_interval(9, 181, confidence=confidence)
+
+    @pytest.mark.parametrize(
+        ("pvalues", "alpha", "message"),
+        [
+            ([], 0.05, "non-empty 1-D array"),
+            ([[0.01, 0.2]], 0.05, "non-empty 1-D array"),
+            ([0.01, float("nan")], 0.05, "finite p-values"),
+            ([0.01, 1.5], 0.05, r"p-values in \[0, 1\]"),
+            ([0.01, 0.2], 0.0, r"alpha must be in \(0, 1\)"),
+            ([0.01, 0.2], 1.0, r"alpha must be in \(0, 1\)"),
+        ],
+    )
+    def test_benjamini_hochberg_rejects_a_malformed_family(
+        self, pvalues: list[object], alpha: float, message: str
+    ) -> None:
+        with pytest.raises(DataError, match=message):
+            benjamini_hochberg(pvalues, alpha=alpha)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        ("n_events", "span_bars", "horizon_bars", "message"),
+        [
+            (-1, 100, 10, "n_events >= 0"),
+            (10, 0, 10, "span_bars > 0"),
+            (10, 100, 0, "horizon_bars > 0"),
+        ],
+    )
+    def test_effective_sample_size_rejects_impossible_geometry(
+        self, n_events: int, span_bars: int, horizon_bars: int, message: str
+    ) -> None:
+        with pytest.raises(DataError, match=message):
+            effective_sample_size(n_events, span_bars=span_bars, horizon_bars=horizon_bars)
+
+    def test_no_events_is_zero_effective_and_unit_overlap(self) -> None:
+        assert effective_sample_size(0, span_bars=100, horizon_bars=10) == 0.0
+        assert overlap_factor(0, span_bars=100, horizon_bars=10) == 1.0
+
+    @pytest.mark.parametrize(
+        ("series", "message"),
+        [
+            ([1.0], ">= 2 points"),
+            ([[1.0, 2.0]], ">= 2 points"),
+            ([1.0, float("inf")], "finite values"),
+        ],
+    )
+    def test_autocorrelation_effective_size_rejects_a_malformed_series(
+        self, series: list[object], message: str
+    ) -> None:
+        with pytest.raises(DataError, match=message):
+            autocorrelation_effective_size(series)  # type: ignore[arg-type]
+
+    def test_a_constant_series_has_no_estimable_autocorrelation(self) -> None:
+        with pytest.raises(DataError, match="zero-variance"):
+            autocorrelation_effective_size(np.full(20, 3.0))

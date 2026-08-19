@@ -256,3 +256,372 @@ def test_transport_honours_bounded_rate_limit_retry_after(tmp_path: Path) -> Non
     )
     assert calls == 2
     assert sleeps == [4.0]
+
+
+def _response(
+    body: bytes, *, content_type: str = "application/json", url: str | None = None
+) -> io.BytesIO:
+    """One stand-in for the four hand-rolled Response classes the transport tests need."""
+
+    class Response(io.BytesIO):
+        headers = {"Content-Type": content_type}
+
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            self.close()
+
+        def geturl(self) -> str:
+            return url or "https://api.quantpad.ai/v1/coverage?symbol=AAPL"
+
+    return Response(body)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        # every fail-loud contract branch, one case each
+        {"endpoint": "bars", "symbol": "A", "response_format": "csv", "compression": "gzip"},
+        {"endpoint": "bars", "symbol": "A", "response_format": "csv", "roll_adjust": "forward"},
+        {"endpoint": "bars", "symbol": "A", "response_format": "json", "timeframe": "1d"},
+        {"endpoint": "bars", "symbol": "A", "response_format": "csv"},
+        {"endpoint": "ticks", "symbol": "A", "schema": "trades", "response_format": "csv"},
+        {
+            "endpoint": "ticks",
+            "symbol": "A",
+            "schema": "trades",
+            "timeframe": "1d",
+            "response_format": "arrow",
+        },
+        {"endpoint": "coverage", "symbol": "A", "response_format": "json", "timeframe": "1d"},
+        {"endpoint": "coverage", "symbol": "A", "response_format": "json", "limit": 10},
+        {"endpoint": "universe", "symbol": "A", "response_format": "json", "limit": 10},
+        {
+            "endpoint": "universe",
+            "symbol": "A",
+            "response_format": "json",
+            "limit": 50,
+            "start_ms": 1,
+        },
+        {
+            "endpoint": "bars",
+            "symbol": "A",
+            "response_format": "csv",
+            "timeframe": "1d",
+            "start_ms": 5,
+            "end_ms": 5,
+        },
+        {
+            "endpoint": "bars",
+            "symbol": "A",
+            "response_format": "csv",
+            "timeframe": "1d",
+            "start_ms": -1,
+            "end_ms": 5,
+        },
+        {
+            "endpoint": "bars",
+            "symbol": "A",
+            "response_format": "csv",
+            "timeframe": "1d",
+            "start_ms": True,
+            "end_ms": 5,
+        },
+        {
+            "endpoint": "bars",
+            "symbol": "A",
+            "response_format": "csv",
+            "timeframe": "1d",
+            "start_ms": 1,
+            "end_ms": None,
+        },
+        {"endpoint": "coverage", "symbol": "A", "response_format": "xml"},
+    ],
+)
+def test_request_rejects_every_malformed_contract(values: dict[str, object]) -> None:
+    with pytest.raises(DataError):
+        QuantPadArchiveRequestV1(**values)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"schema_version": 2, "endpoint": "coverage", "symbol": "A", "response_format": "json"},
+        {"schema_version": 1, "endpoint": "coverage", "symbol": "A", "not_a_field": 1},
+    ],
+)
+def test_from_dict_rejects_a_foreign_payload(payload: dict[str, object]) -> None:
+    with pytest.raises(DataError):
+        QuantPadArchiveRequestV1.from_dict(payload)
+
+
+def test_store_requires_a_configured_volume_uuid(tmp_path: Path) -> None:
+    with pytest.raises(DataError, match="volume UUID"):
+        QuantPadArchiveStore(bulk_root=tmp_path, manifest_root=tmp_path, expected_volume_uuid="   ")
+
+
+def test_store_reads_real_free_space_when_no_capacity_probe_is_injected(tmp_path: Path) -> None:
+    """The default probe is the one that runs in production; exercise it, not the double."""
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    store = QuantPadArchiveStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        reserve_fraction=0.0,
+        minimum_free_bytes=1,
+    )
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    assert store.publish(request, [b"{}"])["artifact_bytes"] == 2
+
+
+def test_publish_fails_closed_when_the_volume_is_absent_or_too_full(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    missing = QuantPadArchiveStore(
+        bulk_root=tmp_path / "never-mounted",
+        manifest_root=tmp_path / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=10, free_bytes=10),
+    )
+    with pytest.raises(DataError, match="not mounted"):
+        missing.publish(request, [b"{}"])
+
+    bulk = tmp_path / "bulk"
+    bulk.mkdir()
+    full = QuantPadArchiveStore(
+        bulk_root=bulk,
+        manifest_root=tmp_path / "manifests",
+        expected_volume_uuid="TEST-UUID",
+        volume_uuid=lambda _: "TEST-UUID",
+        capacity=lambda _: Capacity(total_bytes=1_000, free_bytes=10),
+        minimum_free_bytes=100,
+    )
+    with pytest.raises(DataError, match="free-space reserve"):
+        full.publish(request, [b"{}"])
+
+
+def test_publish_rejects_a_symlinked_staging_directory(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    staging = store.bulk_root / "staging"
+    staging.mkdir(parents=True)
+    (staging / "quantpad").symlink_to(elsewhere, target_is_directory=True)
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    with pytest.raises(DataError, match="staging path is unsafe"):
+        store.publish(request, [b"{}"])
+
+
+@pytest.mark.parametrize("chunks", [[b"ok", ""], [b"ok", b""], []])
+def test_publish_rejects_an_invalid_or_empty_stream(tmp_path: Path, chunks: list[object]) -> None:
+    store = _store(tmp_path)
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    with pytest.raises(DataError):
+        store.publish(request, chunks)  # type: ignore[arg-type]
+    staging = store.bulk_root / "staging" / "quantpad"
+    assert not list(staging.glob("*.part")), "a rejected stream must leave no partial file"
+
+
+def test_publish_detects_a_tampered_artifact_or_manifest(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    manifest = store.publish(request, [b"{}"])
+
+    artifact = store.bulk_root / str(manifest["artifact_key"])
+    artifact.write_bytes(b"[]")  # same length, different bytes
+    with pytest.raises(DataError, match="external artifact identity collision"):
+        store.publish(request, [b"{}"])
+
+    artifact.write_bytes(b"{}")
+    record = store.manifest_root / f"{manifest['manifest_id']}.json"
+    record.write_text(record.read_text().replace('"research_only": true', '"research_only": 1'))
+    with pytest.raises(DataError, match="internal manifest identity collision"):
+        store.publish(request, [b"{}"])
+
+
+def test_verify_rejects_a_missing_renamed_or_unsafe_manifest(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    manifest = store.publish(request, [b"{}"])
+    manifest_id = str(manifest["manifest_id"])
+
+    with pytest.raises(DataError, match="unavailable or corrupt"):
+        store.verify("0" * 64)
+
+    (store.manifest_root / "renamed.json").write_text(
+        (store.manifest_root / f"{manifest_id}.json").read_text()
+    )
+    with pytest.raises(DataError, match="identity is invalid"):
+        store.verify("renamed")
+
+    body = json.loads((store.manifest_root / f"{manifest_id}.json").read_text())
+    body["artifact_key"] = "../escape.json"
+    (store.manifest_root / f"{manifest_id}.json").write_text(json.dumps(body))
+    with pytest.raises(DataError, match="integrity failure"):
+        store.verify(manifest_id)
+
+
+def test_verify_rejects_an_artifact_key_that_escapes_the_volume(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    manifest = dict(store.publish(request, [b"{}"]))
+    body = {k: v for k, v in manifest.items() if k != "manifest_id"}
+    body["artifact_key"] = "/etc/passwd"
+    import hashlib as _h
+
+    forged = _h.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    (store.manifest_root / f"{forged}.json").write_text(json.dumps({**body, "manifest_id": forged}))
+    with pytest.raises(DataError, match="artifact key is invalid"):
+        store.verify(forged)
+
+
+def test_find_request_is_none_when_nothing_matches_and_loud_when_corrupt(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    assert store.find_request("no-such-request") is None  # manifest root does not exist yet
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    store.publish(request, [b"{}"])
+    assert store.find_request("no-such-request") is None
+    (store.manifest_root / "junk.json").write_text("not json")
+    with pytest.raises(DataError, match="unavailable or corrupt"):
+        store.find_request("no-such-request")
+
+
+def test_fetch_requires_an_injected_key(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    with pytest.raises(DataError, match="Keychain injection"):
+        fetch_quantpad_archive(_store(tmp_path), request, api_key="")
+
+
+def test_fetch_builds_the_documented_query_for_every_endpoint(tmp_path: Path) -> None:
+    seen: list[str] = []
+
+    def opener(wire_request: object, *, timeout: int) -> io.BytesIO:
+        assert isinstance(wire_request, urllib.request.Request)
+        seen.append(wire_request.full_url)
+        fmt = "arrow" if "format=arrow" in wire_request.full_url else "json"
+        content_type = (
+            "application/vnd.apache.arrow.stream" if fmt == "arrow" else "application/json"
+        )
+        return _response(b"payload", content_type=content_type, url=wire_request.full_url)
+
+    for request in (
+        QuantPadArchiveRequestV1(
+            endpoint="universe",
+            symbol="ES",
+            response_format="json",
+            asset_class="futures",
+            limit=50,
+        ),
+        QuantPadArchiveRequestV1(
+            endpoint="bars",
+            symbol="ES.c.0",
+            response_format="arrow",
+            timeframe="1d",
+            compression="zstd",
+            roll_adjust="back",
+            start_ms=1,
+            end_ms=2,
+        ),
+        QuantPadArchiveRequestV1(
+            endpoint="ticks",
+            symbol="ES.c.0",
+            response_format="arrow",
+            schema="mbp-1",
+            start_ms=1,
+            end_ms=2,
+        ),
+    ):
+        fetch_quantpad_archive(_store(tmp_path), request, api_key="k", opener=opener)
+
+    universe, bars, ticks = seen
+    assert "q=ES" in universe and "limit=50" in universe and "asset_class=futures" in universe
+    assert "timeframe=1d" in bars and "roll_adjust=back" in bars and "compression=zstd" in bars
+    assert "schema=mbp-1" in ticks and "roll_adjust" not in ticks
+
+
+def test_fetch_rejects_a_mime_that_contradicts_the_requested_format(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(
+        endpoint="bars",
+        symbol="A",
+        response_format="csv",
+        timeframe="1d",
+        start_ms=1,
+        end_ms=2,
+    )
+    with pytest.raises(DataError, match="MIME does not match"):
+        fetch_quantpad_archive(
+            _store(tmp_path),
+            request,
+            api_key="k",
+            opener=lambda *_a, **_k: _response(b"a,b", content_type="application/json"),
+        )
+
+
+def test_fetch_does_not_retry_a_client_rejection(tmp_path: Path) -> None:
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    calls = 0
+
+    def opener(*_args: object, **_kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        raise urllib.error.HTTPError(
+            "https://api.quantpad.ai/v1/coverage", 404, "missing", _headers({}), None
+        )
+
+    with pytest.raises(DataError, match="was rejected"):
+        fetch_quantpad_archive(_store(tmp_path), request, api_key="k", opener=opener)
+    assert calls == 1, "a 404 is final; retrying it just burns quota"
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        urllib.error.HTTPError(
+            "https://api.quantpad.ai/v1/coverage", 503, "down", _headers({}), None
+        ),
+        TimeoutError("network timeout"),
+    ],
+)
+def test_fetch_gives_up_after_three_transient_failures(tmp_path: Path, failure: Exception) -> None:
+    calls = 0
+
+    def opener(*_args: object, **_kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        raise failure
+
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    with pytest.raises(DataError, match="retry the bounded request"):
+        fetch_quantpad_archive(
+            _store(tmp_path), request, api_key="k", opener=opener, sleep=lambda _: None
+        )
+    assert calls == 3
+
+
+def test_fetch_falls_back_when_retry_after_is_not_a_number(tmp_path: Path) -> None:
+    sleeps: list[float] = []
+    calls = 0
+
+    def opener(*_args: object, **_kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise urllib.error.HTTPError(
+                "https://api.quantpad.ai/v1/coverage",
+                429,
+                "slow down",
+                _headers({"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}),
+                None,
+            )
+        return _response(b"{}")
+
+    request = QuantPadArchiveRequestV1(endpoint="coverage", symbol="A", response_format="json")
+    fetch_quantpad_archive(
+        _store(tmp_path), request, api_key="k", opener=opener, sleep=sleeps.append
+    )
+    assert sleeps == [1.0], "an unparseable Retry-After must fall back to the bounded default"
