@@ -1,8 +1,9 @@
 """Pydantic schemas for Claude Code harness artifacts.
 
 Every artifact the harness persists (gate stamps, attestations, review
-verdicts, audit events, doctor reports, feature plans, Codex second opinions)
-is validated by one of these models at write time. Hooks never import this
+verdicts, doctor reports, feature plans, Codex second opinions) is validated
+by one of these models at write time; the append-only audit journal and the
+per-session state file are unvalidated plain-JSON records. Hooks never import this
 module — they are stdlib-only readers of already-validated JSON; only
 ``gate.py`` write paths import it lazily so the hooks keep working before
 ``uv sync`` has run.
@@ -33,25 +34,6 @@ class GateStamp(_Strict):
     tree_hash: str
     duration_seconds: float
     steps: list[GateStep]
-
-
-class ToolFailure(_Strict):
-    tool: str
-    error: str
-    ts: str
-
-
-class SessionState(_Strict):
-    session_id: str
-    edited_files: list[str] = []
-    bash_writes: list[str] = []
-    failures: list[ToolFailure] = []
-    instructions_loaded: list[str] = []
-    stop_blocks_used: int = 0
-    stop_budget_exhausted: bool = False
-    agent_acks_used: int = 0
-    codex_calls: int = 0
-    over_eager: list[str] = []
 
 
 class QuantClaim(_Strict):
@@ -136,16 +118,6 @@ class ReviewAttestation(_Strict):
     schema_version: Literal[2] = 2
     created_at: str
     verdict: ReviewVerdict
-
-
-class AuditEvent(_Strict):
-    ts: str
-    session_id: str
-    event: str
-    detail: str
-    tree_hash: str
-    prev_hash: str = ""
-    authorized_by: str = ""
 
 
 class OnceToken(_Strict):

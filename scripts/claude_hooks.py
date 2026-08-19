@@ -383,7 +383,6 @@ _SESSION_DEFAULTS: dict[str, Any] = {
     "instructions_loaded": [],
     "stop_blocks_used": 0,
     "stop_budget_exhausted": False,
-    "agent_acks_used": 0,
     "codex_calls": 0,
     "over_eager": [],
 }
@@ -468,33 +467,17 @@ def _tool_input_text(tool_input: dict[str, Any]) -> str:
 
 
 def _staged_paths(root: Path, use_working: bool) -> list[str]:
-    out = subprocess.run(
-        ["git", "-C", str(root), "diff", "--cached", "--name-only"],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.splitlines()
-    paths = [p for p in out if p]
+    paths = gate._git_lines(root, "diff", "--cached", "--name-only")
     if use_working:
-        working = subprocess.run(
-            ["git", "-C", str(root), "diff", "--name-only"],
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.splitlines()
-        paths.extend(p for p in working if p and p not in paths)
+        paths.extend(p for p in gate._git_lines(root, "diff", "--name-only") if p not in paths)
     return paths
 
 
 def _staged_line_count(root: Path, use_working: bool) -> int:
     total = 0
     for cached in [True, False] if use_working else [True]:
-        cmd = ["git", "-C", str(root), "diff", "--numstat"]
-        if cached:
-            cmd.append("--cached")
-        for line in subprocess.run(
-            cmd, capture_output=True, text=True, check=False
-        ).stdout.splitlines():
+        args = ["diff", "--numstat", "--cached"] if cached else ["diff", "--numstat"]
+        for line in gate._git_lines(root, *args):
             fields = line.split("\t")
             if len(fields) < 3:
                 continue
@@ -1129,24 +1112,8 @@ def hook_post_compact(payload: dict[str, Any], root: Path) -> HookResult:
 
 
 def hook_prompt_context(payload: dict[str, Any], root: Path) -> HookResult:
-    branch = subprocess.run(
-        ["git", "-C", str(root), "branch", "--show-current"],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
-    dirty = len(
-        [
-            line
-            for line in subprocess.run(
-                ["git", "-C", str(root), "status", "--porcelain"],
-                capture_output=True,
-                text=True,
-                check=False,
-            ).stdout.splitlines()
-            if line.strip()
-        ]
-    )
+    branch = gate._git(root, "branch", "--show-current", check=False).strip()
+    dirty = len(gate._git_lines(root, "status", "--porcelain"))
     if gate.stamp_is_valid(root, "full"):
         stamp = "full (valid for current tree)"
     elif gate.stamp_is_valid(root, "fast"):

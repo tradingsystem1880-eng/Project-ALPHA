@@ -21,7 +21,7 @@ oracles, not just tests; Karpathy guidelines are always on, mechanically.
 | Piece | Path | Role |
 |---|---|---|
 | Gate runner | `scripts/gate.py` | `fast\|full\|check\|attest\|override\|ack\|owner-init\|lint-harness\|baseline\|audit\|brief\|index\|plan-check\|doctor\|selftest\|mutate\|semgrep\|determinism\|raise-cov`; tree hash; stamps; hash-chained audit journal |
-| Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `DriftFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan`, `AuditEvent` |
+| Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `DriftFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan` |
 | Hooks | `scripts/claude_hooks.py` | Seventeen stdlib-only hook entrypoints (argv dispatch) + one advisory `prompt` hook |
 | Wiring | `.claude/settings.json` | Permissions allow/deny (24 deny rules), hook registration, statusline (committed) |
 | Statusline | `.claude/statusline.py` | branch · dirty count · stamp state · pending obligations · owner-token / stop-budget flags |
@@ -61,10 +61,10 @@ It is a pure content hash: any byte change anywhere invalidates it; a pure `git 
 | `pre-read-guard` | PreToolUse Read | target is under `tests/holdout/` (author never sees it) | owner reads by hand |
 | `pre-bash-guard` | PreToolUse Bash | `git commit` without a full stamp (docs-only waived); non-conventional message; >1000 non-docs lines; risk-tier staged without APPROVE verdict bound to the tree + scoped diff; git verbs that would render hidden-holdout content (`show/diff/log -p/blame/grep/cat-file`); destructive verbs (`commit --amend/--no-verify`, `reset --hard`, `checkout -- .`, `clean -f`, `stash drop`, `rm -rf` outside scratchpad); shell writes (`>`, `sed -i`, `tee`, heredoc `open(...,'w')`) to protected/holdout paths without ack; sandboxed subagent outside its `AGENT_BASH_ALLOW` prefixes | `/gate`, message fix, split, `/review-gate`; or `gate.py override --reason` (one-shot, owner-authorized) |
 | `pre-mcp-guard` | PreToolUse `mcp__alpha__.*\|mcp__codex__.*` | owner-authority MCP verbs (approve/reject/decide/override-research-gate/reveal-holdout); Codex calls are logged | — |
-| `post-edit` | PostToolUse Edit\|Write\|MultiEdit | edited `*.py` fails per-file ruff (frontend: eslint when node_modules present); every tracked edit is recorded in `SessionState` | fixing the lint finding |
+| `post-edit` | PostToolUse Edit\|Write\|MultiEdit | edited `*.py` fails per-file ruff (frontend: eslint when node_modules present); every tracked edit is recorded in the session state file | fixing the lint finding |
 | `post-bash` | PostToolUse Bash | never; records shell writes as edits, tracks obligations | — |
 | `tool-log` | PostToolUse Agent\|Skill | never; audits subagent/skill dispatch | — |
-| `post-tool-failure` | PostToolUseFailure Bash\|Edit\|Write\|MultiEdit | never; records `SessionState.failures[]` (Stop brief lists unresolved; retrospective ingests) | — |
+| `post-tool-failure` | PostToolUseFailure Bash\|Edit\|Write\|MultiEdit | never; records the session state's `failures[]` (Stop brief lists unresolved; retrospective ingests) | — |
 | `subagent-stop` | SubagentStop | a JSON-only agent's last message fails its schema (`JSON_AGENT_SCHEMAS`; `codex-liaison` = `CodexReview\|CodexResearch`) | re-run the agent |
 | `task-completed` | TaskCompleted | a task marked complete while its named test file/command fails | make it pass |
 | `config-change` | ConfigChange | settings/skills/agents/mcp changed without ack or owner token; audited | `gate.py ack` |
@@ -144,13 +144,14 @@ Markers (`--strict-markers`): `bias_guard`, `network`, `oracle`, `slow_oracle`, 
   time-reversed poison; every guard has a must-fail leaky twin.
 - **Sweeps** (`gate.py`): `mutate` (mutmut per module in a staged tree; kill-rate ≥ 0.90 or the
   module's recorded baseline floor, whichever is lower; `timeout`/`no_tests` mutants never count
-  as kills), `semgrep` (`.semgrep/alpha.yml`: bare except, `except: pass`, negative `.shift(-`,
+  as kills), `semgrep` (`.semgrep/alpha.yml`: `except: pass`, negative `.shift(-`,
   wall-clock time in packages, pandas outside the three sanctioned edges, float `==`, unseeded
   RNG, bare `type: ignore`, reasonless skips), `determinism` (goldens/identity tests twice under
   perturbed `PYTHONHASHSEED`/`TZ`), `raise-cov` (unreached `raise` sites in quant modules).
 - **Scheduling:** fast gate = semgrep on changed files; full gate = holdout + (`slow_oracle` +
-  mutation only when a quant SOURCE module changed); `.github/workflows/nightly.yml` = full
-  oracle sweep, mutation `--all --timeout 5400`, determinism, `raise-cov` (report-only), semgrep.
+  mutation only when a quant SOURCE module changed); CI's `check` job runs every non-network
+  test incl. `slow_oracle` on each push; `.github/workflows/nightly.yml` = mutation
+  `--all --timeout 5400`, determinism, `raise-cov` (report-only), semgrep.
 - `/verify-quant` requires `oracles_present` for every new public stat function, executes the
   oracle suites and numeric spot checks (quant-verifier sandbox; optional numerical-verifier),
   and primary-source citations per `.agents/skills/quant-source-verification/`.
@@ -204,7 +205,7 @@ Every persisted artifact is validated by `scripts/harness_models.py` at write ti
 malformed input is rejected loudly and nothing is written. A `QuantVerificationReport`
 with `overall: PASS` cannot contain non-VERIFIED claims or missing citations (model
 validator). Every stamp write, attestation, block, override, ack, Codex call, config
-change, over-eager edit and stop-budget exhaustion appends an `AuditEvent` (timestamp,
+change, over-eager edit and stop-budget exhaustion appends an audit event (timestamp,
 session, event, detail, tree hash, `prev_hash`) to `.claude/state/harness-audit.jsonl` —
 append-only, hash-chained (`gate.py audit --verify` detects truncation/rewrite), per-machine,
 gitignored. `gate.py audit [--json --since --kind]` is the reader; `/retrospective` consumes it.
