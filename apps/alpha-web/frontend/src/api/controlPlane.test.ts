@@ -9,6 +9,20 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+function apiError(message: string, status: number): Response {
+  return jsonResponse(
+    {
+      schema_version: 1,
+      code: status === 422 ? 'request_invalid' : 'service_unavailable',
+      message,
+      recovery_action: 'Retry after resolving the blocker.',
+      field_errors: [],
+      request_id: 'request-test',
+    },
+    status,
+  )
+}
+
 afterEach(() => {
   clearImmutableApiCache()
   vi.unstubAllGlobals()
@@ -78,7 +92,7 @@ describe('control-plane API client', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ run_id: 'run-cache' }))
-      .mockResolvedValueOnce(jsonResponse({ detail: 'temporary' }, 503))
+      .mockResolvedValueOnce(apiError('temporary', 503))
       .mockResolvedValueOnce(jsonResponse({ run_id: 'run-retry' }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -91,11 +105,26 @@ describe('control-plane API client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
-  it('extracts typed API details without leaking JSON response framing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ detail: 'run has no equity stream' }, 422)))
+  it('extracts ApiErrorV1 messages without leaking JSON response framing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(apiError('run has no equity stream', 422)))
 
     await expect(api.providers()).rejects.toThrow('422 — run has no equity stream')
-    await expect(api.providers()).rejects.not.toThrow('{"detail"')
+    await expect(api.providers()).rejects.not.toThrow('{"message"')
+  })
+
+  it('turns typed 422 field errors into actionable labels', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({
+      schema_version: 1,
+      code: 'request_invalid',
+      message: 'The request fields are invalid.',
+      recovery_action: 'Correct the named fields and retry.',
+      field_errors: [{ field: 'dataset_ref_id', message: 'Select a qualified dataset.' }],
+      request_id: 'request-fields',
+    }, 422)))
+
+    await expect(api.providers()).rejects.toThrow(
+      'Fields: dataset_ref_id: Select a qualified dataset.',
+    )
   })
 
   it('sends the linked date window with the causal chart bundle request', async () => {
@@ -204,7 +233,7 @@ describe('control-plane API client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await api.suitePlan('project/id', 'experiment/id', 'three_null_families')
-    await api.runSuite('project/id', 'experiment/id', 'three_null_families', {})
+    await api.runSuite('project/id', 'experiment/id', 'three_null_families')
     await api.cancelDevelopmentJob('suite/id')
 
     const prefix = '/api/projects/project%2Fid/experiments/experiment%2Fid/suite/three_null_families'
@@ -219,42 +248,9 @@ describe('control-plane API client', () => {
     })
   })
 
-  it('uses explicit owner endpoints for holdout, candidate, and sandbox decision records', async () => {
-    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await api.sealHoldout('project/id', {
-      experiment_id: 'ex/id',
-      actor: 'owner',
-      reason: 'reserve',
-      start_date: '2026-04-01',
-      end_date: '2026-06-30',
-    })
-    await api.transitionExperimentStage('project/id', 'ex/id', 'candidate', {
-      state: 'pass',
-      reason: 'frozen',
-    })
-    await api.freezeDecision('project/id', 'ex/id', {
-      verdict: 'revise',
-      actor: 'owner',
-      reason: 'more research required',
-      negative_results_acknowledged: true,
-    })
-
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      '/api/projects/project%2Fid/holdouts/seal',
-      expect.objectContaining({ method: 'POST' }),
-    )
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/projects/project%2Fid/experiments/ex%2Fid/stages/candidate/state',
-      expect.objectContaining({ method: 'POST' }),
-    )
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
-      '/api/projects/project%2Fid/experiments/ex%2Fid/decision',
-      expect.objectContaining({ method: 'POST' }),
-    )
+  it('does not expose caller-asserted owner actions', () => {
+    expect('sealHoldout' in api).toBe(false)
+    expect('transitionExperimentStage' in api).toBe(false)
+    expect('freezeDecision' in api).toBe(false)
   })
 })

@@ -33,7 +33,7 @@ from alpha_cli.durable_lease import (
     terminate_and_reap,
 )
 from alpha_cli.job_capacity import heavyweight_job_kind_for_command
-from alpha_web._catalog import _run_json
+from alpha_web._catalog import _cli_environment, _run_json
 
 _ALPHA_BIN = "alpha"  # console script on the venv PATH
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
@@ -328,12 +328,18 @@ def _mark_durable_cancelled(job: Job, *, data_dir: Path) -> None:
     )
 
 
-def launch(args: list[str], *, data_dir: Path, run_type: str | None) -> Job:
+def launch(
+    args: list[str],
+    *,
+    data_dir: Path,
+    run_type: str | None,
+    run_context: dict[str, object] | None = None,
+) -> Job:
     """Spawn ``alpha <args>`` (sharing ``data_dir`` via the env) and tail its output in a thread."""
     durable_job_id = _reserve_heavyweight_job(args, data_dir=data_dir)
     job = Job(args, run_type, job_id=durable_job_id, durable=durable_job_id is not None)
     JOBS[job.job_id] = job
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    env = _cli_environment(data_dir, args, run_context=run_context)
     try:
         proc = subprocess.Popen(
             _command(args),

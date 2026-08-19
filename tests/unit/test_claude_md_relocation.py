@@ -1,10 +1,15 @@
 """Zero-loss drift test for the CLAUDE.md restructure.
 
-The pre-v2 CLAUDE.md is frozen at ``tests/fixtures/claude_md_v1.md``. Every
-heading, table row, and bullet of that file must still be present verbatim in
-the union of the core ``CLAUDE.md``, ``.claude/rules/*.md``, and
-``docs/BUILD-STATUS.md``. The core file must stay small enough to be read, and
-every rule file must declare ``paths`` globs that match at least one file.
+The pre-relocation CLAUDE.md is frozen at ``tests/fixtures/claude_md_v1.md``.
+It is the manual as it stood on ``codex/full-repair-program`` immediately
+before the merge — the newest ancestor that still carried the CLI surface,
+MODULE MAP, and build history inline — so this test proves the relocation lost
+nothing from *either* branch. Every heading, table row, and bullet of that file
+must still be present verbatim in the union of the core ``CLAUDE.md``,
+``.claude/rules/*.md``, and ``docs/BUILD-STATUS.md``. Refresh the fixture only
+when a future change legitimately supersedes a line, and say so in the commit.
+The core file must stay small enough to be read, and every rule file must
+declare ``paths`` globs that match at least one file.
 """
 
 from __future__ import annotations

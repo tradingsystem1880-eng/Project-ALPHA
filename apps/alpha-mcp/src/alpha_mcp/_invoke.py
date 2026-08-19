@@ -33,6 +33,27 @@ _PROJECTION_TIMEOUT_S = 30.0
 _MAX_STDOUT_CHARS = 16_384
 _DURABLE_HEARTBEAT_INTERVAL_S = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
 _DURABLE_HEARTBEAT_TIMEOUT_S = 5.0
+_PROCESS_ENV_NAMES = frozenset(
+    {
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "PATH",
+        "PYTHONPATH",
+        "TMPDIR",
+        "TZ",
+        "VIRTUAL_ENV",
+    }
+)
+_DATA_ENV_NAMES = frozenset({"ALPHA_BULK_DATA_DIR", "ALPHA_BULK_VOLUME_UUID"})
+
+
+def _cli_environment(data_dir: Path) -> dict[str, str]:
+    """Build the closed environment allowed to cross the MCP-to-CLI boundary."""
+    allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES
+    environment = {name: value for name, value in os.environ.items() if name in allowed}
+    environment["ALPHA_DATA_DIR"] = str(data_dir)
+    return environment
 
 
 def _reserve_heavyweight_job(args: list[str], *, data_dir: Path) -> str | None:
@@ -85,7 +106,7 @@ def run_json(
     args: list[str], *, data_dir: Path, timeout_seconds: float = _PROJECTION_TIMEOUT_S
 ) -> Any:
     """Run one bounded ``alpha ... --json`` projection and decode its JSON response."""
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    env = _cli_environment(data_dir)
     try:
         proc = subprocess.run(
             [_ALPHA_BIN, *args],
@@ -132,7 +153,7 @@ def _run_action_process(
 ) -> subprocess.CompletedProcess[str]:
     """Run one action, leasing durable heavyweight children until they terminate."""
     command = [_ALPHA_BIN, *args]
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    env = _cli_environment(data_dir)
     if durable_job_id is None:
         return subprocess.run(
             command,

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
+import resource
+import shutil
 import sys
 from collections.abc import Mapping
 from dataclasses import asdict
@@ -21,6 +24,23 @@ from alpha_cli.control_store import (
     ResearchOutcome,
     ResearchPhase,
     ResearchResponsibility,
+    research_case_revision,
+)
+from alpha_cli.research_crypto_binding import (
+    CryptoEmpiricalDataset,
+    load_crypto_empirical_d1,
+    load_crypto_empirical_dataset,
+)
+from alpha_cli.research_crypto_d2 import (
+    crypto_d2_execution_fingerprint,
+    run_crypto_crowding_confirmation,
+)
+from alpha_cli.research_crypto_runtime import (
+    crypto_d0_execution_fingerprint,
+    crypto_d1_execution_fingerprint,
+    run_crypto_crowding_deep,
+    run_crypto_crowding_pilot,
+    validate_crypto_d0_contract,
 )
 from alpha_cli.research_d1 import (
     D1_ANALYSES_ARTIFACT,
@@ -48,11 +68,12 @@ from alpha_cli.research_gate_packet import (
     research_report_projection,
     research_scorecard_projection,
 )
-from alpha_cli.research_intake import draft_exploration_contract
-from alpha_cli.research_protocols import (
-    load_research_protocols,
-    read_research_protocol,
+from alpha_cli.research_intake import (
+    draft_exploration_contract,
+    registered_answer_bundle,
+    registered_answer_bundles,
 )
+from alpha_cli.research_protocols import load_research_protocols, read_research_protocol
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
@@ -64,11 +85,32 @@ from alpha_cli.research_runtime import (
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_research import (
+    CryptoCrowdingObservationV1,
     EqualDurationResearchBars,
     ResearchChartFingerprintV1,
-    ResearchD2BoundaryV1,
+    ResearchD2Boundary,
+    ResearchD2BoundaryV2,
     projected_confirmation_power,
+    registered_crypto_crowding_plan,
+    research_d2_boundary_from_dict,
 )
+
+_LITERATURE_DOCUMENT_HOSTS: Final = frozenset({"arxiv.org", "export.arxiv.org"})
+
+# Stable private monkeypatch seams retained while the implementation lives in the shared binding
+# module used by both command orchestration and admission-time verification.
+_CryptoEmpiricalDataset = CryptoEmpiricalDataset
+_crypto_empirical_dataset = load_crypto_empirical_dataset
+_crypto_empirical_d1 = load_crypto_empirical_d1
+
+
+def _apply_literature_worker_limits() -> None:
+    """Bound the isolated parser/fetch child before it executes any worker code."""
+    resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
+    resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (32 * 1024 * 1024, 32 * 1024 * 1024))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+
 
 research_app = typer.Typer(help="Governed research cases, contracts, sources, and bounded runs.")
 sources_app = typer.Typer(help="Immutable research-source records and frozen source packs.")
@@ -96,6 +138,39 @@ def _emit(value: object, *, json_out: bool, fallback: str) -> None:
         typer.echo(fallback)
 
 
+def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> dict[str, object]:
+    """Run the isolated worker with no inherited credential or shell environment."""
+    import subprocess
+
+    worker_dir = Path(__file__).resolve().parents[4] / "workers" / "literature"
+    if not (worker_dir / "pyproject.toml").is_file():
+        raise DataError("literature worker is unavailable outside a checked-out repository")
+    uv_executable = shutil.which("uv")
+    if uv_executable is None or not Path(uv_executable).is_absolute():
+        raise DataError("the pinned literature worker runtime is unavailable")
+    completed = subprocess.run(  # noqa: S603 - fixed executable and closed argument vector
+        [uv_executable, "run", "--project", str(worker_dir), "literature-worker", *argv],
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds,
+        check=False,
+        env={
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "PATH": os.defpath,
+            "UV_NO_CONFIG": "1",
+            "UV_OFFLINE": "1",
+        },
+        start_new_session=True,
+        preexec_fn=_apply_literature_worker_limits,
+    )
+    if completed.returncode != 0:
+        raise DataError(
+            completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
+        )
+    return _object(completed.stdout, "literature worker output")
+
+
 def _object(raw: str, label: str) -> dict[str, object]:
     try:
         value: object = json.loads(raw)
@@ -104,6 +179,13 @@ def _object(raw: str, label: str) -> dict[str, object]:
     if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
         raise typer.BadParameter(f"{label} must be a valid JSON object")
     return cast(dict[str, object], value)
+
+
+def _required_candidate_text(candidate: Mapping[str, object], field: str) -> str:
+    value = candidate.get(field)
+    if not isinstance(value, str) or not value.strip() or "\x00" in value:
+        raise DataError(f"literature candidate {field} is missing")
+    return value.strip()
 
 
 def _answers(values: list[str]) -> dict[str, str]:
@@ -116,6 +198,126 @@ def _answers(values: list[str]) -> dict[str, str]:
             raise typer.BadParameter(f"duplicate research answer {key!r}")
         result[key] = value
     return result
+
+
+def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]:
+    """Project the only proposal combinations the authoritative runtime can execute."""
+
+    case = store.research_case_summary(project_id)
+    active = case.get("active_contract")
+    payload = active.get("payload") if isinstance(active, Mapping) else None
+    raw_idea = payload.get("raw_idea") if isinstance(payload, Mapping) else None
+    if not isinstance(raw_idea, str):
+        raise DataError("research case has no exact raw idea for proposal preflight")
+    intake = draft_exploration_contract(raw_idea)
+    packs = store.list_research_source_packs(project_id, limit=100)
+    datasets = store.list_research_datasets(limit=100)
+    double_bottom_event = "double bottom" in raw_idea.casefold()
+    crypto_event = (
+        intake.get("recommended_answer_bundle_id") == "bybit_btcusdt_crowding_reversal_v1"
+    )
+    tiingo_datasets: list[dict[str, object]] = []
+    crypto_datasets: list[dict[str, object]] = []
+    for dataset in datasets:
+        audit = dataset.get("latest_audit")
+        summary = audit.get("summary") if isinstance(audit, Mapping) else None
+        blocking_count = summary.get("blocking_count") if isinstance(summary, Mapping) else None
+        if (
+            dataset.get("instrument") == "SPY"
+            and dataset.get("provider") == "tiingo"
+            and dataset.get("bar_duration_minutes") == 1_440
+            and blocking_count == 0
+        ):
+            tiingo_datasets.append(dataset)
+        origin = dataset.get("origin")
+        snapshot_id = None if not isinstance(origin, Mapping) else origin.get("snapshot_id")
+        if (
+            crypto_event
+            and dataset.get("instrument") == "BTC"
+            and dataset.get("provider") == "crypto-data-house"
+            and isinstance(origin, Mapping)
+            and origin.get("snapshot_schema") == "CryptoSnapshotV1"
+            and isinstance(snapshot_id, str)
+        ):
+            try:
+                from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415
+                    crypto_crowding_snapshot_compatibility,
+                )
+
+                projection = crypto_crowding_snapshot_compatibility(snapshot_id)
+            except DataError:
+                continue
+            if (
+                projection.get("eligible") is True
+                and projection.get("bundle_id") == "bybit_btcusdt_crowding_reversal_v1"
+            ):
+                crypto_datasets.append(dataset)
+    bundles: list[dict[str, object]] = []
+    for bundle in registered_answer_bundles():
+        bundle_id = str(bundle.get("bundle_id", ""))
+        requires_dataset = bundle.get("requires_dataset") is True
+        if bundle_id == "bybit_btcusdt_crowding_reversal_v1":
+            event_matches = crypto_event
+            compatible = crypto_datasets
+            missing_dataset = (
+                "One exact qualified Bybit linear BTCUSDT/USDT CryptoSnapshotV1 with every "
+                "registered family is required."
+            )
+        else:
+            event_matches = double_bottom_event
+            compatible = tiingo_datasets if requires_dataset else []
+            missing_dataset = (
+                "A qualified Tiingo SPY daily dataset with a zero-blocker audit is required."
+            )
+        bundle["compatible_dataset_ids"] = (
+            [str(row["ref_id"]) for row in compatible] if requires_dataset else []
+        )
+        bundle["available"] = event_matches and (not requires_dataset or bool(compatible))
+        bundle["blocked_reason"] = (
+            "No registered end-to-end research operator matches the idea's event."
+            if not event_matches
+            else (missing_dataset if requires_dataset and not compatible else None)
+        )
+        bundles.append(bundle)
+    blockers: list[dict[str, str]] = []
+    if not packs:
+        blockers.append(
+            {
+                "code": "SOURCE_PACK_REQUIRED",
+                "message": "Freeze at least one project source pack before proposing.",
+                "recovery_action": "Open Literature, review sources, and freeze a pack.",
+            }
+        )
+    if case.get("phase") not in {"captured", "triage", "exploration_review"}:
+        blockers.append(
+            {
+                "code": "CASE_PHASE_INELIGIBLE",
+                "message": "The current case phase cannot accept an exploration proposal.",
+                "recovery_action": "Follow the canonical next action shown for this case.",
+            }
+        )
+    if not double_bottom_event and not crypto_event:
+        blockers.append(
+            {
+                "code": "RESEARCH_OPERATOR_UNAVAILABLE",
+                "message": "No registered empirical operator matches this idea's event.",
+                "recovery_action": "Revise the case or implement and review an exact operator.",
+            }
+        )
+    return {
+        "proposal_schema": "ResearchProposalOptionsV1",
+        "project_id": project_id,
+        "case_revision": research_case_revision(case),
+        "material_questions": intake.get("blocking_questions", []),
+        "recommended_answer_bundle_id": intake.get("recommended_answer_bundle_id"),
+        "valid_answer_bundles": bundles,
+        "compatible_source_packs": packs,
+        "compatible_datasets": crypto_datasets if crypto_event else tiingo_datasets,
+        "blockers": blockers,
+        "approval_ready": bool(packs)
+        and not blockers
+        and any(bundle.get("available") is True for bundle in bundles),
+    }
 
 
 def _sha_json(value: object) -> str:
@@ -176,15 +378,24 @@ def _dependency_lock_sha() -> str:
 
 def _implementation_hashes() -> dict[str, str | None]:
     import alpha_research
-    from alpha_cli import research_intake, research_runtime
+    from alpha_cli import (
+        research_crypto_data,
+        research_crypto_runtime,
+        research_intake,
+        research_runtime,
+    )
 
     intake_path = Path(research_intake.__file__)
     runtime_path = Path(research_runtime.__file__)
+    crypto_data_path = Path(research_crypto_data.__file__)
+    crypto_runtime_path = Path(research_crypto_runtime.__file__)
     research_root = Path(alpha_research.__file__).parent
     dependency_lock = _dependency_lock_sha()
     code = _sha_json(
         {
             "alpha_research": _python_tree_sha(research_root),
+            "research_crypto_data": _file_sha(crypto_data_path),
+            "research_crypto_runtime": _file_sha(crypto_runtime_path),
             "research_intake": _file_sha(intake_path),
             "research_runtime": _file_sha(runtime_path),
         }
@@ -204,6 +415,7 @@ def _implementation_hashes() -> dict[str, str | None]:
     evaluator = _sha_json(
         {
             "detector": "point-in-time-double-bottom-v1",
+            "crypto_crowding": "bybit-btcusdt-crowding-reversal-v1",
             "pilot": "d0-synthetic-v1",
             "power": "known-sigma-prospective-v1",
             "rendering": "deterministic-matplotlib-line-chart-v1",
@@ -257,7 +469,9 @@ def _require_resolved_material(value: object, label: str) -> None:
 # The material chart choices whose exploration boundary is an empirical dataset boundary
 # (ADR-0026). The D0 pilot fixture stays synthetic even on these lanes; only the frozen
 # D1/D2/D3 evidence boundary binds real registered data.
-_EMPIRICAL_CHART_CHOICES: Final = frozenset({"tiingo_daily_fallback"})
+_EMPIRICAL_CHART_CHOICES: Final = frozenset(
+    {"tiingo_daily_fallback", "bybit_btcusdt_linear_hourly"}
+)
 
 
 class _EmpiricalDataset(NamedTuple):
@@ -277,7 +491,7 @@ def _empirical_dataset(store: ControlStore, ref_id: str) -> _EmpiricalDataset:
 
 def _empirical_d1_bars(
     store: ControlStore, payload: Mapping[str, object]
-) -> tuple[EqualDurationResearchBars, ResearchD2BoundaryV1]:
+) -> tuple[EqualDurationResearchBars, ResearchD2Boundary]:
     """Reload the approval-frozen dataset and sealed boundary, fail-closed on any drift.
 
     The frozen ``hashes.data`` and the protocol's ``empirical_dataset.content_sha256`` must
@@ -307,7 +521,13 @@ def _empirical_d1_bars(
     )
     if not isinstance(boundary_value, Mapping):
         raise DataError("the empirical contract carries no sealed evidence boundary")
-    return binding.bars, ResearchD2BoundaryV1.from_dict(boundary_value)
+    boundary = research_d2_boundary_from_dict(boundary_value)
+    groups = [bar.start.date().isoformat() for bar in binding.bars.bars]
+    if not boundary.verify_eligible_groups(groups):
+        raise DataError(
+            "registered dataset membership no longer reproduces the approval-frozen boundary"
+        )
+    return binding.bars, boundary
 
 
 def _approval_payload(
@@ -315,7 +535,7 @@ def _approval_payload(
     *,
     source_pack_id: str,
     d2_relation_to_prior: str | None = None,
-    empirical_dataset: _EmpiricalDataset | None = None,
+    empirical_dataset: _EmpiricalDataset | CryptoEmpiricalDataset | None = None,
 ) -> dict[str, object]:
     result = dict(draft)
     primary_claim = result.get("primary_claim")
@@ -337,12 +557,12 @@ def _approval_payload(
     empirical_lane = chart_choice in _EMPIRICAL_CHART_CHOICES
     if empirical_dataset is not None and not empirical_lane:
         raise DataError(
-            "a registered research dataset can bind only the Gate-4 tiingo_daily_fallback "
-            "lane; synthetic-boundary lanes must not carry one"
+            "a registered research dataset can bind only a registered empirical lane; "
+            "synthetic-boundary lanes must not carry one"
         )
     if empirical_lane and empirical_dataset is None and result.get("approval_ready") is True:
         raise DataError(
-            "the Gate-4 tiingo_daily_fallback lane requires a registered research dataset "
+            "the selected empirical lane requires a registered compatible research dataset "
             "bound at draft time; pass --dataset rd_<sha256>"
         )
     chart_value = result.get("chart_fingerprint")
@@ -393,7 +613,36 @@ def _approval_payload(
         "empirical_confirmation_authorized": False,
     }
     empirical_section: dict[str, object] | None = None
-    if empirical_dataset is not None:
+    if isinstance(empirical_dataset, CryptoEmpiricalDataset):
+        ref = empirical_dataset.ref
+        eligible_groups = tuple(
+            observation.funding_time.isoformat() for observation in empirical_dataset.observations
+        )
+        if len(set(eligible_groups)) != len(eligible_groups):
+            raise DataError("crypto crowding snapshot produced duplicate funding groups")
+        dataset_fingerprint = empirical_dataset.snapshot_id
+        boundary_authority = {
+            "kind": "empirical_dataset",
+            "real_market_evidence": True,
+            "empirical_confirmation_authorized": True,
+        }
+        hashes = cast(dict[str, object], result["hashes"])
+        hashes["data"] = dataset_fingerprint
+        empirical_section = {
+            "ref_id": str(ref.get("ref_id", "")),
+            "content_sha256": dataset_fingerprint,
+            "instrument": "BTCUSDT",
+            "provider": "bybit",
+            "session_group_count": len(eligible_groups),
+            "start_ts": eligible_groups[0],
+            "end_ts": eligible_groups[-1],
+            "snapshot_id": empirical_dataset.snapshot_id,
+            "snapshot_hash": empirical_dataset.snapshot_hash,
+            "operator_fingerprint": empirical_dataset.operator_fingerprint,
+            "asset_master_version": empirical_dataset.asset_master_version,
+            "qualification_versions": list(empirical_dataset.qualification_versions),
+        }
+    elif isinstance(empirical_dataset, _EmpiricalDataset):
         ref, bars = empirical_dataset
         ref_instrument = str(ref.get("instrument", ""))
         ref_provider = str(ref.get("provider", ""))
@@ -439,7 +688,7 @@ def _approval_payload(
                 "eligible_groups": list(eligible_groups),
             }
         )
-    boundary = ResearchD2BoundaryV1.from_eligible_groups(
+    boundary = ResearchD2BoundaryV2.from_eligible_groups(
         dataset_fingerprint=dataset_fingerprint,
         eligible_groups=eligible_groups,
         chart_fingerprint=chart,
@@ -492,6 +741,16 @@ def _approval_payload(
         in registered_d0_material_choices()
     ):
         protocol["d0_operator"] = registered_d0_operator(result)
+    elif (
+        isinstance(resolved, Mapping)
+        and result.get("approval_ready") is True
+        and result.get("answer_bundle_id") == "bybit_btcusdt_crowding_reversal_v1"
+        and event_value.get("name") == "bybit_btcusdt_crowding_reversal"
+        and event_value.get("availability") == "bybit_funding_event_point_in_time"
+    ):
+        from alpha_cli.research_crypto_runtime import registered_crypto_d0_operator  # noqa: PLC0415
+
+        protocol["d0_operator"] = registered_crypto_d0_operator()
     return result
 
 
@@ -511,6 +770,68 @@ def _case_payload(
     if not isinstance(payload, dict):
         raise DataError("research case has no active contract payload")
     return cast(dict[str, object], payload), summary
+
+
+def _is_crypto_crowding_contract(payload: Mapping[str, object]) -> bool:
+    protocol = payload.get("protocol")
+    operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+    return (
+        isinstance(operator, Mapping) and operator.get("name") == "bybit_btcusdt_crowding_reversal"
+    )
+
+
+def _validate_registered_d0_contract(payload: Mapping[str, object]) -> dict[str, object]:
+    return (
+        validate_crypto_d0_contract(payload)
+        if _is_crypto_crowding_contract(payload)
+        else validate_d0_pilot_contract(payload)
+    )
+
+
+def _registered_d0_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    return (
+        crypto_d0_execution_fingerprint(payload)
+        if _is_crypto_crowding_contract(payload)
+        else d0_execution_fingerprint(payload)
+    )
+
+
+def _registered_d1_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    return (
+        crypto_d1_execution_fingerprint(payload)
+        if _is_crypto_crowding_contract(payload)
+        else d1_execution_fingerprint(payload)
+    )
+
+
+def _registered_d2_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    return (
+        crypto_d2_execution_fingerprint(payload)
+        if _is_crypto_crowding_contract(payload)
+        else d2_execution_fingerprint(payload)
+    )
+
+
+def _run_registered_d0_pilot(
+    data_dir: Path,
+    *,
+    project_id: str,
+    contract_id: str,
+    contract: Mapping[str, object],
+) -> dict[str, Any]:
+    if _is_crypto_crowding_contract(contract):
+        return run_crypto_crowding_pilot(
+            data_dir,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract,
+        )
+    return run_synthetic_pilot(
+        data_dir,
+        project_id=project_id,
+        contract_id=contract_id,
+        contract=contract,
+    )
 
 
 @research_app.command("capture")
@@ -638,6 +959,9 @@ def claim_add(
     limitations: str = typer.Option(..., "--limitations", help="known limitations"),
     author: str = typer.Option("codex", "--author", help="drafting actor"),
     author_kind: str = typer.Option("agent", "--author-kind", help="owner or agent"),
+    anchor_json: str | None = typer.Option(
+        None, "--anchor-json", help="SourceAnchorV1 coordinates from an extracted page"
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Draft one claim-level literature statement; a paper is never auto-trusted."""
@@ -655,6 +979,7 @@ def claim_add(
             limitations=limitations,
             author=author,
             author_kind=author_kind,
+            source_anchor=(None if anchor_json is None else _object(anchor_json, "--anchor-json")),
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -702,6 +1027,52 @@ def claim_list(
     )
 
 
+@claim_app.command("reject")
+def claim_reject(
+    project_id: str,
+    claim_id: str,
+    actor: str = typer.Option(..., "--actor"),
+    reason: str = typer.Option(..., "--reason"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Append the owner's rejection of an unscreened claim; claim bytes remain immutable."""
+    try:
+        event = _store().record_source_claim_owner_direction(
+            project_id,
+            claim_id=claim_id,
+            decision="reject",
+            actor=actor,
+            reason=reason,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(event, json_out=json_out, fallback=f"rejected claim {claim_id}")
+
+
+@claim_app.command("revise")
+def claim_revise(
+    project_id: str,
+    claim_id: str,
+    actor: str = typer.Option(..., "--actor"),
+    reason: str = typer.Option(..., "--reason"),
+    revision_json: str = typer.Option("{}", "--revision-json"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Append an owner revision direction; a later draft remains a separate immutable record."""
+    try:
+        event = _store().record_source_claim_owner_direction(
+            project_id,
+            claim_id=claim_id,
+            decision="revise",
+            actor=actor,
+            reason=reason,
+            payload=_object(revision_json, "--revision-json"),
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(event, json_out=json_out, fallback=f"requested revision for claim {claim_id}")
+
+
 @sources_app.command("fetch")
 def sources_fetch(
     url: str,
@@ -719,23 +1090,16 @@ def sources_fetch(
     acquisition primitives; the stored object is content-addressed and labelled
     UNTRUSTED_SOURCE. The worker never sees credentials or shell context.
     """
-    import subprocess
-
-    worker_dir = Path(__file__).resolve().parents[4] / "workers" / "literature"
-    if not (worker_dir / "pyproject.toml").is_file():
-        raise typer.BadParameter(
-            f"literature worker missing at {worker_dir}; it is repository content and is "
-            "unavailable outside a checked-out working tree"
-        )
     target_dir = (
         AlphaSettings().data_dir / "research" / "objects" if objects_dir is None else objects_dir
     )
+    requested_hosts = {host.strip().lower() for host in allow_host if host.strip()}
+    unsupported_hosts = sorted(requested_hosts - _LITERATURE_DOCUMENT_HOSTS)
+    if unsupported_hosts:
+        raise typer.BadParameter(
+            f"literature host is outside the fixed allowlist: {', '.join(unsupported_hosts)}"
+        )
     argv = [
-        "uv",
-        "run",
-        "--project",
-        str(worker_dir),
-        "literature-worker",
         "fetch",
         "--url",
         url,
@@ -744,19 +1108,193 @@ def sources_fetch(
     ]
     for host in allow_host:
         argv += ["--allow-host", host]
-    completed = subprocess.run(  # noqa: S603 - closed argv, no shell
-        argv, capture_output=True, text=True, timeout=180, check=False
-    )
-    if completed.returncode != 0:
-        raise typer.BadParameter(
-            completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
-        )
-    result = _object(completed.stdout, "literature worker output")
+    try:
+        result = _run_literature_worker(argv)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    safe_result = {
+        key: result[key]
+        for key in ("final_url", "media_type", "byte_count", "sha256", "trust_label")
+        if key in result
+    }
     _emit(
-        result,
+        safe_result,
         json_out=json_out,
         fallback=f"stored {result.get('sha256')} ({result.get('trust_label')})",
     )
+
+
+@sources_app.command("discover")
+def sources_discover(
+    project_id: str,
+    query: str = typer.Option(..., "--query"),
+    unpaywall_email: str = typer.Option(..., "--unpaywall-email"),
+    max_candidates: int = typer.Option(20, min=1, max=20),
+    max_full_texts: int = typer.Option(5, min=0, max=5),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Explicit owner-clickable discovery; results remain untrusted candidates."""
+    try:
+        artifact = _run_literature_worker(
+            [
+                "discover",
+                "--query",
+                query,
+                "--email",
+                unpaywall_email,
+                "--max-candidates",
+                str(max_candidates),
+                "--max-full-texts",
+                str(max_full_texts),
+            ]
+        )
+        recorded = _store().record_literature_discovery(project_id, artifact=artifact)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    result = {
+        "discovery_id": recorded["discovery_id"],
+        "query": recorded["query"],
+        "candidates": artifact.get("candidates", []),
+        "receipt": artifact.get("receipt", {}),
+    }
+    candidates = artifact.get("candidates")
+    candidate_count = len(candidates) if isinstance(candidates, list) else 0
+    _emit(result, json_out=json_out, fallback=f"discovered {candidate_count} candidates")
+
+
+@sources_app.command("acquire")
+def sources_acquire(
+    project_id: str,
+    discovery_id: str,
+    candidate_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Acquire one recorded direct-PDF candidate, extract it, and idempotently link a source."""
+    settings = AlphaSettings()
+    store = ControlStore(settings.data_dir)
+    try:
+        discovery = store.get_literature_discovery(project_id, discovery_id)
+        artifact = discovery.get("artifact")
+        candidates = artifact.get("candidates") if isinstance(artifact, dict) else None
+        candidate = next(
+            (
+                row
+                for row in candidates or []
+                if isinstance(row, dict) and row.get("candidate_id") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise DataError("literature candidate is not part of the recorded discovery")
+        if candidate.get("access_state") != "direct_pdf":
+            raise DataError("literature candidate has no validated direct PDF to acquire")
+        url = candidate.get("open_access_url")
+        if not isinstance(url, str):
+            raise DataError("literature candidate direct PDF URL is missing")
+        budget = discovery.get("budget")
+        max_full_texts = budget.get("max_full_texts") if isinstance(budget, dict) else None
+        if isinstance(max_full_texts, bool) or not isinstance(max_full_texts, int):
+            raise DataError("literature discovery full-text budget is corrupt")
+        existing_sources = store.list_research_sources(project_id)
+
+        def belongs_to_candidate(row: Mapping[str, object]) -> bool:
+            metadata = row.get("metadata")
+            return (
+                isinstance(metadata, dict)
+                and metadata.get("candidate_id") == candidate_id
+                and metadata.get("discovery_id") == discovery_id
+            )
+
+        existing_source = next((row for row in existing_sources if belongs_to_candidate(row)), None)
+        if existing_source is not None:
+            extraction_id = existing_source.get("extraction_id")
+            if not isinstance(extraction_id, str):
+                raise DataError("existing literature source has no extraction record")
+            document = store.get_research_document_text(extraction_id)
+            result = {
+                "source": existing_source,
+                "document": document,
+                "acquisition": {
+                    "sha256": existing_source.get("content_hash"),
+                    "trust_label": "UNTRUSTED_SOURCE",
+                    "idempotent_reuse": True,
+                },
+            }
+            _emit(
+                result,
+                json_out=json_out,
+                fallback=f"reused source {existing_source['source_id']}",
+            )
+            return
+        discovery_source_count = 0
+        for row in existing_sources:
+            metadata = row.get("metadata")
+            if isinstance(metadata, dict) and metadata.get("discovery_id") == discovery_id:
+                discovery_source_count += 1
+        if discovery_source_count >= max_full_texts:
+            raise DataError("literature discovery full-text budget is exhausted")
+        fetch = _run_literature_worker(
+            [
+                "fetch",
+                "--url",
+                url,
+                "--objects-dir",
+                str(settings.data_dir / "research" / "objects"),
+            ]
+        )
+        object_path = fetch.get("object_path")
+        source_sha = fetch.get("sha256")
+        if not isinstance(object_path, str) or not isinstance(source_sha, str):
+            raise DataError("literature worker fetch receipt is incomplete")
+        extraction = _run_literature_worker(
+            [
+                "extract",
+                "--object-path",
+                object_path,
+                "--source-sha256",
+                source_sha,
+                "--extractions-dir",
+                str(settings.data_dir / "research" / "literature" / "worker-extractions"),
+            ]
+        )
+        source = store.create_research_source(
+            project_id,
+            title=_required_candidate_text(candidate, "title"),
+            locator=url,
+            provider=_required_candidate_text(candidate, "provider"),
+            access_mode="open_access",
+            metadata={
+                "discovery_id": discovery_id,
+                "candidate_id": candidate_id,
+                "access_state": candidate["access_state"],
+                "relevance_explanation": candidate.get("relevance_explanation"),
+                "trust_label": "UNTRUSTED_SOURCE",
+            },
+            content_hash=source_sha,
+            doi=candidate.get("doi") if isinstance(candidate.get("doi"), str) else None,
+            year=candidate.get("year") if isinstance(candidate.get("year"), int) else None,
+            authors=(
+                cast(list[str], candidate["authors"])
+                if isinstance(candidate.get("authors"), list)
+                and all(isinstance(item, str) for item in candidate["authors"])
+                else None
+            ),
+        )
+        document = store.record_research_document_text(
+            str(source["source_id"]), artifact=extraction
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    result = {
+        "source": source,
+        "document": document,
+        "acquisition": {
+            key: fetch[key]
+            for key in ("final_url", "media_type", "byte_count", "sha256", "trust_label")
+            if key in fetch
+        },
+    }
+    _emit(result, json_out=json_out, fallback=f"acquired source {source['source_id']}")
 
 
 @sources_app.command("screen")
@@ -766,7 +1304,7 @@ def sources_screen(
 ) -> None:
     """Show one immutable source for manual screening; Gate 1 records no screening mutation."""
     try:
-        row = _store().get_research_source(source_id)
+        row = _store().get_research_source_context(source_id)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"research source {row['source_id']}")
@@ -793,6 +1331,20 @@ def sources_freeze(
     _emit(row, json_out=json_out, fallback=f"research source pack {row['pack_id']}")
 
 
+@research_app.command("proposal-options")
+def proposal_options(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Show executable answer bundles, compatible packs/data, blockers, and case revision."""
+
+    try:
+        row = _proposal_options(_store(), project_id)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(row, json_out=json_out, fallback=f"proposal options for {project_id}")
+
+
 @research_app.command("draft")
 def draft(
     project_id: str,
@@ -803,6 +1355,12 @@ def draft(
     dataset: str | None = typer.Option(
         None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
     ),
+    answer_bundle: str | None = typer.Option(
+        None, "--answer-bundle", help="registered atomic material-answer bundle"
+    ),
+    expected_case_revision: str | None = typer.Option(
+        None, "--expected-case-revision", help="proposal-preflight optimistic revision"
+    ),
     created_by: str = typer.Option("codex"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
@@ -810,15 +1368,61 @@ def draft(
     store = _store()
     try:
         project = store.get_project(project_id)
+        if expected_case_revision is not None:
+            current_case = store.research_case_summary(project_id)
+            if research_case_revision(current_case) != expected_case_revision:
+                raise DataError(
+                    "research case changed after proposal preflight; refresh the case and options"
+                )
         source_pack = store.get_research_source_pack(source_pack_id)
         if source_pack.get("project_id") != project_id:
             raise DataError("research source pack must belong to the drafted project")
-        preview = draft_exploration_contract(
-            str(project["hypothesis"]), resolutions=_answers(answers)
-        )
+        if answer_bundle is not None and answers:
+            raise DataError("choose one answer bundle or individual CLI answers, not both")
+        resolutions = _answers(answers)
+        if answer_bundle is not None:
+            bundle = registered_answer_bundle(answer_bundle)
+            bundle_answers = bundle.get("answers")
+            if not isinstance(bundle_answers, Mapping):  # pragma: no cover - static registry
+                raise DataError("registered research answer bundle is malformed")
+            resolutions = {str(key): str(value) for key, value in bundle_answers.items()}
+            if bundle.get("requires_dataset") is True and dataset is None:
+                raise DataError("the selected research answer bundle requires an exact dataset")
+            if bundle.get("requires_dataset") is not True and dataset is not None:
+                raise DataError("the selected synthetic answer bundle cannot bind a dataset")
+            options = _proposal_options(store, project_id)
+            pack_ids = {
+                str(row.get("pack_id"))
+                for row in cast(list[dict[str, object]], options["compatible_source_packs"])
+            }
+            if source_pack_id not in pack_ids:
+                raise DataError("the selected source pack is not compatible with this case")
+            registered = next(
+                (
+                    row
+                    for row in cast(list[dict[str, object]], options["valid_answer_bundles"])
+                    if row.get("bundle_id") == answer_bundle
+                ),
+                None,
+            )
+            if registered is None or registered.get("available") is not True:
+                reason = None if registered is None else registered.get("blocked_reason")
+                raise DataError(str(reason or "the selected answer bundle is unavailable"))
+            compatible_ids = cast(list[str], registered["compatible_dataset_ids"])
+            if dataset is not None and dataset not in compatible_ids:
+                raise DataError("the selected dataset is not qualified for this answer bundle")
+        preview = draft_exploration_contract(str(project["hypothesis"]), resolutions=resolutions)
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
-        binding = _empirical_dataset(store, dataset) if dataset is not None else None
+        if answer_bundle is not None:
+            preview["answer_bundle_id"] = answer_bundle
+        binding: _EmpiricalDataset | CryptoEmpiricalDataset | None
+        if dataset is None:
+            binding = None
+        elif answer_bundle == "bybit_btcusdt_crowding_reversal_v1":
+            binding = _crypto_empirical_dataset(store, dataset)
+        else:
+            binding = _empirical_dataset(store, dataset)
         payload = _approval_payload(
             preview, source_pack_id=source_pack_id, empirical_dataset=binding
         )
@@ -1059,6 +1663,88 @@ def _admitted_d1_matched_cell(run_dir: Path) -> dict[str, object]:
     return dict(matched)
 
 
+def _draft_crypto_confirmation(
+    store: ControlStore,
+    *,
+    project_id: str,
+    exploration_id: str,
+    payload: Mapping[str, object],
+    manifest: Mapping[str, object],
+    created_by: str,
+) -> tuple[dict[str, object], dict[str, object]]:
+    observations, boundary = _crypto_empirical_d1(store, payload)
+    if manifest.get("dataset_hash") != boundary.dataset_fingerprint:
+        raise DataError("the admitted crypto D1 run does not bind the frozen snapshot")
+    run_id = str(manifest["run_id"])
+    run_dir = AlphaSettings().data_dir / "runs" / run_id
+    evidence = json.loads((run_dir / D1_EVIDENCE_ARTIFACT).read_text(encoding="utf-8"))
+    analyses = json.loads((run_dir / D1_ANALYSES_ARTIFACT).read_text(encoding="utf-8"))
+    primary = evidence.get("primary_result")
+    magnitude = None if not isinstance(primary, Mapping) else primary.get("practical_magnitude")
+    readiness = evidence.get("confirmation_readiness")
+    evaluation = analyses.get("measurements", {}).get("evaluation", {})
+    estimate = evaluation.get("primary_estimate") if isinstance(evaluation, Mapping) else None
+    event_count = evaluation.get("primary_event_count") if isinstance(evaluation, Mapping) else None
+    if (
+        not isinstance(primary, Mapping)
+        or primary.get("status") != "TESTED"
+        or not isinstance(magnitude, Mapping)
+        or magnitude.get("status") != "CLEARS_HURDLE"
+        or not isinstance(readiness, Mapping)
+        or readiness.get("state") != "ready"
+        or not isinstance(estimate, Mapping)
+        or isinstance(event_count, bool)
+        or not isinstance(event_count, int)
+        or event_count < 50
+    ):
+        raise DataError(
+            "crypto confirmation drafting requires a verified D1 result with at least "
+            "50 events that clears the registered hurdle and all readiness checks"
+        )
+    if boundary.d2.group_count < registered_crypto_crowding_plan().minimum_confirmation_events:
+        raise DataError("the sealed D2 zone cannot contain the ten required confirmation events")
+    confirmation_payload = dict(payload)
+    confirmation_payload["scope"] = "confirmation"
+    confirmation_payload["parent_contract_id"] = exploration_id
+    hashes = {**_implementation_hashes(), "data": boundary.dataset_fingerprint}
+    confirmation_payload["hashes"] = hashes
+    confirmation_payload["confirmation"] = {
+        "variant_count": 1,
+        "multiplicity_count": 1,
+        "familywise_alpha": 0.05,
+        "minimum_confirmation_events": (
+            registered_crypto_crowding_plan().minimum_confirmation_events
+        ),
+        "source_run_id": run_id,
+        "d1_event_count": event_count,
+        "d1_matched_pairs": estimate.get("matched_pairs"),
+        "d1_effective_week_clusters": estimate.get("effective_week_clusters"),
+        "d1_estimate": estimate.get("estimate"),
+        "d1_ci_lower": estimate.get("ci_lower"),
+        "d1_ci_upper": estimate.get("ci_upper"),
+        "operator_fingerprint": registered_crypto_crowding_plan().operator_fingerprint,
+        "boundary_sha256": boundary.boundary_sha256,
+    }
+    contract = store.create_research_contract(
+        project_id,
+        scope="confirmation",
+        parent_contract_id=exploration_id,
+        payload=confirmation_payload,
+        created_by=created_by,
+        author_kind="agent",
+    )
+    store.transition_research_phase(
+        project_id,
+        to_phase="confirmation_review",
+        contract_id=str(contract["contract_id"]),
+        actor=created_by,
+        reason="the exact crypto one-shot D2 contract is frozen from admitted D1 evidence",
+        next_action="Owner approves or rejects the exact one-shot D2 confirmation contract.",
+        responsibility="owner",
+    )
+    return contract, store.research_case_summary(project_id)
+
+
 @research_app.command("draft-confirmation")
 def draft_confirmation(
     project_id: str,
@@ -1092,6 +1778,24 @@ def draft_confirmation(
             or manifest.get("evidence_zone") != "D1"
         ):
             raise DataError("confirmation drafting requires a completed D1 deep-research attempt")
+        if _is_crypto_crowding_contract(payload):
+            contract, case_row = _draft_crypto_confirmation(
+                store,
+                project_id=project_id,
+                exploration_id=exploration_id,
+                payload=payload,
+                manifest=manifest,
+                created_by=created_by,
+            )
+            _emit(
+                {"contract": contract, "case": case_row},
+                json_out=json_out,
+                fallback=(
+                    f"confirmation contract {contract['contract_id']} awaits owner review "
+                    "(one-shot crypto D2)"
+                ),
+            )
+            return
         bars, boundary = _empirical_d1_bars(store, payload)
         if manifest.get("dataset_hash") != bars.dataset.content_sha256:
             raise DataError("the admitted D1 run does not bind the approval-frozen dataset")
@@ -1497,11 +2201,17 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
             None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
         )
         boundary_kind = None if not isinstance(authority, Mapping) else authority.get("kind")
-        sealed_boundary: ResearchD2BoundaryV1 | None = None
+        sealed_boundary: ResearchD2Boundary | None = None
+        crypto_boundary: ResearchD2BoundaryV2 | None = None
+        crypto_observations: tuple[CryptoCrowdingObservationV1, ...] | None = None
+        bars: EqualDurationResearchBars | None = None
         if boundary_kind == "synthetic_acceptance_fixture":
             bars = registered_synthetic_d1_bars()
         elif boundary_kind == "empirical_dataset":
-            bars, sealed_boundary = _empirical_d1_bars(store, payload)
+            if _is_crypto_crowding_contract(payload):
+                crypto_observations, crypto_boundary = _crypto_empirical_d1(store, payload)
+            else:
+                bars, sealed_boundary = _empirical_d1_bars(store, payload)
         else:
             raise DataError("deep research requires a registered boundary authority kind")
         if execution_state == "idle":
@@ -1549,15 +2259,28 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
             )
 
         try:
-            manifest = run_deep_research(
-                AlphaSettings().data_dir,
-                project_id=project_id,
-                contract_id=contract_id,
-                contract=payload,
-                bars=bars,
-                boundary=sealed_boundary,
-                on_checkpoint=on_checkpoint,
-            )
+            if crypto_observations is not None and crypto_boundary is not None:
+                manifest = run_crypto_crowding_deep(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    observations=crypto_observations,
+                    boundary=crypto_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            elif bars is not None:
+                manifest = run_deep_research(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    bars=bars,
+                    boundary=sealed_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            else:  # pragma: no cover - authority dispatch above is exhaustive.
+                raise DataError("deep research has no executable registered dataset")
         except Exception as run_error:
             failure = _checkpoint_failed_research_run(
                 store,
@@ -1565,7 +2288,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 contract_id,
                 run_error=run_error,
                 kind="d1-deep-research",
-                config_fingerprint=d1_execution_fingerprint(payload),
+                config_fingerprint=_registered_d1_execution_fingerprint(payload),
                 attempt_number=attempt_number,
                 evidence_zone="D1",
                 finding="The D1 deep run failed; no empirical conclusion was produced.",
@@ -1785,8 +2508,15 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
                 "one-shot confirmation requires the empirical_dataset boundary authority; "
                 "synthetic acceptance boundaries cannot authorize D2 confirmation"
             )
+        crypto_observations: tuple[CryptoCrowdingObservationV1, ...] | None = None
+        crypto_boundary: ResearchD2BoundaryV2 | None = None
+        bars: EqualDurationResearchBars | None = None
+        sealed_boundary: ResearchD2Boundary | None = None
         try:
-            bars, sealed_boundary = _empirical_d1_bars(store, payload)
+            if _is_crypto_crowding_contract(payload):
+                crypto_observations, crypto_boundary = _crypto_empirical_d1(store, payload)
+            else:
+                bars, sealed_boundary = _empirical_d1_bars(store, payload)
         except DataError as integrity_error:
             raise _contaminated_d2_failure(
                 store,
@@ -1839,15 +2569,28 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
             )
 
         try:
-            manifest = run_confirmation(
-                AlphaSettings().data_dir,
-                project_id=project_id,
-                contract_id=contract_id,
-                contract=payload,
-                bars=bars,
-                boundary=sealed_boundary,
-                on_checkpoint=on_checkpoint,
-            )
+            if crypto_observations is not None and crypto_boundary is not None:
+                manifest = run_crypto_crowding_confirmation(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    observations=crypto_observations,
+                    boundary=crypto_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            elif bars is not None and sealed_boundary is not None:
+                manifest = run_confirmation(
+                    AlphaSettings().data_dir,
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    contract=payload,
+                    bars=bars,
+                    boundary=sealed_boundary,
+                    on_checkpoint=on_checkpoint,
+                )
+            else:  # pragma: no cover - integrity dispatch above is exhaustive.
+                raise DataError("one-shot confirmation has no executable registered dataset")
         except Exception as run_error:
             failure = _checkpoint_failed_research_run(
                 store,
@@ -1855,7 +2598,7 @@ def _run_confirm(project_id: str, *, json_out: bool) -> None:
                 contract_id,
                 run_error=run_error,
                 kind="sealed-confirmation",
-                config_fingerprint=d2_execution_fingerprint(payload),
+                config_fingerprint=_registered_d2_execution_fingerprint(payload),
                 attempt_number=attempt_number,
                 evidence_zone="D2",
                 finding=(
@@ -1968,7 +2711,7 @@ def run_research(
         if case["phase"] != "pilot":
             raise DataError("synthetic pilot requires the owner-approved pilot phase")
         contract_id = str(case["active_contract_id"])
-        validate_d0_pilot_contract(payload)
+        _validate_registered_d0_contract(payload)
         execution_state = str(case["execution_state"])
         latest_attempt_id = case.get("latest_attempt_id")
         if (
@@ -2032,7 +2775,7 @@ def run_research(
                 "code, dependency lock, evaluator, or environment; create and approve a revised "
                 "contract before another pilot"
             )
-        execution_fingerprint = d0_execution_fingerprint(payload)
+        execution_fingerprint = _registered_d0_execution_fingerprint(payload)
         if execution_state == "idle":
             store.transition_research_execution(
                 project_id,
@@ -2057,7 +2800,7 @@ def run_research(
         attempt_number = raw_launch_number
         reservation_id = str(reservation["reservation_id"])
         try:
-            manifest = run_synthetic_pilot(
+            manifest = _run_registered_d0_pilot(
                 AlphaSettings().data_dir,
                 project_id=project_id,
                 contract_id=contract_id,
@@ -2473,6 +3216,36 @@ def data_list(
     )
 
 
+@data_app.command("register-crypto")
+def data_register_crypto(
+    snapshot_id: str,
+    symbol: str = typer.Option(..., "--symbol", help="exact base asset in the snapshot"),
+    registered_by: str = typer.Option("owner", "--registered-by", help="registering actor"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Register an eligible CryptoSnapshotV1 after re-verifying every external member."""
+    from alpha_cli.crypto_data_cmds import crypto_snapshot_registration  # noqa: PLC0415
+
+    try:
+        binding = crypto_snapshot_registration(snapshot_id, symbol=symbol)
+        origin = binding["origin"]
+        if not isinstance(origin, Mapping):  # pragma: no cover - fixed local projection
+            raise DataError("crypto snapshot registration origin is malformed")
+        ref = _store().register_research_dataset(
+            dataset_kind=str(binding["dataset_kind"]),
+            instrument=str(binding["instrument"]),
+            provider=str(binding["provider"]),
+            start_ts=str(binding["start_ts"]),
+            end_ts=str(binding["end_ts"]),
+            bar_duration_minutes=cast(int | None, binding["bar_duration_minutes"]),
+            origin=origin,
+            registered_by=registered_by,
+        )
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(ref, json_out=json_out, fallback=f"registered crypto dataset {ref['ref_id']}")
+
+
 @data_app.command("audit")
 def data_audit(
     project_id: str,
@@ -2854,6 +3627,40 @@ def _spec(name: str) -> Any:
     )
 
 
+def _comparison_preference(
+    rows: list[dict[str, Any]],
+) -> tuple[str, str | None, str | None]:
+    """Name a preference only when every requested result is comparable and traded."""
+    comparable = [
+        row
+        for row in rows
+        if row.get("error") is None
+        and isinstance(row.get("total_return"), int | float)
+        and isinstance(row.get("n_trades"), int)
+    ]
+    if len(rows) < 2 or len(comparable) != len(rows):
+        return (
+            "not_comparable",
+            None,
+            "every requested strategy must produce a comparable result",
+        )
+    if any(int(row["n_trades"]) <= 0 for row in comparable):
+        return (
+            "no_trades",
+            None,
+            "at least one strategy produced no completed trades",
+        )
+    best_return = max(float(row["total_return"]) for row in comparable)
+    best_rows = [row for row in comparable if float(row["total_return"]) == best_return]
+    if len(best_rows) != 1:
+        return (
+            "tie",
+            None,
+            "top comparable strategies have equal total return",
+        )
+    return "preferred", str(best_rows[0]["strategy"]), None
+
+
 @research_app.command()
 def compare(
     symbol: str,
@@ -2896,7 +3703,15 @@ def compare(
     rows.sort(
         key=lambda r: (r["total_return"] is not None, r.get("total_return") or 0.0), reverse=True
     )
-    payload = {"symbol": symbol, "n_bars": len(bars), "ranked": rows}
+    comparison_status, preferred_strategy, preference_reason = _comparison_preference(rows)
+    payload = {
+        "symbol": symbol,
+        "n_bars": len(bars),
+        "ranked": rows,
+        "comparison_status": comparison_status,
+        "preferred_strategy": preferred_strategy,
+        "preference_reason": preference_reason,
+    }
     if json_out:
         typer.echo(json.dumps(payload))
         return

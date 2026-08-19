@@ -17,12 +17,15 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any, Final
 
+import polars as pl
+
 from alpha_cli import _artifacts
 from alpha_core import DataError
 from alpha_data.pit import PointInTimeReader
 from alpha_data.snapshot import verify_snapshot
 from alpha_data.store import ParquetStore
 from alpha_research import (
+    AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
     ResearchChartData,
     ResearchChartPoint,
     ResearchChartSeries,
@@ -120,6 +123,26 @@ def load_registered_dataset_frame(data_dir: Path, *, ref: Mapping[str, object]) 
     end_at = _parse_bound(ref.get("end_ts"), "end_ts", end_of_day=True)
     if end_at < start_at:
         raise DataError("registered dataset range must end at or after its start")
+    origin = ref.get("origin")
+    if isinstance(origin, Mapping) and origin.get("snapshot_schema") == "CryptoSnapshotV1":
+        snapshot_id = str(origin.get("snapshot_id", ""))
+        manifest_path = Path(data_dir) / "crypto" / "snapshots" / f"{snapshot_id}.json"
+        if not manifest_path.is_file() or manifest_path.is_symlink():
+            raise DataError(f"registered crypto snapshot {snapshot_id!r} is missing its manifest")
+        if hashlib.sha256(manifest_path.read_bytes()).hexdigest() != origin.get("manifest_sha256"):
+            raise DataError("crypto snapshot no longer matches its registered manifest hash")
+        from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415 - optional crypto audit lane
+            crypto_crowding_observations,
+        )
+
+        observations = crypto_crowding_observations(snapshot_id)
+        return pl.DataFrame(
+            {
+                "ts": [row.funding_time for row in observations],
+                "funding_rate": [row.funding_rate for row in observations],
+            },
+            schema={"ts": pl.Datetime(time_zone="UTC"), "funding_rate": pl.Float64},
+        ).filter(pl.col("ts").is_between(start_at, end_at, closed="both"))
     root = _verified_root(Path(data_dir), ref)
     store = ParquetStore(root)
     reader = PointInTimeReader(store, {instrument: store.read_actions(instrument)})
@@ -138,12 +161,14 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
     frame = load_registered_dataset_frame(Path(data_dir), ref=ref)
     if frame.height == 0:
         raise DataError(
-            f"registered dataset {ref_id!r} holds no bars for {instrument!r} in its range"
+            f"registered dataset {ref_id!r} holds no observations for {instrument!r} in its range"
         )
     timestamps = list(frame["ts"])
-    closes = [float(value) for value in frame["close"]]
+    crypto_snapshot = "funding_rate" in frame.columns
+    value_column = "funding_rate" if crypto_snapshot else "close"
+    values = [float(value) for value in frame[value_column]]
 
-    interval_seconds = 86_400.0
+    interval_seconds = 8 * 3_600.0 if crypto_snapshot else 86_400.0
     duration = ref.get("bar_duration_minutes")
     if isinstance(duration, int) and not isinstance(duration, bool) and duration > 0:
         interval_seconds = duration * 60.0
@@ -152,7 +177,9 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
     blocking: list[str] = []
     limiting: list[str] = []
     if int(coverage["n"]) < _MINIMUM_USABLE_SAMPLE:  # type: ignore[call-overload]
-        blocking.append(f"insufficient sample: n={coverage['n']} < {_MINIMUM_USABLE_SAMPLE} bars")
+        blocking.append(
+            f"insufficient sample: n={coverage['n']} < {_MINIMUM_USABLE_SAMPLE} observations"
+        )
     if int(coverage["duplicate_count"]) > 0:  # type: ignore[call-overload]
         blocking.append(f"{coverage['duplicate_count']} duplicate timestamps")
     if int(coverage["disorder_count"]) > 0:  # type: ignore[call-overload]
@@ -161,54 +188,83 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
         limiting.append(f"{coverage['gap_count']} calendar gaps beyond twice the cadence")
 
     descriptives: dict[str, object] = {"coverage": coverage}
-    if len(closes) >= 2:
-        distribution = return_distribution(closes)
-        descriptives["return_distribution"] = distribution
-        n_returns = int(distribution["n"])
-        if n_returns >= 3:
+    if len(values) >= 2:
+        if crypto_snapshot:
+            distribution = {
+                "n": len(values),
+                "mean": sum(values) / len(values),
+                "minimum": min(values),
+                "maximum": max(values),
+            }
+            descriptives["funding_rate_distribution"] = distribution
+            n_observations = len(values)
+        else:
+            distribution = return_distribution(values)
+            descriptives["return_distribution"] = distribution
+            n_observations = int(distribution["n"])
+        if n_observations >= 3:
+            autocorrelation_values = (
+                values
+                if crypto_snapshot
+                else [b / a - 1.0 for a, b in zip(values, values[1:], strict=False)]
+            )
             rows = autocorrelation(
-                [b / a - 1.0 for a, b in zip(closes, closes[1:], strict=False)], lags=(1,)
+                autocorrelation_values,
+                lags=(1,),
             )
             rho = float(rows[0]["autocorrelation"])
             descriptives["autocorrelation"] = rows
-            descriptives["effective_sample_size"] = effective_sample_size(n_returns, rho)
-        returns = [b / a - 1.0 for a, b in zip(closes, closes[1:], strict=False)]
-        descriptives["seasonality_by_weekday"] = seasonality_by_weekday(timestamps[1:], returns)
-        if len(returns) >= _REGIME_WINDOW + 2:
-            tags = volatility_regime_tags(returns, window=_REGIME_WINDOW)
-            descriptives["volatility_regime_counts"] = {
-                tag: tags.count(tag) for tag in ("warmup", "low", "mid", "high")
-            }
+            descriptives["effective_sample_size"] = effective_sample_size(n_observations, rho)
+            descriptives["effective_sample_size_method_version"] = (
+                AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION
+            )
+        if crypto_snapshot:
+            descriptives["seasonality_by_weekday"] = seasonality_by_weekday(timestamps, values)
+            notes.append(
+                "funding-rate levels audited; no price return or hypothesis effect estimated"
+            )
         else:
-            notes.append("volatility regime tagging skipped: sample below the trailing window")
+            returns = [b / a - 1.0 for a, b in zip(values, values[1:], strict=False)]
+            descriptives["seasonality_by_weekday"] = seasonality_by_weekday(timestamps[1:], returns)
+            if len(returns) >= _REGIME_WINDOW + 2:
+                tags = volatility_regime_tags(returns, window=_REGIME_WINDOW)
+                descriptives["volatility_regime_counts"] = {
+                    tag: tags.count(tag) for tag in ("warmup", "low", "mid", "high")
+                }
+            else:
+                notes.append("volatility regime tagging skipped: sample below the trailing window")
     else:
         notes.append("distributional descriptives skipped: fewer than two bars")
 
     summary = {
         "audit_schema": "ResearchDataAuditV1",
+        "method_version": AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
         "blocking_count": len(blocking),
         "limiting_count": len(limiting),
         "notes": [*blocking, *limiting, *notes],
     }
     dataset_hash = _sha(
-        {"timestamps": [stamp.isoformat() for stamp in timestamps], "closes": closes}
+        {
+            "timestamps": [stamp.isoformat() for stamp in timestamps],
+            value_column: values,
+        }
     )
+    origin_value = ref.get("origin")
     run_identity = {
         "command": "research_data_audit",
         "project_id": project_id,
         "ref_id": ref_id,
-        "origin": (
-            dict(origin_value) if isinstance(origin_value := ref.get("origin"), Mapping) else {}
-        ),
+        "origin": dict(origin_value) if isinstance(origin_value, Mapping) else {},
         "dataset_hash": dataset_hash,
+        "method_version": AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
     }
     run_id = _sha(run_identity)[:16]
     run_dir = _artifacts.run_dir(Path(data_dir), run_id)
     chart = ResearchChartData(
         chart_id="data-audit-closes",
-        title=f"Data audit: {instrument} close coverage",
+        title=f"Data audit: {instrument} {value_column.replace('_', ' ')} coverage",
         x_label="Bar timestamp (UTC)",
-        y_label="Close",
+        y_label="Funding rate" if crypto_snapshot else "Close",
         evidence_phase="exploratory",
         dataset_sha256=dataset_hash,
         protocol_sha256=_sha(dict(summary)),
@@ -218,23 +274,23 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
             if blocking
             else "No blocking findings; limitations, if any, are listed."
         ),
-        sample_size=len(closes),
+        sample_size=len(values),
         effective_sample_size=float(
-            descriptives.get("effective_sample_size", len(closes))  # type: ignore[arg-type]
+            descriptives.get("effective_sample_size", len(values))  # type: ignore[arg-type]
         ),
         uncertainty="Descriptive audit; no hypothesis effect is estimated.",
         caveat="A data audit validates data, never a market claim.",
         run_id=run_id,
         artifact_id="data-audit-close-series",
-        artifact_sha256=_sha(closes),
+        artifact_sha256=_sha(values),
         series=(
             ResearchChartSeries(
                 series_id="close",
-                label=f"{instrument} close",
-                unit="price",
+                label=f"{instrument} {value_column.replace('_', ' ')}",
+                unit="rate" if crypto_snapshot else "price",
                 points=tuple(
                     ResearchChartPoint(ts=stamp, value=value)
-                    for stamp, value in zip(timestamps, closes, strict=True)
+                    for stamp, value in zip(timestamps, values, strict=True)
                 ),
             ),
         ),
@@ -246,7 +302,7 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
     (run_dir / "report.md").write_text(
         "# Research Data Audit\n\n"
         "**EXPLORATORY — DESCRIBES DATA, NEVER A MARKET CLAIM**\n\n"
-        f"Dataset `{ref_id}` ({instrument}): {len(closes)} bars audited. "
+        f"Dataset `{ref_id}` ({instrument}): {len(values)} observations audited. "
         f"Blocking findings: {len(blocking)}. Limiting findings: {len(limiting)}.\n",
         encoding="utf-8",
     )
@@ -264,9 +320,14 @@ def run_data_audit(data_dir: Path, *, project_id: str, ref: Mapping[str, object]
         "eligible_for_holdout_or_execution": False,
         "places_orders": False,
         "research_only": True,
+        "research_data_audit_method_version": AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
         "audit_summary": summary,
-        "snapshot_id": None,
-        "snapshot_hash": None,
+        "snapshot_id": origin_value.get("snapshot_id")
+        if crypto_snapshot and isinstance(origin_value, Mapping)
+        else None,
+        "snapshot_hash": origin_value.get("manifest_sha256")
+        if crypto_snapshot and isinstance(origin_value, Mapping)
+        else None,
         "execution_fingerprint": _sha(run_identity),
         "strategy_fingerprint": None,
         "source_fingerprint": dataset_hash,

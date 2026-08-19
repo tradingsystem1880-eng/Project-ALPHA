@@ -12,6 +12,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   onLabPrefill,
   openDevelopmentCenter,
+  openProviderCenter,
+  openResearchData,
+  openResearchSources,
   openStrategyLab,
   registerNavigator,
   takeLabPrefill,
@@ -22,6 +25,9 @@ function stub() {
     showRun: vi.fn(),
     showStrategyLab: vi.fn(),
     showProjects: vi.fn(),
+    showResearchSources: vi.fn(),
+    showResearchData: vi.fn(),
+    showProviders: vi.fn(),
   }
   registerNavigator(navigator)
   return navigator
@@ -36,8 +42,14 @@ describe('navigation intents', () => {
     const navigator = stub()
     openStrategyLab({ command: 'validate', args: 'SPY' })
     openDevelopmentCenter()
+    openResearchSources()
+    openResearchData()
+    openProviderCenter()
     expect(navigator.showStrategyLab).toHaveBeenCalledTimes(1)
     expect(navigator.showProjects).toHaveBeenCalledTimes(1)
+    expect(navigator.showResearchSources).toHaveBeenCalledTimes(1)
+    expect(navigator.showResearchData).toHaveBeenCalledTimes(1)
+    expect(navigator.showProviders).toHaveBeenCalledTimes(1)
   })
 
   it('holds a prefill for a lab that has not mounted yet', () => {

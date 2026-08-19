@@ -28,6 +28,10 @@ MAX_PORTFOLIO_ANALYTICS_TIMESTAMPS = 5_000
 MAX_PORTFOLIO_ANALYTICS_SYMBOLS = 100
 _ALPHA_BIN = "alpha"
 _PROJECTION_TIMEOUT_S = 30.0
+_PROCESS_ENV_NAMES = frozenset(
+    {"LANG", "LC_ALL", "LC_CTYPE", "PATH", "PYTHONPATH", "TMPDIR", "TZ", "VIRTUAL_ENV"}
+)
+_DATA_ENV_NAMES = frozenset({"ALPHA_BULK_DATA_DIR", "ALPHA_BULK_VOLUME_UUID"})
 _TRACE_ARTIFACTS = (
     "decision_trace.parquet",
     "orders.parquet",
@@ -120,7 +124,9 @@ def _candle_rows(
         args.extend(["--start", start])
     if end is not None:
         args.extend(["--end", end])
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES
+    env = {name: value for name, value in os.environ.items() if name in allowed}
+    env["ALPHA_DATA_DIR"] = str(data_dir)
     try:
         proc = subprocess.run(
             [_ALPHA_BIN, *args],

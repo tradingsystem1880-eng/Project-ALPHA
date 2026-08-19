@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
+from typer.testing import CliRunner
 
 from alpha_cli.control_store import ControlStore
+from alpha_cli.main import app
 from alpha_web.app import create_app
 from tests.fixtures.control_store_fixtures import (
     mark_project_as_migrated_legacy,
     publish_decision_grade_run,
 )
+
+runner = CliRunner()
 
 
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -130,8 +135,27 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
             "end_date": "2026-06-30",
         },
     )
-    assert sealed.status_code == 200, sealed.text
-    assert sealed.json()["revealed_at"] is None
+    assert sealed.status_code == 403, sealed.text
+    assert "explicit local alpha CLI owner ceremony" in sealed.text
+    cli_sealed = runner.invoke(
+        app,
+        [
+            "project",
+            "seal-holdout",
+            project_id,
+            str(experiment["experiment_id"]),
+            "--actor",
+            "owner",
+            "--reason",
+            "final period reserved before selection",
+            "--start-date",
+            "2026-01-01",
+            "--end-date",
+            "2026-06-30",
+            "--json",
+        ],
+    )
+    assert cli_sealed.exit_code == 0, cli_sealed.output
     shown_version = client.get(f"/api/projects/{project_id}/versions/{version['version_id']}")
     shown_experiment = client.get(
         f"/api/projects/{project_id}/experiments/{experiment['experiment_id']}"
@@ -234,7 +258,7 @@ def test_project_version_experiment_stage_and_agent_brief_round_trip(
     assert "reveal_holdout" not in brief.text
 
 
-def test_owner_decision_endpoint_freezes_negative_packet(
+def test_owner_decision_endpoint_denies_mutation_and_cli_freezes_negative_packet(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client = _client(tmp_path, monkeypatch)
@@ -268,12 +292,32 @@ def test_owner_decision_endpoint_freezes_negative_packet(
             "negative_results_acknowledged": True,
         },
     )
-    assert frozen.status_code == 200, frozen.text
-    assert frozen.json()["deployment_scope"] == "sandbox_only"
+    assert frozen.status_code == 403, frozen.text
+    assert "explicit local alpha CLI owner ceremony" in frozen.text
+    cli_frozen = runner.invoke(
+        app,
+        [
+            "project",
+            "decide",
+            project_id,
+            str(experiment["experiment_id"]),
+            "--verdict",
+            "reject",
+            "--actor",
+            "owner",
+            "--reason",
+            "baseline falsified the hypothesis",
+            "--acknowledge-negative-results",
+            "--json",
+        ],
+    )
+    assert cli_frozen.exit_code == 0, cli_frozen.output
+    cli_packet = cast(dict[str, object], json.loads(cli_frozen.output))
+    assert cli_packet["deployment_scope"] == "sandbox_only"
     detail = client.get(f"/api/projects/{project_id}")
     assert detail.status_code == 200, detail.text
     assert detail.json()["status"] == "rejected"
-    assert detail.json()["decision_packets"][0]["packet_id"] == frozen.json()["packet_id"]
+    assert detail.json()["decision_packets"][0]["packet_id"] == cli_packet["packet_id"]
 
 
 def test_evidence_draft_rejects_mismatched_version_experiment_lineage(
@@ -330,7 +374,7 @@ def test_evidence_draft_rejects_mismatched_version_experiment_lineage(
         json={**request, "strategy_version_id": second_version["version_id"]},
     )
     assert mismatched.status_code == 422
-    detail = " ".join(str(mismatched.json()["detail"]).split())
+    detail = " ".join(str(mismatched.json()["message"]).split())
     assert "evidence strategy version" in detail
     assert "does not match the experiment" in detail
     assert "lineage" in detail

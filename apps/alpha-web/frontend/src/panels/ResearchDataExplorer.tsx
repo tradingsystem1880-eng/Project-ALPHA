@@ -1,7 +1,7 @@
 // Research Data Explorer — "what data do we have, is it trustworthy, can it answer the
 // question?" Registered research-only dataset refs with their exact origin bindings and
-// latest audit findings, plus the stored-symbol inventory. Registration and audits are
-// owner-CLI operations; this panel is a read plane.
+// latest audit findings, plus the stored-symbol inventory. Qualified CryptoSnapshotV1
+// registration is a typed explicit UI action; legacy registration and audits remain CLI-only.
 
 import { useEffect, useState } from 'react'
 
@@ -11,6 +11,7 @@ import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
+import { CryptoDataCenter } from './CryptoDataCenter'
 import {
   datasetAuditBadge,
   datasetOriginSummary,
@@ -28,15 +29,31 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const [datasets, setDatasets] = useState<ResearchDatasetRefRow[] | null>(null)
   const [symbols, setSymbols] = useState<string[] | null>(null)
+  const [boundDatasetRefId, setBoundDatasetRefId] = useState<string | null>(null)
+  const [caseRevision, setCaseRevision] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [datasetRevision, setDatasetRevision] = useState(0)
 
   useEffect(() => {
     let live = true
-    Promise.all([api.researchDatasets(), api.symbols()])
-      .then(([page, stored]) => {
+    setDatasets(null)
+    setSymbols(null)
+    setBoundDatasetRefId(null)
+    setCaseRevision(null)
+    const projectId = panelLink.linked.projectId
+    Promise.all([
+      api.researchDatasets(),
+      api.symbols(),
+      projectId ? api.researchCase(projectId) : Promise.resolve(null),
+      projectId ? api.researchProposalOptions(projectId) : Promise.resolve(null),
+    ])
+      .then(([page, stored, researchCase, proposalOptions]) => {
         if (!live) return
         setDatasets(page.items)
         setSymbols(stored.symbols)
+        const value = researchCase?.active_contract.payload['dataset_ref_id']
+        setBoundDatasetRefId(typeof value === 'string' && value ? value : null)
+        setCaseRevision(proposalOptions?.case_revision ?? null)
         setError(null)
       })
       .catch((reason: unknown) => {
@@ -46,14 +63,35 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
     return () => {
       live = false
     }
-  }, [])
+  }, [panelLink.linked.projectId, datasetRevision])
+
+  const boundDataset = datasets?.find((row) => row.ref_id === boundDatasetRefId) ?? null
+  const availableDatasets = (datasets ?? []).filter((row) => row.ref_id !== boundDatasetRefId)
+
+  function DatasetRow({ row }: { row: ResearchDatasetRefRow }) {
+    const badge = datasetAuditBadge(row.latest_audit as Record<string, unknown> | null)
+    return (
+      <div className="hypothesis-card-field">
+        <span className="eyebrow">
+          {row.instrument} · {row.provider} · {row.dataset_kind.replaceAll('_', ' ')}
+        </span>
+        <span>
+          <span className={BADGE_CHIP[badge.state]}>{badge.label}</span>{' '}
+          <span className="chip fail">RESEARCH ONLY</span>
+        </span>
+        <p className="mono">{datasetRangeLabel(row)}</p>
+        <p className="mono muted">{datasetOriginSummary(row)}</p>
+        <p className="mono muted advanced-only">{row.ref_id}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
         <span className="title">Research Data</span>
-        <span className="chip kind">READ-ONLY · RESEARCH ONLY</span>
-        <span className="muted">registered refs · receipts · audits · inventory</span>
+        <span className="chip kind">GOVERNED DATA · NO EXECUTION AUTHORITY</span>
+        <span className="muted">crypto acquisition · qualified snapshots · registered research refs</span>
       </div>
       <div className="panel-body panel-pad workbench research-data-explorer" tabIndex={0}>
         {error ? (
@@ -62,39 +100,49 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
             <span>{error}</span>
           </div>
         ) : null}
-        <section aria-label="Registered research datasets">
-          <div className="rd-head">Registered research datasets</div>
-          {datasets !== null && datasets.length === 0 ? (
+        <CryptoDataCenter
+          projectId={panelLink.linked.projectId}
+          caseRevision={caseRevision}
+          onRegistered={() => setDatasetRevision((value) => value + 1)}
+        />
+        <div className="rd-head">Research-case dataset bindings</div>
+        <section aria-label="Dataset bound to current research contract">
+          <div className="rd-head">Bound to the current contract</div>
+          {!panelLink.linked.projectId ? (
+            <Placeholder big="NO CASE SELECTED">Select a research case to see its exact data binding.</Placeholder>
+          ) : boundDataset ? (
+            <DatasetRow row={boundDataset} />
+          ) : datasets !== null ? (
+            <Placeholder big="NO DATASET BOUND">
+              The current contract does not bind a registered dataset yet. Choose one through the
+              proposal's compatible dataset list.
+            </Placeholder>
+          ) : (
+            <Placeholder big="LOADING CONTRACT DATA">Checking the selected case and its exact data binding.</Placeholder>
+          )}
+        </section>
+        <section aria-label="Globally available research datasets">
+          <div className="rd-head">Globally available · not automatically bound</div>
+          {datasets === null ? (
+            <Placeholder big="REFRESHING REGISTERED DATASETS">
+              Rechecking registered research refs and their immutable origins.
+            </Placeholder>
+          ) : datasets.length === 0 ? (
             <Placeholder big="NO REGISTERED DATASETS">
-              Register data fail-closed against its exact receipt or provenance bytes:
-              alpha research data register SYMBOL --kind snapshot|store-slice|quantpad …
+              Freeze, verify, and register a crypto snapshot above, or register legacy data
+              fail-closed against its exact receipt or provenance bytes from the trusted CLI.
             </Placeholder>
           ) : null}
-          {(datasets ?? []).map((row) => {
-            const badge = datasetAuditBadge(
-              row.latest_audit as Record<string, unknown> | null,
-            )
-            return (
-              <div key={row.ref_id} className="hypothesis-card-field">
-                <span className="eyebrow">
-                  {row.instrument} · {row.provider} · {row.dataset_kind.replaceAll('_', ' ')}
-                </span>
-                <span>
-                  <span className={BADGE_CHIP[badge.state]}>{badge.label}</span>{' '}
-                  <span className="chip fail">RESEARCH ONLY</span>
-                </span>
-                <p className="mono">{datasetRangeLabel(row)}</p>
-                <p className="mono muted">{datasetOriginSummary(row)}</p>
-                <p className="mono muted">{row.ref_id}</p>
-              </div>
-            )
-          })}
+          {availableDatasets.map((row) => <DatasetRow key={row.ref_id} row={row} />)}
         </section>
         <section aria-label="Stored symbol inventory">
           <div className="rd-head">
-            Stored symbols <span className="muted">({symbols?.length ?? 0})</span>
+            Stored symbols{' '}
+            <span className="muted">({symbols === null ? 'loading…' : symbols.length})</span>
           </div>
-          {symbols !== null && symbols.length === 0 ? (
+          {symbols === null ? (
+            <Placeholder>Loading stored symbol inventory…</Placeholder>
+          ) : symbols.length === 0 ? (
             <p className="muted">The canonical store holds no symbols yet.</p>
           ) : null}
           <div className="scorecard-strip">

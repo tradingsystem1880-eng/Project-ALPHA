@@ -16,6 +16,8 @@ _RUN_ID_RE = re.compile(r"[0-9a-f]{16}")
 # research-gate override. Polars-free here so the suite planner and web/MCP readers
 # share one source of truth without importing the artifact layer.
 RESEARCH_GATE_OVERRIDE_WATERMARK = "EXPLORATORY / RESEARCH GATE NOT COMPLETED"
+STANDALONE_UNQUALIFIED_WATERMARK = "STANDALONE_UNQUALIFIED"
+LEGACY_CONTEXT_UNKNOWN_WATERMARK = "LEGACY_CONTEXT_UNKNOWN"
 
 
 def research_gate_watermark(manifest: Any) -> str | None:
@@ -26,6 +28,44 @@ def research_gate_watermark(manifest: Any) -> str | None:
     if isinstance(block, dict) and isinstance(block.get("watermark"), str):
         return str(block["watermark"])
     return None
+
+
+def run_context_projection(manifest: Any) -> dict[str, str | None]:
+    """Project the permanent launch classification for current and historical run manifests."""
+    if not isinstance(manifest, dict):
+        return {
+            "run_context_kind": "legacy_context_unknown",
+            "run_context_project_id": None,
+            "run_context_watermark": LEGACY_CONTEXT_UNKNOWN_WATERMARK,
+        }
+    context = manifest.get("run_context")
+    if not isinstance(context, dict):
+        return {
+            "run_context_kind": "legacy_context_unknown",
+            "run_context_project_id": None,
+            "run_context_watermark": LEGACY_CONTEXT_UNKNOWN_WATERMARK,
+        }
+    if context.get("kind") == "standalone_sandbox":
+        return {
+            "run_context_kind": "standalone_sandbox",
+            "run_context_project_id": None,
+            "run_context_watermark": STANDALONE_UNQUALIFIED_WATERMARK,
+        }
+    if context.get("kind") == "governed_project" and isinstance(context.get("project_id"), str):
+        return {
+            "run_context_kind": "governed_project",
+            "run_context_project_id": str(context["project_id"]),
+            "run_context_watermark": (
+                RESEARCH_GATE_OVERRIDE_WATERMARK
+                if context.get("research_gate_state") == "overridden"
+                else None
+            ),
+        }
+    return {
+        "run_context_kind": "legacy_context_unknown",
+        "run_context_project_id": None,
+        "run_context_watermark": LEGACY_CONTEXT_UNKNOWN_WATERMARK,
+    }
 
 
 def valid_run_id(run_id: str) -> bool:

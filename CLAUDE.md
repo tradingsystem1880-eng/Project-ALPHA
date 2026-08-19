@@ -1,6 +1,6 @@
 # Project ALPHA — Agent Operating Manual
 
-$0/free, institutional-grade Python quant research platform. **Written and operated entirely by AI agents.** This file is authoritative and OVERRIDES default behavior. Be terse, fail loud, never violate the architecture DAG.
+Private, single-owner, local quantitative research platform. **Written and operated entirely by AI agents.** This file is authoritative and OVERRIDES default behavior. Be terse, fail loud, never violate the architecture DAG.
 
 - Baseline spec: `docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`
 - Current post-v2 delta: `docs/superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`
@@ -14,6 +14,11 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - Research-first workstation program (design approved 2026-08-07; R1-R6 implemented and
   accepted 2026-08-10): `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md`
   (ADRs 0021-0026, Accepted; phase plans `docs/superpowers/plans/2026-08-07-research-first-R1..R6-*.md`)
+- Full repair authority additions: `docs/adr/0030-touch-id-owner-presence-for-research-actions.md`
+  + `docs/adr/0031-provider-readiness-and-paper-acceptance-v2.md`; the generated current surface
+  inventory is `docs/governance/capability-authority-matrix.md`.
+- Crypto data house: `docs/adr/0032-governed-crypto-data-house.md`; provider authority is assigned
+  per dataset family and existing CCXT/paper bytes remain immutable.
 - Workstation v3 program: `docs/superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`
   + `2026-07-19-workstation-v3-development-control-plane-design.md`
   + `2026-07-19-workstation-v3-evidence-agent-design.md`
@@ -34,7 +39,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 
 ## Rules (path-scoped, `.claude/rules/`; load when matching files are touched)
 `00-karpathy.md` (always) · `alpha-core.md` · `alpha-data.md` · `alpha-strategies.md` · `alpha-backtest.md` · `alpha-validation.md` · `alpha-research.md` · `alpha-forecast.md` · `alpha-analytics.md` (options/screener) · `alpha-patterns.md` · `alpha-cli.md` (full CLI surface + module map) · `alpha-mcp.md` · `alpha-web.md` (+ frontend) · `quant.md` (gauntlet gates + oracle duties) · `tests.md` · `docs.md`. The MODULE MAP and CLI surface were relocated there verbatim (`tests/unit/test_claude_md_relocation.py` proves zero loss against `tests/fixtures/claude_md_v1.md`). Generated awareness: `uv run python scripts/gate.py brief` (session brief) and `gate.py index` (`.claude/state/repo-index.json`).
-- ADRs: `docs/adr/` holds ADRs 0001-0030 (index `docs/adr/README.md`); ADR-0029 four-family Monte Carlo validation; latest ADR-0030 agent operating system v2 (harness). Every ADR id must be referenced here or in a rule.
+- ADRs: `docs/adr/` holds ADRs 0001-0034 (index `docs/adr/README.md`); ADR-0029 four-family Monte Carlo validation; ADR-0030 Touch ID owner presence; ADR-0031 provider readiness + paper acceptance v2; ADR-0032 governed crypto data house; ADR-0033 governed crypto crowding research + sandbox basis; latest ADR-0034 agent operating system v2 (harness). Every ADR id must be referenced here or in a rule.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
 `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, `alpha_screener`, `alpha_research` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_core` + public `alpha_cli` seams (top of DAG).
@@ -43,6 +48,7 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - `alpha_patterns` → core only (pure pattern geometry; no app consumer yet — see `.claude/rules/alpha-patterns.md`).
 - `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
 - `alpha_mcp` and `alpha_web` sit atop the DAG and compose nothing — actions plus provider/system and engine-backed projections subprocess the `alpha` CLI. Their in-process reads are limited to supported public CLI seams (catalog/run store, artifact contract/run projection, job capacity/durable lease, and paper store) plus bounded Polars artifact projection. They never import or execute the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Nothing imports either surface.
+- The MCP surface is consciously **pinned at 62 tools** — adding or removing one is a deliberate governance change that must move `server.py`, the `test_research_mcp.py` pin, and this line together.
 - Contracts live in root `pyproject.toml` `[tool.importlinter]` (14 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
@@ -60,6 +66,13 @@ $0/free, institutional-grade Python quant research platform. **Written and opera
 - **Determinism (spec §11.4 + ADR-0013).** All seeds derive from `AlphaSettings.random_seed` (default 7). New v3 stochastic work derives seeds from stable semantic namespaces (family/tier/fold/iteration), never positional list order. A v3 `run_id` hashes normalized configuration, snapshot hash, seed, and strategy source/execution fingerprint. Manifests, causal traces, and QuantStats-Lumi HTML are byte-stable; a completed run directory is immutable and an identity-matched byte conflict fails loudly.
 - **Private local-use scope.** ALPHA is permanently a single-owner application for the owner's local device. It is not a product, service, public project, or distributable package, so a root project license and distribution-release review are out of scope. Keep third-party notices, provider terms, and data-retention restrictions intact; reopen distribution governance only if the owner explicitly changes this scope. See `docs/governance/2026-07-19-dependency-license-matrix.md`.
 - **Corporate actions: two clocks.** Knowledge time (`announce_date` else `ex_date`) gates visibility; `ex_date` gates price application (a known-but-future split does NOT rescale prices yet). Splits adjust the price series; dividends are decoupled cash events **credited by the engine at `pay_date`** against the pre-ex holding (shorts debited; never folded into prices; threaded through every run path incl. Tier-2 nulls — Tier-1 stays price-only by design). Yahoo serves split-adjusted OHLCV, so the yfinance parser reconstructs RAW prices from in-window split events (fails loud if the vendor convention drifts). See spec §6.1.
+- **Crypto data is family- and venue-specific.** Binance native data owns CEX spot/futures history;
+  Bybit owns advanced derivatives/options; CoinGecko owns identity/reference; GeckoTerminal owns
+  DEX pool data; Coin Metrics Community owns its frozen catalog and only the reviewed on-chain
+  metrics proven available by it; Coinbase/CCXT is comparison.
+  Never create a universal crypto price, merge USD/USDT/USDC, join by ticker alone, or automatically
+  fall back across venue, market type, units, frequency, or evidence. Existing CCXT snapshots and
+  the `ccxt:binance` paper warmup contract remain byte-compatible (ADR-0032).
 - **Research before strategy.** A raw market observation uses the `alpha-research-scientist` skill to preserve the idea, draft competing explanations, inspect source/data feasibility, and freeze a bounded falsifiable contract before strategy code or hypothesis-specific sweeps. The `alpha-adversarial-reviewer` attacks every gate. Every fresh `alpha project create` automatically captures a research-required case; only pre-launch projects already present at the schema-v2 migration are grandfathered. The deterministic Gate 1 schema/intake/dossier, D0 research primitives, and bounded CLI/MCP/REST/Cockpit walking skeleton grant no autonomous-runner, strategy, holdout, paper, or execution authority. The R5 D1 runner (`alpha research run deep`, ADR-0025) is owner-CLI-launched only, executes the frozen analysis plan strictly on the discovery share, and is mechanically re-verified at admission. The R6d one-shot D2 (`alpha research run confirm`, ADR-0026) is live: owner `approve confirmation` authorizes the sealed share, the frozen primary reads it exactly once, every admission and read re-verifies by exact recomputation, and a pre-flight integrity failure contaminates the share (owner INVALID-only exit). The R6e owner decision view (`alpha research decision-view --json`) assembles the fourteen-question spec-§10.1 edge-validation checklist (typed finding statuses or explicit NOT_TESTED — never a numeric aggregate), the full readiness scorecard, the terminal gate packet (closed cases only), and the append-only decision history. The R6f promotion plane records the lossless spec-§11 `strategy_promotion` dossier atomically inside the closing phase transition whenever the owner decision is `advance_to_strategy` (HypothesisCard, terminal gate-packet id+hash, registered datasets, screened claims, confounder/falsification/stability/attempt ledgers, verified chart references, open questions), and `alpha project agent-brief` embeds the as-of-filtered `research_promotion` reference. The R6g research gate makes spec-§15 anti-premature-backtesting visible and governable: `research_gate_state ∈ {not_required, open, passed, overridden}` is derived strictly from governance/decision/override records (passed supersedes overridden), owner overrides are append-only actor+reason events, an overridden gate is the only unlinked path through `create_strategy_version`, and every run launched under an override is permanently watermarked (manifest `research_gate` block, forked run identity, suite-injected flag, CLI/REST/SPA rendering on ≥3 surfaces plus the Operations overrides list). The R6h SPA gate locks every Develop-desk strategy-creation/optimisation affordance while the linked project's `research_gate_state` is `open` (relay-only — the SPA never derives state; a failed projection read fails open because the CLI/store enforce), surfacing the reason and a one-shot deep link to the research case. The R6i program acceptance suite (`tests/integration/test_research_program_acceptance.py`) proves the spec-§17 composites end-to-end through the public CLI: capture→D1→one-shot D2→SUPPORTED→promotion with the dossier reaching the strategy AgentBrief byte-identically, SUPPORTED-without-advance never promoting (gate stays locked), and honest pre-D2 parks that cannot claim support. The research-first program (R1-R6) is complete; ADR-0021..0026 are Accepted.
 
 - **Research D0 read integrity.** Completed-D0 recovery, status/dossier, phase, and packet
@@ -103,20 +116,24 @@ Relocated verbatim, one layer per path-scoped rule (`.claude/rules/alpha-*.md`, 
 - **New trading observation/research idea** → use `.agents/skills/alpha-research-scientist/SKILL.md`; keep it upstream of strategy development and within ADR-0019/0020. If the required Research Scientist gate is unimplemented, return the missing capability instead of creating an ad hoc authoritative path.
 
 ## Build status
-**Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
-scientific-authority hardening in ADR-0027 is complete. The private local implementation is
-complete; production, distribution, sale, hosting, and multi-user readiness are permanently out of
-scope. The owner real-case pilot remains an empirical-validation action, not a software release gate.
-Python is the sole readiness authority; the temporary D1/D2 admission flags and duplicate
-TypeScript scorecard/checklist derivations are retired. Research now lives in the fixed six-screen
-Workstation, the MCP surface remains pinned at 62 tools, and immutable D1 chart/table evidence is
-rendered through the server figure system. ADR-0028's modeling capabilities are implemented:
+**Current research-program status (2026-08-13):** R1–R6 and the seven-stage repair program are
+implemented. All empirical web launches require a server-verified governed or permanently
+unqualified context; generic jobs cannot exercise owner or broker authority. Guided Research is the
+default fixed-screen workflow, while Advanced mode adds inspection only. Material-question bundles,
+compact D2 boundaries, project context, owner-action Touch ID, isolated literature discovery and
+anchored claims, receipted provider readiness, and mechanically reverified PaperAcceptanceV2 are
+the current contracts. Legacy runs, claims, boundaries, and paper journals remain readable but gain
+no new authority. The private local implementation is complete; production, distribution, sale,
+hosting, and multi-user readiness are permanently out of scope. The generated capability/authority
+matrix is the source of current REST and MCP counts; never copy its counts into prose. External
+provider and broker acceptance remains receipt-driven: a failed or absent live check is an honest
+environment state, not a software pass. ADR-0028's modeling capabilities are implemented:
 immutable `MarketStateV1`, validation-frozen Kronos calibration and `kronos_calibrated` candidate
 assessments, additive Qlib `rank_ensemble_v1` exchanges, and six server-rendered modeling
 diagnostics. These remain research-only capabilities, not evidence of profitable improvement; the
 candidate-promotion gates still apply. The dated implementation
-narratives below are retained as historical delivery records; where they conflict, this paragraph
-and ADR-0027/0028 govern.
+narratives below are retained as historical delivery records; where they conflict, this paragraph,
+ADR-0027/0028/0030/0031, and the generated authority matrix govern.
 
 The full dated delivery history (phases, live-data verification, audits, Kronos,
 paper trading, QuantPad, Workstation v1–v4, Research Scientist program, research-first

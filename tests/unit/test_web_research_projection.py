@@ -19,16 +19,16 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
         return {"ok": True}
 
     monkeypatch.setattr(_research, "_run_json", fake_run_json)
-    answers = {
-        "chart_construction": "spy_rth_60m_four_hour_window",
-        "event_availability": "second_trough_confirmable",
-        "primary_outcome": "four_trading_hour_return_25bp",
-    }
-
     assert _research.capture(data_dir=tmp_path, idea="idea", name="case") == {"ok": True}
     assert _research.get("project", data_dir=tmp_path) == {"ok": True}
+    assert _research.proposal_options("project", data_dir=tmp_path) == {"ok": True}
     assert _research.propose(
-        "project", data_dir=tmp_path, source_pack_id="sp_pack", answers=answers
+        "project",
+        data_dir=tmp_path,
+        source_pack_id="sp_pack",
+        answer_bundle_id="synthetic_spy_60m_four_hour_v1",
+        dataset_ref_id=None,
+        expected_case_revision="a" * 64,
     ) == {"ok": True}
     assert _research.launch("project", data_dir=tmp_path, stage="pilot") == {"ok": True}
     assert _research.status("project", data_dir=tmp_path) == {"ok": True}
@@ -46,6 +46,7 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
     assert calls == [
         (["research", "capture", "idea", "--json", "--name", "case"], tmp_path, 60.0),
         (["research", "status", "project", "--json"], tmp_path, 60.0),
+        (["research", "proposal-options", "project", "--json"], tmp_path, 60.0),
         (
             [
                 "research",
@@ -53,12 +54,10 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
                 "project",
                 "--source-pack-id",
                 "sp_pack",
-                "--answer",
-                "chart_construction=spy_rth_60m_four_hour_window",
-                "--answer",
-                "event_availability=second_trough_confirmable",
-                "--answer",
-                "primary_outcome=four_trading_hour_return_25bp",
+                "--answer-bundle",
+                "synthetic_spy_60m_four_hour_v1",
+                "--expected-case-revision",
+                "a" * 64,
                 "--json",
             ],
             tmp_path,
@@ -144,27 +143,9 @@ def test_scorecard_projection_extracts_the_status_scorecard(
         _research.scorecard("project", data_dir=tmp_path)
 
 
-def test_research_projection_rejects_unavailable_stages_and_answer_axes(tmp_path: Path) -> None:
+def test_research_projection_rejects_unavailable_stages(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="must be pilot"):
         _research.launch("project", data_dir=tmp_path, stage="confirm")
-    with pytest.raises(ValueError, match="exactly the three"):
-        _research.propose(
-            "project",
-            data_dir=tmp_path,
-            source_pack_id="sp_pack",
-            answers={"chart_construction": "synthetic_only"},
-        )
-    with pytest.raises(ValueError, match="unsupported primary_outcome"):
-        _research.propose(
-            "project",
-            data_dir=tmp_path,
-            source_pack_id="sp_pack",
-            answers={
-                "chart_construction": "spy_rth_60m_four_hour_window",
-                "event_availability": "second_trough_confirmable",
-                "primary_outcome": "highest_backtest_return",
-            },
-        )
 
 
 @pytest.mark.parametrize("payload", [[], {1: "not-a-string-key"}])

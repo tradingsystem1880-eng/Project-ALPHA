@@ -169,6 +169,23 @@ function withGroups(
   }
 }
 
+/**
+ * A project change is a context boundary, not another independent filter. Start from a cleared
+ * dependent projection, then apply any values supplied in the same authoritative update. This
+ * prevents the old project's run, symbol, snapshot, or version flashing under the new header.
+ */
+export function applyLinkedPatch(
+  current: GroupLinkedState,
+  patch: Partial<GroupLinkedState>,
+): GroupLinkedState {
+  const projectChanges = Object.hasOwn(patch, 'projectId')
+    && (patch.projectId ?? null) !== current.projectId
+  const base = projectChanges
+    ? { ...current, symbol: null, runId: null, snapshotId: null, versionId: null }
+    : current
+  return migrateLinkedGroup({ ...base, ...patch }, base)
+}
+
 export function getLinked(): LinkedState {
   return activeState
 }
@@ -181,7 +198,7 @@ export function setGroupLinked(group: LinkGroup, patch: Partial<GroupLinkedState
   const current = workspaceState.groups[group]
   const groups = {
     ...workspaceState.groups,
-    [group]: migrateLinkedGroup({ ...current, ...patch }, current),
+    [group]: applyLinkedPatch(current, patch),
   }
   publish(withGroups(workspaceState.linkGroup, groups))
 }
@@ -191,7 +208,7 @@ export function setLinked(patch: Partial<LinkedState>): void {
   const current = workspaceState.groups[linkGroup]
   const groups = {
     ...workspaceState.groups,
-    [linkGroup]: migrateLinkedGroup({ ...current, ...patch }, current),
+    [linkGroup]: applyLinkedPatch(current, patch),
   }
   publish(withGroups(linkGroup, groups))
 }

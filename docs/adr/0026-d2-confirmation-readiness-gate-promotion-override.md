@@ -17,8 +17,25 @@ scorecard, a promotion context packet, and any UI-level gating or recorded overr
 
 ## Decision
 
+### 2026-08-12 integrity addendum
+
+The anti-premature-backtesting boundary applies to every Workstation empirical launch surface,
+not only the three panels named in the original implementation. Generic jobs, free-form commands,
+strategy comparison, and any later advanced console must carry an explicit run context. A
+governed-project context is checked against the Python-authoritative gate before a child process is
+created; an unreadable or open gate fails closed. A no-project context is an explicitly standalone,
+permanently unqualified sandbox and can never contribute research evidence. Unknown empirical
+commands fail closed when project context is supplied. Owner-only commands remain unavailable to
+generic REST and MCP surfaces.
+
+This addendum does not remove the trusted-local override. An override-capable governed launch must
+still use the existing CLI flag and permanent override watermark; a surface may not synthesize a
+different bypass.
+
 - **D2 runner.** `alpha research run confirm` executes the sealed one-shot confirmation under the
-  immutable `ResearchD2BoundaryV1` and the owner-approved child confirmation contract, emitting
+  immutable versioned research boundary. New contracts use compact exact-membership
+  `ResearchD2BoundaryV2`; historical V1 payloads remain byte-identically readable and are never
+  migrated. The owner-approved child confirmation contract emits
   `REGISTERED CONFIRMATORY` artifacts and the D2 `authorized → consumed` (or `contaminated`)
   events. Confirmation approval and D2 transitions are un-disabled in this phase; the mechanical
   classification remains the only source of the scientific outcome.

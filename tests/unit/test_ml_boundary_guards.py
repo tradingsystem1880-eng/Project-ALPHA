@@ -1006,6 +1006,8 @@ def test_train_command_runs_a_locked_fake_worker(
 ) -> None:
     exchange = _clone(boundary_fixture["result"], tmp_path)
     captured: dict[str, object] = {}
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "must-not-cross-worker-boundary")
+    monkeypatch.setenv("QUANTPAD_API_KEY", "must-not-cross-worker-boundary")
 
     def complete(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         captured["command"] = command
@@ -1028,6 +1030,8 @@ def test_train_command_runs_a_locked_fake_worker(
     assert summary["status"] == "trained"
     assert "--no-sync" in command
     assert environment["PYTHONHASHSEED"] == "7"
+    assert "ALPHA_COINGECKO_API_KEY" not in environment
+    assert "QUANTPAD_API_KEY" not in environment
 
 
 def test_train_rejects_worker_that_rewrites_inputs_and_anchor_coherently(

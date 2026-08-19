@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+import sqlite3
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -13,14 +14,25 @@ from alpha_cli._suite import (
     StepExecution,
     SuiteAction,
     SuiteStep,
+    _finish_stage,
+    _headline_state,
     _monte_carlo_results,
     _monte_carlo_stage_state,
+    _record_optimization_trial_attempts,
     build_suite_plan,
     execute_suite,
     reserve_suite_job,
 )
 from alpha_cli.control_store import ControlStore, StageState
+from alpha_cli.strategy_candidate import registered_hedged_basis_candidate
+from alpha_cli.strategy_candidate_runtime import run_hedged_basis_candidate
 from alpha_core import DataError
+from alpha_data.crypto.contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoSnapshotMemberV1,
+    CryptoSnapshotV1,
+)
+from alpha_strategies.hedged_basis import HedgedBasisObservationV1
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 type TestRun = tuple[str, str, StageState, bool | None, str | None]
@@ -75,6 +87,105 @@ def _experiment(tmp_path: Path, *, seal: bool = True) -> tuple[ControlStore, str
             end_date="2026-06-30",
         )
     return store, project_id, experiment_id
+
+
+def _hedged_basis_experiment(tmp_path: Path) -> tuple[ControlStore, str, str, str, str]:
+    """Build the post-promotion projection without replaying the research program."""
+    dataset = CryptoDatasetIdentityV1(
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        family="funding",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="8h",
+        units="rate",
+        timestamp_convention="funding_time_utc",
+    )
+    snapshot = CryptoSnapshotV1.create(
+        members=(
+            CryptoSnapshotMemberV1(
+                dataset=dataset,
+                artifact_key="normalized/funding/bybit/BTCUSDT.parquet",
+                artifact_sha256="b" * 64,
+            ),
+        ),
+        asset_master_version="asset-master-v1",
+        qualification_versions=("crypto-quality-v1",),
+    )
+    snapshot_id = snapshot.snapshot_id
+    snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    snapshot_path.parent.mkdir(parents=True)
+    snapshot_path.write_text(
+        json.dumps(snapshot.to_dict(), sort_keys=True),
+        encoding="utf-8",
+    )
+    store = ControlStore(tmp_path)
+    project = store.create_project(
+        name="BTC hedged basis",
+        hypothesis="Crowded funding predicts mark underperformance.",
+        falsification_criterion="Reject when sealed confirmation does not clear costs.",
+        at=datetime(2026, 8, 5, 23, 59, tzinfo=UTC),
+    )
+    project_id = str(project["project_id"])
+    mark_project_as_migrated_legacy(store, project_id)
+    candidate = registered_hedged_basis_candidate()
+    version = store.create_strategy_version(
+        project_id,
+        strategy_name=candidate.strategy_name,
+        source_fingerprint="git:hedged-basis-runtime-v1",
+        definition=candidate.to_dict(),
+        parameter_space={},
+    )
+    experiment = store.create_experiment_spec(
+        project_id,
+        strategy_version_id=str(version["version_id"]),
+        snapshot_id=snapshot_id,
+        universe=["BTCUSDT"],
+        split_policy={"topology": "group_atomic_60_20_20"},
+        costs={"total_round_trip_bps": 40.0},
+        seeds={"master": 7},
+    )
+    experiment_id = str(experiment["experiment_id"])
+    contract_id = f"rc_{'c' * 64}"
+    # This downstream planner fixture needs only the immutable post-promotion link.
+    # Research transition semantics have their own exhaustive acceptance tests.
+    with sqlite3.connect(store._database_path()) as connection:  # noqa: SLF001
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute(
+            "INSERT INTO research_contracts VALUES (?, ?, 'confirmation', NULL, ?, ?, ?, ?)",
+            (
+                contract_id,
+                project_id,
+                "{}",
+                "owner",
+                "human",
+                "2026-01-01T00:00:00Z",
+            ),
+        )
+        connection.execute(
+            "INSERT INTO research_contract_strategy_links VALUES (?, ?, ?, ?)",
+            (
+                project_id,
+                str(version["version_id"]),
+                contract_id,
+                "2026-01-01T00:00:00Z",
+            ),
+        )
+        connection.execute(
+            "INSERT INTO research_contract_experiment_links VALUES (?, ?, ?, ?)",
+            (project_id, experiment_id, contract_id, "2026-01-01T00:00:00Z"),
+        )
+    store.seal_holdout(
+        project_id,
+        experiment_id,
+        actor="owner",
+        reason="reserve the final fixture window",
+        start_date="2026-04-01",
+        end_date="2026-06-30",
+    )
+    return store, project_id, experiment_id, contract_id, snapshot_id
 
 
 def _complete_action(
@@ -226,6 +337,77 @@ def _publish_suite_run(
     run_dir = tmp_path / "runs" / run_id
     run_dir.mkdir(parents=True)
     (run_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+def _complete_candidate_stage(
+    store: ControlStore,
+    tmp_path: Path,
+    project_id: str,
+    experiment_id: str,
+    contract_id: str,
+    snapshot_id: str,
+    *,
+    action: str,
+    stage: str,
+    commands: tuple[str, ...],
+) -> None:
+    if stage != "baseline":
+        store.append_experiment_stage_state(
+            project_id, experiment_id, stage, "ready", reason="candidate fixture ready"
+        )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, stage, "queued", reason="candidate fixture queued"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, stage, "running", reason="candidate fixture running"
+    )
+    for index, command in enumerate(commands):
+        run_id = hashlib.sha256(f"{command}:{index}".encode()).hexdigest()[:16]
+        changes: dict[str, object] = {"passed": True}
+        if command.startswith("candidate_null_"):
+            changes["metadata"] = {"null_model": command.removeprefix("candidate_null_")}
+        if command.startswith("candidate_monte_carlo_"):
+            changes.update({"status": "clear", "source_run_id": "abcdef0123456789"})
+        if command == "candidate_optim":
+            changes["metadata"] = {
+                "trials": [
+                    {
+                        "trial": index,
+                        "total_round_trip_cost_bps": cost,
+                        "mean_net_return": 0.01 - cost / 10_000,
+                        "selected": cost == 40,
+                    }
+                    for index, cost in enumerate((20, 40, 60))
+                ]
+            }
+        _publish_candidate_suite_run(
+            tmp_path,
+            run_id=run_id,
+            snapshot_id=snapshot_id,
+            contract_id=contract_id,
+            command=command,
+            changes=changes,
+        )
+        store.link_suite_stage_run(
+            project_id,
+            experiment_id,
+            suite_action=action,
+            stage=stage,
+            state=(
+                "warning"
+                if command in {"candidate_null_student_t", "candidate_null_garch"}
+                else "pass"
+            ),
+            run_id=run_id,
+        )
+    store.complete_suite_stage(
+        project_id,
+        experiment_id,
+        suite_action=action,
+        stage=stage,
+        state="pass",
+        reason="verified candidate fixture",
+    )
 
 
 def test_monte_carlo_result_statuses_map_and_aggregate_fail_closed(tmp_path: Path) -> None:
@@ -834,3 +1016,682 @@ def test_unoverridden_gates_never_inject_the_watermark_flag(tmp_path: Path) -> N
         for step in plan.steps:
             assert "--research-gate-override" not in step.argv, (action, step.label)
             assert "--research-gate-override" not in step.preview, (action, step.label)
+
+
+def test_hedged_basis_baseline_uses_only_the_registered_sandbox_runner(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+
+    plan = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+
+    assert plan.ready is True
+    assert len(plan.steps) == 1
+    step = plan.steps[0]
+    assert step.argv[:4] == (
+        "strategy-candidate",
+        "run",
+        snapshot_id,
+        "--research-contract-id",
+    )
+    assert step.argv[4] == contract_id
+    assert step.argv[-4:] == ("--analysis", "baseline", "--as-of", "2026-03-31")
+    assert "2026-03-31" not in step.preview
+    assert plan.governance["deployment_scope"] == "sandbox_only"
+    assert plan.governance["places_orders"] is False
+    assert plan.governance["paper_eligible"] is False
+
+
+def test_hedged_basis_paper_preflight_is_a_non_authorizing_blocker(tmp_path: Path) -> None:
+    store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
+
+    plan = build_suite_plan(store, project_id, experiment_id, "paper_preflight", data_dir=tmp_path)
+
+    assert plan.ready is False
+    assert "holdout stage must be pass or warning" in plan.blockers
+    assert [step.argv for step in plan.steps] == [
+        ("strategy-candidate", "paper-preflight", "--json")
+    ]
+    assert plan.governance["preflight_outcome"] == "UNSUPPORTED_MULTI_VENUE_PAPER"
+    assert plan.governance["paper_readiness_credit"] is False
+    assert plan.governance["places_orders"] is False
+    assert plan.governance["owner_only_launch"] is False
+    assert _headline_state(tmp_path, plan, ()) == "fail"
+
+    calls: list[dict[str, object]] = []
+
+    class PaperStore:
+        def get_project(self, _: str) -> dict[str, object]:
+            return {
+                "stage_states": [
+                    {
+                        "experiment_id": experiment_id,
+                        "stage": "paper",
+                        "state": "running",
+                    }
+                ]
+            }
+
+        def complete_suite_journal_stage(self, *args: object, **kwargs: object) -> None:
+            calls.append({"args": args, **kwargs})
+
+    _finish_stage(
+        cast(ControlStore, PaperStore()),
+        plan,
+        "fail",
+        "unsupported by design",
+        job_id="00000000-0000-4000-8000-000000000001",
+    )
+    assert calls[0]["state"] == "fail"
+
+
+def _publish_candidate_suite_run(
+    tmp_path: Path,
+    *,
+    run_id: str,
+    snapshot_id: str,
+    contract_id: str,
+    command: str = "candidate_baseline",
+    changes: dict[str, object] | None = None,
+) -> None:
+    snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    manifest: dict[str, object] = {
+        "schema_version": 3,
+        "artifact_contract_version": 3,
+        "run_identity_version": 3,
+        "run_id": run_id,
+        "command": command,
+        "kind": "strategy_candidate",
+        "snapshot_id": snapshot_id,
+        "snapshot_hash": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+        "execution_fingerprint": "a" * 64,
+        "strategy_fingerprint": "b" * 64,
+        "source_fingerprint": "c" * 64,
+        "research_cutoff": "2026-03-31",
+        "research_inheritance": {"contract_id": contract_id},
+        "deployment_scope": "sandbox_only",
+        "places_orders": False,
+        "paper_eligible": False,
+        "artifacts": {},
+    }
+    manifest.update(changes or {})
+    run_dir = tmp_path / "runs" / run_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+def test_candidate_baseline_admission_preserves_research_and_sandbox_boundaries(
+    tmp_path: Path,
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    run_id = "3000000000000001"
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id=run_id,
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+    )
+
+    linked = store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="baseline",
+        stage="baseline",
+        state="pass",
+        run_id=run_id,
+    )
+
+    assert linked["run_id"] == run_id
+    assert linked["state"] == "pass"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"research_inheritance": {"contract_id": f"rc_{'e' * 64}"}},
+        {"deployment_scope": "paper"},
+        {"places_orders": True},
+        {"paper_eligible": True},
+    ],
+)
+def test_candidate_baseline_admission_rejects_forged_authority(
+    tmp_path: Path, changes: dict[str, object]
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    run_id = "3000000000000002"
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id=run_id,
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+        changes=changes,
+    )
+
+    with pytest.raises(DataError, match="sandbox boundary"):
+        store.link_suite_stage_run(
+            project_id,
+            experiment_id,
+            suite_action="baseline",
+            stage="baseline",
+            state="pass",
+            run_id=run_id,
+        )
+
+
+@pytest.mark.parametrize(
+    ("suite_action", "stage", "state", "changes", "message"),
+    [
+        ("baseline", "baseline", "ready", {}, "require pass, warning, or fail"),
+        ("unknown", "baseline", "pass", {}, "does not publish canonical runs"),
+        ("baseline", "oos", "pass", {}, "belongs to stage"),
+        ("baseline", "baseline", "pass", {"schema_version": 2}, "verified v3 run"),
+        ("baseline", "baseline", "pass", {"command": "candidate_oos"}, "cannot cite command"),
+        ("baseline", "baseline", "pass", {"snapshot_id": "a" * 64}, "uses snapshot"),
+        ("baseline", "baseline", "pass", {"snapshot_hash": "a" * 64}, "snapshot hash"),
+        (
+            "baseline",
+            "baseline",
+            "pass",
+            {"command": "backtest_run"},
+            "command family does not match",
+        ),
+    ],
+)
+def test_candidate_suite_admission_fails_closed_before_linking(
+    tmp_path: Path,
+    suite_action: str,
+    stage: str,
+    state: StageState,
+    changes: dict[str, object],
+    message: str,
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    run_id = hashlib.sha256(message.encode()).hexdigest()[:16]
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id=run_id,
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+        changes=changes,
+    )
+
+    with pytest.raises(DataError, match=message):
+        store.link_suite_stage_run(
+            project_id,
+            experiment_id,
+            suite_action=suite_action,
+            stage=stage,
+            state=state,
+            run_id=run_id,
+        )
+
+
+def test_candidate_oos_and_null_plans_use_distinct_registered_commands(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="baseline",
+        stage="baseline",
+        commands=("candidate_baseline",),
+    )
+
+    oos = build_suite_plan(store, project_id, experiment_id, "inner_oos", data_dir=tmp_path)
+    assert oos.ready is True
+    assert oos.steps[0].argv[6:8] == ("inner_oos", "--as-of")
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="inner_oos",
+        stage="oos",
+        commands=("candidate_oos",),
+    )
+
+    nulls = build_suite_plan(
+        store, project_id, experiment_id, "three_null_families", data_dir=tmp_path
+    )
+    assert nulls.ready is True
+    assert [step.argv[6] for step in nulls.steps] == [
+        "null_bootstrap",
+        "null_student_t",
+        "null_garch",
+    ]
+    assert nulls.governance["aggregation"] == "no_majority_vote"
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="three_null_families",
+        stage="robustness",
+        commands=(
+            "candidate_null_bootstrap",
+            "candidate_null_student_t",
+            "candidate_null_garch",
+        ),
+    )
+
+    monte_carlo = build_suite_plan(
+        store, project_id, experiment_id, "monte_carlo", data_dir=tmp_path
+    )
+    assert monte_carlo.ready is True
+    assert [step.argv[6] for step in monte_carlo.steps] == [
+        "monte_carlo_classical",
+        "monte_carlo_kronos_fixture",
+    ]
+    assert monte_carlo.steps[0].evidence_role == "iid_regime_student_t_no_majority_vote"
+    source_runs = {step.argv[8] for step in monte_carlo.steps}
+    assert len(source_runs) == 1
+    assert monte_carlo.governance["kronos_role"] == ("disclosed_fake_fixture_not_market_oracle")
+
+
+def test_candidate_planner_reports_missing_authority_and_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
+    monte_carlo = build_suite_plan(
+        store, project_id, experiment_id, "monte_carlo", data_dir=tmp_path
+    )
+    assert "completed headline null run" in "; ".join(monte_carlo.blockers)
+
+    original = store.get_project
+
+    def missing_contract(_: ControlStore, selected_project_id: str) -> dict[str, object]:
+        project = original(selected_project_id)
+        versions = project["versions"]
+        assert isinstance(versions, list)
+        for version in versions:
+            assert isinstance(version, dict)
+            version.pop("research_contract_id", None)
+        return project
+
+    monkeypatch.setattr(ControlStore, "get_project", missing_contract)
+    baseline = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+    assert "promoted research contract" in "; ".join(baseline.blockers)
+    assert "<promoted-research-contract-required>" in baseline.steps[0].argv
+
+
+def test_candidate_planner_hides_revealed_or_contaminated_windows(tmp_path: Path) -> None:
+    store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
+    database = store._database_path()  # noqa: SLF001
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE holdout_state SET revealed_at = ? WHERE project_id = ? AND experiment_id = ?",
+            ("2026-08-15T00:00:00Z", project_id, experiment_id),
+        )
+    revealed = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+    assert "cannot resume" in "; ".join(revealed.blockers)
+
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE holdout_state SET revealed_at = NULL, contaminated_at = ? "
+            "WHERE project_id = ? AND experiment_id = ?",
+            ("2026-08-15T00:00:00Z", project_id, experiment_id),
+        )
+    contaminated = build_suite_plan(store, project_id, experiment_id, "baseline", data_dir=tmp_path)
+    assert "contaminated" in "; ".join(contaminated.blockers)
+
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "DELETE FROM holdout_specs WHERE project_id = ? AND experiment_id = ?",
+            (project_id, experiment_id),
+        )
+    holdout = build_suite_plan(
+        store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path
+    )
+    assert "sealed evaluation window" in "; ".join(holdout.blockers)
+
+
+def test_candidate_optimization_and_portfolio_plans_keep_fixed_scope(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    for action, stage, commands in (
+        ("baseline", "baseline", ("candidate_baseline",)),
+        ("inner_oos", "oos", ("candidate_oos",)),
+        (
+            "three_null_families",
+            "robustness",
+            (
+                "candidate_null_bootstrap",
+                "candidate_null_student_t",
+                "candidate_null_garch",
+            ),
+        ),
+        (
+            "monte_carlo",
+            "monte_carlo",
+            ("candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"),
+        ),
+    ):
+        _complete_candidate_stage(
+            store,
+            tmp_path,
+            project_id,
+            experiment_id,
+            contract_id,
+            snapshot_id,
+            action=action,
+            stage=stage,
+            commands=commands,
+        )
+
+    optimization = build_suite_plan(
+        store, project_id, experiment_id, "optimize_grid", data_dir=tmp_path
+    )
+    assert optimization.ready is True
+    assert optimization.steps[0].argv[6] == "optimize_cost_sensitivity"
+    assert optimization.estimated_workload["grid_configurations"] == 3
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="optimize_grid",
+        stage="optimization",
+        commands=("candidate_optim",),
+    )
+    with pytest.raises(DataError, match="exactly one canonical optimization run"):
+        _record_optimization_trial_attempts(
+            store,
+            optimization,
+            data_dir=tmp_path,
+            job_id="00000000-0000-4000-8000-000000000001",
+            run_ids=(),
+        )
+    _record_optimization_trial_attempts(
+        store,
+        optimization,
+        data_dir=tmp_path,
+        job_id="00000000-0000-4000-8000-000000000001",
+        run_ids=(hashlib.sha256(b"candidate_optim:0").hexdigest()[:16],),
+    )
+
+    portfolio = build_suite_plan(
+        store, project_id, experiment_id, "portfolio_cross_asset", data_dir=tmp_path
+    )
+    assert portfolio.ready is True
+    assert [step.argv[6] for step in portfolio.steps] == [
+        "portfolio_concentration",
+        "cross_asset_scope",
+    ]
+    assert portfolio.steps[1].evidence_role == "completed_not_applicable_no_invented_asset"
+
+
+def test_candidate_stress_qlib_and_kronos_are_disclosed_fixture_paths(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    _complete_candidate_stage(
+        store,
+        tmp_path,
+        project_id,
+        experiment_id,
+        contract_id,
+        snapshot_id,
+        action="baseline",
+        stage="baseline",
+        commands=("candidate_baseline",),
+    )
+
+    stress = build_suite_plan(store, project_id, experiment_id, "fixed_stress", data_dir=tmp_path)
+    assert stress.ready is True
+    assert stress.steps[0].argv[6] == "fixed_stress"
+    assert stress.governance["separate_from_nulls"] is True
+
+    qlib = build_suite_plan(store, project_id, experiment_id, "qlib", data_dir=tmp_path)
+    assert qlib.ready is True
+    assert qlib.steps[0].argv[6] == "qlib_fixture"
+    assert qlib.governance["model_role"] == "contract_fixture_not_predictive_evidence"
+
+    kronos = build_suite_plan(store, project_id, experiment_id, "kronos", data_dir=tmp_path)
+    assert kronos.ready is True
+    assert [step.argv[6] for step in kronos.steps] == [
+        "kronos_forecast_fixture",
+        "kronos_eval_fixture",
+    ]
+    assert kronos.governance["kronos_role"] == "disclosed_fake_fixture_not_market_oracle"
+
+
+def test_candidate_freeze_rebuilds_the_complete_distinct_evidence_family(tmp_path: Path) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    actions = (
+        ("baseline", "baseline", ("candidate_baseline",)),
+        ("inner_oos", "oos", ("candidate_oos",)),
+        (
+            "three_null_families",
+            "robustness",
+            (
+                "candidate_null_bootstrap",
+                "candidate_null_student_t",
+                "candidate_null_garch",
+            ),
+        ),
+        (
+            "monte_carlo",
+            "monte_carlo",
+            ("candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"),
+        ),
+        ("optimize_grid", "optimization", ("candidate_optim",)),
+        (
+            "portfolio_cross_asset",
+            "portfolio",
+            ("candidate_portfolio", "candidate_cross_asset"),
+        ),
+        ("qlib", "ml", ("candidate_qlib",)),
+        (
+            "kronos",
+            "kronos",
+            ("candidate_kronos_forecast", "candidate_kronos_eval"),
+        ),
+    )
+    for action, stage, commands in actions:
+        _complete_candidate_stage(
+            store,
+            tmp_path,
+            project_id,
+            experiment_id,
+            contract_id,
+            snapshot_id,
+            action=action,
+            stage=stage,
+            commands=commands,
+        )
+    _publish_candidate_suite_run(
+        tmp_path,
+        run_id="5000000000000001",
+        snapshot_id=snapshot_id,
+        contract_id=contract_id,
+        command="candidate_fixed_stress",
+        changes={"passed": True},
+    )
+    store.link_suite_stage_run(
+        project_id,
+        experiment_id,
+        suite_action="fixed_stress",
+        stage="robustness",
+        state="pass",
+        run_id="5000000000000001",
+    )
+
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "ready", reason="all checks complete"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "queued", reason="freeze queued"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "running", reason="freeze verification running"
+    )
+    frozen = store.append_experiment_stage_state(
+        project_id,
+        experiment_id,
+        "candidate",
+        "pass",
+        reason="freeze exact deterministic sandbox candidate",
+    )
+
+    assert frozen["state"] == "pass"
+
+    holdout = build_suite_plan(
+        store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path
+    )
+    assert holdout.ready is True
+    assert holdout.steps[0].argv == ("__holdout__",)
+    assert holdout.steps[1].argv[6] == "holdout"
+    assert "2026-04-01" in holdout.steps[1].argv
+    assert "2026-04-01" not in holdout.steps[1].preview
+
+
+def test_candidate_suite_executes_complete_sandbox_fixture_and_blocked_paper(
+    tmp_path: Path,
+) -> None:
+    store, project_id, experiment_id, contract_id, snapshot_id = _hedged_basis_experiment(tmp_path)
+    snapshot_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    snapshot_hash = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+
+    def observation(event: datetime, *, perp_exit: float) -> HedgedBasisObservationV1:
+        return HedgedBasisObservationV1.create(
+            event_time=event,
+            event_available_at=event,
+            entry_time=event + timedelta(hours=1),
+            entry_available_at=event + timedelta(hours=1),
+            exit_time=event + timedelta(hours=8),
+            exit_available_at=event + timedelta(hours=8),
+            bybit_perp_entry=100.0,
+            bybit_perp_exit=perp_exit,
+            binance_spot_entry=100.0,
+            binance_spot_exit=100.0,
+            funding_rate=0.001,
+            funding_available_at=event,
+            perp_quantity_btc=-1.0,
+            spot_quantity_btc=1.0,
+            input_sha256=(("binance_spot", "a" * 64), ("bybit_linear", "b" * 64)),
+            event_operator_fingerprint="c" * 64,
+            correction_lineage=(),
+        )
+
+    observations = tuple(
+        observation(
+            datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=16 * index),
+            perp_exit=98.5 if index % 2 == 0 else 99.5,
+        )
+        for index in range(60)
+    ) + tuple(
+        observation(
+            datetime(2026, 4, 1, tzinfo=UTC) + timedelta(hours=16 * index),
+            perp_exit=98.5 if index % 2 == 0 else 99.5,
+        )
+        for index in range(12)
+    )
+
+    def option(argv: tuple[str, ...], name: str) -> str | None:
+        return argv[argv.index(name) + 1] if name in argv else None
+
+    def run_step(
+        step: SuiteStep,
+        _job_id: str,
+        _control: ControlStore,
+        _cancelled: object,
+    ) -> StepExecution:
+        if step.argv[:2] == ("strategy-candidate", "paper-preflight"):
+            return StepExecution(returncode=0, run_ids=())
+        assert step.argv[:2] == ("strategy-candidate", "run")
+        analysis = option(step.argv, "--analysis")
+        assert analysis is not None
+        holdout_start = option(step.argv, "--holdout-start")
+        holdout_end = option(step.argv, "--holdout-end")
+        as_of = option(step.argv, "--as-of")
+        manifest = run_hedged_basis_candidate(
+            tmp_path,
+            snapshot_id=snapshot_id,
+            snapshot_hash=snapshot_hash,
+            research_contract_id=contract_id,
+            observations=observations,
+            analysis=analysis,
+            source_run_id=option(step.argv, "--source-run-id"),
+            holdout_start=None if holdout_start is None else date.fromisoformat(holdout_start),
+            holdout_end=None if holdout_end is None else date.fromisoformat(holdout_end),
+            holdout_spec_hash=option(step.argv, "--holdout-spec-hash"),
+            research_cutoff=as_of,
+            as_of=(
+                None
+                if as_of is None
+                else datetime.combine(date.fromisoformat(as_of), datetime.max.time(), tzinfo=UTC)
+            ),
+        )
+        return StepExecution(returncode=0, run_ids=(str(manifest["run_id"]),))
+
+    actions = (
+        "baseline",
+        "inner_oos",
+        "three_null_families",
+        "monte_carlo",
+        "optimize_grid",
+        "portfolio_cross_asset",
+        "fixed_stress",
+        "qlib",
+        "kronos",
+    )
+    for action in actions:
+        plan = build_suite_plan(
+            store, project_id, experiment_id, cast(SuiteAction, action), data_dir=tmp_path
+        )
+        assert plan.ready is True, (action, plan.blockers)
+        completed = execute_suite(store, plan, data_dir=tmp_path, step_runner=run_step)
+        assert completed["status"] == "succeeded"
+        result = cast(dict[str, object], completed["result"])
+        if action == "monte_carlo" and result["stage_state"] == "warning":
+            review = store.review_monte_carlo(
+                project_id,
+                experiment_id,
+                decision="continue",
+                actor="fixture-owner",
+                rationale="Exercise the exact warning evidence path in the deterministic fixture.",
+            )
+            assert review["decision"] == "continue"
+
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "ready", reason="fixture evidence complete"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "queued", reason="fixture freeze queued"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "running", reason="fixture freeze verifying"
+    )
+    store.append_experiment_stage_state(
+        project_id, experiment_id, "candidate", "pass", reason="fixture candidate frozen"
+    )
+
+    holdout = build_suite_plan(
+        store, project_id, experiment_id, "holdout_reveal", data_dir=tmp_path
+    )
+    assert holdout.ready is True
+    completed_holdout = execute_suite(
+        store,
+        holdout,
+        data_dir=tmp_path,
+        owner_actor="fixture-owner",
+        owner_reason="exercise the sealed deterministic fixture",
+        step_runner=run_step,
+    )
+    holdout_result = cast(dict[str, object], completed_holdout["result"])
+    assert holdout_result["stage_state"] == "pass"
+
+    paper = build_suite_plan(store, project_id, experiment_id, "paper_preflight", data_dir=tmp_path)
+    assert paper.ready is True
+    completed_paper = execute_suite(store, paper, data_dir=tmp_path, step_runner=run_step)
+    paper_result = cast(dict[str, object], completed_paper["result"])
+    assert paper_result["stage_state"] == "fail"
+    assert paper_result["run_ids"] == []
+    assert paper.governance["preflight_outcome"] == "UNSUPPORTED_MULTI_VENUE_PAPER"
+    assert paper.governance["paper_readiness_credit"] is False
+    assert holdout.governance["owner_only"] is True
+    assert holdout.governance["places_orders"] is False

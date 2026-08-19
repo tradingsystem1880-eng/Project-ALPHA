@@ -20,8 +20,17 @@ function formatBytes(value: number): string {
   return `${amount.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
 }
 
-function ProviderCard({ provider }: { provider: ProviderDefinition }) {
+function ProviderCard({
+  provider,
+  checking,
+  onCheck,
+}: {
+  provider: ProviderDefinition
+  checking: boolean
+  onCheck: (providerId: string) => void
+}) {
   const missing = missingCredentialNames(provider)
+  const canCheck = ['tiingo', 'quantpad', 'ibkr'].includes(provider.id) && provider.configured
   return (
     <article className="provider-card">
       <div className="provider-card-head">
@@ -29,7 +38,7 @@ function ProviderCard({ provider }: { provider: ProviderDefinition }) {
           <div className="provider-label">{provider.label}</div>
           <div className="mono muted">{provider.id}</div>
         </div>
-        <span className={`chip ${provider.configured ? 'pass' : 'fail'}`}>
+        <span className={`chip ${provider.verification_state === 'verified' ? 'pass' : 'kind'}`}>
           {providerReadinessLabel(provider)}
         </span>
       </div>
@@ -57,6 +66,21 @@ function ProviderCard({ provider }: { provider: ProviderDefinition }) {
       {missing.length ? (
         <div className="leak">Missing {missing.join(', ')}</div>
       ) : null}
+      <div className="provider-verification">
+        <span className="eyebrow">Last explicit verification</span>
+        <span className="mono">
+          {provider.verified_at ?? 'never'}
+        </span>
+        <span className="muted">{provider.recovery_action}</span>
+        {provider.granted_capabilities.length ? (
+          <span className="mono muted">granted: {provider.granted_capabilities.join(' · ')}</span>
+        ) : null}
+        {['tiingo', 'quantpad', 'ibkr'].includes(provider.id) ? (
+          <button className="btn" disabled={!canCheck || checking} onClick={() => onCheck(provider.id)}>
+            {checking ? 'checking…' : 'run explicit check'}
+          </button>
+        ) : null}
+      </div>
       {Object.entries(provider.options).map(([name, option]) => (
         <div className="provider-option" key={name}>
           <span className="eyebrow">{option.label}</span>
@@ -81,6 +105,7 @@ export function ProviderSystem() {
   const [system, setSystem] = useState<SystemStatus | null>(null)
   const [overrides, setOverrides] = useState<ActiveResearchGateOverride[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [checking, setChecking] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
@@ -92,6 +117,15 @@ export function ProviderSystem() {
       })
       .catch((reason: unknown) => setError(String(reason)))
   }, [])
+
+  const checkProvider = useCallback((providerId: string) => {
+    setChecking(providerId)
+    setError(null)
+    void api.providerCheck(providerId)
+      .then(() => load())
+      .catch((reason: unknown) => setError(String(reason)))
+      .finally(() => setChecking(null))
+  }, [load])
 
   useEffect(() => {
     load()
@@ -106,7 +140,7 @@ export function ProviderSystem() {
             PAPER {system.paper_enabled ? 'ENABLED' : 'DISABLED'}
           </span>
         ) : null}
-        <span className="muted">local readiness · no network probes</span>
+        <span className="muted">refresh is local-only · checks run only when clicked</span>
         <div className="spacer" />
         <button className="btn" onClick={load}>
           refresh
@@ -214,7 +248,12 @@ export function ProviderSystem() {
               {providers.length ? (
                 <div className="provider-grid">
                   {providers.map((provider) => (
-                    <ProviderCard key={provider.id} provider={provider} />
+                    <ProviderCard
+                      key={provider.id}
+                      provider={provider}
+                      checking={checking === provider.id}
+                      onCheck={checkProvider}
+                    />
                   ))}
                 </div>
               ) : (

@@ -1,19 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import type { PanelHandleProps } from './panelHandle'
-
+import type { PanelBindingMode, PanelLinkBinding } from './panelLinkModel'
 import {
-  migratePanelBinding,
-  patchLocalPanelBinding,
-  resolvePanelLinked,
-  type PanelBindingMode,
-  type PanelLinkBinding,
-} from './panelLinkModel'
-import {
-  getLinked,
   linkedGroup,
-  setGroupLinked,
-  useLinkedWorkspace,
+  setLinked,
+  useLinked,
   type LinkedState,
   type LinkGroup,
 } from './linked'
@@ -25,67 +17,22 @@ export interface PanelLinkedController {
   setBinding: (mode: PanelBindingMode, group?: LinkGroup) => void
 }
 
-function record(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-}
-
-export function usePanelLinked(props: PanelHandleProps): PanelLinkedController {
-  const workspace = useLinkedWorkspace()
-  const initialParams = record(props.params)
-  const [binding, setBindingState] = useState(() =>
-    migratePanelBinding(initialParams.linkBinding, getLinked(), initialParams.runId),
+/**
+ * Fixed Workstation screens have one canonical workspace context. Legacy panel bindings remain
+ * readable in saved documents, but mounted panels no longer fork, pin, or locally override the
+ * selected project. This is the seam every panel uses, so header, backlog, evidence, development,
+ * and restored workspaces now agree immediately.
+ */
+export function usePanelLinked(_props: PanelHandleProps): PanelLinkedController {
+  const linked = useLinked()
+  const binding = useMemo<PanelLinkBinding>(
+    () => ({ mode: 'follow-active', group: linked.linkGroup, local: linkedGroup(linked) }),
+    [linked],
   )
-
-  useEffect(() => {
-    const disposable = props.api.onDidParametersChange((parameters) => {
-      const next = record(parameters)
-      setBindingState(migratePanelBinding(next.linkBinding, getLinked(), next.runId))
-    })
-    return () => disposable.dispose()
-  }, [props.api])
-
-  const linked = useMemo(() => resolvePanelLinked(workspace, binding), [binding, workspace])
-
-  const persist = useCallback(
-    (next: PanelLinkBinding) => {
-      setBindingState(next)
-      props.api.updateParameters({
-        ...props.api.getParameters(),
-        linkBinding: next,
-      })
-    },
-    [props.api],
-  )
-
-  const updateLinked = useCallback(
-    (patch: Partial<LinkedState>) => {
-      if (binding.mode === 'follow-active') {
-        setGroupLinked(workspace.linkGroup, patch)
-      } else if (binding.mode === 'pinned-to-group') {
-        setGroupLinked(binding.group, patch)
-      } else {
-        persist(patchLocalPanelBinding(binding, patch))
-      }
-    },
-    [binding, persist, workspace.linkGroup],
-  )
-
-  const updateBinding = useCallback(
-    (nextMode: PanelBindingMode, requestedGroup?: LinkGroup) => {
-      const nextGroup = requestedGroup ?? linked.linkGroup
-      persist({
-        mode: nextMode,
-        group: nextMode === 'follow-active' ? workspace.linkGroup : nextGroup,
-        local: nextMode === 'unlinked-local' ? linkedGroup(linked) : binding.local,
-      })
-    },
-    [binding.local, linked, persist, workspace.linkGroup],
-  )
-
+  const update = useCallback((patch: Partial<LinkedState>) => setLinked(patch), [])
+  const keepCanonical = useCallback((_mode: PanelBindingMode, _group?: LinkGroup) => undefined, [])
   return useMemo(
-    () => ({ linked, binding, setLinked: updateLinked, setBinding: updateBinding }),
-    [binding, linked, updateBinding, updateLinked],
+    () => ({ linked, binding, setLinked: update, setBinding: keepCanonical }),
+    [binding, keepCanonical, linked, update],
   )
 }

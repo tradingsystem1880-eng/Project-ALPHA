@@ -5,27 +5,48 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  // All viewport projects share one isolated real-backend control store. Serial execution keeps
+  // their CLI-backed research writes deterministic instead of contending for the writer lock.
+  workers: 1,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   timeout: 30_000,
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{-projectName}{ext}',
   expect: { timeout: 5_000 },
   use: {
-    baseURL: 'http://127.0.0.1:4173/static/app/',
+    baseURL: 'http://localhost:8802/',
     browserName: 'chromium',
     colorScheme: 'dark',
     contextOptions: { reducedMotion: 'reduce' },
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium-minimum', use: { viewport: { width: 1280, height: 720 } } },
-    { name: 'chromium-reference', use: { viewport: { width: 1440, height: 900 } } },
-    { name: 'chromium-wide', use: { viewport: { width: 1920, height: 1080 } } },
+    {
+      name: 'chromium-minimum',
+      grepInvert: /@reference-only/,
+      use: { viewport: { width: 1280, height: 720 } },
+    },
+    {
+      name: 'chromium-reference',
+      grepInvert: /@reference-only/,
+      use: { viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: 'chromium-wide',
+      grepInvert: /@reference-only/,
+      use: { viewport: { width: 1920, height: 1080 } },
+    },
+    {
+      name: 'chromium-reference-only',
+      dependencies: ['chromium-minimum', 'chromium-reference', 'chromium-wide'],
+      grep: /@reference-only/,
+      use: { viewport: { width: 1440, height: 900 } },
+    },
   ],
   webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173/static/app/',
+    command: 'uv run python scripts/run_playwright_backend.py',
+    cwd: '../../..',
+    url: 'http://localhost:8802/',
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 })

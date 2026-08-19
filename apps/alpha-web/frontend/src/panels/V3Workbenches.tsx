@@ -5,6 +5,7 @@ import type {
   ControlJob,
   EvidencePage,
   MlExperimentPage,
+  MlExperimentPreflight,
   MlServiceStatus,
   ProjectDetail,
   ProjectSummary,
@@ -17,7 +18,7 @@ import { setLinked, useLinked } from '../context/linked'
 import { fmtPct, shortId } from '../util/format'
 import { isActiveControlJob, refreshDurableJobs } from './durableJobs'
 import { strategyGateLock } from './researchGateModel'
-import { projectStageRows } from './v3Models'
+import { projectStageRows, sandboxCandidateSummary } from './v3Models'
 
 function ContextLine() {
   const linked = useLinked()
@@ -46,8 +47,8 @@ const STAGE_ACTIONS: { id: SuiteAction; label: string }[] = [
   { id: 'portfolio_cross_asset', label: 'Run portfolio / cross-asset' },
   { id: 'qlib', label: 'Generate / train Qlib' },
   { id: 'kronos', label: 'Run / evaluate Kronos' },
-  { id: 'holdout_reveal', label: 'Reveal final holdout' },
-  { id: 'paper_preflight', label: 'Paper preflight' },
+  { id: 'holdout_reveal', label: 'Holdout reveal · trusted CLI' },
+  { id: 'paper_preflight', label: 'Paper preflight · no authority' },
 ] as const
 
 function ProjectCreate({ onCreated }: { onCreated: (project: ProjectSummary) => void }) {
@@ -200,6 +201,8 @@ function ExperimentSummary({ project }: { project: ProjectDetail }) {
 export function DevelopmentCenter() {
   const linked = useLinked()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [projectHasMore, setProjectHasMore] = useState(false)
+  const [projectsLoading, setProjectsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(linked.projectId ?? '')
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
   const [jobs, setJobs] = useState<ControlJob[]>([])
@@ -212,21 +215,13 @@ export function DevelopmentCenter() {
   const [jobsReady, setJobsReady] = useState(false)
   const [jobPollError, setJobPollError] = useState<string | null>(null)
   const [jobRefresh, setJobRefresh] = useState(0)
-  const [ownerActor, setOwnerActor] = useState('owner')
-  const [ownerReason, setOwnerReason] = useState('Candidate frozen; owner approved one-shot holdout reveal.')
-  const [governanceBusy, setGovernanceBusy] = useState(false)
-  const [holdoutStart, setHoldoutStart] = useState('')
-  const [holdoutEnd, setHoldoutEnd] = useState('')
-  const [holdoutReason, setHoldoutReason] = useState('Final evaluation window reserved before model selection.')
-  const [decisionVerdict, setDecisionVerdict] = useState<'accept' | 'reject' | 'revise'>('revise')
-  const [decisionReason, setDecisionReason] = useState('')
-  const [negativeAcknowledged, setNegativeAcknowledged] = useState(false)
   const [briefBusy, setBriefBusy] = useState(false)
   const [briefStatus, setBriefStatus] = useState<string | null>(null)
 
   const refreshProjects = () => {
-    api.projects().then((page) => {
+    api.projects(100, 0).then((page) => {
       setProjects(page.items)
+      setProjectHasMore(page.has_more)
       setSelectedId((current) => current || linked.projectId || page.items[0]?.project_id || '')
     }).catch((reason: unknown) => setError(String(reason)))
   }
@@ -236,6 +231,24 @@ export function DevelopmentCenter() {
     // Initial bounded projections; user mutations refresh explicitly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    setSelectedId(linked.projectId ?? '')
+  }, [linked.projectId])
+
+  async function loadMoreProjects(): Promise<void> {
+    if (projectsLoading || !projectHasMore) return
+    setProjectsLoading(true)
+    try {
+      const page = await api.projects(100, projects.length)
+      setProjects((current) => [...current, ...page.items])
+      setProjectHasMore(page.has_more)
+    } catch (reason) {
+      setError(String(reason))
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!selectedId) {
@@ -345,6 +358,7 @@ export function DevelopmentCenter() {
   const monteCarloReview = detail?.monte_carlo_reviews.find((row) => row.experiment_id === experimentId)
   const monteCarloStage = detail?.stage_states.find((row) => row.experiment_id === experimentId && row.stage === 'monte_carlo')
   const candidate = detail?.stage_states.find((row) => row.experiment_id === experimentId && row.stage === 'candidate')
+  const sandboxCandidate = sandboxCandidateSummary(detail)
   const candidatePrerequisites = ['baseline', 'oos', 'robustness', 'optimization', 'portfolio']
   const monteCarloReady = monteCarloStage?.state === 'pass' || (monteCarloStage?.state === 'warning' && monteCarloReview?.decision === 'continue')
   const candidateReady = monteCarloReady && candidatePrerequisites.every((stage) => detail?.stage_states.some((row) => row.experiment_id === experimentId && row.stage === stage && ['pass', 'warning'].includes(row.state)))
@@ -380,18 +394,19 @@ export function DevelopmentCenter() {
   }
 
   async function launchSelected() {
-    if (gateLock || !detail?.current_experiment_id || !selectedPlan?.ready) return
+    if (
+      gateLock
+      || !detail?.current_experiment_id
+      || !selectedPlan?.ready
+      || selectedAction === 'holdout_reveal'
+    ) return
     setLaunching(true)
     setError(null)
     try {
-      const owner = selectedAction === 'holdout_reveal'
-        ? { owner_actor: ownerActor.trim(), owner_reason: ownerReason.trim() }
-        : {}
       await api.runSuite(
         detail.project_id,
         detail.current_experiment_id,
         selectedAction,
-        owner,
       )
       setJobRefresh((value) => value + 1)
     } catch (reason) {
@@ -409,63 +424,6 @@ export function DevelopmentCenter() {
     }
   }
 
-  async function sealFinalHoldout() {
-    if (!detail || !experimentId || !holdoutStart || !holdoutEnd || !holdoutReason.trim() || !ownerActor.trim()) return
-    setGovernanceBusy(true); setError(null)
-    try {
-      await api.sealHoldout(detail.project_id, {
-        experiment_id: experimentId,
-        actor: ownerActor.trim(),
-        reason: holdoutReason.trim(),
-        start_date: holdoutStart,
-        end_date: holdoutEnd,
-      })
-      await reloadDetail()
-    } catch (reason) {
-      setError(String(reason))
-    } finally {
-      setGovernanceBusy(false)
-    }
-  }
-
-  async function freezeCandidate() {
-    if (!detail || !experimentId || !candidateReady || !candidate || ['pass', 'warning'].includes(candidate.state)) return
-    setGovernanceBusy(true); setError(null)
-    try {
-      const states = ['ready', 'queued', 'running', 'pass'] as const
-      const current = states.indexOf(candidate.state as typeof states[number])
-      for (const state of states.slice(current + 1)) {
-        await api.transitionExperimentStage(detail.project_id, experimentId, 'candidate', {
-          state,
-          reason: 'Owner froze the candidate after reviewing all pre-holdout research evidence.',
-        })
-      }
-      await reloadDetail()
-    } catch (reason) {
-      setError(String(reason))
-    } finally {
-      setGovernanceBusy(false)
-    }
-  }
-
-  async function freezeDecision() {
-    if (!detail || !experimentId || !negativeAcknowledged || !decisionReason.trim() || !ownerActor.trim()) return
-    setGovernanceBusy(true); setError(null)
-    try {
-      await api.freezeDecision(detail.project_id, experimentId, {
-        verdict: decisionVerdict,
-        actor: ownerActor.trim(),
-        reason: decisionReason.trim(),
-        negative_results_acknowledged: true,
-      })
-      await reloadDetail()
-    } catch (reason) {
-      setError(String(reason))
-    } finally {
-      setGovernanceBusy(false)
-    }
-  }
-
   return (
     <div className="panel">
       <div className="panel-toolbar">
@@ -476,6 +434,7 @@ export function DevelopmentCenter() {
           {projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.name}</option>)}
         </select>
         <span className="spacer" />
+        {projectHasMore ? <button className="btn" disabled={projectsLoading} onClick={() => void loadMoreProjects()}>{projectsLoading ? 'Loading…' : 'Load more'}</button> : null}
         <span className="mono muted">{projects.length} PROJECTS</span>
       </div>
       <div className="panel-body panel-pad workbench">
@@ -486,6 +445,24 @@ export function DevelopmentCenter() {
         {!selectedId ? <Placeholder big="NO PROJECT">Create or select a project to inspect immutable strategy-development lineage.</Placeholder> : !detail ? <div className="skeleton" style={{ height: 300 }} /> : (
           <>
             <ExperimentSummary project={detail} />
+            {sandboxCandidate ? (
+              <section className="governance-block" aria-label="Sandbox hedged basis candidate">
+                <div className="governance-title">
+                  <span>Hedged basis candidate</span>
+                  <span className="chip fail">SANDBOX ONLY · PAPER BLOCKED</span>
+                </div>
+                <div className="development-spec">
+                  <div><span className="eyebrow">Perpetual leg</span><span>{sandboxCandidate.perpLeg}</span></div>
+                  <div><span className="eyebrow">Hedge leg</span><span>{sandboxCandidate.spotLeg}</span></div>
+                  <div><span className="eyebrow">Instrument / quote</span><span className="mono">{sandboxCandidate.instrument} / {sandboxCandidate.quoteAsset}</span></div>
+                  <div><span className="eyebrow">Costs</span><span>{sandboxCandidate.totalRoundTripCostBps} bp total round trip</span></div>
+                  <div><span className="eyebrow">Calendar</span><span>{sandboxCandidate.annualization}</span></div>
+                  <div><span className="eyebrow">Execution model</span><span className="mono">{sandboxCandidate.executionModel}</span></div>
+                  <div><span className="eyebrow">Research lineage</span><span>Promoted contract and exact snapshot are reverified by the server for every run.</span></div>
+                  <div><span className="eyebrow">Paper boundary</span><span className="mono neg">{sandboxCandidate.paperBlocker}</span></div>
+                </div>
+              </section>
+            ) : null}
             {gateLock ? <ResearchGateLockNotice lock={gateLock} projectId={detail.project_id} projectName={detail.name} /> : null}
             <div className="agent-brief-bar">
               <div><span className="eyebrow">Typed AgentBrief</span><span>Current hypothesis, allowed scope, cited evidence, stage state, warnings, and required tests.</span></div>
@@ -521,7 +498,7 @@ export function DevelopmentCenter() {
                   {STAGE_ACTIONS.map((action) => {
                     const plan = plans[action.id]
                     const title = plan?.ready ? `Preview ${plan.steps.length} allowlisted command${plan.steps.length === 1 ? '' : 's'}` : plan?.blockers.join('; ') || planErrors[action.id] || 'No current immutable experiment'
-                    return <button className={`btn ${selectedAction === action.id ? 'primary' : ''}`} disabled={Boolean(gateLock) || !plan?.ready || launching || !jobsReady} key={action.id} title={gateLock ? gateLock.reason : title} onClick={() => setSelectedAction(action.id)}>{action.label}</button>
+                    return <button className={`btn ${selectedAction === action.id ? 'primary' : ''}`} disabled={!plan || launching} key={action.id} title={gateLock ? `${gateLock.reason} Preview remains read-only.` : title} onClick={() => setSelectedAction(action.id)}>{action.label}</button>
                   })}
                 </div>
                 {selectedPlan ? (
@@ -539,8 +516,8 @@ export function DevelopmentCenter() {
                     <ol className="suite-command-list">
                       {selectedPlan.steps.map((step) => <li key={step.index}><span>{step.label}</span><code>{step.command.join(' ')}</code><small>{step.evidence_role.replaceAll('_', ' ')}</small></li>)}
                     </ol>
-                    {selectedAction === 'holdout_reveal' ? <div className="suite-owner-confirm"><label><span className="eyebrow">Owner</span><input className="field" value={ownerActor} onChange={(event) => setOwnerActor(event.target.value)} /></label><label><span className="eyebrow">Permanent audit reason</span><textarea className="field" value={ownerReason} onChange={(event) => setOwnerReason(event.target.value)} /></label></div> : null}
-                    <button className="btn primary" disabled={Boolean(gateLock) || !selectedPlan.ready || launching || !jobsReady || (selectedAction === 'holdout_reveal' && (!ownerActor.trim() || !ownerReason.trim()))} title={gateLock?.reason} onClick={launchSelected}>{!jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
+                    {selectedAction === 'holdout_reveal' ? <div className="workbench-notice"><strong>TRUSTED CLI OWNER CHECKPOINT</strong><span>The browser cannot assert an owner name or reveal the sealed holdout. Run the previewed <code>alpha suite run</code> command in the local terminal with a fresh reason.</span></div> : null}
+                    <button className="btn primary" disabled={Boolean(gateLock) || !selectedPlan.ready || launching || !jobsReady || selectedAction === 'holdout_reveal'} title={selectedAction === 'holdout_reveal' ? 'Trusted local CLI ceremony required' : gateLock?.reason} onClick={launchSelected}>{selectedAction === 'holdout_reveal' ? 'Trusted CLI required' : !jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
                   </div>
                 ) : null}
                 <div className="rd-head">Durable development journals</div>
@@ -548,16 +525,15 @@ export function DevelopmentCenter() {
               </section>
             </div>
             <section className="owner-governance">
-              <div className="rd-head">Owner governance · irreversible records</div>
+              <div className="rd-head">Owner checkpoints · trusted CLI only</div>
               <div className="governance-grid">
                 <div className="governance-block">
                   <div className="governance-title"><span>Final holdout</span><span className={`chip ${holdout?.contaminated_at ? 'fail' : holdout ? 'pass' : ''}`}>{holdout ? holdout.contaminated_at ? 'CONTAMINATED' : holdout.revealed_at ? 'REVEALED' : 'SEALED' : 'NOT SEALED'}</span></div>
-                  {holdout ? <><span className="mono muted">SPEC {holdout.holdout_spec_hash ? shortId(holdout.holdout_spec_hash) : 'WINDOW NOT DEFINED'}</span><p>{holdout.revealed_at ? `${holdout.start_date} → ${holdout.end_date}` : 'Date boundaries remain redacted until the audited reveal.'}</p></> : <div className="governance-form"><label><span className="eyebrow">Start</span><input className="field" type="date" value={holdoutStart} onChange={(event) => setHoldoutStart(event.target.value)} /></label><label><span className="eyebrow">End</span><input className="field" type="date" value={holdoutEnd} onChange={(event) => setHoldoutEnd(event.target.value)} /></label><label className="span-two"><span className="eyebrow">Seal reason</span><textarea className="field" value={holdoutReason} onChange={(event) => setHoldoutReason(event.target.value)} /></label><button className="btn primary span-two" disabled={governanceBusy || !holdoutStart || !holdoutEnd || !ownerActor.trim() || !holdoutReason.trim()} onClick={sealFinalHoldout}>Seal immutable holdout</button></div>}
+                  {holdout ? <><span className="mono muted">SPEC {holdout.holdout_spec_hash ? shortId(holdout.holdout_spec_hash) : 'WINDOW NOT DEFINED'}</span><p>{holdout.revealed_at ? `${holdout.start_date} → ${holdout.end_date}` : 'Date boundaries remain redacted until the audited reveal.'}</p></> : <p>Seal the dated holdout with <code>alpha project seal-holdout</code>. The Workstation cannot accept a caller-provided owner identity.</p>}
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Candidate freeze</span><span className={`chip ${candidate?.state === 'pass' ? 'pass' : ''}`}>{candidate?.state ?? 'NOT STARTED'}</span></div>
-                  <p>Freezes the current strategy and experiment only after baseline, OOS, robustness, four-family Monte Carlo, optimization, and portfolio research clear.</p>
-                  <button className="btn primary" disabled={governanceBusy || !candidateReady || candidate?.state === 'pass'} onClick={freezeCandidate}>{candidate?.state === 'pass' ? 'Candidate frozen' : 'Freeze candidate'}</button>
+                  <p>{candidateReady ? 'All mechanical prerequisites are present.' : 'Baseline, OOS, robustness, Monte Carlo, optimization, and portfolio evidence must clear first.'} Freeze through <code>alpha project stage-transition</code>; the browser remains read-only.</p>
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Monte Carlo review</span><span className={`chip ${monteCarloReview?.decision === 'continue' ? 'pass' : monteCarloReview ? 'fail' : ''}`}>{monteCarloReview?.decision.toUpperCase() ?? (monteCarloStage?.state === 'warning' ? 'OWNER REVIEW REQUIRED' : monteCarloStage?.state?.toUpperCase() ?? 'NOT STARTED')}</span></div>
@@ -565,7 +541,7 @@ export function DevelopmentCenter() {
                 </div>
                 <div className="governance-block">
                   <div className="governance-title"><span>Decision packet</span><span className={`chip ${decision?.verdict === 'accept' ? 'pass' : decision?.verdict === 'reject' ? 'fail' : ''}`}>{decision?.verdict?.toUpperCase() ?? 'OPEN'}</span></div>
-                  {decision ? <><span className="mono">{shortId(decision.packet_id)}</span><p>{decision.reason}</p><span className="mono muted">{decision.negative_result_attempt_ids.length} NEGATIVE RESULTS ACKNOWLEDGED · SANDBOX ONLY</span></> : <div className="governance-form"><label><span className="eyebrow">Owner</span><input className="field" value={ownerActor} onChange={(event) => setOwnerActor(event.target.value)} /></label><label><span className="eyebrow">Verdict</span><select className="field" value={decisionVerdict} onChange={(event) => setDecisionVerdict(event.target.value as 'accept' | 'reject' | 'revise')}><option value="revise">Revise</option><option value="reject">Reject</option><option value="accept">Accept · sandbox</option></select></label><label className="span-two"><span className="eyebrow">Decision rationale</span><textarea className="field" value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} /></label><label className="governance-ack span-two"><input type="checkbox" checked={negativeAcknowledged} onChange={(event) => setNegativeAcknowledged(event.target.checked)} /><span>I reviewed all failed, pruned, rejected, and cancelled attempts.</span></label><button className="btn primary span-two" disabled={governanceBusy || !negativeAcknowledged || !decisionReason.trim() || !ownerActor.trim()} onClick={freezeDecision}>Freeze {decisionVerdict} packet · sandbox only</button></div>}
+                  {decision ? <><span className="mono">{shortId(decision.packet_id)}</span><p>{decision.reason}</p><span className="mono muted">{decision.negative_result_attempt_ids.length} NEGATIVE RESULTS ACKNOWLEDGED · SANDBOX ONLY</span></> : <p>Record accept, reject, or revise with <code>alpha project decide</code> after reviewing every negative attempt. No browser call can impersonate the owner.</p>}
                 </div>
               </div>
             </section>
@@ -580,6 +556,7 @@ export function MlResearch() {
   const linked = useLinked()
   const [status, setStatus] = useState<MlServiceStatus | null>(null)
   const [experiments, setExperiments] = useState<MlExperimentPage | null>(null)
+  const [preflight, setPreflight] = useState<MlExperimentPreflight | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -587,7 +564,7 @@ export function MlResearch() {
 
   useEffect(() => {
     let live = true
-    setStatus(null); setExperiments(null); setError(null)
+    setStatus(null); setExperiments(null); setPreflight(null); setError(null)
     api.mlStatus().then(async (next) => {
       if (!live) return
       setStatus(next)
@@ -596,8 +573,14 @@ export function MlResearch() {
         setBusy(true)
       }
       if (next.available) {
-        const page = await api.mlExperiments(linked.projectId)
-        if (live) setExperiments(page)
+        const [page, checks] = await Promise.all([
+          api.mlExperiments(linked.projectId),
+          linked.projectId ? api.mlExperimentPreflight(linked.projectId) : Promise.resolve(null),
+        ])
+        if (live) {
+          setExperiments(page)
+          setPreflight(checks)
+        }
       }
     }).catch((reason: unknown) => live && setError(String(reason)))
     return () => { live = false }
@@ -618,13 +601,15 @@ export function MlResearch() {
           if (job.status !== 'succeeded') {
             setError(job.terminal_error || `ML experiment job ${job.status}`)
           }
-          const [nextExperiments, nextStatus] = await Promise.all([
+          const [nextExperiments, nextStatus, nextPreflight] = await Promise.all([
             api.mlExperiments(projectId),
             api.mlStatus(),
+            projectId ? api.mlExperimentPreflight(projectId) : Promise.resolve(null),
           ])
           if (live) {
             setExperiments(nextExperiments)
             setStatus(nextStatus)
+            setPreflight(nextPreflight)
             setActiveJobId(null)
           }
           return
@@ -643,7 +628,7 @@ export function MlResearch() {
     }
   }, [activeJobId, linked.projectId])
 
-  const ready = status?.available === true && status.worker_ready && linked.projectId !== null
+  const ready = preflight?.ready === true && linked.projectId !== null
   async function createExperiment() {
     if (!ready || !linked.projectId) return
     setBusy(true)
@@ -664,6 +649,21 @@ export function MlResearch() {
         <ContextLine />
         {error ? <div className="workbench-notice"><strong>ML CONTROL ERROR</strong><span>{error}</span></div> : status?.message ? <div className="workbench-notice"><strong>{status.worker_ready ? 'READY' : 'BLOCKED'}</strong><span>{status.message}</span></div> : null}
         {activeJobId ? <div className="durable-job-banner"><span className={`chip ${jobState === 'failed' ? 'fail' : ''}`}>{jobState ?? 'queued'}</span><span>Durable ML journal</span><span className="mono">{shortId(activeJobId)}</span><span className="spacer" /><span className="muted mono">SAFE TO LEAVE THIS PANEL · POLLING CONTROL DB</span></div> : null}
+        {preflight ? (
+          <section className="ml-preflight" aria-label="ML experiment preflight">
+            <div className="rd-head">Server-verified launch preflight</div>
+            {preflight.checks.map((check) => (
+              <div className="governance-title" key={check.check_id}>
+                <span>{check.check_id.replaceAll('_', ' ')}</span>
+                <span className={`chip ${check.state === 'pass' ? 'pass' : 'fail'}`}>
+                  {check.state.toUpperCase()}
+                </span>
+                <span>{check.message}</span>
+                {check.recovery_action ? <span className="muted">{check.recovery_action}</span> : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
         <div className="ml-spec-grid">
           <div><span className="eyebrow">Recipe</span><span>Alpha158-style</span></div>
           <div><span className="eyebrow">Model</span><span>LightGBM · CPU</span></div>
@@ -697,7 +697,7 @@ export function MlResearch() {
             <div className="tear-gap"><div className="tear-gap-title">Feature importance</div><div className="tear-gap-state mono">NO VALIDATED ML ARTIFACT</div></div>
           </div>
         )}
-        <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate a locked experiment through the isolated worker service' : 'Validated ML worker service and selected project required'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate ML experiment'}</button>
+        <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate the exact preflighted experiment through the isolated worker service' : 'Every server-verified preflight check must pass'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate preflighted ML experiment'}</button>
         {status === null && !error ? <span className="muted mono">CHECKING ISOLATED WORKER READINESS…</span> : null}
         {status && !status.available ? <span className="muted mono">BUTTON DISABLED · {status.message ?? 'isolated worker service unavailable'}</span> : null}
         {status?.available && status.worker_ready && !linked.projectId ? <span className="muted mono">SELECT OR CREATE A STRATEGY PROJECT IN DEVELOPMENT CENTER TO ENABLE TRAINING</span> : null}
@@ -725,10 +725,13 @@ export function AssetMemory() {
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
-    if (!linked.symbol) return
-    setAssetInput(linked.symbol)
-    setAsset(linked.symbol)
+    setAssetInput(linked.symbol ?? '')
+    setAsset(linked.symbol ?? '')
   }, [linked.symbol])
+
+  useEffect(() => {
+    if (!linked.projectId) setProjectOnly(false)
+  }, [linked.projectId])
 
   useEffect(() => {
     const normalizedAsset = asset.trim().toUpperCase()

@@ -511,7 +511,8 @@ existing event-study/matching/bootstrap/power/multiple-testing primitives.
 ### 9.4 D2 confirmation
 
 `alpha research run confirm` (Phase R6, ADR-0026): the one-shot sealed confirmation under the
-immutable `ResearchD2BoundaryV1` — approved child confirmation contract, frozen family, frozen
+immutable versioned research boundary (`ResearchD2BoundaryV2` for new contracts; V1 read-compatible)
+— approved child confirmation contract, frozen family, frozen
 alpha/power/minimum-effect, `REGISTERED CONFIRMATORY` watermark, D2 `authorized → consumed`
 (or `contaminated`) events, mechanical classification recomputed by every reader.
 
@@ -678,10 +679,12 @@ pairs the case's packet with `new-idea-intake` by default.
 2. **Projection field (new).** Project projections gain `research_gate_state ∈
    {not_required (grandfathered), open, passed, overridden}` derived from governance +
    decision records.
-3. **UI gating (new).** StrategyLab, DevelopmentCenter, and the Pipeline panel disable
-   strategy-creation/optimisation affordances for `open` projects, showing the reason and the
-   research case link instead. Backtest/optim remain available for non-research contexts
-   (legacy projects, engine maintenance) — they are staged later, not deleted.
+3. **Launch-surface gating (amended 2026-08-12).** Every Workstation empirical launch surface,
+   including StrategyLab, DevelopmentCenter, Pipeline, comparison, generic jobs, and advanced
+   consoles, carries an explicit project or standalone context. An `open` or unreadable governed
+   project blocks the child process and shows the reason plus case link. Backtest/optim remain
+   available only in an explicitly standalone, permanently unqualified sandbox for engine
+   maintenance; standalone results can never count as case evidence.
 4. **Explicit override (new).** `alpha project override-research-gate PROJECT_ID --actor …
    --reason …` — owner-only CLI, recorded as an append-only project scope event (never a mutable
    boolean). Overridden projects carry `research_gate_state = "overridden"`.

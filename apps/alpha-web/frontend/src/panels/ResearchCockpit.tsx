@@ -1,18 +1,25 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
-import { api } from '../api/client'
+import { api, type OwnerActionType } from '../api/client'
+import {
+  contentAddressHash,
+  performOwnerAction,
+  researchCaseRevision,
+} from '../auth/ownerAuth'
 import type {
   ResearchCase,
   ResearchCaseReport,
   ResearchDecisionView,
   ResearchGatePacket,
   ResearchMaterialAnswers,
+  ResearchProposalOptionsV1,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { onNewIdea } from '../context/newIdea'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { findingChipClass } from './researchChipModel'
+import { openProviderCenter, openResearchData, openResearchSources } from './actions'
 import {
   researchBudgetRows,
   researchContractView,
@@ -31,18 +38,40 @@ type CockpitView = 'overview' | 'decision'
 
 const CHART_OPTIONS: ReadonlyArray<{ value: ChartConstruction; label: string }> = [
   { value: 'spy_rth_60m_four_hour_window', label: 'Synthetic SPY-like 60m D0 · four-hour window' },
+  { value: 'tiingo_daily_fallback', label: 'Qualified Tiingo daily SPY · next-session lane' },
+  { value: 'bybit_btcusdt_linear_hourly', label: 'Bybit linear BTCUSDT · hourly crowding lane' },
 ]
 
 const EVENT_OPTIONS: ReadonlyArray<{ value: EventAvailability; label: string }> = [
   { value: 'second_trough_confirmable', label: 'Second trough confirmable' },
+  { value: 'bybit_funding_event_point_in_time', label: 'Bybit funding event · point-in-time' },
 ]
 
 const OUTCOME_OPTIONS: ReadonlyArray<{ value: PrimaryOutcome; label: string }> = [
   { value: 'four_trading_hour_return_25bp', label: 'Four trading hours · +25 bp' },
+  { value: 'next_regular_session_return_50bp', label: 'Next regular session · +50 bp' },
+  {
+    value: 'next_funding_mark_minus_index_5bp',
+    label: 'Next funding mark-minus-index · -5 bp',
+  },
 ]
 
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason)
+}
+
+function blockerRecovery(code: string): { label: string; action: () => void } | null {
+  const normalized = code.toUpperCase()
+  if (normalized.includes('SOURCE') || normalized.includes('PACK')) {
+    return { label: 'Open Literature', action: openResearchSources }
+  }
+  if (normalized.includes('DATA')) {
+    return { label: 'Open Research Data', action: openResearchData }
+  }
+  if (normalized.includes('PROVIDER')) {
+    return { label: 'Open Provider Readiness', action: openProviderCenter }
+  }
+  return null
 }
 
 function budgetValue(value: number | null): string {
@@ -199,36 +228,98 @@ function DecisionViewSection({
   )
 }
 
-function ApprovalBoundary({ researchCase }: { researchCase: ResearchCase }) {
-  if (researchCase.exploration_review.state !== 'pending') return null
+function ApprovalBoundary({
+  researchCase,
+  onComplete,
+}: {
+  researchCase: ResearchCase
+  onComplete: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [pending, setPending] = useState<OwnerActionType | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const contract = researchContractView(researchCase)
-  if (!contract.approval_ready) {
-    return (
-      <div className="workbench-notice" role="note">
-        <strong>GATE 1 OPERATOR UNAVAILABLE</strong>
-        <span>
-          This immutable proposal cannot be approved in Gate 1. Reject it through the owner-only
-          CLI, then close or revise the case without claiming empirical evidence.
-        </span>
-        <code className="mono">
-          alpha research reject exploration {researchCase.project_id}{' '}
-          {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
-        </code>
-      </div>
-    )
+  const scope = researchCase.exploration_review.state === 'pending'
+    ? 'exploration'
+    : researchCase.confirmation_review.state === 'pending'
+      ? 'confirmation'
+      : null
+  if (scope === null) return null
+  const canApprove = scope === 'confirmation' || contract.approval_ready
+
+  async function decide(decision: 'approve' | 'reject'): Promise<void> {
+    const actionType = `${decision}_${scope}` as OwnerActionType
+    setPending(actionType)
+    setError(null)
+    try {
+      const expectedRevision = await researchCaseRevision(researchCase)
+      await performOwnerAction({
+        action_type: actionType,
+        project_id: researchCase.project_id,
+        artifact_hash: contentAddressHash(researchCase.active_contract_id),
+        expected_case_revision: expectedRevision,
+        consequence_summary: decision === 'approve'
+          ? `Approve the immutable ${scope} contract and permit only its next bounded research stage.`
+          : `Reject the immutable ${scope} contract; no empirical stage is launched.`,
+        reason: reason.trim(),
+        payload: { contract_id: researchCase.active_contract_id },
+      })
+      setReason('')
+      onComplete()
+    } catch (cause) {
+      setError(errorMessage(cause))
+    } finally {
+      setPending(null)
+    }
   }
+
   return (
-    <div className="workbench-notice" role="note">
-      <strong>HUMAN APPROVAL BOUNDARY</strong>
-      <span>
-        The Workstation can prepare and explain this contract, but cannot approve it. Review the
-        exact immutable contract with Codex, then use the owner-only CLI approval path if satisfied.
-      </span>
-      <code className="mono">
-        alpha research approve exploration {researchCase.project_id}{' '}
-        {researchCase.active_contract_id} --actor owner --reason &quot;&lt;your reason&gt;&quot;
+    <section className="owner-action-boundary" aria-label={`${scope} owner decision`}>
+      <span className="eyebrow">Fresh owner presence required</span>
+      <strong>Review and decide this exact immutable {scope} contract</strong>
+      <p>
+        Touch ID binds one decision to this project, artifact, current case revision, consequence,
+        and your reason. It grants no gate override, holdout, paper, broker, or order authority.
+      </p>
+      {!canApprove ? (
+        <div className="workbench-notice" role="note">
+          <strong>APPROVAL UNAVAILABLE</strong>
+          <span>This proposal has no executable operator. Reject it or revise the research case.</span>
+        </div>
+      ) : null}
+      <label>
+        <span className="eyebrow">Decision reason</span>
+        <textarea
+          className="field"
+          value={reason}
+          maxLength={8192}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Explain why this exact contract should advance or stop."
+        />
+      </label>
+      <div className="owner-action-buttons">
+        <button
+          className="btn primary"
+          type="button"
+          disabled={!reason.trim() || !canApprove || pending !== null}
+          onClick={() => void decide('approve')}
+        >
+          {pending === `approve_${scope}` ? 'waiting for Touch ID…' : `Touch ID · approve ${scope}`}
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={!reason.trim() || pending !== null}
+          onClick={() => void decide('reject')}
+        >
+          {pending === `reject_${scope}` ? 'waiting for Touch ID…' : `Touch ID · reject ${scope}`}
+        </button>
+      </div>
+      {error ? <div className="workbench-notice" role="alert"><strong>ACTION BLOCKED</strong><span>{error}</span></div> : null}
+      <code className="mono advanced-only">
+        Trusted recovery: alpha owner-auth recover --reason &quot;&lt;credential recovery reason&gt;&quot;
       </code>
-    </div>
+    </section>
   )
 }
 
@@ -242,10 +333,48 @@ function CaseHeader({ researchCase }: { researchCase: ResearchCase }) {
         <span className={researchCase.responsibility === 'owner' ? 'chip fail' : 'chip kind'}>
           {researchCase.responsibility === 'owner' ? 'NEEDS YOU' : 'CODEX'}
         </span>
-        <span className="research-case-next">{researchCase.next_action}</span>
       </div>
       {researchCase.scorecard ? <ScorecardStrip scorecard={researchCase.scorecard} /> : null}
     </div>
+  )
+}
+
+function CanonicalNextAction({ researchCase }: { researchCase: ResearchCase }) {
+  return (
+    <section className="research-next-action" aria-label="Canonical next action">
+      <span className="eyebrow">Do this next</span>
+      <strong>{researchCase.next_action}</strong>
+      {researchCase.recovery ? <span>{researchCase.recovery}</span> : null}
+    </section>
+  )
+}
+
+function MaterialQuestions({ researchCase }: { researchCase: ResearchCase }) {
+  const contract = researchContractView(researchCase)
+  if (!contract.blocking_questions.length) return null
+  return (
+    <section className="research-material-questions" aria-label="Material research questions">
+      <div className="rd-head">Three decisions needed before this idea can be tested</div>
+      <ol>
+        {contract.blocking_questions.map((question) => (
+          <li key={question.id} className="research-material-question">
+            <strong>{question.prompt}</strong>
+            <p>{question.blocking_reason}</p>
+            <div className="research-choice-cards">
+              {question.choices.map((choice) => (
+                <div className="research-choice-card" key={choice.id}>
+                  <strong>{choice.label}</strong>
+                  <span>{choice.consequence}</span>
+                  {choice.availability === 'unavailable' ? (
+                    <span className="chip fail">UNAVAILABLE · {choice.blocked_reason}</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 
@@ -316,7 +445,7 @@ function CaseSummary({
         <TerminalGatePacket packet={report} />
       ) : null}
 
-      <ApprovalBoundary researchCase={researchCase} />
+      <ApprovalBoundary researchCase={researchCase} onComplete={onRefresh} />
 
       {researchCase.latest_finding ? (
         <div className="workbench-notice" role="status">
@@ -340,15 +469,9 @@ function CaseSummary({
               <ul>{contract.alternatives.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ) : null}
-          {contract.blocking_questions.length ? (
-            <div className="research-question-list">
-              <span className="eyebrow">Material questions requiring owner definition</span>
-              <ol>{contract.blocking_questions.map((item) => <li key={item}>{item}</li>)}</ol>
-            </div>
-          ) : null}
         </section>
 
-        <section>
+        <section className="advanced-only">
           <div className="rd-head">Governance · budget · lineage</div>
           <div className="research-lineage">
             <div><span className="eyebrow">Project ID</span><code>{researchCase.project_id}</code></div>
@@ -403,40 +526,107 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const [lookupId, setLookupId] = useState(initialProjectId)
   const [idea, setIdea] = useState('')
   const [caseName, setCaseName] = useState('')
+  const [showCapture, setShowCapture] = useState(
+    initialProjectId === '' && panelLink.linked.projectId === null,
+  )
   const [sourcePackId, setSourcePackId] = useState('')
+  const [datasetRefId, setDatasetRefId] = useState('')
+  const [proposalOptions, setProposalOptions] = useState<ResearchProposalOptionsV1 | null>(null)
+  const [proposalOptionsError, setProposalOptionsError] = useState<string | null>(null)
+  const [answerBundleId, setAnswerBundleId] = useState('')
   const [chartConstruction, setChartConstruction] = useState<ChartConstruction | ''>('')
   const [eventAvailability, setEventAvailability] = useState<EventAvailability | ''>('')
   const [primaryOutcome, setPrimaryOutcome] = useState<PrimaryOutcome | ''>('')
   const [busy, setBusy] = useState<BusyOperation | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const caseRequestSequence = useRef(0)
+  const activeProjectRef = useRef(panelLink.linked.projectId)
+  activeProjectRef.current = panelLink.linked.projectId
 
   const proposalComplete = useMemo(
-    () => sourcePackId.trim() !== '' && chartConstruction !== ''
-      && eventAvailability !== '' && primaryOutcome !== '',
-    [chartConstruction, eventAvailability, primaryOutcome, sourcePackId],
+    () => {
+      const selected = proposalOptions?.valid_answer_bundles.find(
+        (bundle) => bundle.bundle_id === answerBundleId,
+      )
+      return sourcePackId !== '' && selected?.available === true
+        && (!selected.requires_dataset || datasetRefId !== '')
+    },
+    [answerBundleId, datasetRefId, proposalOptions, sourcePackId],
   )
 
   function acceptCase(next: ResearchCase): void {
     setResearchCase(next)
     setLookupId(next.project_id)
     setSourcePackId(next.source_pack_id ?? '')
+    setDatasetRefId('')
+    setProposalOptions(null)
+    setProposalOptionsError(null)
     setReport(null)
     setDecisionView(null)
+    setAnswerBundleId('')
+    setChartConstruction('')
+    setEventAvailability('')
+    setPrimaryOutcome('')
+    setShowCapture(false)
+    panelLink.setLinked({ projectId: next.project_id })
   }
+
+  function selectAnswerBundle(bundleId: string): void {
+    setAnswerBundleId(bundleId)
+    const bundle = proposalOptions?.valid_answer_bundles.find(
+      (candidate) => candidate.bundle_id === bundleId,
+    )
+    setChartConstruction((bundle?.answers.chart_construction ?? '') as ChartConstruction | '')
+    setEventAvailability((bundle?.answers.event_availability ?? '') as EventAvailability | '')
+    setPrimaryOutcome((bundle?.answers.primary_outcome ?? '') as PrimaryOutcome | '')
+    if (!bundle?.requires_dataset) setDatasetRefId('')
+  }
+
+  useEffect(() => {
+    if (!researchCase || !researchProposalAvailable(researchCase.phase)) return
+    const projectId = researchCase.project_id
+    let current = true
+    setProposalOptionsError(null)
+    void api.researchProposalOptions(projectId).then((options) => {
+      if (!current) return
+      setProposalOptions(options)
+      const recommended = options.valid_answer_bundles.find(
+        (bundle) => bundle.bundle_id === options.recommended_answer_bundle_id
+          && bundle.available,
+      )
+      if (recommended) {
+        setAnswerBundleId(recommended.bundle_id)
+        setChartConstruction(recommended.answers.chart_construction)
+        setEventAvailability(recommended.answers.event_availability)
+        setPrimaryOutcome(recommended.answers.primary_outcome)
+      }
+      setSourcePackId((selected) => (
+        options.compatible_source_packs.some((pack) => pack.pack_id === selected)
+          ? selected
+          : (options.compatible_source_packs[0]?.pack_id ?? '')
+      ))
+    }).catch((reason: unknown) => {
+      if (current) setProposalOptionsError(errorMessage(reason))
+    })
+    return () => { current = false }
+  }, [researchCase])
 
   async function loadCase(projectId: string, operation: 'load' | 'status' = 'load'): Promise<void> {
     const clean = projectId.trim()
     if (!clean) return
+    const sequence = ++caseRequestSequence.current
     setBusy(operation)
     setError(null)
     try {
-      acceptCase(operation === 'status'
+      const next = operation === 'status'
         ? await api.researchStatus(clean)
-        : await api.researchCase(clean))
+        : await api.researchCase(clean)
+      if (sequence !== caseRequestSequence.current) return
+      acceptCase(next)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (sequence === caseRequestSequence.current) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (sequence === caseRequestSequence.current) setBusy(null)
     }
   }
 
@@ -450,7 +640,18 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const linkedProjectId = panelLink.linked.projectId
   useEffect(() => {
     if (linkedProjectId && linkedProjectId !== researchCase?.project_id) {
+      setResearchCase(null)
+      setReport(null)
+      setDecisionView(null)
+      setProposalOptions(null)
+      setError(null)
       void loadCase(linkedProjectId)
+    } else if (!linkedProjectId && researchCase) {
+      caseRequestSequence.current += 1
+      setResearchCase(null)
+      setReport(null)
+      setDecisionView(null)
+      setProposalOptions(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedProjectId])
@@ -459,8 +660,11 @@ export function ResearchCockpit(props: PanelHandleProps) {
   useEffect(
     () =>
       onNewIdea(() => {
-        ideaRef.current?.focus()
-        ideaRef.current?.scrollIntoView({ block: 'center' })
+        setShowCapture(true)
+        window.setTimeout(() => {
+          ideaRef.current?.focus()
+          ideaRef.current?.scrollIntoView({ block: 'center' })
+        }, 0)
       }),
     [],
   )
@@ -487,51 +691,52 @@ export function ResearchCockpit(props: PanelHandleProps) {
 
   async function propose(event: FormEvent): Promise<void> {
     event.preventDefault()
-    if (!researchCase || !proposalComplete || !chartConstruction
-      || !eventAvailability || !primaryOutcome) return
+    if (!researchCase || !proposalOptions || !proposalComplete || !answerBundleId) return
     setBusy('proposal')
     setError(null)
+    const projectId = researchCase.project_id
     try {
-      const response = await api.researchProposal(researchCase.project_id, {
+      const response = await api.researchProposal(projectId, {
         source_pack_id: sourcePackId.trim(),
-        answers: {
-          chart_construction: chartConstruction,
-          event_availability: eventAvailability,
-          primary_outcome: primaryOutcome,
-        },
+        answer_bundle_id: answerBundleId,
+        dataset_ref_id: datasetRefId || null,
+        expected_case_revision: proposalOptions.case_revision,
       })
-      acceptCase(response.case)
+      if (activeProjectRef.current === projectId) acceptCase(response.case)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
   async function launchPilot(): Promise<void> {
     if (!researchCase) return
+    const projectId = researchCase.project_id
     setBusy('pilot')
     setError(null)
     try {
-      const response = await api.researchPilot(researchCase.project_id)
-      acceptCase(response.case)
+      const response = await api.researchPilot(projectId)
+      if (activeProjectRef.current === projectId) acceptCase(response.case)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
   async function loadDecisionView(): Promise<void> {
     if (!researchCase) return
+    const projectId = researchCase.project_id
     setBusy('decision')
     setError(null)
     try {
-      setDecisionView(await api.researchDecisionView(researchCase.project_id))
+      const next = await api.researchDecisionView(projectId)
+      if (activeProjectRef.current === projectId) setDecisionView(next)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
@@ -545,34 +750,36 @@ export function ResearchCockpit(props: PanelHandleProps) {
 
   async function loadReport(): Promise<void> {
     if (!researchCase) return
+    const projectId = researchCase.project_id
     setBusy('report')
     setError(null)
     try {
-      const next = await api.researchProgressReport(researchCase.project_id)
+      const next = await api.researchProgressReport(projectId)
+      if (activeProjectRef.current !== projectId) return
       setReport(next)
       if (next.report_schema === 'ResearchProgressReportV1') setResearchCase(next.case)
     } catch (reason) {
-      setError(errorMessage(reason))
+      if (activeProjectRef.current === projectId) setError(errorMessage(reason))
     } finally {
-      setBusy(null)
+      if (activeProjectRef.current === projectId) setBusy(null)
     }
   }
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
-        <span className="title">Research Cockpit</span>
-        <span className="chip kind">GATE 1 SAFE REST</span>
-        <span className="muted">capture · read · propose · D0 pilot · status · report</span>
+        <span className="title">Research Case</span>
+        <span className="chip kind">GUIDED RESEARCH</span>
+        <span className="muted">question → sources → data → bounded test → decision</span>
         <span className="spacer" />
-        <span className="chip fail">NO APPROVAL · D2 · DEEP · TRADING</span>
+        <span className="chip fail">TOUCH ID REQUIRED · NO OVERRIDE · NO TRADING</span>
       </div>
       <div className="panel-body panel-pad workbench research-cockpit" tabIndex={0}>
         <div className="sandbox-banner">
           RESEARCH SANDBOX · SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE OR A TRADING SIGNAL
         </div>
 
-        <div className="research-intake-grid">
+        {showCapture || !researchCase ? <div className="research-intake-grid">
           <form onSubmit={(event) => void capture(event)}>
             <span className="eyebrow">Capture a raw observation in your exact words</span>
             <textarea
@@ -614,13 +821,15 @@ export function ResearchCockpit(props: PanelHandleProps) {
             </div>
             <span className="muted">Or select a case in the Research Backlog — it drives this cockpit.</span>
           </form>
-        </div>
+        </div> : null}
 
         {error ? <div className="workbench-notice" role="alert"><strong>REQUEST FAILED</strong><span>{error}</span></div> : null}
 
         {researchCase ? (
           <>
+            <MaterialQuestions researchCase={researchCase} />
             <CaseHeader researchCase={researchCase} />
+            <CanonicalNextAction researchCase={researchCase} />
             <div className="research-view-tabs" role="tablist" aria-label="Cockpit views">
               <button
                 className={view === 'overview' ? 'btn primary' : 'btn'}
@@ -660,15 +869,82 @@ export function ResearchCockpit(props: PanelHandleProps) {
             {view === 'overview' && researchProposalAvailable(researchCase.phase) ? (
               <form className="research-proposal" onSubmit={(event) => void propose(event)}>
                 <div className="rd-head">Materialize the exact exploration proposal</div>
-                <div className="workbench-notice">
-                  <strong>SOURCE PACK REQUIRED</strong>
-                  <span>Create and freeze the screened source pack through the trusted-local CLI, then paste its immutable ID. This REST surface cannot fetch sources or approve the proposal.</span>
-                </div>
+                {proposalOptionsError ? (
+                  <div className="workbench-notice" role="alert">
+                    <strong>PROPOSAL OPTIONS FAILED</strong><span>{proposalOptionsError}</span>
+                  </div>
+                ) : null}
+                {!proposalOptions ? (
+                  <div className="workbench-notice" role="status">
+                    <strong>LOADING CURRENT OPTIONS</strong>
+                    <span>Checking executable bundles, frozen packs, datasets, and case revision.</span>
+                  </div>
+                ) : null}
+                {proposalOptions?.blockers.map((blocker) => {
+                  const recovery = blockerRecovery(blocker.code)
+                  return (
+                    <div className="workbench-notice" role="alert" key={blocker.code}>
+                      <strong>{blocker.message}</strong><span>{blocker.recovery_action}</span>
+                      {recovery ? <button className="btn" type="button" onClick={recovery.action}>{recovery.label}</button> : null}
+                    </div>
+                  )
+                })}
+                <fieldset className="research-question-list">
+                  <legend className="eyebrow">Valid answer bundle</legend>
+                  {proposalOptions?.valid_answer_bundles.map((bundle) => (
+                    <label className="workbench-notice" key={bundle.bundle_id}>
+                      <input
+                        type="radio"
+                        name="research-answer-bundle"
+                        value={bundle.bundle_id}
+                        checked={answerBundleId === bundle.bundle_id}
+                        disabled={!bundle.available}
+                        onChange={() => selectAnswerBundle(bundle.bundle_id)}
+                      />
+                      <strong>
+                        {bundle.label}
+                        {bundle.bundle_id === proposalOptions.recommended_answer_bundle_id
+                          ? ' · RECOMMENDED'
+                          : ''}
+                      </strong>
+                      <span>
+                        {bundle.blocked_reason ?? (bundle.requires_dataset
+                          ? 'Requires an exact qualified dataset.'
+                          : 'Synthetic D0 only; never real-market evidence.')}
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
                 <div className="research-proposal-grid">
-                  <label><span className="eyebrow">Frozen source pack ID</span><input className="field mono" value={sourcePackId} onChange={(event) => setSourcePackId(event.target.value)} /></label>
-                  <label><span className="eyebrow">Equal-duration chart construction</span><select className="field" value={chartConstruction} onChange={(event) => setChartConstruction(event.target.value as ChartConstruction | '')}><option value="">Choose explicitly…</option>{CHART_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <label><span className="eyebrow">When the event becomes knowable</span><select className="field" value={eventAvailability} onChange={(event) => setEventAvailability(event.target.value as EventAvailability | '')}><option value="">Choose explicitly…</option>{EVENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <label><span className="eyebrow">Primary economic endpoint</span><select className="field" value={primaryOutcome} onChange={(event) => setPrimaryOutcome(event.target.value as PrimaryOutcome | '')}><option value="">Choose explicitly…</option>{OUTCOME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                  <label>
+                    <span className="eyebrow">Frozen source pack</span>
+                    <select className="field mono" value={sourcePackId} onChange={(event) => setSourcePackId(event.target.value)}>
+                      <option value="">Select a project source pack</option>
+                      {proposalOptions?.compatible_source_packs.map((pack) => (
+                        <option key={pack.pack_id} value={pack.pack_id}>
+                          {pack.source_ids.length} source{pack.source_ids.length === 1 ? '' : 's'} · {pack.pack_id.slice(0, 15)}…
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {proposalOptions?.valid_answer_bundles.find(
+                    (bundle) => bundle.bundle_id === answerBundleId,
+                  )?.requires_dataset ? (
+                    <label>
+                      <span className="eyebrow">Qualified dataset</span>
+                      <select className="field mono" value={datasetRefId} onChange={(event) => setDatasetRefId(event.target.value)}>
+                        <option value="">Select the exact dataset</option>
+                        {proposalOptions.compatible_datasets.map((dataset) => (
+                          <option key={dataset.ref_id} value={dataset.ref_id}>
+                            {dataset.instrument} · {dataset.provider} · {dataset.start_ts} to {dataset.end_ts}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <label><span className="eyebrow">Equal-duration chart construction</span><input className="field" value={CHART_OPTIONS.find((option) => option.value === chartConstruction)?.label ?? ''} readOnly /></label>
+                  <label><span className="eyebrow">When the event becomes knowable</span><input className="field" value={EVENT_OPTIONS.find((option) => option.value === eventAvailability)?.label ?? ''} readOnly /></label>
+                  <label><span className="eyebrow">Primary economic endpoint</span><input className="field" value={OUTCOME_OPTIONS.find((option) => option.value === primaryOutcome)?.label ?? ''} readOnly /></label>
                 </div>
                 <button className="btn primary" type="submit" disabled={!proposalComplete || busy !== null}>
                   {busy === 'proposal' ? 'materializing…' : 'materialize for owner review'}
@@ -677,8 +953,10 @@ export function ResearchCockpit(props: PanelHandleProps) {
             ) : null}
           </>
         ) : (
-          <Placeholder big="NO ACTIVE RESEARCH CASE">
-            Capture an idea or open a known project ID. Nothing launches automatically.
+          <Placeholder big={linkedProjectId || busy === 'load' ? 'LOADING RESEARCH CASE' : 'NO ACTIVE RESEARCH CASE'}>
+            {linkedProjectId || busy === 'load'
+              ? 'Loading the selected project and discarding any response from an older selection.'
+              : 'Capture an idea or select one from the Backlog. Nothing launches automatically.'}
           </Placeholder>
         )}
       </div>

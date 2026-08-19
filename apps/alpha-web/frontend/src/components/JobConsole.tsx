@@ -43,10 +43,12 @@ export function JobConsole({ jobId, onRun, onDone, embedded = false }: Props) {
     })
     es.addEventListener('failed', () => {
       setStatus('failed')
+      onDoneRef.current?.()
       es.close()
     })
     es.addEventListener('cancelled', () => {
       setStatus('cancelled')
+      onDoneRef.current?.()
       es.close()
     })
     // Don't close on a transient error — let EventSource auto-reconnect; it resends Last-Event-ID

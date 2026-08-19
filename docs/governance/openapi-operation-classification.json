@@ -1,0 +1,1398 @@
+{
+  "operations": [
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "index__get",
+      "path": "/",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "stream_activity_api_activity_stream_get",
+      "path": "/api/activity/stream",
+      "reason": "SSE lifecycle is exercised with deterministic local job fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "candles_api_candles__symbol__get",
+      "path": "/api/candles/{symbol}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "commands_api_commands_get",
+      "path": "/api/commands",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "acquire_api_crypto_data_acquisitions_post",
+      "path": "/api/crypto-data/acquisitions",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "asset_masters_api_crypto_data_asset_masters_get",
+      "path": "/api/crypto-data/asset-masters",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "asset_master_create_api_crypto_data_asset_masters_post",
+      "path": "/api/crypto-data/asset-masters",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post",
+      "path": "/api/crypto-data/asset-masters/{asset_master_version}/verify",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "asset_contract_api_crypto_data_assets_contracts__network___contract_address__get",
+      "path": "/api/crypto-data/assets/contracts/{network}/{contract_address}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "asset_api_crypto_data_assets__symbol__get",
+      "path": "/api/crypto-data/assets/{symbol}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "profile_batches_api_crypto_data_batches_get",
+      "path": "/api/crypto-data/batches",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "profile_resume_api_crypto_data_batches__batch_id__resume_post",
+      "path": "/api/crypto-data/batches/{batch_id}/resume",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "capabilities_api_crypto_data_capabilities_get",
+      "path": "/api/crypto-data/capabilities",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "catalog_api_crypto_data_catalog_get",
+      "path": "/api/crypto-data/catalog",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "coverage_api_crypto_data_coverage_get",
+      "path": "/api/crypto-data/coverage",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "estimate_api_crypto_data_estimate_post",
+      "path": "/api/crypto-data/estimate",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "features_api_crypto_data_features_get",
+      "path": "/api/crypto-data/features",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "feature_create_api_crypto_data_features_post",
+      "path": "/api/crypto-data/features",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "feature_show_api_crypto_data_features__manifest_id__get",
+      "path": "/api/crypto-data/features/{manifest_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "profiles_api_crypto_data_profiles_get",
+      "path": "/api/crypto-data/profiles",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "profile_create_api_crypto_data_profiles_post",
+      "path": "/api/crypto-data/profiles",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "profile_show_api_crypto_data_profiles__profile_id__get",
+      "path": "/api/crypto-data/profiles/{profile_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "profile_run_api_crypto_data_profiles__profile_id__batches_post",
+      "path": "/api/crypto-data/profiles/{profile_id}/batches",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post",
+      "path": "/api/crypto-data/profiles/{profile_id}/liquidity-membership",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post",
+      "path": "/api/crypto-data/profiles/{profile_id}/one-minute-selection",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "quality_api_crypto_data_quality__manifest_id__get",
+      "path": "/api/crypto-data/quality/{manifest_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "snapshot_create_api_crypto_data_snapshots_post",
+      "path": "/api/crypto-data/snapshots",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post",
+      "path": "/api/crypto-data/snapshots/{snapshot_id}/register",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post",
+      "path": "/api/crypto-data/snapshots/{snapshot_id}/verify",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "storage_api_crypto_data_storage_get",
+      "path": "/api/crypto-data/storage",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "cache_clean_api_crypto_data_storage_cache_clean_post",
+      "path": "/api/crypto-data/storage/cache/clean",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "storage_inventory_api_crypto_data_storage_inventory_get",
+      "path": "/api/crypto-data/storage/inventory",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "storage_verify_api_crypto_data_storage_verify_post",
+      "path": "/api/crypto-data/storage/verify",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_development_jobs_api_development_jobs_get",
+      "path": "/api/development/jobs",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "create_development_job_api_development_jobs_post",
+      "path": "/api/development/jobs",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "cancel_development_job_api_development_jobs__job_id__delete",
+      "path": "/api/development/jobs/{job_id}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_development_job_api_development_jobs__job_id__get",
+      "path": "/api/development/jobs/{job_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "reconcile_suite_jobs_api_development_suite_jobs_reconcile_post",
+      "path": "/api/development/suite-jobs/reconcile",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "cancel_suite_action_api_development_suite_jobs__job_id__delete",
+      "path": "/api/development/suite-jobs/{job_id}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_suite_action_status_api_development_suite_jobs__job_id__get",
+      "path": "/api/development/suite-jobs/{job_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "search_evidence_api_evidence_get",
+      "path": "/api/evidence",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "draft_evidence_api_evidence_draft_post",
+      "path": "/api/evidence/draft",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_evidence_api_evidence__evidence_id__get",
+      "path": "/api/evidence/{evidence_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "review_evidence_api_evidence__evidence_id__review_post",
+      "path": "/api/evidence/{evidence_id}/review",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_jobs_api_jobs_get",
+      "path": "/api/jobs",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "launch_job_api_jobs_post",
+      "path": "/api/jobs",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "cancel_job_api_jobs__job_id__delete",
+      "path": "/api/jobs/{job_id}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_job_api_jobs__job_id__get",
+      "path": "/api/jobs/{job_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "stream_job_api_jobs__job_id__stream_get",
+      "path": "/api/jobs/{job_id}/stream",
+      "reason": "SSE lifecycle is exercised with deterministic local job fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_exchanges_api_ml_exchanges_get",
+      "path": "/api/ml/exchanges",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_exchange_api_ml_exchanges__exchange_id__get",
+      "path": "/api/ml/exchanges/{exchange_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_evaluation_api_ml_exchanges__exchange_id__evaluation_get",
+      "path": "/api/ml/exchanges/{exchange_id}/evaluation",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "import_exchange_api_ml_exchanges__exchange_id__import_post",
+      "path": "/api/ml/exchanges/{exchange_id}/import",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "prepare_replay_api_ml_exchanges__exchange_id__prepare_replay_post",
+      "path": "/api/ml/exchanges/{exchange_id}/prepare-replay",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "replay_exchange_api_ml_exchanges__exchange_id__replay_post",
+      "path": "/api/ml/exchanges/{exchange_id}/replay",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_exchange_result_api_ml_exchanges__exchange_id__result_get",
+      "path": "/api/ml/exchanges/{exchange_id}/result",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_exchange_tearsheet_api_ml_exchanges__exchange_id__tear_sheet_get",
+      "path": "/api/ml/exchanges/{exchange_id}/tear-sheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "train_exchange_api_ml_exchanges__exchange_id__train_post",
+      "path": "/api/ml/exchanges/{exchange_id}/train",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_experiments_api_ml_experiments_get",
+      "path": "/api/ml/experiments",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "generate_experiment_api_ml_experiments_post",
+      "path": "/api/ml/experiments",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_experiment_preflight_api_ml_experiments_preflight_get",
+      "path": "/api/ml/experiments/preflight",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_inputs_api_ml_inputs_get",
+      "path": "/api/ml/inputs",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "generate_input_api_ml_inputs_generate_post",
+      "path": "/api/ml/inputs/generate",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_input_api_ml_inputs__input_bundle_id__get",
+      "path": "/api/ml/inputs/{input_bundle_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "prepare_exchange_api_ml_prepare_post",
+      "path": "/api/ml/prepare",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_readiness_api_ml_readiness_get",
+      "path": "/api/ml/readiness",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_replay_tearsheet_api_ml_runs__run_id__tear_sheet_get",
+      "path": "/api/ml/runs/{run_id}/tear-sheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_service_status_api_ml_status_get",
+      "path": "/api/ml/status",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "options_curve_api_options_curve_get",
+      "path": "/api/options/curve",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "options_greeks_api_options_greeks_get",
+      "path": "/api/options/greeks",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "options_iv_api_options_iv_get",
+      "path": "/api/options/iv",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "start_action_api_owner_auth_actions_challenge_post",
+      "path": "/api/owner-auth/actions/challenge",
+      "reason": "WebAuthn ceremony uses deterministic authenticator fixtures; real Touch ID is an owner walkthrough checkpoint."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "perform_action_api_owner_auth_actions_perform_post",
+      "path": "/api/owner-auth/actions/perform",
+      "reason": "WebAuthn ceremony uses deterministic authenticator fixtures; real Touch ID is an owner walkthrough checkpoint."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "complete_registration_api_owner_auth_enrollment_finish_post",
+      "path": "/api/owner-auth/enrollment/finish",
+      "reason": "WebAuthn ceremony uses deterministic authenticator fixtures; real Touch ID is an owner walkthrough checkpoint."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "start_registration_api_owner_auth_enrollment_options_post",
+      "path": "/api/owner-auth/enrollment/options",
+      "reason": "WebAuthn ceremony uses deterministic authenticator fixtures; real Touch ID is an owner walkthrough checkpoint."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_paper_readiness_api_paper_readiness_get",
+      "path": "/api/paper/readiness",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_paper_sessions_api_paper_sessions_get",
+      "path": "/api/paper/sessions",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_paper_session_api_paper_sessions__session_id__get",
+      "path": "/api/paper/sessions/{session_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_paper_events_api_paper_sessions__session_id__events_get",
+      "path": "/api/paper/sessions/{session_id}/events",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_projects_api_projects_get",
+      "path": "/api/projects",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "create_project_api_projects_post",
+      "path": "/api/projects",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_project_api_projects__project_id__get",
+      "path": "/api/projects/{project_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_agent_brief_api_projects__project_id__agent_brief_get",
+      "path": "/api/projects/{project_id}/agent-brief",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "record_attempt_api_projects__project_id__attempts_post",
+      "path": "/api/projects/{project_id}/attempts",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "create_experiment_api_projects__project_id__experiments_post",
+      "path": "/api/projects/{project_id}/experiments",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_experiment_spec_api_projects__project_id__experiments__experiment_id__get",
+      "path": "/api/projects/{project_id}/experiments/{experiment_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "freeze_decision_packet_api_projects__project_id__experiments__experiment_id__decision_post",
+      "path": "/api/projects/{project_id}/experiments/{experiment_id}/decision",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "update_experiment_stage_state_api_projects__project_id__experiments__experiment_id__stages__stage__state_post",
+      "path": "/api/projects/{project_id}/experiments/{experiment_id}/stages/{stage}/state",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "plan_suite_action_api_projects__project_id__experiments__experiment_id__suite__action__plan_get",
+      "path": "/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/plan",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "run_suite_action_api_projects__project_id__experiments__experiment_id__suite__action__run_post",
+      "path": "/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "seal_holdout_api_projects__project_id__holdouts_seal_post",
+      "path": "/api/projects/{project_id}/holdouts/seal",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "link_stage_run_api_projects__project_id__stage_links_post",
+      "path": "/api/projects/{project_id}/stage-links",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "create_version_api_projects__project_id__versions_post",
+      "path": "/api/projects/{project_id}/versions",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_strategy_version_api_projects__project_id__versions__version_id__get",
+      "path": "/api/projects/{project_id}/versions/{version_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_providers_api_providers_get",
+      "path": "/api/providers",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "excluded",
+      "operation_id": "check_provider_api_providers__provider_id__check_post",
+      "path": "/api/providers/{provider_id}/check",
+      "reason": "Requires an explicitly injected provider credential or local broker gateway; covered by redacted receipt contract tests."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_active_research_gate_overrides_api_research_gate_overrides_get",
+      "path": "/api/research-gate-overrides",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "research_cases_api_research_cases_get",
+      "path": "/api/research/cases",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_capture_api_research_cases_post",
+      "path": "/api/research/cases",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_get_api_research_cases__project_id__get",
+      "path": "/api/research/cases/{project_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_context_packets_api_research_cases__project_id__context_packets_get",
+      "path": "/api/research/cases/{project_id}/context-packets",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_decision_view_api_research_cases__project_id__decision_view_get",
+      "path": "/api/research/cases/{project_id}/decision-view",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_evidence_hub_api_research_cases__project_id__evidence_hub_get",
+      "path": "/api/research/cases/{project_id}/evidence-hub",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_launch_api_research_cases__project_id__launch_post",
+      "path": "/api/research/cases/{project_id}/launch",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_literature_acquire_api_research_cases__project_id__literature_acquire_post",
+      "path": "/api/research/cases/{project_id}/literature/acquire",
+      "reason": "Discovery/acquisition uses isolated lawful-response and hostile-document fixtures with vendor network disabled."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_literature_discover_api_research_cases__project_id__literature_discover_post",
+      "path": "/api/research/cases/{project_id}/literature/discover",
+      "reason": "Discovery/acquisition uses isolated lawful-response and hostile-document fixtures with vendor network disabled."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_notes_api_research_cases__project_id__notes_get",
+      "path": "/api/research/cases/{project_id}/notes",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_propose_api_research_cases__project_id__proposal_post",
+      "path": "/api/research/cases/{project_id}/proposal",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_proposal_options_api_research_cases__project_id__proposal_options_get",
+      "path": "/api/research/cases/{project_id}/proposal-options",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_report_api_research_cases__project_id__report_get",
+      "path": "/api/research/cases/{project_id}/report",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_scorecard_api_research_cases__project_id__scorecard_get",
+      "path": "/api/research/cases/{project_id}/scorecard",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_status_api_research_cases__project_id__status_get",
+      "path": "/api/research/cases/{project_id}/status",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_compare_api_research_compare_get",
+      "path": "/api/research/compare",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_context_packet_api_research_context_packets__packet_id__get",
+      "path": "/api/research/context-packets/{packet_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "research_datasets_api_research_datasets_get",
+      "path": "/api/research/datasets",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "research_protocols_api_research_protocols_get",
+      "path": "/api/research/protocols",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "risk_scenario_api_risk_scenario_get",
+      "path": "/api/risk/scenario",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_runs_api_runs_get",
+      "path": "/api/runs",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_detail_api_runs__run_id__get",
+      "path": "/api/runs/{run_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_chart_bundle_api_runs__run_id__chart_bundle_get",
+      "path": "/api/runs/{run_id}/chart-bundle",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_equity_api_runs__run_id__equity_get",
+      "path": "/api/runs/{run_id}/equity",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "list_figures_api_runs__run_id__figures_get",
+      "path": "/api/runs/{run_id}/figures",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "figure_metadata_api_runs__run_id__figures__figure_id__get",
+      "path": "/api/runs/{run_id}/figures/{figure_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "figure_image_api_runs__run_id__figures__figure_id__image_get",
+      "path": "/api/runs/{run_id}/figures/{figure_id}/image",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_forecast_api_runs__run_id__forecast_get",
+      "path": "/api/runs/{run_id}/forecast",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_forecast_paths_api_runs__run_id__forecast_paths_get",
+      "path": "/api/runs/{run_id}/forecast/paths",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_native_tearsheet_api_runs__run_id__native_tearsheet_get",
+      "path": "/api/runs/{run_id}/native-tearsheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_nulls_api_runs__run_id__nulls_get",
+      "path": "/api/runs/{run_id}/nulls",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_origins_api_runs__run_id__origins_get",
+      "path": "/api/runs/{run_id}/origins",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_portfolio_analytics_api_runs__run_id__portfolio_analytics_get",
+      "path": "/api/runs/{run_id}/portfolio-analytics",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_propfirm_paths_api_runs__run_id__propfirm_paths_get",
+      "path": "/api/runs/{run_id}/propfirm-paths",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_tearsheet_api_runs__run_id__tearsheet_get",
+      "path": "/api/runs/{run_id}/tearsheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_trades_api_runs__run_id__trades_get",
+      "path": "/api/runs/{run_id}/trades",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "run_trials_api_runs__run_id__trials_get",
+      "path": "/api/runs/{run_id}/trials",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "screener_news_api_screener_news_get",
+      "path": "/api/screener/news",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "screener_quote_api_screener_quote_get",
+      "path": "/api/screener/quote",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "update_stage_state_api_stage_links__link_id__state_post",
+      "path": "/api/stage-links/{link_id}/state",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "strategies_api_strategies_get",
+      "path": "/api/strategies",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "symbols_api_symbols_get",
+      "path": "/api/symbols",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "get_system_api_system_get",
+      "path": "/api/system",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_list_development_jobs_api_v3_development_jobs_get",
+      "path": "/api/v3/development/jobs",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_create_development_job_api_v3_development_jobs_post",
+      "path": "/api/v3/development/jobs",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "v3_cancel_development_job_api_v3_development_jobs__job_id__delete",
+      "path": "/api/v3/development/jobs/{job_id}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_development_job_api_v3_development_jobs__job_id__get",
+      "path": "/api/v3/development/jobs/{job_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_reconcile_suite_jobs_api_v3_development_suite_jobs_reconcile_post",
+      "path": "/api/v3/development/suite-jobs/reconcile",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "v3_cancel_suite_action_api_v3_development_suite_jobs__job_id__delete",
+      "path": "/api/v3/development/suite-jobs/{job_id}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_suite_action_status_api_v3_development_suite_jobs__job_id__get",
+      "path": "/api/v3/development/suite-jobs/{job_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_search_evidence_api_v3_evidence_get",
+      "path": "/api/v3/evidence",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_draft_evidence_api_v3_evidence_draft_post",
+      "path": "/api/v3/evidence/draft",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_evidence_api_v3_evidence__evidence_id__get",
+      "path": "/api/v3/evidence/{evidence_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_review_evidence_api_v3_evidence__evidence_id__review_post",
+      "path": "/api/v3/evidence/{evidence_id}/review",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_get_exchanges_api_v3_ml_exchanges_get",
+      "path": "/api/v3/ml/exchanges",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_exchange_api_v3_ml_exchanges__exchange_id__get",
+      "path": "/api/v3/ml/exchanges/{exchange_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_evaluation_api_v3_ml_exchanges__exchange_id__evaluation_get",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/evaluation",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_import_exchange_api_v3_ml_exchanges__exchange_id__import_post",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/import",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_prepare_replay_api_v3_ml_exchanges__exchange_id__prepare_replay_post",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/prepare-replay",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_replay_exchange_api_v3_ml_exchanges__exchange_id__replay_post",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/replay",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_exchange_result_api_v3_ml_exchanges__exchange_id__result_get",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/result",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_exchange_tearsheet_api_v3_ml_exchanges__exchange_id__tear_sheet_get",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/tear-sheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_train_exchange_api_v3_ml_exchanges__exchange_id__train_post",
+      "path": "/api/v3/ml/exchanges/{exchange_id}/train",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_get_experiments_api_v3_ml_experiments_get",
+      "path": "/api/v3/ml/experiments",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_generate_experiment_api_v3_ml_experiments_post",
+      "path": "/api/v3/ml/experiments",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_experiment_preflight_api_v3_ml_experiments_preflight_get",
+      "path": "/api/v3/ml/experiments/preflight",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_get_inputs_api_v3_ml_inputs_get",
+      "path": "/api/v3/ml/inputs",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_generate_input_api_v3_ml_inputs_generate_post",
+      "path": "/api/v3/ml/inputs/generate",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_input_api_v3_ml_inputs__input_bundle_id__get",
+      "path": "/api/v3/ml/inputs/{input_bundle_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_prepare_exchange_api_v3_ml_prepare_post",
+      "path": "/api/v3/ml/prepare",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_get_readiness_api_v3_ml_readiness_get",
+      "path": "/api/v3/ml/readiness",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_replay_tearsheet_api_v3_ml_runs__run_id__tear_sheet_get",
+      "path": "/api/v3/ml/runs/{run_id}/tear-sheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_get_service_status_api_v3_ml_status_get",
+      "path": "/api/v3/ml/status",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_list_projects_api_v3_projects_get",
+      "path": "/api/v3/projects",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_create_project_api_v3_projects_post",
+      "path": "/api/v3/projects",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_project_api_v3_projects__project_id__get",
+      "path": "/api/v3/projects/{project_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_agent_brief_api_v3_projects__project_id__agent_brief_get",
+      "path": "/api/v3/projects/{project_id}/agent-brief",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_record_attempt_api_v3_projects__project_id__attempts_post",
+      "path": "/api/v3/projects/{project_id}/attempts",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_create_experiment_api_v3_projects__project_id__experiments_post",
+      "path": "/api/v3/projects/{project_id}/experiments",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_experiment_spec_api_v3_projects__project_id__experiments__experiment_id__get",
+      "path": "/api/v3/projects/{project_id}/experiments/{experiment_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_freeze_decision_packet_api_v3_projects__project_id__experiments__experiment_id__decision_post",
+      "path": "/api/v3/projects/{project_id}/experiments/{experiment_id}/decision",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_update_experiment_stage_state_api_v3_projects__project_id__experiments__experiment_id__stages__stage__state_post",
+      "path": "/api/v3/projects/{project_id}/experiments/{experiment_id}/stages/{stage}/state",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_plan_suite_action_api_v3_projects__project_id__experiments__experiment_id__suite__action__plan_get",
+      "path": "/api/v3/projects/{project_id}/experiments/{experiment_id}/suite/{action}/plan",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_run_suite_action_api_v3_projects__project_id__experiments__experiment_id__suite__action__run_post",
+      "path": "/api/v3/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_seal_holdout_api_v3_projects__project_id__holdouts_seal_post",
+      "path": "/api/v3/projects/{project_id}/holdouts/seal",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_link_stage_run_api_v3_projects__project_id__stage_links_post",
+      "path": "/api/v3/projects/{project_id}/stage-links",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_create_version_api_v3_projects__project_id__versions_post",
+      "path": "/api/v3/projects/{project_id}/versions",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_strategy_version_api_v3_projects__project_id__versions__version_id__get",
+      "path": "/api/v3/projects/{project_id}/versions/{version_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_list_active_research_gate_overrides_api_v3_research_gate_overrides_get",
+      "path": "/api/v3/research-gate-overrides",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "compare_runs_api_v3_runs_compare_post",
+      "path": "/api/v3/runs/compare",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_run_chart_bundle_api_v3_runs__run_id__chart_bundle_get",
+      "path": "/api/v3/runs/{run_id}/chart-bundle",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_run_forecast_paths_api_v3_runs__run_id__forecast_paths_get",
+      "path": "/api/v3/runs/{run_id}/forecast/paths",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_run_native_tearsheet_api_v3_runs__run_id__native_tearsheet_get",
+      "path": "/api/v3/runs/{run_id}/native-tearsheet",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_run_portfolio_analytics_api_v3_runs__run_id__portfolio_analytics_get",
+      "path": "/api/v3/runs/{run_id}/portfolio-analytics",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_update_stage_state_api_v3_stage_links__link_id__state_post",
+      "path": "/api/v3/stage-links/{link_id}/state",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_workspaces_api_workspaces_get",
+      "path": "/api/workspaces",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "save_workspace_api_workspaces_post",
+      "path": "/api/workspaces",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "delete_workspace_api_workspaces__slug__delete",
+      "path": "/api/workspaces/{slug}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_workspace_api_workspaces__slug__get",
+      "path": "/api/workspaces/{slug}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "workstation_app_get",
+      "path": "/app",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "healthz_healthz_get",
+      "path": "/healthz",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "owner_enrollment_owner_auth_enroll_get",
+      "path": "/owner-auth/enroll",
+      "reason": "Safe read exercised against an isolated temporary store."
+    }
+  ],
+  "schema_version": 1
+}

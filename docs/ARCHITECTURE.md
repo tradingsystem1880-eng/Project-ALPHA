@@ -1,6 +1,6 @@
 # Project ALPHA — Architecture
 
-**Last reviewed:** 2026-08-12
+**Last reviewed:** 2026-08-14
 **Status:** Living (six-screen Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
 **Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
@@ -9,7 +9,7 @@ private single-owner local-device scope; no production or distribution target)
 
 ## 1. Purpose & Scope
 
-Project ALPHA is a **$0, institutional-grade, Python** quantitative research platform — point-in-time data, event-driven backtesting, and a heavy-tailed statistical **validation gauntlet** — written and operated entirely by AI agents. The platform's value is not a strategy; it is **machinery you can trust**: a backtest is only believable once it survives walk-forward out-of-sample testing, a randomized-price null, bootstrap confidence intervals, the Deflated Sharpe Ratio, and CPCV.
+Project ALPHA is a **private, local, Python** quantitative research platform — point-in-time data, event-driven backtesting, and a heavy-tailed statistical **validation gauntlet**. The platform's value is not a strategy; it is **machinery you can audit**: a backtest is only believable once it survives walk-forward out-of-sample testing, a randomized-price null, bootstrap confidence intervals, the Deflated Sharpe Ratio, and CPCV.
 
 This document is the **current-state architecture reference**: the enforced dependency DAG, each layer's charter, the end-to-end data flow, and the cross-cutting invariants. It is the stable map; the **"why" behind the load-bearing decisions** lives in the linked [ADRs](adr/). It is deliberately *not* a build history — the dated specs and plans under [`docs/superpowers/`](superpowers/) remain the point-in-time record of how the platform was constructed. Audience: an engineer (human or agent) who needs to place a change correctly and not violate the architecture.
 
@@ -82,7 +82,7 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | Package | Layer | Charter | May import |
 |---|---|---|---|
 | `alpha_core` | 0 — domain | Frozen domain types, typed errors/settings, structural protocols including the low-volume operational `ExecutionEventSink`; paper opt-in defaults false. | *(nothing internal)* |
-| `alpha_data` | 1 — data | Receipt-backed Tiingo EOD and provider-derived ingestion, raw Parquet store, candidate quality/quarantine/promotion recovery, **point-in-time `as_of` firewall**, corporate-action clocks, and immutable hashed snapshots. CCXT provenance remains venue-qualified. | `core` |
+| `alpha_data` | 1 — data | Receipt-backed Tiingo EOD plus family-scoped native crypto ingestion, raw Parquet store, external content-addressed public bulk storage, candidate quality/quarantine/promotion recovery, **point-in-time `as_of` firewall**, corporate-action clocks, and immutable hashed snapshots. CCXT provenance remains venue-qualified and byte-compatible. | `core` |
 | `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, four-family path-risk primitives, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_research` | 1 — research | Pure deterministic research primitives: fixed-duration research bars and identity, group-atomic chronological D1/D2/D3 allocation, causal pattern detection, prospective power and confirmation, point-in-time matched event studies, multiplicity control, lineage-bound charts, and terminal gate packets. D1/D2 are admitted only through governed contracts/phases; the package grants no strategy, validation, holdout, paper, or execution authority. | `core` |
@@ -91,8 +91,8 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | `alpha_screener` | 1 — market edge | Typed Finnhub quote/news parsing plus the opt-in API-key-gated network adapter. | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
 | `alpha_cli` | 3 — compose/control | The **only** composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the SQLite project/job/evidence/research-governance control plane, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
-| `alpha_mcp` | 4 — surface | stdio MCP server exposing 62 bounded tools, consciously pinned after the R2–R4 read/draft additions. **Subprocesses the `alpha` CLI**, composes nothing, cannot approve/decide research, consume D2, reveal a holdout, or place orders. | `core`, supported public `cli` seams |
-| `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed six-screen SPA (Explore, Build, Results, Compare, Studios, Operate). It subprocesses CLI actions/projections and serves server-rendered figures plus typed artifact/control records. It never queries SQLite, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
+| `alpha_mcp` | 4 — surface | stdio MCP server whose generated capability matrix records the current bounded tool count and authority. **Subprocesses the `alpha` CLI**, composes nothing, cannot approve/decide research, consume D2, reveal a holdout, or place orders. | `core`, supported public `cli` seams |
+| `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed six-screen SPA (Research, Build, Results, Compare, Studios, Operate). It subprocesses CLI actions/projections and serves server-rendered figures plus typed artifact/control records. It never queries SQLite, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
 | `workers/qlib` | isolated process | Daily cross-sectional Alpha158-style/LightGBM training with fold-local preprocessing. Accepts an immutable exchange bundle and returns validated close-stamped OOS predictions; models/pickles never cross the boundary. | its own `pyqlib`/LightGBM lock only |
 
 The two surface layers use `alpha_core` settings and supported CLI-owned catalog/run-store,
@@ -147,7 +147,106 @@ research-required. Normal APIs cannot emit grandfathering. One SQLite writer loc
 v1 rollback snapshot, additive v1/v2 DDL, and v2 marker commit; an existing backup is accepted only
 when its logical schema-and-row fingerprint matches that locked migration source.
 
-### 4.2 Canonical strategy/validation flow
+### 4.2 Crypto data-house flow
+
+ADR-0032 keeps provider-native datasets separate. Binance owns CEX spot/futures membership and market history;
+Bybit owns advanced derivatives/options; CoinGecko owns asset identity and broad reference;
+GeckoTerminal owns DEX pools/liquidity/OHLCV; Coin Metrics Community owns a supplemental frozen
+catalog plus the reviewed on-chain/network metrics proven by that catalog; Coinbase through CCXT
+is an independent comparison. No provider is a universal crypto
+price and no fallback changes venue, quote asset, units, frequency, or evidence.
+
+```mermaid
+flowchart LR
+    P["provider-native public interface"] --> RR["CryptoRawReceiptV1<br/>request · schema · exact hash"]
+    RR --> EXT["Expansion volume<br/>content-addressed public bytes"]
+    EXT --> N["typed normalized family<br/>provider-native units and clocks"]
+    N --> Q["CryptoQualityReportV1<br/>qualified or quarantined"]
+    Q --> F["CryptoFeatureArtifactV1<br/>exact Parquet · named input hashes"]
+    Q --> S["CryptoSnapshotV1<br/>ordered exact membership"]
+    F --> S
+    S --> R["research dataset registration<br/>availability-time guarded"]
+```
+
+External publication completes before its internal manifest. The configured volume UUID,
+writability, and free-space reserve are fail-closed prerequisites. The control database and
+manifests stay internal. Asset joins require network plus contract address or an explicitly reviewed
+native mapping; ticker-only joins fail. A content-addressed asset-master artifact commits to its
+ordered identities and the exact qualified CoinGecko/GeckoTerminal source-manifest IDs. Snapshot
+creation and every later verification rederive that version before accepting contract identity;
+historical snapshots using the built-in `reviewed-native-v1` label remain byte-compatible. Existing
+CCXT snapshots and the `ccxt:binance` paper warmup
+path are unchanged. Cursor-based Bybit ranges and complete catalogs freeze each exact response as
+its own raw receipt; their one normalized artifact commits to every ordered raw manifest. Bybit
+point-in-time executions, books, chains, and catalogs use network completion as the local knowledge
+clock while retaining every provider event/engine timestamp separately. High-frequency derivative
+executions and books additionally require `CryptoAcquisitionScopeV1`, bound to an existing research
+case, its exact pre/post-fetch revision, and a bounded reason. Historical unscoped artifacts remain
+readable but fail governed snapshot creation and re-verification. The typed Workstation Crypto
+Data Center projects this same catalog, coverage, quality, storage, acquisition, and snapshot seam;
+its Guided mode can build, select, verify, and resolve the latest exact contract map without copying
+opaque IDs, while Advanced only reveals its hash and receipts. Both modes share identical server
+authority. An explicit typed registration
+re-verifies every external member before recording the snapshot through the historical research
+`snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
+when a registered operator declares compatibility.
+CoinGecko full-market reference uses ordered 250-row pages through one short terminal page, bounded
+to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
+is a separate immutable raw receipt and the combined normalized catalog preserves that order. The
+keyless DEX client paces those requests and applies bounded 429 backoff; failed batches expose a
+safe blocker and recovery action while retaining completed task checkpoints.
+A `CryptoCoverageProfileV1` freezes the exact qualified Bybit catalog and option-chain manifests
+plus exact qualified Binance spot/USD-M/COIN-M membership and Coin Metrics Community catalog
+manifests used to derive active venue,
+perpetual, option-underlying, and cadence-specific acquisition tasks. Its
+membership is content-addressed and bounded to 10,000 tasks; profile inspection is paginated and
+the profile itself has no provider, research-gate, paper, or execution authority. Provider requests
+run only through an explicitly confirmed cadence batch of at most 25 tasks. Each batch freezes its
+exact profile slice and knowledge time in an immutable content-addressed plan, atomically checkpoints
+each successful normalized manifest, re-verifies all source manifests on execution or resume, and
+retries only unfinished membership. A completed resume is offline and idempotent.
+The typed Workstation projects those profiles as filtered, human-readable cadence pages and launches
+only an explicitly confirmed page of at most 25 tasks. Failed checkpoints alone are resumable.
+Prior-day Binance liquidity membership and one-minute research selections use the same server
+contracts as the CLI; the latter is bound to a fresh research-case revision and paginated daily
+membership, while stale async pages are discarded.
+Binance daily tasks cover every active spot/perpetual identity and deterministically request only
+the previous complete UTC day. Dated, future-launched, inactive, and duplicate membership fails or
+is excluded before task construction; Unicode provider symbols retain exact identity. A
+`binance-liquidity-membership` derived artifact is available only when an exact category/quote scope
+has complete qualified prior-day observations. It commits to all universe inputs, ranks at most 250
+without mixing USD/USDT or contract units, and supplies the following profile's one-hour tasks.
+An explicit `binance-research-selection` artifact separately binds at most 50 one-minute markets to
+one current research-case revision and reason. Only exact daily-profile identities are selectable;
+the case is checked before and after receipt publication. It is scheduling provenance, not evidence
+approval or execution authority.
+Coinbase comparison bars are acquired through the existing venue-qualified CCXT seam at exact
+1m/5m/1h/1d intervals. Bybit spot bars may be stored only as diagnostics and fail snapshot authority
+checks. A derived market-comparison artifact commits to the authoritative Binance input, every
+independent input hash, the exact quote/frequency identity, and mechanical thresholds; it never
+rewrites or substitutes the primary dataset.
+Funding, open-interest change, basis, volatility-surface, DEX-liquidity, and on-chain-change
+features are immutable derived Parquet artifacts. Their content-addressed manifests bind the
+ordered input manifest IDs by name, each reverified normalized artifact hash, the causal
+availability time, and the feature method version. CLI, REST, and the Guided Workstation accept
+only complete compatible qualified selections; listing or reading a feature re-hashes its bytes
+and complete source lineage. Features remain research inputs beside an exact snapshot and grant no
+research-gate or execution authority.
+Storage inventory and verification expose counts and hashes without private absolute paths.
+Cleanup is confined to `bulk/cache`, requires an explicit confirmation, and reports zero immutable
+artifacts removed; staging, raw, normalized, snapshot, manifest, and control roots are excluded.
+
+ADR-0033 adds one explicit research edge to this data flow. The
+`bybit_btcusdt_crowding_reversal_v1` proposal is available only for an exact qualified Bybit linear
+BTCUSDT/USDT snapshot containing funding, hourly OI, premium, mark, index, derivative bars, and the
+instrument catalog. `alpha_research` owns the versioned point-in-time event/outcome evaluation;
+`alpha_cli` only re-verifies and composes the snapshot. The existing group-atomic D1/D2/D3
+boundary, one-shot D2, owner actions, and prohibited D3 read do not change. A later
+`hedged_basis_crowding_v1` candidate may inherit a supported research disposition into strategy
+development, but it remains a two-venue standalone sandbox whose paper preflight is mechanically
+blocked and whose outputs cannot become broker evidence.
+
+### 4.3 Canonical strategy/validation flow
 
 The canonical strategy loop runs from raw bars to an immutable v3 artifact bundle. Discovery runs execute from
 their declared start; OOS and final-holdout evidence instead use the fresh-state boundary shown
@@ -155,7 +254,7 @@ below so an in-sample portfolio can never leak into scored execution:
 
 ```mermaid
 flowchart TD
-    A["providers<br/>Tiingo/CCXT authority · Yahoo/Stooq comparison"] --> R["immutable receipt<br/>identity · versions · response hash"]
+    A["providers<br/>family-scoped authority · explicit comparison"] --> R["immutable receipt<br/>identity · versions · response hash"]
     R --> Q["provider candidate<br/>quality gate or quarantine"]
     Q --> B["canonical ParquetStore<br/>raw unadjusted OHLCV + actions"]
     B --> C{{"PointInTimeReader.as_of<br/>look-ahead firewall: ts ≤ when"}}
@@ -173,7 +272,7 @@ flowchart TD
 <details><summary>ASCII fallback</summary>
 
 ```
-providers (Tiingo/CCXT authority; Yahoo/Stooq comparison)
+providers (family-scoped authority; explicit non-substituting comparison)
    → immutable response receipt + dataset identity
    → provider candidate → quality gate/quarantine
    → canonical ParquetStore (raw, unadjusted OHLCV + corporate actions)
@@ -318,11 +417,11 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **Evidence is cited, revisioned, and time-aware.** Agent findings begin as drafts and must name exact run/artifact/field selectors; supplied experiment/version links must match the immutable lineage. As-of AgentBrief reads filter version/experiment scope, stages, run links, holdout audit, and evidence to the requested cutoff; no opaque vector memory is authoritative. → [ADR-0015](adr/0015-evidence-ledger-not-agent-memory.md)
 - **Qlib is isolated; ALPHA replay is authoritative.** The root runtime never imports Qlib/LightGBM or deserializes models. Fold-local, close-stamped predictions must pass strict contract and future-leakage validation before synchronized canonical replay. Qlib diagnostics remain advisory, and replay is labeled model-not-recomputed until a counterfactual retraining design exists. → [ADR-0016](adr/0016-isolated-qlib-worker.md)
 - **Research is upstream and finite.** Fresh projects automatically receive a governed Research Case; no strategy version can bypass its approved confirmation contract, mechanical readiness, and owner-advance link. D0 is synthetic; D1 is registered discovery; D2 is one-shot confirmation; D3 remains prohibited to research. Migrated pre-launch projects alone retain explicit grandfathered compatibility. → [ADR-0019](adr/0019-governed-research-cases-before-strategy-development.md), [ADR-0027](adr/0027-tiered-research-readiness-semantics.md)
-- **Owner-only is an authority boundary, not identity proof.** Gate 1 removes research approval/rejection/decision from MCP, REST, and the Cockpit. Local CLI mutations record the trusted operator's actor string but do not cryptographically authenticate physical owner presence; verified owner-presence authentication remains gated.
+- **Owner presence is authenticated per research action.** The closed research-lifecycle UI action set requires a fresh, one-use Touch ID assertion bound to exact origin, RP, action, project, artifact hash, case revision, consequence, and reason. The verified credential determines the actor. MCP and generic jobs cannot obtain challenges or credentials; trusted CLI is the separately audited enrollment/recovery path. This grants no holdout, paper, broker, order, or research-gate-override authority. → [ADR-0030](adr/0030-touch-id-owner-presence-for-research-actions.md)
 - **Intraday research cannot inherit daily authority.** Gate 1 uses only synthetic fixed-duration proxy bars. There is no qualified real intraday adapter, and research bars/results cannot enter daily snapshots, validation, holdout, paper, or orders. → [ADR-0020](adr/0020-intraday-event-research-is-not-daily-validation-evidence.md)
 - **Surface state is bounded and recoverable.** REST publishes an explicit contract version and endpoint limits; chart windows filter bars and every linked evidence series together; figures report downsampling bounds; the fixed six-screen shell mounts only visible panels; direct and suite durable jobs rehydrate, expose failure, and use owner-driven heartbeat/cancellation/reconciliation rather than raw PID authority. Journal recovery alone does not prove an orphan child has stopped.
 - **Paper authority is narrow and never live capital.** Crypto execution is local Sandbox only. IBKR is paper-account only and consumes an exact immutable intent after reconciliation, dual flags, fresh quote, and cutoff checks. Futures remain connectivity probes, not research. Kronos has no live-paper support without a separately approved causal cache.
-- **Private local use only.** ALPHA has no root license because it is not distributed, sold, hosted, or used by others. Preserve dependency notices and provider/data terms; reopen distribution governance only if the owner explicitly changes the scope.
+- **Private local use only.** Distribution-only release gates are out of scope. Preserve dependency notices and provider/data terms; reopen distribution governance only if the owner explicitly changes this scope.
 
 ## 6. Key Decisions (ADR index)
 
@@ -356,6 +455,8 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 | [0027](adr/0027-tiered-research-readiness-semantics.md) | Python-authoritative tiered readiness | Accepted |
 | [0028](adr/0028-governed-market-state-and-model-candidates.md) | Governed market-state and model candidates | Accepted |
 | [0029](adr/0029-four-family-monte-carlo-validation.md) | Required four-family Monte Carlo path-risk validation | Accepted |
+| [0030](adr/0030-touch-id-owner-presence-for-research-actions.md) | Per-action Touch ID for closed research-lifecycle authority | Accepted |
+| [0031](adr/0031-provider-readiness-and-paper-acceptance-v2.md) | Receipted provider readiness and mechanically reverified paper acceptance | Accepted |
 
 ## 7. References
 

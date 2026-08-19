@@ -27,7 +27,7 @@ export function Glossary() {
         />
         <span className="muted">{entries.length} terms</span>
       </div>
-      <div className="glossary-list">
+      <div className="glossary-list" tabIndex={0} aria-label="Metric definitions">
         {entries.map(([key, e]) => (
           <section key={key} className="glossary-entry">
             <h3>{e.name}</h3>

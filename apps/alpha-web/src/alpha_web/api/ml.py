@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
 import polars as pl
 from fastapi import APIRouter, HTTPException, Query, status
@@ -45,6 +45,33 @@ class MlServiceStatus(StrictModel):
     min_symbols: Literal[20]
     min_aligned_sessions: Literal[756]
     message: str | None
+
+
+class MlPreflightCheck(StrictModel):
+    check_id: Literal[
+        "experiment",
+        "snapshot",
+        "research_gate",
+        "worker",
+        "universe",
+        "aligned_history",
+        "active_job",
+    ]
+    state: Literal["pass", "blocked"]
+    message: str
+    recovery_action: str
+
+
+class MlExperimentPreflight(StrictModel):
+    schema_version: Literal[1]
+    project_id: str
+    experiment_id: str | None
+    snapshot_id: str | None
+    universe_count: int = Field(ge=0, le=512)
+    aligned_sessions: int = Field(ge=0)
+    active_job_id: str | None
+    ready: bool
+    checks: list[MlPreflightCheck]
 
 
 class MlInputBundle(StrictModel):
@@ -527,6 +554,22 @@ def get_experiments(
         raise _http_error(exc) from exc
 
 
+@router.get("/experiments/preflight", response_model=MlExperimentPreflight)
+def get_experiment_preflight(
+    project_id: str,
+    experiment_id: str | None = None,
+) -> dict[str, object]:
+    """Recompute project, data, gate, worker, and capacity prerequisites without launching."""
+    try:
+        return _ml.experiment_preflight(
+            project_id=project_id,
+            experiment_id=experiment_id,
+            data_dir=data_dir(),
+        )
+    except (RuntimeError, OSError) as exc:
+        raise _http_error(exc) from exc
+
+
 @router.post(
     "/experiments",
     response_model=MlExperimentJobAccepted,
@@ -535,6 +578,17 @@ def get_experiments(
 def generate_experiment(body: MlExperimentGenerateRequest) -> dict[str, object]:
     """One-click verified snapshot export followed by immutable worker-exchange preparation."""
     try:
+        preflight = _ml.experiment_preflight(
+            data_dir=data_dir(),
+            project_id=body.project_id,
+            experiment_id=body.experiment_id,
+        )
+        if preflight.get("ready") is not True:
+            checks = cast(list[dict[str, object]], preflight.get("checks", []))
+            blocked = [
+                str(check.get("message")) for check in checks if check.get("state") == "blocked"
+            ]
+            raise _ml.MlError("ML experiment preflight blocked: " + " ".join(blocked))
         return _ml.launch_experiment_generation(
             data_dir=data_dir(),
             project_id=body.project_id,

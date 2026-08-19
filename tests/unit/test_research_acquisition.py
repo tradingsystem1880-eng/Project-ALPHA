@@ -241,3 +241,18 @@ def test_source_response_rejects_nonbytes_false_pdf_and_invalid_utf8(
             policy=policy,
             resolver=lambda _host, _port: _resolve("104.20.1.1"),
         )
+
+
+def test_arxiv_landing_page_cannot_be_mislabeled_as_pdf() -> None:
+    policy = AcquisitionPolicy(allowed_hosts=frozenset({"arxiv.org"}))
+    with pytest.raises(DataError, match="landing-page URL"):
+        validate_source_response(
+            SourceResponse(
+                final_url="https://arxiv.org/abs/1234.5678",
+                media_type="application/pdf",
+                declared_length=None,
+                chunks=(b"%PDF-1.7\nvalid-looking bytes",),
+            ),
+            policy=policy,
+            resolver=lambda _host, _port: _resolve("151.101.1.42"),
+        )

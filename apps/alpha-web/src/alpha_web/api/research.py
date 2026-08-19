@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _research
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
+    LiteratureAcquisitionRequest,
+    LiteratureDiscoveryRequest,
     ResearchCaptureRequest,
     ResearchCaptureResponse,
     ResearchCase,
@@ -22,21 +24,42 @@ from alpha_web.api.models import (
     ResearchLaunchRequest,
     ResearchLaunchResponse,
     ResearchNotePage,
+    ResearchProposalOptionsV1,
     ResearchProposalRequest,
     ResearchProposalResponse,
     ResearchProtocolLibrary,
     ResearchReport,
     ResearchScorecard,
 )
+from alpha_web.run_authority import RunContextDenied, resolve_run_context
 
 router = APIRouter(prefix="/api", tags=["research"])
 
 
 @router.get("/research/compare", response_model=ResearchReport)
-def research_compare(symbol: str, strategies: str = "") -> dict[str, Any]:
+def research_compare(
+    symbol: str,
+    strategies: str = "",
+    context_kind: Literal["governed_project", "standalone_sandbox"] | None = None,
+    project_id: str | None = None,
+) -> dict[str, Any]:
     """Backtest each strategy on ``symbol`` and rank by total return (slow — runs the engine)."""
+    if context_kind is None:
+        raise HTTPException(status_code=422, detail="research comparison requires a run context")
     try:
-        return _research.compare(data_dir=data_dir(), symbol=symbol, strategies=strategies)
+        run_context = resolve_run_context(
+            kind=context_kind,
+            project_id=project_id,
+            data_dir=data_dir(),
+        )
+        return _research.compare(
+            data_dir=data_dir(),
+            symbol=symbol,
+            strategies=strategies,
+            run_context=run_context,
+        )
+    except RunContextDenied as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -72,6 +95,40 @@ def research_evidence_hub(project_id: str) -> dict[str, Any]:
         return _research.evidence_hub(project_id, data_dir=data_dir())
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/literature/discover")
+def research_literature_discover(
+    project_id: str, body: LiteratureDiscoveryRequest
+) -> dict[str, Any]:
+    """Explicitly search approved scholarly services; candidates remain untrusted."""
+    try:
+        return _research.discover_literature(
+            project_id,
+            data_dir=data_dir(),
+            query=body.query,
+            unpaywall_email=body.unpaywall_email,
+            max_candidates=body.max_candidates,
+            max_full_texts=body.max_full_texts,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/literature/acquire")
+def research_literature_acquire(
+    project_id: str, body: LiteratureAcquisitionRequest
+) -> dict[str, Any]:
+    """Acquire and extract one recorded direct-PDF candidate without evidence authority."""
+    try:
+        return _research.acquire_literature(
+            project_id,
+            data_dir=data_dir(),
+            discovery_id=body.discovery_id,
+            candidate_id=body.candidate_id,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get(
@@ -172,23 +229,33 @@ def research_get(project_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.get(
+    "/research/cases/{project_id}/proposal-options",
+    response_model=ResearchProposalOptionsV1,
+)
+def research_proposal_options(project_id: str) -> dict[str, Any]:
+    """Read executable answer bundles and current pack/data prerequisites."""
+
+    try:
+        return _research.proposal_options(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.post(
     "/research/cases/{project_id}/proposal",
     response_model=ResearchProposalResponse,
 )
 def research_propose(project_id: str, body: ResearchProposalRequest) -> dict[str, Any]:
     """Create an owner-reviewable contract; owner approval has no REST route."""
-    answers = {
-        "chart_construction": body.answers.chart_construction,
-        "event_availability": body.answers.event_availability,
-        "primary_outcome": body.answers.primary_outcome,
-    }
     try:
         return _research.propose(
             project_id,
             data_dir=data_dir(),
             source_pack_id=body.source_pack_id,
-            answers=answers,
+            answer_bundle_id=body.answer_bundle_id,
+            dataset_ref_id=body.dataset_ref_id,
+            expected_case_revision=body.expected_case_revision,
         )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

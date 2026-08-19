@@ -7,10 +7,40 @@ Other runbooks in this directory: [`owner-actions-checklist.md`](owner-actions-c
 This runbook is for the single-operator local deployment. Do not commit `.env`, Tiingo/IBKR
 credentials, account identifiers, Docker secrets, generated journals, or copied market data.
 
-The supplied Tiingo token, QuantPad token, and IBKR Paper account identifier are stored in the
-macOS keychain services `project-alpha-tiingo`, `project-alpha-quantpad`, and
-`project-alpha-ibkr-paper-account`. Repository files contain only those service names. The local
-`.env` is git-ignored and mode `0600`; it must not receive vendor or broker secrets.
+The supplied Tiingo token, QuantPad token, CoinGecko Demo key, and IBKR Paper account identifier are
+stored in the macOS keychain services `project-alpha-tiingo`, `project-alpha-quantpad`,
+`project-alpha-coingecko`, and `project-alpha-ibkr-paper-account`. Repository files contain only
+those service names. The local `.env` is git-ignored and mode `0600`; it must not receive vendor or
+broker secrets.
+
+For CoinGecko, run exactly one bounded authenticated readiness check with:
+
+```bash
+scripts/alpha-with-keychain-provider coingecko check
+```
+
+The launcher injects `ALPHA_COINGECKO_API_KEY` into only that replacement process. CoinGecko market
+reference, GeckoTerminal pool data, and Coin Metrics network data remain separate families;
+CoinGecko verification does not qualify any downloaded dataset.
+
+Acquire and mechanically qualify the bounded CoinGecko contract catalog through a separate fixed
+launcher action:
+
+```bash
+scripts/alpha-with-keychain-provider coingecko catalog
+```
+
+Acquire the broad USD market-reference universe through its own fixed action:
+
+```bash
+scripts/alpha-with-keychain-provider coingecko reference
+```
+
+Neither action accepts arbitrary provider, family, instrument, or output arguments. Each freezes
+the exact paginated responses and qualification receipt; the key remains process-local and is
+absent from request receipts, manifests, logs, and command arguments. The reference universe is
+supplemental research context and cannot satisfy venue-price, validation-price, or execution-price
+requirements.
 
 ## 1. Use QuantPad for external historical research
 
@@ -24,17 +54,38 @@ session, run `/mcp`, and complete the QuantPad sign-in. Use MCP only for:
 
 Do not loop previews to build history. For bars beyond that bound, ticks, L1, L2/`mbp-10`,
 notebooks, or backtests, use QuantPad's official REST API/Python SDK. Load the API key into only the
-terminal process that needs it:
+process that needs it. The checked launcher retrieves one named item and replaces itself with the
+exact check or Workstation process:
 
 ```bash
-export QUANTPAD_API_KEY="$(security find-generic-password -w -s project-alpha-quantpad)"
+scripts/alpha-with-keychain-provider quantpad check
 ```
+
+After the explicit check succeeds, archive only a closed symbol/family/time contract. Exact bytes
+go to the sibling `quantpad-data` directory on the UUID-pinned bulk volume; manifests remain under
+the internal ALPHA data root:
+
+```bash
+scripts/alpha-with-keychain-provider quantpad archive coverage AAPL --json
+scripts/alpha-with-keychain-provider quantpad archive bars AAPL \
+  --start 2018-01-01 --end 2026-08-18 --timeframe 1d --json
+scripts/alpha-with-keychain-provider quantpad archive universe a \
+  --asset-class futures --json
+uv run alpha quantpad-data verify MANIFEST_ID --json
+```
+
+The API is symbol-scoped and exposes ranked search pages of at most 50 records—not a universal
+export. A catalog can be mechanically complete only when every query is archived and none reaches
+that cap; otherwise maintain an explicit coverage backlog. Never describe a set of guessed symbols
+as a complete provider dump.
+Large tick requests must be partitioned into bounded intervals. Archive receipts remain
+`research_only` and do not qualify or promote data automatically.
 
 Use `get_coverage` before every bulk request and project only required order-book columns. Store
 bulk results outside tracked repository paths. They remain research scratch data until ALPHA has a
 tested receipt/candidate/quality adapter; they must not be relabeled as canonical data or paper
 evidence. Website scraping, nonpublic endpoints, redistribution, public display, and model training
-are prohibited. Obtain written QuantPad permission before permanent bulk archiving or retention
+are prohibited. Written QuantPad permission is required before permanent bulk archiving or retention
 after a subscription ends. See ADR-0018.
 
 ## 2. Configure daily Tiingo work
@@ -65,15 +116,23 @@ paths private. A cycle crash is visible in `scheduler-status`; after diagnosing 
 clear only that exact cycle marker with
 `alpha paper scheduler-repair SYMBOL YYYY-MM-DD --config ... --acknowledge`.
 
+The Readiness Center and `alpha info providers --json` are local projections and never probe a
+provider. `scripts/alpha-with-keychain-provider tiingo check` performs one bounded SPY
+authentication/schema check and stores a redacted `ProviderCheckReceiptV1`. That receipt does not
+qualify data: ingestion, audit, and promotion remain separate steps.
+
 ## 3. Prepare IBKR Paper
 
-Owner prerequisites are an IBKR paper account, permissions/subscriptions, Docker, and an independently
-reviewed IB Gateway image digest. Inject `TWS_USERNAME`/`TWS_PASSWORD` using Docker secrets or an OS
-keychain-backed wrapper. Set only process-local values for:
+Owner prerequisites are an IBKR paper account and permissions/subscriptions. Use either a reviewed
+container image or the official signed/notarized local IB Gateway application; ALPHA never starts or
+stops Docker. Inject `TWS_USERNAME`/`TWS_PASSWORD` only through the Gateway login or a secure wrapper.
+Set only machine-local/process-local values for one installation mode:
 
 ```text
 ALPHA_IBKR_PAPER_ACCOUNT=DU...
 ALPHA_IBKR_GATEWAY_IMAGE=registry/image@sha256:<reviewed-64-hex-digest>
+# or
+ALPHA_IBKR_GATEWAY_APP=/Applications/IB Gateway <version>/IB Gateway <version>.app
 ```
 
 Verify the boundary without enabling orders:
@@ -81,6 +140,28 @@ Verify the boundary without enabling orders:
 ```bash
 uv run alpha paper ibkr-preflight SPY.ARCA --asset-class etf
 ```
+
+`alpha provider check ibkr` reports Docker CLI/daemon, reviewed image digest or signed local-app
+verification, masked DU account, loopback port 4002 reachability, permissions, and market-data
+state without starting or stopping Docker. Freeze a non-transmitting preview contract offline with:
+
+```bash
+uv run alpha paper ibkr-what-if-plan \
+  --limit-price 640 --collar-low 600 --collar-high 680 \
+  --expires-at YYYY-MM-DDTHH:MM:SS+00:00
+```
+
+This creates no broker connection and earns no paper-readiness credit. IBKR requires the API
+`transmit` field to be true to process a what-if request; `whatIf=true` prevents order placement,
+and the plan records `broker_order_transmitted=false` separately. Execute exactly once after a new
+current owner checkpoint:
+
+```bash
+uv run alpha paper ibkr-what-if-execute PLAN_HASH --confirm-non-transmitting-preview
+```
+
+The executor verifies the frozen account and contract, compares SPY position before and after,
+rejects order-status or execution callbacks, and writes only a redacted receipt.
 
 For one approved equity release, take the `intent_id`, snapshot, expected/next sessions, and cutoff
 from the immutable scheduler outcome/intent. Enable both flags only in that execution process:
@@ -125,7 +206,8 @@ recovery authority until a separate multi-host operations/threat-model review is
 
 ## 5. Acceptance
 
-Run `alpha paper readiness --json`. `paper_passed` must remain false until every required real
-Binance and IBKR scenario is present and no blocking event exists. IBKR Paper fills are simulator
-observations, not evidence of live fill quality. Futures always remain research-unsupported in this
-milestone. Live-capital routing does not exist.
+Run `alpha paper readiness --json`. `PaperAcceptanceV2` recomputes every predicate from immutable,
+plan-bound, hash-chained typed callback facts; producer `passed` fields and legacy journal scenarios
+earn no credit. `paper_passed` remains false until every separately authorized real paper scenario
+is mechanically present. IBKR Paper fills are simulator observations, not evidence of live fill
+quality. Futures remain research-unsupported and live-capital routing does not exist.

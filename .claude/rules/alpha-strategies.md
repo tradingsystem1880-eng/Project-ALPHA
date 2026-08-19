@@ -14,4 +14,5 @@ Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `
 | `ts_momentum.py` | TS-momentum (a `VolTargetStrategy` subclass since the 2026-07 audit) | `TimeSeriesMomentum` |
 | `signal_replay.py` | Replay a precomputed per-bar signal sequence (the kronos engine strategy; fail-loud on uncovered indices) | `SignalReplay(VolTargetStrategy)` |
 | `ma_crossover.py` · `mean_reversion.py` · `breakout.py` | `VolTargetStrategy` subclasses | `MovingAverageCrossover`, `MeanReversion`, `DonchianBreakout` |
+| `hedged_basis.py` | Pure sandbox model for the registered two-venue BTCUSDT basis candidate (ADR-0033): evaluates an already-materialized point-in-time crowding event stream; constructs no orders, connects to neither venue, and never reinterprets a leg as a universal crypto price | `HedgedBasisPlanV1`, `registered_hedged_basis_plan`, `HedgedBasisObservationV1`, `HedgedBasisTradeV1`, `HedgedBasisEvaluationV1`, `evaluate_hedged_basis` |
 

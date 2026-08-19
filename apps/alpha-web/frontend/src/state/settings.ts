@@ -9,14 +9,16 @@ import { useSyncExternalStore } from 'react'
 
 export type Density = 'comfortable' | 'compact'
 export type ExplainMode = 'narrative' | 'terse'
+export type WorkspaceMode = 'guided' | 'advanced'
 
 export interface Settings {
   density: Density
   explain: ExplainMode
+  projectModes: Record<string, WorkspaceMode>
 }
 
 const STORAGE_KEY = 'alpha.settings'
-const DEFAULTS: Settings = { density: 'comfortable', explain: 'narrative' }
+const DEFAULTS: Settings = { density: 'comfortable', explain: 'narrative', projectModes: {} }
 
 let state: Settings = DEFAULTS
 const listeners = new Set<() => void>()
@@ -29,10 +31,20 @@ function load(): Settings {
     return {
       density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       explain: parsed.explain === 'terse' ? 'terse' : 'narrative',
+      projectModes: Object.fromEntries(
+        Object.entries(parsed.projectModes ?? {}).filter(
+          (entry): entry is [string, WorkspaceMode] =>
+            entry[1] === 'guided' || entry[1] === 'advanced',
+        ),
+      ),
     }
   } catch {
     return DEFAULTS
   }
+}
+
+export function workspaceModeFor(settings: Settings, projectId: string | null): WorkspaceMode {
+  return projectId ? (settings.projectModes[projectId] ?? 'guided') : 'guided'
 }
 
 function applyAttrs(): void {

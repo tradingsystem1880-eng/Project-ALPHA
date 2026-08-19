@@ -15,7 +15,14 @@ import pytest
 from click import unstyle
 from typer.testing import CliRunner
 
-from alpha_cli import _ibkr_paper, _paper, daily_scheduler, paper_store
+from alpha_cli import (
+    _ibkr_paper,
+    _paper,
+    daily_scheduler,
+    ibkr_what_if,
+    paper_readiness,
+    paper_store,
+)
 from alpha_cli._runner import RunSpec
 from alpha_cli.main import app
 from alpha_core import Bar, DataError
@@ -807,6 +814,145 @@ def test_paper_run_rejects_any_non_binance_provider(
         color=True,
     )
     assert result.exit_code != 0 and "--provider must be 'binance'" in unstyle(result.output)
+
+
+def test_ibkr_what_if_plan_is_offline_redacted_and_non_transmitting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = "DU1234567"
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", account)
+    monkeypatch.setenv("ALPHA_IBKR_GATEWAY_IMAGE", "ghcr.io/example/ibkr@sha256:" + "b" * 64)
+
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-plan",
+            "--limit-price",
+            "640",
+            "--collar-low",
+            "600",
+            "--collar-high",
+            "680",
+            "--expires-at",
+            "2099-08-13T00:10:00+00:00",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    plan = json.loads(result.stdout)
+    assert plan["what_if"] is True and plan["wire_transmit"] is True
+    assert plan["broker_order_transmitted"] is False
+    assert plan["paper_acceptance_credit"] is False
+    assert account not in result.stdout
+    artifact = next((tmp_path / "ibkr-what-if-v2" / "plans").glob("*.json"))
+    assert account not in artifact.read_text(encoding="utf-8")
+
+    human = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-plan",
+            "--limit-price",
+            "640",
+            "--collar-low",
+            "600",
+            "--collar-high",
+            "680",
+            "--expires-at",
+            "2099-08-13T00:10:00+00:00",
+        ],
+    )
+    assert human.exit_code == 0
+    assert "whatIf=true, wire transmit=true, broker order transmitted=false" in human.stdout
+
+
+def test_ibkr_what_if_plan_reports_missing_scoped_injection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("ALPHA_IBKR_PAPER_ACCOUNT", raising=False)
+    monkeypatch.delenv("ALPHA_IBKR_GATEWAY_IMAGE", raising=False)
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-plan",
+            "--limit-price",
+            "640",
+            "--collar-low",
+            "600",
+            "--collar-high",
+            "680",
+            "--expires-at",
+            "2099-08-13T00:10:00+00:00",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "ALPHA_IBKR_PAPER_ACCOUNT" in result.output
+
+
+def test_ibkr_what_if_execute_requires_explicit_checkpoint_and_stays_redacted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = "DU1234567"
+    plan_hash = "a" * 64
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", account)
+
+    denied = runner.invoke(app, ["paper", "ibkr-what-if-execute", plan_hash])
+    assert denied.exit_code != 0
+    assert "confirm-non-transmitting-preview" in denied.output
+
+    def fake_execute(data_dir: Path, *, plan_hash: str, account_id: str) -> dict[str, object]:
+        assert data_dir == tmp_path
+        assert plan_hash == "a" * 64
+        assert account_id == account
+        return {
+            "schema_version": 2,
+            "plan_hash": plan_hash,
+            "account_alias": "DU…4567",
+            "status": "PREVIEW_VERIFIED",
+            "what_if": True,
+            "wire_transmit": True,
+            "broker_order_transmitted": False,
+            "position_unchanged": True,
+            "order_status_callbacks": 0,
+            "execution_callbacks": 0,
+            "paper_acceptance_credit": False,
+        }
+
+    monkeypatch.setattr(ibkr_what_if, "execute_preview", fake_execute)
+    result = runner.invoke(
+        app,
+        [
+            "paper",
+            "ibkr-what-if-execute",
+            plan_hash,
+            "--confirm-non-transmitting-preview",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    receipt = json.loads(result.stdout)
+    assert receipt["status"] == "PREVIEW_VERIFIED"
+    assert receipt["broker_order_transmitted"] is False
+    assert account not in result.stdout
+
+
+def test_paper_readiness_cli_translates_corrupt_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise DataError("paper evidence is unreadable")
+
+    monkeypatch.setattr(paper_readiness, "readiness_report", fail)
+    result = runner.invoke(app, ["paper", "readiness"])
+    assert result.exit_code != 0
+    assert "paper evidence is unreadable" in result.output
 
 
 def test_ibkr_preflight_requires_secret_sources(monkeypatch: pytest.MonkeyPatch) -> None:

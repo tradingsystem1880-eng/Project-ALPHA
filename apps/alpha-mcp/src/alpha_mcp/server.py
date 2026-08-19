@@ -684,6 +684,7 @@ def draft_source_claim(
     sample_summary: str,
     markets: list[str],
     limitations: str,
+    source_anchor: _types.JsonObject | None = None,
 ) -> _types.SourceClaimOut:
     """Draft one claim-level literature statement (always agent-authored).
 
@@ -704,6 +705,7 @@ def draft_source_claim(
             sample_summary=sample_summary,
             markets=markets,
             limitations=limitations,
+            source_anchor=source_anchor,
         ),
     )
 

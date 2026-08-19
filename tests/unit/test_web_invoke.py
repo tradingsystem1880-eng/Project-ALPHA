@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from alpha_cli.durable_lease import DurableLeaseError, terminate_and_reap
-from alpha_web import _invoke
+from alpha_web import _catalog, _invoke
 
 
 def _fake(monkeypatch: pytest.MonkeyPatch, script: str) -> None:
@@ -42,6 +42,37 @@ def _process_is_executing(pid: int) -> bool:
     )
     state = probe.stdout.strip()
     return probe.returncode == 0 and bool(state) and not state.startswith("Z")
+
+
+def test_web_cli_environment_scopes_provider_credentials_to_exact_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    secrets = {
+        "ALPHA_TIINGO_API_KEY": "tiingo-secret",
+        "ALPHA_COINGECKO_API_KEY": "coingecko-secret",
+        "QUANTPAD_API_KEY": "quantpad-secret",
+        "ALPHA_IBKR_PAPER_ACCOUNT": "DU1234567",
+        "ALPHA_IBKR_GATEWAY_IMAGE": "gateway@sha256:" + "a" * 64,
+        "UNRELATED_SHELL_STATE": "must-not-cross",
+    }
+    for name, value in secrets.items():
+        monkeypatch.setenv(name, value)
+
+    generic = _catalog._cli_environment(tmp_path, ["backtest", "run", "SPY"])
+    coingecko = _catalog._cli_environment(
+        tmp_path,
+        ["crypto-data", "acquire", "coingecko", "market_reference"],
+    )
+    ibkr = _catalog._cli_environment(tmp_path, ["provider", "check", "ibkr", "--json"])
+
+    assert generic["ALPHA_DATA_DIR"] == str(tmp_path)
+    assert not set(secrets).intersection(generic)
+    assert coingecko["ALPHA_COINGECKO_API_KEY"] == "coingecko-secret"
+    assert "ALPHA_TIINGO_API_KEY" not in coingecko
+    assert ibkr["ALPHA_IBKR_PAPER_ACCOUNT"] == "DU1234567"
+    assert "ALPHA_IBKR_GATEWAY_IMAGE" in ibkr
+    assert "ALPHA_COINGECKO_API_KEY" not in ibkr
+    assert "UNRELATED_SHELL_STATE" not in coingecko | ibkr
 
 
 def test_launch_captures_output_and_parses_run_id(

@@ -86,6 +86,451 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/acquisitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acquire */
+        post: operations["acquire_api_crypto_data_acquisitions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/asset-masters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset Masters */
+        get: operations["asset_masters_api_crypto_data_asset_masters_get"];
+        put?: never;
+        /** Asset Master Create */
+        post: operations["asset_master_create_api_crypto_data_asset_masters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/asset-masters/{asset_master_version}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Asset Master Verify */
+        post: operations["asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/assets/contracts/{network}/{contract_address}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset Contract */
+        get: operations["asset_contract_api_crypto_data_assets_contracts__network___contract_address__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/assets/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset */
+        get: operations["asset_api_crypto_data_assets__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Batches */
+        get: operations["profile_batches_api_crypto_data_batches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/batches/{batch_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Profile Resume */
+        post: operations["profile_resume_api_crypto_data_batches__batch_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_crypto_data_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog */
+        get: operations["catalog_api_crypto_data_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coverage */
+        get: operations["coverage_api_crypto_data_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estimate */
+        post: operations["estimate_api_crypto_data_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Features */
+        get: operations["features_api_crypto_data_features_get"];
+        put?: never;
+        /** Feature Create */
+        post: operations["feature_create_api_crypto_data_features_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/features/{manifest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feature Show */
+        get: operations["feature_show_api_crypto_data_features__manifest_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profiles */
+        get: operations["profiles_api_crypto_data_profiles_get"];
+        put?: never;
+        /** Profile Create */
+        post: operations["profile_create_api_crypto_data_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Show */
+        get: operations["profile_show_api_crypto_data_profiles__profile_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Profile Run */
+        post: operations["profile_run_api_crypto_data_profiles__profile_id__batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}/liquidity-membership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Liquidity Freeze */
+        post: operations["liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/profiles/{profile_id}/one-minute-selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One Minute Selection */
+        post: operations["one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/quality/{manifest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quality */
+        get: operations["quality_api_crypto_data_quality__manifest_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot Create */
+        post: operations["snapshot_create_api_crypto_data_snapshots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/snapshots/{snapshot_id}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot Register */
+        post: operations["snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/snapshots/{snapshot_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snapshot Verify */
+        post: operations["snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storage */
+        get: operations["storage_api_crypto_data_storage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage/cache/clean": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cache Clean */
+        post: operations["cache_clean_api_crypto_data_storage_cache_clean_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storage Inventory */
+        get: operations["storage_inventory_api_crypto_data_storage_inventory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/storage/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Storage Verify */
+        post: operations["storage_verify_api_crypto_data_storage_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/development/jobs": {
         parameters: {
             query?: never;
@@ -273,7 +718,7 @@ export interface paths {
         put?: never;
         /**
          * Launch Job
-         * @description Launch a background CLI job, excluding governed Research Case commands.
+         * @description Launch a background CLI job after resolving its empirical run context.
          */
         post: operations["launch_job_api_jobs_post"];
         delete?: never;
@@ -509,6 +954,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ml/experiments/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Experiment Preflight
+         * @description Recompute project, data, gate, worker, and capacity prerequisites without launching.
+         */
+        get: operations["get_experiment_preflight_api_ml_experiments_preflight_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ml/inputs": {
         parameters: {
             query?: never;
@@ -697,6 +1162,77 @@ export interface paths {
         get: operations["options_iv_api_options_iv_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/actions/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Action */
+        post: operations["start_action_api_owner_auth_actions_challenge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/actions/perform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Perform Action
+         * @description Consume one fresh assertion, then execute only its server-derived closed action.
+         */
+        post: operations["perform_action_api_owner_auth_actions_perform_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/enrollment/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Registration */
+        post: operations["complete_registration_api_owner_auth_enrollment_finish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner-auth/enrollment/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Registration */
+        post: operations["start_registration_api_owner_auth_enrollment_options_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -918,7 +1454,7 @@ export interface paths {
         put?: never;
         /**
          * Freeze Decision Packet
-         * @description Freeze an explicit owner decision; acceptance remains sandbox-only.
+         * @description Deny caller-asserted owner decisions; the trusted local CLI owns this record.
          */
         post: operations["freeze_decision_packet_api_projects__project_id__experiments__experiment_id__decision_post"];
         delete?: never;
@@ -978,7 +1514,7 @@ export interface paths {
         put?: never;
         /**
          * Run Suite Action
-         * @description Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields.
+         * @description Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only.
          */
         post: operations["run_suite_action_api_projects__project_id__experiments__experiment_id__suite__action__run_post"];
         delete?: never;
@@ -998,7 +1534,7 @@ export interface paths {
         put?: never;
         /**
          * Seal Holdout
-         * @description Seal a final holdout before selection; no endpoint reveals the holdout.
+         * @description Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony.
          */
         post: operations["seal_holdout_api_projects__project_id__holdouts_seal_post"];
         delete?: never;
@@ -1081,6 +1617,26 @@ export interface paths {
         get: operations["get_providers_api_providers_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/providers/{provider_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Provider
+         * @description Perform one explicit bounded check; ordinary provider reads never enter this path.
+         */
+        post: operations["check_provider_api_providers__provider_id__check_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1231,6 +1787,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/literature/acquire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Literature Acquire
+         * @description Acquire and extract one recorded direct-PDF candidate without evidence authority.
+         */
+        post: operations["research_literature_acquire_api_research_cases__project_id__literature_acquire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/literature/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Literature Discover
+         * @description Explicitly search approved scholarly services; candidates remain untrusted.
+         */
+        post: operations["research_literature_discover_api_research_cases__project_id__literature_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/notes": {
         parameters: {
             query?: never;
@@ -1265,6 +1861,26 @@ export interface paths {
          * @description Create an owner-reviewable contract; owner approval has no REST route.
          */
         post: operations["research_propose_api_research_cases__project_id__proposal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/proposal-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Proposal Options
+         * @description Read executable answer bundles and current pack/data prerequisites.
+         */
+        get: operations["research_proposal_options_api_research_cases__project_id__proposal_options_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2306,6 +2922,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v3/ml/experiments/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 Get Experiment Preflight
+         * @description Recompute project, data, gate, worker, and capacity prerequisites without launching.
+         *
+         *     Versioned Workstation-v3 alias of `/api/ml/experiments/preflight`.
+         */
+        get: operations["v3_get_experiment_preflight_api_v3_ml_experiments_preflight_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v3/ml/inputs": {
         parameters: {
             query?: never;
@@ -2605,7 +3243,7 @@ export interface paths {
         put?: never;
         /**
          * V3 Freeze Decision Packet
-         * @description Freeze an explicit owner decision; acceptance remains sandbox-only.
+         * @description Deny caller-asserted owner decisions; the trusted local CLI owns this record.
          *
          *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/decision`.
          */
@@ -2671,7 +3309,7 @@ export interface paths {
         put?: never;
         /**
          * V3 Run Suite Action
-         * @description Launch one pre-resolved action; only holdout reveal accepts owner confirmation fields.
+         * @description Launch one pre-resolved non-owner action; holdout reveal remains trusted-CLI-only.
          *
          *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run`.
          */
@@ -2693,7 +3331,7 @@ export interface paths {
         put?: never;
         /**
          * V3 Seal Holdout
-         * @description Seal a final holdout before selection; no endpoint reveals the holdout.
+         * @description Deny browser holdout authority; sealing requires the explicit trusted CLI ceremony.
          *
          *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/holdouts/seal`.
          */
@@ -3007,6 +3645,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/owner-auth/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Owner Enrollment
+         * @description SPA entry reached only through the trusted CLI's short-lived enrollment URL.
+         */
+        get: operations["owner_enrollment_owner_auth_enroll_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3076,6 +3734,32 @@ export interface components {
             /** Stage */
             stage: string;
             state: components["schemas"]["StageStateValue"];
+        };
+        /** ApiErrorV1 */
+        ApiErrorV1: {
+            /** Code */
+            code: string;
+            /** Field Errors */
+            field_errors: components["schemas"]["ApiFieldErrorV1"][];
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** ApiFieldErrorV1 */
+        ApiFieldErrorV1: {
+            /** Field */
+            field: string;
+            /** Message */
+            message: string;
         };
         /** AttemptCreateRequest */
         AttemptCreateRequest: {
@@ -3546,6 +4230,1029 @@ export interface components {
             name: string;
             /** Present */
             present: boolean;
+        };
+        /** CryptoAcquisitionRequest */
+        CryptoAcquisitionRequest: {
+            /** Base */
+            base: string;
+            /** Case Id */
+            case_id?: string | null;
+            /**
+             * Category
+             * @default linear
+             * @enum {string}
+             */
+            category: "spot" | "linear" | "inverse" | "option";
+            /** End */
+            end?: string | null;
+            /** Expected Case Revision */
+            expected_case_revision?: string | null;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /**
+             * Frequency
+             * @default 1h
+             * @enum {string}
+             */
+            frequency: "1d" | "4h" | "1h" | "30m" | "15m" | "5m" | "1m";
+            /** Instrument */
+            instrument: string;
+            /** Metrics */
+            metrics?: string[];
+            /** Network */
+            network?: string | null;
+            /** Period */
+            period?: string | null;
+            /** Pool Address */
+            pool_address?: string | null;
+            provider: components["schemas"]["CryptoProviderValue"];
+            /** Quote */
+            quote: string;
+            /** Reason */
+            reason?: string | null;
+            /** Start */
+            start?: string | null;
+        };
+        /** CryptoAssetIdentityResponse */
+        CryptoAssetIdentityResponse: {
+            /** Coingecko Id */
+            coingecko_id: string;
+            /** Contract Address */
+            contract_address: string | null;
+            /** Migration Lineage */
+            migration_lineage: string[];
+            /** Native Asset */
+            native_asset: boolean;
+            /** Network */
+            network: string;
+            /** Provider Symbols */
+            provider_symbols: [
+                string,
+                string
+            ][];
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Valid From */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+        };
+        /** CryptoAssetMasterCreateRequest */
+        CryptoAssetMasterCreateRequest: {
+            /** Coingecko Manifest Id */
+            coingecko_manifest_id: string;
+            /** Geckoterminal Manifest Ids */
+            geckoterminal_manifest_ids: string[];
+        };
+        /** CryptoAssetMasterListItem */
+        CryptoAssetMasterListItem: {
+            /** Asset Master Version */
+            asset_master_version: string;
+            /** Builtin */
+            builtin: boolean;
+            /** Contract Identity Count */
+            contract_identity_count: number;
+            /** Identity Count */
+            identity_count: number;
+            /**
+             * State
+             * @constant
+             */
+            state: "verified";
+        };
+        /** CryptoAssetMasterListResponse */
+        CryptoAssetMasterListResponse: {
+            /** Count */
+            count: number;
+            /** Items */
+            items: components["schemas"]["CryptoAssetMasterListItem"][];
+            /** Next Action */
+            next_action: string;
+            /**
+             * Ticker Join Allowed
+             * @constant
+             */
+            ticker_join_allowed: false;
+        };
+        /** CryptoAssetMasterResponse */
+        CryptoAssetMasterResponse: {
+            /** Asset Master Version */
+            asset_master_version: string;
+            /** Contract Identity Count */
+            contract_identity_count: number;
+            /** Identity Count */
+            identity_count: number;
+            /** Next Action */
+            next_action: string;
+            /** Source Manifest Ids */
+            source_manifest_ids?: string[] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "frozen" | "verified";
+            /**
+             * Ticker Join Allowed
+             * @constant
+             */
+            ticker_join_allowed: false;
+        };
+        /** CryptoAuthorityRow */
+        CryptoAuthorityRow: {
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Provider */
+            provider: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "primary_acquisition" | "diagnostic_comparison";
+        };
+        /** CryptoCacheCleanRequest */
+        CryptoCacheCleanRequest: {
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+        };
+        /** CryptoCacheCleanResponse */
+        CryptoCacheCleanResponse: {
+            /**
+             * Immutable Artifacts Removed
+             * @constant
+             */
+            immutable_artifacts_removed: 0;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Private Paths Exposed
+             * @constant
+             */
+            private_paths_exposed: false;
+            /** Removed Bytes */
+            removed_bytes: number;
+            /**
+             * State
+             * @constant
+             */
+            state: "cleaned";
+        };
+        /** CryptoCapabilitiesResponse */
+        CryptoCapabilitiesResponse: {
+            /**
+             * Automatic Fallback
+             * @constant
+             */
+            automatic_fallback: false;
+            /** Canonical Next Action */
+            canonical_next_action: string;
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCapabilityItem"][];
+            /**
+             * Provider Probe Performed
+             * @constant
+             */
+            provider_probe_performed: false;
+            /** Qualified Count */
+            qualified_count: number;
+            /** Receipt Verified Count */
+            receipt_verified_count: number;
+        };
+        /** CryptoCapabilityItem */
+        CryptoCapabilityItem: {
+            /**
+             * Authentication
+             * @enum {string}
+             */
+            authentication: "none" | "demo_key";
+            /** Earliest */
+            earliest: string | null;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequencies */
+            frequencies: string[];
+            /** Latest */
+            latest: string | null;
+            /** Limits */
+            limits: string[];
+            /** Provider */
+            provider: string;
+            qualification_state: components["schemas"]["CryptoQualificationStateValue"];
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Verification State
+             * @enum {string}
+             */
+            verification_state: "not_verified" | "receipt_verified";
+        };
+        /** CryptoCatalogResponse */
+        CryptoCatalogResponse: {
+            /**
+             * Automatic Fallback
+             * @constant
+             */
+            automatic_fallback: false;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Families */
+            families: components["schemas"]["CryptoAuthorityRow"][];
+            /** Next Action */
+            next_action: string;
+        };
+        /** CryptoCoverageBatchListResponse */
+        CryptoCoverageBatchListResponse: {
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageBatchResponse"][];
+            /** Next Action */
+            next_action: string;
+        };
+        /** CryptoCoverageBatchRequest */
+        CryptoCoverageBatchRequest: {
+            cadence: components["schemas"]["CryptoCoverageCadenceValue"];
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+        };
+        /** CryptoCoverageBatchResponse */
+        CryptoCoverageBatchResponse: {
+            /** Batch Id */
+            batch_id: string;
+            cadence: components["schemas"]["CryptoCoverageCadenceValue"];
+            /** Completed Count */
+            completed_count: number;
+            /** Error */
+            error: string | null;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Profile Id */
+            profile_id: string;
+            /** Profile Offset */
+            profile_offset: number;
+            /** Recovery Action */
+            recovery_action: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "failed" | "completed";
+            /** Task Count */
+            task_count: number;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** CryptoCoverageBatchResumeRequest */
+        CryptoCoverageBatchResumeRequest: {
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+        };
+        /** @enum {string} */
+        CryptoCoverageCadenceValue: "daily" | "hourly" | "five_minute" | "funding_interval";
+        /** CryptoCoverageItem */
+        CryptoCoverageItem: {
+            /** Artifact Sha256 */
+            artifact_sha256: string;
+            /** Base Asset */
+            base_asset: string | null;
+            /** Failures */
+            failures: string[];
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Instrument */
+            instrument: string;
+            /** Manifest Id */
+            manifest_id: string;
+            /**
+             * Market Type
+             * @enum {string}
+             */
+            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network" | "reference";
+            /** Method Version */
+            method_version: string;
+            /** Observed End */
+            observed_end: string | null;
+            /** Observed Start */
+            observed_start: string | null;
+            /** Provider */
+            provider: string;
+            /** Quote Asset */
+            quote_asset: string | null;
+            /** Row Count */
+            row_count: number;
+            state: components["schemas"]["CryptoQualificationStateValue"];
+            /** Timestamp Convention */
+            timestamp_convention: string;
+            /** Units */
+            units: string;
+            /** Venue */
+            venue: string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** CryptoCoverageProfileCreateRequest */
+        CryptoCoverageProfileCreateRequest: {
+            /** As Of */
+            as_of?: string | null;
+        };
+        /** CryptoCoverageProfileCreateResponse */
+        CryptoCoverageProfileCreateResponse: {
+            /** As Of */
+            as_of: string;
+            /** Binance Hourly Missing Scopes */
+            binance_hourly_missing_scopes: string[][];
+            /** Binance Hourly Scopes */
+            binance_hourly_scopes: string[][];
+            /** Counts By Cadence */
+            counts_by_cadence: {
+                [key: string]: number;
+            };
+            /** Counts By Family */
+            counts_by_family: {
+                [key: string]: number;
+            };
+            /** Counts By Provider */
+            counts_by_provider: {
+                [key: string]: number;
+            };
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Next Action */
+            next_action: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Source Manifest Ids */
+            source_manifest_ids: string[];
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+            /** Task Count */
+            task_count: number;
+        };
+        /** CryptoCoverageProfileFiltersResponse */
+        CryptoCoverageProfileFiltersResponse: {
+            /** Cadence */
+            cadence: string | null;
+            /** Category */
+            category: string | null;
+            /** Family */
+            family: string | null;
+            /** Frequency */
+            frequency: string | null;
+            /** Provider */
+            provider: string | null;
+        };
+        /** CryptoCoverageProfileListResponse */
+        CryptoCoverageProfileListResponse: {
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageProfileSummaryResponse"][];
+            /** Next Action */
+            next_action: string;
+        };
+        /** CryptoCoverageProfilePageResponse */
+        CryptoCoverageProfilePageResponse: {
+            /** As Of */
+            as_of: string;
+            /** Counts By Cadence */
+            counts_by_cadence: {
+                [key: string]: number;
+            };
+            /** Counts By Family */
+            counts_by_family: {
+                [key: string]: number;
+            };
+            /** Counts By Provider */
+            counts_by_provider: {
+                [key: string]: number;
+            };
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Filtered Count */
+            filtered_count: number;
+            filters: components["schemas"]["CryptoCoverageProfileFiltersResponse"];
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageTaskResponse"][];
+            /** Limit */
+            limit: number;
+            /** Next Action */
+            next_action: string;
+            /** Next Offset */
+            next_offset: number | null;
+            /** Offset */
+            offset: number;
+            /** Profile Id */
+            profile_id: string;
+            /** Source Manifest Ids */
+            source_manifest_ids: string[];
+            /** Task Count */
+            task_count: number;
+        };
+        /** CryptoCoverageProfileSummaryResponse */
+        CryptoCoverageProfileSummaryResponse: {
+            /** As Of */
+            as_of: string;
+            /** Counts By Cadence */
+            counts_by_cadence: {
+                [key: string]: number;
+            };
+            /** Counts By Family */
+            counts_by_family: {
+                [key: string]: number;
+            };
+            /** Counts By Provider */
+            counts_by_provider: {
+                [key: string]: number;
+            };
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Profile Id */
+            profile_id: string;
+            /** Source Manifest Ids */
+            source_manifest_ids: string[];
+            /** Task Count */
+            task_count: number;
+        };
+        /** CryptoCoverageResponse */
+        CryptoCoverageResponse: {
+            /**
+             * Automatic Fallback
+             * @constant
+             */
+            automatic_fallback: false;
+            /** Canonical Next Action */
+            canonical_next_action: string;
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoCoverageItem"][];
+        };
+        /** CryptoCoverageTaskResponse */
+        CryptoCoverageTaskResponse: {
+            /** Base Asset */
+            base_asset: string | null;
+            cadence: components["schemas"]["CryptoCoverageCadenceValue"];
+            /** Category */
+            category: string | null;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequency */
+            frequency: string;
+            /** Instrument */
+            instrument: string;
+            /** Lookback Days */
+            lookback_days: number | null;
+            /** Metrics */
+            metrics: string[];
+            /** Network */
+            network: string | null;
+            /** Provider */
+            provider: string;
+            /** Quote Asset */
+            quote_asset: string | null;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Task Id */
+            task_id: string;
+        };
+        /** CryptoDatasetIdentityResponse */
+        CryptoDatasetIdentityResponse: {
+            /** Base Asset */
+            base_asset: string | null;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequency */
+            frequency: string;
+            /** Instrument */
+            instrument: string;
+            /**
+             * Market Type
+             * @enum {string}
+             */
+            market_type: "spot" | "linear" | "inverse" | "option" | "dex" | "network" | "reference";
+            /** Provider */
+            provider: string;
+            /** Quote Asset */
+            quote_asset: string | null;
+            /** Timestamp Convention */
+            timestamp_convention: string;
+            /** Units */
+            units: string;
+            /** Venue */
+            venue: string;
+        };
+        /** CryptoEstimateRequest */
+        CryptoEstimateRequest: {
+            /**
+             * Days
+             * @default 30
+             */
+            days: number;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /**
+             * Frequency
+             * @default 1d
+             * @enum {string}
+             */
+            frequency: "1d" | "4h" | "1h" | "30m" | "15m" | "5m" | "1m" | "tick";
+            /**
+             * Instruments
+             * @default 1
+             */
+            instruments: number;
+        };
+        /** CryptoEstimateResponse */
+        CryptoEstimateResponse: {
+            /**
+             * Bounded
+             * @constant
+             */
+            bounded: true;
+            /** Days */
+            days: number;
+            /**
+             * Estimate Only
+             * @constant
+             */
+            estimate_only: true;
+            /** Estimated Bytes */
+            estimated_bytes: number;
+            /** Estimated Rows */
+            estimated_rows: number;
+            family: components["schemas"]["CryptoFamilyValue"];
+            /** Frequency */
+            frequency: string;
+            /** Instruments */
+            instruments: number;
+            /** Next Action */
+            next_action: string;
+            /** Provider */
+            provider: string;
+        };
+        /** @enum {string} */
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_catalog" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        /** CryptoFeatureCreateRequest */
+        CryptoFeatureCreateRequest: {
+            feature_name: components["schemas"]["CryptoFeatureNameValue"];
+            /** Inputs */
+            inputs: {
+                [key: string]: string;
+            };
+        };
+        /** CryptoFeatureListResponse */
+        CryptoFeatureListResponse: {
+            /** Count */
+            count: number;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Items */
+            items: components["schemas"]["CryptoFeatureResponse"][];
+            /** Next Action */
+            next_action: string;
+            /**
+             * Research Authority
+             * @constant
+             */
+            research_authority: false;
+        };
+        /** @enum {string} */
+        CryptoFeatureNameValue: "funding" | "open_interest_change" | "basis" | "volatility_surface" | "liquidity" | "onchain_change";
+        /** CryptoFeatureResponse */
+        CryptoFeatureResponse: {
+            /** Artifact Sha256 */
+            artifact_sha256: string;
+            /** Available At */
+            available_at: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Feature Id */
+            feature_id: string;
+            feature_name: components["schemas"]["CryptoFeatureNameValue"];
+            /** Input Count */
+            input_count: number;
+            /** Manifest Id */
+            manifest_id: string;
+            /** Method Version */
+            method_version: string;
+            /** Next Action */
+            next_action?: string | null;
+            /**
+             * Research Authority
+             * @constant
+             */
+            research_authority: false;
+            /** Row Count */
+            row_count: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "frozen" | "verified";
+        };
+        /** CryptoLiquidityFreezeRequest */
+        CryptoLiquidityFreezeRequest: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "spot" | "linear" | "inverse";
+            /**
+             * Limit
+             * @default 250
+             */
+            limit: number;
+            /**
+             * Quote Asset
+             * @enum {string}
+             */
+            quote_asset: "USD" | "USDT";
+            /** Session */
+            session: string;
+        };
+        /** CryptoLiquidityFreezeResponse */
+        CryptoLiquidityFreezeResponse: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "spot" | "linear" | "inverse";
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Manifest Id */
+            manifest_id: string;
+            /** Next Action */
+            next_action: string;
+            /** Profile Id */
+            profile_id: string;
+            /**
+             * Quote Asset
+             * @enum {string}
+             */
+            quote_asset: "USD" | "USDT";
+            /** Selected Count */
+            selected_count: number;
+            /** Session */
+            session: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+            /** Universe Count */
+            universe_count: number;
+        };
+        /** CryptoOneMinuteSelectionRequest */
+        CryptoOneMinuteSelectionRequest: {
+            /** Case Id */
+            case_id: string;
+            /** Expected Case Revision */
+            expected_case_revision: string;
+            /** Markets */
+            markets: string[];
+            /** Reason */
+            reason: string;
+        };
+        /** CryptoOneMinuteSelectionResponse */
+        CryptoOneMinuteSelectionResponse: {
+            /**
+             * Acquisition Window
+             * @constant
+             */
+            acquisition_window: "previous_complete_hour";
+            /** Base Profile Id */
+            base_profile_id: string;
+            /** Case Revision */
+            case_revision: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /**
+             * Frequency
+             * @constant
+             */
+            frequency: "1m";
+            /** Next Action */
+            next_action: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Selected Count */
+            selected_count: number;
+            /** Selection Manifest Id */
+            selection_manifest_id: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+        };
+        /** @enum {string} */
+        CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "ccxt:coinbase";
+        /** @enum {string} */
+        CryptoQualificationStateValue: "unverified" | "unavailable" | "qualified" | "warning" | "quarantined";
+        /** CryptoQualityReportResponse */
+        CryptoQualityReportResponse: {
+            /** Correction Lineage */
+            correction_lineage: string[];
+            /** Dataset Sha256 */
+            dataset_sha256: string;
+            /** Failures */
+            failures: string[];
+            /** Method Version */
+            method_version: string;
+            /** Observed End */
+            observed_end: string | null;
+            /** Observed Start */
+            observed_start: string | null;
+            /** Row Count */
+            row_count: number;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            state: components["schemas"]["CryptoQualificationStateValue"];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** CryptoQualityResponse */
+        CryptoQualityResponse: {
+            dataset: components["schemas"]["CryptoDatasetIdentityResponse"];
+            /** Manifest Id */
+            manifest_id: string;
+            /** Next Action */
+            next_action: string;
+            quality: components["schemas"]["CryptoQualityReportResponse"];
+        };
+        /** CryptoSnapshotCreateRequest */
+        CryptoSnapshotCreateRequest: {
+            /**
+             * Asset Master Version
+             * @default reviewed-native-v1
+             */
+            asset_master_version: string;
+            /** Manifest Ids */
+            manifest_ids: string[];
+        };
+        /** CryptoSnapshotCreateResponse */
+        CryptoSnapshotCreateResponse: {
+            /** Asset Master Version */
+            asset_master_version: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Families */
+            families: components["schemas"]["CryptoFamilyValue"][];
+            /** Member Count */
+            member_count: number;
+            /** Next Action */
+            next_action: string;
+            /** Providers */
+            providers: string[];
+            /** Snapshot Id */
+            snapshot_id: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "frozen";
+        };
+        /** CryptoSnapshotRegisterRequest */
+        CryptoSnapshotRegisterRequest: {
+            /** Symbol */
+            symbol: string;
+        };
+        /** CryptoSnapshotRegisterResponse */
+        CryptoSnapshotRegisterResponse: {
+            /** Bar Duration Minutes */
+            bar_duration_minutes: number | null;
+            /**
+             * Dataset Kind
+             * @constant
+             */
+            dataset_kind: "snapshot";
+            /** End Ts */
+            end_ts: string;
+            /** Instrument */
+            instrument: string;
+            origin: components["schemas"]["JsonObject"];
+            /**
+             * Provider
+             * @constant
+             */
+            provider: "crypto-data-house";
+            /** Ref Id */
+            ref_id: string;
+            /** Registered At */
+            registered_at: string;
+            /** Registered By */
+            registered_by: string;
+            /**
+             * Research Only
+             * @constant
+             */
+            research_only: true;
+            /** Start Ts */
+            start_ts: string;
+        };
+        /** CryptoSnapshotVerifyRequest */
+        CryptoSnapshotVerifyRequest: {
+            /**
+             * Purpose
+             * @default research
+             * @enum {string}
+             */
+            purpose: "research" | "validation" | "execution_price";
+            /** Required Families */
+            required_families?: components["schemas"]["CryptoFamilyValue"][];
+        };
+        /** CryptoSnapshotVerifyResponse */
+        CryptoSnapshotVerifyResponse: {
+            /** Blockers */
+            blockers: string[];
+            /** Eligible */
+            eligible: boolean;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "research" | "validation" | "execution_price";
+            /** Qualified Families */
+            qualified_families: components["schemas"]["CryptoFamilyValue"][];
+            /** Snapshot Id */
+            snapshot_id: string;
+            /** Supplemental Families */
+            supplemental_families: components["schemas"]["CryptoFamilyValue"][];
+        };
+        /** CryptoStorageInventoryResponse */
+        CryptoStorageInventoryResponse: {
+            /** Bytes By Kind */
+            bytes_by_kind: {
+                [key: string]: number;
+            };
+            /** Cache Bytes */
+            cache_bytes: number;
+            /** Counts By Kind */
+            counts_by_kind: {
+                [key: string]: number;
+            };
+            /** Manifest Count */
+            manifest_count: number;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Private Paths Exposed
+             * @constant
+             */
+            private_paths_exposed: false;
+            /** Snapshot Count */
+            snapshot_count: number;
+            /** Staging Count */
+            staging_count: number;
+        };
+        /** CryptoStorageResponse */
+        CryptoStorageResponse: {
+            /** Blocker */
+            blocker: string | null;
+            /** Bulk Root Label */
+            bulk_root_label: string;
+            /** Cache Bytes */
+            cache_bytes: number;
+            /** Free Bytes */
+            free_bytes?: number | null;
+            /** Manifest Count */
+            manifest_count: number;
+            /** Minimum Free Bytes */
+            minimum_free_bytes?: number | null;
+            /** Next Action */
+            next_action: string;
+            /** Reserve Fraction */
+            reserve_fraction?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "blocked";
+            /** Total Bytes */
+            total_bytes?: number | null;
+        };
+        /** CryptoStorageVerifyResponse */
+        CryptoStorageVerifyResponse: {
+            /** Asset Master Count */
+            asset_master_count: number;
+            /** Cache Bytes */
+            cache_bytes: number;
+            /** Manifest Count */
+            manifest_count: number;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Private Paths Exposed
+             * @constant
+             */
+            private_paths_exposed: false;
+            /** Research Eligible Snapshot Count */
+            research_eligible_snapshot_count: number;
+            /** Snapshot Count */
+            snapshot_count: number;
+            /**
+             * State
+             * @constant
+             */
+            state: "verified";
         };
         /** DecisionPacket */
         DecisionPacket: {
@@ -4059,10 +5766,21 @@ export interface components {
             /** Q75 */
             q75: number[];
         };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+        /** GovernedRunContextV1 */
+        GovernedRunContextV1: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "governed_project";
+            /** Project Id */
+            project_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
         };
         /** HoldoutAuditEvent */
         HoldoutAuditEvent: {
@@ -4230,6 +5948,9 @@ export interface components {
         HubLiterature: {
             /** Claims */
             claims: components["schemas"]["JsonObject"][];
+            recommendation: components["schemas"]["JsonObject"];
+            /** Source Packs */
+            source_packs: components["schemas"]["JsonObject"][];
             /** Sources */
             sources: components["schemas"]["HubSource"][];
             /** Status */
@@ -4277,8 +5998,18 @@ export interface components {
         HubSource: {
             /** Access Mode */
             access_mode: string;
+            /** Character Count */
+            character_count: number | null;
+            /** Extraction Id */
+            extraction_id: string | null;
+            /** Extraction Status */
+            extraction_status: string | null;
+            /** Extraction Warnings */
+            extraction_warnings: string[];
             /** Locator */
             locator: string;
+            /** Page Count */
+            page_count: number | null;
             /** Provider */
             provider: string;
             /** Screening */
@@ -4379,6 +6110,20 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** JobLaunchRequest */
+        JobLaunchRequest: {
+            /**
+             * Args
+             * @default
+             */
+            args: string;
+            /**
+             * Command
+             * @default
+             */
+            command: string;
+            run_context?: components["schemas"]["RunContextV1"] | null;
+        };
         /** JobReconcileResponse */
         JobReconcileResponse: {
             /** Count */
@@ -4451,23 +6196,29 @@ export interface components {
             /** Path */
             path: string | null;
         };
-        /**
-         * LaunchRequest
-         * @description Launch body: a command path (e.g. ``"backtest run"``) + its remaining args, or a bare
-         *     ``args`` string (empty ``command``) for the free-form console. Governed research commands are
-         *     rejected here; only the legacy non-governance ``research compare`` command is admitted.
-         */
-        LaunchRequest: {
+        /** LiteratureAcquisitionRequest */
+        LiteratureAcquisitionRequest: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Discovery Id */
+            discovery_id: string;
+        };
+        /** LiteratureDiscoveryRequest */
+        LiteratureDiscoveryRequest: {
             /**
-             * Args
-             * @default
+             * Max Candidates
+             * @default 20
              */
-            args: string;
+            max_candidates: number;
             /**
-             * Command
-             * @default
+             * Max Full Texts
+             * @default 5
              */
-            command: string;
+            max_full_texts: number;
+            /** Query */
+            query: string;
+            /** Unpaywall Email */
+            unpaywall_email: string;
         };
         /** MlCosts */
         MlCosts: {
@@ -4746,6 +6497,30 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /** MlExperimentPreflight */
+        MlExperimentPreflight: {
+            /** Active Job Id */
+            active_job_id: string | null;
+            /** Aligned Sessions */
+            aligned_sessions: number;
+            /** Checks */
+            checks: components["schemas"]["MlPreflightCheck"][];
+            /** Experiment Id */
+            experiment_id: string | null;
+            /** Project Id */
+            project_id: string;
+            /** Ready */
+            ready: boolean;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Universe Count */
+            universe_count: number;
         };
         /** MlExperimentSummary */
         MlExperimentSummary: {
@@ -5044,6 +6819,23 @@ export interface components {
              * @constant
              */
             weighting: "equal";
+        };
+        /** MlPreflightCheck */
+        MlPreflightCheck: {
+            /**
+             * Check Id
+             * @enum {string}
+             */
+            check_id: "experiment" | "snapshot" | "research_gate" | "worker" | "universe" | "aligned_history" | "active_job";
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pass" | "blocked";
         };
         /** MlPrepareRequest */
         MlPrepareRequest: {
@@ -5642,6 +7434,57 @@ export interface components {
             /** Vol */
             vol: number;
         };
+        /** OwnerActionChallengeRequest */
+        OwnerActionChallengeRequest: {
+            /**
+             * Action Type
+             * @enum {string}
+             */
+            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition";
+            /** Artifact Hash */
+            artifact_hash: string;
+            /** Consequence Summary */
+            consequence_summary: string;
+            /** Expected Case Revision */
+            expected_case_revision: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Project Id */
+            project_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** OwnerActionPerformRequest */
+        OwnerActionPerformRequest: {
+            /** Challenge Id */
+            challenge_id: string;
+            /** Credential */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        /** OwnerRegistrationFinish */
+        OwnerRegistrationFinish: {
+            /** Challenge Id */
+            challenge_id: string;
+            /** Credential */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** Token */
+            token: string;
+        };
+        /** OwnerRegistrationStart */
+        OwnerRegistrationStart: {
+            /** Token */
+            token: string;
+        };
         /** PaperCandleMarker */
         PaperCandleMarker: {
             /**
@@ -5731,24 +7574,44 @@ export interface components {
              */
             futures_research_supported: false;
             /**
+             * Legacy Journals
+             * @constant
+             */
+            legacy_journals: "monitoring_only";
+            /**
              * Live Capital Routing
              * @constant
              */
             live_capital_routing: "absent";
             /** Paper Passed */
             paper_passed: boolean;
+            /** Plans */
+            plans: {
+                [key: string]: unknown;
+            }[];
+            /** Predicates */
+            predicates: {
+                [key: string]: boolean;
+            };
             /** Requirements */
             requirements: components["schemas"]["PaperReadinessRequirement"][];
             /**
              * Schema Version
              * @constant
              */
-            schema_version: 1;
+            schema_version: 2;
             /**
              * Status
              * @enum {string}
              */
             status: "passed" | "pending";
+            /** Tamper Detected */
+            tamper_detected: boolean;
+            /**
+             * What If Credit
+             * @constant
+             */
+            what_if_credit: false;
         };
         /** PaperReadinessRequirement */
         PaperReadinessRequirement: {
@@ -6117,6 +7980,35 @@ export interface components {
         PropfirmPaths: {
             paths: components["schemas"]["PropfirmPathColumns"];
         };
+        /** ProviderCheckReceipt */
+        ProviderCheckReceipt: {
+            /** Checked At */
+            checked_at: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Granted Capabilities */
+            granted_capabilities: string[];
+            /** Provider Id */
+            provider_id: string;
+            /** Receipt Id */
+            receipt_id: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Verification State
+             * @enum {string}
+             */
+            verification_state: "verified" | "unverified" | "authentication_failed" | "entitlement_denied" | "rate_limited" | "connectivity_failed" | "schema_drift" | "optional_disabled";
+        };
         /** ProviderDefinition */
         ProviderDefinition: {
             /** Asset Classes */
@@ -6125,16 +8017,25 @@ export interface components {
             budget_tier: string;
             /** Capabilities */
             capabilities: string[];
+            /**
+             * Configuration State
+             * @enum {string}
+             */
+            configuration_state: "not_installed" | "optional_disabled" | "needs_process_injection" | "process_injected_unverified" | "available_without_credentials";
             /** Configured */
             configured: boolean;
             /** Credential Env */
             credential_env: components["schemas"]["CredentialStatus"][];
+            /** Granted Capabilities */
+            granted_capabilities: string[];
             /** Id */
             id: string;
             /** Installed */
             installed: boolean;
             /** Label */
             label: string;
+            /** Last Receipt Id */
+            last_receipt_id: string | null;
             /** Limitations */
             limitations: string[];
             /** Network Required */
@@ -6145,10 +8046,19 @@ export interface components {
             };
             /** Paper Execution */
             paper_execution: boolean;
+            /** Recovery Action */
+            recovery_action: string;
             /** Research Authority */
             research_authority: boolean;
             /** Timeframes */
             timeframes: string[];
+            /**
+             * Verification State
+             * @enum {string}
+             */
+            verification_state: "verified" | "unverified" | "authentication_failed" | "entitlement_denied" | "rate_limited" | "connectivity_failed" | "schema_drift" | "optional_disabled";
+            /** Verified At */
+            verified_at: string | null;
         };
         /** ProviderOption */
         ProviderOption: {
@@ -6161,6 +8071,22 @@ export interface components {
         };
         /** @enum {string} */
         PublicStageStateValue: "not_started" | "ready" | "queued" | "running" | "stale";
+        /** ResearchAnswerBundleV1 */
+        ResearchAnswerBundleV1: {
+            answers: components["schemas"]["ResearchMaterialAnswers"];
+            /** Available */
+            available: boolean;
+            /** Blocked Reason */
+            blocked_reason: string | null;
+            /** Bundle Id */
+            bundle_id: string;
+            /** Compatible Dataset Ids */
+            compatible_dataset_ids: string[];
+            /** Label */
+            label: string;
+            /** Requires Dataset */
+            requires_dataset: boolean;
+        };
         /** ResearchAttempt */
         ResearchAttempt: {
             /** Attempt Id */
@@ -6343,8 +8269,8 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
-        /** @constant */
-        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window";
+        /** @enum {string} */
+        ResearchChartConstructionValue: "spy_rth_60m_four_hour_window" | "tiingo_daily_fallback" | "bybit_btcusdt_linear_hourly";
         /** ResearchChecklistQuestion */
         ResearchChecklistQuestion: {
             /** Answer */
@@ -6557,8 +8483,8 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["ResearchChecklistQuestion"][];
         };
-        /** @constant */
-        ResearchEventAvailabilityValue: "second_trough_confirmable";
+        /** @enum {string} */
+        ResearchEventAvailabilityValue: "second_trough_confirmable" | "bybit_funding_event_point_in_time";
         /** ResearchEvidenceHub */
         ResearchEvidenceHub: {
             /**
@@ -6904,6 +8830,35 @@ export interface components {
             event_availability: components["schemas"]["ResearchEventAvailabilityValue"];
             primary_outcome: components["schemas"]["ResearchPrimaryOutcomeValue"];
         };
+        /** ResearchMaterialChoiceV1 */
+        ResearchMaterialChoiceV1: {
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "available" | "unavailable";
+            /** Blocked Reason */
+            blocked_reason: string | null;
+            /** Consequence */
+            consequence: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
+        /** ResearchMaterialQuestionV1 */
+        ResearchMaterialQuestionV1: {
+            /** Blocking Reason */
+            blocking_reason: string;
+            /** Choices */
+            choices: components["schemas"]["ResearchMaterialChoiceV1"][];
+            /** Id */
+            id: string;
+            /** Prompt */
+            prompt: string;
+            /** Recommended Answer Bundle Id */
+            recommended_answer_bundle_id: string | null;
+        };
         /** ResearchMilestone */
         ResearchMilestone: {
             /** Contract Id */
@@ -6952,8 +8907,8 @@ export interface components {
         };
         /** @enum {string} */
         ResearchPhaseValue: "captured" | "triage" | "exploration_review" | "pilot" | "deep_research" | "confirmation_review" | "sealed_confirmation" | "research_decision" | "closed";
-        /** @constant */
-        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp";
+        /** @enum {string} */
+        ResearchPrimaryOutcomeValue: "four_trading_hour_return_25bp" | "next_regular_session_return_50bp" | "next_funding_mark_minus_index_5bp";
         /** ResearchPriority */
         ResearchPriority: {
             /** Data Readiness */
@@ -6994,9 +8949,49 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
         };
+        /** ResearchProposalBlockerV1 */
+        ResearchProposalBlockerV1: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+        };
+        /** ResearchProposalOptionsV1 */
+        ResearchProposalOptionsV1: {
+            /** Approval Ready */
+            approval_ready: boolean;
+            /** Blockers */
+            blockers: components["schemas"]["ResearchProposalBlockerV1"][];
+            /** Case Revision */
+            case_revision: string;
+            /** Compatible Datasets */
+            compatible_datasets: components["schemas"]["ResearchDatasetRefRow"][];
+            /** Compatible Source Packs */
+            compatible_source_packs: components["schemas"]["ResearchSourcePackOptionV1"][];
+            /** Material Questions */
+            material_questions: components["schemas"]["ResearchMaterialQuestionV1"][];
+            /** Project Id */
+            project_id: string;
+            /**
+             * Proposal Schema
+             * @constant
+             */
+            proposal_schema: "ResearchProposalOptionsV1";
+            /** Recommended Answer Bundle Id */
+            recommended_answer_bundle_id: string | null;
+            /** Valid Answer Bundles */
+            valid_answer_bundles: components["schemas"]["ResearchAnswerBundleV1"][];
+        };
         /** ResearchProposalRequest */
         ResearchProposalRequest: {
-            answers: components["schemas"]["ResearchMaterialAnswers"];
+            /** Answer Bundle Id */
+            answer_bundle_id: string;
+            /** Dataset Ref Id */
+            dataset_ref_id?: string | null;
+            /** Expected Case Revision */
+            expected_case_revision: string;
             /** Source Pack Id */
             source_pack_id: string;
         };
@@ -7049,8 +9044,17 @@ export interface components {
         };
         /** ResearchReport */
         ResearchReport: {
+            /**
+             * Comparison Status
+             * @enum {string}
+             */
+            comparison_status: "preferred" | "tie" | "no_trades" | "not_comparable";
             /** N Bars */
             n_bars: number;
+            /** Preference Reason */
+            preference_reason: string | null;
+            /** Preferred Strategy */
+            preferred_strategy: string | null;
             /** Ranked */
             ranked: components["schemas"]["ResearchRow"][];
             /** Symbol */
@@ -7148,6 +9152,18 @@ export interface components {
              * @enum {string}
              */
             value: "READY FOR STRATEGY RESEARCH" | "MORE RESEARCH REQUIRED" | "REFORMULATE HYPOTHESIS" | "EVIDENCE DOES NOT SUPPORT CONTINUATION";
+        };
+        /** ResearchSourcePackOptionV1 */
+        ResearchSourcePackOptionV1: {
+            /** Created At */
+            created_at: string;
+            definition: components["schemas"]["JsonObject"];
+            /** Pack Id */
+            pack_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Source Ids */
+            source_ids: string[];
         };
         /** RiskProvenance */
         RiskProvenance: {
@@ -7250,6 +9266,7 @@ export interface components {
             /** Symbols */
             symbols: string[] | null;
         };
+        RunContextV1: components["schemas"]["GovernedRunContextV1"] | components["schemas"]["StandaloneRunContextV1"];
         /** RunDetail */
         RunDetail: {
             /** Has Equity */
@@ -7282,6 +9299,15 @@ export interface components {
             mtime: number;
             /** Research Gate Watermark */
             research_gate_watermark: string | null;
+            /**
+             * Run Context Kind
+             * @enum {string}
+             */
+            run_context_kind: "governed_project" | "standalone_sandbox" | "legacy_context_unknown";
+            /** Run Context Project Id */
+            run_context_project_id: string | null;
+            /** Run Context Watermark */
+            run_context_watermark: string | null;
             /** Run Id */
             run_id: string;
         };
@@ -7306,6 +9332,15 @@ export interface components {
             passed: boolean | null;
             /** Research Gate Watermark */
             research_gate_watermark: string | null;
+            /**
+             * Run Context Kind
+             * @enum {string}
+             */
+            run_context_kind: "governed_project" | "standalone_sandbox" | "legacy_context_unknown";
+            /** Run Context Project Id */
+            run_context_project_id: string | null;
+            /** Run Context Watermark */
+            run_context_watermark: string | null;
             /** Run Id */
             run_id: string;
             /** Snapshot Hash */
@@ -7424,6 +9459,20 @@ export interface components {
         };
         /** @enum {string} */
         StageStateValue: "not_started" | "ready" | "queued" | "running" | "pass" | "warning" | "fail" | "stale";
+        /** StandaloneRunContextV1 */
+        StandaloneRunContextV1: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "standalone_sandbox";
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
         /** StrategyDefinition */
         StrategyDefinition: {
             /** Has Tier1 Surrogate */
@@ -7505,13 +9554,11 @@ export interface components {
             /** Steps */
             steps: components["schemas"]["SuiteStep"][];
         };
-        /** SuiteRunRequest */
-        SuiteRunRequest: {
-            /** Owner Actor */
-            owner_actor?: string | null;
-            /** Owner Reason */
-            owner_reason?: string | null;
-        };
+        /**
+         * SuiteRunRequest
+         * @description Empty by design: the web suite launcher accepts no caller-asserted authority.
+         */
+        SuiteRunRequest: Record<string, never>;
         /** SuiteStep */
         SuiteStep: {
             /** Command */
@@ -7558,19 +9605,6 @@ export interface components {
             nautilus: components["schemas"]["NautilusStatus"];
             /** Paper Enabled */
             paper_enabled: boolean;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
         };
         /**
          * WorkspaceBody
@@ -7717,6 +9751,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     stream_activity_api_activity_stream_get: {
@@ -7740,13 +9783,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7775,13 +9818,13 @@ export interface operations {
                     "application/json": components["schemas"]["Candles"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7802,6 +9845,946 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommandDefinition"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    acquire_api_crypto_data_acquisitions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoAcquisitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_masters_api_crypto_data_asset_masters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetMasterListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_master_create_api_crypto_data_asset_masters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoAssetMasterCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetMasterResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_master_verify_api_crypto_data_asset_masters__asset_master_version__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_master_version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetMasterResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_contract_api_crypto_data_assets_contracts__network___contract_address__get: {
+        parameters: {
+            query: {
+                asset_master_version: string;
+                as_of: string;
+            };
+            header?: never;
+            path: {
+                network: string;
+                contract_address: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetIdentityResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    asset_api_crypto_data_assets__symbol__get: {
+        parameters: {
+            query: {
+                as_of: string;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoAssetIdentityResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_batches_api_crypto_data_batches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageBatchListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_resume_api_crypto_data_batches__batch_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCoverageBatchResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    capabilities_api_crypto_data_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCapabilitiesResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    catalog_api_crypto_data_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCatalogResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    coverage_api_crypto_data_coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    estimate_api_crypto_data_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoEstimateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    features_api_crypto_data_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoFeatureListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    feature_create_api_crypto_data_features_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoFeatureCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoFeatureResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    feature_show_api_crypto_data_features__manifest_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoFeatureResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profiles_api_crypto_data_profiles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageProfileListResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_create_api_crypto_data_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCoverageProfileCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageProfileCreateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_show_api_crypto_data_profiles__profile_id__get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                provider?: string | null;
+                family?: string | null;
+                category?: string | null;
+                frequency?: string | null;
+                cadence?: string | null;
+            };
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCoverageProfilePageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    profile_run_api_crypto_data_profiles__profile_id__batches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCoverageBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    liquidity_freeze_api_crypto_data_profiles__profile_id__liquidity_membership_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoLiquidityFreezeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoLiquidityFreezeResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    one_minute_selection_api_crypto_data_profiles__profile_id__one_minute_selection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoOneMinuteSelectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoOneMinuteSelectionResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    quality_api_crypto_data_quality__manifest_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoQualityResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    snapshot_create_api_crypto_data_snapshots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoSnapshotCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoSnapshotCreateResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    snapshot_register_api_crypto_data_snapshots__snapshot_id__register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoSnapshotRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoSnapshotRegisterResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    snapshot_verify_api_crypto_data_snapshots__snapshot_id__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoSnapshotVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoSnapshotVerifyResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    storage_api_crypto_data_storage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoStorageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    cache_clean_api_crypto_data_storage_cache_clean_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CryptoCacheCleanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoCacheCleanResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    storage_inventory_api_crypto_data_storage_inventory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoStorageInventoryResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    storage_verify_api_crypto_data_storage_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoStorageVerifyResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7827,13 +10810,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7860,13 +10843,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJob"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7895,13 +10878,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7926,13 +10909,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7957,13 +10940,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobReconcileResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -7992,13 +10975,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8023,13 +11006,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8059,13 +11042,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidencePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8092,13 +11075,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8126,13 +11109,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8161,13 +11144,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8190,6 +11173,15 @@ export interface operations {
                     "application/json": components["schemas"]["JobSummary"][];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     launch_job_api_jobs_post: {
@@ -8201,7 +11193,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LaunchRequest"];
+                "application/json": components["schemas"]["JobLaunchRequest"];
             };
         };
         responses: {
@@ -8214,13 +11206,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8245,13 +11237,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8276,13 +11268,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8307,13 +11299,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8339,13 +11331,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8370,13 +11362,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangeDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8401,13 +11393,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlEvaluation"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8436,13 +11428,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8471,13 +11463,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8506,13 +11498,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8537,13 +11529,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlWorkerResult"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8573,13 +11565,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8608,13 +11600,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8641,13 +11633,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8674,13 +11666,45 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    get_experiment_preflight_api_ml_experiments_preflight_get: {
+        parameters: {
+            query: {
+                project_id: string;
+                experiment_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MlExperimentPreflight"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8706,13 +11730,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundlePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8739,13 +11763,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8770,13 +11794,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8803,13 +11827,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8830,6 +11854,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlReadiness"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8857,13 +11890,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlReplayTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8884,6 +11917,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlServiceStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8914,13 +11956,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptionCurve"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8950,13 +11992,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptionGreeks"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -8986,13 +12028,153 @@ export interface operations {
                     "application/json": components["schemas"]["OptionGreeks"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    start_action_api_owner_auth_actions_challenge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerActionChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    perform_action_api_owner_auth_actions_perform_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerActionPerformRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    complete_registration_api_owner_auth_enrollment_finish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerRegistrationFinish"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    start_registration_api_owner_auth_enrollment_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerRegistrationStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9015,6 +12197,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaperReadinessReport"];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     list_paper_sessions_api_paper_sessions_get: {
@@ -9033,6 +12224,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaperSession"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9057,13 +12257,13 @@ export interface operations {
                     "application/json": components["schemas"]["PaperSession"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9090,13 +12290,13 @@ export interface operations {
                     "application/json": components["schemas"]["PaperEvent"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9122,13 +12322,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9155,13 +12355,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectSummary"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9188,13 +12388,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9222,13 +12422,13 @@ export interface operations {
                     "application/json": components["schemas"]["AgentBrief"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9257,13 +12457,13 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9292,13 +12492,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9324,13 +12524,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9360,13 +12560,13 @@ export interface operations {
                     "application/json": components["schemas"]["DecisionPacket"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9397,13 +12597,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentStageState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9430,13 +12630,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuitePlan"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9467,13 +12667,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteLaunch"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9502,13 +12702,13 @@ export interface operations {
                     "application/json": components["schemas"]["HoldoutState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9537,13 +12737,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9572,13 +12772,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9604,13 +12804,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9631,6 +12831,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderDefinition"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_provider_api_providers__provider_id__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCheckReceipt"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9656,13 +12896,13 @@ export interface operations {
                     "application/json": components["schemas"]["ActiveResearchGateOverride"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9688,13 +12928,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCasePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9721,13 +12961,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCaptureResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9752,13 +12992,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCase"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9786,13 +13026,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchContextPacketPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9817,13 +13057,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchDecisionView"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9848,13 +13088,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchEvidenceHub"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9883,13 +13123,87 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchLaunchResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_literature_acquire_api_research_cases__project_id__literature_acquire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiteratureAcquisitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_literature_discover_api_research_cases__project_id__literature_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiteratureDiscoveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9917,13 +13231,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchNotePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9952,13 +13266,44 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchProposalResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_proposal_options_api_research_cases__project_id__proposal_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchProposalOptionsV1"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -9983,13 +13328,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCaseReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10014,13 +13359,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchScorecard"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10045,13 +13390,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchCase"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10061,6 +13406,8 @@ export interface operations {
             query: {
                 symbol: string;
                 strategies?: string;
+                context_kind?: ("governed_project" | "standalone_sandbox") | null;
+                project_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -10077,13 +13424,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10108,13 +13455,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchContextPacket"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10141,13 +13488,13 @@ export interface operations {
                     "application/json": components["schemas"]["ResearchDatasetPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10168,6 +13515,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchProtocolLibrary"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10193,13 +13549,13 @@ export interface operations {
                     "application/json": components["schemas"]["RiskReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10229,13 +13585,13 @@ export interface operations {
                     "application/json": components["schemas"]["RunList"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10260,13 +13616,13 @@ export interface operations {
                     "application/json": components["schemas"]["RunDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10296,13 +13652,13 @@ export interface operations {
                     "application/json": components["schemas"]["ChartBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10327,13 +13683,13 @@ export interface operations {
                     "application/json": components["schemas"]["EquitySeries"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10358,13 +13714,13 @@ export interface operations {
                     "application/json": components["schemas"]["FigureCatalogue"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10393,13 +13749,13 @@ export interface operations {
                     "application/json": components["schemas"]["FigureMetadata"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10432,13 +13788,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10463,13 +13819,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastSeries"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10496,13 +13852,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastPaths"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10529,13 +13885,13 @@ export interface operations {
                     "application/json": components["schemas"]["NativeTearSheetResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10560,13 +13916,13 @@ export interface operations {
                     "application/json": components["schemas"]["NullTiers"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10591,13 +13947,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastOrigins"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10625,13 +13981,13 @@ export interface operations {
                     "application/json": components["schemas"]["PortfolioAnalyticsResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10656,13 +14012,13 @@ export interface operations {
                     "application/json": components["schemas"]["PropfirmPaths"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10687,13 +14043,13 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10720,13 +14076,13 @@ export interface operations {
                     }[];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10751,13 +14107,13 @@ export interface operations {
                     "application/json": components["schemas"]["OptimTrials"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10784,13 +14140,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScreenerNews"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10815,13 +14171,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScreenerQuote"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10850,13 +14206,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10879,6 +14235,15 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyDefinition"][];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     symbols_api_symbols_get: {
@@ -10899,6 +14264,15 @@ export interface operations {
                     "application/json": components["schemas"]["Symbols"];
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     get_system_api_system_get: {
@@ -10917,6 +14291,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10942,13 +14325,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -10975,13 +14358,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJob"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11010,13 +14393,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11041,13 +14424,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11072,13 +14455,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobReconcileResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11107,13 +14490,13 @@ export interface operations {
                     "application/json": components["schemas"]["ControlJobDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11138,13 +14521,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteCancelResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11174,13 +14557,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidencePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11207,13 +14590,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11241,13 +14624,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11276,13 +14659,13 @@ export interface operations {
                     "application/json": components["schemas"]["EvidenceRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11308,13 +14691,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11339,13 +14722,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExchangeDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11370,13 +14753,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlEvaluation"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11405,13 +14788,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11440,13 +14823,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11475,13 +14858,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11506,13 +14889,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlWorkerResult"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11542,13 +14925,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11577,13 +14960,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11610,13 +14993,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11643,13 +15026,45 @@ export interface operations {
                     "application/json": components["schemas"]["MlExperimentJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_get_experiment_preflight_api_v3_ml_experiments_preflight_get: {
+        parameters: {
+            query: {
+                project_id: string;
+                experiment_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MlExperimentPreflight"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11675,13 +15090,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundlePage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11708,13 +15123,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11739,13 +15154,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlInputBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11772,13 +15187,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlJobAccepted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11799,6 +15214,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlReadiness"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11826,13 +15250,13 @@ export interface operations {
                     "application/json": components["schemas"]["MlReplayTearSheet"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11853,6 +15277,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MlServiceStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11878,13 +15311,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectPage"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11911,13 +15344,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectSummary"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11944,13 +15377,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -11978,13 +15411,13 @@ export interface operations {
                     "application/json": components["schemas"]["AgentBrief"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12013,13 +15446,13 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRecord"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12048,13 +15481,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12080,13 +15513,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentSpec"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12116,13 +15549,13 @@ export interface operations {
                     "application/json": components["schemas"]["DecisionPacket"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12153,13 +15586,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExperimentStageState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12186,13 +15619,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuitePlan"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12223,13 +15656,13 @@ export interface operations {
                     "application/json": components["schemas"]["SuiteLaunch"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12258,13 +15691,13 @@ export interface operations {
                     "application/json": components["schemas"]["HoldoutState"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12293,13 +15726,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12328,13 +15761,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12360,13 +15793,13 @@ export interface operations {
                     "application/json": components["schemas"]["StrategyVersion"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12392,13 +15825,13 @@ export interface operations {
                     "application/json": components["schemas"]["ActiveResearchGateOverride"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12425,13 +15858,13 @@ export interface operations {
                     "application/json": components["schemas"]["RunComparisonResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12461,13 +15894,13 @@ export interface operations {
                     "application/json": components["schemas"]["ChartBundle"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12494,13 +15927,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastPaths"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12527,13 +15960,13 @@ export interface operations {
                     "application/json": components["schemas"]["NativeTearSheetResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12561,13 +15994,13 @@ export interface operations {
                     "application/json": components["schemas"]["PortfolioAnalyticsResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12596,13 +16029,13 @@ export interface operations {
                     "application/json": components["schemas"]["StageRunLink"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12623,6 +16056,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceMeta"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12649,13 +16091,13 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceSaved"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12680,13 +16122,13 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceDocument"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12711,13 +16153,13 @@ export interface operations {
                     "application/json": components["schemas"]["Deleted"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Stable, redacted Workstation error */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };
@@ -12740,6 +16182,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
         };
     };
     healthz_healthz_get: {
@@ -12760,6 +16211,44 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    owner_enrollment_owner_auth_enroll_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
                 };
             };
         };

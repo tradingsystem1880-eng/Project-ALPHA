@@ -17,7 +17,9 @@ direct vendor-to-chart or strategy-to-broker connection can provide.
 Keep NautilusTrader as the only simulation/execution engine and `alpha_cli` as the only composer.
 Keep the existing React/FastAPI and direct Lightweight Charts frontend. Adopt Tiingo EOD as the
 authoritative stock/ETF daily source; Yahoo Finance and Stooq are comparison-only and cannot replace
-qualified Tiingo history. CCXT remains the authoritative crypto-history seam.
+qualified Tiingo history. Crypto authority is assigned per dataset family by ADR-0032. CCXT remains
+a supported legacy/comparison seam, and the existing `ccxt:binance` paper warmup contract is
+unchanged pending a separate parity gate.
 
 Every receipt-backed daily pull follows:
 
@@ -84,5 +86,9 @@ Live-capital routing is absent.
   review rather than fallback.
 - Operational status: offline implementation is testable without secrets. “Paper passed” remains
   pending until the machine-readable Binance and real IBKR Paper evidence requirements all pass.
+- As amended on 2026-08-12, legacy journal scenario labels and producer `passed` booleans are not
+  machine evidence. The aggregate remains pending until the versioned acceptance runner and
+  mechanical verifier bind causal facts to an immutable one-shot plan. A non-transmitting IBKR
+  what-if preview is connectivity evidence only and earns no paper-readiness credit.
 - Revisit live capital only through a separate ADR, threat model, cost model, kill-switch drill, and
   explicit owner approval.

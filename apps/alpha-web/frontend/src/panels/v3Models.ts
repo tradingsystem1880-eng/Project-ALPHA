@@ -238,6 +238,50 @@ export interface ProjectStageRow {
   linkId: string | null
 }
 
+export interface SandboxCandidateSummary {
+  strategyName: 'hedged_basis_crowding_v1'
+  instrument: 'BTCUSDT'
+  quoteAsset: 'USDT'
+  perpLeg: 'SHORT BYBIT LINEAR PERPETUAL'
+  spotLeg: 'LONG BINANCE SPOT'
+  totalRoundTripCostBps: 40
+  annualization: '365-DAY CRYPTO / 1,095 PERIODS'
+  executionModel: 'two_leg_return_replay'
+  deploymentScope: 'sandbox_only'
+  paperBlocker: 'UNSUPPORTED_MULTI_VENUE_PAPER'
+}
+
+/** Project the exact registered candidate only after its immutable definition validates. */
+export function sandboxCandidateSummary(project: ProjectDetail | null): SandboxCandidateSummary | null {
+  const version = project?.versions.find((row) => row.version_id === project.current_version_id)
+  const definition = version?.definition
+  if (
+    version?.strategy_name !== 'hedged_basis_crowding_v1'
+    || definition?.strategy_name !== 'hedged_basis_crowding_v1'
+    || definition.required_instrument !== 'BTCUSDT'
+    || definition.required_quote_asset !== 'USDT'
+    || JSON.stringify(definition.required_venues) !== JSON.stringify(['bybit', 'binance'])
+    || definition.total_round_trip_cost_bps !== 40
+    || definition.periods_per_year !== 1095
+    || definition.execution_model !== 'two_leg_return_replay'
+    || definition.deployment_scope !== 'sandbox_only'
+    || definition.paper_blocker !== 'UNSUPPORTED_MULTI_VENUE_PAPER'
+    || definition.places_orders !== false
+  ) return null
+  return {
+    strategyName: 'hedged_basis_crowding_v1',
+    instrument: 'BTCUSDT',
+    quoteAsset: 'USDT',
+    perpLeg: 'SHORT BYBIT LINEAR PERPETUAL',
+    spotLeg: 'LONG BINANCE SPOT',
+    totalRoundTripCostBps: 40,
+    annualization: '365-DAY CRYPTO / 1,095 PERIODS',
+    executionModel: 'two_leg_return_replay',
+    deploymentScope: 'sandbox_only',
+    paperBlocker: 'UNSUPPORTED_MULTI_VENUE_PAPER',
+  }
+}
+
 export function projectStageRows(project: ProjectDetail | null): ProjectStageRow[] {
   const experimentId = project?.current_experiment_id ?? null
   const links = (project?.stage_run_links ?? []).filter(

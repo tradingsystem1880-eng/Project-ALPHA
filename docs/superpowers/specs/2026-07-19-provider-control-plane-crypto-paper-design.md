@@ -97,6 +97,15 @@ The initial entries are:
 | `finnhub` | quote/news | `ALPHA_FINNHUB_API_KEY` | configured only when key is present |
 | `binance` | Nautilus live market data for paper | none | public `LIVE` data; Binance availability/rate limits |
 
+**2026-08-14 crypto data-house amendment (ADR-0032):** this initial registry remains the paper and
+legacy history baseline, not a global crypto-data authority. Dataset-family capabilities are now
+declared separately: Binance native archives/REST for CEX spot and futures history; Bybit public V5
+for advanced derivatives and options; CoinGecko for identity/reference; GeckoTerminal for DEX
+pools/liquidity/OHLCV; Coin Metrics Community for reviewed on-chain/network metrics; and Coinbase
+through CCXT for comparison. Existing `ccxt:coinbase|binance` snapshots remain byte-readable and the
+`ccxt:binance` paper warmup contract is unchanged. No automatic fallback may alter venue, market
+type, quote asset, units, timestamp convention, or research evidence.
+
 Registry construction fails on duplicate IDs. Tests pin unique IDs, exact capability filtering,
 credential redaction/configuration, CCXT option values, and historical-factory coverage.
 

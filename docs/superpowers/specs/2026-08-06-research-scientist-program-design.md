@@ -167,10 +167,13 @@ owner-approved exploration contract before any D1 view, and leaves D3 at 20% or 
 Gate 1 draft path materializes the default 60/20/20 commitment; no empirical runner consumes either
 the default or an alternative allocation yet.
 
-The `ResearchD2BoundaryV1` hash binds the chronological group-allocation rule, group memberships,
-D2/D3 shares, chart fingerprint, data hash, and event definition. Authorization, consumption, and
-contamination events must retain that exact boundary hash; a changed boundary is a new lineage,
-never a reseal.
+The versioned research boundary hash binds the chronological group-allocation rule, exact ordered
+group membership, D2/D3 shares, chart fingerprint, data hash, and event definition. New contracts
+use compact `ResearchD2BoundaryV2`: sequence count/digest plus per-zone indices, endpoints, counts,
+and membership digests. Every D1/D2 read rederives those commitments from the complete dataset.
+Historical `ResearchD2BoundaryV1` payloads remain byte-identically readable and are never rewritten.
+Authorization, consumption, and contamination retain the exact boundary hash; a changed boundary is
+a new lineage, never a reseal.
 
 `pilot` first proves the proposed detector and evaluator on D0. Any bounded real-market pilot and
 all `deep_research` adaptation use D1 only. At `confirmation_review`, the D1-selected family is
@@ -680,6 +683,31 @@ waiting on owner, budget expansion, restart recovery, terminal-case rate, repeat
 and source/chart/appendix opens. The pilot targets 100% next-action ownership, 100% terminal packets,
 zero silent scope changes, and at most three routine owner interruptions per case. Profitability is
 not an implementation acceptance measure.
+
+### 13.1 Governed crypto crowding extension
+
+ADR-0033 registers one additional material-answer bundle:
+`bybit_btcusdt_crowding_reversal_v1`. It is not a generic crypto operator. Proposal preflight must
+find one exact qualified Bybit linear BTCUSDT snapshot with USDT quote and the required funding,
+hourly OI, premium, mark, index, derivative-bar, and instrument-catalog families. The server
+revalidates the snapshot, frozen asset master, qualification versions, source pack, project
+revision, and operator fingerprint at submission and launch.
+
+The frozen plan uses the preceding 365 completed funding observations for point-in-time percentile
+thresholds, registers 95% as primary and 90%/97.5% in one Holm sensitivity family, requires
+positive 24-hour OI change and premium, and measures mark-minus-index return from the first complete
+hourly bar after event availability through the next declared funding timestamp. Controls match
+UTC funding slot, recent trend, and volatility; shifted-date placebos, UTC-week clustered
+uncertainty, long/short ratio, and regime diagnostics are declared before D1. Fewer than 50
+non-overlapping total events or 10 sealed D2 events yields `INCONCLUSIVE`, never an invented pass.
+
+D0 must mechanically distinguish planted, null, confounded, future-poisoned, missing, corrected,
+and insufficient-sample fixtures. Existing chronological group-atomic 60/20/20 evidence zones,
+one-shot D2, and prohibited D3 reads remain unchanged. The later
+`hedged_basis_crowding_v1` strategy fixture preserves separate Bybit-perpetual and Binance-spot
+lineage, funding, 40 bp round-trip fixture costs, and continuous-crypto calendar semantics. It is
+permanently sandbox-only; paper preflight returns `UNSUPPORTED_MULTI_VENUE_PAPER` and grants no
+order, fill, position, paper-readiness, or broker authority.
 
 ## 14. External pattern disposition
 

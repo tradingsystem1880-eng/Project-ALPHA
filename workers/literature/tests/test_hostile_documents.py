@@ -58,6 +58,15 @@ def test_hostile_bodies_fail_loud_before_storage(
         validate_source_response(_response(media_type, body), policy=_POLICY, resolver=_resolver)
 
 
+def test_arxiv_landing_page_cannot_be_mislabeled_as_a_pdf() -> None:
+    with pytest.raises(DataError, match="landing-page URL"):
+        validate_source_response(
+            _response("application/pdf", b"%PDF-1.7\nvalid-looking bytes"),
+            policy=_POLICY,
+            resolver=_resolver,
+        )
+
+
 def test_oversized_and_mis_declared_bodies_fail_loud() -> None:
     small = AcquisitionPolicy(allowed_hosts=frozenset({"arxiv.org"}), max_response_bytes=8)
     with pytest.raises(DataError, match="exceeds the byte limit"):

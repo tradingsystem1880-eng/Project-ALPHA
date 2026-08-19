@@ -115,11 +115,14 @@ export function Pipeline(_props: PanelHandleProps) {
   }, [linked.runId])
 
   const forSymbol = useMemo(() => {
-    const all = items ?? []
+    const all = (items ?? []).filter((run) =>
+      !linked.projectId
+      || (run.run_context_kind === 'governed_project'
+        && run.run_context_project_id === linked.projectId))
     return linked.symbol
       ? all.filter((r) => r.symbol === linked.symbol || (r.symbols ?? []).includes(linked.symbol!))
       : all
-  }, [items, linked.symbol])
+  }, [items, linked.projectId, linked.symbol])
 
   const latestFor = (stage: Stage): RunListItem | undefined => forSymbol.find(stage.match)
 
@@ -139,13 +142,19 @@ export function Pipeline(_props: PanelHandleProps) {
           capital
         </span>
       </div>
-      <div className="panel-body panel-pad">
+      <div className="panel-body panel-pad" tabIndex={0}>
         {gate.lock && gate.projectId ? (
           <ResearchGateLockNotice
             lock={gate.lock}
             projectId={gate.projectId}
             projectName={gate.projectName}
           />
+        ) : null}
+        {!linked.projectId ? (
+          <Placeholder big="SELECT A PROMOTED PROJECT">
+            Development steps follow the linked governed project. Standalone experiments have a
+            separate, permanently unqualified sandbox.
+          </Placeholder>
         ) : null}
         <div className="pipeline">
           {STAGES.map((s, i) => {
@@ -175,7 +184,7 @@ export function Pipeline(_props: PanelHandleProps) {
                 ) : null}
                 <button
                   className="btn"
-                  disabled={Boolean(gate.lock) && s.key !== 'data'}
+                  disabled={!linked.projectId || (Boolean(gate.lock) && s.key !== 'data')}
                   title={gate.lock && s.key !== 'data' ? gate.lock.reason : undefined}
                   onClick={() =>
                     openStrategyLab({

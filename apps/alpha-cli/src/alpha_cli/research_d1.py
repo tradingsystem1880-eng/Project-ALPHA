@@ -41,7 +41,7 @@ from alpha_research import (
     ResearchChartData,
     ResearchChartPoint,
     ResearchChartSeries,
-    ResearchD2BoundaryV1,
+    ResearchD2Boundary,
     ResearchDatasetRef,
     ResearchEvidenceTopology,
     SecondaryHypothesis,
@@ -1082,7 +1082,7 @@ def run_deep_research(
     contract_id: str,
     contract: Mapping[str, object],
     bars: EqualDurationResearchBars,
-    boundary: ResearchD2BoundaryV1 | None = None,
+    boundary: ResearchD2Boundary | None = None,
     on_checkpoint: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Execute the frozen analysis plan on the discovery share and publish one immutable run.

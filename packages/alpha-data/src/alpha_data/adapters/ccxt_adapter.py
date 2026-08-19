@@ -15,6 +15,7 @@ _VERSION = "2"
 PARSER_VERSION = "1"
 _DAY_MS = 86_400_000
 _PAGE_LIMIT = 300  # coinbase caps fetch_ohlcv at 300 candles/call; page forward past it
+_TIMEFRAME_MS = {"1m": 60_000, "5m": 300_000, "1h": 3_600_000, "1d": _DAY_MS}
 SUPPORTED_CCXT_EXCHANGES = ("coinbase", "binance")
 
 
@@ -61,8 +62,27 @@ def clip_ohlcv(
     finished candle on the next pull. Candles from the current (incomplete) UTC day are excluded;
     ascending, timestamp-deduped output.
     """
-    today_start_ms = (now_ms // _DAY_MS) * _DAY_MS
-    by_ts = {int(r[0]): r for r in raw if since_ms <= r[0] <= end_ms and r[0] < today_start_ms}
+    return clip_ohlcv_period(
+        raw,
+        since_ms=since_ms,
+        end_ms=end_ms,
+        now_ms=now_ms,
+        step_ms=_DAY_MS,
+    )
+
+
+def clip_ohlcv_period(
+    raw: list[list[float]], *, since_ms: int, end_ms: int, now_ms: int, step_ms: int
+) -> list[list[float]]:
+    """Clip and deduplicate one exact timeframe while excluding its live UTC interval."""
+    if step_ms not in _TIMEFRAME_MS.values():
+        raise DataError("unsupported CCXT comparison timeframe step")
+    current_period_start = (now_ms // step_ms) * step_ms
+    by_ts = {
+        int(row[0]): row
+        for row in raw
+        if since_ms <= row[0] <= end_ms and row[0] < current_period_start
+    }
     return [by_ts[ts] for ts in sorted(by_ts)]
 
 
@@ -130,21 +150,53 @@ class CCXTAdapter:
         self.name = f"ccxt:{self._exchange}"
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+        return self.fetch_timeframe(
+            symbol,
+            datetime(start.year, start.month, start.day, tzinfo=UTC),
+            datetime(end.year, end.month, end.day, tzinfo=UTC),
+            timeframe="1d",
+        )
+
+    def fetch_timeframe(
+        self, symbol: str, start: datetime, end: datetime, *, timeframe: str
+    ) -> FetchResult:
+        """Fetch one bounded completed-interval OHLCV series through the unified CCXT seam."""
         import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs  # noqa: PLC0415
 
+        step_ms = _TIMEFRAME_MS.get(timeframe)
+        if step_ms is None:
+            raise DataError("CCXT timeframe must be 1m, 5m, 1h, or 1d")
+        if (
+            start.tzinfo is None
+            or start.utcoffset() is None
+            or end.tzinfo is None
+            or end.utcoffset() is None
+        ):
+            raise DataError("CCXT timeframe bounds must be timezone-aware")
+        start = start.astimezone(UTC)
+        end = end.astimezone(UTC)
+        if end < start:
+            raise DataError("CCXT timeframe end precedes start")
         # enableRateLimit: pagination issues one call per ~300-day page (≈9 for a 7y range);
         # rate-limiting keeps us a good public-API citizen and avoids throttling/bans.
         ex = getattr(ccxt, self._exchange)({"enableRateLimit": True})
-        since = int(datetime(start.year, start.month, start.day, tzinfo=UTC).timestamp() * 1000)
-        end_ms = int(datetime(end.year, end.month, end.day, tzinfo=UTC).timestamp() * 1000)
+        since = int(start.timestamp() * 1000)
+        end_ms = int(end.timestamp() * 1000)
 
         raw = _paginate_ohlcv(
-            lambda cur: ex.fetch_ohlcv(symbol, timeframe="1d", since=cur, limit=_PAGE_LIMIT),
+            lambda cur: ex.fetch_ohlcv(symbol, timeframe=timeframe, since=cur, limit=_PAGE_LIMIT),
             since_ms=since,
             end_ms=end_ms,
+            step_ms=step_ms,
         )
         now_ms = int(datetime.now(UTC).timestamp() * 1000)
-        clipped = clip_ohlcv(raw, since_ms=since, end_ms=end_ms, now_ms=now_ms)
+        clipped = clip_ohlcv_period(
+            raw,
+            since_ms=since,
+            end_ms=end_ms,
+            now_ms=now_ms,
+            step_ms=step_ms,
+        )
         if not clipped:
             raise DataError(f"ccxt returned no data for {symbol} {start}..{end}")
         return parse_ccxt_ohlcv(clipped, symbol)

@@ -304,6 +304,119 @@ def test_existing_exchanges_project_to_frontend_ml_experiments(
     assert item["replay_run_id"] == "0123456789abcdef"
 
 
+def test_ml_experiment_preflight_is_server_authoritative_and_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    experiment_id = "ex_" + "a" * 64
+    monkeypatch.setattr(
+        _ml,
+        "service_status",
+        lambda **_: {
+            "worker_ready": True,
+            "active_job_id": None,
+        },
+    )
+    monkeypatch.setattr(
+        _ml,
+        "_run_json",
+        lambda *args, **kwargs: {
+            "current_experiment_id": experiment_id,
+            "research_gate_state": "passed",
+            "experiments": [
+                {
+                    "experiment_id": experiment_id,
+                    "snapshot_id": "snapshot-1",
+                    "universe": [f"S{index:02d}" for index in range(20)],
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(_ml, "_aligned_history_count", lambda **_: 800)
+
+    result = _ml.experiment_preflight(project_id="project-1", data_dir=tmp_path)
+
+    assert result["schema_version"] == 1
+    assert result["ready"] is True
+    assert result["experiment_id"] == experiment_id
+    assert result["snapshot_id"] == "snapshot-1"
+    assert result["universe_count"] == 20
+    assert result["aligned_sessions"] == 800
+    assert [check["check_id"] for check in result["checks"]] == [
+        "experiment",
+        "snapshot",
+        "research_gate",
+        "worker",
+        "universe",
+        "aligned_history",
+        "active_job",
+    ]
+    assert all(check["state"] == "pass" for check in result["checks"])
+
+
+def test_ml_aligned_history_uses_verified_cli_snapshot_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+
+    def run_json(args: list[str], **kwargs: object) -> dict[str, object]:
+        del kwargs
+        calls.append(args)
+        offset = 0 if args[2] == "AAA" else 1
+        return {"bars": [{"t": float(value)} for value in range(offset, 4)]}
+
+    monkeypatch.setattr(_ml, "_run_json", run_json)
+
+    assert (
+        _ml._aligned_history_count(
+            data_dir=tmp_path,
+            snapshot_id="snapshot-1",
+            universe=["AAA", "BBB"],
+        )
+        == 3
+    )
+    assert calls == [
+        ["data", "candles", "AAA", "--snapshot", "snapshot-1", "--json"],
+        ["data", "candles", "BBB", "--snapshot", "snapshot-1", "--json"],
+    ]
+
+
+def test_ml_experiment_preflight_returns_actionable_blockers_without_launching(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        _ml,
+        "service_status",
+        lambda **_: {"worker_ready": False, "active_job_id": "job-active"},
+    )
+    monkeypatch.setattr(
+        _ml,
+        "_run_json",
+        lambda *args, **kwargs: {
+            "current_experiment_id": None,
+            "research_gate_state": "open",
+            "experiments": [],
+        },
+    )
+
+    result = _ml.experiment_preflight(project_id="project-1", data_dir=tmp_path)
+
+    assert result["ready"] is False
+    assert result["experiment_id"] is None
+    states = {check["check_id"]: check["state"] for check in result["checks"]}
+    assert states == {
+        "experiment": "blocked",
+        "snapshot": "blocked",
+        "research_gate": "blocked",
+        "worker": "blocked",
+        "universe": "blocked",
+        "aligned_history": "blocked",
+        "active_job": "blocked",
+    }
+    assert all(
+        check["recovery_action"] for check in result["checks"] if check["state"] == "blocked"
+    )
+
+
 def test_qlib_suite_projects_managed_exchange_and_canonical_replay(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
