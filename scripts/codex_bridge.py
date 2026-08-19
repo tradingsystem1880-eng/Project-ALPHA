@@ -167,12 +167,11 @@ def _run_codex(
 
 
 def _parse_object(text: str) -> dict[str, Any] | None:
-    body = text.strip()
-    start, end = body.find("{"), body.rfind("}")
-    if start < 0 or end <= start:
+    body = gate.first_json_object(text)
+    if body is None:
         return None
     try:
-        obj = json.loads(body[start : end + 1])
+        obj = json.loads(body)
     except ValueError:
         return None
     return obj if isinstance(obj, dict) else None

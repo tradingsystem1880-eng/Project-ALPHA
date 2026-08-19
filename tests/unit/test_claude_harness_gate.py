@@ -1132,6 +1132,19 @@ def test_stamp_is_valid_hashes_the_tree_once(repo: Path, monkeypatch: pytest.Mon
     assert calls == 1
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ('prefix {"a": 1} suffix', '{"a": 1}'),
+        ('```json\n{"a": {"b": 2}}\n```', '{"a": {"b": 2}}'),
+        ("no braces here", None),
+        ("} {", None),
+    ],
+)
+def test_first_json_object_slices_outermost_braces(text: str, expected: str | None) -> None:
+    assert gate.first_json_object(text) == expected
+
+
 def test_every_gate_subcommand_has_working_help() -> None:
     import argparse
 

@@ -14,7 +14,6 @@ Stdlib-only hooks wired in .claude/settings.json, all dispatching through
     subagent-stop       SubagentStop                JSON-only agents must emit valid schema
     task-completed      TaskCompleted               tests named in the task must pass
     config-change       ConfigChange                audited; ack/owner required
-    instructions-loaded InstructionsLoaded          awareness telemetry
     stop-guard          Stop                        fast stamp + quant attestation; budget
     session-start       SessionStart                doctor + brief + Karpathy block
     prompt-context      UserPromptSubmit            per-turn situational brief
@@ -378,12 +377,9 @@ def _session_file(root: Path, session_id: str) -> Path:
 
 _SESSION_DEFAULTS: dict[str, Any] = {
     "edited_files": [],
-    "bash_writes": [],
     "failures": [],
-    "instructions_loaded": [],
     "stop_blocks_used": 0,
     "stop_budget_exhausted": False,
-    "codex_calls": 0,
     "over_eager": [],
 }
 
@@ -400,12 +396,10 @@ def _save_session(root: Path, state: dict[str, Any]) -> None:
     gate.write_json_atomic(_session_file(root, str(state["session_id"])), state)
 
 
-def record_edit(root: Path, session_id: str, rel_path: str, *, via_bash: bool = False) -> None:
+def record_edit(root: Path, session_id: str, rel_path: str) -> None:
     state = load_session(root, session_id)
     if rel_path not in state["edited_files"]:
         state["edited_files"].append(rel_path)
-    if via_bash and rel_path not in state["bash_writes"]:
-        state["bash_writes"].append(rel_path)
     if _over_eager(root, rel_path) and rel_path not in state["over_eager"]:
         # W4 scope declaration: warn-only, audited; the retrospective counts them.
         state["over_eager"].append(rel_path)
@@ -430,13 +424,6 @@ def _record_stop_block(root: Path, session_id: str) -> int:
 
 # ---------------------------------------------------------------------------
 # helpers
-
-
-def _rel_path(root: Path, file_path: str) -> str | None:
-    try:
-        return Path(file_path).resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return None
 
 
 def _payload_cwd(payload: dict[str, Any], root: Path) -> Path:
@@ -543,15 +530,9 @@ def validate_against_schema(root: Path, schema: str, text: str) -> str | None:
     python = _venv_python(root)
     if python is None:
         return None
-    body = text.strip()
-    if "```" in body:
-        fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", body, re.DOTALL)
-        if fenced:
-            body = fenced.group(1)
-    start, end = body.find("{"), body.rfind("}")
-    if start < 0 or end <= start:
+    body = gate.first_json_object(text)
+    if body is None:
         return "no JSON object found in the final message"
-    body = body[start : end + 1]
     code = (
         "import json,sys; from harness_models import "
         f"{schema} as M; M.model_validate(json.loads(sys.stdin.read()))"
@@ -579,7 +560,7 @@ def hook_post_edit(
 ) -> HookResult:
     tool_input = payload.get("tool_input") or {}
     file_path = str(tool_input.get("file_path", ""))
-    rel = _rel_path(root, file_path) if file_path else None
+    rel = _rel_path_from(root, root, file_path)
     if rel is None:
         return (0, "")
     record_edit(root, str(payload.get("session_id", "")), rel)  # A13: every edit counts
@@ -604,7 +585,7 @@ def hook_post_bash(payload: dict[str, Any], root: Path) -> HookResult:
     targets = bash_write_targets(command, root, _payload_cwd(payload, root))
     session_id = str(payload.get("session_id", ""))
     for rel in targets:
-        record_edit(root, session_id, rel, via_bash=True)
+        record_edit(root, session_id, rel)
     return (0, "")
 
 
@@ -657,7 +638,7 @@ def _holdout_block(rel: str, verb: str) -> HookResult:
 def hook_pre_edit_guard(payload: dict[str, Any], root: Path) -> HookResult:
     tool_input = payload.get("tool_input") or {}
     file_path = str(tool_input.get("file_path", ""))
-    rel = _rel_path(root, file_path) if file_path else None
+    rel = _rel_path_from(root, root, file_path)
     if rel is None:
         return (0, "")
     if gate.is_hidden_holdout(rel) and not gate.owner_present(root):
@@ -682,7 +663,7 @@ def hook_pre_edit_guard(payload: dict[str, Any], root: Path) -> HookResult:
 def hook_pre_read_guard(payload: dict[str, Any], root: Path) -> HookResult:
     tool_input = payload.get("tool_input") or {}
     file_path = str(tool_input.get("file_path", ""))
-    rel = _rel_path(root, file_path) if file_path else None
+    rel = _rel_path_from(root, root, file_path)
     if rel is None or not gate.is_hidden_holdout(rel):
         return (0, "")
     if gate.owner_present(root) or payload.get("agent_type") == "independent-reviewer":
@@ -835,9 +816,6 @@ def hook_pre_mcp_guard(payload: dict[str, Any], root: Path) -> HookResult:
     tool = str(payload.get("tool_name", ""))
     session_id = str(payload.get("session_id", ""))
     if tool.startswith("mcp__codex__"):
-        state = load_session(root, session_id)
-        state["codex_calls"] = int(state.get("codex_calls", 0)) + 1
-        _save_session(root, state)
         gate.append_audit(root, "codex_call", f"mcp:{tool}", session_id)
         return (0, "")
     if _MCP_OWNER_VERBS.search(tool):
@@ -851,7 +829,7 @@ def hook_pre_mcp_guard(payload: dict[str, Any], root: Path) -> HookResult:
 
 
 # ---------------------------------------------------------------------------
-# hooks: SubagentStop / TaskCompleted / ConfigChange / InstructionsLoaded
+# hooks: SubagentStop / TaskCompleted / ConfigChange
 
 
 def hook_subagent_stop(payload: dict[str, Any], root: Path) -> HookResult:
@@ -941,20 +919,6 @@ def hook_config_change(payload: dict[str, Any], root: Path) -> HookResult:
         '  uv run python scripts/gate.py ack --reason "..."\n'
         "and re-apply the change through Edit/Write (which consumes it).",
     )
-
-
-def hook_instructions_loaded(payload: dict[str, Any], root: Path) -> HookResult:
-    rel = _rel_path(root, str(payload.get("file_path", ""))) or str(payload.get("file_path", ""))
-    if not rel:
-        return (0, "")
-    session_id = str(payload.get("session_id", ""))
-    state = load_session(root, session_id)
-    entry = f"{payload.get('load_reason', '?')}:{rel}"
-    if entry not in state["instructions_loaded"]:
-        state["instructions_loaded"].append(entry)
-        state["instructions_loaded"] = state["instructions_loaded"][-100:]
-        _save_session(root, state)
-    return (0, "")
 
 
 # ---------------------------------------------------------------------------
@@ -1158,7 +1122,6 @@ _HOOKS: dict[str, Callable[[dict[str, Any], Path], HookResult]] = {
     "subagent-stop": hook_subagent_stop,
     "task-completed": hook_task_completed,
     "config-change": hook_config_change,
-    "instructions-loaded": hook_instructions_loaded,
     "stop-guard": hook_stop_guard,
     "session-start": hook_session_start,
     "prompt-context": hook_prompt_context,

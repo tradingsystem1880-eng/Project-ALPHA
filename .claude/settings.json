@@ -2,16 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Bash(python3 scripts/gate.py*)",
-      "Bash(uv run python scripts/gate.py*)",
-      "Bash(python3 scripts/codex_bridge.py*)",
-      "Bash(uv run python scripts/codex_bridge.py*)",
       "Bash(codex login status)",
-      "Bash(uv run pytest*)",
-      "Bash(uv run mypy*)",
-      "Bash(uv run ruff*)",
-      "Bash(uv run lint-imports*)",
-      "Bash(uv lock --check*)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
@@ -57,12 +48,8 @@
       "Bash(git branch*)",
       "Bash(git remote*)",
       "Bash(git rev-parse*)",
-      "Bash(git merge-base*)",
-      "Bash(git merge-tree*)",
       "Bash(git blame*)",
       "Bash(git ls-files*)",
-      "Bash(git worktree list*)",
-      "Bash(git stash list*)",
       "Bash(git tag*)",
       "Bash(git describe*)",
       "Bash(git shortlog*)",
@@ -283,17 +270,6 @@
             "type": "command",
             "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" config-change",
             "timeout": 30
-          }
-        ]
-      }
-    ],
-    "InstructionsLoaded": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" instructions-loaded",
-            "timeout": 15
           }
         ]
       }

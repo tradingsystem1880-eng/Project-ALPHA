@@ -22,8 +22,8 @@ oracles, not just tests; Karpathy guidelines are always on, mechanically.
 |---|---|---|
 | Gate runner | `scripts/gate.py` | `fast\|full\|check\|attest\|override\|ack\|owner-init\|lint-harness\|baseline\|audit\|brief\|index\|plan-check\|doctor\|mutate\|semgrep\|determinism\|raise-cov`; tree hash; stamps; hash-chained audit journal |
 | Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `DriftFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan` |
-| Hooks | `scripts/claude_hooks.py` | Seventeen stdlib-only hook entrypoints (argv dispatch) + one advisory `prompt` hook |
-| Wiring | `.claude/settings.json` | Permissions allow/deny (24 deny rules), hook registration, statusline (committed) |
+| Hooks | `scripts/claude_hooks.py` | Sixteen stdlib-only hook entrypoints (argv dispatch) + one advisory `prompt` hook |
+| Wiring | `.claude/settings.json` | Permissions allow/deny (57 deny rules), hook registration, statusline (committed) |
 | Statusline | `.claude/statusline.py` | branch · dirty count · stamp state · pending obligations · owner-token / stop-budget flags |
 | Skill stubs | `.claude/skills/*/SKILL.md` | Auto-discovery stubs → canonical `.agents/skills/` (drift-guarded by test; `karpathy-guidelines` byte-synced with the plugin copy) |
 | Rules | `.claude/rules/*.md` | `00-karpathy.md` (unscoped, always loaded) + path-scoped `alpha-*.md`, `quant.md`, `tests.md`, `docs.md` holding the relocated MODULE MAP / CLI surface / tier duties (`tests/unit/test_claude_md_relocation.py` proves zero loss vs `tests/fixtures/claude_md_v1.md`) |
@@ -88,7 +88,6 @@ block or the absence of one.
 | `subagent-stop` | SubagentStop | a JSON-only agent's last message fails its schema (`JSON_AGENT_SCHEMAS`; `codex-liaison` = `CodexReview\|CodexResearch`) | re-run the agent |
 | `task-completed` | TaskCompleted | a task marked complete while its named test file/command fails | make it pass |
 | `config-change` | ConfigChange | settings/skills/agents/mcp changed without ack or owner token; audited | `gate.py ack` |
-| `instructions-loaded` | InstructionsLoaded | never; records which CLAUDE.md/rules loaded (awareness telemetry) | — |
 | `stop-guard` | Stop | source edits without fast stamp; quant edits without PASS attestation bound to the quant diff hash (3 blocks/session, then allow with `stop_budget_exhausted` audit + red statusline flag until the next passing gate) | `/gate-fast`, `/verify-quant` |
 | `stop` prompt hook | Stop (`type: prompt`, Haiku, advisory) | transcript claims "should work / probably" about tests or skipped Karpathy §1–§3 — blocks once with the reason (shares the Stop budget) | state assumptions / run the check |
 | `session-start` | SessionStart | never (working contract + owner-token warning + Karpathy block + generated repo brief + doctor warnings) | — |

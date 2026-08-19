@@ -481,7 +481,6 @@ class TestBashWriteDetection:
         assert code == 0
         state = claude_hooks.load_session(repo, "s1")
         assert "tracked.py" in state["edited_files"]
-        assert "tracked.py" in state["bash_writes"]
 
 
 class TestHiddenHoldout:
@@ -557,7 +556,6 @@ class TestMcpGuard:
         assert code == 0
         code, _ = claude_hooks.hook_pre_mcp_guard(_payload(tool_name="mcp__codex__codex"), repo)
         assert code == 0
-        assert claude_hooks.load_session(repo, "s1")["codex_calls"] == 1
         assert [e["event"] for e in gate.read_audit(repo, kind="codex_call")] == ["codex_call"]
 
 
@@ -666,16 +664,12 @@ class TestConfigChange:
 
 
 class TestTelemetryHooks:
-    def test_failure_and_instructions_recorded(self, repo: Path) -> None:
+    def test_failure_recorded(self, repo: Path) -> None:
         claude_hooks.hook_post_tool_failure(
             _payload(tool_name="Bash", tool_input={}, error="boom"), repo
         )
-        claude_hooks.hook_instructions_loaded(
-            _payload(load_reason="session_start", file_path=str(repo / "CLAUDE.md")), repo
-        )
         state = claude_hooks.load_session(repo, "s1")
         assert state["failures"][0]["tool"] == "Bash"
-        assert state["instructions_loaded"] == ["session_start:CLAUDE.md"]
 
     def test_tool_log_audits_dispatch(self, repo: Path) -> None:
         claude_hooks.hook_tool_log(

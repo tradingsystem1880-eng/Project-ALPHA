@@ -92,7 +92,6 @@ class TestHookWiring:
             ("SubagentStop", "subagent-stop"),
             ("TaskCompleted", "task-completed"),
             ("ConfigChange", "config-change"),
-            ("InstructionsLoaded", "instructions-loaded"),
             ("Stop", "stop-guard"),
             ("SessionStart", "session-start"),
             ("UserPromptSubmit", "prompt-context"),

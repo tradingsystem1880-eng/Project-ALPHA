@@ -79,7 +79,6 @@ HOOK_NAMES = (
     "subagent-stop",
     "task-completed",
     "config-change",
-    "instructions-loaded",
     "stop-guard",
     "session-start",
     "prompt-context",
@@ -306,6 +305,15 @@ def read_json(path: Path) -> dict[str, Any] | None:
     except (OSError, ValueError):
         return None
     return loaded if isinstance(loaded, dict) else None
+
+
+def first_json_object(text: str) -> str | None:
+    """The outermost ``{...}`` slice of ``text`` (fenced or not), or ``None``."""
+    body = text.strip()
+    start, end = body.find("{"), body.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    return body[start : end + 1]
 
 
 def write_json_atomic(path: Path, obj: dict[str, Any]) -> None:
