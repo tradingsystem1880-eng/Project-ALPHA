@@ -1051,6 +1051,8 @@ def test_liquidity_selection_rejects_invalid_contracts() -> None:
         point_in_time_liquid_universe(frame, as_of=datetime(2026, 1, 3), limit=1, cadence=DAY)
     with pytest.raises(DataError, match="limit"):
         point_in_time_liquid_universe(frame, as_of=now, limit=0, cadence=DAY)
+    with pytest.raises(DataError, match="positive duration"):
+        point_in_time_liquid_universe(frame, as_of=now, limit=1, cadence=timedelta(0))
     with pytest.raises(DataError, match="before as_of"):
         point_in_time_liquid_universe(
             frame, as_of=datetime(2026, 1, 1, tzinfo=UTC), limit=1, cadence=DAY
@@ -1072,7 +1074,12 @@ def test_liquidity_selection_rejects_invalid_contracts() -> None:
         ({"category": "spot", "quote_asset": "USDT", "limit": 0}, "limit"),
     ):
         with pytest.raises(DataError, match=message):
-            point_in_time_liquid_markets(market, as_of=now, cadence=DAY, **kwargs)  # type: ignore[arg-type]
+            point_in_time_liquid_markets(
+                market,
+                as_of=now,
+                cadence=DAY,
+                **kwargs,  # type: ignore[arg-type]
+            )
     invalid_volume = market.with_columns(pl.lit(float("nan")).alias("quote_volume"))
     with pytest.raises(DataError, match="volume"):
         point_in_time_liquid_markets(

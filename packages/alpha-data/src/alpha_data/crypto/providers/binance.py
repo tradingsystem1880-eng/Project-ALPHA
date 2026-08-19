@@ -824,7 +824,7 @@ def reconcile_archive_tail(archive: pl.DataFrame, tail: pl.DataFrame) -> pl.Data
 
 def _closed_session_filter(as_of: datetime, cadence: timedelta) -> pl.Expr:
     """``session`` is a period start, so a session only exists once it has closed."""
-    if not isinstance(cadence, timedelta) or cadence <= timedelta(0):
+    if cadence <= timedelta(0):
         raise DataError("Binance liquidity cadence must be a positive duration")
     return pl.col("session") + cadence <= as_of.astimezone(UTC)
 

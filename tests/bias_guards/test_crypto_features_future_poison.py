@@ -165,6 +165,8 @@ def test_open_interest_and_onchain_changes_never_read_a_later_observation() -> N
     assert feature_frame_bytes(per_asset.drop("available_at")) == feature_frame_bytes(
         onchain_clean.sort("asset", "timestamp").drop("available_at")
     )
+    # The poison is potent: both future observations survive into the poisoned frame.
+    assert onchain_poisoned.filter(pl.col("timestamp") > NOW).height == 2
 
 
 @pytest.mark.bias_guard

@@ -153,11 +153,14 @@ def _observation(index: int, *, exit_price: float = 99.0) -> HedgedBasisObservat
 def test_candidate_admission_excludes_events_whose_outcome_is_not_yet_available() -> None:
     observations = tuple(_observation(index) for index in range(6))
     cutoff = observations[2].exit_available_at
+    poisoned = observations[:3] + tuple(
+        _observation(index, exit_price=9_999_999.0) for index in range(3, 6)
+    )
 
-    admitted = _admit(observations, as_of=cutoff)
-
-    assert admitted == observations[:3]
-    assert _admit(observations, as_of=None) == observations
+    assert _admit(observations, as_of=cutoff) == observations[:3]
+    assert _admit(poisoned, as_of=cutoff) == observations[:3]
+    # The poison is potent: without a cutoff the rewritten exits do reach the caller.
+    assert _admit(poisoned, as_of=None) != observations
 
 
 @pytest.mark.bias_guard
@@ -168,5 +171,5 @@ def test_causal_return_regimes_label_each_event_from_prior_magnitudes_only() -> 
         np.concatenate((returns[:5], np.asarray([1e-9, -1e-9, 1e-9], dtype=np.float64)))
     )
 
-    assert poisoned[:5].tolist() == clean[:5].tolist()
-    assert poisoned[5:].tolist() != clean[5:].tolist()
+    assert poisoned[:6].tolist() == clean[:6].tolist()
+    assert poisoned[6:].tolist() != clean[6:].tolist()
