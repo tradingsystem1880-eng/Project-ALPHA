@@ -674,7 +674,7 @@ def read_canonical_artifact(path: Path, label: str, *, max_bytes: int) -> dict[s
         parsed: object = json.loads(raw)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise DataError(f"{label} is unreadable") from exc
-    if not isinstance(parsed, dict) or raw != canonical(parsed):
+    if not isinstance(parsed, dict) or raw != canonical(parsed, label=label):
         raise DataError(f"{label} is not canonical JSON")
     return parsed
 

@@ -44,7 +44,6 @@ _PROJECT_ID: Final = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 )
 _CONTRACT_ID: Final = re.compile(r"rc_[0-9a-f]{64}")
-_SHA256: Final = re.compile(r"[0-9a-f]{64}")
 _VALUE_LABEL: Final = "crypto D2 value"
 
 
