@@ -8,14 +8,12 @@ sub-apps, MCP tools, agents, commands) and asserts the docs still say so.
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 
+import gate
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "scripts"))
-import gate  # noqa: E402
+from tests.unit._harness_support import REPO_ROOT as ROOT
 
 RULES = ROOT / ".claude" / "rules"
 DOC_UNION = [ROOT / "CLAUDE.md", *sorted(RULES.glob("*.md"))]

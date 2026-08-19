@@ -12,7 +12,8 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+from tests.unit._harness_support import REPO_ROOT
+
 STUB_DIR = REPO_ROOT / ".claude" / "skills"
 CANONICAL_DIR = REPO_ROOT / ".agents" / "skills"
 

@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
+from tests.unit._harness_support import REPO_ROOT as ROOT
+
 FIXTURE = ROOT / "tests" / "fixtures" / "claude_md_v1.md"
 RULES = ROOT / ".claude" / "rules"
 CORE_MAX_LINES = 200

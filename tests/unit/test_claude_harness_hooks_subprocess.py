@@ -12,32 +12,21 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import gate
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+from tests.unit._harness_support import REPO_ROOT
+
 HOOK_SCRIPT = REPO_ROOT / "scripts" / "claude_hooks.py"
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
-
-
 @pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    root = tmp_path / "repo"
-    root.mkdir()
-    _git(root, "init", "--quiet")
-    _git(root, "config", "user.email", "test@example.com")
-    _git(root, "config", "user.name", "Test")
-    (root / ".gitignore").write_text(".claude/state/\n")
-    (root / "tracked.py").write_text("x = 1\n")
-    _git(root, "add", "-A")
-    _git(root, "commit", "--quiet", "-m", "chore: init")
-    return root
+def repo(harness_repo: Path) -> Path:
+    return harness_repo
 
 
 def _run(
@@ -62,6 +51,21 @@ def _payload(cwd: Path, **kwargs: Any) -> dict[str, Any]:
     base: dict[str, Any] = {"session_id": "sub1", "cwd": str(cwd)}
     base.update(kwargs)
     return base
+
+
+def _blocked_pre_edit_guard(repo: Path) -> tuple[str, dict[str, Any]]:
+    target = repo / ".claude" / "agents" / "x.md"
+    return "pre-edit-guard", _payload(repo, tool_input={"file_path": str(target), "content": "x"})
+
+
+def _blocked_pre_mcp_guard(repo: Path) -> tuple[str, dict[str, Any]]:
+    return "pre-mcp-guard", _payload(repo, tool_name="mcp__alpha__override_research_gate")
+
+
+def _blocked_stop_guard(repo: Path) -> tuple[str, dict[str, Any]]:
+    edit = _payload(repo, tool_input={"file_path": str(repo / "tracked.py")})
+    _run("post-edit", edit, repo)
+    return "stop-guard", _payload(repo)
 
 
 class TestDispatcher:
@@ -120,52 +124,22 @@ class TestBlockContract:
         assert "reset --hard" in events[0]["detail"]
         assert events[0]["session_id"] == "sub1"
 
-    def test_commit_without_stamp_blocks_then_stamp_allows(self, repo: Path) -> None:
-        (repo / "tracked.py").write_text("x = 2\n")
-        _git(repo, "add", "-A")
-        payload = _payload(repo, tool_input={"command": "git commit -m 'feat: x'"})
-        assert _run("pre-bash-guard", payload, repo).returncode == 2
-        gate.write_stamp(repo, "full", steps=[("all", 1.0, True)], duration=1.0)
-        assert _run("pre-bash-guard", payload, repo).returncode == 0
-
-    def test_protected_edit_blocks_then_ack_allows_once(self, repo: Path) -> None:
-        target = repo / ".claude" / "agents" / "x.md"
-        payload = _payload(repo, tool_input={"file_path": str(target), "content": "x"})
-        first = _run("pre-edit-guard", payload, repo)
-        assert first.returncode == 2 and "ack" in first.stderr
-        gate.write_ack(repo, reason="test")
-        assert _run("pre-edit-guard", payload, repo).returncode == 0
-        assert _run("pre-edit-guard", payload, repo).returncode == 2, "ack is one-shot"
-
-    def test_owner_token_bypasses_protected_edit(self, repo: Path) -> None:
-        gate.owner_init(repo, "owner-secret-token")
-        target = repo / ".claude" / "agents" / "x.md"
-        payload = _payload(repo, tool_input={"file_path": str(target), "content": "x"})
-        assert _run("pre-edit-guard", payload, repo).returncode == 2
-        ok = _run("pre-edit-guard", payload, repo, env={gate.OWNER_TOKEN_ENV: "owner-secret-token"})
-        assert ok.returncode == 0
-        events = gate.read_audit(repo, kind="protected_edit_owner")
-        assert events and events[0]["authorized_by"] == "owner"
-
-    def test_mcp_owner_verb_blocked(self, repo: Path) -> None:
-        payload = _payload(repo, tool_name="mcp__alpha__override_research_gate")
-        result = _run("pre-mcp-guard", payload, repo)
-        assert result.returncode == 2 and "owner-authority" in result.stderr
-
-    def test_stop_guard_blocks_unstamped_source_edit(self, repo: Path) -> None:
-        # Record an edit through the real post-edit hook, then try to stop.
-        edit = _payload(repo, tool_input={"file_path": str(repo / "tracked.py")})
-        assert _run("post-edit", edit, repo).returncode == 0
-        stop = _run("stop-guard", _payload(repo), repo)
-        assert stop.returncode == 2 and "gate.py fast" in stop.stderr
-        gate.write_stamp(repo, "fast", steps=[("all", 1.0, True)], duration=1.0)
-        assert _run("stop-guard", _payload(repo), repo).returncode == 0
-
-    def test_stop_hook_active_short_circuits(self, repo: Path) -> None:
-        edit = _payload(repo, tool_input={"file_path": str(repo / "tracked.py")})
-        _run("post-edit", edit, repo)
-        payload = _payload(repo, stop_hook_active=True)
-        assert _run("stop-guard", payload, repo).returncode == 0
+    # Each decision below (block, ack/stamp/owner-token allow, one-shot
+    # consumption) is already proven in-process in test_claude_harness_hooks.py
+    # (TestPreBashGuard, TestPreEditGuard, TestHiddenHoldout.test_owner_may_edit,
+    # TestMcpGuard, TestStopGuard). This parametrized test only needs to prove
+    # the shell-layer property: the block reaches the real subprocess as exit 2,
+    # once per hook category not already covered above.
+    @pytest.mark.parametrize(
+        "build",
+        [_blocked_pre_edit_guard, _blocked_pre_mcp_guard, _blocked_stop_guard],
+        ids=["pre-edit-guard", "pre-mcp-guard", "stop-guard"],
+    )
+    def test_block_reaches_shell_with_exit_2(
+        self, repo: Path, build: Callable[[Path], tuple[str, dict[str, Any]]]
+    ) -> None:
+        hook, payload = build(repo)
+        assert _run(hook, payload, repo).returncode == 2
 
 
 class TestContextContract:

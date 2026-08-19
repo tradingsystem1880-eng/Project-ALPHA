@@ -16,29 +16,12 @@ import claude_hooks
 import gate
 import pytest
 
-
-def _git(root: Path, *args: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(root), *args],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout.strip()
+from tests.unit._harness_support import git as _git
 
 
 @pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    root = tmp_path / "repo"
-    root.mkdir()
-    _git(root, "init", "--quiet")
-    _git(root, "config", "user.email", "test@example.com")
-    _git(root, "config", "user.name", "Test")
-    (root / ".gitignore").write_text(".claude/state/\n")
-    (root / "tracked.py").write_text("x = 1\n")
-    _git(root, "add", "-A")
-    _git(root, "commit", "--quiet", "-m", "chore: init")
-    return root
+def repo(harness_repo: Path) -> Path:
+    return harness_repo
 
 
 def _payload(**kwargs: Any) -> dict[str, Any]:

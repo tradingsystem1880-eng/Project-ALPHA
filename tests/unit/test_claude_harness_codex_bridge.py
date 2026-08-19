@@ -20,7 +20,8 @@ import codex_bridge
 import gate
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+from tests.unit._harness_support import REPO_ROOT
+
 BRIDGE = REPO_ROOT / "scripts" / "codex_bridge.py"
 
 _SHIM = r"""#!/usr/bin/env python3
