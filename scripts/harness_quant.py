@@ -260,6 +260,18 @@ def semgrep_command(root: Path, paths: list[str]) -> list[str]:
     return [*_SEMGREP_BASE, *targets] if targets else []
 
 
+def _scanner_failed_to_launch(output: str) -> bool:
+    """True only when the scanner itself could not start (runner exception or a missing ``uvx``).
+
+    Decided on the FIRST line so tokens inside real findings (a matched ``except OSError:``
+    line, a message containing "No such file") can never be mistaken for an absent scanner.
+    """
+    first = output.strip().splitlines()[0] if output.strip() else ""
+    return first.startswith(
+        ("OSError", "FileNotFoundError", "PermissionError", "TimeoutExpired")
+    ) or ("command not found" in first)
+
+
 def semgrep(root: Path, *, changed_only: bool) -> int:
     if changed_only:
         paths = gate.scoped_changed_paths(root, lambda p: p.endswith(".py"))
@@ -273,7 +285,7 @@ def semgrep(root: Path, *, changed_only: bool) -> int:
     if ok:
         print(f"[semgrep] ok ({seconds:.1f}s)")
         return 0
-    if "command not found" in output or "No such file" in output or "OSError" in output:
+    if _scanner_failed_to_launch(output):
         print(f"[semgrep] unavailable: {output[-200:]}", file=sys.stderr)
         gate.append_audit(root, "semgrep_unavailable", output[-200:])
         return 0

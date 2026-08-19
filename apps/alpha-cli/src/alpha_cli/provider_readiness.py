@@ -333,12 +333,11 @@ def _ibkr_check(data_dir: Path | None = None) -> tuple[tuple[str, ...], dict[str
             )
         except (OSError, subprocess.TimeoutExpired):
             docker_daemon = False
-    reachable = False
     try:
         with socket.create_connection(("127.0.0.1", 4002), timeout=2):
             reachable = True
     except OSError:
-        pass
+        reachable = False  # "gateway not listening" is the recorded readiness state, not an error
     image_reviewed = bool(re.fullmatch(r"[A-Za-z0-9._/:+-]+@sha256:[0-9a-f]{64}", image))
     local_app_reviewed = _signed_local_ibkr_gateway(local_app) if local_app else False
     reviewed = image_reviewed or local_app_reviewed

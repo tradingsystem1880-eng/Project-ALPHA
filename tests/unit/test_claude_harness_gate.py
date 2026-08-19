@@ -1002,6 +1002,25 @@ class TestQuantRigorTooling:
         assert cmd[-2:] == ["packages/x.py", "tests/t.py"]  # only python targets
         assert harness_quant.semgrep_command(repo, []) == []
 
+    @pytest.mark.parametrize(
+        ("output", "expected"),
+        [
+            # Real findings whose matched source mentions OSError / a missing file must FAIL.
+            ("3 Code Findings\n  340┆ except OSError:\n  341┆     pass\n", 1),
+            ("finding: raise DataError('No such file')\n", 1),
+            # Only the runner's own failure to launch the scanner is "unavailable" (advisory).
+            ("FileNotFoundError: [Errno 2] No such file or directory: 'uvx'", 0),
+            ("zsh: command not found: uvx", 0),
+        ],
+    )
+    def test_semgrep_unavailable_is_decided_by_the_launch_not_the_findings(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch, output: str, expected: int
+    ) -> None:
+        (repo / ".semgrep").mkdir()
+        (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
+        monkeypatch.setattr(gate, "_env_runner", lambda cmd, **kw: (False, 0.1, output))
+        assert harness_quant.semgrep(repo, changed_only=False) == expected
+
     def test_raise_sites_are_found_by_ast(self, tmp_path: Path) -> None:
         mod = tmp_path / "m.py"
         mod.write_text(
