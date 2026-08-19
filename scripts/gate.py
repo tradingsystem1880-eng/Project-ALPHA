@@ -521,14 +521,17 @@ def clear_stamp(root: Path) -> None:
     (_state_dir(root) / STAMP_FILE).unlink(missing_ok=True)
 
 
-def stamp_is_valid(root: Path, tier: str) -> bool:
+def stamp_state(root: Path) -> tuple[str, bool]:
+    """``(tier, fresh-for-current-tree)``; tier is ``"none"`` when no stamp exists."""
     stamp = read_json(_state_dir(root) / STAMP_FILE)
     if stamp is None:
-        return False
-    have = TIER_RANK.get(str(stamp.get("tier")), 0)
-    if have < TIER_RANK[tier]:
-        return False
-    return stamp.get("tree_hash") == compute_tree_hash(root)
+        return ("none", False)
+    return (str(stamp.get("tier")), stamp.get("tree_hash") == compute_tree_hash(root))
+
+
+def stamp_is_valid(root: Path, tier: str) -> bool:
+    have, fresh = stamp_state(root)
+    return fresh and TIER_RANK.get(have, 0) >= TIER_RANK[tier]
 
 
 def stamp_age_seconds(root: Path) -> float | None:

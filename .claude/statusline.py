@@ -34,9 +34,7 @@ def main() -> int:
     except Exception:
         payload = {}
     cwd = Path(
-        (payload.get("workspace") or {}).get("current_dir")
-        or payload.get("cwd")
-        or Path.cwd()
+        (payload.get("workspace") or {}).get("current_dir") or payload.get("cwd") or Path.cwd()
     )
 
     top = _git(cwd, "rev-parse", "--show-toplevel")
@@ -55,17 +53,12 @@ def main() -> int:
         sys.path.insert(0, str(root / "scripts"))
         import gate
 
-        if gate.stamp_is_valid(root, "full"):
-            stamp_part = "gate:full✓"
-        elif gate.stamp_is_valid(root, "fast"):
-            stamp_part = "gate:fast✓"
-        else:
-            raw = gate.read_json(root / gate.STATE_DIR / gate.STAMP_FILE)
-            stamp_part = f"gate:{raw['tier']}-stale" if raw else "gate:none"
+        tier, fresh = gate.stamp_state(root)
+        if tier != "none":
+            stamp_part = f"gate:{tier}✓" if fresh else f"gate:{tier}-stale"
 
-        empty_scope_hash = gate.scoped_diff_hash(root, lambda _p: False)
-        quant_diff_exists = gate.scoped_diff_hash(root, gate.matches_quant) != empty_scope_hash
-        if quant_diff_exists and not gate.quant_attestation_valid(root):
+        quant_paths = gate.scoped_changed_paths(root, gate.matches_quant)
+        if quant_paths and not gate.quant_attestation_valid(root):
             pending.append("quant-attest")
         if (root / gate.STATE_DIR / gate.OVERRIDE_FILE).exists():
             pending.append("override-armed")
@@ -74,7 +67,7 @@ def main() -> int:
         # A12: a session that exhausted its Stop budget left UNVERIFIED edits behind;
         # the flag stays until a gate passes for the current tree.
         session_id = str(payload.get("session_id") or "")
-        if session_id and not gate.stamp_is_valid(root, "fast"):
+        if session_id and not fresh:
             safe = re.sub(r"[^A-Za-z0-9_-]", "_", session_id)
             state = gate.read_json(root / gate.STATE_DIR / f"session-{safe}.json")
             if state and state.get("stop_budget_exhausted"):
