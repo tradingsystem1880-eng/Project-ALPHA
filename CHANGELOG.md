@@ -15,7 +15,7 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
   families, the QuantPad research-data archive hardening, and further paper-acceptance
   evidence.
 - Trim and split the harness (`scripts/gate.py` leaves now `scripts/harness_quant.py` and
-  `scripts/harness_awareness.py`), fold 48 confirmed review fixes across the crypto/CLI delta,
+  `scripts/harness_awareness.py`), apply 49 confirmed review rows (43 deduplicated findings) across the crypto/CLI delta,
   add bias guards for the new surfaces, and reconcile README/CLAUDE.md/BUILD-STATUS/harness
   runbooks with the merged tree.
 

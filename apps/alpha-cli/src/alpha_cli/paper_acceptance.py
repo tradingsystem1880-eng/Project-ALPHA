@@ -59,14 +59,14 @@ _IMAGE = re.compile(r"^[A-Za-z0-9._/:+-]+@sha256:[0-9a-f]{64}$")
 _ACCOUNT = re.compile(r"^DU[A-Z0-9]+$")
 
 
-def canonical_bytes(value: Mapping[str, object]) -> bytes:
+def _canonical_bytes(value: Mapping[str, object]) -> bytes:
     """Render the one canonical JSON encoding every paper receipt hash is taken over."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 def digest(value: Mapping[str, object]) -> str:
     """Digest the canonical encoding of ``value``."""
-    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+    return hashlib.sha256(_canonical_bytes(value)).hexdigest()
 
 
 def _stamp(value: datetime) -> str:
@@ -427,7 +427,6 @@ def read_ibkr_what_if_plan(data_dir: Path, plan_hash: str) -> dict[str, object]:
 
 __all__ = [
     "acceptance_report",
-    "canonical_bytes",
     "create_ibkr_what_if_plan",
     "digest",
     "freeze_acceptance_plan",

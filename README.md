@@ -431,9 +431,9 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Not yet built (intentional)
 
-- Qualified real intraday research adapter. The default
-  future split is 60/20/20 over indivisible chronological eligible date/session/dependency groups;
-  an alternative must be event-blind, owner-approved before D1, and retain D3 at 20% or more.
+- Qualified real intraday research adapter. The default future split is 60/20/20 over
+  indivisible chronological eligible date/session/dependency groups; an alternative must be
+  event-blind, owner-approved before D1, and retain D3 at 20% or more.
 - Autonomous research continuation and research ML/self-improvement. Local owner CLI fields are
   not cryptographic identity.
 - Live or exchange-testnet order execution, paper venues beyond IBKR/local Sandbox, strategy futures,

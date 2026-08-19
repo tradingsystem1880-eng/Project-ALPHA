@@ -1,5 +1,5 @@
 {
-  "bias_guard_tests": 32,
+  "bias_guard_tests": 35,
   "coverage_fail_under": 93,
   "deny_rules": [
     "Bash(.venv/bin/alpha owner-auth enroll*)",

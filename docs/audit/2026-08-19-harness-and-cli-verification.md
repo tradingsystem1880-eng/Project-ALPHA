@@ -162,7 +162,7 @@ semgrep-gate fix below); frontend gate at `ea54427`.
 |---|---|---|---|
 | Python full gate (13 steps: lock, sync, ruff check/format, import contracts, mypy, mypy harness, harness lint, semgrep (changed scope), pytest+coverage (floor 93 %), OpenAPI freshness, wheel build, wheel smoke) | `gate.py full` | 516 s @252c4c2 · 507 s @ea54427 | **PASS — stamp written** (both) |
 | import contracts | `uv run lint-imports` | — | 14 kept, 0 broken |
-| bias guards | `uv run pytest -m bias_guard -q` | 7 s | 147 passed (35 guard files; baseline pinned 32 → the three new crypto guards raise it) |
+| bias guards | `uv run pytest -m bias_guard -q` | 7 s | 147 passed (35 guard files; `harness-baseline.json` re-pinned 32 → 35 after the final review — see D.2) |
 | CLI smoke | `uv run alpha info` | — | OK |
 | frontend gate | `npm ci && lint --deny-warnings && test:coverage && generate:api && playwright install chromium && test:e2e` | 179 s | **PASS** — 31 vitest files / 166 tests; 83 Playwright e2e passed; `git status --porcelain` on `static/app` + `generated.ts` **empty** |
 | literature worker | `uv lock --check && uv sync --locked && ruff check && ruff format --check && mypy && pytest -m "not network"` | 6 s | PASS — 29 passed |
@@ -216,6 +216,7 @@ whole-repo semgrep (nightly) is red on those two lines — visibly, not silently
 | `.claude/settings.json` | 362 | 338 | allow prune + hook block (Task 5) |
 | harness tests collected | 380 | 389 | +9 net (new stamp/parser/JSON/semgrep tests; dead-code tests removed) |
 | `.claude/agents` / `.claude/commands` | 11 / 12 | 9 / 10 | Task 7 |
+| `bias_guard_tests` baseline pin | 32 | 35 | three crypto future-poison guard files added in Task 9 (batches 1–2); re-pinned after the final whole-branch review flagged the stale count |
 | stamp tier | full | full | — |
 
 ### D.3 Worktree note
