@@ -119,6 +119,8 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
+      - name: Lockfile check
+        run: uv lock --check
       - name: Install isolated worker (locked)
         run: uv sync --locked
       - name: Lint and format

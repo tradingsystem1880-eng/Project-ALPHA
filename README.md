@@ -77,6 +77,7 @@ uv lock --check && uv sync --locked \
   && uv run mypy packages apps tests \
   && uv run pytest -q -m "not network" --cov --cov-report=term-missing \
   && uv run python scripts/generate_web_openapi.py --check \
+  && uv run python scripts/check_openapi_operations.py \
   && uv build --all-packages
 # Then reinstall dist/*.whl with --no-deps and import-smoke all 13 packages (the exact CI assertion
 # is in .github/workflows/ci.yml).
