@@ -23,7 +23,8 @@ from pathlib import Path
 from typing import Final
 
 from alpha_core import DataError
-from alpha_data.crypto.storage import Capacity, macos_volume_uuid
+from alpha_data.crypto.contracts import canonical_bytes
+from alpha_data.crypto.storage import Capacity, macos_volume_uuid, sha256_file
 
 _SYMBOL: Final = re.compile(r"^[A-Za-z0-9._:-]{1,80}$")
 _ENDPOINTS: Final = frozenset({"bars", "ticks", "coverage", "universe"})
@@ -70,21 +71,9 @@ def _http_error_reason(exc: urllib.error.HTTPError, api_key: str) -> str:
     return str(exc.code)
 
 
-def _canonical(value: object) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-
-
 def _capacity(path: Path) -> Capacity:
     usage = shutil.disk_usage(path)
     return Capacity(total_bytes=usage.total, free_bytes=usage.free)
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -152,7 +141,7 @@ class QuantPadArchiveRequestV1:
 
     @property
     def request_id(self) -> str:
-        return hashlib.sha256(_canonical(self.to_dict())).hexdigest()
+        return hashlib.sha256(canonical_bytes(self.to_dict())).hexdigest()
 
     def to_dict(self) -> dict[str, object]:
         return {"schema_version": 1, **asdict(self)}
@@ -236,7 +225,7 @@ class QuantPadArchiveStore:
         artifact = self.bulk_root / artifact_key
         artifact.parent.mkdir(parents=True, exist_ok=True)
         if artifact.exists():
-            if artifact.stat().st_size != size or _sha256(artifact) != response_hash:
+            if artifact.stat().st_size != size or sha256_file(artifact) != response_hash:
                 raise DataError("QuantPad external artifact identity collision")
             partial.unlink(missing_ok=True)
         else:
@@ -252,7 +241,7 @@ class QuantPadArchiveStore:
             "request_id": request.request_id,
             "research_only": True,
         }
-        manifest_id = hashlib.sha256(_canonical(body)).hexdigest()
+        manifest_id = hashlib.sha256(canonical_bytes(body)).hexdigest()
         manifest = {**body, "manifest_id": manifest_id}
         self.manifest_root.mkdir(parents=True, exist_ok=True)
         rendered = json.dumps(manifest, sort_keys=True, indent=2, allow_nan=False) + "\n"
@@ -276,7 +265,7 @@ class QuantPadArchiveStore:
         if not isinstance(raw, dict) or raw.get("manifest_id") != manifest_id:
             raise DataError("QuantPad archive manifest identity is invalid")
         body = {key: value for key, value in raw.items() if key != "manifest_id"}
-        if hashlib.sha256(_canonical(body)).hexdigest() != manifest_id:
+        if hashlib.sha256(canonical_bytes(body)).hexdigest() != manifest_id:
             raise DataError("QuantPad archive manifest integrity failure")
         key = raw.get("artifact_key")
         if not isinstance(key, str) or key.startswith("/") or ".." in key.split("/"):
@@ -286,7 +275,7 @@ class QuantPadArchiveStore:
             not artifact.is_file()
             or artifact.is_symlink()
             or artifact.stat().st_size != raw.get("artifact_bytes")
-            or _sha256(artifact) != raw.get("artifact_sha256")
+            or sha256_file(artifact) != raw.get("artifact_sha256")
         ):
             raise DataError("QuantPad external artifact integrity failure")
         return raw

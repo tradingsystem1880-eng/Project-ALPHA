@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 import re
 from dataclasses import dataclass
@@ -14,7 +12,13 @@ import polars as pl
 
 from alpha_core import DataError
 
-from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1, QualificationState
+from .contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoQualityReportV1,
+    QualificationState,
+    content_digest,
+    require_utc,
+)
 
 QUALITY_METHOD_VERSION: Final = "crypto-quality-v1"
 _SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
@@ -46,11 +50,6 @@ class MarketComparisonSummaryV1:
             "warning_bps": self.warning_bps,
             "quarantine_bps": self.quarantine_bps,
         }
-
-
-def _comparison_id(value: object) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _source_column(provider: str, value_column: str) -> str:
@@ -140,7 +139,7 @@ def compare_market_observations(
         "quarantine_bps": quarantine_bps,
     }
     return diagnostics, MarketComparisonSummaryV1(
-        comparison_id=_comparison_id(identity_body),
+        comparison_id=content_digest(identity_body),
         primary_sha256=primary_sha256,
         comparison_sha256=tuple(source_hashes),
         state=state,
@@ -150,12 +149,6 @@ def compare_market_observations(
         warning_bps=float(warning_bps),
         quarantine_bps=float(quarantine_bps),
     )
-
-
-def _utc(value: datetime, label: str) -> datetime:
-    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
-        raise DataError(f"crypto quality {label} must be timezone-aware")
-    return value.astimezone(UTC)
 
 
 def _times(frame: pl.DataFrame, column: str) -> list[datetime]:
@@ -340,8 +333,8 @@ def qualify_crypto_frame(
     unexplained_revision: bool = False,
 ) -> CryptoQualityReportV1:
     """Classify exact bytes without repairing, replacing, or dropping observations."""
-    knowledge = _utc(knowledge_time, "knowledge time")
-    cutoff = _utc(as_of, "as_of")
+    knowledge = require_utc(knowledge_time, "knowledge time", prefix="crypto quality")
+    cutoff = require_utc(as_of, "as_of", prefix="crypto quality")
     failures: set[str] = set()
     warnings: set[str] = set()
     if frame.is_empty():

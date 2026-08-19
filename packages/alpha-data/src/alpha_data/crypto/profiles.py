@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal, cast
@@ -11,7 +10,7 @@ from typing import Literal, cast
 import polars as pl
 
 from alpha_core import DataError
-from alpha_data.crypto.contracts import CryptoFamily
+from alpha_data.crypto.contracts import CryptoFamily, canonical_bytes
 from alpha_data.crypto.providers.geckoterminal import NETWORKS
 
 type CoverageCadence = Literal["daily", "hourly", "five_minute", "funding_interval"]
@@ -40,10 +39,6 @@ _FAMILIES = frozenset(
         "dex_pools",
     }
 )
-
-
-def _canonical(value: object) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 @dataclass(frozen=True)
@@ -97,7 +92,7 @@ class CryptoCoverageTaskV1:
 
     @property
     def task_id(self) -> str:
-        return hashlib.sha256(_canonical(self._identity())).hexdigest()
+        return hashlib.sha256(canonical_bytes(self._identity())).hexdigest()
 
     @property
     def execution_authority(self) -> bool:
@@ -209,7 +204,7 @@ class CryptoCoverageProfileV1:
             raise DataError("crypto coverage profile task membership is invalid")
         body = cls._body(normalized_at, source_manifest_ids, tasks)
         return cls(
-            profile_id=hashlib.sha256(_canonical(body)).hexdigest(),
+            profile_id=hashlib.sha256(canonical_bytes(body)).hexdigest(),
             as_of=normalized_at,
             source_manifest_ids=source_manifest_ids,
             tasks=tasks,
@@ -394,67 +389,38 @@ def active_binance_markets(
     return ordered
 
 
-def _task(
-    provider: str,
-    family: CryptoFamily,
-    instrument: str,
-    *,
-    base: str | None,
-    quote: str | None,
-    category: str | None,
-    frequency: str,
-    cadence: CoverageCadence,
-    network: str | None = None,
-    metrics: tuple[str, ...] = (),
-    lookback_days: int | None = None,
-) -> CryptoCoverageTaskV1:
-    return CryptoCoverageTaskV1(
-        provider=provider,
-        family=family,
-        instrument=instrument,
-        base_asset=base,
-        quote_asset=quote,
-        category=category,
-        frequency=frequency,
-        cadence=cadence,
-        network=network,
-        metrics=metrics,
-        lookback_days=lookback_days,
-    )
-
-
 def _reference_tasks(
     coinmetrics_catalog: pl.DataFrame, *, as_of: datetime
 ) -> list[CryptoCoverageTaskV1]:
     tasks = [
-        _task(
-            "coingecko",
-            "asset_metadata",
-            "all",
-            base=None,
-            quote=None,
+        CryptoCoverageTaskV1(
+            provider="coingecko",
+            family="asset_metadata",
+            instrument="all",
+            base_asset=None,
+            quote_asset=None,
             category=None,
             frequency="catalog_snapshot",
             cadence="daily",
         ),
-        _task(
-            "coingecko",
-            "market_reference",
-            "all",
-            base=None,
-            quote="USD",
+        CryptoCoverageTaskV1(
+            provider="coingecko",
+            family="market_reference",
+            instrument="all",
+            base_asset=None,
+            quote_asset="USD",
             category=None,
             frequency="point_in_time_reference",
             cadence="daily",
         ),
     ]
     tasks.extend(
-        _task(
-            "geckoterminal",
-            "dex_pools",
-            network,
-            base=None,
-            quote="USD",
+        CryptoCoverageTaskV1(
+            provider="geckoterminal",
+            family="dex_pools",
+            instrument=network,
+            base_asset=None,
+            quote_asset="USD",
             category=None,
             frequency="daily_catalog",
             cadence="daily",
@@ -466,12 +432,12 @@ def _reference_tasks(
     if not required_columns.issubset(coinmetrics_catalog.columns):
         raise DataError("Coin Metrics Community catalog schema is incomplete")
     tasks.append(
-        _task(
-            "coinmetrics",
-            "onchain_catalog",
-            "community",
-            base=None,
-            quote=None,
+        CryptoCoverageTaskV1(
+            provider="coinmetrics",
+            family="onchain_catalog",
+            instrument="community",
+            base_asset=None,
+            quote_asset=None,
             category=None,
             frequency="catalog_snapshot",
             cadence="daily",
@@ -487,12 +453,12 @@ def _reference_tasks(
         if not metrics:
             raise DataError(f"Coin Metrics Community catalog has no daily {asset} metrics")
         tasks.append(
-            _task(
-                "coinmetrics",
-                "onchain_metrics",
-                asset.lower(),
-                base=asset,
-                quote=None,
+            CryptoCoverageTaskV1(
+                provider="coinmetrics",
+                family="onchain_metrics",
+                instrument=asset.lower(),
+                base_asset=asset,
+                quote_asset=None,
                 category=None,
                 frequency="1d",
                 cadence="daily",
@@ -513,12 +479,12 @@ def _binance_tasks(
         raise DataError("Binance market-membership source coverage is incomplete")
     active = active_binance_markets(memberships, as_of=as_of)
     tasks = [
-        _task(
-            "binance",
-            "market_membership",
-            category,
-            base=None,
-            quote=None,
+        CryptoCoverageTaskV1(
+            provider="binance",
+            family="market_membership",
+            instrument=category,
+            base_asset=None,
+            quote_asset=None,
             category=category,
             frequency="catalog_snapshot",
             cadence="daily",
@@ -526,12 +492,12 @@ def _binance_tasks(
         for category in ("spot", "linear", "inverse")
     ]
     tasks.extend(
-        _task(
-            "binance",
-            "market_bars",
-            symbol,
-            base=base,
-            quote=quote,
+        CryptoCoverageTaskV1(
+            provider="binance",
+            family="market_bars",
+            instrument=symbol,
+            base_asset=base,
+            quote_asset=quote,
             category=category,
             frequency="1d",
             cadence="daily",
@@ -578,12 +544,12 @@ def _binance_tasks(
             if identity not in active_ids:
                 raise DataError("Binance hourly membership is outside active venue membership")
             tasks.append(
-                _task(
-                    "binance",
-                    "market_bars",
-                    identity[0],
-                    base=identity[1],
-                    quote=identity[2],
+                CryptoCoverageTaskV1(
+                    provider="binance",
+                    family="market_bars",
+                    instrument=identity[0],
+                    base_asset=identity[1],
+                    quote_asset=identity[2],
                     category=identity[3],
                     frequency="1h",
                     cadence="hourly",
@@ -609,12 +575,12 @@ def _bybit_perpetual_tasks(
         ("premium_bars", "1h", "hourly"),
     )
     return [
-        _task(
-            "bybit",
-            family,
-            symbol,
-            base=base,
-            quote=quote,
+        CryptoCoverageTaskV1(
+            provider="bybit",
+            family=family,
+            instrument=symbol,
+            base_asset=base,
+            quote_asset=quote,
             category=category,
             frequency=frequency,
             cadence=cadence,
@@ -643,32 +609,32 @@ def _bybit_option_tasks(
         instrument = f"{base}-OPTIONS"
         tasks.extend(
             (
-                _task(
-                    "bybit",
-                    "option_instruments",
-                    instrument,
-                    base=base,
-                    quote=quote,
+                CryptoCoverageTaskV1(
+                    provider="bybit",
+                    family="option_instruments",
+                    instrument=instrument,
+                    base_asset=base,
+                    quote_asset=quote,
                     category="option",
                     frequency="catalog_snapshot",
                     cadence="daily",
                 ),
-                _task(
-                    "bybit",
-                    "option_quotes",
-                    instrument,
-                    base=base,
-                    quote=quote,
+                CryptoCoverageTaskV1(
+                    provider="bybit",
+                    family="option_quotes",
+                    instrument=instrument,
+                    base_asset=base,
+                    quote_asset=quote,
                     category="option",
                     frequency="point_in_time_chain",
                     cadence="hourly",
                 ),
-                _task(
-                    "bybit",
-                    "historical_volatility",
-                    instrument,
-                    base=base,
-                    quote=quote,
+                CryptoCoverageTaskV1(
+                    provider="bybit",
+                    family="historical_volatility",
+                    instrument=instrument,
+                    base_asset=base,
+                    quote_asset=quote,
                     category="option",
                     frequency="1h",
                     cadence="hourly",
@@ -684,12 +650,12 @@ def _bybit_option_tasks(
         key=lambda item: (-item[0], item[1]),
     )[:3]
     tasks.extend(
-        _task(
-            "bybit",
-            "option_quotes",
-            f"{base}-OPTIONS",
-            base=base,
-            quote=quote,
+        CryptoCoverageTaskV1(
+            provider="bybit",
+            family="option_quotes",
+            instrument=f"{base}-OPTIONS",
+            base_asset=base,
+            quote_asset=quote,
             category="option",
             frequency="point_in_time_chain",
             cadence="five_minute",
@@ -716,12 +682,12 @@ def build_default_coverage_tasks(
     as_of = as_of.astimezone(UTC)
     tasks = _reference_tasks(coinmetrics_catalog, as_of=as_of)
     tasks.extend(
-        _task(
-            "bybit",
-            "instrument_catalog",
-            category,
-            base=None,
-            quote=None,
+        CryptoCoverageTaskV1(
+            provider="bybit",
+            family="instrument_catalog",
+            instrument=category,
+            base_asset=None,
+            quote_asset=None,
             category=category,
             frequency="catalog_snapshot",
             cadence="daily",

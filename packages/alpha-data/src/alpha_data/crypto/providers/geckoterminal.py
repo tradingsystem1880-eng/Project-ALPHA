@@ -13,7 +13,7 @@ import polars as pl
 
 from alpha_core import DataError
 
-from ..contracts import normalize_crypto_address
+from ..contracts import normalize_crypto_address, parse_iso8601_utc
 
 type QueryScalar = str | int | bool
 
@@ -188,10 +188,7 @@ def parse_top_pools(payload: bytes, *, network: str) -> pl.DataFrame:
             network, str(address)
         ):
             raise DataError("GeckoTerminal pool identity is invalid")
-        try:
-            created_at = datetime.fromisoformat(str(created).replace("Z", "+00:00")).astimezone(UTC)
-        except ValueError as exc:
-            raise DataError("GeckoTerminal pool creation time is invalid") from exc
+        created_at = parse_iso8601_utc(str(created), "GeckoTerminal pool creation time")
         rows.append(
             {
                 "network": network,
@@ -301,10 +298,7 @@ def parse_pool_trades(payload: bytes, *, network: str, pool_address: str) -> pl.
             )
         ):
             raise DataError("GeckoTerminal trade identity is invalid")
-        try:
-            observed = datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(UTC)
-        except ValueError as exc:
-            raise DataError("GeckoTerminal trade timestamp is invalid") from exc
+        observed = parse_iso8601_utc(timestamp, "GeckoTerminal trade timestamp")
         rows.append(
             {
                 "network": network,

@@ -13,7 +13,7 @@ import polars as pl
 
 from alpha_core import DataError
 
-from ..contracts import normalize_crypto_address
+from ..contracts import normalize_crypto_address, parse_iso8601_utc
 
 type QueryScalar = str | int | bool
 
@@ -167,10 +167,7 @@ def parse_market_universe(
         )
         if not all(isinstance(value, str) and value for value in (coin_id, symbol, name, updated)):
             raise DataError("CoinGecko market identity is invalid")
-        try:
-            observed = datetime.fromisoformat(str(updated).replace("Z", "+00:00")).astimezone(UTC)
-        except ValueError as exc:
-            raise DataError("CoinGecko market timestamp is invalid") from exc
+        observed = parse_iso8601_utc(str(updated), "CoinGecko market timestamp")
         rows.append(
             {
                 "coingecko_id": coin_id,
@@ -273,12 +270,7 @@ def parse_asset_detail(payload: bytes, *, fetched_at: datetime) -> pl.DataFrame:
     raw_updated = _optional_text(item, "last_updated", limit=64)
     last_updated: datetime | None = None
     if raw_updated is not None:
-        try:
-            last_updated = datetime.fromisoformat(raw_updated.replace("Z", "+00:00")).astimezone(
-                UTC
-            )
-        except ValueError as exc:
-            raise DataError("CoinGecko asset detail update time is invalid") from exc
+        last_updated = parse_iso8601_utc(raw_updated, "CoinGecko asset detail update time")
     for field in ("sentiment_votes_up_percentage", "sentiment_votes_down_percentage"):
         value = _number(item, field)
         if value is not None and not 0 <= value <= 100:

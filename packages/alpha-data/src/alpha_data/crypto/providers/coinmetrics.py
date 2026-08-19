@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import UTC, datetime
 from typing import Final, cast
 from urllib.parse import urlencode
 
 import polars as pl
 
 from alpha_core import DataError
+
+from ..contracts import parse_iso8601_utc
 
 type QueryScalar = str | int
 
@@ -160,10 +161,7 @@ def parse_asset_metrics(
         raw_time = record.get("time")
         if not isinstance(raw_time, str):
             raise DataError("Coin Metrics timeseries timestamp is invalid")
-        try:
-            timestamp = datetime.fromisoformat(raw_time.replace("Z", "+00:00")).astimezone(UTC)
-        except ValueError as exc:
-            raise DataError("Coin Metrics timeseries timestamp is invalid") from exc
+        timestamp = parse_iso8601_utc(raw_time, "Coin Metrics timeseries timestamp")
         for metric in metrics:
             raw_value = record.get(metric)
             value: float | None

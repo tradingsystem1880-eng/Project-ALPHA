@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime
 
 import polars as pl
 
 from alpha_core import DataError
 
-from .contracts import CryptoAssetIdentityV1, normalize_crypto_address
+from .contracts import CryptoAssetIdentityV1, content_digest, normalize_crypto_address
 
 _NETWORKS = {
     ("coingecko", "ethereum"): "ethereum",
@@ -84,9 +82,7 @@ class AssetMaster:
             "identities": [identity.to_dict() for identity in self._identities],
             "source_manifest_ids": list(self._source_manifest_ids),
         }
-        derived = hashlib.sha256(
-            json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-        ).hexdigest()
+        derived = content_digest(body)
         if version is not None and version != derived:
             raise DataError("crypto asset-master version does not match its identities")
         self._version = version or derived

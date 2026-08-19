@@ -18,6 +18,8 @@ import polars as pl
 
 from alpha_core import DataError
 
+from ..storage import sha256_file
+
 type BinanceArchiveMarket = Literal["spot", "um", "cm"]
 type BinanceKlineSource = Literal["archive_csv", "rest_json"]
 type BinanceArchiveFamily = Literal["klines", "trades", "aggTrades"]
@@ -742,7 +744,7 @@ def _resume_binance_archive(
     actual_size = payload_path.stat().st_size
     if total_bytes is not None and actual_size != total_bytes:
         raise DataError("Binance archive request interrupted; rerun to resume")
-    actual_sha256 = _sha256_path(payload_path)
+    actual_sha256 = sha256_file(payload_path)
     if actual_sha256 != expected_sha256:
         quarantine = root.with_name(f"{root.name}.corrupt-{actual_sha256[:12]}")
         if quarantine.exists():
@@ -756,14 +758,6 @@ def _resume_binance_archive(
     if not any(downloads_root.iterdir()):
         downloads_root.rmdir()
     return cache_path.read_bytes()
-
-
-def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def fetch_binance_archive(

@@ -90,12 +90,14 @@ _CASE_INSENSITIVE_ADDRESS_NETWORKS = frozenset(
 _SECRET_MARKERS = ("api_key", "apikey", "authorization", "password", "secret", "token")
 
 
-def _canonical(value: object) -> bytes:
+def canonical_bytes(value: object) -> bytes:
+    """The one canonical-JSON encoding every crypto content identity is derived from."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
-def _digest(value: object) -> str:
-    return hashlib.sha256(_canonical(value)).hexdigest()
+def content_digest(value: object) -> str:
+    """The one content identity over :func:`canonical_bytes`."""
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
 def _text(value: str, label: str) -> str:
@@ -121,10 +123,19 @@ def _sha(value: str, label: str) -> str:
     return value
 
 
-def _time(value: datetime, label: str) -> datetime:
+def require_utc(value: datetime, label: str, *, prefix: str = "crypto") -> datetime:
+    """Reject a naive timestamp with a typed error, else normalize it to UTC."""
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
-        raise DataError(f"crypto {label} must be timezone-aware")
+        raise DataError(f"{prefix} {label} must be timezone-aware")
     return value.astimezone(UTC)
+
+
+def parse_iso8601_utc(raw: str, label: str) -> datetime:
+    """Parse one ``Z``-suffix-tolerant ISO-8601 instant into UTC, or fail loud."""
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(UTC)
+    except ValueError as exc:
+        raise DataError(f"{label} is invalid") from exc
 
 
 def _pairs(value: tuple[tuple[str, str], ...], label: str) -> tuple[tuple[str, str], ...]:
@@ -168,9 +179,9 @@ class CryptoAssetIdentityV1:
         object.__setattr__(
             self, "provider_symbols", _pairs(self.provider_symbols, "provider symbols")
         )
-        object.__setattr__(self, "valid_from", _time(self.valid_from, "valid_from"))
+        object.__setattr__(self, "valid_from", require_utc(self.valid_from, "valid_from"))
         if self.valid_to is not None:
-            object.__setattr__(self, "valid_to", _time(self.valid_to, "valid_to"))
+            object.__setattr__(self, "valid_to", require_utc(self.valid_to, "valid_to"))
             if self.valid_to < self.valid_from:
                 raise DataError("crypto identity valid_to precedes valid_from")
         if not isinstance(self.migration_lineage, tuple) or any(
@@ -250,7 +261,7 @@ class CryptoDatasetIdentityV1:
 
     @property
     def content_sha256(self) -> str:
-        return _digest(self.to_dict())
+        return content_digest(self.to_dict())
 
     @classmethod
     def from_dict(cls, value: object) -> CryptoDatasetIdentityV1:
@@ -290,7 +301,7 @@ class CryptoAcquisitionScopeV1:
         reason = _text(self.reason, "acquisition reason")
         if len(reason) > 500:
             raise DataError("crypto acquisition reason exceeds 500 characters")
-        object.__setattr__(self, "captured_at", _time(self.captured_at, "captured_at"))
+        object.__setattr__(self, "captured_at", require_utc(self.captured_at, "captured_at"))
         if self.purpose != "case_bound_event_capture":
             raise DataError("invalid crypto acquisition purpose")
 
@@ -347,7 +358,7 @@ class CryptoRawReceiptV1:
         ):
             raise DataError("crypto request metadata contains a secret-bearing key")
         object.__setattr__(self, "request", request)
-        object.__setattr__(self, "fetched_at", _time(self.fetched_at, "fetched_at"))
+        object.__setattr__(self, "fetched_at", require_utc(self.fetched_at, "fetched_at"))
         _sha(self.response_sha256, "response hash")
         if (
             not isinstance(self.response_bytes, int)
@@ -378,7 +389,7 @@ class CryptoRawReceiptV1:
         pagination: tuple[str, ...],
         upstream_checksum: str | None,
     ) -> CryptoRawReceiptV1:
-        normalized_time = _time(fetched_at, "fetched_at")
+        normalized_time = require_utc(fetched_at, "fetched_at")
         request = _pairs(request, "request")
         body = {
             "dataset": dataset.to_dict(),
@@ -387,7 +398,7 @@ class CryptoRawReceiptV1:
             "response_sha256": response_sha256,
         }
         return cls(
-            receipt_id=_digest(body),
+            receipt_id=content_digest(body),
             dataset=dataset,
             request=request,
             fetched_at=normalized_time,
@@ -505,9 +516,11 @@ class CryptoQualityReportV1:
         ):
             raise DataError("crypto quality row_count must be non-negative")
         if self.observed_start is not None:
-            object.__setattr__(self, "observed_start", _time(self.observed_start, "observed_start"))
+            object.__setattr__(
+                self, "observed_start", require_utc(self.observed_start, "observed_start")
+            )
         if self.observed_end is not None:
-            object.__setattr__(self, "observed_end", _time(self.observed_end, "observed_end"))
+            object.__setattr__(self, "observed_end", require_utc(self.observed_end, "observed_end"))
         if (
             self.observed_start is not None
             and self.observed_end is not None
@@ -540,7 +553,9 @@ class CryptoQualityReportV1:
             if not isinstance(raw, str):
                 raise DataError("invalid CryptoQualityReportV1 timestamp")
             try:
-                return _time(datetime.fromisoformat(raw.replace("Z", "+00:00")), "quality time")
+                return require_utc(
+                    datetime.fromisoformat(raw.replace("Z", "+00:00")), "quality time"
+                )
             except ValueError as exc:
                 raise DataError("invalid CryptoQualityReportV1 timestamp") from exc
 
@@ -636,7 +651,7 @@ class CryptoSnapshotV1:
         asset_master_version: str,
         qualification_versions: tuple[str, ...],
     ) -> str:
-        return _digest(
+        return content_digest(
             {
                 "members": [item.to_dict() for item in members],
                 "asset_master_version": asset_master_version,
@@ -726,9 +741,9 @@ class ProviderDatasetCapabilityV1:
                 raise DataError(f"crypto capability {label} must contain non-empty strings")
         _text(self.verification_state, "capability verification state")
         if self.earliest is not None:
-            object.__setattr__(self, "earliest", _time(self.earliest, "capability earliest"))
+            object.__setattr__(self, "earliest", require_utc(self.earliest, "capability earliest"))
         if self.latest is not None:
-            object.__setattr__(self, "latest", _time(self.latest, "capability latest"))
+            object.__setattr__(self, "latest", require_utc(self.latest, "capability latest"))
         if self.earliest and self.latest and self.latest < self.earliest:
             raise DataError("crypto capability latest precedes earliest")
 

@@ -21,6 +21,7 @@ from .contracts import (
     CryptoDatasetIdentityV1,
     CryptoQualityReportV1,
     CryptoRawReceiptV1,
+    canonical_bytes,
 )
 
 _SAFE = re.compile(r"^[A-Za-z0-9._:-]+$")
@@ -88,11 +89,8 @@ def _safe_component(value: str, label: str) -> str:
     return value
 
 
-def _canonical(value: object) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-
-
-def _sha256(path: Path) -> str:
+def sha256_file(path: Path) -> str:
+    """Stream one file through SHA-256 without holding it in memory."""
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         while chunk := stream.read(1024 * 1024):
@@ -192,7 +190,7 @@ class CryptoBulkStore:
         provider = _safe_component(provider, "provider")
         receipt_id = _safe_component(receipt_id, "receipt id")
         logical_name = _safe_component(logical_name, "logical name")
-        seed = _canonical(
+        seed = canonical_bytes(
             {
                 "provider": provider,
                 "receipt_id": receipt_id,
@@ -260,7 +258,7 @@ class CryptoBulkStore:
         except (KeyError, TypeError) as exc:
             raise DataError("crypto staging metadata is invalid") from exc
         expected_id = hashlib.sha256(
-            _canonical(
+            canonical_bytes(
                 {
                     "provider": handle.provider,
                     "receipt_id": handle.receipt_id,
@@ -319,7 +317,7 @@ class CryptoBulkStore:
         if current.bytes_written != current.expected_bytes:
             raise DataError("crypto staging payload is incomplete")
         source = self._staging_path(handle.staging_id) / "payload.part"
-        actual_hash = _sha256(source)
+        actual_hash = sha256_file(source)
         if actual_hash != expected_sha256:
             raise DataError("crypto staging payload hash does not match")
         artifact_key = f"raw/{current.provider}/{current.receipt_id}/{current.logical_name}"
@@ -327,7 +325,7 @@ class CryptoBulkStore:
         _mkdir_confined(self.bulk_root, destination.parent)
         _reject_symlink_path(self.bulk_root, destination)
         if destination.exists():
-            if _sha256(destination) != actual_hash:
+            if sha256_file(destination) != actual_hash:
                 raise DataError("crypto external artifact identity collision")
         else:
             temporary = destination.with_name(f".{destination.name}.{current.staging_id}.tmp")
@@ -359,7 +357,7 @@ class CryptoBulkStore:
         return manifest
 
     def _publish_manifest(self, body: dict[str, object]) -> dict[str, object]:
-        manifest_id = hashlib.sha256(_canonical(body)).hexdigest()
+        manifest_id = hashlib.sha256(canonical_bytes(body)).hexdigest()
         manifest = {**body, "manifest_id": manifest_id}
         try:
             self.manifest_root.mkdir(parents=True, exist_ok=True)
@@ -418,7 +416,10 @@ class CryptoBulkStore:
         _mkdir_confined(self.bulk_root, destination.parent)
         _reject_symlink_path(self.bulk_root, destination)
         if destination.exists():
-            if destination.stat().st_size != len(payload) or _sha256(destination) != artifact_hash:
+            if (
+                destination.stat().st_size != len(payload)
+                or sha256_file(destination) != artifact_hash
+            ):
                 raise DataError("crypto normalized artifact identity collision")
         else:
             temporary = destination.with_name(f".{destination.name}.tmp")
@@ -464,7 +465,7 @@ class CryptoBulkStore:
             if manifest.get("artifact_kind") != "normalized":
                 raise DataError("crypto derived input is not normalized provider data")
         try:
-            _canonical(metadata)
+            canonical_bytes(metadata)
         except (TypeError, ValueError) as exc:
             raise DataError("crypto derived metadata must be finite JSON") from exc
         artifact_hash = hashlib.sha256(payload).hexdigest()
@@ -474,7 +475,10 @@ class CryptoBulkStore:
         _mkdir_confined(self.bulk_root, destination.parent)
         _reject_symlink_path(self.bulk_root, destination)
         if destination.exists():
-            if destination.stat().st_size != len(payload) or _sha256(destination) != artifact_hash:
+            if (
+                destination.stat().st_size != len(payload)
+                or sha256_file(destination) != artifact_hash
+            ):
                 raise DataError("crypto derived artifact identity collision")
         else:
             temporary = destination.with_name(f".{destination.name}.tmp")
@@ -511,7 +515,7 @@ class CryptoBulkStore:
         if not isinstance(raw, dict) or raw.get("manifest_id") != manifest_id:
             raise DataError("crypto manifest identity is invalid")
         body = {key: value for key, value in raw.items() if key != "manifest_id"}
-        if hashlib.sha256(_canonical(body)).hexdigest() != manifest_id:
+        if hashlib.sha256(canonical_bytes(body)).hexdigest() != manifest_id:
             raise DataError("crypto manifest integrity failure")
         artifact_key = raw.get("artifact_key")
         artifact_hash = raw.get("artifact_sha256")
@@ -530,7 +534,7 @@ class CryptoBulkStore:
             or not isinstance(artifact_bytes, int)
             or isinstance(artifact_bytes, bool)
             or artifact.stat().st_size != artifact_bytes
-            or _sha256(artifact) != artifact_hash
+            or sha256_file(artifact) != artifact_hash
         ):
             raise DataError("crypto external artifact integrity failure")
         artifact_kind = raw.get("artifact_kind")

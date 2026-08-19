@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import hashlib
 import io
-import json
 import math
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Final, Literal, cast
 
 import polars as pl
 
 from alpha_core import DataError
 
-from .contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
+from .contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoQualityReportV1,
+    content_digest,
+    require_utc,
+)
 
 type CryptoFeatureName = Literal[
     "funding",
@@ -41,14 +45,7 @@ _SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _utc(value: datetime, label: str) -> datetime:
-    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
-        raise DataError(f"crypto feature {label} must be timezone-aware")
-    return value.astimezone(UTC)
-
-
-def _digest(value: object) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    return hashlib.sha256(encoded).hexdigest()
+    return require_utc(value, label, prefix="crypto feature")
 
 
 @dataclass(frozen=True)
@@ -107,7 +104,7 @@ class CryptoFeatureArtifactV1:
         object.__setattr__(self, "available_at", _utc(self.available_at, "availability"))
         if self.row_count <= 0:
             raise DataError("crypto feature artifact row count must be positive")
-        if self.feature_id != _digest(self._body()):
+        if self.feature_id != content_digest(self._body()):
             raise DataError("crypto feature artifact identity is invalid")
 
     def _body(self) -> dict[str, object]:
@@ -144,7 +141,7 @@ class CryptoFeatureArtifactV1:
             "artifact_sha256": artifact_sha256,
         }
         return cls(
-            feature_id=_digest(body),
+            feature_id=content_digest(body),
             feature_name=feature_name,
             method_version=FEATURE_METHOD_VERSION,
             input_sha256=input_sha256,

@@ -63,57 +63,32 @@ def ingest_provider_payload(
     acquisition_scope: CryptoAcquisitionScopeV1 | None = None,
 ) -> CryptoIngestionResultV1:
     """Freeze exact provider bytes before parsing, then publish qualified Parquet separately."""
-    if not isinstance(payload, bytes) or not payload:
-        raise DataError("crypto provider payload must be non-empty bytes")
-    response_hash = hashlib.sha256(payload).hexdigest()
-    receipt = CryptoRawReceiptV1.create(
+    receipt, raw_manifest = _stage_one_page(
+        store,
         dataset=dataset,
+        payload=payload,
         request=request,
+        pagination=pagination,
         fetched_at=fetched_at,
-        response_sha256=response_hash,
-        response_bytes=len(payload),
         provider_schema=provider_schema,
         parser_version=parser_version,
-        pagination=pagination,
-        upstream_checksum=upstream_checksum,
-    )
-    handle = store.begin_staging(
-        provider=dataset.provider,
-        receipt_id=receipt.receipt_id,
         logical_name=logical_name,
-        expected_bytes=len(payload),
+        upstream_checksum=upstream_checksum,
+        empty_payload_error="crypto provider payload must be non-empty bytes",
     )
-    handle = store.resume_payload(handle, payload)
-    raw_manifest = store.publish_staging(
-        handle,
-        expected_sha256=response_hash,
-        receipt=receipt,
-    )
-
-    frame = parser(payload)
-    output = io.BytesIO()
-    frame.write_parquet(output, compression="zstd", statistics=True)
-    normalized = output.getvalue()
-    normalized_hash = hashlib.sha256(normalized).hexdigest()
-    quality = qualify_crypto_frame(
-        dataset,
-        frame,
-        artifact_sha256=normalized_hash,
+    quality, normalized_manifest = _publish_qualified(
+        store,
+        parser(payload),
+        dataset=dataset,
+        input_manifest_ids=(str(raw_manifest["manifest_id"]),),
+        fetched_at=fetched_at,
         observed_column=observed_column,
         key_columns=key_columns,
-        knowledge_time=fetched_at,
-        as_of=fetched_at,
         expected_cadence=expected_cadence,
         period_start_timestamps=period_start_timestamps,
         availability_column=availability_column,
         correction_lineage=correction_lineage,
         unexplained_revision=unexplained_revision,
-    )
-    normalized_manifest = store.publish_normalized(
-        normalized,
-        dataset=dataset,
-        input_manifest_ids=(str(raw_manifest["manifest_id"]),),
-        quality=quality,
         acquisition_scope=acquisition_scope,
     )
     return CryptoIngestionResultV1(
@@ -158,31 +133,20 @@ def ingest_provider_pages(
     for page_number, ((payload, request, pagination), checksum) in enumerate(
         zip(pages, checksums, strict=True), start=1
     ):
-        if not isinstance(payload, bytes) or not payload:
-            raise DataError("crypto provider page must be non-empty bytes")
-        response_hash = hashlib.sha256(payload).hexdigest()
-        receipt = CryptoRawReceiptV1.create(
+        receipt, raw_manifest = _stage_one_page(
+            store,
             dataset=dataset,
+            payload=payload,
             request=request,
+            pagination=pagination,
             fetched_at=fetched_at,
-            response_sha256=response_hash,
-            response_bytes=len(payload),
             provider_schema=provider_schema,
             parser_version=parser_version,
-            pagination=pagination,
+            logical_name=f"page-{page_number:03d}-{logical_name}",
             upstream_checksum=checksum,
+            empty_payload_error="crypto provider page must be non-empty bytes",
         )
-        page_name = f"page-{page_number:03d}-{logical_name}"
-        handle = store.begin_staging(
-            provider=dataset.provider,
-            receipt_id=receipt.receipt_id,
-            logical_name=page_name,
-            expected_bytes=len(payload),
-        )
-        handle = store.resume_payload(handle, payload)
-        raw_manifests.append(
-            store.publish_staging(handle, expected_sha256=response_hash, receipt=receipt)
-        )
+        raw_manifests.append(raw_manifest)
         receipts.append(receipt)
 
     frames = tuple(
@@ -193,14 +157,93 @@ def ingest_provider_pages(
         if combine_frames is not None
         else pl.concat(frames, how="vertical_relaxed").sort(list(key_columns))
     )
+    quality, normalized_manifest = _publish_qualified(
+        store,
+        frame,
+        dataset=dataset,
+        input_manifest_ids=tuple(str(item["manifest_id"]) for item in raw_manifests),
+        fetched_at=fetched_at,
+        observed_column=observed_column,
+        key_columns=key_columns,
+        expected_cadence=expected_cadence,
+        period_start_timestamps=period_start_timestamps,
+        availability_column=availability_column,
+        correction_lineage=correction_lineage,
+        unexplained_revision=unexplained_revision,
+        acquisition_scope=acquisition_scope,
+    )
+    return CryptoPagedIngestionResultV1(
+        receipts=tuple(receipts),
+        raw_manifests=tuple(raw_manifests),
+        normalized_manifest=normalized_manifest,
+        quality=quality,
+    )
+
+
+def _stage_one_page(
+    store: CryptoBulkStore,
+    *,
+    dataset: CryptoDatasetIdentityV1,
+    payload: bytes,
+    request: tuple[tuple[str, str], ...],
+    pagination: tuple[str, ...],
+    fetched_at: datetime,
+    provider_schema: str,
+    parser_version: str,
+    logical_name: str,
+    upstream_checksum: str | None,
+    empty_payload_error: str,
+) -> tuple[CryptoRawReceiptV1, dict[str, object]]:
+    """Freeze one payload's exact bytes under its receipt before anything parses them."""
+    if not isinstance(payload, bytes) or not payload:
+        raise DataError(empty_payload_error)
+    response_hash = hashlib.sha256(payload).hexdigest()
+    receipt = CryptoRawReceiptV1.create(
+        dataset=dataset,
+        request=request,
+        fetched_at=fetched_at,
+        response_sha256=response_hash,
+        response_bytes=len(payload),
+        provider_schema=provider_schema,
+        parser_version=parser_version,
+        pagination=pagination,
+        upstream_checksum=upstream_checksum,
+    )
+    handle = store.begin_staging(
+        provider=dataset.provider,
+        receipt_id=receipt.receipt_id,
+        logical_name=logical_name,
+        expected_bytes=len(payload),
+    )
+    handle = store.resume_payload(handle, payload)
+    raw_manifest = store.publish_staging(handle, expected_sha256=response_hash, receipt=receipt)
+    return receipt, raw_manifest
+
+
+def _publish_qualified(
+    store: CryptoBulkStore,
+    frame: pl.DataFrame,
+    *,
+    dataset: CryptoDatasetIdentityV1,
+    input_manifest_ids: tuple[str, ...],
+    fetched_at: datetime,
+    observed_column: str,
+    key_columns: tuple[str, ...],
+    expected_cadence: timedelta | None,
+    period_start_timestamps: bool,
+    availability_column: str | None,
+    correction_lineage: tuple[str, ...],
+    unexplained_revision: bool,
+    acquisition_scope: CryptoAcquisitionScopeV1 | None,
+) -> tuple[CryptoQualityReportV1, dict[str, object]]:
+    """Qualify one normalized frame and publish it against its exact raw lineage."""
     output = io.BytesIO()
     frame.write_parquet(output, compression="zstd", statistics=True)
     normalized = output.getvalue()
-    normalized_hash = hashlib.sha256(normalized).hexdigest()
     quality = qualify_crypto_frame(
         dataset,
         frame,
-        artifact_sha256=normalized_hash,
+        artifact_sha256=hashlib.sha256(normalized).hexdigest(),
         observed_column=observed_column,
         key_columns=key_columns,
         knowledge_time=fetched_at,
@@ -214,16 +257,11 @@ def ingest_provider_pages(
     normalized_manifest = store.publish_normalized(
         normalized,
         dataset=dataset,
-        input_manifest_ids=tuple(str(item["manifest_id"]) for item in raw_manifests),
+        input_manifest_ids=input_manifest_ids,
         quality=quality,
         acquisition_scope=acquisition_scope,
     )
-    return CryptoPagedIngestionResultV1(
-        receipts=tuple(receipts),
-        raw_manifests=tuple(raw_manifests),
-        normalized_manifest=normalized_manifest,
-        quality=quality,
-    )
+    return quality, normalized_manifest
 
 
 __all__ = [
