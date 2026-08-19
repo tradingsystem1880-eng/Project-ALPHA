@@ -61,7 +61,6 @@ JSON_AGENT_SCHEMAS = {
     "independent-reviewer": "ReviewVerdict",
     "quant-verifier": "QuantVerificationReport",
     "invariants-auditor": "InvariantFindings",
-    "docs-drift-checker": "DriftFindings",
     "red-team-code": "Counterexamples",
     "codex-liaison": "CodexReview|CodexResearch",  # either, per the request kind
 }
@@ -101,11 +100,9 @@ _READ_ONLY_TOOLS = (
 _NUMERIC_TOOLS = (("uv", "run", "pytest", "tests/oracles"), *_PY_INLINE)
 AGENT_BASH_ALLOW: dict[str, tuple[tuple[str, ...], ...]] = {
     "quant-verifier": (*_NUMERIC_TOOLS, *_py("scripts/codex_bridge.py", "research")),
-    "numerical-verifier": _NUMERIC_TOOLS,
     "codex-liaison": _py("scripts/codex_bridge.py"),
     "independent-reviewer": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
     "invariants-auditor": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
-    "docs-drift-checker": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
     "red-team-code": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
     "retrospective": (*_GIT_READ_ONLY, *_READ_ONLY_TOOLS),
 }
@@ -957,7 +954,7 @@ def hook_stop_guard(payload: dict[str, Any], root: Path) -> HookResult:
             "Source files were edited this session but there is no fast-tier gate "
             "stamp for the current tree. Run\n"
             "  uv run python scripts/gate.py fast\n"
-            "(or /gate-fast) and fix any failures before finishing.",
+            "(or /gate fast) and fix any failures before finishing.",
         )
     quant_edits = [p for p in source_edits if gate.matches_quant(p)]
     if quant_edits and not gate.quant_attestation_valid(root):
@@ -987,8 +984,9 @@ def _harness_brief() -> list[str]:
         "  `gate.py ack --reason` per edit; shell writes (sed -i, >, tee) count as edits.",
         "- Never: git commit --amend/--no-verify, reset --hard, clean -f, stash drop,",
         "  rm -rf outside the scratchpad, force push, owner-authority MCP/CLI verbs.",
-        "- Commands: /gate /gate-fast /verify-quant /review-gate /adversarial-review",
-        "  /plan-feature /implement /harness-doctor /codex-review. Conventional commits enforced.",
+        "- Commands: /gate /verify-quant /review-gate /adversarial-review /plan-feature",
+        "  /implement /harness-doctor /codex-review /codex-research /retrospective.",
+        "  Conventional commits enforced.",
         "WORKING CONTRACT (planning & simplicity):",
         "- Smallest diff that satisfies the request; no speculative abstractions;",
         "  every changed line must trace to the task.",

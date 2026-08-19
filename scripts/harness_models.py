@@ -194,16 +194,6 @@ class InvariantFindings(_Strict):
     findings: list[InvariantFinding]
 
 
-class DriftFinding(_Strict):
-    kind: str
-    location: str
-    summary: str
-
-
-class DriftFindings(_Strict):
-    findings: list[DriftFinding]
-
-
 class Counterexample(_Strict):
     target: str
     input_description: str

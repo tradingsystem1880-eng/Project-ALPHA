@@ -1,6 +1,6 @@
 ---
 description: Optional second-opinion code review by Codex (gpt-5.3-codex-spark via the ChatGPT-authenticated CLI); graceful skip if unavailable
-argument-hint: [--uncommitted (default) | --diff <file>]
+argument-hint: [--uncommitted (default) | --diff <file>] [--effort low|medium|high]
 ---
 
 OPTIONAL extra check — the mandatory pipeline (/gate, /review-gate,
@@ -11,6 +11,9 @@ OPTIONAL extra check — the mandatory pipeline (/gate, /review-gate,
    pass `--diff <file>`). It runs `python3 scripts/codex_bridge.py review …`
    — read-only sandbox, ephemeral, output-schema, wall-clock capped, audited
    as `codex_call` — and returns a `CodexReview` JSON.
+   For a quick findings-only pass over one file, write `git diff HEAD -- <file>`
+   (or the whole file as a `+`-prefixed diff) to the scratchpad and pass
+   `--diff <scratch> --effort medium`.
 2. If `available` is false, reply with one line — "codex unavailable — <reason>
    — skipping second opinion" — and stop. This is not a failure.
 3. Otherwise relay the findings clearly labeled **second opinion (Codex,

@@ -12,8 +12,6 @@ description: Verify the quant-scope diff against primary academic sources (execu
    (Bash is limited to `uv run pytest tests/oracles …`, `python -c`, and
    `codex_bridge.py research`), and returns a QuantVerificationReport JSON
    with `files_reviewed`, `oracles_present`, `numeric_spot_checks`.
-   For a NEW or re-derived estimator, also dispatch `numerical-verifier` on
-   the golden fixture and hand its `checks[]` to the quant-verifier as data.
 3. Pipe the JSON verbatim to
    `uv run python scripts/gate.py attest --kind quant`.
 4. If the report is FAIL (any DISCREPANCY/UNVERIFIABLE claim, missing

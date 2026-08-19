@@ -164,6 +164,7 @@ makes the load-bearing ones mechanical:
   `uv run python scripts/gate.py override --reason "..."` (one commit), `ack --reason "..."` (one
   control-plane edit), env `ALPHA_HARNESS_DISABLE=1` (emergencies). `python3 scripts/gate.py doctor`
   verifies the wiring. Subagent team: navigator · test-architect · quant-verifier ·
-  invariants-auditor · independent-reviewer · adversarial-reviewer. Feature pipeline:
-  `.agents/skills/alpha-feature-workflow/` with `/plan-feature` `/implement` `/gate` `/gate-fast`
-  `/verify-quant` `/review-gate` `/adversarial-review` `/harness-doctor` `/codex-review`.
+  invariants-auditor · independent-reviewer · red-team-code · adversarial-reviewer ·
+  retrospective · codex-liaison. Commands: `/plan-feature` `/implement` `/gate [full|fast]`
+  `/verify-quant` `/review-gate` `/adversarial-review` `/harness-doctor` `/codex-review`
+  `/codex-research` `/retrospective` (feature pipeline: `.agents/skills/alpha-feature-workflow/`).

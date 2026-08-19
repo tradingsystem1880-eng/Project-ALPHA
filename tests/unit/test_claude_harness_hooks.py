@@ -18,17 +18,7 @@ import harness_awareness
 import pytest
 
 from tests.unit._harness_support import git as _git
-
-
-@pytest.fixture()
-def repo(harness_repo: Path) -> Path:
-    return harness_repo
-
-
-def _payload(**kwargs: Any) -> dict[str, Any]:
-    base: dict[str, Any] = {"session_id": "s1", "hook_event_name": "test"}
-    base.update(kwargs)
-    return base
+from tests.unit._harness_support import hook_payload as _payload
 
 
 class TestCommandParsing:
@@ -783,7 +773,6 @@ class TestAgentBashSandbox:
             ("quant-verifier", "uv run pytest tests/oracles/test_metamorphic_dsr.py -q"),
             ("quant-verifier", "uv run python -c 'import math; print(math.erf(1.0))'"),
             ("quant-verifier", "python3 scripts/codex_bridge.py research --question 'DSR?'"),
-            ("numerical-verifier", "python3 -c 'print(1)'"),
             ("codex-liaison", "python3 scripts/codex_bridge.py review --uncommitted"),
             ("independent-reviewer", "git diff HEAD -- packages && uv run pytest tests/holdout -q"),
             ("red-team-code", "rg -n 'shift\\(-' packages | head"),
@@ -801,7 +790,6 @@ class TestAgentBashSandbox:
             ("codex-liaison", "codex exec 'hi'"),  # only through the bridge
             ("independent-reviewer", "git commit -m 'feat: x'"),
             ("independent-reviewer", "uv run python scripts/gate.py override --reason x"),
-            ("numerical-verifier", "python3 -c 'print(1)' > out.txt"),
             ("red-team-code", "echo $(cat tracked.py)"),
             ("red-team-code", "lsof -i"),  # tokens match exactly; only paths use startswith
         ],

@@ -23,14 +23,14 @@ oracles, not just tests; Karpathy guidelines are always on, mechanically.
 | Gate runner | `scripts/gate.py` | `fast\|full\|check\|attest\|override\|ack\|owner-init\|lint-harness\|baseline\|audit\|brief\|index\|plan-check\|doctor\|mutate\|semgrep\|determinism\|raise-cov`; tree hash; stamps; hash-chained audit journal |
 | Quant-rigor sweeps | `scripts/harness_quant.py` | The `mutate` / `semgrep` / `determinism` / `raise-cov` implementations, imported lazily by `gate.py` inside those dispatch branches (`import gate` stays stdlib-only and cheap for hooks) |
 | Repo awareness | `scripts/harness_awareness.py` | The `brief` / `index` / `plan-check` implementations (ADR drift, open plan, retrospective watch-outs, repo index, plan scope), imported lazily by `gate.py` and at module level by `claude_hooks.py` |
-| Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `DriftFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan` |
+| Artifact schemas | `scripts/harness_models.py` | Pydantic v2 strict models validated at every write: `QuantVerificationReport`, `ReviewVerdict`, `InvariantFindings`, `Counterexamples`, `CodexReview`, `CodexResearch`, `FeaturePlan` |
 | Hooks | `scripts/claude_hooks.py` | Sixteen stdlib-only hook entrypoints (argv dispatch) + one advisory `prompt` hook |
 | Wiring | `.claude/settings.json` | Permissions allow/deny (57 deny rules), hook registration, statusline (committed) |
 | Statusline | `.claude/statusline.py` | branch · dirty count · stamp state · pending obligations · owner-token / stop-budget flags |
 | Skill stubs | `.claude/skills/*/SKILL.md` | Auto-discovery stubs → canonical `.agents/skills/` (drift-guarded by test; `karpathy-guidelines` byte-synced with the plugin copy) |
 | Rules | `.claude/rules/*.md` | `00-karpathy.md` (unscoped, always loaded) + path-scoped `alpha-*.md`, `quant.md`, `tests.md`, `docs.md` holding the relocated MODULE MAP / CLI surface / tier duties (`tests/unit/test_claude_md_relocation.py` proves zero loss vs `tests/fixtures/claude_md_v1.md`) |
-| Subagents | `.claude/agents/*.md` | navigator (memory: project), test-architect, quant-verifier (sandboxed Bash: oracle suites, `python -c` spot checks, `codex_bridge.py research`), numerical-verifier, invariants-auditor, independent-reviewer (runs tests + hidden holdout, disposes Codex findings), red-team-code, docs-drift-checker, adversarial-reviewer, retrospective (memory: project), codex-liaison (the only Codex caller). JSON-only agents are schema-checked at SubagentStop; sandboxed agents' Bash is allow-listed per `claude_hooks.AGENT_BASH_ALLOW` |
-| Commands | `.claude/commands/*.md` | plan-feature, implement, gate, gate-fast, verify-quant, review-gate, adversarial-review, harness-doctor, codex-review, codex-research, second-opinion, retrospective |
+| Subagents | `.claude/agents/*.md` | navigator (memory: project), test-architect, quant-verifier (sandboxed Bash: oracle suites, `python -c` spot checks, `codex_bridge.py research`), invariants-auditor, independent-reviewer (runs tests + hidden holdout, disposes Codex findings), red-team-code, adversarial-reviewer, retrospective (memory: project), codex-liaison (the only Codex caller). JSON-only agents are schema-checked at SubagentStop; sandboxed agents' Bash is allow-listed per `claude_hooks.AGENT_BASH_ALLOW` |
+| Commands | `.claude/commands/*.md` | plan-feature, implement, gate (`full`/`fast`), verify-quant, review-gate, adversarial-review, harness-doctor, codex-review, codex-research, retrospective |
 | Awareness (v2) | `gate.py brief` / `gate.py index` / `.claude/rules/*.md` | Generated session brief (SessionStart/PostCompact), `.claude/state/repo-index.json`, path-scoped rules holding the relocated MODULE MAP (drift-tested by `tests/unit/test_claude_md_relocation.py` and `test_repo_awareness_drift.py`) |
 | Reasoning (v2) | `gate.py plan-check` / `harness_models.FeaturePlan` | Plan docs open with a ```json front block (assumptions with `verified_by`, ≥1 alternative, ≥2 pre-mortem, slices with verify/expected/rollback, tier impact, out-of-scope); `/implement` refuses to start without a passing check; edits outside the open plan's declared `files[]` are warn-only `over_eager_edit` audit events surfaced in the Stop/PostCompact brief; `/retrospective` writes `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` whose `## Watch-outs` feed the next session brief |
 | Codex seam (v2) | `scripts/codex_bridge.py`, `scripts/schemas/codex_*.json`, `.mcp.json` `codex` server | Optional second model (`gpt-5.3-codex-spark` via the ChatGPT-authenticated Codex CLI); read-only, ephemeral, schema-bound, audited, graceful skip |
@@ -90,7 +90,7 @@ block or the absence of one.
 | `subagent-stop` | SubagentStop | a JSON-only agent's last message fails its schema (`JSON_AGENT_SCHEMAS`; `codex-liaison` = `CodexReview\|CodexResearch`) | re-run the agent |
 | `task-completed` | TaskCompleted | a task marked complete while its named test file/command fails | make it pass |
 | `config-change` | ConfigChange | settings/skills/agents/mcp changed without ack or owner token; audited | `gate.py ack` |
-| `stop-guard` | Stop | source edits without fast stamp; quant edits without PASS attestation bound to the quant diff hash (3 blocks/session, then allow with `stop_budget_exhausted` audit + red statusline flag until the next passing gate) | `/gate-fast`, `/verify-quant` |
+| `stop-guard` | Stop | source edits without fast stamp; quant edits without PASS attestation bound to the quant diff hash (3 blocks/session, then allow with `stop_budget_exhausted` audit + red statusline flag until the next passing gate) | `/gate fast`, `/verify-quant` |
 | `stop` prompt hook | Stop (`type: prompt`, Haiku, advisory) | transcript claims "should work / probably" about tests or skipped Karpathy §1–§3 — blocks once with the reason (shares the Stop budget) | state assumptions / run the check |
 | `session-start` | SessionStart | never (working contract + owner-token warning + Karpathy block + generated repo brief + doctor warnings) | — |
 | `prompt-context` | UserPromptSubmit | never (situational brief incl. `karpathy: think→simplify→surgical→goal-verify`) | — |
@@ -178,7 +178,7 @@ Markers (`--strict-markers`): `bias_guard`, `network`, `oracle`, `slow_oracle`, 
   test incl. `slow_oracle` on each push; `.github/workflows/nightly.yml` = mutation
   `--all --timeout 5400`, determinism, `raise-cov` (report-only), semgrep.
 - `/verify-quant` requires `oracles_present` for every new public stat function, executes the
-  oracle suites and numeric spot checks (quant-verifier sandbox; optional numerical-verifier),
+  oracle suites and numeric spot checks (quant-verifier sandbox),
   and primary-source citations per `.agents/skills/quant-source-verification/`.
 
 ## Subagents: sandbox, memory, schemas
@@ -217,7 +217,7 @@ third-party clients remains rejected).
   `$CODEX_HOME/<name>.config.toml`, not a repo table).
 - Where it plugs in: `/codex-review` (findings labeled *second opinion (Codex, untrusted)*),
   `/codex-research` (cited claims labeled *unverified* — every claim is a source candidate for
-  the quant-source-verification skill), `/second-opinion <file|diff>` (quick pass); `/review-gate`
+  the quant-source-verification skill); `/review-gate`
   may call it first and the `independent-reviewer` disposes each finding
   (`agree|refute|out_of_scope`) in `ReviewVerdict.second_opinion[]` (or sets `codex_unavailable`);
   `/verify-quant` may use `research` for citation cross-checks. Only the `codex-liaison` agent
@@ -331,7 +331,7 @@ consumed on use and audited at write and consume with `authorized_by`.
   tree, not committed.
 - The Bash guard's holdout-rendering check is token-based, so a `git commit -m` whose message
   contains the hidden-holdout directory literal is refused; write "the holdout suite" instead.
-- `/codex-review`, `/codex-research`, `/second-opinion` are optional and gracefully skip when
+- `/codex-review` and `/codex-research` are optional and gracefully skip when
   the `codex` binary is absent, logged out, or quota-less; nothing mandatory depends on them.
   ChatGPT-side quota resets are outside the harness's control.
 
