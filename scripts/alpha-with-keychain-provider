@@ -4,7 +4,7 @@ set -eu
 set +x
 
 if [ "$#" -lt 2 ]; then
-  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|finnhub|coingecko> <check|workstation|catalog|reference|archive> [bounded arguments]" >&2
+  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|finnhub|coingecko> <check|quote|workstation|catalog|reference|archive> [bounded arguments]" >&2
   exit 64
 fi
 
@@ -12,10 +12,10 @@ provider=$1
 action=$2
 shift 2
 case "$provider:$action" in
-  tiingo:check|quantpad:check|coingecko:check|tiingo:workstation|quantpad:workstation|finnhub:workstation|coingecko:workstation|coingecko:catalog|coingecko:reference|quantpad:archive)
+  tiingo:check|quantpad:check|coingecko:check|tiingo:workstation|quantpad:workstation|finnhub:workstation|coingecko:workstation|coingecko:catalog|coingecko:reference|quantpad:archive|finnhub:quote)
     ;;
   finnhub:check)
-    echo "Finnhub is optional-disabled when absent; no explicit readiness check is implemented" >&2
+    echo "Finnhub has no receipted readiness check; use 'finnhub quote' for a bounded live probe" >&2
     exit 64
     ;;
   *)
@@ -83,6 +83,13 @@ case "$action" in
     fi
     exec uv run alpha crypto-data acquire coingecko market_reference all \
       --base ALL --quote USD --json
+    ;;
+  quote)
+    if [ "$provider" != "finnhub" ]; then
+      echo "quote verification is available only for finnhub" >&2
+      exit 64
+    fi
+    exec uv run alpha screener quote SPY --json
     ;;
   archive)
     if [ "$provider" != "quantpad" ] || [ "$#" -lt 2 ]; then

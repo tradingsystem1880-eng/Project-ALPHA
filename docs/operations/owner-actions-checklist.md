@@ -27,13 +27,14 @@ scripts/alpha-with-keychain-provider tiingo check
 | Tiingo | `project-alpha-tiingo` | `ALPHA_TIINGO_API_KEY` | authoritative stock/ETF EOD — the receipt→candidate→quality→canonical promotion path, and the daily scheduler | `scripts/alpha-with-keychain-provider tiingo check` |
 | QuantPad | `project-alpha-quantpad` | `QUANTPAD_API_KEY` | research-only bulk daily bars (`rd_` dataset registration) and the archive lane | `scripts/alpha-with-keychain-provider quantpad check` |
 | CoinGecko | `project-alpha-coingecko` | `ALPHA_COINGECKO_API_KEY` | crypto reference/catalog acquisition | `scripts/alpha-with-keychain-provider coingecko check` |
-| Finnhub | `project-alpha-finnhub` | `ALPHA_FINNHUB_API_KEY` | `alpha screener quote/news` | no readiness path exists — see below |
+| Finnhub | `project-alpha-finnhub` | `ALPHA_FINNHUB_API_KEY` | `alpha screener quote/news` | `scripts/alpha-with-keychain-provider finnhub quote` |
 | IBKR | `project-alpha-ibkr-paper-account` | `ALPHA_IBKR_PAPER_ACCOUNT`, `ALPHA_IBKR_GATEWAY_IMAGE`, `TWS_USERNAME`, `TWS_PASSWORD` | native IBKR Paper boundary | `uv run alpha provider check ibkr` |
 
 `alpha provider check` is registered for `tiingo`, `quantpad`, `coingecko`, and `ibkr`, and writes
-a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub has no readiness path, so the
-launcher rejects `finnhub check` with exit 64 rather than pretending — verify it with a live
-quote instead.
+a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub has no receipted readiness
+path, so the launcher rejects `finnhub check` with exit 64 rather than pretending. Use
+`finnhub quote` instead: it is a bounded live probe — fixed provider, fixed SPY symbol, no
+arguments accepted — so it verifies the credential without becoming a general data tool.
 
 `yfinance`, `ccxt`, `stooq`, `binance`, `bybit`, `geckoterminal`, and `coinmetrics` need no
 credential and already report `configured: true`.
@@ -47,25 +48,34 @@ match the existing account when you update an item, or you will create a second 
 Nothing is missing. Providers report `configured: false` only because a plain shell has not
 exported anything; the launcher is what makes them configured, per-process.
 
-### Finnhub — rotate the exposed key
+**All four credentialed data providers were verified live on 2026-08-19** — Tiingo, QuantPad
+and CoinGecko each returned `verified` with a fresh receipt, and Finnhub returned a live SPY
+quote. IBKR returned `connectivity_failed`; see below.
+
+### Finnhub — the key is exposed and the owner has accepted that
 
 A Finnhub API key was pasted in plaintext into an agent session on 2026-08-19. It is in the
-session transcript and in the on-disk session JSONL, so **treat it as burned**. No agent used it
-and none will.
+session transcript and in the on-disk session JSONL, so it must be treated as public. No agent
+used it and none will.
 
-The `project-alpha-finnhub` item already exists — it was created 2026-08-19 at 04:44 UTC, which
-is the same key. So this is an **update**, not a first-time store. Rotate at finnhub.io, then
-overwrite the item yourself (`-U` updates in place; matching `-a` keeps it to one item):
+**The owner was told and chose not to rotate it (2026-08-19).** That is a reasonable call for
+this key specifically — Finnhub here is read-only market data on a free tier, the blast
+radius is quota theft rather than trading or account access, and nothing else in ALPHA
+depends on it. It is recorded rather than silently dropped so the decision is visible if the
+key is ever upgraded to a paid tier, where the calculus changes.
+
+To rotate later: replace it at finnhub.io, then overwrite the item yourself. The
+`project-alpha-finnhub` item already exists (created 2026-08-19, account `hunternovotny`), so
+this is an **update** — `-U` overwrites in place, and matching `-a` keeps it to one item:
 
 ```bash
 security add-generic-password -U -a hunternovotny -s project-alpha-finnhub -w "<NEW-ROTATED-KEY>"
 ```
 
-Verify with one live quote — this injects the key into a single process and prints no secret:
+Verify with the launcher, which injects the key into one process and prints no secret:
 
 ```bash
-ALPHA_FINNHUB_API_KEY="$(security find-generic-password -w -s project-alpha-finnhub)" \
-  uv run alpha screener quote SPY --json
+scripts/alpha-with-keychain-provider finnhub quote
 ```
 
 **Reading or writing a keychain *value* is always yours.** `.claude/settings.json` denies
@@ -88,6 +98,28 @@ uv run alpha paper ibkr-what-if-execute --json
 
 `ibkr-what-if-execute` writes a preview receipt; `alpha paper ibkr-run` is the only command that
 releases a real paper order and is denied to agents outright.
+
+**Checked 2026-08-19: `connectivity_failed`, because Docker is not running.** The receipt reads
+`docker_cli: true, docker_daemon: false` — the CLI is installed but the daemon is down, so the
+gateway container cannot start. Start Docker Desktop and re-run the check. Two owner review
+items are also still open in the same receipt and no agent can clear them:
+`image_digest_reviewed: false` and `signed_local_app_reviewed: false`.
+
+### Bulk crypto storage — configured and verified
+
+The QuantPad archive and crypto acquisition lanes write to an external volume and fail closed if
+it is absent, full, or a different disk. Verified 2026-08-19 from the main checkout:
+
+- `/Volumes/Expansion/Project-ALPHA/crypto-data` is mounted, 1.8 TiB free (3% used).
+- `ALPHA_BULK_VOLUME_UUID` is set and **matches the mounted volume's UUID**, which is the check
+  that matters — the store compares them on every publish, so a same-path replacement disk is
+  rejected rather than silently written to.
+
+Nothing to do unless the drive is swapped, in which case update the setting to the new UUID:
+
+```bash
+diskutil info /Volumes/Expansion | grep 'Volume UUID'
+```
 
 ## Approvals
 
