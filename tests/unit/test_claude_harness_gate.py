@@ -377,6 +377,26 @@ class TestOnceTokens:
         assert gate.consume_ack(repo) is not None
         assert gate.consume_ack(repo) is None
 
+    def test_disarming_records_a_drop_not_a_use(self, repo: Path) -> None:
+        """The digest stays honest only if a dropped token differs from a spent one."""
+        gate.write_ack(repo, reason="never needed after all")
+        assert gate.disarm_token(repo, "ack") is not None
+        assert gate.consume_ack(repo) is None  # gone, so it cannot fire later
+
+        kinds = [e["event"] for e in gate.read_audit(repo)]
+        assert "ack_disarmed" in kinds
+        assert "ack_consumed" not in kinds
+
+    def test_disarming_nothing_is_not_an_error(self, repo: Path) -> None:
+        assert gate.disarm_token(repo, "ack") is None
+        assert gate.disarm_token(repo, "override") is None
+
+    def test_a_disarmed_token_is_no_longer_live(self, repo: Path) -> None:
+        gate.write_override(repo, reason="armed then abandoned")
+        assert "LIVE" in gate.audit_digest(repo)
+        gate.disarm_token(repo, "override")
+        assert "LIVE" not in gate.audit_digest(repo)
+
 
 class TestAudit:
     def test_events_appended(self, repo: Path) -> None:

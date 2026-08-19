@@ -773,6 +773,16 @@ def _consume(root: Path, filename: str, event: str) -> dict[str, Any] | None:
     return token
 
 
+def disarm_token(root: Path, kind: str) -> dict[str, Any] | None:
+    """Drop an armed token without using it, recorded as dropped rather than spent.
+
+    Deleting the state file by hand also disarms it, but leaves the journal claiming the
+    token is still live — the one thing the digest cannot then get right.
+    """
+    filename = OVERRIDE_FILE if kind == "override" else ACK_FILE
+    return _consume(root, filename, f"{kind}_disarmed")
+
+
 def consume_override(root: Path) -> dict[str, Any] | None:
     return _consume(root, OVERRIDE_FILE, "override_consumed")
 
@@ -1852,6 +1862,15 @@ def _reexec_with_pydantic(root: Path) -> None:
     )
 
 
+def _clear_token(root: Path, kind: str) -> int:
+    dropped = disarm_token(root, kind)
+    if dropped is None:
+        print(f"no {kind} was armed; nothing to clear.")
+        return 0
+    print(f"armed {kind} dropped without being used (recorded in the journal).")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gate", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1861,11 +1880,14 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--tier", choices=("fast", "full"), default="fast")
     attest_p = sub.add_parser("attest")
     attest_p.add_argument("--kind", choices=("quant", "review"), required=True)
+    _CLEAR_HELP = "drop an armed token without using it (recorded in the journal)"
     override_p = sub.add_parser("override")
-    override_p.add_argument("--reason", required=True)
+    override_p.add_argument("--reason")
+    override_p.add_argument("--clear", action="store_true", help=_CLEAR_HELP)
     ack_p = sub.add_parser("ack")
-    ack_p.add_argument("--reason", required=True)
+    ack_p.add_argument("--reason")
     ack_p.add_argument("--path", default=None)
+    ack_p.add_argument("--clear", action="store_true", help=_CLEAR_HELP)
     owner_p = sub.add_parser("owner-init")
     owner_p.add_argument("--token", default=None, help="omit to be prompted (never echoed)")
     sub.add_parser("lint-harness")
@@ -1916,6 +1938,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.command == "attest":
         return attest(root, args.kind, sys.stdin.read())
+    if args.command in ("override", "ack") and args.clear:
+        return _clear_token(root, args.command)
+    if args.command in ("override", "ack") and not args.reason:
+        print(
+            f"{args.command} needs --reason (or --clear to drop an armed one)",
+            file=sys.stderr,
+        )
+        return 2
     if args.command == "override":
         allowed, who = authorize_escape(root, kind="override")
         if not allowed:

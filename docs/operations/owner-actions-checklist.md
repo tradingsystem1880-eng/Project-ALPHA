@@ -181,8 +181,9 @@ That is intentional; push and open the PR from the main session, not from a fork
   a worktree on this branch, and check with `ls .claude/settings.json scripts/claude_hooks.py`.
 - **Check for a live escape token before trusting a commit gate.** `gate.py audit --digest`
   prints a `LIVE` block when a one-shot `override`/`ack` is armed but unused; an override armed
-  for a commit that never happened fires silently on the next one. Delete the named file under
-  `.claude/state/` if it is stale.
+  for a commit that never happened fires silently on the next one. Drop a stale one with
+  `uv run python scripts/gate.py ack --clear` (or `override --clear`), which records the drop
+  in the journal — deleting the state file by hand leaves the journal implying it is still armed.
 - **`/usr/bin/python3` is 3.9** and has no `tomllib`. Stdlib-only harness scripts must run under
   `.venv/bin/python -S`.
 - **`.claude/state/mutation/` holds ~329 MB** of leftover mutation-testing staging in the

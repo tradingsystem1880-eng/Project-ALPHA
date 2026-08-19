@@ -259,7 +259,16 @@ A `LIVE` block appears whenever a one-shot token is armed but not yet consumed. 
 case the journal alone cannot show: it records that an override was *written*, never that it
 is still loaded. An override armed for one commit that did not happen stays on disk and fires
 silently on the next one, possibly days later. If the block is present, either use the token
-deliberately or delete the named file under `.claude/state/`.
+deliberately or drop it:
+
+```bash
+uv run python scripts/gate.py ack --clear      # or: override --clear
+```
+
+`--clear` deletes the same state file `rm` would, but appends an `ack_disarmed` /
+`override_disarmed` event, so the journal shows the token was abandoned rather than spent.
+Deleting the file by hand disarms it and leaves the journal implying it is still live — which
+is the one thing the digest then cannot get right.
 
 One-shot tokens: `override` (bypasses the commit gate once), `ack` (permits one
 control-plane edit; acks do NOT stack — arm one immediately before each write). Both are
