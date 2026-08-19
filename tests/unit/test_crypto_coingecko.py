@@ -330,3 +330,27 @@ def test_asset_catalog_rejects_object_platform_values() -> None:
 def test_asset_catalog_rejects_empty_result() -> None:
     with pytest.raises(DataError, match="asset catalog is empty"):
         parse_asset_catalog(b"[]")
+
+
+def test_asset_catalog_treats_a_null_platform_contract_as_absent() -> None:
+    payload = json.dumps(
+        [
+            {
+                "id": "usd-coin",
+                "symbol": "usdc",
+                "name": "USDC",
+                "platforms": {"ethereum": None, "solana": "EPjF"},
+            }
+        ]
+    ).encode()
+
+    frame = parse_asset_catalog(payload)
+
+    assert frame.height == 1
+    assert frame.row(0, named=True)["network"] == "solana"
+
+    for drifted in ({"ethereum": {"address": "0x1"}}, {"ethereum": 7}):
+        with pytest.raises(DataError, match="platform mapping shape"):
+            parse_asset_catalog(
+                json.dumps([{"id": "x", "symbol": "x", "name": "X", "platforms": drifted}]).encode()
+            )

@@ -225,7 +225,13 @@ def parse_asset_catalog(payload: bytes) -> pl.DataFrame:
         if not isinstance(platforms, dict):
             raise DataError("CoinGecko asset platforms are invalid")
         for network, contract in sorted(platforms.items()):
-            if not isinstance(network, str) or not isinstance(contract, str):
+            if not isinstance(network, str):
+                raise DataError("CoinGecko platform mapping shape is invalid")
+            # A null or blank contract is CoinGecko's "no contract on this chain" convention;
+            # any other shape is wire-schema drift and must fail loud.
+            if contract is None:
+                continue
+            if not isinstance(contract, str):
                 raise DataError("CoinGecko platform mapping shape is invalid")
             if not contract.strip():
                 continue

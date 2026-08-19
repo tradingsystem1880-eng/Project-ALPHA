@@ -288,9 +288,9 @@ def open_interest_features(
         .sort("timestamp")
         .with_columns(
             pl.col("open_interest").diff().alias("open_interest_change"),
-            # nosemgrep: alpha-negative-shift
+            # nosemgrep: alpha-negative-shift  (positive lag = prior row; no future row is read)
             pl.when(pl.col("open_interest").shift(1) > 0)
-            # nosemgrep: alpha-negative-shift
+            # nosemgrep: alpha-negative-shift  (positive lag = prior row; no future row is read)
             .then(pl.col("open_interest").diff() / pl.col("open_interest").shift(1))
             .otherwise(None)
             .alias("open_interest_pct_change"),
@@ -443,11 +443,11 @@ def onchain_features(
         .sort("asset", "metric", "timestamp")
         .with_columns(
             pl.col("value").diff().over("asset", "metric").alias("value_change"),
-            # nosemgrep: alpha-negative-shift
+            # nosemgrep: alpha-negative-shift  (positive lag = prior row; no future row is read)
             pl.when(pl.col("value").shift(1).over("asset", "metric") > 0)
             .then(
                 pl.col("value").diff().over("asset", "metric")
-                # nosemgrep: alpha-negative-shift
+                # nosemgrep: alpha-negative-shift  (positive lag = prior row; no future row is read)
                 / pl.col("value").shift(1).over("asset", "metric")
             )
             .otherwise(None)
