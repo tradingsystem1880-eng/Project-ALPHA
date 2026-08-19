@@ -14,6 +14,7 @@ import pytest
 
 from alpha_core import DataError
 from alpha_validation.overfitting import probability_of_backtest_overfitting
+from tests.oracles._reference.sampling import noise_matrix as _shared_noise_matrix
 
 pytestmark = pytest.mark.oracle
 
@@ -21,7 +22,7 @@ _RNG = np.random.default_rng(11)
 
 
 def _noise_matrix(t: int = 256, s: int = 12) -> np.ndarray:
-    return _RNG.normal(0.0, 0.01, size=(t, s))
+    return _shared_noise_matrix(_RNG, t, s)
 
 
 def test_split_count_is_the_central_binomial_coefficient() -> None:

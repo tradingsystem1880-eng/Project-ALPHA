@@ -20,6 +20,7 @@ from alpha_validation.dsr import (
 )
 from alpha_validation.overfitting import probability_of_backtest_overfitting
 from tests.oracles._reference import bailey_ldp as ref
+from tests.oracles._reference.sampling import noise_matrix
 
 pytestmark = pytest.mark.oracle
 
@@ -64,7 +65,7 @@ def test_dsr_matches_the_reference_transcription(returns: list[float], trials: l
 def test_pbo_matches_the_reference_transcription(seed: int, n_blocks: int) -> None:
     rng = np.random.default_rng(seed)
     t, s = 96, 7
-    m = rng.normal(0.0, 0.01, size=(t, s))
+    m = noise_matrix(rng, t, s)
     m[:, seed % s] += 0.004  # one mildly better config so ranks are not pure noise
     result = probability_of_backtest_overfitting(m, n_blocks=n_blocks)
     ref_pbo, ref_logits = ref.pbo(m.tolist(), n_blocks)

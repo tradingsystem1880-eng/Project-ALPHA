@@ -21,6 +21,7 @@ from alpha_validation.dsr import (
     expected_max_sharpe,
     probabilistic_sharpe_ratio,
 )
+from tests.oracles._reference.tolerances import MONOTONE_SLACK
 
 pytestmark = pytest.mark.oracle
 
@@ -50,7 +51,7 @@ def test_dsr_is_monotone_non_increasing_in_the_number_of_trials() -> None:
         result = deflated_sharpe(_POSITIVE_EDGE, trial_sharpes=trials)
         assert result.n_trials == n_trials
         assert result.expected_max_sharpe > previous_sr0
-        assert result.dsr <= previous_dsr + 1e-12
+        assert result.dsr <= previous_dsr + MONOTONE_SLACK
         previous_dsr, previous_sr0 = result.dsr, result.expected_max_sharpe
 
 
@@ -61,7 +62,7 @@ def test_dsr_is_monotone_non_increasing_in_trial_dispersion() -> None:
     for spread in (0.001, 0.01, 0.05, 0.1, 0.3):
         trials = np.linspace(base - spread, base + spread, 16)
         result = deflated_sharpe(_POSITIVE_EDGE, trial_sharpes=trials)
-        assert result.dsr <= previous_dsr + 1e-12
+        assert result.dsr <= previous_dsr + MONOTONE_SLACK
         previous_dsr = result.dsr
 
 

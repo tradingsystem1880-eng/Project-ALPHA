@@ -14,7 +14,6 @@ Hansen (2005): a level-α test rejects a true null with probability ≤ α.
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 
 import numpy as np
@@ -24,14 +23,10 @@ from alpha_validation.bootstrap import block_bootstrap_ci
 from alpha_validation.dsr import deflated_sharpe, probabilistic_sharpe_ratio
 from alpha_validation.overfitting import probability_of_backtest_overfitting
 from alpha_validation.reality_check import DataSnoopingResult, reality_check, spa_test
+from tests.oracles._reference.sampling import noise_matrix
+from tests.oracles._reference.tolerances import bernoulli_band as _band
 
 pytestmark = pytest.mark.slow_oracle
-
-_Z = 3.89  # two-sided α = 1e-4
-
-
-def _band(p: float, m: int) -> float:
-    return _Z * math.sqrt(p * (1.0 - p) / m)
 
 
 def test_psr_is_uniform_under_the_null_of_zero_sharpe() -> None:
@@ -58,7 +53,7 @@ def test_dsr_controls_the_false_positive_rate_at_the_selection_maximum() -> None
     m, n, n_trials = 1500, 252, 40
     dsr_hits = psr_hits = 0
     for _ in range(m):
-        trials = rng.normal(0.0, 0.01, size=(n_trials, n))
+        trials = noise_matrix(rng, n_trials, n)
         srs = trials.mean(axis=1) / trials.std(axis=1, ddof=1)
         best = trials[int(np.argmax(srs))]
         result = deflated_sharpe(best, trial_sharpes=srs)
@@ -96,7 +91,7 @@ def test_pbo_on_exchangeable_noise_is_one_half() -> None:
     rng = np.random.default_rng(404)
     m = 300
     pbos = [
-        probability_of_backtest_overfitting(rng.normal(0.0, 0.01, size=(160, 10)), n_blocks=8).pbo
+        probability_of_backtest_overfitting(noise_matrix(rng, 160, 10), n_blocks=8).pbo
         for _ in range(m)
     ]
     mean_pbo = float(np.mean(pbos))
@@ -113,7 +108,7 @@ def test_reality_check_and_spa_hold_their_size_under_the_null(
     m, t, s = 400, 200, 8
     rejections = 0
     for i in range(m):
-        perf = rng.normal(0.0, 0.01, size=(t, s))
+        perf = noise_matrix(rng, t, s)
         result = test_fn(perf, n_resamples=300, mean_block=1.0, alpha=0.05, seed=i)
         rejections += result.passed
     rate = rejections / m
