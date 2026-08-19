@@ -1039,9 +1039,6 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
     for rel in HARNESS_SCRIPTS:
         checks.append((f"file present: {rel}", (root / rel).is_file(), rel))
 
-    statusline = root / ".claude" / "statusline.py"
-    checks.append(("statusline present", statusline.is_file(), str(statusline)))
-
     try:
         probe = _state_dir(root) / ".doctor-probe"
         probe.write_text("ok")

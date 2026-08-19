@@ -12,12 +12,20 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-import gate  # noqa: E402  — importable only after the path insert above
+def _git(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10,
+    )
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 
 def main() -> int:
@@ -29,19 +37,22 @@ def main() -> int:
         (payload.get("workspace") or {}).get("current_dir") or payload.get("cwd") or Path.cwd()
     )
 
-    top = gate._git(cwd, "rev-parse", "--show-toplevel", check=False).strip()
+    top = _git(cwd, "rev-parse", "--show-toplevel")
     if not top:
         print("alpha · no repo")
         return 0
     root = Path(top)
 
-    branch = gate._git(root, "rev-parse", "--abbrev-ref", "HEAD", check=False).strip() or "?"
-    status = gate._git(root, "status", "--porcelain", check=False)
+    branch = _git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
+    status = _git(root, "status", "--porcelain")
     dirty = len([line for line in status.splitlines() if line.strip()])
 
     stamp_part = "gate:none"
     pending: list[str] = []
     try:
+        sys.path.insert(0, str(root / "scripts"))
+        import gate
+
         tier, fresh = gate.stamp_state(root)
         if tier != "none":
             stamp_part = f"gate:{tier}✓" if fresh else f"gate:{tier}-stale"

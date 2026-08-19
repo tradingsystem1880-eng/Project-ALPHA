@@ -817,7 +817,7 @@ class TestAgentBashSandbox:
 
 
 def test_prompt_context_hashes_the_tree_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    gate.write_stamp(repo, "fast", steps=[], duration=0.1)  # unstamped, nothing hashes at all
+    gate.write_stamp(repo, "fast", steps=[], duration=0.1)  # no stamp ⇒ nothing hashes at all
     calls = 0
     real = gate.compute_tree_hash
 
