@@ -3205,6 +3205,7 @@ def _freeze_binance_liquidity(
         category=category,
         quote_asset=quote_asset,
         limit=limit,
+        cadence=timedelta(days=1),
     )
     output = io.BytesIO()
     selected.write_parquet(output, compression="zstd", statistics=True)

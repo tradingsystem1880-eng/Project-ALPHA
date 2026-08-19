@@ -162,6 +162,10 @@ def crypto_evaluation_payload(result: CryptoCrowdingEvaluationV1) -> dict[str, o
 
 def _admission(boundary: ResearchD2BoundaryV2, evidence_zone: str) -> tuple[int, int]:
     zone = boundary.d1 if evidence_zone == "D1" else boundary.d2
+    if boundary.outcome_overlap_embargo_groups < 1:
+        # The operator peeks at observations[index + 1]; only the embargo keeps that read
+        # inside the admitted zone.
+        raise DataError("crypto crowding boundary requires a non-zero outcome-overlap embargo")
     stop = zone.stop_index - boundary.outcome_overlap_embargo_groups
     if evidence_zone not in {"D1", "D2"} or stop <= zone.start_index:
         raise DataError(

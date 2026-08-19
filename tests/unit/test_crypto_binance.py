@@ -6,7 +6,7 @@ import json
 import urllib.error
 import urllib.request
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
@@ -30,6 +30,8 @@ from alpha_data.crypto.providers.binance import (
     reconcile_archive_tail,
     verify_archive_checksum,
 )
+
+DAY = timedelta(days=1)
 
 
 def test_exchange_info_parses_active_spot_and_perpetual_membership() -> None:
@@ -529,7 +531,7 @@ def test_liquid_universe_uses_only_the_prior_available_day() -> None:
         }
     )
     as_of = datetime(2026, 1, 3, tzinfo=UTC)
-    selected = point_in_time_liquid_universe(frame, as_of=as_of, limit=1)
+    selected = point_in_time_liquid_universe(frame, as_of=as_of, limit=1, cadence=DAY)
     poisoned = frame.with_columns(
         pl.when(pl.col("session") >= as_of)
         .then(pl.lit(9_999_999.0))
@@ -538,7 +540,26 @@ def test_liquid_universe_uses_only_the_prior_available_day() -> None:
     )
 
     assert selected == ("AAA",)
-    assert point_in_time_liquid_universe(poisoned, as_of=as_of, limit=1) == selected
+    assert point_in_time_liquid_universe(poisoned, as_of=as_of, limit=1, cadence=DAY) == selected
+
+
+@pytest.mark.bias_guard
+def test_liquid_universe_excludes_the_open_session() -> None:
+    """``session`` is a period start: a session still open at ``as_of`` is not yet observable."""
+    frame = pl.DataFrame(
+        {
+            "session": [
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 3, tzinfo=UTC),
+            ],
+            "symbol": ["AAA", "BBB", "ZZZ"],
+            "quote_volume": [10.0, 5.0, 1_000_000.0],
+        }
+    )
+    as_of = datetime(2026, 1, 3, 1, tzinfo=UTC)
+
+    assert point_in_time_liquid_universe(frame, as_of=as_of, limit=1, cadence=DAY) == ("AAA",)
 
 
 @pytest.mark.bias_guard
@@ -567,6 +588,7 @@ def test_liquid_markets_rank_within_one_exact_unit_scope() -> None:
         category="inverse",
         quote_asset="USD",
         limit=2,
+        cadence=DAY,
     )
 
     assert selected.select("rank", "symbol", "liquidity_score").rows() == [
@@ -592,11 +614,11 @@ def test_liquid_markets_reject_cross_quote_or_incomplete_contract_units() -> Non
     )
     with pytest.raises(DataError, match="contract size"):
         point_in_time_liquid_markets(
-            frame, as_of=as_of, category="inverse", quote_asset="USD", limit=1
+            frame, as_of=as_of, category="inverse", quote_asset="USD", limit=1, cadence=DAY
         )
     with pytest.raises(DataError, match="scope"):
         point_in_time_liquid_markets(
-            frame, as_of=as_of, category="inverse", quote_asset="USDT", limit=1
+            frame, as_of=as_of, category="inverse", quote_asset="USDT", limit=1, cadence=DAY
         )
 
 
@@ -1017,7 +1039,7 @@ def test_resumable_archive_quarantines_checksum_mismatch(
 def test_liquidity_selection_rejects_invalid_contracts() -> None:
     now = datetime(2026, 1, 3, tzinfo=UTC)
     with pytest.raises(DataError, match="schema"):
-        point_in_time_liquid_universe(pl.DataFrame({"bad": [1]}), as_of=now, limit=1)
+        point_in_time_liquid_universe(pl.DataFrame({"bad": [1]}), as_of=now, limit=1, cadence=DAY)
     frame = pl.DataFrame(
         {
             "session": [datetime(2026, 1, 2, tzinfo=UTC)],
@@ -1026,14 +1048,16 @@ def test_liquidity_selection_rejects_invalid_contracts() -> None:
         }
     )
     with pytest.raises(DataError, match="timezone"):
-        point_in_time_liquid_universe(frame, as_of=datetime(2026, 1, 3), limit=1)
+        point_in_time_liquid_universe(frame, as_of=datetime(2026, 1, 3), limit=1, cadence=DAY)
     with pytest.raises(DataError, match="limit"):
-        point_in_time_liquid_universe(frame, as_of=now, limit=0)
+        point_in_time_liquid_universe(frame, as_of=now, limit=0, cadence=DAY)
     with pytest.raises(DataError, match="before as_of"):
-        point_in_time_liquid_universe(frame, as_of=datetime(2026, 1, 1, tzinfo=UTC), limit=1)
+        point_in_time_liquid_universe(
+            frame, as_of=datetime(2026, 1, 1, tzinfo=UTC), limit=1, cadence=DAY
+        )
     duplicated = pl.concat([frame, frame])
     with pytest.raises(DataError, match="duplicate"):
-        point_in_time_liquid_universe(duplicated, as_of=now, limit=2)
+        point_in_time_liquid_universe(duplicated, as_of=now, limit=2, cadence=DAY)
 
     market = frame.with_columns(
         pl.lit("spot").alias("category"),
@@ -1048,11 +1072,11 @@ def test_liquidity_selection_rejects_invalid_contracts() -> None:
         ({"category": "spot", "quote_asset": "USDT", "limit": 0}, "limit"),
     ):
         with pytest.raises(DataError, match=message):
-            point_in_time_liquid_markets(market, as_of=now, **kwargs)  # type: ignore[arg-type]
+            point_in_time_liquid_markets(market, as_of=now, cadence=DAY, **kwargs)  # type: ignore[arg-type]
     invalid_volume = market.with_columns(pl.lit(float("nan")).alias("quote_volume"))
     with pytest.raises(DataError, match="volume"):
         point_in_time_liquid_markets(
-            invalid_volume, as_of=now, category="spot", quote_asset="USDT", limit=1
+            invalid_volume, as_of=now, category="spot", quote_asset="USDT", limit=1, cadence=DAY
         )
 
 
@@ -1185,6 +1209,7 @@ def test_remaining_binance_fetch_and_liquidity_edges(
             category="spot",
             quote_asset="USDT",
             limit=2,
+            cadence=DAY,
         )
     with pytest.raises(DataError, match="schema"):
         point_in_time_liquid_markets(
@@ -1193,6 +1218,7 @@ def test_remaining_binance_fetch_and_liquidity_edges(
             category="spot",
             quote_asset="USDT",
             limit=1,
+            cadence=DAY,
         )
     with pytest.raises(DataError, match="timezone"):
         point_in_time_liquid_markets(
@@ -1201,6 +1227,7 @@ def test_remaining_binance_fetch_and_liquidity_edges(
             category="spot",
             quote_asset="USDT",
             limit=1,
+            cadence=DAY,
         )
 
 

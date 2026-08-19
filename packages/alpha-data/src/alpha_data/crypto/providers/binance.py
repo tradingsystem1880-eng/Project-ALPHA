@@ -10,7 +10,7 @@ import math
 import os
 import re
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Final, Literal
 
@@ -822,8 +822,15 @@ def reconcile_archive_tail(archive: pl.DataFrame, tail: pl.DataFrame) -> pl.Data
     return pl.DataFrame([archive_rows[key] for key in sorted(archive_rows)]).select(_COLUMNS)
 
 
+def _closed_session_filter(as_of: datetime, cadence: timedelta) -> pl.Expr:
+    """``session`` is a period start, so a session only exists once it has closed."""
+    if not isinstance(cadence, timedelta) or cadence <= timedelta(0):
+        raise DataError("Binance liquidity cadence must be a positive duration")
+    return pl.col("session") + cadence <= as_of.astimezone(UTC)
+
+
 def point_in_time_liquid_universe(
-    observations: pl.DataFrame, *, as_of: datetime, limit: int
+    observations: pl.DataFrame, *, as_of: datetime, limit: int, cadence: timedelta
 ) -> tuple[str, ...]:
     """Select the top symbols from the last fully available session before ``as_of``."""
     required = {"session", "symbol", "quote_volume"}
@@ -833,7 +840,7 @@ def point_in_time_liquid_universe(
         raise DataError("Binance liquidity as_of must be timezone-aware")
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 250:
         raise DataError("Binance liquidity limit must be between 1 and 250")
-    known = observations.filter(pl.col("session") < as_of.astimezone(UTC))
+    known = observations.filter(_closed_session_filter(as_of, cadence))
     if known.is_empty():
         raise DataError("no Binance liquidity session is available before as_of")
     latest = known["session"].max()
@@ -854,6 +861,7 @@ def point_in_time_liquid_markets(
     category: BinanceCategory,
     quote_asset: str,
     limit: int,
+    cadence: timedelta,
 ) -> pl.DataFrame:
     """Rank one exact category/quote scope without equating incompatible native units."""
     required = {
@@ -877,7 +885,7 @@ def point_in_time_liquid_markets(
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 250:
         raise DataError("Binance liquidity limit must be between 1 and 250")
     scoped = observations.filter(
-        (pl.col("session") < as_of.astimezone(UTC))
+        _closed_session_filter(as_of, cadence)
         & (pl.col("category") == category)
         & (pl.col("quote_asset") == quote_asset)
     )
