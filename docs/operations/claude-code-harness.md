@@ -55,6 +55,17 @@ It is a pure content hash: any byte change anywhere invalidates it; a pure `git 
 
 ## Hooks (all in `scripts/claude_hooks.py`, wired in `.claude/settings.json`)
 
+**Scope: the harness travels with the branch.** `.claude/` and `scripts/` are ordinary tracked
+files, so a session rooted anywhere they do not exist — a worktree on `main`, a fresh clone
+before this branch is merged — runs with *no* hooks and *no* permission list. Claude Code
+resolves the hook command through `$CLAUDE_PROJECT_DIR` and falls back to a relative path;
+when neither resolves, the wrapper exits 0 and every guard above is silently absent. Two
+consequences, both counter-intuitive: the guardrails are not in force there, and neither is
+the `permissions.allow` list, so ordinary commands fall through to the auto-mode classifier
+and get refused far more often than they would with the harness present. Confirm with
+`ls .claude/settings.json scripts/claude_hooks.py` before drawing conclusions from either a
+block or the absence of one.
+
 | Hook | Event (matcher) | Blocks when | Cleared by |
 |---|---|---|---|
 | `pre-edit-guard` | PreToolUse Edit\|Write\|MultiEdit | target is protected control plane, or hidden holdout | `gate.py ack --reason --path` (one-shot; owner token or bounded agent self-ack) |
@@ -214,6 +225,33 @@ session, event, detail, tree hash, `prev_hash`) to `.claude/state/harness-audit.
 append-only, hash-chained (`gate.py audit --verify` detects truncation/rewrite), per-machine,
 gitignored. `gate.py audit [--json --since --kind]` is the reader; `/retrospective` consumes it.
 
+### The escape logbook (`gate.py audit --digest`)
+
+The raw journal is the record; the digest is how a human reads it without knowing event
+kinds. It is the chosen alternative to configuring an owner token — the owner asked for a
+log book rather than a key, so the control is *review after the fact* rather than
+*approval before it*:
+
+```bash
+uv run python scripts/gate.py audit --digest
+```
+
+One screen over the last 7 days (`--since ISO` for any other window): self-authorized
+escapes grouped by kind and by the path each ack unlocked, how many were agent self-serve,
+the blocks the harness enforced by hook, config changes, Codex calls, gate failures, and a
+closing chain-integrity line. Counts and paths only — never file contents. The session
+brief carries a one-line pointer (`escapes: N self-authorized in the last 7d`), so the
+number is in front of the owner every session without being asked for.
+
+Acks record the path they unlocked from this change onwards; events written before it
+report `(no paths recorded in this window)` rather than guessing.
+
+A `LIVE` block appears whenever a one-shot token is armed but not yet consumed. This is the
+case the journal alone cannot show: it records that an override was *written*, never that it
+is still loaded. An override armed for one commit that did not happen stays on disk and fires
+silently on the next one, possibly days later. If the block is present, either use the token
+deliberately or delete the named file under `.claude/state/`.
+
 One-shot tokens: `override` (bypasses the commit gate once), `ack` (permits one
 control-plane edit; acks do NOT stack — arm one immediately before each write). Both are
 consumed on use and audited at write and consume with `authorized_by`.
@@ -255,8 +293,11 @@ consumed on use and audited at write and consume with `authorized_by`.
 - Attestations prove a validated artifact was written for a given tree/diff hash, not who
   wrote it; the audit journal preserves what was attested and when. The journal is
   per-machine and not rotated.
-- Owner token is not yet configured on this machine: escapes are agent self-serve (audited,
-  flagged) until `owner-init` runs.
+- Owner token is deliberately unset on this machine. The owner chose a log book over a key,
+  so every escape is agent self-serve — armed by the agent, permanently recorded, and read
+  back with `gate.py audit --digest`. This is detection, not prevention: nothing stops an
+  escape at the moment it is taken, and the control only works if the digest is actually
+  read. `owner-init` remains available if that trade stops being acceptable.
 - Bash-write detection covers `>`, `sed -i`, `tee` and heredoc `open(...,'w')` on tracked
   paths; more indirect shell writes are caught at commit time by the stamp.
 - The agent Bash sandbox relies on `agent_type` being present in hook payloads (it is inside

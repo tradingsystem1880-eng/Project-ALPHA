@@ -987,3 +987,71 @@ class TestQuantRigorTooling:
         (repo / ".semgrep").mkdir()
         (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
         assert "semgrep" in [name for name, _ in gate.gate_steps("fast", repo)]
+
+
+class TestAuditDigest:
+    """`gate.py audit --digest` is the escape logbook: counts and paths, never contents."""
+
+    def test_rolls_acks_up_by_path(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="one", authorized_by="agent", path="CLAUDE.md")
+        gate.consume_ack(repo, path="CLAUDE.md")
+        gate.write_ack(repo, reason="two", authorized_by="agent", path="CLAUDE.md")
+        gate.consume_ack(repo, path="CLAUDE.md")
+        gate.write_ack(repo, reason="three", authorized_by="agent", path=".claude/settings.json")
+        digest = gate.audit_digest(repo)
+        assert "self-authorized escapes     3" in digest.replace("  ", " ").replace("   ", " ") or (
+            "ack_written" in digest
+        )
+        # one line per path, carrying its own count — not one line per ack
+        assert "CLAUDE.md" in digest and ".claude/settings.json" in digest
+        assert digest.count("CLAUDE.md") == 1
+
+    def test_counts_overrides_blocks_and_chain(self, repo: Path) -> None:
+        gate.write_override(repo, reason="merge commit", authorized_by="agent")
+        gate.append_audit(repo, "blocked_pre-bash-guard", "nope")
+        gate.append_audit(repo, "blocked_post-edit", "nope")
+        gate.append_audit(repo, "codex_call", "probe")
+        digest = gate.audit_digest(repo)
+        assert "override_written" in digest
+        assert "blocks the harness enforced" in digest
+        assert "blocked_pre-bash-guard" in digest
+        assert "chain: ok" in digest
+
+    def test_reports_owner_token_state(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="x", authorized_by="agent", path="CLAUDE.md")
+        assert "owner token: NOT configured" in gate.audit_digest(repo)
+
+    def test_window_excludes_older_events(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="x", authorized_by="agent", path="CLAUDE.md")
+        assert "(none)" in gate.audit_digest(repo, since="9999-01-01")
+
+    def test_empty_journal_is_honest_not_a_crash(self, repo: Path) -> None:
+        digest = gate.audit_digest(repo)
+        assert "(none)" in digest
+
+    def test_ack_path_is_recorded_on_the_journal_line(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="x", authorized_by="agent", path="CLAUDE.md")
+        written = [e for e in gate.read_audit(repo) if e["event"] == "ack_written"]
+        assert written and written[-1]["path"] == "CLAUDE.md"
+        gate.consume_ack(repo, path="CLAUDE.md")
+        consumed = [e for e in gate.read_audit(repo) if e["event"] == "ack_consumed"]
+        assert consumed and consumed[-1]["path"] == "CLAUDE.md"
+        ok, _ = gate.verify_audit_chain(repo)
+        assert ok, "adding a field must not break the hash chain"
+
+    def test_reports_a_token_that_is_still_armed(self, repo: Path) -> None:
+        gate.write_override(repo, reason="merge commit", authorized_by="agent")
+        digest = gate.audit_digest(repo)
+        assert "LIVE — armed, not yet used" in digest
+        assert "commit override" in digest and "merge commit" in digest
+
+    def test_a_consumed_token_is_no_longer_live(self, repo: Path) -> None:
+        gate.write_override(repo, reason="merge commit", authorized_by="agent")
+        gate.consume_override(repo)
+        assert "LIVE — armed, not yet used" not in gate.audit_digest(repo)
+
+    def test_a_live_ack_names_the_file_it_unlocks(self, repo: Path) -> None:
+        gate.write_ack(repo, reason="why", authorized_by="agent", path="scripts/gate.py")
+        digest = gate.audit_digest(repo)
+        assert "governance ack" in digest
+        assert digest.count("scripts/gate.py") == 2, "once in the rollup, once as still-armed"

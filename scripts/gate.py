@@ -17,6 +17,7 @@ CLI:
     python3 scripts/gate.py override --reason "..."      # one-shot commit-gate override
     python3 scripts/gate.py ack --reason "..." [--path P] # one-shot control-plane edit ack
     python3 scripts/gate.py owner-init         # owner sets the escape-hatch token (interactive)
+    python3 scripts/gate.py audit --digest     # escape logbook: who authorized what, last 7d
     python3 scripts/gate.py lint-harness       # weakening scanner vs .claude/harness-baseline.json
     python3 scripts/gate.py baseline --reason  # rewrite the baseline (owner/ack authorized)
     python3 scripts/gate.py audit [--json --since ISO --kind K --verify]  # journal reader
@@ -47,7 +48,7 @@ import tempfile
 import time
 import tomllib
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -331,7 +332,13 @@ def _last_audit_line(journal: Path) -> bytes:
 
 
 def append_audit(
-    root: Path, event: str, detail: str, session_id: str = "", *, authorized_by: str = ""
+    root: Path,
+    event: str,
+    detail: str,
+    session_id: str = "",
+    *,
+    authorized_by: str = "",
+    path: str | None = None,
 ) -> None:
     """Append one hash-chained event; ``prev_hash`` binds each line to its predecessor."""
     journal = _state_dir(root) / AUDIT_FILE
@@ -351,6 +358,8 @@ def append_audit(
                 "prev_hash": hashlib.sha256(prev).hexdigest() if prev else "",
                 "authorized_by": authorized_by,
             }
+            if path:
+                line["path"] = path
             fh.write(json.dumps(line, sort_keys=True) + "\n")
             fh.flush()
         finally:
@@ -434,6 +443,87 @@ def verify_audit_chain(root: Path) -> tuple[bool, str]:
         prev, prev_item = raw, item
     suffix = f", {forks} concurrent-append fork(s) tolerated" if forks else ""
     return (True, f"{len(raw_lines)} events, chain intact{suffix}")
+
+
+ESCAPE_EVENTS = ("ack_written", "override_written", "baseline_written")
+BLOCK_PREFIX = "blocked_"
+DIGEST_DEFAULT_DAYS = 7
+
+
+def audit_digest(root: Path, *, since: str | None = None, days: int = DIGEST_DEFAULT_DAYS) -> str:
+    """One screen of who authorized what, from the hash-chained journal.
+
+    Counts and paths only — never file contents. Acks are rolled up *by path*
+    because a single sweep legitimately arms dozens of them, and the question
+    worth answering is which files kept needing an escape, not how many times.
+    """
+    if since is None:
+        since = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+    events = read_audit(root, since=since)
+    escapes = [e for e in events if str(e.get("event")) in ESCAPE_EVENTS]
+    blocks = [e for e in events if str(e.get("event", "")).startswith(BLOCK_PREFIX)]
+    lines = [
+        f"[digest] harness audit since {since}",
+        "",
+        f"  self-authorized escapes  {len(escapes)}",
+    ]
+    by_event: dict[str, list[dict[str, Any]]] = {}
+    for item in escapes:
+        by_event.setdefault(str(item.get("event")), []).append(item)
+    for event in ESCAPE_EVENTS:
+        group = by_event.get(event, [])
+        if not group:
+            continue
+        agent = sum(1 for e in group if str(e.get("authorized_by", "")).startswith("agent"))
+        lines.append(f"    {event:<18} {len(group):>4}   ({agent} agent self-serve)")
+        paths: dict[str, int] = {}
+        for item in group:
+            recorded = str(item.get("path") or "")
+            if recorded:
+                paths[recorded] = paths.get(recorded, 0) + 1
+        # Paths were only recorded from the logbook onwards, so an older window
+        # legitimately has none. Say that once instead of printing a placeholder
+        # row per event kind.
+        for path, count in sorted(paths.items(), key=lambda kv: (-kv[1], kv[0])):
+            lines.append(f"      {path:<48} {count:>4}")
+        if not paths:
+            lines.append("      (no paths recorded in this window)")
+    if not escapes:
+        lines.append("    (none)")
+    lines += ["", f"  blocks the harness enforced  {len(blocks)}"]
+    kinds: dict[str, int] = {}
+    for item in blocks:
+        kinds[str(item.get("event"))] = kinds.get(str(item.get("event")), 0) + 1
+    for kind, count in sorted(kinds.items(), key=lambda kv: (-kv[1], kv[0])):
+        lines.append(f"    {kind:<28} {count:>4}")
+    if not blocks:
+        lines.append("    (none)")
+    other = {
+        "config changes": "config_change",
+        "codex calls": "codex_call",
+        "gate failures": "gate_failed",
+    }
+    lines.append("")
+    for label, kind in other.items():
+        lines.append(f"  {label:<28} {sum(1 for e in events if e.get('event') == kind):>4}")
+    # A token that was written but never consumed is still armed on disk: it
+    # fires on the next matching action, days later, with nobody expecting it.
+    # The journal shows it was *written*, never that it is still loaded.
+    live = [
+        (label, token)
+        for filename, label in ((OVERRIDE_FILE, "commit override"), (ACK_FILE, "governance ack"))
+        if (token := read_json(_state_dir(root) / filename)) is not None
+    ]
+    if live:
+        lines += ["", "  LIVE — armed, not yet used (fires on the next matching action)"]
+        for label, token in live:
+            lines.append(f"    {label:<18} {token.get('path') or 'any file'}")
+            lines.append(f"      armed {token.get('created_at', '?')} — {token.get('reason', '')}")
+    ok, detail = verify_audit_chain(root)
+    lines += ["", f"  chain: {'ok' if ok else 'FAIL'} — {detail}"]
+    if not owner_token_configured(root):
+        lines.append("  owner token: NOT configured — every escape above was agent self-serve")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -654,7 +744,7 @@ def _write_token(
 
     token = OnceToken(created_at=_now(), reason=reason, authorized_by=authorized_by, path=path)
     write_json_atomic(_state_dir(root) / filename, token.model_dump())
-    append_audit(root, event, reason, authorized_by=authorized_by)
+    append_audit(root, event, reason, authorized_by=authorized_by, path=path)
 
 
 def write_override(root: Path, *, reason: str, authorized_by: str = "agent") -> None:
@@ -674,7 +764,11 @@ def _consume(root: Path, filename: str, event: str) -> dict[str, Any] | None:
         return None
     path.unlink(missing_ok=True)
     append_audit(
-        root, event, str(token.get("reason", "")), authorized_by=str(token.get("authorized_by", ""))
+        root,
+        event,
+        str(token.get("reason", "")),
+        authorized_by=str(token.get("authorized_by", "")),
+        path=str(token.get("path") or "") or None,
     )
     return token
 
@@ -1143,6 +1237,21 @@ def build_brief(root: Path) -> str:
     adrs = adr_files(root)
     latest = f" (latest {adrs[-1]})" if adrs else ""
     lines.append(f"- ADRs: {len(adrs)}{latest}")
+    escapes = [
+        e
+        for e in read_audit(
+            root, since=(datetime.now(UTC) - timedelta(days=DIGEST_DEFAULT_DAYS)).isoformat()
+        )
+        if str(e.get("event")) in ESCAPE_EVENTS
+    ]
+    if escapes:
+        note = " (owner token unset — all self-serve)" if not owner_token_configured(root) else ""
+        lines.append(
+            f"- escapes: {len(escapes)} self-authorized in the last {DIGEST_DEFAULT_DAYS}d{note}"
+            " — gate.py audit --digest"
+        )
+    else:
+        lines.append(f"- escapes: none in the last {DIGEST_DEFAULT_DAYS}d")
     drift = adr_drift(root)
     if drift:
         lines.append(
@@ -1754,6 +1863,11 @@ def main(argv: list[str] | None = None) -> int:
     audit_p.add_argument("--since", default=None)
     audit_p.add_argument("--kind", default=None)
     audit_p.add_argument("--verify", action="store_true")
+    audit_p.add_argument(
+        "--digest",
+        action="store_true",
+        help=f"rolled-up escape/block summary (default {DIGEST_DEFAULT_DAYS}d)",
+    )
     brief_p = sub.add_parser("brief")
     brief_p.add_argument("--refresh", action="store_true")
     plan_p = sub.add_parser("plan-check")
@@ -1834,6 +1948,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"harness baseline rewritten at {BASELINE_FILE} (loudly audited).")
         return 0
     if args.command == "audit":
+        if args.digest:
+            print(audit_digest(root, since=args.since))
+            return 0
         if args.verify:
             ok, detail = verify_audit_chain(root)
             print(f"[audit] {'ok' if ok else 'FAIL'} {detail}")
