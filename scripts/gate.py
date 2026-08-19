@@ -1260,20 +1260,33 @@ def build_brief(root: Path) -> str:
     return "\n".join(lines)
 
 
+def _brief_cache_key(root: Path) -> str:
+    """Tree content plus the git facts the brief reports that the tree hash cannot see.
+
+    ``compute_tree_hash`` covers file bytes only — deliberately, so that committing does not
+    invalidate a gate stamp. But the brief also reports HEAD and the dirty count, and a plain
+    commit changes both while touching no byte on disk. Keyed on content alone the cache would
+    keep serving a brief that claims uncommitted files and omits the commit just made.
+    """
+    head = _git(root, "rev-parse", "HEAD", check=False).strip() or "?"
+    branch = _git(root, "branch", "--show-current", check=False).strip() or "?"
+    return f"{compute_tree_hash(root)}:{head}:{branch}"
+
+
 def repo_brief(root: Path, *, refresh: bool = False) -> str:
-    """The brief, cached at .claude/state/brief.json keyed by the current tree hash."""
-    tree = compute_tree_hash(root)
+    """The brief, cached at .claude/state/brief.json keyed by tree content and git position."""
+    key = _brief_cache_key(root)
     cache_path = _state_dir(root) / BRIEF_FILE
     cached = read_json(cache_path)
     if (
         not refresh
         and cached
-        and cached.get("tree_hash") == tree
+        and cached.get("cache_key") == key
         and isinstance(cached.get("text"), str)
     ):
         return str(cached["text"])
     text = build_brief(root)
-    write_json_atomic(cache_path, {"tree_hash": tree, "generated_at": _now(), "text": text})
+    write_json_atomic(cache_path, {"cache_key": key, "generated_at": _now(), "text": text})
     return text
 
 

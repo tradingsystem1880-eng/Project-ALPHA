@@ -690,6 +690,36 @@ class TestBrief:
         assert "not referenced" not in second
         assert gate.repo_brief(repo) == second  # cache hit is byte-identical
 
+    def test_brief_cache_is_invalidated_by_a_commit(self, repo: Path) -> None:
+        """A commit changes no byte on disk, so a content-only cache key would go stale.
+
+        The brief reports HEAD and the dirty count. Both change on commit while the tree
+        hash — which covers file bytes only, so that committing cannot invalidate a gate
+        stamp — stays put. Keyed on content alone the brief would keep claiming
+        uncommitted files and omitting the commit just made.
+        """
+        _brief_repo(repo)
+        (repo / "note.md").write_text("scratch\n")
+        before = gate.repo_brief(repo)
+        assert "1 dirty file(s)" in before
+        assert "chore: commit the note" not in before
+
+        tree_before = gate.compute_tree_hash(repo)
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "--quiet", "-m", "chore: commit the note")
+
+        assert gate.compute_tree_hash(repo) == tree_before  # the byte content is unchanged
+        after = gate.repo_brief(repo)
+        assert "0 dirty file(s)" in after
+        assert "chore: commit the note" in after
+
+    def test_brief_cache_key_tracks_the_branch(self, repo: Path) -> None:
+        _brief_repo(repo)
+        key = gate._brief_cache_key(repo)
+        _git(repo, "checkout", "--quiet", "-b", "some-other-branch")
+        assert gate._brief_cache_key(repo) != key
+        assert "some-other-branch" in gate.repo_brief(repo)
+
     def test_adr_mentions_understand_ranges(self) -> None:
         text = "ADR-0013 and ADRs 0019-0020 plus ADR-0021..0026 (ADRs 0013-0016)"
         assert gate.referenced_adr_ids(text) == {13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26}

@@ -53,6 +53,15 @@ It is a pure content hash: any byte change anywhere invalidates it; a pure `git 
   fast|full` exits 0 iff a stamp of at least that tier matches the current tree (`full`
   satisfies `fast`, never the reverse).
 
+**Anything else cached on the tree hash must ask whether it reports git state.** The
+content-only property is exactly right for the stamp — it is why one full gate run covers a
+whole commit sequence — but it makes the hash blind to HEAD moving. `gate.py brief` reports
+the branch, the dirty count and the last five commits, all of which change on commit while
+no byte does, so it is keyed on `tree hash : HEAD : branch` (`gate._brief_cache_key`).
+Keyed on content alone it served a brief claiming uncommitted files and omitting the commit
+just made — a stale first impression for the next session, from the one surface an agent
+reads before anything else.
+
 ## Hooks (all in `scripts/claude_hooks.py`, wired in `.claude/settings.json`)
 
 **Scope: the harness travels with the branch.** `.claude/` and `scripts/` are ordinary tracked
