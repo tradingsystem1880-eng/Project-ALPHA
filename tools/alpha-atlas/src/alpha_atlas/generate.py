@@ -29,9 +29,11 @@ from alpha_atlas.core.model import (
     validate_graph,
 )
 from alpha_atlas.generators import (
+    cli_tree,
     components,
     docs_scan,
     importlinter,
+    mcp_tools,
     python_modules,
     tests_map,
     workflow,
@@ -64,6 +66,8 @@ def build_outputs(root: Path) -> dict[str, str]:
     add(docs_scan.extract(root))
     add(components.extract(root))
     modules_fragment = add(python_modules.extract(root))
+    cli_fragment = add(cli_tree.extract(root))
+    add(mcp_tools.extract(root, cli_ids={n.id for n in cli_fragment.nodes}))
     workflow_fragment = add(workflow.extract(root))
     module_ids = {n.id for n in modules_fragment.nodes}
     add(tests_map.extract(root, workflow_fragment=workflow_fragment, module_ids=module_ids))
@@ -99,12 +103,39 @@ def _write_atomic(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+def refresh_cli_cache(root: Path) -> None:
+    """Explicitly re-enumerate the CLI surface into the committed cache (subprocess)."""
+    import json
+    import subprocess
+
+    result = subprocess.run(
+        ["uv", "run", "alpha", "info", "commands", "--json"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    commands = json.loads(result.stdout)
+    _write_atomic(
+        root / cli_tree.CACHE_REL,
+        dumps_compact({"schema_version": 1, "commands": commands}),
+    )
+    print(f"wrote {cli_tree.CACHE_REL} ({len(commands)} commands)")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate the Atlas knowledge graph.")
     parser.add_argument("--check", action="store_true", help="verify committed outputs are fresh")
     parser.add_argument("--repo", type=Path, default=None, help="repository root override")
+    parser.add_argument(
+        "--refresh-cli",
+        action="store_true",
+        help="re-run `alpha info commands --json` into the committed cache first",
+    )
     args = parser.parse_args(argv)
     root = args.repo.resolve() if args.repo is not None else discover_repo_root()
+    if args.refresh_cli:
+        refresh_cli_cache(root)
     outputs = build_outputs(root)
     if args.check:
         stale = [
