@@ -67,7 +67,7 @@
       "expected": "jail tests pass (symlink escape, dot-dot, denylist); clicking D1 shows research_d1.py:1078, its tests, and ADR-0019..0027 links",
       "rollback": "git checkout -- tools/alpha-atlas && git clean -fd tools/alpha-atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/backend/app.py", "tools/alpha-atlas/frontend/src/views/ResearchLifecycle.tsx", "tools/alpha-atlas/frontend/src/components/NodePanel.tsx"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S4 Generate AI Context: pure prompt_pack core, POST endpoint, NodePanel copy-context-for-Codex button — closes Milestone A",
@@ -146,7 +146,7 @@
     "Committing frontend build output (dist/ is gitignored)",
     "Rewriting docs/ARCHITECTURE.md (drift is surfaced by Atlas, never fixed by it)"
   ],
-  "files": ["tools/alpha-atlas/", "architecture/atlas/", "docs/atlas/", "tests/unit/test_atlas_consistency.py"]
+  "files": ["tools/alpha-atlas/**", "architecture/atlas/**", "docs/atlas/**", "tests/unit/test_atlas_consistency.py", "tests/integration/test_crypto_coverage_completion.py"]
 }
 ```
 
@@ -376,6 +376,14 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   canonical JSON (13k+ indented lines would trip the per-commit line guard on
   every regen and diff as pure noise). Humans review views and docs/atlas;
   `inputs.json` stays indented.
+- **Correction** (S3): commit d147acb's message says "443 nodes / 351 edges";
+  the true S2 totals are 415 nodes / 200 edges (graph.json stats are the
+  authority; the message cannot be amended under the harness rules).
+- **S3 verification note**: backend + SPA verified by 48 pytest tests, 7 vitest
+  model tests, tsc+vite build, oxlint, and live curl of /api/meta, /api/node,
+  /api/excerpt, and the served SPA. In-browser click-through UNVERIFIED in the
+  authoring session (Chrome extension unavailable); server runs on :8803 via
+  `uv run alpha-atlas`.
 
 ## 9b. Out-of-plan edits (justified)
 
