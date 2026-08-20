@@ -83,7 +83,7 @@
       "expected": "known edge alpha_cli.research_d1 -> alpha_research.* present; an undocumented/untested/unlinked module resolves to unknown, not implemented; observed never emitted",
       "rollback": "git checkout -- tools/alpha-atlas architecture/atlas && git clean -fd tools/alpha-atlas architecture/atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/generators/python_modules.py", "tools/alpha-atlas/src/alpha_atlas/generators/components.py", "tools/alpha-atlas/src/alpha_atlas/core/evidence.py"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S6 CLI + MCP extractors with committed cli cache",
@@ -393,6 +393,24 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   on :8803. In-browser click-through remains UNVERIFIED in the authoring
   session (Chrome extension unavailable); the Definition-of-Done core path is
   otherwise exercised end-to-end via API. Milestone A (S0–S4) is complete.
+
+- **AST-only module extraction** (S5): `python_modules.py` never consumes the
+  gitignored `.claude/state/repo-index.json`. inputs.json must hash only
+  committed repository files, or `generate --check` freshness would depend on
+  per-machine regenerated state; the extractor's own AST scan is deterministic
+  from the tree and was required as the fallback anyway.
+- **tests_map module joins** (S5): `tests_map.py` (outside S5's declared file
+  list, inside the plan's globs) also emits test→module `validates` edges for
+  known module ids. Without them every module would render "untested" and
+  module-level prompt packs would underclaim in TEST REQUIREMENTS.
+- **Paragraph-style MODULE MAP** (S5): alpha-patterns.md introduces its map as
+  a paragraph, not a `###` heading; the heading regex accepts both, so a
+  documented package is never queued as unknown by a formatting difference.
+- **S5 verification note**: 74 pytest tests, mypy --strict, ruff, and
+  `generate --check` fresh. Graph now 735 nodes / 2429 edges; levels
+  declared 86 / implemented 425 / tested 173 / unknown 51; the Unknowns
+  review queue (`generated/views/unknowns.json`) lists the two rule-less
+  worker components and undocumented modules only.
 
 ## 9b. Out-of-plan edits (justified)
 
