@@ -86,6 +86,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install backend for the Playwright real server (locked)
+        run: uv sync --locked
       - name: Install frontend (locked)
         working-directory: apps/alpha-web/frontend
         run: npm ci
