@@ -107,7 +107,7 @@
       "expected": "5 docs/atlas files with overview-first progressive disclosure, details sections, <=40-node diagrams, ASCII fallbacks; root consistency test green; root gate fast passes",
       "rollback": "git checkout -- tools/alpha-atlas docs/atlas tests/unit/test_atlas_consistency.py pyproject.toml && git clean -fd docs/atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/core/mermaid.py", "docs/atlas/system-map.md", "docs/atlas/research-flow.md", "docs/atlas/data-lineage.md", "docs/atlas/frontend-flow.md", "docs/atlas/cli-flow.md", "tests/unit/test_atlas_consistency.py", "pyproject.toml"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S9 SystemMap + CodeExplorer views",
@@ -445,6 +445,22 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   orphans fail loud — the join caught and rejected a normalization collision
   during development); PriceChart → GET /api/candles/{symbol} →
   alpha_web.api.candles resolves connected end-to-end.
+
+- **S8 simplifications**: the root consistency test is pure-JSON (no
+  `sys.path.insert` import of Atlas code — stdlib checks on the committed
+  graph/schema/definitions/docs are simpler and dependency-free); the planned
+  root-ruff `extend-exclude` for the Atlas frontend was NOT added (the
+  frontend contains no Python, root `ruff check .` is already clean, and
+  adding dead config to pyproject would be speculative churn); the drift
+  section surfaces the Unknowns queue and needs-re-verification lists —
+  ARCHITECTURE.md text-mining was skipped as low-value scope.
+- **S8 verification note**: 96 Atlas pytest tests + the 4-test root
+  `tests/unit/test_atlas_consistency.py` (0.09s) pass; mypy --strict, ruff,
+  `generate --check` fresh (8 files: graph, inputs, unknowns view, 5 docs).
+  Each doc opens with prose + one ≤40-node diagram (cap enforced by the
+  emitter), enumerations are collapsed, every diagram carries a
+  `<!-- nodes: ... -->` id comment proven against the graph, and each mermaid
+  block has a text fallback.
 
 ## 9b. Out-of-plan edits (justified)
 
