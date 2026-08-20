@@ -649,7 +649,7 @@ def test_non_bybit_acquisition_contract_rejects_ambiguous_or_unbounded_requests(
 
 
 def test_read_only_projections_answer_honestly_when_no_volume_is_configured(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """An unconfigured volume has nothing to describe; it is not a broken request.
 
@@ -659,6 +659,9 @@ def test_read_only_projections_answer_honestly_when_no_volume_is_configured(
     never configured.
     """
     monkeypatch.delenv("ALPHA_BULK_VOLUME_UUID", raising=False)
+    # AlphaSettings also reads .env from the cwd; on an owner machine that file
+    # legitimately configures the volume, which would break this test's premise.
+    monkeypatch.chdir(tmp_path)
     expected_next_action = "Configure the reviewed Expansion volume UUID."
     cases = (
         ("capabilities", "canonical_next_action", {"items": [], "count": 0}),
