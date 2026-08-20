@@ -4,10 +4,9 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+from alpha_atlas.core.paths import find_repo_root
 
 
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
-    assert (REPO_ROOT / "CLAUDE.md").is_file(), f"not the ALPHA repo root: {REPO_ROOT}"
-    return REPO_ROOT
+    return find_repo_root(Path(__file__).resolve())

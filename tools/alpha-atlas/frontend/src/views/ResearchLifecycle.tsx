@@ -1,8 +1,8 @@
-import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/react'
+import type { Edge, Node } from '@xyflow/react'
 import { useMemo, useState } from 'react'
 
+import { atlasNodeStyle, GraphCanvas, styleNodes } from '../components/GraphCanvas'
 import { NodePanel } from '../components/NodePanel'
-import { levelColor } from '../model/evidence'
 import { layoutGraph } from '../model/layout'
 import { selectLifecycle } from '../model/lifecycle'
 import type { AtlasGraph } from '../model/types'
@@ -18,16 +18,11 @@ const EDGE_STYLE: Record<string, { stroke: string; dash?: string }> = {
 export function ResearchLifecycle({ graph }: { graph: AtlasGraph }) {
   const [selected, setSelected] = useState<string | null>(null)
 
-  const steps = useMemo(
-    () =>
-      selectLifecycle(graph)
-        .nodes.filter((n) => n.kind === 'workflow_node')
-        .map((n) => ({ id: n.id, label: n.label })),
-    [graph],
-  )
-
-  const { nodes, edges } = useMemo(() => {
+  const { baseNodes, edges, steps } = useMemo(() => {
     const selection = selectLifecycle(graph)
+    const steps = selection.nodes
+      .filter((n) => n.kind === 'workflow_node')
+      .map((n) => ({ id: n.id, label: n.label }))
     const layoutEdges = [
       ...selection.spine.map((e) => ({ source: e.source, target: e.target })),
       ...selection.edges
@@ -42,22 +37,16 @@ export function ResearchLifecycle({ graph }: { graph: AtlasGraph }) {
     )
     const flowNodes: Node[] = selection.nodes.map((n) => {
       const pos = positions.get(n.id)!
-      const color = levelColor(n.evidence.level)
       const isWorkflow = n.kind === 'workflow_node'
       const order = n.meta?.['order']
       return {
         id: n.id,
         position: { x: pos.x, y: pos.y },
-        data: { label: isWorkflow && typeof order === 'number' ? `${order}. ${n.label}` : n.label },
-        style: {
-          background: isWorkflow ? '#10151f' : '#0b0f16',
-          color: '#dbe4f2',
-          border: `1.5px solid ${color}`,
-          borderRadius: 8,
-          fontSize: 12,
-          width: 190,
-          boxShadow: n.id === selected ? `0 0 0 2px ${color}` : undefined,
+        data: {
+          label: isWorkflow && typeof order === 'number' ? `${order}. ${n.label}` : n.label,
+          level: n.evidence.level,
         },
+        style: atlasNodeStyle(n.evidence.level, { emphasis: isWorkflow }),
       }
     })
     const flowEdges: Edge[] = [
@@ -80,26 +69,13 @@ export function ResearchLifecycle({ graph }: { graph: AtlasGraph }) {
         }
       }),
     ]
-    return { nodes: flowNodes, edges: flowEdges }
-  }, [graph, selected])
+    return { baseNodes: flowNodes, edges: flowEdges, steps }
+  }, [graph])
+  const nodes = useMemo(() => styleNodes(baseNodes, selected), [baseNodes, selected])
 
   return (
     <>
-      <div className="flow">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodeClick={(_, node) => setSelected(node.id)}
-          fitView
-          nodesDraggable={false}
-          nodesConnectable={false}
-          proOptions={{ hideAttribution: true }}
-          colorMode="dark"
-        >
-          <Background color="#1e2635" />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </div>
+      <GraphCanvas nodes={nodes} edges={edges} onNodeClick={setSelected} />
       <aside className="panel">
         {selected ? (
           <NodePanel nodeId={selected} nav={{ steps, onSelect: setSelected }} />

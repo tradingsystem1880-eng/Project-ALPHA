@@ -24,6 +24,7 @@ SCREENS_REL = "apps/alpha-web/frontend/src/shell/screens.tsx"
 _FRONTEND_SRC = "apps/alpha-web/frontend/src"
 
 _METHOD_FLOOR = 100
+_SPEC_METHODS = ("get", "post", "put", "delete")
 
 # a method entry inside `export const api = { ... }` — `name: (...)` or shorthand `async name(...)`
 _ENTRY_RE = re.compile(r"^  (?:async )?(\w+)\s*[:(]", re.MULTILINE)
@@ -70,6 +71,12 @@ def join_client_methods(root: Path) -> dict[str, tuple[str, str]]:
         if spec_path is None:
             orphans.append(f"{entry.group(1)}: {urls[0]}")
             continue
+        declared = {m.upper() for m in spec["paths"][spec_path] if m in _SPEC_METHODS}
+        if verb not in declared:
+            raise AtlasError(
+                f"client.ts {entry.group(1)}: sniffed {verb} but openapi declares "
+                f"{sorted(declared)} for {spec_path}; the verb sniff has degraded"
+            )
         methods[entry.group(1)] = (verb, spec_path)
     if orphans:
         raise AtlasError(

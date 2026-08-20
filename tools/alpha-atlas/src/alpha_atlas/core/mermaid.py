@@ -22,13 +22,8 @@ GENERATED_HEADER = (
 
 MAX_DIAGRAM_NODES = 40
 
-DOC_PATHS: tuple[str, ...] = (
-    "docs/atlas/system-map.md",
-    "docs/atlas/research-flow.md",
-    "docs/atlas/data-lineage.md",
-    "docs/atlas/frontend-flow.md",
-    "docs/atlas/cli-flow.md",
-)
+# Filled after the builders are defined; the builder dict is the single authority.
+DOC_PATHS: tuple[str, ...]
 
 _UI_HINT = (
     "Interactive exploration (evidence provenance, excerpts, prompt packs): "
@@ -206,7 +201,7 @@ def _data_lineage(payload: dict[str, Any]) -> str:
     everything = sorted(entities + artifacts, key=lambda n: str(n["id"]))
     nodes = [(n["id"], n["label"]) for n in everything]
     artifact_rows = [
-        f"| {a['label']} | {a['meta'].get('artifact_type', '')} | {a['evidence']['level']} |"
+        f"| {a['label']} | {a['meta'].get('description', '')} | {a['evidence']['level']} |"
         for a in sorted(artifacts, key=lambda a: str(a["id"]))
     ]
     return "\n".join(
@@ -223,7 +218,7 @@ def _data_lineage(payload: dict[str, Any]) -> str:
             "",
             "## Artifacts",
             "",
-            "| Artifact | Type | Evidence |",
+            "| Artifact | Description | Evidence |",
             "|---|---|---|",
             *artifact_rows,
             "",
@@ -322,12 +317,15 @@ def _cli_flow(payload: dict[str, Any]) -> str:
     )
 
 
+_BUILDERS = {
+    "docs/atlas/system-map.md": _system_map,
+    "docs/atlas/research-flow.md": _research_flow,
+    "docs/atlas/data-lineage.md": _data_lineage,
+    "docs/atlas/frontend-flow.md": _frontend_flow,
+    "docs/atlas/cli-flow.md": _cli_flow,
+}
+DOC_PATHS = tuple(_BUILDERS)
+
+
 def emit_docs(payload: dict[str, Any]) -> dict[str, str]:
-    builders = {
-        "docs/atlas/system-map.md": _system_map,
-        "docs/atlas/research-flow.md": _research_flow,
-        "docs/atlas/data-lineage.md": _data_lineage,
-        "docs/atlas/frontend-flow.md": _frontend_flow,
-        "docs/atlas/cli-flow.md": _cli_flow,
-    }
-    return {path: builders[path](payload) + "\n" for path in DOC_PATHS}
+    return {path: builder(payload) + "\n" for path, builder in _BUILDERS.items()}

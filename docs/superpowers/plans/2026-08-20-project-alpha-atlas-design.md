@@ -508,6 +508,34 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   unchanged; tsc+vite build clean; served bundle curl-verified. In-browser
   look UNVERIFIED in the authoring session.
 
+- **Simplify pass (2026-08-21)**: four-lens cleanup review (reuse /
+  simplification / efficiency / altitude) over the S4–S12 diff, applied
+  behavior-preserving. Python: shared `core/paths.py` (generated-path constants
+  + `find_repo_root`); backend caches the parsed graph per (mtime, size) and
+  memoizes /api/meta input digests per stat instead of hashing ~700 files per
+  request; `_repo.source_roots` is the one source-root scan (workers included)
+  with `module_roots` as its projection; `importlinter` uses `record_input`;
+  `workflow` reuses the recorded digest; prompt_pack tier predicates now mirror
+  gate.py exactly (quant filename regex + alpha-backtest risk prefix, 2 new
+  tests); components.py accepts paragraph-form MODULE MAP headings only when
+  the rule's own front-matter globs cover the named dir; frontend_scan
+  validates each sniffed verb against the openapi-declared methods (fail
+  loud); mermaid derives DOC_PATHS from its builder dict and the artifacts
+  table shows `description` (the field that exists) — data-lineage.md regen
+  is the only generated-output change. Frontend: one shared `GraphCanvas` +
+  `atlasNodeStyle`/`styleNodes` replaces four copies of the React Flow block;
+  selection styling moved out of the layout memos (no dagre re-layout per
+  click); DataLineage imports `ENTITY_KINDS` from model/lifecycle;
+  ResearchLifecycle computes its selection once; ChangeImpact drops an
+  always-true `valid`; CodeExplorer's default component derives from the
+  graph; dead `.topbar .hint` selector generalized to `.hint`; layout.ts drops
+  unused width/height fields. Declared skips (deliberate v1 shapes): /api/node
+  adjacency indexes, NodePanel client-side derivation, frontend_scan
+  build-time double-reads, evidence `_CODE_EXTRACTORS` registry, the explicit
+  doc list in the root consistency test, and the Python-side entity-kind copy
+  in mermaid.py (process boundary). 98 pytest + 13 vitest + mypy/ruff/oxlint +
+  build + `generate --check` all green.
+
 ## 9b. Out-of-plan edits (justified)
 
 - `tests/integration/test_crypto_coverage_completion.py` (commit 6437909): the

@@ -13,7 +13,6 @@ of silently presenting stale prose. Artifact entries are plain vocabulary
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -70,7 +69,7 @@ def _verify_anchors(
             if resolved is None:
                 raise AtlasError(f"{entry_id}: anchor symbol {symbol!r} not found in {rel}")
             line = resolved
-        actual = hashlib.sha256(raw).hexdigest()
+        actual = inputs[rel]  # record_input stored this file's sha256 already
         expected = anchor.get("sha256")
         if expected is not None and expected != actual:
             needs_reverification = True

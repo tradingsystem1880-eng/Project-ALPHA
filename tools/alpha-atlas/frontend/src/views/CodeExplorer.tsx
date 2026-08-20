@@ -1,8 +1,8 @@
-import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/react'
+import type { Edge, Node } from '@xyflow/react'
 import { useMemo, useState } from 'react'
 
+import { atlasNodeStyle, GraphCanvas, styleNodes } from '../components/GraphCanvas'
 import { NodePanel } from '../components/NodePanel'
-import { levelColor } from '../model/evidence'
 import { layoutGraph } from '../model/layout'
 import { selectComponentModules } from '../model/systemMap'
 import type { AtlasGraph } from '../model/types'
@@ -16,10 +16,11 @@ export function CodeExplorer({ graph }: { graph: AtlasGraph }) {
         .sort(),
     [graph],
   )
-  const [componentId, setComponentId] = useState('component:alpha-research')
+  const [chosen, setChosen] = useState<string | null>(null)
+  const componentId = chosen ?? components[0] ?? ''
   const [selected, setSelected] = useState<string | null>(null)
 
-  const { nodes, edges, external } = useMemo(() => {
+  const { baseNodes, edges, external } = useMemo(() => {
     const selection = selectComponentModules(graph, componentId)
     const positions = new Map(
       layoutGraph(
@@ -30,21 +31,15 @@ export function CodeExplorer({ graph }: { graph: AtlasGraph }) {
     )
     const flowNodes: Node[] = selection.modules.map(({ node: n, testCount }) => {
       const pos = positions.get(n.id)!
-      const color = levelColor(n.evidence.level)
       const short = n.label.split('.').slice(1).join('.') || n.label
       return {
         id: n.id,
         position: { x: pos.x, y: pos.y },
-        data: { label: testCount > 0 ? `${short} ✓${testCount}` : short },
-        style: {
-          background: '#0b0f16',
-          color: '#dbe4f2',
-          border: `1.5px solid ${color}`,
-          borderRadius: 8,
-          fontSize: 10.5,
-          width: 200,
-          boxShadow: n.id === selected ? `0 0 0 2px ${color}` : undefined,
+        data: {
+          label: testCount > 0 ? `${short} ✓${testCount}` : short,
+          level: n.evidence.level,
         },
+        style: atlasNodeStyle(n.evidence.level, { fontSize: 10.5, width: 200 }),
       }
     })
     const flowEdges: Edge[] = selection.edges.map((e) => ({
@@ -53,14 +48,15 @@ export function CodeExplorer({ graph }: { graph: AtlasGraph }) {
       target: e.target,
       style: { stroke: '#8a93a6', strokeDasharray: '2 4' },
     }))
-    return { nodes: flowNodes, edges: flowEdges, external: selection.external }
-  }, [graph, componentId, selected])
+    return { baseNodes: flowNodes, edges: flowEdges, external: selection.external }
+  }, [graph, componentId])
+  const nodes = useMemo(() => styleNodes(baseNodes, selected), [baseNodes, selected])
 
   return (
     <>
       <div className="flow">
         <div className="explorer-bar">
-          <select value={componentId} onChange={(e) => setComponentId(e.target.value)}>
+          <select value={componentId} onChange={(e) => setChosen(e.target.value)}>
             {components.map((id) => (
               <option key={id} value={id}>
                 {id.replace('component:', '')}
@@ -75,21 +71,12 @@ export function CodeExplorer({ graph }: { graph: AtlasGraph }) {
               .join(', ') || 'none'}
           </span>
         </div>
-        <div className="flow-canvas">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodeClick={(_, node) => setSelected(node.id)}
-            fitView
-            nodesDraggable={false}
-            nodesConnectable={false}
-            proOptions={{ hideAttribution: true }}
-            colorMode="dark"
-          >
-            <Background color="#1e2635" />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-        </div>
+        <GraphCanvas
+          nodes={nodes}
+          edges={edges}
+          onNodeClick={setSelected}
+          className="flow-canvas"
+        />
       </div>
       <aside className="panel">
         {selected ? (

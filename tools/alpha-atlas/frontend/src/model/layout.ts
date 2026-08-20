@@ -2,8 +2,6 @@ import dagre from '@dagrejs/dagre'
 
 export interface LayoutInputNode {
   id: string
-  width?: number
-  height?: number
 }
 
 export interface LayoutInputEdge {
@@ -30,7 +28,7 @@ export function layoutGraph(
   g.setGraph({ rankdir: direction, nodesep: 28, ranksep: 64 })
   g.setDefaultEdgeLabel(() => ({}))
   for (const node of nodes) {
-    g.setNode(node.id, { width: node.width ?? NODE_WIDTH, height: node.height ?? NODE_HEIGHT })
+    g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT })
   }
   for (const edge of edges) {
     g.setEdge(edge.source, edge.target)

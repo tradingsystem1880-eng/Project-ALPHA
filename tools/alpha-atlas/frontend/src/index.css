@@ -96,7 +96,7 @@ body {
   letter-spacing: 0.4px;
 }
 
-.topbar .hint {
+.hint {
   color: var(--muted);
   font-size: 12px;
 }

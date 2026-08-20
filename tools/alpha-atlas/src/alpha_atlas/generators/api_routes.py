@@ -41,7 +41,7 @@ def _router_prefix(tree: ast.Module) -> str:
     return ""
 
 
-def _router_anchors(rel: str, source: str) -> dict[tuple[str, str], tuple[str, int]]:
+def _router_anchors(source: str) -> dict[tuple[str, str], tuple[str, int]]:
     """(METHOD, full path) -> (function name, line) for one router module."""
     tree = ast.parse(source)
     prefix = _router_prefix(tree)
@@ -76,7 +76,7 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
     for path in sorted((root / ROUTERS_DIR).glob("*.py")):
         rel = str(path.relative_to(root))
         source = record_input(root, rel, inputs).decode("utf-8")
-        for key, (func_name, line) in _router_anchors(rel, source).items():
+        for key, (func_name, line) in _router_anchors(source).items():
             anchors[key] = (rel, func_name, line)
 
     nodes: list[Node] = []

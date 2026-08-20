@@ -1,27 +1,20 @@
-import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/react'
+import type { Edge, Node } from '@xyflow/react'
 import { useMemo, useState } from 'react'
 
+import { atlasNodeStyle, GraphCanvas, styleNodes } from '../components/GraphCanvas'
 import { NodePanel } from '../components/NodePanel'
-import { levelColor } from '../model/evidence'
 import { layoutGraph } from '../model/layout'
+import { ENTITY_KINDS } from '../model/lifecycle'
 import type { AtlasGraph } from '../model/types'
-
-const ENTITY_KINDS = new Set([
-  'research_case',
-  'hypothesis',
-  'dataset',
-  'experiment',
-  'decision',
-  'strategy_version',
-])
 
 export function DataLineage({ graph }: { graph: AtlasGraph }) {
   const [selected, setSelected] = useState<string | null>(null)
 
-  const { nodes, edges } = useMemo(() => {
-    const entities = graph.nodes.filter((n) => ENTITY_KINDS.has(n.kind))
-    const artifacts = graph.nodes.filter((n) => n.kind === 'artifact')
-    const ids = new Set([...entities, ...artifacts].map((n) => n.id))
+  const { baseNodes, edges } = useMemo(() => {
+    const lineageNodes = graph.nodes.filter(
+      (n) => ENTITY_KINDS.has(n.kind) || n.kind === 'artifact',
+    )
+    const ids = new Set(lineageNodes.map((n) => n.id))
     const selectionEdges = graph.edges.filter(
       (e) =>
         (e.type === 'depends_on' || e.type === 'produces') &&
@@ -30,27 +23,23 @@ export function DataLineage({ graph }: { graph: AtlasGraph }) {
     )
     const positions = new Map(
       layoutGraph(
-        [...entities, ...artifacts].map((n) => ({ id: n.id })),
+        lineageNodes.map((n) => ({ id: n.id })),
         selectionEdges.map((e) => ({ source: e.source, target: e.target })),
       ).map((p) => [p.id, p]),
     )
-    const flowNodes: Node[] = [...entities, ...artifacts].map((n) => {
+    const flowNodes: Node[] = lineageNodes.map((n) => {
       const pos = positions.get(n.id)!
-      const color = levelColor(n.evidence.level)
       const isEntity = ENTITY_KINDS.has(n.kind)
       return {
         id: n.id,
         position: { x: pos.x, y: pos.y },
-        data: { label: n.label },
-        style: {
-          background: isEntity ? '#10151f' : '#0b0f16',
-          color: '#dbe4f2',
-          border: `1.5px solid ${color}`,
+        data: { label: n.label, level: n.evidence.level },
+        style: atlasNodeStyle(n.evidence.level, {
+          emphasis: isEntity,
           borderRadius: isEntity ? 8 : 14,
           fontSize: 11.5,
           width: 180,
-          boxShadow: n.id === selected ? `0 0 0 2px ${color}` : undefined,
-        },
+        }),
       }
     })
     const flowEdges: Edge[] = selectionEdges.map((e) => ({
@@ -65,26 +54,13 @@ export function DataLineage({ graph }: { graph: AtlasGraph }) {
         strokeDasharray: e.type === 'produces' ? '6 4' : undefined,
       },
     }))
-    return { nodes: flowNodes, edges: flowEdges }
-  }, [graph, selected])
+    return { baseNodes: flowNodes, edges: flowEdges }
+  }, [graph])
+  const nodes = useMemo(() => styleNodes(baseNodes, selected), [baseNodes, selected])
 
   return (
     <>
-      <div className="flow">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodeClick={(_, node) => setSelected(node.id)}
-          fitView
-          nodesDraggable={false}
-          nodesConnectable={false}
-          proOptions={{ hideAttribution: true }}
-          colorMode="dark"
-        >
-          <Background color="#1e2635" />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </div>
+      <GraphCanvas nodes={nodes} edges={edges} onNodeClick={setSelected} />
       <aside className="panel">
         {selected ? (
           <NodePanel nodeId={selected} />

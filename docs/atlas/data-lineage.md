@@ -42,14 +42,14 @@ strategy_version -> decision  [depends_on]
 
 ## Artifacts
 
-| Artifact | Type | Evidence |
+| Artifact | Description | Evidence |
 |---|---|---|
-| Dataset registration |  | declared |
-| Research gate evidence |  | declared |
-| Research gate packet |  | declared |
-| Strategy promotion dossier |  | declared |
-| Research case record |  | declared |
-| Research contract |  | declared |
-| Run manifest |  | declared |
-| Source receipt |  | declared |
+| Dataset registration | rd_<sha256> ref bound fail-closed to exact snapshot-manifest bytes, plus audit records. | declared |
+| Research gate evidence | Content-hashed ResearchGateEvidenceV1 selectors; re-verified by exact recomputation on every read. | declared |
+| Research gate packet | Fail-closed terminal packet (packet_hash) assembled for closed cases. | declared |
+| Strategy promotion dossier | Lossless spec-§11 strategy_promotion packet recorded atomically at close. | declared |
+| Research case record | Append-only project + governance rows opened at capture (SQLite control plane). | declared |
+| Research contract | Content-addressed rc_<sha256> hypothesis contract with review-event lineage. | declared |
+| Run manifest | Immutable run directory manifest (schema v3): evidence_zone, watermark, snapshot hash, fingerprints; written last as the completion marker. | declared |
+| Source receipt | Content-addressed SourceReceipt for an acquired document, labelled UNTRUSTED_SOURCE. | declared |
 

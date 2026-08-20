@@ -19,10 +19,9 @@ export function ChangeImpact({ graph }: { graph: AtlasGraph }) {
         .sort(),
     [graph],
   )
-  const valid = picked !== null && candidates.includes(picked)
   const impact = useMemo(
-    () => (valid ? computeImpact(graph, picked) : null),
-    [graph, picked, valid],
+    () => (picked !== null ? computeImpact(graph, picked) : null),
+    [graph, picked],
   )
 
   return (
@@ -90,7 +89,7 @@ export function ChangeImpact({ graph }: { graph: AtlasGraph }) {
         </div>
       </div>
       <aside className="panel">
-        {valid ? (
+        {picked !== null ? (
           <NodePanel nodeId={picked} />
         ) : (
           <div className="placeholder">The picked node&apos;s explanation appears here.</div>

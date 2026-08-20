@@ -11,10 +11,12 @@ the review queue rather than being silently promoted.
 
 from __future__ import annotations
 
+import fnmatch
 import re
 from pathlib import Path
 
 from alpha_atlas.core.model import Edge, Evidence, Fragment, Node, Provenance, edge_id
+from alpha_atlas.core.prompt_pack import load_rule_globs
 from alpha_atlas.generators._repo import record_input
 
 EXTRACTOR = "components"
@@ -22,8 +24,9 @@ EXTRACTOR = "components"
 _COMPONENT_GLOBS = ("packages/*", "apps/*", "workers/*")
 
 # ### `alpha_core` (`packages/alpha-core/src/alpha_core/`) — one-liner
-# (alpha-patterns.md writes the same shape as a paragraph, without the ### prefix)
-_HEADING_RE = re.compile(r"^(?:#{2,3} )?`(?P<pkg>\w+)` \(`(?P<dir>[^`]+?)/?`\) — (?P<desc>.+)$")
+# (alpha-patterns.md writes the same shape as a paragraph, without the ### prefix;
+# paragraph-form matches only count when the rule's own paths globs cover the dir)
+_HEADING_RE = re.compile(r"^(?P<h>#{2,3} )?`(?P<pkg>\w+)` \(`(?P<dir>[^`]+?)/?`\) — (?P<desc>.+)$")
 # | `a.py` · `b.py` | responsibility | symbols |
 _ROW_RE = re.compile(r"^\|(?P<modules>[^|]+)\|(?P<resp>[^|]+)\|")
 _MODULE_TOKEN_RE = re.compile(r"`([\w./]+\.py)`")
@@ -64,6 +67,7 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
             )
     nodes: list[Node] = []
     edges: list[Edge] = []
+    rule_globs = load_rule_globs(root)
     for rule_path in sorted((root / ".claude/rules").glob("*.md")):
         rel = f".claude/rules/{rule_path.name}"
         text = record_input(root, rel, inputs).decode("utf-8", errors="replace")
@@ -87,6 +91,13 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
             heading = _HEADING_RE.match(line)
             if heading:
                 component_dir = "/".join(heading.group("dir").split("/")[:2])
+                if not heading.group("h") and not any(
+                    fnmatch.fnmatch(heading.group("dir"), glob)
+                    for glob in rule_globs.get(rule_path.stem, [])
+                ):
+                    # prose merely mentioning a package is not a MODULE MAP heading;
+                    # paragraph-form headings must be scoped by the rule's own globs
+                    continue
                 component = components.get(component_dir)
                 if component is None:
                     current = None

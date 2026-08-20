@@ -14,14 +14,23 @@ def record_input(root: Path, rel: str, inputs: dict[str, str]) -> bytes:
     return raw
 
 
+_SRC_GLOBS = ("packages/*/src/*", "apps/*/src/*", "workers/*/src/*")
+
+
+def source_roots(root: Path) -> dict[str, tuple[str, str]]:
+    """Top-level package name -> (repo-relative src dir, component name)."""
+    roots: dict[str, tuple[str, str]] = {}
+    for glob in _SRC_GLOBS:
+        for path in sorted(root.glob(glob)):
+            if path.is_dir() and (path / "__init__.py").is_file():
+                component = path.relative_to(root).parts[1]
+                roots[path.name] = (str(path.relative_to(root)), component)
+    return roots
+
+
 def module_roots(root: Path) -> dict[str, str]:
     """Top-level importable package name -> repo-relative source directory."""
-    roots: dict[str, str] = {}
-    for pattern in ("packages/*/src/*", "apps/*/src/*"):
-        for path in sorted(root.glob(pattern)):
-            if path.is_dir() and (path / "__init__.py").is_file():
-                roots[path.name] = str(path.relative_to(root))
-    return roots
+    return {pkg: src for pkg, (src, _) in source_roots(root).items()}
 
 
 def module_to_path(root: Path, module: str, roots: dict[str, str]) -> str | None:

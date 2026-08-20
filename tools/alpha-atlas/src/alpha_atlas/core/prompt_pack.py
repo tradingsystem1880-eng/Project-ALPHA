@@ -31,12 +31,34 @@ SECTIONS: tuple[str, ...] = (
     "RELEVANT DOCUMENTATION",
 )
 
-# Conservative pointers mirrored from the harness docs; gate.py is the authority.
+# Conservative pointers mirrored from gate.py matches_quant/matches_risk; gate.py is the authority.
 _QUANT_PREFIXES = ("packages/alpha-validation/src/", "packages/alpha-research/src/")
+_QUANT_NAME_RE = re.compile(
+    r"(dsr|psr|pbo|deflated|bootstrap|reality_check|spa|montecarlo|"
+    r"walkforward|cpcv|multiple_testing|overfitting)"
+)
 _RISK_FILES = tuple(
     f"apps/alpha-cli/src/alpha_cli/{name}.py"
     for name in ("_gauntlet", "_optim", "_seeds", "_identity", "_surrogate", "_synth", "_runner")
 )
+
+
+def _is_quant(path: str) -> bool:
+    if path.startswith(_QUANT_PREFIXES):
+        return path.endswith(".py")
+    if path.startswith("packages/") and "/src/" in path and path.endswith(".py"):
+        return bool(_QUANT_NAME_RE.search(path.rsplit("/", 1)[-1]))
+    return False
+
+
+def _is_risk(path: str) -> bool:
+    if _is_quant(path):
+        return True
+    if path.startswith("packages/alpha-backtest/src/") and path.endswith(".py"):
+        return True
+    return path in _RISK_FILES
+
+
 _PROTECTED_POINTER = (
     "Protected control plane (audited ack per edit; see scripts/gate.py for the "
     "authoritative list): scripts/gate.py, scripts/claude_hooks.py, CLAUDE.md, "
@@ -182,8 +204,8 @@ def build_prompt_pack(
         "@pytest.mark.bias_guard future-poison test"
     )
 
-    quant = any(p.startswith(_QUANT_PREFIXES) for p in anchor_paths)
-    risk = any(p in _RISK_FILES for p in anchor_paths)
+    quant = any(_is_quant(p) for p in anchor_paths)
+    risk = any(_is_risk(p) for p in anchor_paths)
     commands = [
         "- `uv run python scripts/gate.py fast` after edits; `full` before any commit",
     ]

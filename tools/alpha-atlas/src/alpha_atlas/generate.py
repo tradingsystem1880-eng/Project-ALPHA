@@ -29,6 +29,7 @@ from alpha_atlas.core.model import (
     merge_fragments,
     validate_graph,
 )
+from alpha_atlas.core.paths import GRAPH_PATH, INPUTS_PATH, UNKNOWNS_PATH, find_repo_root
 from alpha_atlas.generators import (
     api_routes,
     cli_tree,
@@ -41,10 +42,6 @@ from alpha_atlas.generators import (
     tests_map,
     workflow,
 )
-
-GRAPH_PATH = "architecture/atlas/generated/graph.json"
-INPUTS_PATH = "architecture/atlas/generated/inputs.json"
-UNKNOWNS_PATH = "architecture/atlas/generated/views/unknowns.json"
 
 _FORBIDDEN_INPUT_PREFIXES = ("architecture/atlas/generated/", "docs/atlas/")
 
@@ -101,10 +98,7 @@ def build_outputs(root: Path) -> dict[str, str]:
 
 
 def discover_repo_root() -> Path:
-    root = Path(__file__).resolve().parents[4]
-    if not (root / "CLAUDE.md").is_file():
-        raise AtlasError(f"cannot locate the ALPHA repo root from {__file__}")
-    return root
+    return find_repo_root(Path(__file__).resolve())
 
 
 def _write_atomic(path: Path, text: str) -> None:

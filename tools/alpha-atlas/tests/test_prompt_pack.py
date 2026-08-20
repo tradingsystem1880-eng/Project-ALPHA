@@ -70,6 +70,17 @@ class TestPromptPack:
         pack = build_prompt_pack(graph, ["wf:x"], load_rule_globs(repo_root))
         assert "/review-gate" in pack
 
+    def test_quant_filename_outside_prefixes_triggers_verify_quant(self, repo_root: Path) -> None:
+        # gate.py matches_quant: any packages/*/src *.py whose name matches the quant regex
+        graph = _graph_with("packages/alpha-core/src/alpha_core/dsr_helpers.py")
+        pack = build_prompt_pack(graph, ["wf:x"], load_rule_globs(repo_root))
+        assert "/verify-quant" in pack
+
+    def test_backtest_src_anchor_triggers_review_gate(self, repo_root: Path) -> None:
+        graph = _graph_with("packages/alpha-backtest/src/alpha_backtest/engine.py")
+        pack = build_prompt_pack(graph, ["wf:x"], load_rule_globs(repo_root))
+        assert "/review-gate" in pack
+
     def test_unknown_node_fails_loud(self, real_graph: dict[str, object], repo_root: Path) -> None:
         with pytest.raises(AtlasError, match="wf:nope"):
             build_prompt_pack(real_graph, ["wf:nope"], load_rule_globs(repo_root))

@@ -6,13 +6,13 @@ source/forbidden module lists and any sanctioned ignore_imports exemptions.
 
 from __future__ import annotations
 
-import hashlib
 import re
 import tomllib
 from pathlib import Path
 from typing import Any
 
 from alpha_atlas.core.model import AtlasError, Evidence, Fragment, Node, Provenance
+from alpha_atlas.generators._repo import record_input
 
 EXTRACTOR = "importlinter"
 
@@ -31,7 +31,8 @@ def _as_list(value: Any) -> list[str]:
 
 def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
     pyproject = root / "pyproject.toml"
-    raw = pyproject.read_bytes()
+    inputs: dict[str, str] = {}
+    raw = record_input(root, "pyproject.toml", inputs)
     data = tomllib.loads(raw.decode("utf-8"))
     try:
         contracts = data["tool"]["importlinter"]["contracts"]
@@ -68,5 +69,4 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
                 meta=meta,
             )
         )
-    inputs = {"pyproject.toml": hashlib.sha256(raw).hexdigest()}
     return Fragment(nodes=nodes, edges=[]), inputs

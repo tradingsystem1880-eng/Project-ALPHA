@@ -7,6 +7,7 @@ nodes the graph does not contain, or a hand-edited generated file.
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ _DOC_NAMES = (
 )
 
 
+@functools.cache
 def _graph() -> dict[str, Any]:
     payload: dict[str, Any] = json.loads((GENERATED / "graph.json").read_text(encoding="utf-8"))
     return payload

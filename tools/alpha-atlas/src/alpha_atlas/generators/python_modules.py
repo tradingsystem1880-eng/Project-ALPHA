@@ -13,22 +13,9 @@ import ast
 from pathlib import Path
 
 from alpha_atlas.core.model import Edge, Evidence, Fragment, Node, Provenance, edge_id
-from alpha_atlas.generators._repo import record_input
+from alpha_atlas.generators._repo import record_input, source_roots
 
 EXTRACTOR = "python_modules"
-
-_SRC_GLOBS = ("packages/*/src/*", "apps/*/src/*", "workers/*/src/*")
-
-
-def source_roots(root: Path) -> dict[str, tuple[str, str]]:
-    """Top-level package name -> (repo-relative src dir, component name)."""
-    roots: dict[str, tuple[str, str]] = {}
-    for glob in _SRC_GLOBS:
-        for path in sorted(root.glob(glob)):
-            if path.is_dir() and (path / "__init__.py").is_file():
-                component = path.relative_to(root).parts[1]
-                roots[path.name] = (str(path.relative_to(root)), component)
-    return roots
 
 
 def _dotted(pkg: str, rel_to_src: Path) -> str:

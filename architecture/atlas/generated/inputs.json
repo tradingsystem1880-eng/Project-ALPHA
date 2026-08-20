@@ -511,6 +511,7 @@
     "tests/oracles/test_metamorphic_splits.py": "ebb1648e8e716a8d5dbcdcfecd2c88ef14aa4e2f2d347f9d45e16c5e92607f87",
     "tests/oracles/test_pnl_rederivation.py": "e2dc5afbd76c7092a7568770d2b50e955b67a6a4ff105c0f69a156adf30f6c5b",
     "tests/unit/test_actions_store.py": "75235556c56fc21520dced0a066c3208d3a647f5f12ad85182b295ce242e7464",
+    "tests/unit/test_atlas_consistency.py": "248d067813a5798ab92d82ce144185cc8c00e6759609873c784193ac19b5b963",
     "tests/unit/test_atomic_publication.py": "fb7648824ec525e858048f2172b6f2ba378f3ff61eb13e6faa4cc90bae7b91cd",
     "tests/unit/test_backtest_deps.py": "fd6ea3e62ebb8dc20c03d057ccca3d7f370d187c31a8636f9622d3b6b6f78598",
     "tests/unit/test_bar_invariants.py": "2a37c7303078149434e7db7d799e94a8523ee640ccee458bb3895b0051e405a1",

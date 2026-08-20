@@ -20,10 +20,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from alpha_atlas.core.model import AtlasError
+from alpha_atlas.core.paths import GRAPH_PATH, INPUTS_PATH, find_repo_root
 from alpha_atlas.core.prompt_pack import build_prompt_pack, load_rule_globs
-
-GRAPH_REL = "architecture/atlas/generated/graph.json"
-INPUTS_REL = "architecture/atlas/generated/inputs.json"
 
 EXCERPT_MAX_LINES = 400
 
@@ -32,23 +30,28 @@ _DENY_BASENAME_PREFIXES = (".env",)
 _DENY_SUBSTRINGS = (".sqlite3",)
 
 
-def _default_root() -> Path:
-    root = Path(__file__).resolve().parents[5]
-    if not (root / "CLAUDE.md").is_file():
-        raise RuntimeError(f"cannot locate the ALPHA repo root from {__file__}")
-    return root
+class _GraphCache:
+    """Parse the 1.6 MB graph once per on-disk version, not once per request."""
 
+    def __init__(self, root: Path) -> None:
+        self._path = root / GRAPH_PATH
+        self._key: tuple[int, int] | None = None
+        self._payload: dict[str, Any] | None = None
 
-def _load_graph(root: Path) -> dict[str, Any]:
-    graph_path = root / GRAPH_REL
-    if not graph_path.is_file():
-        raise HTTPException(
-            status_code=503,
-            detail="atlas graph not generated; run: "
-            "cd tools/alpha-atlas && uv run python -m alpha_atlas.generate",
-        )
-    payload: dict[str, Any] = json.loads(graph_path.read_text(encoding="utf-8"))
-    return payload
+    def load(self) -> dict[str, Any]:
+        try:
+            stat = self._path.stat()
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="atlas graph not generated; run: "
+                "cd tools/alpha-atlas && uv run python -m alpha_atlas.generate",
+            ) from exc
+        key = (stat.st_mtime_ns, stat.st_size)
+        if self._payload is None or key != self._key:
+            self._payload = json.loads(self._path.read_text(encoding="utf-8"))
+            self._key = key
+        return self._payload
 
 
 def _jailed_path(root: Path, rel: str) -> Path:
@@ -72,19 +75,33 @@ def _jailed_path(root: Path, rel: str) -> Path:
 
 
 def create_app(root: Path | None = None) -> FastAPI:
-    repo_root = root if root is not None else _default_root()
+    repo_root = root if root is not None else find_repo_root(Path(__file__).resolve())
     app = FastAPI(title="alpha-atlas", docs_url=None, redoc_url=None)
+    graph_cache = _GraphCache(repo_root)
+    # rel -> (mtime_ns, size, digest): re-hash an input only when its stat changed.
+    digest_cache: dict[str, tuple[int, int, str]] = {}
+
+    def _load_graph(_root: Path) -> dict[str, Any]:
+        return graph_cache.load()
+
+    def _current_digest(rel: str) -> str | None:
+        path = repo_root / rel
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            return None
+        cached = digest_cache.get(rel)
+        if cached is not None and cached[0] == stat.st_mtime_ns and cached[1] == stat.st_size:
+            return cached[2]
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        digest_cache[rel] = (stat.st_mtime_ns, stat.st_size, digest)
+        return digest
 
     @app.get("/api/meta")
     def meta() -> dict[str, Any]:
         graph = _load_graph(repo_root)
-        inputs = json.loads((repo_root / INPUTS_REL).read_text(encoding="utf-8"))
-        stale = False
-        for rel, digest in inputs["files"].items():
-            path = repo_root / rel
-            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-                stale = True
-                break
+        inputs = json.loads((repo_root / INPUTS_PATH).read_text(encoding="utf-8"))
+        stale = any(_current_digest(rel) != digest for rel, digest in inputs["files"].items())
         return {
             "schema_version": graph["schema_version"],
             "inputs_hash": graph["inputs_hash"],
@@ -121,8 +138,8 @@ def create_app(root: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=415, detail="binary file")
         lines = raw.decode("utf-8", errors="replace").splitlines()
         first = max(start, 1)
-        last = min(end if end is not None else first + EXCERPT_MAX_LINES - 1, len(lines))
-        last = min(last, first + EXCERPT_MAX_LINES - 1)
+        wanted = end if end is not None else len(lines)
+        last = min(wanted, len(lines), first + EXCERPT_MAX_LINES - 1)
         return {
             "path": path,
             "start": first,

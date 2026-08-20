@@ -8,7 +8,7 @@ export interface LifecycleSelection {
   edges: AtlasEdge[]
 }
 
-const ENTITY_KINDS = new Set([
+export const ENTITY_KINDS = new Set([
   'research_case',
   'hypothesis',
   'dataset',
