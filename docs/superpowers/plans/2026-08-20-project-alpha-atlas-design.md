@@ -131,7 +131,7 @@
       "expected": "all acceptance criteria met; zero protected edits; MCP pin and CLI surface untouched",
       "rollback": "git checkout -- tools/alpha-atlas",
       "files": ["tools/alpha-atlas/README.md"],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": ["none"],
@@ -479,6 +479,21 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   fixtures (13 total, all passing); tsc+vite build clean; the served bundle
   curl-verified. In-browser click-through remains UNVERIFIED in the
   authoring session.
+
+- **S11 / Milestone B complete — acceptance walkthrough (2026-08-20)**:
+  README shipped (the stale banner already existed from S3). Verified
+  against the live server: two full generations byte-identical across all
+  8 outputs; D1 node projection returns evidence `tested` with anchor
+  `research_d1.py:1078`, ADR-0025 as defining doc, and 6 validating tests;
+  a multi-node prompt pack (D1+D2) renders all 12 sections. Level
+  distribution: 145 declared / 631 implemented / 237 connected / 173
+  tested / 34 unknown over 1220 nodes / 2859 edges; the Unknowns queue and
+  needs-re-verification lists render in docs/atlas/system-map.md. All five
+  UI views live behind hash navigation. Remaining UNVERIFIED: in-browser
+  click-through (no browser automation in the authoring sessions) — the
+  owner walkthrough at http://127.0.0.1:8803 is the outstanding manual
+  acceptance step. Zero protected-file edits across S0–S11; the MCP
+  62-tool pin, CLI surface, and all governance untouched.
 
 ## 9b. Out-of-plan edits (justified)
 
