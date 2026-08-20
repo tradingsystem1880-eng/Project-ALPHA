@@ -54,7 +54,9 @@ _FRONTEND_PREFIX = "apps/alpha-web/frontend/src/"
 STOP_BLOCK_BUDGET = 3
 SUBAGENT_BLOCK_BUDGET = 2
 CONFIG_ACK_WINDOW_SECONDS = 600
-_SCRATCH_PREFIXES = ("/private/tmp/claude-", "/tmp/claude-", "/tmp/")
+# Session scratchpads only — never bare "/tmp/": on Linux that prefix would allow a
+# recursive rm of anything under /tmp (pytest tmp dirs included).
+_SCRATCH_PREFIXES = ("/private/tmp/claude-", "/tmp/claude-")
 
 # JSON-only subagents and the harness_models schema their last message must satisfy.
 JSON_AGENT_SCHEMAS = {

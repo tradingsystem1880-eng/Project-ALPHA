@@ -401,6 +401,7 @@ class TestDestructiveVerbs:
             "git push --force origin main",
             "rm -rf packages",
             "rm -r /Users/someone/project",
+            "rm -rf /tmp/pytest-of-ci/repo",
         ],
     )
     def test_blocked(self, repo: Path, command: str) -> None:
@@ -409,6 +410,16 @@ class TestDestructiveVerbs:
         )
         assert code == 2, message
         assert "BLOCKED" in message
+
+    @pytest.mark.parametrize(
+        "command",
+        ["rm -rf /tmp/claude-scratch/x", "rm -rf /private/tmp/claude-501/session/scratch"],
+    )
+    def test_recursive_rm_inside_the_scratchpad_is_allowed(self, repo: Path, command: str) -> None:
+        code, _ = claude_hooks.hook_pre_bash_guard(
+            _payload(tool_input={"command": command}, cwd=str(repo)), repo
+        )
+        assert code == 0
 
     @pytest.mark.parametrize(
         "command",
