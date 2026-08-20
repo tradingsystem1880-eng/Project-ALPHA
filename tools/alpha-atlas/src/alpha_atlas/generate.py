@@ -29,9 +29,11 @@ from alpha_atlas.core.model import (
     validate_graph,
 )
 from alpha_atlas.generators import (
+    api_routes,
     cli_tree,
     components,
     docs_scan,
+    frontend_scan,
     importlinter,
     mcp_tools,
     python_modules,
@@ -68,6 +70,8 @@ def build_outputs(root: Path) -> dict[str, str]:
     modules_fragment = add(python_modules.extract(root))
     cli_fragment = add(cli_tree.extract(root))
     add(mcp_tools.extract(root, cli_ids={n.id for n in cli_fragment.nodes}))
+    add(api_routes.extract(root))
+    add(frontend_scan.extract(root))
     workflow_fragment = add(workflow.extract(root))
     module_ids = {n.id for n in modules_fragment.nodes}
     add(tests_map.extract(root, workflow_fragment=workflow_fragment, module_ids=module_ids))

@@ -94,6 +94,13 @@ def test_cross_layer_edge_promotes_implemented_to_connected() -> None:
     assert levels["module:x.y"] == "connected"
 
 
+def test_undocumented_code_module_with_cross_layer_edge_is_connected() -> None:
+    mod = _node("module:x.y", "module", "unknown", code=True)
+    cli = _node("cli:alpha x", "cli_command", "implemented")
+    levels = _resolved([mod, cli], [_edge(cli.id, mod.id, "calls")])
+    assert levels["module:x.y"] == "connected"
+
+
 def test_resolver_never_raises_to_observed() -> None:
     wf = _node("wf:x", "workflow_node", "declared", verified_anchors=[{"path": "a.py"}])
     test = _node("test:tests/unit/test_x.py", "test", "implemented")

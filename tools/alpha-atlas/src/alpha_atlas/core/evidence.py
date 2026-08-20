@@ -55,7 +55,10 @@ def resolve_levels(graph: Graph) -> None:
     for node in graph.nodes.values():
         if node.meta.get("verified_anchors") or (_has_code(node) and node.id in documented):
             _raise_to(node, _IMPLEMENTED)
-        if EVIDENCE_LEVELS.index(node.evidence.level) >= _IMPLEMENTED and node.id in cross_layer:
+        if node.id in cross_layer and (
+            _has_code(node) or EVIDENCE_LEVELS.index(node.evidence.level) >= _IMPLEMENTED
+        ):
+            # code + a code-extracted cross-layer edge is connectedness, documented or not
             _raise_to(node, _CONNECTED)
         if node.id in validated and (
             _has_code(node) or EVIDENCE_LEVELS.index(node.evidence.level) >= _IMPLEMENTED
