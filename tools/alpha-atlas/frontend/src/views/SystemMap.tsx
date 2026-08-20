@@ -87,9 +87,10 @@ export function SystemMap({ graph }: { graph: AtlasGraph }) {
           <NodePanel nodeId={selected} />
         ) : (
           <div className="placeholder">
-            Components with aggregated import arrows. Click a component to expand its
-            modules (one at a time); click again to collapse. Unknown-count badges are
-            the review queue.
+            Each box is a package, app, or worker; arrows summarize which imports which.
+            Click a box to swap in its modules (one component at a time — click again to
+            collapse). A <strong>“n unknown”</strong> badge means that many things inside
+            it have no documentation, test, or cross-layer link yet — the review queue.
           </div>
         )}
       </aside>

@@ -21,7 +21,12 @@ function asList(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : []
 }
 
-export function NodePanel({ nodeId }: { nodeId: string }) {
+export interface StepNav {
+  steps: Array<{ id: string; label: string }>
+  onSelect: (id: string) => void
+}
+
+export function NodePanel({ nodeId, nav }: { nodeId: string; nav?: StepNav }) {
   const [detail, setDetail] = useState<NodeDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [excerpt, setExcerpt] = useState<Excerpt | null>(null)
@@ -45,6 +50,7 @@ export function NodePanel({ nodeId }: { nodeId: string }) {
 
   const { node, edges, neighbors } = detail
   const meta = node.meta ?? {}
+  const stepIndex = nav ? nav.steps.findIndex((s) => s.id === node.id) : -1
   const anchors = (meta['verified_anchors'] as Anchor[] | undefined) ?? []
   const docs = edges.filter((e) => e.type === 'defines' && e.target === node.id)
   const tests = edges.filter((e) => e.type === 'validates' && e.target === node.id)
@@ -95,7 +101,30 @@ export function NodePanel({ nodeId }: { nodeId: string }) {
         {meta['needs_reverification'] === true && (
           <span className="warn"> needs re-verification</span>
         )}
+        <p className="level-hint">{levelHint(node.evidence.level)}</p>
       </div>
+
+      {stepIndex >= 0 && nav && (
+        <div className="step-nav">
+          <button
+            className="cta secondary"
+            disabled={stepIndex === 0}
+            onClick={() => nav.onSelect(nav.steps[stepIndex - 1].id)}
+          >
+            ← Previous
+          </button>
+          <button
+            className="cta secondary"
+            disabled={stepIndex === nav.steps.length - 1}
+            onClick={() => nav.onSelect(nav.steps[stepIndex + 1].id)}
+          >
+            Next →
+          </button>
+          <span className="count">
+            step {stepIndex + 1} of {nav.steps.length}
+          </span>
+        </div>
+      )}
 
       {typeof meta['purpose'] === 'string' && (
         <>

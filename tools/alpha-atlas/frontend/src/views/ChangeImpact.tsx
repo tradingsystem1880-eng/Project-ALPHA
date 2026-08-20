@@ -53,8 +53,9 @@ export function ChangeImpact({ graph }: { graph: AtlasGraph }) {
         <div className="impact-body">
           {!impact && (
             <div className="placeholder">
-              Type or pick a node id to see everything that transitively depends on it
-              (reverse depends_on / calls / serves) and which tests would exercise the
+              “If I change this, what breaks?” — type or pick a node id above (try{' '}
+              <strong>module:alpha_data.pit</strong>) to list everything that transitively
+              builds on it, nearest first, plus the test files that would exercise the
               change.
             </div>
           )}

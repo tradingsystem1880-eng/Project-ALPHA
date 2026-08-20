@@ -30,8 +30,55 @@ body {
 
 .app {
   display: grid;
-  grid-template-rows: 44px 1fr;
+  grid-template-rows: 44px auto 1fr;
   height: 100%;
+}
+
+.subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.counts {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.legend-title {
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-size: 10.5px;
+}
+
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: help;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  display: inline-block;
 }
 
 .topbar {
@@ -151,8 +198,27 @@ body {
 }
 
 .panel h2 {
-  font-size: 15px;
+  font-size: 16px;
   margin: 0 0 2px;
+}
+
+.level-hint {
+  color: var(--muted);
+  font-size: 11.5px;
+  margin: 4px 0 0;
+}
+
+.step-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.step-nav .count {
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-left: auto;
 }
 
 .panel h3 {
@@ -224,6 +290,18 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.cta.secondary {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.cta:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .meta-footer {

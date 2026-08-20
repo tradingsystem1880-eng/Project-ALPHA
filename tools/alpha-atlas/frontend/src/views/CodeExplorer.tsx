@@ -96,8 +96,10 @@ export function CodeExplorer({ graph }: { graph: AtlasGraph }) {
           <NodePanel nodeId={selected} />
         ) : (
           <div className="placeholder">
-            One component&apos;s modules and internal imports. Pick a component above;
-            click a module for its evidence, tests, and prompt pack.
+            Pick a component in the dropdown above to see its modules and how they import
+            each other. <strong>✓n</strong> on a module = n test files exercise it; the
+            bar also lists how many imports leave this component. Click any module for
+            its evidence, tests, and AI-context prompt.
           </div>
         )}
       </aside>

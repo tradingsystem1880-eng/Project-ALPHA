@@ -495,6 +495,19 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   acceptance step. Zero protected-file edits across S0–S11; the MCP
   62-tool pin, CLI surface, and all governance untouched.
 
+- **S12 — canvas-inspired UI polish (owner request 2026-08-20)**: after
+  Milestone B closed, the owner asked for slight cosmetic/usability changes to
+  the Atlas dash, referencing a Cursor canvas ("ALPHA map") as inspiration
+  only, backend explicitly untouched. Frontend-only: per-view how-to-read
+  hints + node/edge counts in a new subbar; a five-chip evidence legend
+  (hover = level meaning); numbered lifecycle step labels; NodePanel gains a
+  visible level-meaning line and Previous/Next step navigation (optional prop,
+  wired only by the lifecycle view); friendlier empty-state guidance in all
+  five views; small CSS additions on the existing tokens. Zero backend,
+  generator, model, or generated-output changes; all 13 vitest tests pass
+  unchanged; tsc+vite build clean; served bundle curl-verified. In-browser
+  look UNVERIFIED in the authoring session.
+
 ## 9b. Out-of-plan edits (justified)
 
 - `tests/integration/test_crypto_coverage_completion.py` (commit 6437909): the

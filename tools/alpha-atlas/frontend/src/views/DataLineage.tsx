@@ -90,10 +90,11 @@ export function DataLineage({ graph }: { graph: AtlasGraph }) {
           <NodePanel nodeId={selected} />
         ) : (
           <div className="placeholder">
-            The research-entity chain (spec §13): Research Case → Hypothesis → Dataset →
-            Experiment → Decision → Strategy Version, with the artifacts each step
-            produces. Type-level in v1 — instance browsing is live state, not
-            repository truth.
+            How research knowledge flows (spec §13): a <strong>Research Case</strong>{' '}
+            becomes a Hypothesis, meets a Dataset in an Experiment, reaches an Owner
+            Decision, and only then a Strategy Version. Rounded boxes are the artifacts
+            each step produces. Click anything for its definition and anchors. (Types,
+            not live cases — instance browsing is runtime state, not repository truth.)
           </div>
         )}
       </aside>

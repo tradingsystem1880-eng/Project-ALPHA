@@ -18,6 +18,14 @@ const EDGE_STYLE: Record<string, { stroke: string; dash?: string }> = {
 export function ResearchLifecycle({ graph }: { graph: AtlasGraph }) {
   const [selected, setSelected] = useState<string | null>(null)
 
+  const steps = useMemo(
+    () =>
+      selectLifecycle(graph)
+        .nodes.filter((n) => n.kind === 'workflow_node')
+        .map((n) => ({ id: n.id, label: n.label })),
+    [graph],
+  )
+
   const { nodes, edges } = useMemo(() => {
     const selection = selectLifecycle(graph)
     const layoutEdges = [
@@ -36,10 +44,11 @@ export function ResearchLifecycle({ graph }: { graph: AtlasGraph }) {
       const pos = positions.get(n.id)!
       const color = levelColor(n.evidence.level)
       const isWorkflow = n.kind === 'workflow_node'
+      const order = n.meta?.['order']
       return {
         id: n.id,
         position: { x: pos.x, y: pos.y },
-        data: { label: n.label },
+        data: { label: isWorkflow && typeof order === 'number' ? `${order}. ${n.label}` : n.label },
         style: {
           background: isWorkflow ? '#10151f' : '#0b0f16',
           color: '#dbe4f2',
@@ -93,11 +102,13 @@ export function ResearchLifecycle({ graph }: { graph: AtlasGraph }) {
       </div>
       <aside className="panel">
         {selected ? (
-          <NodePanel nodeId={selected} />
+          <NodePanel nodeId={selected} nav={{ steps, onSelect: setSelected }} />
         ) : (
           <div className="placeholder">
-            Select a lifecycle step to see what it is, which files implement it, which
-            documents define it, and which tests verify it.
+            Start at <strong>1. Idea Capture</strong> and walk the numbered steps to{' '}
+            <strong>10. Strategy Promotion</strong>. Clicking a step shows what it is, the
+            files that implement it (with excerpts), the ADRs that define it, the tests
+            that verify it — and a Generate AI Context button for a ready-to-paste prompt.
           </div>
         )}
       </aside>

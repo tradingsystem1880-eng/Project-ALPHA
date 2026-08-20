@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getJSON } from './api'
+import { LEVELS, levelColor, levelHint } from './model/evidence'
 import type { AtlasGraph } from './model/types'
 import { ChangeImpact } from './views/ChangeImpact'
 import { CodeExplorer } from './views/CodeExplorer'
@@ -15,16 +16,50 @@ interface Meta {
 }
 
 const VIEWS = [
-  { hash: 'lifecycle', label: 'Research Lifecycle' },
-  { hash: 'system', label: 'System Map' },
-  { hash: 'code', label: 'Code Explorer' },
-  { hash: 'lineage', label: 'Data Lineage' },
-  { hash: 'impact', label: 'Change Impact' },
+  {
+    hash: 'lifecycle',
+    label: 'Research Lifecycle',
+    hint: 'Follow the numbered steps Idea → Promotion; click a step for its files, docs, tests, and AI context.',
+  },
+  {
+    hash: 'system',
+    label: 'System Map',
+    hint: 'Components with aggregated import arrows; click one to expand its modules, click again to collapse.',
+  },
+  {
+    hash: 'code',
+    label: 'Code Explorer',
+    hint: 'One component’s internal module graph; ✓n = validating test files.',
+  },
+  {
+    hash: 'lineage',
+    label: 'Data Lineage',
+    hint: 'The research-entity chain and the artifacts each step produces.',
+  },
+  {
+    hash: 'impact',
+    label: 'Change Impact',
+    hint: 'Pick a node to see everything that depends on it and which tests exercise a change.',
+  },
 ] as const
 
 function currentView(): string {
   const hash = window.location.hash.replace('#', '')
   return VIEWS.some((v) => v.hash === hash) ? hash : 'lifecycle'
+}
+
+function EvidenceLegend() {
+  return (
+    <div className="legend">
+      <span className="legend-title">evidence:</span>
+      {LEVELS.filter((level) => level !== 'observed').map((level) => (
+        <span key={level} className="legend-chip" title={levelHint(level)}>
+          <span className="legend-dot" style={{ background: levelColor(level) }} />
+          {level}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export default function App() {
@@ -41,6 +76,8 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
+  const active = VIEWS.find((v) => v.hash === view) ?? VIEWS[0]
+
   return (
     <div className="app">
       <header className="topbar">
@@ -52,12 +89,21 @@ export default function App() {
             </a>
           ))}
         </nav>
+        {meta && !meta.stale && (
+          <span className="counts">
+            {meta.node_count.toLocaleString()} nodes · {meta.edge_count.toLocaleString()} edges
+          </span>
+        )}
         {meta?.stale && (
           <span className="stale">
             graph is stale — regenerate: uv run python -m alpha_atlas.generate
           </span>
         )}
       </header>
+      <div className="subbar">
+        <span className="hint">{active.hint}</span>
+        <EvidenceLegend />
+      </div>
       <div className="main">
         {error && <div className="placeholder">Failed to load graph: {error}</div>}
         {!error && !graph && <div className="placeholder">Loading graph…</div>}
