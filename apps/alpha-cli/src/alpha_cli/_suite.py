@@ -26,6 +26,10 @@ from typing import Final, Literal, cast
 from alpha_cli._schemas import specs_for
 from alpha_cli.control_store import AttemptStatus, ControlStore, StageState
 from alpha_cli.run_store import RESEARCH_GATE_OVERRIDE_WATERMARK
+from alpha_cli.strategy_candidate import (
+    registered_hedged_basis_candidate,
+    validate_hedged_basis_definition,
+)
 from alpha_core import DataError
 
 type SuiteAction = Literal[
@@ -571,6 +575,122 @@ def _grid_steps(
     return step, combinations
 
 
+_CANDIDATE_SIMPLE_ACTIONS: Final[dict[SuiteAction, tuple[tuple[str, str, str], ...]]] = {
+    "baseline": (
+        ("baseline", "Sandbox two-leg baseline", "two_leg_return_replay_no_order_authority"),
+    ),
+    "inner_oos": (
+        ("inner_oos", "Ordered inner OOS event groups", "ordered_last_20_percent_event_groups"),
+    ),
+    "three_null_families": (
+        (
+            "null_bootstrap",
+            "Sign-randomization headline null",
+            "candidate_return_stream_null_no_majority_vote",
+        ),
+        (
+            "null_student_t",
+            "Student-t sensitivity null",
+            "candidate_return_stream_null_no_majority_vote",
+        ),
+        (
+            "null_garch",
+            "Conditional-volatility sensitivity null",
+            "candidate_return_stream_null_no_majority_vote",
+        ),
+    ),
+    "optimize_grid": (
+        (
+            "optimize_cost_sensitivity",
+            "Frozen cost sensitivity",
+            "fixed_20_40_60_bps_no_adaptive_selection",
+        ),
+    ),
+    "portfolio_cross_asset": (
+        (
+            "portfolio_concentration",
+            "Two-leg concentration diagnostic",
+            "single_candidate_two_venue_concentration",
+        ),
+        (
+            "cross_asset_scope",
+            "Registered cross-asset scope check",
+            "completed_not_applicable_no_invented_asset",
+        ),
+    ),
+    "fixed_stress": (
+        (
+            "fixed_stress",
+            "Fixed two-leg stress scenarios",
+            "scenario_sensitivity_separate_from_nulls",
+        ),
+    ),
+    "qlib": (
+        (
+            "qlib_fixture",
+            "Qlib interface contract fixture",
+            "fixture_only_no_external_model_or_promotion_authority",
+        ),
+    ),
+    "kronos": (
+        (
+            "kronos_forecast_fixture",
+            "Disclosed fake forecast fixture",
+            "fake_model_fixture_not_market_oracle",
+        ),
+        (
+            "kronos_eval_fixture",
+            "Disclosed fake rolling evaluation",
+            "fake_model_fixture_not_market_oracle",
+        ),
+    ),
+}
+
+_CANDIDATE_SIMPLE_GOVERNANCE: Final[dict[SuiteAction, dict[str, object]]] = {
+    "baseline": {
+        "deployment_scope": "sandbox_only",
+        "execution_model": "two_leg_return_replay",
+        "places_orders": False,
+        "paper_eligible": False,
+    },
+    "three_null_families": {"aggregation": "no_majority_vote"},
+    "optimize_grid": {"optimization_authority": "registered_40_bps_cost_remains_immutable"},
+    "fixed_stress": {"separate_from_nulls": True},
+    "qlib": {"model_role": "contract_fixture_not_predictive_evidence"},
+    "kronos": {"kronos_role": "disclosed_fake_fixture_not_market_oracle"},
+}
+
+
+def _candidate_step(
+    *,
+    snapshot: str,
+    research_contract_id: str,
+    analysis: str,
+    label: str,
+    evidence_role: str,
+    cutoff: str,
+    public_cutoff: str,
+) -> SuiteStep:
+    argv = (
+        "strategy-candidate",
+        "run",
+        snapshot,
+        "--research-contract-id",
+        research_contract_id,
+        "--analysis",
+        analysis,
+        "--as-of",
+        cutoff,
+    )
+    return SuiteStep(
+        label,
+        argv,
+        _cutoff_preview(argv, cutoff=cutoff, marker=public_cutoff),
+        evidence_role,
+        ((cutoff, public_cutoff),),
+    )
+
+
 def build_suite_plan(
     store: ControlStore,
     project_id: str,
@@ -635,8 +755,17 @@ def build_suite_plan(
     primary = universe[0]
     snapshot = _safe_id(experiment.get("snapshot_id"), "snapshot_id")
     strategy = str(version.get("strategy_name"))
-    specs_for(strategy)  # fail closed before building any argv
     definition = _object(version.get("definition"), "strategy definition")
+    hedged_basis = strategy == registered_hedged_basis_candidate().strategy_name
+    if hedged_basis:
+        validate_hedged_basis_definition(definition)
+        research_contract_id = version.get("research_contract_id")
+        if not isinstance(research_contract_id, str):
+            blockers.append("hedged basis candidate requires its promoted research contract")
+            research_contract_id = "<promoted-research-contract-required>"
+    else:
+        specs_for(strategy)  # fail closed before building any argv
+        research_contract_id = None
     parameter_space = _object(version.get("parameter_space"), "parameter space")
     split = _object(experiment.get("split_policy"), "split policy")
     costs = _object(experiment.get("costs"), "costs")
@@ -676,13 +805,17 @@ def build_suite_plan(
     # spec §15 / ADR-0026: an owner override is the only unlinked path through a governed gate;
     # every strategy run launched under it carries the permanent EXPLORATORY watermark.
     gate_overridden = project.get("research_gate_state") == "overridden"
-    common = _common(
-        symbol=primary,
-        strategy=strategy,
-        snapshot=snapshot,
-        costs=costs,
-        definition=definition,
-        gate_overridden=gate_overridden,
+    common = (
+        []
+        if hedged_basis
+        else _common(
+            symbol=primary,
+            strategy=strategy,
+            snapshot=snapshot,
+            costs=costs,
+            definition=definition,
+            gate_overridden=gate_overridden,
+        )
     )
     cutoff_value = research_cutoff or "<sealed-research-cutoff-required>"
     public_cutoff = cutoff_marker or "<sealed-research-cutoff-required>"
@@ -710,7 +843,181 @@ def build_suite_plan(
             }
         )
 
-    if action == "baseline":
+    args: tuple[str, ...]
+    preview: tuple[str, ...]
+    if hedged_basis and action in _CANDIDATE_SIMPLE_ACTIONS:
+        specifications = _CANDIDATE_SIMPLE_ACTIONS[action]
+        steps.extend(
+            _candidate_step(
+                snapshot=snapshot,
+                research_contract_id=str(research_contract_id),
+                analysis=analysis,
+                label=label,
+                evidence_role=evidence_role,
+                cutoff=cutoff_value,
+                public_cutoff=public_cutoff,
+            )
+            for analysis, label, evidence_role in specifications
+        )
+        governance.update(_CANDIDATE_SIMPLE_GOVERNANCE.get(action, {}))
+        workload = _workload(
+            action,
+            commands=len(specifications),
+            canonical_runs=len(specifications),
+            **({"grid_configurations": 3} if action == "optimize_grid" else {}),
+        )
+    elif hedged_basis and action == "monte_carlo":
+        source = _latest_run_for_command(
+            project,
+            experiment_id,
+            ("robustness",),
+            data_dir=data_dir,
+            commands=frozenset({"candidate_null_bootstrap"}),
+        )
+        source_run = None if source is None else source[0]
+        if source_run is None:
+            blockers.append("candidate Monte Carlo requires the completed headline null run")
+            source_run = "<required-validation-run>"
+        for analysis, label, role in (
+            (
+                "monte_carlo_classical",
+                "Classical event-return Monte Carlo",
+                "iid_regime_student_t_no_majority_vote",
+            ),
+            (
+                "monte_carlo_kronos_fixture",
+                "Disclosed fake model-family fixture",
+                "fake_ar1_fixture_not_observed_evidence",
+            ),
+        ):
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                analysis,
+                "--source-run-id",
+                source_run,
+                "--as-of",
+                cutoff_value,
+            )
+            steps.append(
+                SuiteStep(
+                    label,
+                    args,
+                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
+                    role,
+                    ((cutoff_value, public_cutoff),),
+                )
+            )
+        governance.update(
+            {
+                "aggregation": "no_majority_vote",
+                "kronos_role": "disclosed_fake_fixture_not_market_oracle",
+            }
+        )
+        workload = _workload(action, commands=2, canonical_runs=2)
+    elif hedged_basis and action == "holdout_reveal":
+        if holdout is None:
+            blockers.append("final holdout must be sealed before owner reveal")
+        elif holdout.get("revealed_at") is not None and not resume_reveal:
+            blockers.append("final holdout was already revealed")
+        elif holdout.get("contaminated_at") is not None:
+            blockers.append("final holdout is contaminated for this lineage")
+        sealed_spec = store.get_holdout_spec(project_id, experiment_id)
+        if sealed_spec is None:
+            blockers.append("final holdout must include a sealed evaluation window")
+        steps.append(
+            SuiteStep(
+                "One-shot final holdout reveal",
+                ("__holdout__",),
+                (
+                    "project",
+                    "reveal-holdout",
+                    project_id,
+                    experiment_id,
+                    "--actor",
+                    "<owner>",
+                    "--reason",
+                    "<owner-confirmed>",
+                ),
+                "owner_only_irreversible_audit",
+            )
+        )
+        if sealed_spec is not None:
+            spec_hash = str(sealed_spec["spec_hash"])
+            args = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                "holdout",
+                "--holdout-start",
+                str(sealed_spec["start_date"]),
+                "--holdout-end",
+                str(sealed_spec["end_date"]),
+                "--holdout-spec-hash",
+                spec_hash,
+            )
+            preview = (
+                "strategy-candidate",
+                "run",
+                snapshot,
+                "--research-contract-id",
+                str(research_contract_id),
+                "--analysis",
+                "holdout",
+                "--holdout-window",
+                f"<sealed:{spec_hash}>",
+            )
+            steps.append(
+                SuiteStep(
+                    "Locked candidate holdout evaluation",
+                    args,
+                    preview,
+                    "one_shot_fixed_candidate_holdout",
+                )
+            )
+        governance.update(
+            {
+                "owner_only": True,
+                "available_to_mcp": False,
+                "one_shot": True,
+                "resume_same_job_after_interruption": resume_reveal,
+                "sealed_window_redacted_until_reveal": True,
+                "deployment_scope": "sandbox_only",
+                "places_orders": False,
+            }
+        )
+        workload = _workload(action, commands=2, canonical_runs=1)
+    elif hedged_basis and action == "paper_preflight":
+        args = ("strategy-candidate", "paper-preflight", "--json")
+        steps.append(
+            SuiteStep(
+                "Unsupported multi-venue paper boundary",
+                args,
+                args,
+                "blocked_as_designed_no_paper_credit",
+            )
+        )
+        governance.update(
+            {
+                "sandbox": True,
+                "places_orders": False,
+                "owner_only_launch": False,
+                "preflight_outcome": "UNSUPPORTED_MULTI_VENUE_PAPER",
+                "paper_readiness_credit": False,
+            }
+        )
+        workload = _workload(action, commands=1, canonical_runs=0)
+    elif hedged_basis:
+        blockers.append(f"hedged basis candidate analysis {action!r} is not implemented")
+        workload = _workload(action, commands=0, canonical_runs=0)
+    elif action == "baseline":
         args = ("backtest", "run", *research_common)
         steps.append(
             SuiteStep(
@@ -1607,6 +1914,11 @@ def _finish_stage(
 
 
 def _headline_state(data_dir: Path, plan: SuitePlan, run_ids: Sequence[str]) -> StageState:
+    if (
+        plan.action == "paper_preflight"
+        and plan.governance.get("preflight_outcome") == "UNSUPPORTED_MULTI_VENUE_PAPER"
+    ):
+        return "fail"
     if not run_ids:
         return "pass"
     if plan.action not in {
@@ -1622,6 +1934,10 @@ def _headline_state(data_dir: Path, plan: SuitePlan, run_ids: Sequence[str]) -> 
     if run_dir is None:
         raise DataError(f"suite result run {run_ids[0]!r} was not published")
     manifest = read_manifest(run_dir)
+    if plan.action == "three_null_families" and manifest.get("command") == (
+        "candidate_null_bootstrap"
+    ):
+        return "pass" if manifest.get("passed") is True else "fail"
     if plan.action in {"optimize_grid", "holdout_reveal"}:
         return "pass" if manifest.get("passed") is True else "fail"
     outcomes = manifest.get("outcomes")
@@ -1695,6 +2011,33 @@ def _record_optimization_trial_attempts(
         raise DataError(f"optimization run {run_id!r} was not published")
     manifest = read_manifest(run_dir)
     verify_manifest_artifacts(run_dir, manifest)
+    if manifest.get("command") == "candidate_optim":
+        metadata = manifest.get("metadata")
+        trials = metadata.get("trials") if isinstance(metadata, Mapping) else None
+        if not isinstance(trials, list) or len(trials) != 3:
+            raise DataError("candidate optimization requires its fixed three-cost ledger")
+        for trial in trials:
+            if not isinstance(trial, Mapping):
+                raise DataError("candidate optimization trial is invalid")
+            canonical = json.dumps(dict(trial), sort_keys=True, separators=(",", ":"))
+            store.record_attempt(
+                plan.project_id,
+                plan.experiment_id,
+                stage=plan.stage,
+                status="completed",
+                config_fingerprint=hashlib.sha256(canonical.encode()).hexdigest(),
+                run_id=run_id,
+                details={
+                    "action": plan.action,
+                    "job_id": job_id,
+                    "trial": trial.get("trial"),
+                    "total_round_trip_cost_bps": trial.get("total_round_trip_cost_bps"),
+                    "mean_net_return": trial.get("mean_net_return"),
+                    "selected": trial.get("selected"),
+                    "selection_authority": "registered_40_bps_cost_remains_immutable",
+                },
+            )
+        return
     if manifest.get("command") != "optim_grid":
         raise DataError(f"suite optimization evidence {run_id!r} is not an optim_grid run")
 

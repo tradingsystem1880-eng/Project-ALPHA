@@ -46,6 +46,7 @@ export interface ScreenPane {
   name: string
   title: string
   component: FunctionComponent<PanelHandleProps>
+  params?: Record<string, unknown>
   /** Panes in the same area become tabs within it. */
   group?: string
 }
@@ -63,29 +64,36 @@ export interface ScreenDefinition {
 export const SCREENS: ScreenDefinition[] = [
   {
     id: 'explore',
-    label: 'Explore',
-    purpose: 'Look at market data before committing to a strategy.',
+    label: 'Research',
+    purpose: 'Turn one observation into a governed, evidence-backed research case.',
     layout: 'screen--explore',
     panes: [
+      { area: 'main', name: 'ResearchCockpit', title: 'Research Case', component: ResearchCockpit },
+      { area: 'main', name: 'EvidenceHub', title: 'Evidence', component: EvidenceHub },
       { area: 'main', name: 'PriceChart', title: 'Price', component: PriceChart },
-      { area: 'side', name: 'DataExplorer', title: 'Symbols & data', component: DataExplorer },
-      { area: 'side', name: 'ResearchDataExplorer', title: 'Research data', component: ResearchDataExplorer },
-      { area: 'side', name: 'ResearchBacklog', title: 'Research backlog', component: ResearchBacklog },
-      { area: 'side', name: 'EvidenceHub', title: 'Evidence', component: EvidenceHub },
-      { area: 'side', name: 'Screener', title: 'Quotes & news', component: Screener },
-      { area: 'side', name: 'OptionsGreeks', title: 'Options', component: OptionsGreeks },
+      { area: 'side', name: 'ResearchBacklog', title: 'Backlog', component: ResearchBacklog },
+      {
+        area: 'side',
+        name: 'Literature',
+        title: 'Literature',
+        component: EvidenceHub,
+        params: { initialSection: 'literature', compactLiterature: true },
+      },
+      { area: 'side', name: 'ResearchDataExplorer', title: 'Research Data', component: ResearchDataExplorer },
+      { area: 'side', name: 'DataExplorer', title: 'Market Data', component: DataExplorer },
+      { area: 'side', name: 'CodexBench', title: 'Codex Research', component: CodexBench },
     ],
   },
   {
     id: 'build',
     label: 'Build',
-    purpose: 'Configure and launch a run, and follow it while it works.',
+    purpose: 'Develop promoted strategies or run clearly separated standalone experiments.',
     layout: 'screen--build',
     panes: [
-      { area: 'main', name: 'StrategyLab', title: 'Strategy lab', component: StrategyLab },
-      { area: 'side', name: 'Pipeline', title: 'What next', component: Pipeline },
-      { area: 'side', name: 'ResearchCockpit', title: 'Research case', component: ResearchCockpit },
-      { area: 'side', name: 'CodexBench', title: 'Codex research', component: CodexBench },
+      { area: 'main', name: 'StrategyLab', title: 'Strategy Development', component: StrategyLab },
+      { area: 'main', name: 'DevelopmentCenter', title: 'Development Center', component: DevelopmentCenter },
+      { area: 'side', name: 'Pipeline', title: 'Development Next Step', component: Pipeline },
+      { area: 'side', name: 'AiConsole', title: 'Standalone Sandbox', component: AiConsole },
       { area: 'foot', name: 'JobMonitor', title: 'Jobs', component: JobMonitor },
     ],
   },
@@ -116,6 +124,8 @@ export const SCREENS: ScreenDefinition[] = [
       { area: 'main', name: 'MlDiagnostics', title: 'ML diagnostics', component: MlDiagnostics },
       { area: 'main', name: 'RiskMonitor', title: 'Risk', component: RiskMonitor },
       { area: 'side', name: 'AssetMemory', title: 'Findings', component: AssetMemory },
+      { area: 'side', name: 'Screener', title: 'Market Overview', component: Screener },
+      { area: 'side', name: 'OptionsGreeks', title: 'Options Calculator', component: OptionsGreeks },
     ],
   },
   {
@@ -128,7 +138,6 @@ export const SCREENS: ScreenDefinition[] = [
       { area: 'main', name: 'PaperMonitor', title: 'Paper sessions', component: PaperMonitor },
       { area: 'main', name: 'ProviderSystem', title: 'Providers & system', component: ProviderSystem },
       { area: 'side', name: 'ActivityFeed', title: 'Activity', component: ActivityFeed },
-      { area: 'foot', name: 'AiConsole', title: 'AI console', component: AiConsole },
       { area: 'foot', name: 'Glossary', title: 'Glossary', component: Glossary },
     ],
   },

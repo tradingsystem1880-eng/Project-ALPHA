@@ -1,0 +1,108 @@
+#!/bin/sh
+# Inject one named provider credential into exactly one ALPHA process. Never enable shell tracing.
+set -eu
+set +x
+
+if [ "$#" -lt 2 ]; then
+  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|finnhub|coingecko> <check|quote|workstation|catalog|reference|archive> [bounded arguments]" >&2
+  exit 64
+fi
+
+provider=$1
+action=$2
+shift 2
+case "$provider:$action" in
+  tiingo:check|quantpad:check|coingecko:check|tiingo:workstation|quantpad:workstation|finnhub:workstation|coingecko:workstation|coingecko:catalog|coingecko:reference|quantpad:archive|finnhub:quote)
+    ;;
+  finnhub:check)
+    echo "Finnhub has no receipted readiness check; use 'finnhub quote' for a bounded live probe" >&2
+    exit 64
+    ;;
+  *)
+    echo "unsupported provider action" >&2
+    exit 64
+    ;;
+esac
+if [ "$action" != "archive" ] && [ "$#" -ne 0 ]; then
+  echo "unexpected provider launcher arguments" >&2
+  exit 64
+fi
+case "$provider" in
+  tiingo)
+    service=project-alpha-tiingo
+    variable=ALPHA_TIINGO_API_KEY
+    ;;
+  quantpad)
+    service=project-alpha-quantpad
+    variable=QUANTPAD_API_KEY
+    ;;
+  finnhub)
+    service=project-alpha-finnhub
+    variable=ALPHA_FINNHUB_API_KEY
+    ;;
+  coingecko)
+    service=project-alpha-coingecko
+    variable=ALPHA_COINGECKO_API_KEY
+    ;;
+  *)
+    echo "unsupported provider" >&2
+    exit 64
+    ;;
+esac
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$script_dir/.."
+
+if ! secret=$(security find-generic-password -w -s "$service" 2>/dev/null); then
+  echo "unable to read the $provider Keychain item" >&2
+  exit 78
+fi
+if [ -z "$secret" ]; then
+  echo "the selected Keychain item is empty" >&2
+  exit 78
+fi
+export "$variable=$secret"
+unset secret
+
+case "$action" in
+  check)
+    exec uv run alpha provider check "$provider"
+    ;;
+  workstation)
+    exec uv run alpha-web
+    ;;
+  catalog)
+    if [ "$provider" != "coingecko" ]; then
+      echo "catalog acquisition is available only for coingecko" >&2
+      exit 64
+    fi
+    exec uv run alpha crypto-data acquire coingecko asset_metadata all \
+      --base BTC --quote USD --json
+    ;;
+  reference)
+    if [ "$provider" != "coingecko" ]; then
+      echo "reference acquisition is available only for coingecko" >&2
+      exit 64
+    fi
+    exec uv run alpha crypto-data acquire coingecko market_reference all \
+      --base ALL --quote USD --json
+    ;;
+  quote)
+    if [ "$provider" != "finnhub" ]; then
+      echo "quote verification is available only for finnhub" >&2
+      exit 64
+    fi
+    exec uv run alpha screener quote SPY --json
+    ;;
+  archive)
+    if [ "$provider" != "quantpad" ] || [ "$#" -lt 2 ]; then
+      echo "archive acquisition requires quantpad plus endpoint and symbol" >&2
+      exit 64
+    fi
+    exec uv run alpha quantpad-data archive "$@"
+    ;;
+  *)
+    echo "unsupported action" >&2
+    exit 64
+    ;;
+esac

@@ -31,6 +31,14 @@ class ResearchPacketStore(Protocol):
         offset: int = 0,
     ) -> list[dict[str, object]]: ...
 
+    def list_research_sources(
+        self, project_id: str, *, limit: int = 200, offset: int = 0
+    ) -> list[dict[str, object]]: ...
+
+    def list_research_source_packs(
+        self, project_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]: ...
+
 
 def _case_datasets(
     store: ResearchPacketStore, payload: Mapping[str, object]
@@ -366,7 +374,8 @@ def _question_texts(value: object) -> list[str]:
         if isinstance(item, str) and item.strip():
             texts.append(item)
             continue
-        question = _mapping(item).get("question")
+        mapping = _mapping(item)
+        question = mapping.get("prompt", mapping.get("question"))
         if isinstance(question, str) and question.strip():
             texts.append(question)
     return texts
@@ -1142,6 +1151,8 @@ def _bounded_sources(rows: object) -> list[dict[str, object]]:
         if not record:
             continue
         metadata_raw = record.get("metadata_json")
+        if not isinstance(metadata_raw, str):
+            metadata_raw = record.get("metadata")
         screening: str | None = None
         if isinstance(metadata_raw, str):
             try:
@@ -1151,6 +1162,9 @@ def _bounded_sources(rows: object) -> list[dict[str, object]]:
             if isinstance(metadata, dict):
                 value = metadata.get("screening")
                 screening = value if isinstance(value, str) else None
+        elif isinstance(metadata_raw, Mapping):
+            value = metadata_raw.get("screening")
+            screening = value if isinstance(value, str) else None
         projected.append(
             {
                 "source_id": str(record.get("source_id", "")),
@@ -1159,6 +1173,11 @@ def _bounded_sources(rows: object) -> list[dict[str, object]]:
                 "provider": str(record.get("provider", "")),
                 "access_mode": str(record.get("access_mode", "")),
                 "screening": screening,
+                "extraction_id": record.get("extraction_id"),
+                "extraction_status": record.get("extraction_status"),
+                "page_count": record.get("page_count"),
+                "character_count": record.get("character_count"),
+                "extraction_warnings": record.get("extraction_warnings", []),
             }
         )
     return projected
@@ -1251,6 +1270,108 @@ def research_evidence_hub_projection(
     mechanism = thesis.get("mechanism")
     interpretation = thesis.get("interpretation")
     attempts = _bounded_attempts(inputs.get("attempts"))
+    sources = _bounded_sources(store.list_research_sources(project_id))
+    source_packs = store.list_research_source_packs(project_id)
+    pack_count = len(source_packs)
+    draft_claims = [claim for claim in claims if claim.get("status") == "draft"]
+    anchored = [
+        {
+            "claim_id": str(claim.get("claim_id", "")),
+            "source_id": str(claim.get("source_id", "")),
+            "anchor": claim.get("source_anchor"),
+        }
+        for claim in claims
+        if claim.get("status") == "screened" and isinstance(claim.get("source_anchor"), Mapping)
+    ]
+    supporting = [
+        item
+        for item in anchored
+        if next(
+            (
+                claim.get("direction")
+                for claim in claims
+                if claim.get("claim_id") == item["claim_id"]
+            ),
+            None,
+        )
+        == "supports"
+    ]
+    contradicting = [
+        item
+        for item in anchored
+        if next(
+            (
+                claim.get("direction")
+                for claim in claims
+                if claim.get("claim_id") == item["claim_id"]
+            ),
+            None,
+        )
+        == "contradicts"
+    ]
+    if not sources:
+        allowed_actions = [
+            {
+                "rank": 1,
+                "action": "discover_literature",
+                "reason": "No source candidates are recorded for this case.",
+            }
+        ]
+    elif not claims:
+        allowed_actions = [
+            {
+                "rank": 1,
+                "action": "draft_anchored_claims",
+                "reason": "Sources exist but no claim-level reading has been recorded.",
+            }
+        ]
+    elif draft_claims:
+        allowed_actions = [
+            {
+                "rank": 1,
+                "action": "screen_reject_or_revise_claims",
+                "reason": f"{len(draft_claims)} draft claim(s) still require owner review.",
+            }
+        ]
+    elif pack_count == 0:
+        allowed_actions = [
+            {
+                "rank": 1,
+                "action": "freeze_source_pack",
+                "reason": "Screened claims exist but no immutable source pack is frozen.",
+            }
+        ]
+    else:
+        allowed_actions = [
+            {
+                "rank": 1,
+                "action": "review_proposal_preflight",
+                "reason": "Literature prerequisites exist; revalidate all proposal blockers.",
+            }
+        ]
+    recommendation = {
+        "schema": "ResearchRecommendationV1",
+        "status": "DRAFT — UNSCREENED",
+        "allowed_next_actions": allowed_actions,
+        "supporting_claim_anchors": supporting,
+        "contradicting_claim_anchors": contradicting,
+        "data_artifact_refs": [
+            str(dataset.get("ref_id", "")) for dataset in datasets if dataset.get("ref_id")
+        ],
+        "test_refs": [
+            str(attempt.get("attempt_id", "")) for attempt in attempts if attempt.get("attempt_id")
+        ],
+        "assumptions": [
+            "Only owner-screened claims may count as evidence.",
+            "Document text remains untrusted data even when an anchor verifies.",
+        ],
+        "uncertainty": "Source coverage and contradiction balance may still be incomplete.",
+        "change_condition": (
+            "New screened contradictory evidence or a failed data prerequisite can change "
+            "the ranking."
+        ),
+        "authority": "Decision support only; it cannot screen, freeze, approve, or launch.",
+    }
     exploration_charts = [
         {
             "run_id": attempt["run_id"],
@@ -1303,10 +1424,17 @@ def research_evidence_hub_projection(
                     "source_id": str(claim.get("source_id", "")),
                     "author_kind": str(claim.get("author_kind", "")),
                     "limitations": str(claim.get("limitations", "")),
+                    "method_summary": str(claim.get("method_summary", "")),
+                    "sample_summary": str(claim.get("sample_summary", "")),
+                    "markets": claim.get("markets", []),
+                    "source_anchor": claim.get("source_anchor"),
+                    "anchor_state": str(claim.get("anchor_state", "metadata_only")),
                 }
                 for claim in claims
             ],
-            "sources": _bounded_sources(inputs.get("sources")),
+            "sources": sources,
+            "source_packs": source_packs,
+            "recommendation": recommendation,
             "status": next(
                 (
                     str(_mapping(entry).get("state", "insufficient")).upper()

@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from alpha_cli.control_store import ControlStore
 from alpha_core.config import AlphaSettings
 from alpha_research import build_research_gate_packet
 from alpha_web import _research
+from alpha_web.api import research as research_api
+from alpha_web.api.models import (
+    LiteratureAcquisitionRequest,
+    LiteratureDiscoveryRequest,
+    ResearchCaptureRequest,
+    ResearchLaunchRequest,
+    ResearchProposalRequest,
+)
 from alpha_web.app import create_app
+from alpha_web.run_authority import RunContextDenied
 from tests.fixtures.cli_fixtures import seed_store
 from tests.unit.test_research_gate_packet import _inputs_with_evidence
 
@@ -24,17 +35,155 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def test_compare_endpoint_single_strategy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seed_store(tmp_path, symbol="SPY", n=400)
     resp = _client(tmp_path, monkeypatch).get(
-        "/api/research/compare", params={"symbol": "SPY", "strategies": "ma_crossover"}
+        "/api/research/compare",
+        params={
+            "symbol": "SPY",
+            "strategies": "ma_crossover",
+            "context_kind": "standalone_sandbox",
+        },
     )
     assert resp.status_code == 200
     body = resp.json()
     assert body["symbol"] == "SPY"
     assert body["ranked"][0]["strategy"] == "ma_crossover"
+    assert body["comparison_status"] == "not_comparable"
+    assert body["preferred_strategy"] is None
+
+
+def test_research_read_routes_translate_backend_failures_without_raw_500s(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise RuntimeError("safe recovery detail")
+
+    calls: tuple[tuple[str, Callable[[], object], int], ...] = (
+        ("list_cases", lambda: research_api.research_cases(), 422),
+        ("evidence_hub", lambda: research_api.research_evidence_hub("project"), 404),
+        ("scorecard", lambda: research_api.research_scorecard("project"), 404),
+        ("decision_view", lambda: research_api.research_decision_view("project"), 404),
+        ("context_packets", lambda: research_api.research_context_packets("project"), 404),
+        ("context_packet", lambda: research_api.research_context_packet("packet"), 404),
+        ("notes", lambda: research_api.research_notes("project"), 404),
+        ("datasets", lambda: research_api.research_datasets(), 422),
+        ("protocols", research_api.research_protocols, 422),
+        ("get", lambda: research_api.research_get("project"), 404),
+        ("proposal_options", lambda: research_api.research_proposal_options("project"), 422),
+        ("status", lambda: research_api.research_status("project"), 404),
+        ("report", lambda: research_api.research_report("project"), 404),
+    )
+    for seam, call, expected_status in calls:
+        monkeypatch.setattr(_research, seam, fail)
+        with pytest.raises(HTTPException) as raised:
+            call()
+        assert raised.value.status_code == expected_status
+        assert raised.value.detail == "safe recovery detail"
+
+
+def test_research_mutation_routes_translate_backend_failures_without_raw_500s(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise ValueError("actionable validation detail")
+
+    calls: tuple[tuple[str, Callable[[], object]], ...] = (
+        (
+            "capture",
+            lambda: research_api.research_capture(ResearchCaptureRequest(idea="bounded idea")),
+        ),
+        (
+            "discover_literature",
+            lambda: research_api.research_literature_discover(
+                "project",
+                LiteratureDiscoveryRequest(
+                    query="bounded query", unpaywall_email="owner@example.com"
+                ),
+            ),
+        ),
+        (
+            "acquire_literature",
+            lambda: research_api.research_literature_acquire(
+                "project",
+                LiteratureAcquisitionRequest(
+                    discovery_id="ld_" + "a" * 64,
+                    candidate_id="lc_" + "b" * 64,
+                ),
+            ),
+        ),
+        (
+            "propose",
+            lambda: research_api.research_propose(
+                "project",
+                ResearchProposalRequest(
+                    source_pack_id="rsp_" + "c" * 64,
+                    answer_bundle_id="bundle",
+                    dataset_ref_id=None,
+                    expected_case_revision="d" * 64,
+                ),
+            ),
+        ),
+        (
+            "launch",
+            lambda: research_api.research_launch("project", ResearchLaunchRequest(stage="pilot")),
+        ),
+    )
+    for seam, call in calls:
+        monkeypatch.setattr(_research, seam, fail)
+        with pytest.raises(HTTPException) as raised:
+            call()
+        assert raised.value.status_code == 422
+        assert raised.value.detail == "actionable validation detail"
 
 
 def test_compare_no_bars_is_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    resp = _client(tmp_path, monkeypatch).get("/api/research/compare", params={"symbol": "NOPE"})
+    resp = _client(tmp_path, monkeypatch).get(
+        "/api/research/compare",
+        params={"symbol": "NOPE", "context_kind": "standalone_sandbox"},
+    )
     assert resp.status_code == 422
+
+
+def test_compare_requires_explicit_run_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called = False
+
+    def fake_compare(**kwargs: object) -> dict[str, object]:
+        nonlocal called
+        del kwargs
+        called = True
+        return {
+            "symbol": "SPY",
+            "n_bars": 0,
+            "ranked": [],
+            "comparison_status": "not_comparable",
+            "preferred_strategy": None,
+            "preference_reason": "no comparable results",
+        }
+
+    monkeypatch.setattr(_research, "compare", fake_compare)
+    response = _client(tmp_path, monkeypatch).get("/api/research/compare", params={"symbol": "SPY"})
+
+    assert response.status_code == 422
+    assert called is False
+
+
+def test_compare_translates_fail_closed_run_context_denial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+
+    def deny(**kwargs: object) -> dict[str, object]:
+        raise RunContextDenied(409, "gate unreadable; no job was launched")
+
+    monkeypatch.setattr(research_api, "resolve_run_context", deny)
+    with pytest.raises(HTTPException) as raised:
+        research_api.research_compare("SPY", context_kind="governed_project", project_id="project")
+    assert raised.value.status_code == 409
+    assert raised.value.detail == "gate unreadable; no job was launched"
 
 
 def test_research_case_capture_propose_status_report_and_pilot_round_trip(
@@ -66,15 +215,18 @@ def test_research_case_capture_propose_status_report_and_pilot_round_trip(
         source_ids=[str(source["source_id"])],
         definition={"screened": True},
     )
+    options_response = client.get(f"/api/research/cases/{project_id}/proposal-options")
+    assert options_response.status_code == 200, options_response.text
+    options = options_response.json()
+    assert options["proposal_schema"] == "ResearchProposalOptionsV1"
+    assert options["recommended_answer_bundle_id"] == "synthetic_spy_60m_four_hour_v1"
     proposal_response = client.post(
         f"/api/research/cases/{project_id}/proposal",
         json={
             "source_pack_id": pack["pack_id"],
-            "answers": {
-                "chart_construction": "spy_rth_60m_four_hour_window",
-                "event_availability": "second_trough_confirmable",
-                "primary_outcome": "four_trading_hour_return_25bp",
-            },
+            "answer_bundle_id": "synthetic_spy_60m_four_hour_v1",
+            "dataset_ref_id": None,
+            "expected_case_revision": options["case_revision"],
         },
     )
     assert proposal_response.status_code == 200, proposal_response.text
@@ -156,6 +308,65 @@ def test_research_rest_surface_cannot_approve_decide_reveal_or_confirm(
     )
 
 
+def test_literature_routes_are_explicit_bounded_and_non_authoritative(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured_calls: list[tuple[str, dict[str, object]]] = []
+
+    def fake_discover(project_id: str, **kwargs: object) -> dict[str, object]:
+        captured_calls.append((project_id, dict(kwargs)))
+        return {
+            "discovery_id": "ld_" + "a" * 64,
+            "query": kwargs["query"],
+            "candidates": [],
+            "receipt": {"trust_label": "UNTRUSTED_SOURCE"},
+        }
+
+    def fake_acquire(project_id: str, **kwargs: object) -> dict[str, object]:
+        captured_calls.append((project_id, dict(kwargs)))
+        return {
+            "source": {"source_id": "rs_" + "b" * 64},
+            "document": {"status": "image_only", "trust_label": "UNTRUSTED_SOURCE"},
+            "acquisition": {"sha256": "c" * 64},
+        }
+
+    monkeypatch.setattr(_research, "discover_literature", fake_discover)
+    monkeypatch.setattr(_research, "acquire_literature", fake_acquire)
+    client = _client(tmp_path, monkeypatch)
+    project_id = "00000000-0000-4000-8000-000000000001"
+    discovered = client.post(
+        f"/api/research/cases/{project_id}/literature/discover",
+        json={
+            "query": "double bottom returns",
+            "unpaywall_email": "owner@example.com",
+            "max_candidates": 20,
+            "max_full_texts": 5,
+        },
+    )
+    assert discovered.status_code == 200
+    assert discovered.json()["receipt"]["trust_label"] == "UNTRUSTED_SOURCE"
+    acquired = client.post(
+        f"/api/research/cases/{project_id}/literature/acquire",
+        json={"discovery_id": "ld_" + "a" * 64, "candidate_id": "lc_" + "d" * 64},
+    )
+    assert acquired.status_code == 200
+    assert acquired.json()["document"]["status"] == "image_only"
+    assert [call[0] for call in captured_calls] == [project_id, project_id]
+
+    assert (
+        client.post(
+            f"/api/research/cases/{project_id}/literature/discover",
+            json={
+                "query": "x",
+                "unpaywall_email": "owner@example.com",
+                "max_candidates": 21,
+                "max_full_texts": 5,
+            },
+        ).status_code
+        == 422
+    )
+
+
 def test_research_report_route_validates_terminal_gate_packet_union(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -172,7 +383,7 @@ def test_research_report_route_validates_terminal_gate_packet_union(
     assert body["layers"]["guided_evidence"]["confirmation_classification"] == "SUPPORTED"
 
 
-def test_research_proposal_requires_exact_material_answer_vocabulary(
+def test_research_proposal_requires_an_atomic_registered_bundle(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client = _client(tmp_path, monkeypatch)
@@ -180,11 +391,26 @@ def test_research_proposal_requires_exact_material_answer_vocabulary(
         "/api/research/cases", json={"idea": "A generic synthetic research idea"}
     )
     project_id = captured.json()["project"]["project_id"]
+    store = ControlStore(AlphaSettings().data_dir)
+    source = store.create_research_source(
+        project_id,
+        title="Technical trading revisited",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id, source_ids=[str(source["source_id"])], definition={}
+    )
+    options = client.get(f"/api/research/cases/{project_id}/proposal-options").json()
 
     invalid = client.post(
         f"/api/research/cases/{project_id}/proposal",
         json={
-            "source_pack_id": "sp_deadbeef",
+            "source_pack_id": pack["pack_id"],
+            "answer_bundle_id": "invented_cross_pair",
+            "dataset_ref_id": None,
+            "expected_case_revision": options["case_revision"],
             "answers": {
                 "chart_construction": "mixed_240m_150m_bars",
                 "event_availability": "second_trough_confirmable",
@@ -195,24 +421,17 @@ def test_research_proposal_requires_exact_material_answer_vocabulary(
     )
     assert invalid.status_code == 422
 
-    canonical = {
-        "chart_construction": "spy_rth_60m_four_hour_window",
-        "event_availability": "second_trough_confirmable",
-        "primary_outcome": "four_trading_hour_return_25bp",
-    }
-    for field, unavailable in (
-        ("chart_construction", "spy_extended_fixed_4h"),
-        ("chart_construction", "synthetic_only"),
-        ("event_availability", "neckline_breakout_confirmed"),
-        ("primary_outcome", "next_regular_session_return_50bp"),
-        ("primary_outcome", "owner_specified_economic_hurdle"),
-    ):
-        answers = {**canonical, field: unavailable}
-        unavailable_response = client.post(
-            f"/api/research/cases/{project_id}/proposal",
-            json={"source_pack_id": "sp_deadbeef", "answers": answers},
-        )
-        assert unavailable_response.status_code == 422
+    stale = client.post(
+        f"/api/research/cases/{project_id}/proposal",
+        json={
+            "source_pack_id": pack["pack_id"],
+            "answer_bundle_id": "synthetic_spy_60m_four_hour_v1",
+            "dataset_ref_id": None,
+            "expected_case_revision": "0" * 64,
+        },
+    )
+    assert stale.status_code == 422
+    assert "changed after proposal preflight" in stale.json()["message"]
 
 
 def test_unknown_research_case_reads_are_404(
@@ -231,7 +450,7 @@ def test_option_shaped_project_id_maps_to_a_typed_error_not_a_500(
     """``--help`` makes the CLI print help with exit 0; non-JSON output must not crash the route."""
     resp = _client(tmp_path, monkeypatch).get("/api/research/cases/--help")
     assert resp.status_code == 404
-    assert "did not return valid JSON" in resp.json()["detail"]
+    assert "did not return valid JSON" in resp.json()["message"]
 
 
 def test_research_case_list_evidence_hub_and_scorecard_read_plane(
@@ -304,6 +523,8 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         "/api/research/cases": {"POST"},
         "/api/research/cases/{project_id}/proposal": {"POST"},
         "/api/research/cases/{project_id}/launch": {"POST"},
+        "/api/research/cases/{project_id}/literature/discover": {"POST"},
+        "/api/research/cases/{project_id}/literature/acquire": {"POST"},
     }
     read_only_paths = {
         "/api/research/cases/{project_id}/evidence-hub",

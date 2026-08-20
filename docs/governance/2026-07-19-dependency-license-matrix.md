@@ -1,6 +1,6 @@
 # Dependency and License Matrix — Post-v2, Workstation v3, and Research Scientist Tracks
 
-- **Reviewed:** 2026-08-11
+- **Reviewed:** 2026-08-14
 - **Scope:** direct Python runtime dependencies, isolated workers, vendored code, external services,
   and upstream projects considered by the post-v2, Workstation v3, and Research Scientist decisions
 - **Status:** engineering inventory; not legal advice
@@ -52,6 +52,7 @@ track; it is not a legal conclusion.
 | uvicorn | 0.49.0 | BSD-3-Clause | loopback server | retain |
 | sse-starlette | 3.4.5 | BSD-3-Clause | Workstation streams | retain |
 | anyio | 4.14.0 | MIT | async web support | retain |
+| webauthn | 3.0.0 | BSD-3-Clause package metadata | exact-origin platform-authenticator verification for closed local research owner actions | exact pin; no MCP, broker, order, holdout, paper-entry, risk-override, or research-gate-override authority |
 
 ### IB/Docker extra and external-service review
 
@@ -74,6 +75,26 @@ canonical or paper-authoritative source. The public product material demonstrate
 bulk workflows, while the service license separately restricts bulk export/retention without express
 permission; permanent archives, post-subscription retention, redistribution, and commercial/public
 use therefore remain blocked on written permission.
+
+### Crypto data-house service review (ADR-0032)
+
+The crypto subsystem adds no vendor SDK. Thin first-party HTTP/archive adapters preserve exact
+provider bytes and record the service/access tier in every receipt. The approved scope is private,
+single-owner, local research; no raw or derived dataset is redistributed or hosted.
+
+| Service | Approved family | Access and retention boundary | Correction/removal path |
+|---|---|---|---|
+| Binance public data | Native CEX spot, USD-M, and COIN-M market history | Public archives/REST only; verify published checksums; retain locally for private research; attribution and upstream archive identity stay in receipts | New or revised archive creates a new receipt; unexplained byte drift quarantines; explicit inventory removal tombstones affected snapshots |
+| Bybit public V5 | Advanced derivatives and options | Public REST/WebSocket only; no account/key; bounded history and chain snapshots; provider-native values are not rewritten | New catalog/history bytes create new receipts; delisted instruments retain lifecycle; takedown/terms change disables fetch then tombstones dependent blobs |
+| CoinGecko Demo | Asset identity and broad market reference | Demo key from macOS Keychain into one bounded process; plan quotas apply; metadata/reference cannot satisfy execution-price evidence | Version identities/migrations; remove cached responses on provider request while retaining non-reconstructive hashes/lineage |
+| GeckoTerminal | DEX pools, liquidity, pool OHLCV, and bounded transactions | Keyless public API within its rate limit; tracked/case-bound pools only; pool manipulation and thin liquidity remain explicit warnings | Pool/token migrations append lineage; corrected responses are new receipts; removal invalidates dependent qualifications |
+| Coin Metrics Community | Frozen metric catalog plus reviewed on-chain/network metrics | Community API only; a qualified point-in-time catalog is required before scheduling its exact advertised metrics; private non-commercial research; retain attribution and do not assume broader paid-data rights | Catalog/metric changes create new immutable receipts; removed metrics stop acquisition and dependent snapshots become unavailable |
+| Coinbase through CCXT | Independent market-data comparison | Existing public CCXT adapter and venue-qualified snapshots; comparison only | Existing V1 bytes remain immutable; new comparison observations cannot replace primary-provider evidence |
+
+Provider terms, access tiers, quotas, attribution, and retention rights can change independently of
+code. A successful network check proves only the named capability at its timestamp. Before any
+distribution, hosted use, paid tier, full-market tick mirror, or use beyond private local research,
+repeat the exact provider terms and data-rights review.
 
 ### Fonts embedded in emitted figures (2026-08-07)
 
@@ -217,9 +238,10 @@ occurs:
 
 ## Literature acquisition worker (`workers/literature`, ADR-0024)
 
-The isolated literature worker introduces **zero third-party runtime dependencies**: it is
-Python-stdlib-only (urllib, json, hashlib, xml.etree with DOCTYPE/ENTITY markup refused).
-Its dev group pins the same ruff/mypy/pytest tools already reviewed for the Qlib worker.
+The isolated literature worker has one runtime dependency: `pypdf==6.14.2` (BSD-3-Clause)
+for bounded PDF text extraction. Discovery, transport, validation, hashing, and XML/JSON parsing
+remain stdlib-only; arXiv XML refuses DOCTYPE/ENTITY markup. Its dev group pins the same
+ruff/mypy/pytest tools already reviewed for the Qlib worker.
 `workers/literature/uv.lock` is the exact resolution input for that optional process. Network
 access is limited to the ADR-0024 approved metadata services (OpenAlex, Crossref, Unpaywall,
 arXiv) and open-access/owner-provided documents; every stored object carries an

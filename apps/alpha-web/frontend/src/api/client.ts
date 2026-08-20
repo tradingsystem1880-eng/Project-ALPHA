@@ -8,7 +8,35 @@ import type {
   CommandDef,
   ControlJob,
   ControlJobDetail,
-  DecisionPacket,
+  CryptoAcquisitionRequest,
+  CryptoAssetIdentity,
+  CryptoAssetMaster,
+  CryptoAssetMasters,
+  CryptoCatalog,
+  CryptoCapabilities,
+  CryptoCoverage,
+  CryptoCoverageBatches,
+  CryptoCoverageCadence,
+  CryptoCoverageProfile,
+  CryptoCoverageProfilePage,
+  CryptoCoverageProfiles,
+  CryptoEstimate,
+  CryptoEstimateRequest,
+  CryptoFeature,
+  CryptoFeatureCreateRequest,
+  CryptoFeatures,
+  CryptoFamily,
+  CryptoLiquidityMembership,
+  CryptoOneMinuteSelection,
+  CryptoQuality,
+  CryptoSnapshotCreate,
+  CryptoSnapshotRegister,
+  CryptoSnapshotVerify,
+  CryptoSnapshotVerifyRequest,
+  CryptoStorage,
+  CryptoStorageInventory,
+  CryptoStorageVerify,
+  CryptoCacheClean,
   EvidencePage,
   EquitySeries,
   ExperimentSpec,
@@ -17,6 +45,7 @@ import type {
   ForecastSeries,
   JobDetail,
   MlExperimentPage,
+  MlExperimentPreflight,
   MlExperimentJobAccepted,
   MlServiceStatus,
   MlTearSheetProjection,
@@ -32,6 +61,7 @@ import type {
   OptionCurve,
   OptionGreeks,
   ProviderDefinition,
+  ProviderCheckReceipt,
   ProjectDetail,
   ProjectPage,
   ProjectSummary,
@@ -50,12 +80,14 @@ import type {
   ResearchScorecard,
   ResearchLaunchResponse,
   ResearchProposalRequest,
+  ResearchProposalOptionsV1,
   ResearchProposalResponse,
   ResearchReport,
   FigureCatalogue,
   RunComparison,
   FigureMetadata,
   RiskReport,
+  RunContextV1,
   RunDetail,
   RunList,
   ScreenerNews,
@@ -72,29 +104,50 @@ import type {
   WorkspaceMeta,
 } from './types'
 
+export function runContextForProject(projectId: string | null): RunContextV1 {
+  return projectId
+    ? { schema_version: 1, kind: 'governed_project', project_id: projectId }
+    : { schema_version: 1, kind: 'standalone_sandbox' }
+}
+
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url)
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    let detail = body
-    try {
-      const parsed: unknown = JSON.parse(body)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const value = (parsed as Record<string, unknown>).detail
-        if (typeof value === 'string') detail = value
-      }
-    } catch {
-      // Plain-text failures are valid for infrastructure endpoints.
-    }
-    detail = detail
-      .split('\n')
-      .map((line) => line.replace(/^[│┃]\s?/, '').trim())
-      .filter((line) => line && !/^usage:/i.test(line) && !/^try ['`]/i.test(line) && !/^[╭╰─━┄┅┈┉]+/.test(line))
-      .join(' ')
-    const status = `${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
-    throw new Error(`${status}${detail ? ` — ${detail}` : ''}`)
-  }
+  if (!res.ok) throw await responseError(res)
   return (await res.json()) as T
+}
+
+async function responseError(res: Response): Promise<Error> {
+  let message = 'The Workstation request failed.'
+  let recovery = ''
+  let fields = ''
+  let requestId = res.headers.get('x-request-id') ?? ''
+  try {
+    const parsed: unknown = await res.json()
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const error = parsed as Record<string, unknown>
+      if (typeof error.message === 'string' && error.message) message = error.message
+      if (typeof error.recovery_action === 'string') recovery = error.recovery_action
+      if (typeof error.request_id === 'string') requestId = error.request_id
+      if (Array.isArray(error.field_errors)) {
+        fields = error.field_errors
+          .flatMap((item) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return []
+            const field = (item as Record<string, unknown>).field
+            const fieldMessage = (item as Record<string, unknown>).message
+            return typeof field === 'string' && typeof fieldMessage === 'string'
+              ? [`${field}: ${fieldMessage}`]
+              : []
+          })
+          .join('; ')
+      }
+    }
+  } catch {
+    // The stable API contract was unavailable; never relay an untrusted raw response to the DOM.
+  }
+  const status = `${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
+  return new Error(
+    `${status} — ${message}${fields ? ` Fields: ${fields}.` : ''}${recovery ? ` ${recovery}` : ''}${requestId ? ` [request ${requestId}]` : ''}`,
+  )
 }
 
 const IMMUTABLE_CACHE_LIMIT = 128
@@ -123,20 +176,111 @@ export function clearImmutableApiCache(): void {
   immutableCache.clear()
 }
 
+export type OwnerActionType =
+  | 'screen_source_claim'
+  | 'reject_source_claim'
+  | 'revise_source_claim'
+  | 'freeze_source_pack'
+  | 'approve_exploration'
+  | 'reject_exploration'
+  | 'revise_exploration'
+  | 'launch_d1'
+  | 'approve_confirmation'
+  | 'reject_confirmation'
+  | 'launch_d2'
+  | 'record_final_disposition'
+
+export interface OwnerCredentialOptions {
+  challenge_id: string
+  expires_at: string
+  binding?: Record<string, unknown>
+  public_key: Record<string, unknown>
+}
+
+export interface OwnerActionChallengeRequest {
+  action_type: OwnerActionType
+  project_id: string
+  artifact_hash: string
+  expected_case_revision: string
+  consequence_summary: string
+  reason: string
+  payload: Record<string, unknown>
+}
+
+export interface OwnerActionResult {
+  authorization: Record<string, unknown>
+  result: Record<string, unknown>
+}
+
+export interface LiteratureCandidate {
+  candidate_id: string
+  title: string
+  provider: string
+  doi: string | null
+  year: number | null
+  authors: string[]
+  open_access_url: string | null
+  access_state: 'direct_pdf' | 'landing_page' | 'metadata_only' | 'unavailable'
+  relevance_explanation: string
+  matched_concepts: string[]
+  retracted: boolean | null
+}
+
+export interface LiteratureDiscoveryResult {
+  discovery_id: string
+  query: string
+  candidates: LiteratureCandidate[]
+  receipt: Record<string, unknown>
+}
+
+export interface LiteratureAcquisitionResult {
+  source: Record<string, unknown>
+  document: {
+    extraction_id: string
+    status: 'extracted' | 'encrypted' | 'image_only' | 'truncated' | 'parser_failed'
+    page_count: number
+    character_count: number
+    warnings: string[]
+    artifact: Record<string, unknown>
+  }
+  acquisition: Record<string, unknown>
+}
+
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`)
-  }
+  if (!res.ok) throw await responseError(res)
   return (await res.json()) as T
 }
 
 export const api = {
+  ownerRegistrationOptions: (token: string): Promise<OwnerCredentialOptions> =>
+    postJSON('/api/owner-auth/enrollment/options', { token }),
+  ownerRegistrationFinish: (
+    token: string,
+    challengeId: string,
+    credential: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> =>
+    postJSON('/api/owner-auth/enrollment/finish', {
+      token,
+      challenge_id: challengeId,
+      credential,
+    }),
+  ownerActionChallenge: (
+    body: OwnerActionChallengeRequest,
+  ): Promise<OwnerCredentialOptions> => postJSON('/api/owner-auth/actions/challenge', body),
+  ownerActionPerform: (
+    challengeId: string,
+    credential: Record<string, unknown>,
+    payload: Record<string, unknown>,
+  ): Promise<OwnerActionResult> => postJSON('/api/owner-auth/actions/perform', {
+    challenge_id: challengeId,
+    credential,
+    payload,
+  }),
   runs: (query = ''): Promise<RunList> => getJSON(`/api/runs${query}`),
   run: (id: string): Promise<RunDetail> => getImmutableJSON(`/api/runs/${id}`),
   chartBundle(id: string, limit = 2_000, start?: string | null, end?: string | null): Promise<ChartBundle> {
@@ -179,19 +323,140 @@ export const api = {
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
   providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
+  cryptoCatalog: (): Promise<CryptoCatalog> => getJSON('/api/crypto-data/catalog'),
+  cryptoCapabilities: (): Promise<CryptoCapabilities> =>
+    getJSON('/api/crypto-data/capabilities'),
+  cryptoStorage: (): Promise<CryptoStorage> => getJSON('/api/crypto-data/storage'),
+  cryptoStorageInventory: (): Promise<CryptoStorageInventory> =>
+    getJSON('/api/crypto-data/storage/inventory'),
+  cryptoStorageVerify: (): Promise<CryptoStorageVerify> =>
+    postJSON('/api/crypto-data/storage/verify', {}),
+  cryptoCacheClean: (): Promise<CryptoCacheClean> =>
+    postJSON('/api/crypto-data/storage/cache/clean', { confirm: true }),
+  cryptoCoverage: (): Promise<CryptoCoverage> => getJSON('/api/crypto-data/coverage'),
+  cryptoProfiles: (): Promise<CryptoCoverageProfiles> => getJSON('/api/crypto-data/profiles'),
+  cryptoProfileCreate: (asOf: string | null = null): Promise<CryptoCoverageProfile> =>
+    postJSON('/api/crypto-data/profiles', { as_of: asOf }),
+  cryptoProfile: (
+    profileId: string,
+    options: {
+      offset?: number
+      limit?: number
+      provider?: string
+      family?: CryptoFamily
+      category?: string
+      frequency?: string
+      cadence?: CryptoCoverageCadence
+    } = {},
+  ): Promise<CryptoCoverageProfilePage> => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(options)) {
+      if (value !== undefined) params.set(key, String(value))
+    }
+    const query = params.size ? `?${params.toString()}` : ''
+    return getJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}${query}`)
+  },
+  cryptoProfileRun: (
+    profileId: string,
+    cadence: CryptoCoverageCadence,
+    offset: number,
+    limit: number,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
+    postJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}/batches`, {
+      cadence, offset, limit, confirm: true,
+    }),
+  cryptoBatches: (): Promise<CryptoCoverageBatches> => getJSON('/api/crypto-data/batches'),
+  cryptoBatchResume: (
+    batchId: string,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
+    postJSON(`/api/crypto-data/batches/${encodeURIComponent(batchId)}/resume`, { confirm: true }),
+  cryptoLiquidityFreeze: (
+    profileId: string,
+    body: { category: 'spot' | 'linear' | 'inverse'; quote_asset: 'USD' | 'USDT'; session: string; limit: number },
+  ): Promise<CryptoLiquidityMembership> =>
+    postJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}/liquidity-membership`, body),
+  cryptoOneMinuteSelection: (
+    profileId: string,
+    body: { case_id: string; expected_case_revision: string; markets: string[]; reason: string },
+  ): Promise<CryptoOneMinuteSelection> =>
+    postJSON(`/api/crypto-data/profiles/${encodeURIComponent(profileId)}/one-minute-selection`, body),
+  cryptoAsset: (symbol: string, asOf: string): Promise<CryptoAssetIdentity> => {
+    const params = new URLSearchParams({ as_of: asOf })
+    return getJSON(`/api/crypto-data/assets/${encodeURIComponent(symbol)}?${params.toString()}`)
+  },
+  cryptoAssetContract: (
+    network: string,
+    contractAddress: string,
+    assetMasterVersion: string,
+    asOf: string,
+  ): Promise<CryptoAssetIdentity> => {
+    const params = new URLSearchParams({
+      asset_master_version: assetMasterVersion,
+      as_of: asOf,
+    })
+    return getJSON(
+      `/api/crypto-data/assets/contracts/${encodeURIComponent(network)}/${encodeURIComponent(contractAddress)}?${params.toString()}`,
+    )
+  },
+  cryptoAssetMasters: (): Promise<CryptoAssetMasters> =>
+    getJSON('/api/crypto-data/asset-masters'),
+  cryptoAssetMasterCreate: (
+    coingeckoManifestId: string,
+    geckoterminalManifestIds: string[],
+  ): Promise<CryptoAssetMaster> =>
+    postJSON('/api/crypto-data/asset-masters', {
+      coingecko_manifest_id: coingeckoManifestId,
+      geckoterminal_manifest_ids: geckoterminalManifestIds,
+    }),
+  cryptoAssetMasterVerify: (version: string): Promise<CryptoAssetMaster> =>
+    postJSON(`/api/crypto-data/asset-masters/${encodeURIComponent(version)}/verify`, {}),
+  cryptoQuality: (manifestId: string): Promise<CryptoQuality> =>
+    getJSON(`/api/crypto-data/quality/${encodeURIComponent(manifestId)}`),
+  cryptoFeatures: (): Promise<CryptoFeatures> => getJSON('/api/crypto-data/features'),
+  cryptoFeatureCreate: (body: CryptoFeatureCreateRequest): Promise<CryptoFeature> =>
+    postJSON('/api/crypto-data/features', body),
+  cryptoFeature: (manifestId: string): Promise<CryptoFeature> =>
+    getJSON(`/api/crypto-data/features/${encodeURIComponent(manifestId)}`),
+  cryptoEstimate: (body: CryptoEstimateRequest): Promise<CryptoEstimate> =>
+    postJSON('/api/crypto-data/estimate', body),
+  cryptoAcquire: (
+    body: CryptoAcquisitionRequest,
+  ): Promise<{ job_id: string; status: string; session_id?: string | null }> =>
+    postJSON('/api/crypto-data/acquisitions', body),
+  cryptoSnapshotCreate: (
+    manifestIds: string[],
+    assetMasterVersion = 'reviewed-native-v1',
+  ): Promise<CryptoSnapshotCreate> =>
+    postJSON('/api/crypto-data/snapshots', {
+      manifest_ids: manifestIds,
+      asset_master_version: assetMasterVersion,
+    }),
+  cryptoSnapshotVerify: (
+    snapshotId: string,
+    body: CryptoSnapshotVerifyRequest,
+  ): Promise<CryptoSnapshotVerify> =>
+    postJSON(`/api/crypto-data/snapshots/${encodeURIComponent(snapshotId)}/verify`, body),
+  cryptoSnapshotRegister: (
+    snapshotId: string,
+    symbol: string,
+  ): Promise<CryptoSnapshotRegister> =>
+    postJSON(`/api/crypto-data/snapshots/${encodeURIComponent(snapshotId)}/register`, { symbol }),
+  providerCheck: (providerId: string): Promise<ProviderCheckReceipt> =>
+    postJSON(`/api/providers/${encodeURIComponent(providerId)}/check`, {}),
   system: (): Promise<SystemStatus> => getJSON('/api/system'),
   jobs: (): Promise<PaperJobSummary[]> => getJSON('/api/jobs'),
   job: (id: string): Promise<JobDetail> => getJSON(`/api/jobs/${id}`),
   async launch(
     command: string,
     args: string,
+    runContext?: RunContextV1,
   ): Promise<{ job_id: string; status: string; session_id?: string | null }> {
     const res = await fetch('/api/jobs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ command, args }),
+      body: JSON.stringify({ command, args, ...(runContext ? { run_context: runContext } : {}) }),
     })
-    if (!res.ok) throw new Error(await res.text())
+    if (!res.ok) throw await responseError(res)
     return (await res.json()) as { job_id: string; status: string; session_id?: string | null }
   },
   cancel: (id: string): Promise<Response> => fetch(`/api/jobs/${id}`, { method: 'DELETE' }),
@@ -208,7 +473,7 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) throw new Error(await res.text())
+    if (!res.ok) throw await responseError(res)
     return (await res.json()) as { slug: string; name: string }
   },
   deleteWorkspace: (slug: string): Promise<Response> =>
@@ -221,12 +486,20 @@ export const api = {
     getJSON(`/api/screener/quote?symbol=${encodeURIComponent(symbol)}`),
   screenerNews: (symbol: string, days = 7, limit = 20): Promise<ScreenerNews> =>
     getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
-  researchCompare: (symbol: string): Promise<ResearchReport> =>
-    getJSON(`/api/research/compare?symbol=${encodeURIComponent(symbol)}`),
+  researchCompare: (symbol: string, runContext: RunContextV1): Promise<ResearchReport> => {
+    const params = new URLSearchParams({
+      symbol,
+      context_kind: runContext.kind,
+    })
+    if (runContext.kind === 'governed_project') params.set('project_id', runContext.project_id)
+    return getJSON(`/api/research/compare?${params.toString()}`)
+  },
   researchCapture: (body: ResearchCaptureRequest): Promise<ResearchCaptureResponse> =>
     postJSON('/api/research/cases', body),
   researchCase: (projectId: string): Promise<ResearchCase> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}`),
+  researchProposalOptions: (projectId: string): Promise<ResearchProposalOptionsV1> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/proposal-options`),
   researchProposal: (
     projectId: string,
     body: ResearchProposalRequest,
@@ -242,6 +515,21 @@ export const api = {
     getJSON(`/api/research/cases?limit=${query.limit ?? 50}&offset=${query.offset ?? 0}`),
   researchEvidenceHub: (projectId: string): Promise<ResearchEvidenceHub> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/evidence-hub`),
+  researchLiteratureDiscover: (
+    projectId: string,
+    body: {
+      query: string
+      unpaywall_email: string
+      max_candidates?: number
+      max_full_texts?: number
+    },
+  ): Promise<LiteratureDiscoveryResult> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/literature/discover`, body),
+  researchLiteratureAcquire: (
+    projectId: string,
+    body: { discovery_id: string; candidate_id: string },
+  ): Promise<LiteratureAcquisitionResult> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/literature/acquire`, body),
   researchScorecard: (projectId: string): Promise<ResearchScorecard> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/scorecard`),
   researchDecisionView: (projectId: string): Promise<ResearchDecisionView> =>
@@ -315,46 +603,15 @@ export const api = {
     projectId: string,
     experimentId: string,
     action: SuiteAction,
-    body: { owner_actor?: string; owner_reason?: string },
   ): Promise<SuiteLaunch> =>
-    postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/suite/${encodeURIComponent(action)}/run`, body),
+    postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/suite/${encodeURIComponent(action)}/run`, {}),
   suiteJob: (jobId: string): Promise<ControlJobDetail> =>
     getJSON(`/api/development/suite-jobs/${encodeURIComponent(jobId)}?event_tail=true`),
   async cancelDevelopmentJob(jobId: string): Promise<SuiteCancelResponse> {
     const res = await fetch(`/api/development/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await res.text())
+    if (!res.ok) throw await responseError(res)
     return (await res.json()) as SuiteCancelResponse
   },
-  sealHoldout: (
-    projectId: string,
-    body: {
-      experiment_id: string
-      actor: string
-      reason: string
-      start_date: string
-      end_date: string
-    },
-  ) => postJSON(`/api/projects/${encodeURIComponent(projectId)}/holdouts/seal`, body),
-  transitionExperimentStage: (
-    projectId: string,
-    experimentId: string,
-    stage: string,
-    body: {
-      state: 'ready' | 'queued' | 'running' | 'pass' | 'warning' | 'fail' | 'stale'
-      reason: string
-    },
-  ) => postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/stages/${encodeURIComponent(stage)}/state`, body),
-  freezeDecision: (
-    projectId: string,
-    experimentId: string,
-    body: {
-      verdict: 'accept' | 'reject' | 'revise'
-      actor: string
-      reason: string
-      negative_results_acknowledged: true
-    },
-  ): Promise<DecisionPacket> =>
-    postJSON(`/api/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(experimentId)}/decision`, body),
   agentBrief: (projectId: string, evidenceLimit = 50): Promise<AgentBrief> =>
     getJSON(`/api/projects/${encodeURIComponent(projectId)}/agent-brief?evidence_limit=${evidenceLimit}`),
   evidence: (query: {
@@ -381,6 +638,8 @@ export const api = {
     const query = projectId ? `?project_id=${encodeURIComponent(projectId)}` : ''
     return getJSON(`/api/ml/experiments${query}`)
   },
+  mlExperimentPreflight: (projectId: string): Promise<MlExperimentPreflight> =>
+    getJSON(`/api/ml/experiments/preflight?project_id=${encodeURIComponent(projectId)}`),
   mlTearsheet(exchangeId: string, timelineOffset = 0): Promise<MlTearSheetProjection> {
     if (!Number.isInteger(timelineOffset) || timelineOffset < 0 || timelineOffset > 1_000_000) {
       throw new RangeError('ML tear-sheet timeline offset must be an integer from 0 to 1,000,000')

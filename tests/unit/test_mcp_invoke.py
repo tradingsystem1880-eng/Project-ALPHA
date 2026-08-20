@@ -133,6 +133,30 @@ def test_run_alpha_invokes_the_cli_with_data_dir_in_env(
     )  # subprocess shares the server's store
 
 
+def test_mcp_cli_environment_excludes_parent_credentials(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "secret-tiingo")
+    monkeypatch.setenv("ALPHA_COINGECKO_API_KEY", "secret-coingecko")
+    monkeypatch.setenv("QUANTPAD_API_KEY", "secret-quantpad")
+    monkeypatch.setenv("ALPHA_IBKR_PAPER_ACCOUNT", "DU1234567")
+    monkeypatch.setenv("ALPHA_BULK_DATA_DIR", "/Volumes/Expansion/Project-ALPHA/crypto-data")
+    monkeypatch.setenv("ALPHA_BULK_VOLUME_UUID", "volume-uuid")
+    monkeypatch.setenv("UNRELATED_SHELL_STATE", "must-not-cross")
+
+    environment = _invoke._cli_environment(tmp_path)
+
+    assert environment["ALPHA_DATA_DIR"] == str(tmp_path)
+    assert environment["ALPHA_BULK_DATA_DIR"].endswith("/crypto-data")
+    assert environment["ALPHA_BULK_VOLUME_UUID"] == "volume-uuid"
+    assert "PATH" in environment
+    assert "ALPHA_TIINGO_API_KEY" not in environment
+    assert "ALPHA_COINGECKO_API_KEY" not in environment
+    assert "QUANTPAD_API_KEY" not in environment
+    assert "ALPHA_IBKR_PAPER_ACCOUNT" not in environment
+    assert "UNRELATED_SHELL_STATE" not in environment
+
+
 def test_run_alpha_uses_bounded_verified_manifest_reader(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

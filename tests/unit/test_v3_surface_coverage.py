@@ -11,10 +11,11 @@ from typing import NoReturn, cast
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from alpha_mcp import _control
 from alpha_mcp import _invoke as _mcp_invoke
-from alpha_web import _development, _invoke, _ml
+from alpha_web import _development, _ml
 from alpha_web.api import development as development_api
 from alpha_web.api import ml as ml_api
 from alpha_web.api.models import (
@@ -159,9 +160,9 @@ def test_development_routes_translate_cli_failures_without_leaking_runtime_error
             ),
         ),
         (422, lambda: development_api.record_attempt("project", attempt)),
-        (422, lambda: development_api.seal_holdout("project", holdout)),
+        (403, lambda: development_api.seal_holdout("project", holdout)),
         (
-            422,
+            403,
             lambda: development_api.freeze_decision_packet("project", "experiment", decision),
         ),
         (404, lambda: development_api.get_agent_brief("project", 10, None)),
@@ -181,11 +182,8 @@ def test_development_suite_owner_and_durable_cancel_branches(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    owner_fields = SuiteRunRequest(owner_actor="owner", owner_reason="approved")
-    _expect_http(
-        422,
-        lambda: development_api.run_suite_action("project", "experiment", "baseline", owner_fields),
-    )
+    with pytest.raises(ValidationError, match="owner_actor"):
+        SuiteRunRequest.model_validate({"owner_actor": "owner", "owner_reason": "approved"})
 
     monkeypatch.setattr(
         _development,
@@ -199,25 +197,22 @@ def test_development_suite_owner_and_durable_cancel_branches(
         ),
     )
 
-    captured: dict[str, object] = {}
-
-    def launch(args: list[str], **kwargs: object) -> SimpleNamespace:
-        captured["args"] = args
-        captured["kwargs"] = kwargs
-        return SimpleNamespace(job_id="transport-job")
-
-    monkeypatch.setattr(_development, "suite_plan", lambda *args, **kwargs: {"ready": True})
-    monkeypatch.setattr(
-        _development,
-        "reserve_suite",
-        lambda *args, **kwargs: {"status": "queued", "plan": {"ready": True}},
+    _expect_http(
+        403,
+        lambda: development_api.run_suite_action(
+            "project", "experiment", "holdout_reveal", SuiteRunRequest()
+        ),
     )
-    monkeypatch.setattr(_invoke, "launch", launch)
-    launched = development_api.run_suite_action(
-        "project", "experiment", "holdout_reveal", owner_fields
+
+    _expect_http(
+        403,
+        lambda: development_api.update_experiment_stage_state(
+            "project",
+            "experiment",
+            "candidate",
+            ExperimentStageTransitionRequest(state="ready", reason="pretend owner"),
+        ),
     )
-    assert launched["status"] == "starting"
-    assert "--owner-actor" in cast(list[str], captured["args"])
 
     monkeypatch.setattr(
         _development,
@@ -326,6 +321,7 @@ def test_ml_api_wrappers_cover_happy_paths_and_typed_error_mapping(
         monkeypatch.setattr(_ml, name, record(name))
     monkeypatch.setattr(_ml, "new_input_id", lambda: input_id)
     monkeypatch.setattr(_ml, "new_exchange_id", lambda: exchange_id)
+    monkeypatch.setattr(_ml, "experiment_preflight", lambda **_: {"ready": True})
 
     assert ml_api.get_readiness()["name"] == "readiness"
     assert ml_api.get_service_status()["name"] == "service_status"
@@ -686,6 +682,7 @@ def test_mcp_control_validates_bounds_json_and_suite_launch(
         return {"status": "failed"}
 
     monkeypatch.setattr(_mcp_invoke, "run_json", reservation)
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "must-not-reach-suite-child")
 
     def popen_failure(*args: object, **kwargs: object) -> NoReturn:
         del args, kwargs
@@ -708,6 +705,7 @@ def test_mcp_control_validates_bounds_json_and_suite_launch(
     assert cast(list[str], captured["args"])[:3] == ["alpha", "suite", "run"]
     environment = cast(dict[str, str], cast(dict[str, object], captured["kwargs"])["env"])
     assert environment["ALPHA_DATA_DIR"] == str(tmp_path)
+    assert "ALPHA_TIINGO_API_KEY" not in environment
 
 
 def test_ml_process_helpers_parse_sanitize_and_propagate_environment(

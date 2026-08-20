@@ -3,6 +3,18 @@
     "alpha": {
       "command": "uv",
       "args": ["run", "alpha-mcp"]
+    },
+    "codex": {
+      "command": "codex",
+      "args": [
+        "mcp-server",
+        "-c",
+        "model=\"gpt-5.3-codex-spark\"",
+        "-c",
+        "sandbox_mode=\"read-only\"",
+        "-c",
+        "approval_policy=\"never\""
+      ]
     }
   }
 }

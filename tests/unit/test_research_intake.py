@@ -6,10 +6,69 @@ import json
 
 import pytest
 
-from alpha_cli.research_intake import draft_exploration_contract
+from alpha_cli.research_intake import draft_exploration_contract, registered_answer_bundle
 from alpha_core import DataError
 
 RAW_IDEA = "i notice the S&P500 bounces when it has double bottoms on the 4h time frame"
+CRYPTO_IDEA = (
+    "On Bybit BTCUSDT linear perpetuals, test whether extreme positive funding with rising "
+    "open interest and premium predicts crowding reversal before the next funding event"
+)
+
+
+def test_registered_answer_bundle_resolves_only_closed_registry_ids() -> None:
+    bundle = registered_answer_bundle("synthetic_spy_60m_four_hour_v1")
+    assert bundle["requires_dataset"] is False
+    with pytest.raises(DataError, match="unknown research answer bundle"):
+        registered_answer_bundle("invented-cross-pair")
+
+
+def test_crypto_crowding_intake_exposes_one_exact_executable_bundle() -> None:
+    draft = draft_exploration_contract(CRYPTO_IDEA)
+
+    assert draft["recommended_answer_bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    assert [question["id"] for question in draft["blocking_questions"]] == [
+        "chart_construction",
+        "event_availability",
+        "primary_outcome",
+    ]
+    assert all(
+        question["recommended_answer_bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+        for question in draft["blocking_questions"]
+    )
+    bundle = registered_answer_bundle("bybit_btcusdt_crowding_reversal_v1")
+    assert bundle == {
+        "bundle_id": "bybit_btcusdt_crowding_reversal_v1",
+        "label": "Bybit BTCUSDT crowding reversal research",
+        "answers": {
+            "chart_construction": "bybit_btcusdt_linear_hourly",
+            "event_availability": "bybit_funding_event_point_in_time",
+            "primary_outcome": "next_funding_mark_minus_index_5bp",
+        },
+        "requires_dataset": True,
+    }
+
+    resolved = draft_exploration_contract(
+        CRYPTO_IDEA,
+        resolutions={
+            "chart_construction": "bybit_btcusdt_linear_hourly",
+            "event_availability": "bybit_funding_event_point_in_time",
+            "primary_outcome": "next_funding_mark_minus_index_5bp",
+        },
+    )
+    assert resolved["approval_ready"] is True
+    assert resolved["event_definition"]["name"] == "bybit_btcusdt_crowding_reversal"
+    assert resolved["chart_fingerprint"]["instrument"] == "BTCUSDT"
+    assert resolved["chart_fingerprint"]["provider"] == "bybit"
+    assert resolved["chart_fingerprint"]["timestamp_semantics"] == "interval_start_utc"
+    assert resolved["primary_claim"] == {
+        "estimand": "event_mark_return_minus_index_return",
+        "endpoint": "next_provider_declared_funding_timestamp",
+        "horizon": "next_provider_declared_funding_timestamp",
+        "direction": "negative",
+        "minimum_effect_return": -0.0005,
+    }
+    assert resolved["analysis_plan"]["schema"] == "CryptoCrowdingResearchPlanV1"
 
 
 def test_four_hour_double_bottom_intake_preserves_words_and_blocks_on_three_material_choices() -> (
@@ -28,12 +87,47 @@ def test_four_hour_double_bottom_intake_preserves_words_and_blocks_on_three_mate
         "primary_outcome",
     ]
     assert len(questions) == 3
+    assert all(
+        set(question)
+        == {
+            "id",
+            "prompt",
+            "blocking_reason",
+            "choices",
+            "recommended_answer_bundle_id",
+        }
+        for question in questions
+    )
+    assert all(
+        question["recommended_answer_bundle_id"] == "synthetic_spy_60m_four_hour_v1"
+        for question in questions
+    )
     assert [choice["id"] for choice in questions[0]["choices"]] == [
         "spy_extended_fixed_4h",
         "es_fixed_4h",
         "spy_rth_60m_four_hour_window",
         "tiingo_daily_fallback",
     ]
+    synthetic_only = next(
+        choice for choice in draft["answer_capability_gaps"] if choice["id"] == "synthetic_only"
+    )
+    assert synthetic_only["availability"] == "unavailable"
+    assert draft["recommended_answer_bundle_id"] == "synthetic_spy_60m_four_hour_v1"
+    bundles = draft["valid_answer_bundles"]
+    assert {bundle["bundle_id"] for bundle in bundles} == {
+        "synthetic_spy_60m_four_hour_v1",
+        "tiingo_spy_daily_next_session_v1",
+        "bybit_btcusdt_crowding_reversal_v1",
+    }
+    registered = {
+        ("spy_rth_60m_four_hour_window", "four_trading_hour_return_25bp"),
+        ("tiingo_daily_fallback", "next_regular_session_return_50bp"),
+        ("bybit_btcusdt_linear_hourly", "next_funding_mark_minus_index_5bp"),
+    }
+    assert {
+        (bundle["answers"]["chart_construction"], bundle["answers"]["primary_outcome"])
+        for bundle in bundles
+    } == registered
     assert draft["evidence_topology"]["allocations"] == {"D1": 0.6, "D2": 0.2, "D3": 0.2}
     assert draft["evidence_topology"]["D2"]["state"] == "SEALED"
     assert draft["evidence_topology"]["D3"]["minimum_fraction"] == 0.2
@@ -208,6 +302,15 @@ def test_unknown_or_conflicting_material_resolution_fails_closed() -> None:
                 "primary_outcome": "four_trading_hour_return_25bp",
             },
         )
+
+
+def test_ambiguous_idea_has_no_guessed_recommendation() -> None:
+    draft = draft_exploration_contract("Double bottom patterns may predict later returns")
+
+    assert draft["recommended_answer_bundle_id"] is None
+    assert all(
+        question["recommended_answer_bundle_id"] is None for question in draft["blocking_questions"]
+    )
     for removed_choice in ("daily_adjusted_bars", "owner_specified_fixed_duration"):
         with pytest.raises(DataError, match="unsupported chart_construction"):
             draft_exploration_contract(

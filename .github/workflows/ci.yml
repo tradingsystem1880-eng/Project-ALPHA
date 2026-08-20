@@ -35,12 +35,48 @@ jobs:
         run: uv run pytest -q -m "not network" --cov --cov-report=term-missing
       - name: OpenAPI freshness
         run: uv run python scripts/generate_web_openapi.py --check
+      - name: OpenAPI verification and authority documentation
+        run: uv run python scripts/check_openapi_operations.py
       - name: Build all 13 wheels
         run: uv build --all-packages
       - name: Import built wheels
         run: |
           uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
           .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web))'
+
+  harness:
+    # The Claude Code harness verifies itself: a control that is not tested is prose.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --locked
+      - name: Harness doctor
+        run: uv run python scripts/gate.py doctor --json
+      - name: Harness weakening scanner
+        run: uv run python scripts/gate.py lint-harness
+      - name: Harness types
+        run: uv run mypy --strict $(uv run python -c "import sys; sys.path.insert(0, 'scripts'); import gate; print(' '.join(gate.HARNESS_SCRIPTS))")
+      - name: Block smoke (real hooks must refuse the three canonical bypasses)
+        run: |
+          set -u
+          git config user.email ci@example.com && git config user.name CI
+          echo "smoke = 1" > smoke_ci.py && git add smoke_ci.py
+          # 1. commit without a gate stamp
+          if echo '{"cwd":"'$PWD'","session_id":"ci","tool_input":{"command":"git commit -m \"feat: smoke\""}}' | python3 scripts/claude_hooks.py pre-bash-guard; then echo "commit without stamp was NOT blocked" >&2; exit 1; fi
+          # 2. protected edit without ack
+          if echo '{"cwd":"'$PWD'","session_id":"ci","tool_input":{"file_path":"'$PWD'/.claude/settings.json","content":"{}"}}' | python3 scripts/claude_hooks.py pre-edit-guard; then echo "protected edit without ack was NOT blocked" >&2; exit 1; fi
+          # 3. malformed attestation
+          if echo '{"verdict":"MAYBE"}' | uv run python scripts/gate.py attest --kind review; then echo "malformed attestation was NOT rejected" >&2; exit 1; fi
+          git rm -q --cached smoke_ci.py && rm smoke_ci.py
+          echo "block smoke OK"
 
   frontend:
     runs-on: ubuntu-latest
@@ -50,6 +86,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install backend for the Playwright real server (locked)
+        run: uv sync --locked
       - name: Install frontend (locked)
         working-directory: apps/alpha-web/frontend
         run: npm ci
@@ -83,6 +125,8 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
+      - name: Lockfile check
+        run: uv lock --check
       - name: Install isolated worker (locked)
         run: uv sync --locked
       - name: Lint and format
@@ -91,3 +135,26 @@ jobs:
         run: uv run mypy
       - name: Worker tests
         run: uv run pytest -q
+
+  literature-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: workers/literature
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install isolated worker (locked)
+        run: uv sync --locked
+      - name: Lockfile check
+        run: uv lock --check
+      - name: Lint and format
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Types
+        run: uv run mypy
+      - name: Offline worker and hostile-document tests
+        run: uv run pytest -q -m "not network"

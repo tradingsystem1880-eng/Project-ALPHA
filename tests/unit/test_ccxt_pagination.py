@@ -96,3 +96,18 @@ def test_clip_ohlcv_dedupes_page_seams_and_clips_window() -> None:
     rows = [[float(t * day), 1.0, 2.0, 0.5, 1.5, 10.0] for t in (0, 1, 1, 2, 3)]
     out = clip_ohlcv(rows, since_ms=1 * day, end_ms=2 * day, now_ms=100 * day)
     assert [int(r[0]) // day for r in out] == [1, 2]
+
+
+def test_clip_ohlcv_period_drops_only_the_live_intraday_interval() -> None:
+    from alpha_data.adapters.ccxt_adapter import clip_ohlcv_period
+
+    hour = 3_600_000
+    rows = [[float(t * hour), 1.0, 2.0, 0.5, 1.5, 10.0] for t in range(5)]
+    out = clip_ohlcv_period(
+        rows,
+        since_ms=0,
+        end_ms=10 * hour,
+        now_ms=4 * hour + hour // 2,
+        step_ms=hour,
+    )
+    assert [int(row[0]) // hour for row in out] == [0, 1, 2, 3]

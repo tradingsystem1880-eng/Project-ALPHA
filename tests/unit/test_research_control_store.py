@@ -10,6 +10,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -32,6 +33,7 @@ from alpha_core import DataError
 from alpha_research import (
     ResearchChartFingerprintV1,
     ResearchD2BoundaryV1,
+    ResearchD2BoundaryV2,
     build_research_gate_packet,
 )
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
@@ -230,6 +232,70 @@ def _payload(
         protocol = cast(dict[str, object], payload["protocol"])
         protocol["d0_operator"] = registered_d0_operator(payload)
     return payload
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("topology", "evidence_topology"),
+        ("boundary", "canonical boundary"),
+        ("d2", "sealed D2"),
+        ("hash", "boundary hash does not match"),
+        ("d0", "requires D0"),
+    ],
+)
+def test_research_topology_rejects_incomplete_boundary_contracts(case: str, message: str) -> None:
+    payload = _payload("sp_" + "1" * 64)
+    protocol = cast(dict[str, object], payload["protocol"])
+    topology = cast(dict[str, object], protocol["evidence_topology"])
+    if case == "topology":
+        protocol.pop("evidence_topology")
+    elif case == "boundary":
+        topology.pop("boundary")
+    elif case == "d2":
+        topology.pop("D2")
+    elif case == "hash":
+        cast(dict[str, object], topology["D2"])["boundary_hash"] = "different-boundary-fingerprint"
+    else:
+        topology.pop("D0")
+    with pytest.raises(DataError, match=message):
+        control_store_module._research_d2_topology(payload)
+
+
+def test_compact_v2_full_history_contract_persists_under_the_existing_json_limit(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    pack_id = _source_pack(store)
+    payload = _payload(pack_id)
+    baseline = _boundary("compact-full-history")
+    boundary = ResearchD2BoundaryV2.from_eligible_groups(
+        dataset_fingerprint=baseline.dataset_fingerprint,
+        eligible_groups=tuple(f"spy-session-{index:04d}" for index in range(3_774)),
+        chart_fingerprint=baseline.chart_fingerprint,
+        event_formula=baseline.event_formula,
+        event_availability_timestamp=baseline.event_availability_timestamp,
+        primary_endpoint=baseline.primary_endpoint,
+        primary_horizon=baseline.primary_horizon,
+        outcome_overlap_embargo_groups=baseline.outcome_overlap_embargo_groups,
+    )
+    protocol = cast(dict[str, object], payload["protocol"])
+    topology = cast(dict[str, object], protocol["evidence_topology"])
+    topology["boundary"] = boundary.to_dict()
+    d2 = cast(dict[str, object], topology["D2"])
+    d2["boundary_hash"] = boundary.boundary_sha256
+
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    assert len(encoded) < 65_536
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+    )
+    assert cast(dict[str, object], contract["payload"]) == payload
 
 
 def _approved_contracts(
@@ -804,7 +870,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 2
+    assert SCHEMA_VERSION == 4
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -818,7 +884,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
             "SELECT project_id, research_required, origin FROM project_research_governance"
         )
     }
-    assert migrated.execute("PRAGMA user_version").fetchone() == (2,)
+    assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
     tables = {
         str(row[0])
         for row in migrated.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -1121,11 +1187,11 @@ def test_static_schema_helpers_fail_closed_and_rollback(
 def test_locked_v1_migration_rejects_unsupported_version_and_rolls_back(tmp_path: Path) -> None:
     database = tmp_path / "unsupported.sqlite3"
     connection = sqlite3.connect(database, isolation_level=None)
-    connection.execute("PRAGMA user_version = 3")
-    with pytest.raises(DataError, match="unsupported control store schema version 3"):
+    connection.execute("PRAGMA user_version = 5")
+    with pytest.raises(DataError, match="unsupported control store schema version 5"):
         control_store_module._migrate_schema_v1(connection, database)
     assert connection.in_transaction is False
-    assert connection.execute("PRAGMA user_version").fetchone() == (3,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (5,)
     connection.close()
 
 
@@ -1273,7 +1339,7 @@ def test_existing_schema_v2_reopen_adds_launch_reservation_tables(tmp_path: Path
     _project(store)
     database = tmp_path / "control" / "workstation.sqlite3"
     connection = sqlite3.connect(database)
-    assert connection.execute("PRAGMA user_version").fetchone() == (2,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
     connection.execute("DROP TABLE research_launch_attempt_links")
     connection.execute("DROP TABLE research_launch_reservations")
     connection.commit()
@@ -4258,6 +4324,57 @@ def test_data_audit_refuses_drifted_bytes_and_unsupported_kinds(
         run_data_audit(tmp_path, project_id=project_id, ref=bad_range)
 
 
+def test_data_audit_reverifies_registered_crypto_crowding_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli import crypto_data_cmds
+    from alpha_cli.research_data_audit import run_data_audit
+
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    snapshot_id = "a" * 64
+    manifest_path = tmp_path / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text("{}", encoding="utf-8")
+    observations = tuple(
+        SimpleNamespace(
+            funding_time=START + timedelta(hours=8 * index),
+            funding_rate=(-1 if index % 2 else 1) * (index + 1) / 100_000,
+        )
+        for index in range(40)
+    )
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "crypto_crowding_observations",
+        lambda requested: observations if requested == snapshot_id else (),
+    )
+    snapshot_hash = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    ref = {
+        "ref_id": "rd_" + "2" * 64,
+        "dataset_kind": "snapshot",
+        "instrument": "BTC",
+        "provider": "crypto-data-house",
+        "start_ts": START.isoformat(),
+        "end_ts": (START + timedelta(hours=8 * 39)).isoformat(),
+        "bar_duration_minutes": None,
+        "origin": {
+            "snapshot_id": snapshot_id,
+            "snapshot_schema": "CryptoSnapshotV1",
+            "manifest_sha256": snapshot_hash,
+        },
+    }
+
+    result = run_data_audit(tmp_path, project_id=project_id, ref=ref)
+
+    assert result["summary"]["blocking_count"] == 0
+    assert result["manifest"]["snapshot_id"] == snapshot_id
+    assert result["manifest"]["snapshot_hash"] == snapshot_hash
+    run_dir = tmp_path / "runs" / result["manifest"]["run_id"]
+    descriptives = json.loads((run_dir / "descriptives.json").read_text(encoding="utf-8"))
+    assert descriptives["funding_rate_distribution"]["n"] == 40
+    assert "return_distribution" not in descriptives
+
+
 def test_source_records_gain_typed_doi_year_authors_columns(tmp_path: Path) -> None:
     store = ControlStore(tmp_path)
     _project(store)
@@ -4338,6 +4455,26 @@ def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> Non
     assert claim["status"] == "draft"
     assert claim["revision"] == 1
 
+    direction = store.record_source_claim_owner_direction(
+        project_id,
+        claim_id=claim_id,
+        decision="revise",
+        actor="owner",
+        reason="Clarify the sample-period limitation.",
+        payload={"requested_field": "limitations"},
+        at=START + timedelta(minutes=2, seconds=30),
+    )
+    assert direction["sequence"] == 1
+    assert direction["decision"] == "revise"
+    with pytest.raises(DataError, match="unknown research claim"):
+        store.record_source_claim_owner_direction(
+            project_id,
+            claim_id="sc_" + "f" * 64,
+            decision="reject",
+            actor="owner",
+            reason="Unknown claim fixture.",
+        )
+
     # Screening appends a new revision; the draft row survives unchanged (append-only).
     screened = store.screen_source_claim(
         project_id,
@@ -4348,6 +4485,14 @@ def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> Non
     assert screened["status"] == "screened"
     assert screened["revision"] == 2
     assert screened["screened_by"] == "owner"
+    with pytest.raises(DataError, match="screened claim"):
+        store.record_source_claim_owner_direction(
+            project_id,
+            claim_id=claim_id,
+            decision="reject",
+            actor="owner",
+            reason="Cannot rewrite screened evidence.",
+        )
     rows = store.list_source_claims(project_id)
     assert [(row["claim_id"], row["revision"], row["status"]) for row in rows] == [
         (claim_id, 2, "screened"),
@@ -4375,6 +4520,104 @@ def test_source_claims_are_append_only_and_owner_screened(tmp_path: Path) -> Non
             author="codex",
             author_kind="agent",
         )
+
+
+def test_full_text_claim_requires_and_reverifies_source_anchor(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    contract_id = str(store.research_case_summary(project_id)["active_contract_id"])
+    source_sha = hashlib.sha256(b"acquired-pdf").hexdigest()
+    source = store.create_research_source(
+        project_id,
+        title="Anchored paper",
+        locator="https://arxiv.org/pdf/1234.5678",
+        provider="arxiv",
+        access_mode="open_access",
+        content_hash=source_sha,
+        at=START + timedelta(minutes=1),
+    )
+    text = "The event study reports a small positive effect with wide uncertainty."
+    extraction_id = "rx_" + hashlib.sha256(b"extraction").hexdigest()
+    artifact = {
+        "extraction_id": extraction_id,
+        "schema": "ResearchDocumentTextV1",
+        "source_sha256": source_sha,
+        "parser": "pypdf",
+        "parser_version": "6.14.2",
+        "config_hash": hashlib.sha256(b"config").hexdigest(),
+        "normalization": "NFC_LF_RSTRIP_V1",
+        "status": "extracted",
+        "pages": [
+            {
+                "page": 1,
+                "text": text,
+                "character_count": len(text),
+                "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            }
+        ],
+        "page_count": 1,
+        "character_count": len(text),
+        "warnings": [],
+        "trust_label": "UNTRUSTED_SOURCE",
+    }
+    store.record_research_document_text(str(source["source_id"]), artifact=artifact)
+    context = store.get_research_source_context(str(source["source_id"]), excerpt_limit=24)
+    assert context["document"] is not None
+    previews = cast(list[dict[str, object]], context["page_previews"])
+    assert previews[0]["excerpt"] == text[:24]
+    assert previews[0]["excerpt_truncated"] is True
+    assert previews[0]["trust_label"] == "UNTRUSTED_SOURCE"
+    with pytest.raises(DataError, match="excerpt limit"):
+        store.get_research_source_context(str(source["source_id"]), excerpt_limit=0)
+
+    with pytest.raises(DataError, match="SourceAnchorV1"):
+        store.draft_source_claim(
+            project_id,
+            source_id=str(source["source_id"]),
+            contract_id=contract_id,
+            claim_text="Small positive effect with uncertainty.",
+            direction="supports",
+            strength="weak",
+            method_summary="Event study.",
+            sample_summary="Reported sample.",
+            markets=["US_EQUITY"],
+            limitations="Wide uncertainty.",
+            author="codex",
+            author_kind="agent",
+        )
+
+    excerpt = "small positive effect"
+    start = text.index(excerpt)
+    claim = store.draft_source_claim(
+        project_id,
+        source_id=str(source["source_id"]),
+        contract_id=contract_id,
+        claim_text="Small positive effect with uncertainty.",
+        direction="supports",
+        strength="weak",
+        method_summary="Event study.",
+        sample_summary="Reported sample.",
+        markets=["US_EQUITY"],
+        limitations="Wide uncertainty.",
+        author="codex",
+        author_kind="agent",
+        source_anchor={
+            "extraction_id": extraction_id,
+            "page": 1,
+            "char_start": start,
+            "char_end": start + len(excerpt),
+            "exact_text_sha256": hashlib.sha256(excerpt.encode()).hexdigest(),
+        },
+    )
+    assert claim["anchor_state"] == "verified"
+    assert cast(dict[str, object], claim["source_anchor"])["excerpt"] == excerpt
+    screened = store.screen_source_claim(project_id, claim_id=str(claim["claim_id"]), actor="owner")
+    assert screened["anchor_state"] == "verified"
+
+    extraction_path = next((tmp_path / "research" / "literature" / "extractions").glob("*.json"))
+    extraction_path.write_text("{}", encoding="utf-8")
+    with pytest.raises(DataError, match="integrity"):
+        store.list_source_claims(project_id)
     with pytest.raises(DataError, match="unknown research source"):
         store.draft_source_claim(
             project_id,

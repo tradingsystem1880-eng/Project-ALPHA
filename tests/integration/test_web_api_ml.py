@@ -111,6 +111,7 @@ def test_project_generation_post_returns_opaque_pipeline_job(
         "input_bundle_id": "b" * 32,
         "exchange_id": "c" * 32,
     }
+    monkeypatch.setattr(_ml, "experiment_preflight", lambda **kwargs: {"ready": True})
     monkeypatch.setattr(_ml, "launch_experiment_generation", lambda **kwargs: accepted)
     client = _client(tmp_path, monkeypatch)
 
@@ -119,6 +120,69 @@ def test_project_generation_post_returns_opaque_pipeline_job(
     assert response.status_code == 202, response.text
     assert response.json() == accepted
     assert "/" not in response.text
+
+
+def test_project_generation_preflight_route_is_typed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    projection = {
+        "schema_version": 1,
+        "project_id": "project-1",
+        "experiment_id": None,
+        "snapshot_id": None,
+        "universe_count": 0,
+        "aligned_sessions": 0,
+        "active_job_id": None,
+        "ready": False,
+        "checks": [
+            {
+                "check_id": "experiment",
+                "state": "blocked",
+                "message": "No current immutable experiment is selected.",
+                "recovery_action": "Create or select an experiment in Development Center.",
+            }
+        ],
+    }
+    monkeypatch.setattr(_ml, "experiment_preflight", lambda **_: projection)
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.get("/api/ml/experiments/preflight?project_id=project-1")
+
+    assert response.status_code == 200, response.text
+    assert response.json() == projection
+
+
+def test_project_generation_revalidates_preflight_before_creating_a_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        _ml,
+        "experiment_preflight",
+        lambda **_: {
+            "ready": False,
+            "checks": [
+                {
+                    "state": "blocked",
+                    "message": "The project research gate is still open.",
+                }
+            ],
+        },
+    )
+    launched = False
+
+    def launch(**kwargs: object) -> dict[str, object]:
+        nonlocal launched
+        launched = True
+        return kwargs
+
+    monkeypatch.setattr(_ml, "launch_experiment_generation", launch)
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post("/api/ml/experiments", json={"project_id": "project-1"})
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "request_invalid"
+    assert launched is False
 
 
 def test_snapshot_input_generation_post_uses_opaque_bundle_id(

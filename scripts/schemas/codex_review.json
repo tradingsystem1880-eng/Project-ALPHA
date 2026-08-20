@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodexReviewResponse",
+  "description": "Final-response shape for `codex_bridge.py review` (the bridge wraps it into harness_models.CodexReview).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings", "summary"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "file", "line", "summary", "axis"],
+        "properties": {
+          "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+          "file": {"type": "string"},
+          "line": {"type": ["integer", "null"]},
+          "summary": {"type": "string"},
+          "axis": {"type": "string"}
+        }
+      }
+    },
+    "summary": {"type": "string"}
+  }
+}

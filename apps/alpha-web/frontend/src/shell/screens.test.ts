@@ -56,16 +56,25 @@ describe('screen definitions', () => {
     const explore = areasOf(screen('explore'))
     const [firstArea, firstPanes] = explore[0]
     expect(firstArea).toBe('main')
-    expect(firstPanes[0].name).toBe('PriceChart')
+    expect(firstPanes.map((pane) => pane.name)).toEqual([
+      'ResearchCockpit',
+      'EvidenceHub',
+      'PriceChart',
+    ])
     const side = explore.find(([area]) => area === 'side')
     expect(side?.[1].map((pane) => pane.name)).toEqual([
-      'DataExplorer',
-      'ResearchDataExplorer',
       'ResearchBacklog',
-      'EvidenceHub',
-      'Screener',
-      'OptionsGreeks',
+      'Literature',
+      'ResearchDataExplorer',
+      'DataExplorer',
+      'CodexBench',
     ])
+  })
+
+  it('keeps research primary and standalone work visibly separate from development', () => {
+    expect(screen('explore').label).toBe('Research')
+    expect(screen('build').panes.map((pane) => pane.title)).toContain('Standalone Sandbox')
+    expect(screen('build').panes.map((pane) => pane.name)).not.toContain('ResearchCockpit')
   })
 
   it('rejects an unknown screen instead of rendering an empty shell', () => {

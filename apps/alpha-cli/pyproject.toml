@@ -17,6 +17,7 @@ dependencies = [
     "numpy>=1.26",
     "polars>=1.0",
     "nautilus-trader[ib,docker]==1.228.0",
+    "webauthn==3.0.0",
 ]
 
 [project.scripts]

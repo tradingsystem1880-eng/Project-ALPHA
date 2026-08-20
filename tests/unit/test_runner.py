@@ -164,6 +164,17 @@ def test_run_identity_changes_with_observed_source_content() -> None:
     )
 
 
+def test_web_run_context_is_part_of_run_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = {"command": "validate", "symbol": "SPY"}
+    without_context = run_id_for(payload)
+    monkeypatch.setenv(
+        "ALPHA_RUN_CONTEXT_JSON",
+        '{"kind":"standalone_sandbox","schema_version":1,"watermark":"STANDALONE_UNQUALIFIED"}',
+    )
+
+    assert run_id_for(payload) != without_context
+
+
 def test_run_id_rejects_non_finite_payloads() -> None:
     with pytest.raises(ValueError, match="JSON compliant"):
         run_id_for({"value": float("nan")})

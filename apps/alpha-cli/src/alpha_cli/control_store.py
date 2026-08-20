@@ -19,7 +19,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Final, Literal, cast
+from typing import Any, Final, Literal, cast
 
 import polars as pl
 
@@ -33,7 +33,6 @@ from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KIN
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
-from alpha_research import ResearchD2BoundaryV1, confirmation_classification_from_evidence
 
 type ProjectStatus = Literal["active", "accepted", "rejected", "archived"]
 type StageState = Literal[
@@ -74,9 +73,25 @@ type ResearchD2State = Literal["sealed", "authorized", "consumed", "contaminated
 type ResearchOutcome = Literal["SUPPORTED", "CONTRADICTED", "INCONCLUSIVE", "INVALID"]
 type ResearchDisposition = Literal["advance_to_strategy", "revise", "park", "reject"]
 type ProjectResearchOrigin = Literal["strategy_development", "research_capture"]
+type OwnerActionType = Literal[
+    "screen_source_claim",
+    "reject_source_claim",
+    "revise_source_claim",
+    "freeze_source_pack",
+    "approve_exploration",
+    "reject_exploration",
+    "revise_exploration",
+    "launch_d1",
+    "approve_confirmation",
+    "reject_confirmation",
+    "launch_d2",
+    "record_final_disposition",
+]
 
 LEGACY_SCHEMA_VERSION: Final = 1
-SCHEMA_VERSION: Final = 2
+OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
+PREVIOUS_SCHEMA_VERSION: Final = 3
+SCHEMA_VERSION: Final = 4
 DATABASE_NAME: Final = "workstation.sqlite3"
 PROJECT_STATUSES: Final = frozenset({"active", "accepted", "rejected", "archived"})
 STAGE_STATES: Final = frozenset(
@@ -156,6 +171,30 @@ RESEARCH_D2_REVISION_RELATIONS: Final = frozenset(
 RESEARCH_SOURCE_ACCESS_MODES: Final = frozenset({"metadata_only", "open_access", "owner_provided"})
 PROJECT_RESEARCH_ORIGINS: Final = frozenset({"strategy_development", "research_capture"})
 _MONTE_CARLO_COMMANDS: Final = frozenset({"monte_carlo_classical", "monte_carlo_kronos"})
+_CANDIDATE_NULL_COMMANDS: Final = frozenset(
+    {"candidate_null_bootstrap", "candidate_null_student_t", "candidate_null_garch"}
+)
+_CANDIDATE_MONTE_CARLO_COMMANDS: Final = frozenset(
+    {"candidate_monte_carlo_classical", "candidate_monte_carlo_kronos"}
+)
+_CANDIDATE_PORTFOLIO_COMMANDS: Final = frozenset({"candidate_portfolio", "candidate_cross_asset"})
+_CANDIDATE_KRONOS_COMMANDS: Final = frozenset(
+    {"candidate_kronos_forecast", "candidate_kronos_eval"}
+)
+_CANDIDATE_EVIDENCE_COMMANDS: Final = frozenset(
+    {
+        "candidate_baseline",
+        "candidate_oos",
+        *_CANDIDATE_NULL_COMMANDS,
+        *_CANDIDATE_MONTE_CARLO_COMMANDS,
+        "candidate_optim",
+        *_CANDIDATE_PORTFOLIO_COMMANDS,
+        "candidate_fixed_stress",
+        "candidate_qlib",
+        *_CANDIDATE_KRONOS_COMMANDS,
+        "candidate_holdout",
+    }
+)
 
 _ASSOCIATION_TOKEN_MARKERS: Final = ("associat", "correlat", "kendall", "pearson", "spearman")
 _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
@@ -174,6 +213,7 @@ _GENERIC_EVIDENCE_COMMANDS: Final = frozenset(
         "forecast_eval",
         *_MONTE_CARLO_COMMANDS,
         "ml_replay",
+        *_CANDIDATE_EVIDENCE_COMMANDS,
     }
 )
 _GENERIC_EVIDENCE_RESEARCH_MARKERS: Final = frozenset(
@@ -210,21 +250,38 @@ _SUITE_JOB_KINDS: Final = frozenset(
     }
 )
 _SUITE_ACTION_STAGE_COMMANDS: Final[dict[str, tuple[str, frozenset[str]]]] = {
-    "baseline": ("baseline", frozenset({"backtest_run"})),
-    "inner_oos": ("oos", frozenset({"backtest_oos"})),
-    "three_null_families": ("robustness", frozenset({"validate"})),
+    "baseline": ("baseline", frozenset({"backtest_run", "candidate_baseline"})),
+    "inner_oos": ("oos", frozenset({"backtest_oos", "candidate_oos"})),
+    "three_null_families": (
+        "robustness",
+        frozenset({"validate", *_CANDIDATE_NULL_COMMANDS}),
+    ),
+    "fixed_stress": ("robustness", frozenset({"candidate_fixed_stress"})),
     "monte_carlo": (
         "monte_carlo",
-        _MONTE_CARLO_COMMANDS,
+        _MONTE_CARLO_COMMANDS | _CANDIDATE_MONTE_CARLO_COMMANDS,
     ),
-    "optimize_grid": ("optimization", frozenset({"optim_grid"})),
+    "optimize_grid": ("optimization", frozenset({"optim_grid", "candidate_optim"})),
     "portfolio_cross_asset": (
         "portfolio",
-        frozenset({"backtest_portfolio", "cross_sectional", "backtest_cross_sectional"}),
+        frozenset(
+            {
+                "backtest_portfolio",
+                "cross_sectional",
+                "backtest_cross_sectional",
+                *_CANDIDATE_PORTFOLIO_COMMANDS,
+            }
+        ),
     ),
-    "qlib": ("ml", frozenset({"ml_replay"})),
-    "kronos": ("kronos", frozenset({"forecast_run", "forecast_eval"})),
-    "holdout_reveal": ("holdout", frozenset({"backtest_holdout"})),
+    "qlib": ("ml", frozenset({"ml_replay", "candidate_qlib"})),
+    "kronos": (
+        "kronos",
+        frozenset({"forecast_run", "forecast_eval", *_CANDIDATE_KRONOS_COMMANDS}),
+    ),
+    "holdout_reveal": (
+        "holdout",
+        frozenset({"backtest_holdout", "candidate_holdout"}),
+    ),
 }
 _PRE_REVEAL_RESEARCH_STAGES: Final = frozenset(
     {
@@ -299,7 +356,7 @@ _RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
     "quantpad_receipt": ("receipt_id", "response_sha256"),
 }
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc)_[0-9a-f]{64}")
+_CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc|ld|rx)_[0-9a-f]{64}")
 _SOURCE_CLAIM_DIRECTIONS: Final = frozenset({"supports", "contradicts", "contextualizes", "method"})
 _SOURCE_CLAIM_STRENGTHS: Final = frozenset({"weak", "moderate", "strong"})
 # Columns added to research_source_records after schema v2 shipped (ADR-0024).  The heal
@@ -315,6 +372,22 @@ _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
 _MAX_JSON_BYTES = 65_536
 _MAX_TEXT = 8_192
+OWNER_ACTION_TYPES: Final = frozenset(
+    {
+        "screen_source_claim",
+        "reject_source_claim",
+        "revise_source_claim",
+        "freeze_source_pack",
+        "approve_exploration",
+        "reject_exploration",
+        "revise_exploration",
+        "launch_d1",
+        "approve_confirmation",
+        "reject_confirmation",
+        "launch_d2",
+        "record_final_disposition",
+    }
+)
 _RESEARCH_GATE_EVIDENCE_ARTIFACT: Final = "research_gate_evidence.json"
 _D0_RESEARCH_KIND: Final = "d0-synthetic-pilot"
 _D0_LAUNCH_BUDGET: Final[dict[str, int]] = {
@@ -864,6 +937,179 @@ CREATE INDEX IF NOT EXISTS idx_research_launch_attempt_links_attempt
     ON research_launch_attempt_links(attempt_id);
 """
 
+_SCHEMA_V3 = """
+CREATE TABLE IF NOT EXISTS owner_enrollment_requests (
+    request_id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    replace_existing INTEGER NOT NULL CHECK (replace_existing IN (0, 1)),
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS owner_credentials (
+    credential_id TEXT PRIMARY KEY,
+    public_key BLOB NOT NULL,
+    sign_count INTEGER NOT NULL CHECK (sign_count >= 0),
+    actor TEXT NOT NULL,
+    transports_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    revoked_at TEXT
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS owner_credential_events (
+    event_id TEXT PRIMARY KEY,
+    credential_id TEXT REFERENCES owner_credentials(credential_id),
+    event_type TEXT NOT NULL CHECK (event_type IN (
+        'enrollment_requested', 'enrolled', 'revoked', 'replaced', 'recovery_failed'
+    )),
+    reason TEXT NOT NULL,
+    occurred_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS owner_auth_challenges (
+    challenge_id TEXT PRIMARY KEY,
+    ceremony TEXT NOT NULL CHECK (ceremony IN ('registration', 'action')),
+    challenge BLOB NOT NULL,
+    enrollment_request_id TEXT REFERENCES owner_enrollment_requests(request_id),
+    binding_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    verified_credential_id TEXT REFERENCES owner_credentials(credential_id)
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS owner_action_receipts (
+    receipt_id TEXT PRIMARY KEY,
+    challenge_id TEXT NOT NULL UNIQUE REFERENCES owner_auth_challenges(challenge_id),
+    credential_id TEXT NOT NULL REFERENCES owner_credentials(credential_id),
+    actor TEXT NOT NULL,
+    action_type TEXT NOT NULL CHECK (action_type IN (
+        'screen_source_claim', 'reject_source_claim', 'revise_source_claim',
+        'freeze_source_pack', 'approve_exploration', 'reject_exploration',
+        'revise_exploration', 'launch_d1', 'approve_confirmation',
+        'reject_confirmation', 'launch_d2', 'record_final_disposition'
+    )),
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    artifact_hash TEXT NOT NULL,
+    expected_case_revision TEXT NOT NULL,
+    consequence_summary TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    request_hash TEXT NOT NULL,
+    assertion_hash TEXT NOT NULL,
+    outcome_json TEXT NOT NULL,
+    performed_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_source_claim_owner_events (
+    claim_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    decision TEXT NOT NULL CHECK (decision IN ('reject', 'revise')),
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    occurred_at TEXT NOT NULL,
+    PRIMARY KEY (claim_id, sequence)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_owner_credentials_active
+    ON owner_credentials(revoked_at, created_at, credential_id);
+CREATE INDEX IF NOT EXISTS idx_owner_auth_challenges_expiry
+    ON owner_auth_challenges(ceremony, expires_at, used_at);
+CREATE INDEX IF NOT EXISTS idx_owner_action_receipts_project
+    ON owner_action_receipts(project_id, performed_at, receipt_id);
+CREATE INDEX IF NOT EXISTS idx_source_claim_owner_events_project
+    ON research_source_claim_owner_events(project_id, occurred_at, claim_id);
+
+CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_update
+BEFORE UPDATE ON owner_action_receipts
+BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_delete
+BEFORE DELETE ON owner_action_receipts
+BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS owner_credential_events_no_update
+BEFORE UPDATE ON owner_credential_events
+BEGIN SELECT RAISE(ABORT, 'owner credential events are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS owner_credential_events_no_delete
+BEFORE DELETE ON owner_credential_events
+BEGIN SELECT RAISE(ABORT, 'owner credential events are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_source_claim_owner_events_no_update
+BEFORE UPDATE ON research_source_claim_owner_events
+BEGIN SELECT RAISE(ABORT, 'source claim owner events are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_source_claim_owner_events_no_delete
+BEFORE DELETE ON research_source_claim_owner_events
+BEGIN SELECT RAISE(ABORT, 'source claim owner events are append-only'); END;
+"""
+
+_SCHEMA_V4 = """
+CREATE TABLE IF NOT EXISTS literature_discoveries (
+    discovery_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    query TEXT NOT NULL,
+    artifact_sha256 TEXT NOT NULL,
+    artifact_relpath TEXT NOT NULL,
+    budget_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_document_texts (
+    extraction_id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL UNIQUE REFERENCES research_source_records(source_id),
+    source_sha256 TEXT NOT NULL,
+    artifact_sha256 TEXT NOT NULL,
+    artifact_relpath TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN (
+        'extracted', 'encrypted', 'image_only', 'truncated', 'parser_failed'
+    )),
+    page_count INTEGER NOT NULL CHECK (page_count >= 0),
+    character_count INTEGER NOT NULL CHECK (character_count >= 0),
+    parser_version TEXT NOT NULL,
+    config_hash TEXT NOT NULL,
+    warnings_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_source_claim_anchors (
+    claim_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    extraction_id TEXT NOT NULL REFERENCES research_document_texts(extraction_id),
+    page INTEGER NOT NULL CHECK (page >= 1),
+    char_start INTEGER NOT NULL CHECK (char_start >= 0),
+    char_end INTEGER NOT NULL CHECK (char_end > char_start),
+    exact_text_sha256 TEXT NOT NULL,
+    PRIMARY KEY (claim_id, revision),
+    FOREIGN KEY (claim_id, revision) REFERENCES research_source_claims(claim_id, revision)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_literature_discoveries_project
+    ON literature_discoveries(project_id, created_at, discovery_id);
+CREATE INDEX IF NOT EXISTS idx_research_document_texts_source
+    ON research_document_texts(source_id, created_at, extraction_id);
+CREATE INDEX IF NOT EXISTS idx_research_claim_anchors_extraction
+    ON research_source_claim_anchors(extraction_id, claim_id, revision);
+
+CREATE TRIGGER IF NOT EXISTS literature_discoveries_no_update
+BEFORE UPDATE ON literature_discoveries
+BEGIN SELECT RAISE(ABORT, 'literature discoveries are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS literature_discoveries_no_delete
+BEFORE DELETE ON literature_discoveries
+BEGIN SELECT RAISE(ABORT, 'literature discoveries are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_document_texts_no_update
+BEFORE UPDATE ON research_document_texts
+BEGIN SELECT RAISE(ABORT, 'research document texts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_document_texts_no_delete
+BEFORE DELETE ON research_document_texts
+BEGIN SELECT RAISE(ABORT, 'research document texts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_source_claim_anchors_no_update
+BEFORE UPDATE ON research_source_claim_anchors
+BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_source_claim_anchors_no_delete
+BEFORE DELETE ON research_source_claim_anchors
+BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
+"""
+
 # Executed exactly once, inside the schema-v2 writer transaction (migration or fresh creation).
 # It must never run on a steady-state open: a re-executed backfill would silently re-derive a
 # lost governance row from the caller-controlled ``created_at`` date rule, and the write lock it
@@ -883,9 +1129,12 @@ SELECT
 FROM projects;
 """
 
-_DDL_OBJECT_NAME = re.compile(r"CREATE (?:TABLE|INDEX) IF NOT EXISTS (\w+)")
+_DDL_OBJECT_NAME = re.compile(r"CREATE (?:TABLE|INDEX|TRIGGER) IF NOT EXISTS (\w+)")
 _EXPECTED_SCHEMA_OBJECTS: Final = frozenset(
-    _DDL_OBJECT_NAME.findall(_SCHEMA) + _DDL_OBJECT_NAME.findall(_SCHEMA_V2)
+    _DDL_OBJECT_NAME.findall(_SCHEMA)
+    + _DDL_OBJECT_NAME.findall(_SCHEMA_V2)
+    + _DDL_OBJECT_NAME.findall(_SCHEMA_V3)
+    + _DDL_OBJECT_NAME.findall(_SCHEMA_V4)
 )
 
 
@@ -988,6 +1237,19 @@ def _canonical_json(value: object, label: str) -> str:
     if len(result.encode("utf-8")) > _MAX_JSON_BYTES:
         raise DataError(f"invalid control {label}: JSON exceeds {_MAX_JSON_BYTES} bytes")
     return result
+
+
+def research_case_revision(summary: Mapping[str, object]) -> str:
+    """Commit to owner-action-relevant mutable research case state."""
+    payload = {
+        "schema": "ResearchCaseRevisionV1",
+        "project_id": summary.get("project_id"),
+        "active_contract_id": summary.get("active_contract_id"),
+        "phase": summary.get("phase"),
+        "execution_state": summary.get("execution_state"),
+        "source_pack_id": summary.get("source_pack_id"),
+    }
+    return hashlib.sha256(_canonical_json(payload, "research case revision").encode()).hexdigest()
 
 
 def _decode_json(value: object, label: str) -> object:
@@ -1106,6 +1368,62 @@ def _verified_v1_backup(connection: sqlite3.Connection, database: Path) -> None:
             tmp.unlink()
 
 
+def _verified_v2_backup(connection: sqlite3.Connection, database: Path) -> None:
+    """Create one atomic, integrity-checked backup before the additive v2->v3 migration."""
+    backup = database.with_name(f"{database.name}.v2.bak")
+    if backup.is_symlink():
+        raise DataError(f"control store migration backup must not be a symlink: {backup}")
+    if backup.exists():
+        if not backup.is_file():
+            raise DataError(f"control store migration backup is not a file: {backup}")
+        existing = sqlite3.connect(backup)
+        try:
+            integrity = existing.execute("PRAGMA integrity_check").fetchone()
+            version = existing.execute("PRAGMA user_version").fetchone()
+            if integrity != ("ok",) or version != (OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,):
+                raise DataError("existing control store v2 migration backup is invalid")
+            existing_fingerprint = _logical_database_fingerprint(existing)
+        finally:
+            existing.close()
+        if existing_fingerprint != _logical_database_fingerprint(connection):
+            raise DataError(
+                "existing control store v2 migration backup does not match the current database"
+            )
+        return
+
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
+    os.close(fd)
+    tmp = Path(raw_tmp)
+    snapshot: sqlite3.Connection | None = None
+    target: sqlite3.Connection | None = None
+    try:
+        snapshot = sqlite3.connect(database, timeout=5.0, isolation_level=None)
+        snapshot.execute("PRAGMA query_only = ON")
+        snapshot.execute("PRAGMA busy_timeout = 5000")
+        snapshot.execute("BEGIN")
+        target = sqlite3.connect(tmp)
+        snapshot.backup(target)
+        integrity = target.execute("PRAGMA integrity_check").fetchone()
+        version = target.execute("PRAGMA user_version").fetchone()
+        if integrity != ("ok",) or version != (OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,):
+            raise DataError("cannot verify control store v2 migration backup")
+        target_fingerprint = _logical_database_fingerprint(target)
+        target.close()
+        target = None
+        if target_fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("control store v2 migration backup does not match the current database")
+        os.replace(tmp, backup)
+    finally:
+        if target is not None:
+            target.close()
+        if snapshot is not None:
+            if snapshot.in_transaction:
+                snapshot.rollback()
+            snapshot.close()
+        if tmp.exists():
+            tmp.unlink()
+
+
 def _logical_database_fingerprint(connection: sqlite3.Connection) -> str:
     """Hash schema and row content while ignoring SQLite page-layout differences."""
     digest = hashlib.sha256()
@@ -1114,6 +1432,59 @@ def _logical_database_fingerprint(connection: sqlite3.Connection) -> str:
         digest.update(len(encoded).to_bytes(8, "big"))
         digest.update(encoded)
     return digest.hexdigest()
+
+
+def _verified_v3_backup(connection: sqlite3.Connection, database: Path) -> None:
+    """Create one atomic, integrity-checked backup before the v3->v4 migration."""
+    backup = database.with_name(f"{database.name}.v3.bak")
+    if backup.is_symlink():
+        raise DataError(f"control store migration backup must not be a symlink: {backup}")
+    if backup.exists():
+        if not backup.is_file():
+            raise DataError(f"control store migration backup is not a file: {backup}")
+        existing = sqlite3.connect(backup)
+        try:
+            integrity = existing.execute("PRAGMA integrity_check").fetchone()
+            version = existing.execute("PRAGMA user_version").fetchone()
+            fingerprint = _logical_database_fingerprint(existing)
+        finally:
+            existing.close()
+        if integrity != ("ok",) or version != (PREVIOUS_SCHEMA_VERSION,):
+            raise DataError("existing control store v3 migration backup is invalid")
+        if fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("existing control store v3 migration backup does not match")
+        return
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
+    os.close(fd)
+    temporary = Path(raw_tmp)
+    snapshot: sqlite3.Connection | None = None
+    target: sqlite3.Connection | None = None
+    try:
+        snapshot = sqlite3.connect(database, timeout=5.0, isolation_level=None)
+        snapshot.execute("PRAGMA query_only = ON")
+        snapshot.execute("PRAGMA busy_timeout = 5000")
+        snapshot.execute("BEGIN")
+        target = sqlite3.connect(temporary)
+        snapshot.backup(target)
+        if target.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+            raise DataError("cannot verify control store v3 migration backup")
+        if target.execute("PRAGMA user_version").fetchone() != (PREVIOUS_SCHEMA_VERSION,):
+            raise DataError("cannot verify control store v3 migration backup version")
+        target_fingerprint = _logical_database_fingerprint(target)
+        target.close()
+        target = None
+        if target_fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("control store v3 migration backup does not match")
+        os.replace(temporary, backup)
+    finally:
+        if target is not None:
+            target.close()
+        if snapshot is not None:
+            if snapshot.in_transaction:
+                snapshot.rollback()
+            snapshot.close()
+        if temporary.exists():
+            temporary.unlink()
 
 
 def _execute_static_sql_script(connection: sqlite3.Connection, script: str) -> None:
@@ -1139,6 +1510,8 @@ def _apply_schema_v2_locked(
     if include_legacy_schema:
         _execute_static_sql_script(connection, _SCHEMA)
     _execute_static_sql_script(connection, _SCHEMA_V2)
+    _execute_static_sql_script(connection, _SCHEMA_V3)
+    _execute_static_sql_script(connection, _SCHEMA_V4)
     _execute_static_sql_script(connection, _GOVERNANCE_BACKFILL)
     connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
@@ -1172,7 +1545,7 @@ def _missing_schema_objects(connection: sqlite3.Connection) -> bool:
     present = {
         str(row[0])
         for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type IN ('table', 'index')"
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
         )
     }
     return not present >= _EXPECTED_SCHEMA_OBJECTS
@@ -1193,6 +1566,8 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
         if _missing_schema_objects(connection):
             _execute_static_sql_script(connection, _SCHEMA)
             _execute_static_sql_script(connection, _SCHEMA_V2)
+            _execute_static_sql_script(connection, _SCHEMA_V3)
+            _execute_static_sql_script(connection, _SCHEMA_V4)
         for name, column_type in _SOURCE_RECORD_ADDITIVE_COLUMNS:
             if name in _missing_source_record_columns(connection):
                 connection.execute(
@@ -1286,6 +1661,49 @@ def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
         raise
 
 
+def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
+    """Serialize the exact v2 backup and additive owner-auth schema migration."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _verified_v2_backup(connection, database)
+        _execute_static_sql_script(connection, _SCHEMA_V3)
+        _execute_static_sql_script(connection, _SCHEMA_V4)
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
+    """Serialize the exact v3 backup and additive literature-artifact migration."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != PREVIOUS_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _verified_v3_backup(connection, database)
+        _execute_static_sql_script(connection, _SCHEMA_V4)
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
 def _enum_value(value: object, field: str, allowed: frozenset[str]) -> str:
     clean = _required_text(value, field, max_length=64)
     if clean not in allowed:
@@ -1328,6 +1746,20 @@ def _research_fingerprint(value: object, field: str) -> str:
     return clean
 
 
+def _research_boundary_from_dict(payload: Mapping[str, object]) -> Any:
+    # Keep the heavy analytical package out of the Workstation's narrow owner-auth import path.
+    from alpha_research import research_d2_boundary_from_dict
+
+    return research_d2_boundary_from_dict(payload)
+
+
+def _confirmation_classification(evidence: Mapping[str, object]) -> str:
+    # Owner-auth persistence never needs the empirical classifier; research transitions do.
+    from alpha_research import confirmation_classification_from_evidence
+
+    return confirmation_classification_from_evidence(evidence)
+
+
 def _research_d2_topology(payload: Mapping[str, object]) -> tuple[dict[str, object], str]:
     protocol = payload.get("protocol")
     if not isinstance(protocol, dict):
@@ -1338,7 +1770,7 @@ def _research_d2_topology(payload: Mapping[str, object]) -> tuple[dict[str, obje
     raw_boundary = topology.get("boundary")
     if not isinstance(raw_boundary, dict):
         raise DataError("research contract evidence_topology requires a canonical boundary")
-    boundary = ResearchD2BoundaryV1.from_dict(raw_boundary)
+    boundary = _research_boundary_from_dict(raw_boundary)
     d2 = topology.get("D2")
     if not isinstance(d2, dict):
         raise DataError("research contract approval requires sealed D2 and D3 topology")
@@ -1400,10 +1832,20 @@ class ControlStore:
             connection.execute("PRAGMA synchronous = FULL")
             version_row = connection.execute("PRAGMA user_version").fetchone()
             version = 0 if version_row is None else int(version_row[0])
-            if version not in {0, LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}:
+            if version not in {
+                0,
+                LEGACY_SCHEMA_VERSION,
+                OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,
+                PREVIOUS_SCHEMA_VERSION,
+                SCHEMA_VERSION,
+            }:
                 raise DataError(f"unsupported control store schema version {version}")
             if version == LEGACY_SCHEMA_VERSION:
                 _migrate_schema_v1(connection, database)
+            elif version == OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
+                _migrate_schema_v2(connection, database)
+            elif version == PREVIOUS_SCHEMA_VERSION:
+                _migrate_schema_v3(connection, database)
             elif version < SCHEMA_VERSION:
                 connection.executescript(_SCHEMA)
                 _apply_schema_v2(connection)
@@ -2245,12 +2687,26 @@ class ControlStore:
     ) -> dict[str, object]:
         """Reverify one D0 run and every mandatory acceptance outcome."""
 
-        from alpha_cli.research_runtime import (
-            validate_d0_acceptance_artifact,
-            validate_d0_pilot_contract,
+        protocol = contract_payload.get("protocol")
+        bound_operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+        crypto_crowding = (
+            isinstance(bound_operator, Mapping)
+            and bound_operator.get("name") == "bybit_btcusdt_crowding_reversal"
         )
+        if crypto_crowding:
+            from alpha_cli.research_crypto_runtime import (  # noqa: PLC0415
+                validate_crypto_d0_acceptance_artifact,
+                validate_crypto_d0_contract,
+            )
 
-        operator = validate_d0_pilot_contract(contract_payload)
+            operator = validate_crypto_d0_contract(contract_payload)
+        else:
+            from alpha_cli.research_runtime import (  # noqa: PLC0415
+                validate_d0_acceptance_artifact,
+                validate_d0_pilot_contract,
+            )
+
+            operator = validate_d0_pilot_contract(contract_payload)
 
         self._require_research_run(
             run_id,
@@ -2276,16 +2732,26 @@ class ControlStore:
             or _SHA256_RE.fullmatch(operator_fingerprint) is None
         ):
             raise DataError("registered D0 acceptance binding is not content-addressed")
-        validate_d0_acceptance_artifact(
-            run_dir,
-            manifest,
-            project_id=project_id,
-            contract_id=contract_id,
-            contract_hash=contract_hash,
-            dataset_hash=dataset_hash,
-            execution_fingerprint=config_fingerprint,
-            d0_operator_fingerprint=operator_fingerprint,
-        )
+        if crypto_crowding:
+            validate_crypto_d0_acceptance_artifact(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_hash=contract_hash,
+                execution_fingerprint=config_fingerprint,
+            )
+        else:
+            validate_d0_acceptance_artifact(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_hash=contract_hash,
+                dataset_hash=dataset_hash,
+                execution_fingerprint=config_fingerprint,
+                d0_operator_fingerprint=operator_fingerprint,
+            )
         return manifest
 
     def _require_d1_verified_evidence(
@@ -2298,9 +2764,27 @@ class ControlStore:
     ) -> dict[str, object]:
         """Reverify D1 typed evidence by exact mechanical recomputation (D0 pattern)."""
 
+        run_dir, manifest = self._verified_run(run_id)
+        protocol = contract_payload.get("protocol")
+        operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+        if isinstance(operator, Mapping) and operator.get("name") == (
+            "bybit_btcusdt_crowding_reversal"
+        ):
+            from alpha_cli.research_crypto_binding import load_crypto_empirical_d1
+            from alpha_cli.research_crypto_runtime import validate_crypto_d1_evidence_artifacts
+
+            observations, boundary = load_crypto_empirical_d1(self, contract_payload)
+            return validate_crypto_d1_evidence_artifacts(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract=contract_payload,
+                observations=observations,
+                boundary=boundary,
+            )
         from alpha_cli.research_d1 import validate_d1_evidence_artifacts
 
-        run_dir, manifest = self._verified_run(run_id)
         return validate_d1_evidence_artifacts(
             run_dir,
             manifest,
@@ -2319,9 +2803,27 @@ class ControlStore:
     ) -> dict[str, object]:
         """Reverify D2 typed evidence by exact mechanical recomputation (D0/D1 pattern)."""
 
+        run_dir, manifest = self._verified_run(run_id)
+        protocol = contract_payload.get("protocol")
+        operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+        if isinstance(operator, Mapping) and operator.get("name") == (
+            "bybit_btcusdt_crowding_reversal"
+        ):
+            from alpha_cli.research_crypto_binding import load_crypto_empirical_d1
+            from alpha_cli.research_crypto_d2 import validate_crypto_d2_evidence_artifacts
+
+            observations, boundary = load_crypto_empirical_d1(self, contract_payload)
+            return validate_crypto_d2_evidence_artifacts(
+                run_dir,
+                manifest,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract=contract_payload,
+                observations=observations,
+                boundary=boundary,
+            )
         from alpha_cli.research_d2 import validate_d2_evidence_artifacts
 
-        run_dir, manifest = self._verified_run(run_id)
         return validate_d2_evidence_artifacts(
             run_dir,
             manifest,
@@ -2464,7 +2966,7 @@ class ControlStore:
                 contract_id=contract_id,
                 contract_payload=contract_payload,
             )
-            confirmation_classification_from_evidence(evidence)
+            _confirmation_classification(evidence)
             verified_evidence.append(evidence)
         if len(verified_evidence) != 1:
             raise DataError(
@@ -2487,7 +2989,7 @@ class ControlStore:
             contract_id=contract_id,
             contract_payload=contract_payload,
         )
-        return confirmation_classification_from_evidence(evidence)
+        return _confirmation_classification(evidence)
 
     def create_project(
         self,
@@ -3060,6 +3562,18 @@ class ControlStore:
         project_id: str,
         experiment_id: str,
     ) -> tuple[tuple[str, str], ...]:
+        strategy = connection.execute(
+            """SELECT v.strategy_name
+            FROM experiment_specs e
+            JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+            WHERE e.experiment_id = ?""",
+            (experiment_id,),
+        ).fetchone()
+        expected_commands = (
+            _CANDIDATE_MONTE_CARLO_COMMANDS
+            if strategy is not None and strategy["strategy_name"] == "hedged_basis_crowding_v1"
+            else _MONTE_CARLO_COMMANDS
+        )
         rows = connection.execute(
             """SELECT * FROM stage_run_links
             WHERE project_id = ? AND experiment_id = ? AND stage = 'monte_carlo'
@@ -3074,7 +3588,7 @@ class ControlStore:
             run_id = str(row["run_id"])
             rdir, manifest = self._verified_run(run_id)
             command = str(manifest.get("command"))
-            if command not in _MONTE_CARLO_COMMANDS:
+            if command not in expected_commands:
                 continue
             evidence.append(
                 (
@@ -3085,7 +3599,7 @@ class ControlStore:
                 )
             )
         commands = {command for command, _, _, _ in evidence}
-        if commands != _MONTE_CARLO_COMMANDS:
+        if commands != expected_commands:
             raise DataError(
                 "Monte Carlo review requires verified classical and Kronos run evidence"
             )
@@ -3324,6 +3838,339 @@ class ControlStore:
             raise DataError(f"unknown research source {sid!r}")
         return self._research_source_view(row)
 
+    def get_research_source_context(
+        self, source_id: str, *, excerpt_limit: int = 4_000
+    ) -> dict[str, object]:
+        """Return one source plus bounded untrusted extracted-page previews for review/Codex."""
+        if isinstance(excerpt_limit, bool) or not 1 <= excerpt_limit <= 8_000:
+            raise DataError("research source excerpt limit must be in 1..8000")
+        source = self.get_research_source(source_id)
+        with self._transaction(write=False) as connection:
+            document = connection.execute(
+                "SELECT extraction_id FROM research_document_texts WHERE source_id = ?",
+                (source["source_id"],),
+            ).fetchone()
+        if document is None:
+            return {**source, "document": None, "page_previews": []}
+        record = self.get_research_document_text(str(document["extraction_id"]))
+        artifact = record.pop("artifact")
+        pages = artifact.get("pages") if isinstance(artifact, dict) else None
+        previews: list[dict[str, object]] = []
+        remaining = excerpt_limit
+        for page in pages if isinstance(pages, list) else []:
+            if remaining <= 0 or not isinstance(page, dict):
+                break
+            text = page.get("text")
+            page_number = page.get("page")
+            if not isinstance(text, str) or not isinstance(page_number, int):
+                continue
+            excerpt = text[:remaining]
+            remaining -= len(excerpt)
+            previews.append(
+                {
+                    "page": page_number,
+                    "excerpt": excerpt,
+                    "excerpt_truncated": len(excerpt) < len(text),
+                    "text_sha256": page.get("text_sha256"),
+                    "trust_label": "UNTRUSTED_SOURCE",
+                }
+            )
+        return {**source, "document": record, "page_previews": previews}
+
+    def _store_literature_artifact(
+        self, *, category: str, artifact_id: str, payload: Mapping[str, object]
+    ) -> tuple[str, str]:
+        """Write one immutable JSON artifact below the fixed literature root."""
+        if category not in {"discoveries", "extractions"}:
+            raise DataError("unsupported literature artifact category")
+        encoded = (
+            json.dumps(
+                _json_object(payload, "literature artifact"),
+                sort_keys=True,
+                indent=2,
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode()
+        digest = hashlib.sha256(encoded).hexdigest()
+        relative = Path("research") / "literature" / category / f"{artifact_id}.json"
+        target = self._data_dir / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_symlink():
+            raise DataError("literature artifact path must not be a symlink")
+        if target.exists():
+            if not target.is_file() or target.read_bytes() != encoded:
+                raise DataError("literature artifact identifier collision")
+        else:
+            descriptor, raw_temporary = tempfile.mkstemp(
+                prefix=f".{artifact_id}.", suffix=".tmp", dir=target.parent
+            )
+            temporary = Path(raw_temporary)
+            try:
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(encoded)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, target)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
+        return relative.as_posix(), digest
+
+    def record_literature_discovery(
+        self,
+        project_id: str,
+        *,
+        artifact: Mapping[str, object],
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Record one bounded worker discovery without granting evidence authority."""
+        payload = _json_object(artifact, "literature discovery")
+        if payload.get("schema") != "LiteratureDiscoveryV1":
+            raise DataError("literature discovery has an unsupported schema")
+        raw_discovery_id = payload.get("discovery_id")
+        if not isinstance(raw_discovery_id, str):
+            raise DataError("literature discovery identifier is missing")
+        discovery_id = _require_content_id(raw_discovery_id, "literature discovery_id", prefix="ld")
+        query = _required_text(payload.get("query"), "literature discovery query", max_length=500)
+        receipt = payload.get("receipt")
+        if not isinstance(receipt, Mapping) or receipt.get("receipt_id") != discovery_id:
+            raise DataError("literature discovery receipt does not match its identifier")
+        raw_budget = receipt.get("budget")
+        if not isinstance(raw_budget, Mapping):
+            raise DataError("literature discovery budget is missing")
+        budget = _json_object(raw_budget, "literature discovery budget")
+        relative, artifact_sha256 = self._store_literature_artifact(
+            category="discoveries", artifact_id=discovery_id, payload=payload
+        )
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            connection.execute(
+                """INSERT OR IGNORE INTO literature_discoveries
+                (discovery_id, project_id, query, artifact_sha256, artifact_relpath,
+                    budget_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    discovery_id,
+                    project_id,
+                    query,
+                    artifact_sha256,
+                    relative,
+                    _canonical_json(budget, "literature discovery budget"),
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM literature_discoveries WHERE discovery_id = ?", (discovery_id,)
+            ).fetchone()
+        if row is None or row["project_id"] != project_id:
+            raise DataError("literature discovery belongs to another project")
+        return {**dict(row), "budget": budget, "artifact": payload}
+
+    def get_literature_discovery(self, project_id: str, discovery_id: str) -> dict[str, object]:
+        did = _require_content_id(discovery_id, "literature discovery_id", prefix="ld")
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            row = connection.execute(
+                "SELECT * FROM literature_discoveries WHERE discovery_id = ? AND project_id = ?",
+                (did, project_id),
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown literature discovery {did!r}")
+        path = self._data_dir / str(row["artifact_relpath"])
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != row["artifact_sha256"]:
+            raise DataError("literature discovery artifact failed integrity verification")
+        payload = _decode_json(raw.decode(), "literature discovery artifact")
+        if not isinstance(payload, dict) or payload.get("discovery_id") != did:
+            raise DataError("literature discovery artifact identity is corrupt")
+        result = dict(row)
+        result["budget"] = _decode_json(result.pop("budget_json"), "literature discovery budget")
+        result.pop("artifact_relpath", None)
+        result["artifact"] = payload
+        return result
+
+    def record_research_document_text(
+        self,
+        source_id: str,
+        *,
+        artifact: Mapping[str, object],
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Bind an immutable ResearchDocumentTextV1 artifact to its acquired source."""
+        payload = _json_object(artifact, "research document text")
+        if payload.get("schema") != "ResearchDocumentTextV1":
+            raise DataError("research document text has an unsupported schema")
+        raw_extraction_id = payload.get("extraction_id")
+        if not isinstance(raw_extraction_id, str):
+            raise DataError("research extraction identifier is missing")
+        extraction_id = _require_content_id(
+            raw_extraction_id, "research extraction_id", prefix="rx"
+        )
+        source_sha = _required_text(
+            payload.get("source_sha256"), "research document source_sha256", max_length=64
+        )
+        config_hash = _required_text(
+            payload.get("config_hash"), "research document config_hash", max_length=64
+        )
+        if _SHA256_RE.fullmatch(source_sha) is None or _SHA256_RE.fullmatch(config_hash) is None:
+            raise DataError("research document hashes must be lowercase SHA-256 digests")
+        status = _enum_value(
+            payload.get("status"),
+            "research document status",
+            frozenset({"extracted", "encrypted", "image_only", "truncated", "parser_failed"}),
+        )
+        pages = payload.get("pages")
+        warnings = payload.get("warnings")
+        if (
+            not isinstance(pages, list)
+            or not isinstance(warnings, list)
+            or any(not isinstance(warning, str) for warning in warnings)
+        ):
+            raise DataError("research document pages or warnings are invalid")
+        page_count = payload.get("page_count")
+        character_count = payload.get("character_count")
+        if (
+            isinstance(page_count, bool)
+            or not isinstance(page_count, int)
+            or page_count != len(pages)
+            or isinstance(character_count, bool)
+            or not isinstance(character_count, int)
+            or character_count < 0
+        ):
+            raise DataError("research document counts are inconsistent")
+        relative, artifact_sha256 = self._store_literature_artifact(
+            category="extractions", artifact_id=extraction_id, payload=payload
+        )
+        sid = _require_content_id(source_id, "research source_id", prefix="rs")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            source = connection.execute(
+                "SELECT content_hash FROM research_source_records WHERE source_id = ?", (sid,)
+            ).fetchone()
+            if source is None:
+                raise DataError(f"unknown research source {sid!r}")
+            if source["content_hash"] != source_sha:
+                raise DataError("research document source digest does not match source receipt")
+            connection.execute(
+                """INSERT OR IGNORE INTO research_document_texts
+                (extraction_id, source_id, source_sha256, artifact_sha256, artifact_relpath,
+                    status, page_count, character_count, parser_version, config_hash,
+                    warnings_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    extraction_id,
+                    sid,
+                    source_sha,
+                    artifact_sha256,
+                    relative,
+                    status,
+                    page_count,
+                    character_count,
+                    _required_text(
+                        payload.get("parser_version"),
+                        "research document parser_version",
+                        max_length=64,
+                    ),
+                    config_hash,
+                    _canonical_json(warnings, "research document warnings"),
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM research_document_texts WHERE extraction_id = ?", (extraction_id,)
+            ).fetchone()
+        if row is None or row["source_id"] != sid:
+            raise DataError("research document extraction belongs to another source")
+        return self.get_research_document_text(extraction_id)
+
+    def get_research_document_text(self, extraction_id: str) -> dict[str, object]:
+        eid = _require_content_id(extraction_id, "research extraction_id", prefix="rx")
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM research_document_texts WHERE extraction_id = ?", (eid,)
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research extraction {eid!r}")
+        raw = (self._data_dir / str(row["artifact_relpath"])).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != row["artifact_sha256"]:
+            raise DataError("research document text failed integrity verification")
+        artifact = _decode_json(raw.decode(), "research document text artifact")
+        if not isinstance(artifact, dict) or artifact.get("extraction_id") != eid:
+            raise DataError("research document text identity is corrupt")
+        result = dict(row)
+        result.pop("artifact_relpath", None)
+        result["warnings"] = _decode_json(result.pop("warnings_json"), "document warnings")
+        result["artifact"] = artifact
+        return result
+
+    def _verified_source_anchor(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        source_id: str,
+        anchor: Mapping[str, object],
+    ) -> dict[str, object]:
+        raw_extraction_id = anchor.get("extraction_id")
+        if not isinstance(raw_extraction_id, str):
+            raise DataError("source anchor extraction identifier is missing")
+        extraction_id = _require_content_id(
+            raw_extraction_id, "source anchor extraction_id", prefix="rx"
+        )
+        page = anchor.get("page")
+        char_start = anchor.get("char_start")
+        char_end = anchor.get("char_end")
+        exact_hash = _required_text(
+            anchor.get("exact_text_sha256"), "source anchor exact_text_sha256", max_length=64
+        )
+        if (
+            isinstance(page, bool)
+            or not isinstance(page, int)
+            or page < 1
+            or isinstance(char_start, bool)
+            or not isinstance(char_start, int)
+            or char_start < 0
+            or isinstance(char_end, bool)
+            or not isinstance(char_end, int)
+            or char_end <= char_start
+            or char_end - char_start > 2_000
+            or _SHA256_RE.fullmatch(exact_hash) is None
+        ):
+            raise DataError("source anchor coordinates or hash are invalid")
+        document = connection.execute(
+            "SELECT * FROM research_document_texts WHERE extraction_id = ? AND source_id = ?",
+            (extraction_id, source_id),
+        ).fetchone()
+        if document is None or document["status"] != "extracted":
+            raise DataError("source anchor requires an extracted document for this source")
+        raw = (self._data_dir / str(document["artifact_relpath"])).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != document["artifact_sha256"]:
+            raise DataError("source anchor document failed integrity verification")
+        artifact = _decode_json(raw.decode(), "source anchor document")
+        if not isinstance(artifact, dict) or not isinstance(artifact.get("pages"), list):
+            raise DataError("source anchor document is corrupt")
+        pages = artifact["pages"]
+        if page > len(pages) or not isinstance(pages[page - 1], dict):
+            raise DataError("source anchor page is outside the extracted document")
+        text = pages[page - 1].get("text")
+        if not isinstance(text, str) or char_end > len(text):
+            raise DataError("source anchor span is outside the extracted page")
+        excerpt = text[char_start:char_end]
+        if not excerpt or hashlib.sha256(excerpt.encode()).hexdigest() != exact_hash:
+            raise DataError("source anchor exact text hash does not match the extracted page")
+        return {
+            "schema": "SourceAnchorV1",
+            "extraction_id": extraction_id,
+            "page": page,
+            "char_start": char_start,
+            "char_end": char_end,
+            "exact_text_sha256": exact_hash,
+            "excerpt": excerpt,
+            "trust_label": "UNTRUSTED_SOURCE",
+        }
+
     @staticmethod
     def _source_claim_view(row: sqlite3.Row | dict[str, object]) -> dict[str, object]:
         result = dict(row)
@@ -3331,6 +4178,34 @@ class ControlStore:
         if not isinstance(markets, list) or any(not isinstance(item, str) for item in markets):
             raise DataError("corrupt research claim markets")
         result["markets"] = markets
+        return result
+
+    def _source_claim_with_anchor(
+        self, connection: sqlite3.Connection, row: sqlite3.Row | dict[str, object]
+    ) -> dict[str, object]:
+        result = self._source_claim_view(row)
+        anchor = connection.execute(
+            """SELECT extraction_id, page, char_start, char_end, exact_text_sha256
+            FROM research_source_claim_anchors WHERE claim_id = ? AND revision = ?""",
+            (result["claim_id"], result["revision"]),
+        ).fetchone()
+        if anchor is not None:
+            verified = self._verified_source_anchor(
+                connection, source_id=str(result["source_id"]), anchor=dict(anchor)
+            )
+            result["source_anchor"] = verified
+            result["anchor_state"] = "verified"
+            return result
+        source = connection.execute(
+            "SELECT content_hash FROM research_source_records WHERE source_id = ?",
+            (result["source_id"],),
+        ).fetchone()
+        result["source_anchor"] = None
+        result["anchor_state"] = (
+            "LEGACY — NO TEXT ANCHOR"
+            if source is not None and source["content_hash"] is not None
+            else "metadata_only"
+        )
         return result
 
     def draft_source_claim(
@@ -3348,6 +4223,7 @@ class ControlStore:
         limitations: str,
         author: str,
         author_kind: str,
+        source_anchor: Mapping[str, object] | None = None,
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Draft one claim-level literature statement (spec §7.2, ADR-0024).
@@ -3386,19 +4262,28 @@ class ControlStore:
         with self._transaction(write=True) as connection:
             self._require_project(connection, project_id)
             source = connection.execute(
-                "SELECT project_id FROM research_source_records WHERE source_id = ?",
+                "SELECT project_id, content_hash FROM research_source_records WHERE source_id = ?",
                 (clean_source,),
             ).fetchone()
             if source is None or source["project_id"] != identity["project_id"]:
                 raise DataError(f"unknown research source {clean_source!r} for this project")
             self._require_research_contract(connection, project_id, clean_contract)
+            verified_anchor = (
+                None
+                if source_anchor is None
+                else self._verified_source_anchor(
+                    connection, source_id=clean_source, anchor=source_anchor
+                )
+            )
+            if source["content_hash"] is not None and verified_anchor is None:
+                raise DataError("new full-text claims require a verified SourceAnchorV1")
             existing = connection.execute(
                 "SELECT * FROM research_source_claims WHERE claim_id = ? ORDER BY revision DESC "
                 "LIMIT 1",
                 (claim_id,),
             ).fetchone()
             if existing is not None:
-                return self._source_claim_view(existing)
+                return self._source_claim_with_anchor(connection, existing)
             connection.execute(
                 """INSERT INTO research_source_claims (
                     claim_id, revision, project_id, source_id, contract_id, claim_text,
@@ -3422,6 +4307,21 @@ class ControlStore:
                     timestamp,
                 ),
             )
+            if verified_anchor is not None:
+                connection.execute(
+                    """INSERT INTO research_source_claim_anchors
+                    (claim_id, revision, extraction_id, page, char_start, char_end,
+                        exact_text_sha256)
+                    VALUES (?, 1, ?, ?, ?, ?, ?)""",
+                    (
+                        claim_id,
+                        verified_anchor["extraction_id"],
+                        verified_anchor["page"],
+                        verified_anchor["char_start"],
+                        verified_anchor["char_end"],
+                        verified_anchor["exact_text_sha256"],
+                    ),
+                )
         return {
             "claim_id": claim_id,
             "revision": 1,
@@ -3440,6 +4340,8 @@ class ControlStore:
             "author_kind": clean_author_kind,
             "screened_by": None,
             "created_at": timestamp,
+            "source_anchor": verified_anchor,
+            "anchor_state": "verified" if verified_anchor is not None else "metadata_only",
         }
 
     def screen_source_claim(
@@ -3465,6 +4367,26 @@ class ControlStore:
                 raise DataError(f"unknown research claim {clean_claim!r}")
             if latest["status"] == "screened":
                 raise DataError(f"research claim {clean_claim!r} is already screened")
+            source = connection.execute(
+                "SELECT content_hash FROM research_source_records WHERE source_id = ?",
+                (latest["source_id"],),
+            ).fetchone()
+            anchor_row = connection.execute(
+                """SELECT extraction_id, page, char_start, char_end, exact_text_sha256
+                FROM research_source_claim_anchors WHERE claim_id = ? AND revision = ?""",
+                (clean_claim, latest["revision"]),
+            ).fetchone()
+            verified_anchor = None
+            if anchor_row is not None:
+                verified_anchor = self._verified_source_anchor(
+                    connection, source_id=str(latest["source_id"]), anchor=dict(anchor_row)
+                )
+            if (
+                source is not None
+                and source["content_hash"] is not None
+                and verified_anchor is None
+            ):
+                raise DataError("full-text claim screening requires a verified SourceAnchorV1")
             revision = int(latest["revision"]) + 1
             connection.execute(
                 """INSERT INTO research_source_claims (
@@ -3491,13 +4413,102 @@ class ControlStore:
                     timestamp,
                 ),
             )
+            if verified_anchor is not None:
+                connection.execute(
+                    """INSERT INTO research_source_claim_anchors
+                    (claim_id, revision, extraction_id, page, char_start, char_end,
+                        exact_text_sha256)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        clean_claim,
+                        revision,
+                        verified_anchor["extraction_id"],
+                        verified_anchor["page"],
+                        verified_anchor["char_start"],
+                        verified_anchor["char_end"],
+                        verified_anchor["exact_text_sha256"],
+                    ),
+                )
             row = connection.execute(
                 "SELECT * FROM research_source_claims WHERE claim_id = ? AND revision = ?",
                 (clean_claim, revision),
             ).fetchone()
         if row is None:  # pragma: no cover - written in this transaction.
             raise DataError("control store failed to persist research claim screening")
-        return self._source_claim_view(row)
+        result = self._source_claim_view(row)
+        result["source_anchor"] = verified_anchor
+        result["anchor_state"] = (
+            "verified"
+            if verified_anchor is not None
+            else "LEGACY — NO TEXT ANCHOR"
+            if source is not None and source["content_hash"] is not None
+            else "metadata_only"
+        )
+        return result
+
+    def record_source_claim_owner_direction(
+        self,
+        project_id: str,
+        *,
+        claim_id: str,
+        decision: Literal["reject", "revise"],
+        actor: str,
+        reason: str,
+        payload: Mapping[str, object] | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Append an owner rejection/revision direction without rewriting claim history."""
+        clean_claim = _require_content_id(claim_id, "research claim_id", prefix="sc")
+        clean_decision = _enum_value(
+            decision, "research claim owner decision", frozenset({"reject", "revise"})
+        )
+        clean_actor = _required_text(actor, "research claim owner actor", max_length=200)
+        clean_reason = _required_text(reason, "research claim owner reason")
+        clean_payload = _json_object(payload or {}, "research claim owner payload")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            self._require_project(connection, project_id)
+            claim = connection.execute(
+                """SELECT status FROM research_source_claims
+                WHERE claim_id = ? AND project_id = ? ORDER BY revision DESC LIMIT 1""",
+                (clean_claim, project_id),
+            ).fetchone()
+            if claim is None:
+                raise DataError(f"unknown research claim {clean_claim!r}")
+            if claim["status"] == "screened":
+                raise DataError("a screened claim cannot be rejected or revised in place")
+            sequence = int(
+                connection.execute(
+                    """SELECT COALESCE(MAX(sequence), 0) + 1
+                    FROM research_source_claim_owner_events WHERE claim_id = ?""",
+                    (clean_claim,),
+                ).fetchone()[0]
+            )
+            connection.execute(
+                """INSERT INTO research_source_claim_owner_events
+                (claim_id, sequence, project_id, decision, actor, reason, payload_json, occurred_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    clean_claim,
+                    sequence,
+                    project_id,
+                    clean_decision,
+                    clean_actor,
+                    clean_reason,
+                    _canonical_json(clean_payload, "research claim owner payload"),
+                    timestamp,
+                ),
+            )
+        return {
+            "claim_id": clean_claim,
+            "sequence": sequence,
+            "project_id": project_id,
+            "decision": clean_decision,
+            "actor": clean_actor,
+            "reason": clean_reason,
+            "payload": clean_payload,
+            "occurred_at": timestamp,
+        }
 
     def list_source_claims(
         self,
@@ -3529,7 +4540,7 @@ class ControlStore:
                     ORDER BY claims.created_at DESC, claims.claim_id LIMIT ? OFFSET ?""",
                     (project_id, limit, offset),
                 ).fetchall()
-        return [self._source_claim_view(row) for row in rows]
+            return [self._source_claim_with_anchor(connection, row) for row in rows]
 
     def list_research_decisions(self, project_id: str) -> list[dict[str, object]]:
         """Return the append-only owner decision history for one case, oldest first."""
@@ -3566,6 +4577,39 @@ class ControlStore:
                 [*params, limit, offset],
             ).fetchall()
         return [self._research_source_view(row) for row in rows]
+
+    def list_research_sources(
+        self, project_id: str, *, limit: int = 200, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """List project sources with honest acquisition/extraction state."""
+        limit, offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT sources.*, documents.extraction_id, documents.status AS extraction_status,
+                    documents.page_count, documents.character_count, documents.warnings_json
+                FROM research_source_records AS sources
+                LEFT JOIN research_document_texts AS documents
+                    ON documents.source_id = sources.source_id
+                WHERE sources.project_id = ?
+                ORDER BY sources.created_at DESC, sources.source_id LIMIT ? OFFSET ?""",
+                (project_id, limit, offset),
+            ).fetchall()
+        results: list[dict[str, object]] = []
+        for row in rows:
+            source = self._research_source_view(row)
+            source["extraction_id"] = source.pop("extraction_id", None)
+            source["extraction_status"] = source.pop("extraction_status", None)
+            source["page_count"] = source.pop("page_count", None)
+            source["character_count"] = source.pop("character_count", None)
+            warnings_raw = source.pop("warnings_json", None)
+            source["extraction_warnings"] = (
+                []
+                if warnings_raw is None
+                else _decode_json(warnings_raw, "research source extraction warnings")
+            )
+            results.append(source)
+        return results
 
     def create_research_source_pack(
         self,
@@ -3633,6 +4677,21 @@ class ControlStore:
         if row is None:
             raise DataError(f"unknown research source pack {pid!r}")
         return self._research_source_pack_view(row)
+
+    def list_research_source_packs(
+        self, project_id: str, *, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, object]]:
+        """Return immutable source packs owned by one research case."""
+
+        clean_limit, clean_offset = _page(limit, offset)
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            rows = connection.execute(
+                """SELECT * FROM research_source_packs WHERE project_id = ?
+                ORDER BY created_at DESC, pack_id LIMIT ? OFFSET ?""",
+                (project_id, clean_limit, clean_offset),
+            ).fetchall()
+        return [self._research_source_pack_view(row) for row in rows]
 
     def create_research_contract(
         self,
@@ -4762,7 +5821,7 @@ class ControlStore:
                         contract_payload=payload,
                     )
                 if expected_zone == "D2":
-                    confirmation_classification_from_evidence(evidence)
+                    _confirmation_classification(evidence)
                     self._require_d2_verified_evidence(
                         run_id=clean_run,
                         project_id=project_id,
@@ -4970,9 +6029,7 @@ class ControlStore:
                         contract_id=contract_id,
                         contract_payload=payload,
                     )
-                    mechanical_outcome = confirmation_classification_from_evidence(
-                        mechanical_evidence
-                    )
+                    mechanical_outcome = _confirmation_classification(mechanical_evidence)
                     if mechanical_outcome != clean_outcome:
                         raise DataError(
                             "owner outcome does not match the mechanical D2 classification"
@@ -5531,6 +6588,7 @@ class ControlStore:
                 FROM research_case_notes WHERE project_id = ? ORDER BY sequence""",
                 (pid,),
             )
+            screened_claims, screened_claims_truncated = self._screened_claims(connection, pid)
             payload_contract = contract_view["payload"]
             if not isinstance(payload_contract, dict):
                 raise DataError("corrupt research contract payload")
@@ -5581,6 +6639,8 @@ class ControlStore:
                 "attempts_truncated": attempts_truncated,
                 "sources": sources,
                 "sources_truncated": sources_truncated,
+                "screened_source_claims": screened_claims,
+                "screened_source_claims_truncated": screened_claims_truncated,
                 "notes": notes,
                 "notes_truncated": notes_truncated,
                 "kind_specific": kind_specific,
@@ -5593,7 +6653,6 @@ class ControlStore:
                 # Honest availability: planes that have not shipped are named, not faked.
                 "unavailable_context": {
                     "dataset_refs": "registered research datasets arrive with the data plane",
-                    "source_claims": "claim-level literature arrives with the source plane",
                 },
             }
             packet_id = _content_id("cp", payload)
@@ -6355,7 +7414,10 @@ class ControlStore:
             ORDER BY claims.created_at, claims.claim_id LIMIT ?""",
             (project_id, _RESEARCH_PACKET_COLLECTION_LIMIT + 1),
         ).fetchall()
-        views = [self._source_claim_view(row) for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]]
+        views = [
+            self._source_claim_with_anchor(connection, row)
+            for row in rows[:_RESEARCH_PACKET_COLLECTION_LIMIT]
+        ]
         return views, len(rows) > _RESEARCH_PACKET_COLLECTION_LIMIT
 
     def _verified_chart_references(
@@ -7396,12 +8458,46 @@ class ControlStore:
                 expected_hash = verified_snapshot_hash(self._data_dir, expected_snapshot)
                 if manifest.get("snapshot_hash") != expected_hash:
                     raise DataError("suite result snapshot hash does not match the experiment")
+                candidate = connection.execute(
+                    """SELECT v.strategy_name, l.contract_id
+                    FROM experiment_specs e
+                    JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+                    LEFT JOIN research_contract_strategy_links l
+                      ON l.project_id = ? AND l.version_id = v.version_id
+                    WHERE e.experiment_id = ?""",
+                    (project_id, experiment_id),
+                ).fetchone()
+                candidate_strategy = (
+                    candidate is not None
+                    and candidate["strategy_name"] == "hedged_basis_crowding_v1"
+                )
+                candidate_command = manifest.get("command") in _CANDIDATE_EVIDENCE_COMMANDS
+                if candidate_strategy != candidate_command:
+                    raise DataError(
+                        "suite evidence command family does not match the registered strategy"
+                    )
+                if candidate_command:
+                    inheritance = manifest.get("research_inheritance")
+                    if (
+                        candidate is None  # static narrowing; query is required above.
+                        or candidate["contract_id"] is None
+                        or not isinstance(inheritance, Mapping)
+                        or inheritance.get("contract_id") != candidate["contract_id"]
+                        or manifest.get("deployment_scope") != "sandbox_only"
+                        or manifest.get("places_orders") is not False
+                        or manifest.get("paper_eligible") is not False
+                    ):
+                        raise DataError(
+                            "candidate suite evidence does not preserve its promoted research "
+                            "inheritance and sandbox boundary"
+                        )
                 if suite_action in {
                     "baseline",
                     "inner_oos",
                     "three_null_families",
                     "monte_carlo",
                     "optimize_grid",
+                    "fixed_stress",
                     "portfolio_cross_asset",
                     "qlib",
                     "kronos",
@@ -7594,6 +8690,15 @@ class ControlStore:
         )
         commands = {str(manifest.get("command")) for _, manifest in evidence}
         if suite_action == "three_null_families":
+            candidate_family = not commands.isdisjoint(_CANDIDATE_NULL_COMMANDS)
+            if candidate_family and commands != _CANDIDATE_NULL_COMMANDS:
+                raise DataError(
+                    "candidate robustness completion requires exactly its three null runs"
+                )
+            if not candidate_family and commands != {"validate"}:
+                raise DataError(
+                    "single-instrument robustness completion requires validate runs only"
+                )
             families = {
                 metadata.get("null_model")
                 for _, manifest in evidence
@@ -7602,6 +8707,8 @@ class ControlStore:
             headline = any(
                 view["state"] == "pass"
                 and manifest.get("passed") is True
+                and manifest.get("command")
+                == ("candidate_null_bootstrap" if candidate_family else "validate")
                 and isinstance(manifest.get("metadata"), Mapping)
                 and cast(Mapping[str, object], manifest["metadata"]).get("null_model")
                 == "bootstrap"
@@ -7614,7 +8721,12 @@ class ControlStore:
                 )
             return
         if suite_action == "monte_carlo":
-            if commands != _MONTE_CARLO_COMMANDS:
+            family = (
+                _CANDIDATE_MONTE_CARLO_COMMANDS
+                if not commands.isdisjoint(_CANDIDATE_MONTE_CARLO_COMMANDS)
+                else _MONTE_CARLO_COMMANDS
+            )
+            if commands != family:
                 raise DataError(
                     "Monte Carlo completion requires classical and Kronos canonical runs"
                 )
@@ -7623,6 +8735,12 @@ class ControlStore:
                 raise DataError("Monte Carlo families must cite one source validation run")
             return
         if suite_action == "portfolio_cross_asset":
+            if not commands.isdisjoint(_CANDIDATE_PORTFOLIO_COMMANDS):
+                if commands != _CANDIDATE_PORTFOLIO_COMMANDS:
+                    raise DataError(
+                        "candidate portfolio completion requires concentration and scope checks"
+                    )
+                return
             required = (
                 {"backtest_portfolio"},
                 {"cross_sectional", "backtest_cross_sectional"},
@@ -7633,6 +8751,12 @@ class ControlStore:
                 )
             return
         if suite_action == "kronos":
+            if not commands.isdisjoint(_CANDIDATE_KRONOS_COMMANDS):
+                if commands != _CANDIDATE_KRONOS_COMMANDS:
+                    raise DataError(
+                        "candidate Kronos fixture requires forecast and evaluation runs"
+                    )
+                return
             if not {"forecast_run", "forecast_eval"}.issubset(commands):
                 raise DataError(
                     "Kronos completion requires canonical forecast and rolling-evaluation runs"
@@ -7654,7 +8778,10 @@ class ControlStore:
     ) -> dict[str, list[dict[str, object]]]:
         """Rebuild the pre-holdout gate from verified canonical runs, never cached labels."""
         experiment = connection.execute(
-            "SELECT snapshot_id FROM experiment_specs WHERE experiment_id = ?", (experiment_id,)
+            """SELECT e.snapshot_id, v.strategy_name FROM experiment_specs e
+            JOIN strategy_versions v ON v.version_id = e.strategy_version_id
+            WHERE e.experiment_id = ?""",
+            (experiment_id,),
         ).fetchone()
         if experiment is None:  # pragma: no cover - caller validates the project link.
             raise DataError(f"unknown experiment {experiment_id!r}")
@@ -7669,6 +8796,7 @@ class ControlStore:
             )
         expected_cutoff = self._manifest_research_cutoff(sealed)
         snapshot_id = str(experiment["snapshot_id"])
+        candidate_strategy = experiment["strategy_name"] == "hedged_basis_crowding_v1"
         from alpha_cli._runner import verified_snapshot_hash
 
         try:
@@ -7679,14 +8807,17 @@ class ControlStore:
                 "the frozen experiment snapshot is unavailable"
             ) from exc
         by_stage: dict[str, list[dict[str, object]]] = {}
-        for stage in (
+        stages = [
             "baseline",
             "oos",
             "robustness",
             "monte_carlo",
             "optimization",
             "portfolio",
-        ):
+        ]
+        if candidate_strategy:
+            stages.extend(("kronos", "ml"))
+        for stage in stages:
             for view, manifest in self._terminal_stage_runs(
                 connection,
                 project_id=project_id,
@@ -7712,6 +8843,61 @@ class ControlStore:
                         "status": manifest.get("status"),
                     }
                 )
+
+        if candidate_strategy:
+            required: dict[str, set[str]] = {
+                "baseline": {"candidate_baseline"},
+                "oos": {"candidate_oos"},
+                "robustness": {*_CANDIDATE_NULL_COMMANDS, "candidate_fixed_stress"},
+                "monte_carlo": set(_CANDIDATE_MONTE_CARLO_COMMANDS),
+                "optimization": {"candidate_optim"},
+                "portfolio": set(_CANDIDATE_PORTFOLIO_COMMANDS),
+                "kronos": set(_CANDIDATE_KRONOS_COMMANDS),
+                "ml": {"candidate_qlib"},
+            }
+            missing = [
+                stage
+                for stage, commands in required.items()
+                if {str(row["command"]) for row in by_stage.get(stage, [])} != commands
+            ]
+            if missing:
+                raise DataError(
+                    "candidate freeze requires verified hedged-basis evidence for: "
+                    + ", ".join(missing)
+                )
+            if not all(
+                row["passed"] is True
+                for stage in ("baseline", "oos", "robustness", "optimization")
+                for row in by_stage.get(stage, [])
+                if row["command"]
+                in {
+                    "candidate_baseline",
+                    "candidate_oos",
+                    "candidate_null_bootstrap",
+                    "candidate_optim",
+                }
+            ):
+                raise DataError("candidate freeze requires passing headline evidence")
+            if not all(row["status"] == "clear" for row in by_stage.get("monte_carlo", [])):
+                review = connection.execute(
+                    """SELECT decision, evidence_hashes_json FROM monte_carlo_reviews
+                    WHERE project_id = ? AND experiment_id = ?""",
+                    (project_id, experiment_id),
+                ).fetchone()
+                candidate_review_hashes = self._encoded_monte_carlo_evidence_hashes(
+                    connection,
+                    project_id=project_id,
+                    experiment_id=experiment_id,
+                )
+                if (
+                    review is None
+                    or review["decision"] != "continue"
+                    or review["evidence_hashes_json"] != candidate_review_hashes
+                ):
+                    raise DataError(
+                        "candidate freeze requires clear candidate Monte Carlo evidence or review"
+                    )
+            return by_stage
 
         problems: list[str] = []
         if not any(row["command"] == "backtest_run" for row in by_stage.get("baseline", [])):
@@ -9884,6 +11070,374 @@ class ControlStore:
             filtered.append(view)
         return filtered[offset : offset + limit]
 
+    def create_owner_enrollment_request(
+        self,
+        *,
+        token_hash: str,
+        reason: str,
+        replace_existing: bool,
+        now: datetime,
+        expires_at: datetime,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        """Record the trusted-CLI half of a short-lived owner enrollment ceremony."""
+        rid = _new_uuid(request_id, "owner enrollment request_id")
+        digest = _required_text(token_hash, "owner enrollment token hash", max_length=64)
+        if _SHA256_RE.fullmatch(digest) is None:
+            raise DataError("invalid control owner enrollment token hash")
+        clean_reason = _required_text(reason, "owner enrollment reason")
+        created = _format_timestamp(now)
+        expires = _format_timestamp(expires_at)
+        if expires_at <= now:
+            raise DataError("owner enrollment request expiry must be after creation")
+        with self._transaction(write=True) as connection:
+            active = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM owner_credentials WHERE revoked_at IS NULL"
+                ).fetchone()[0]
+            )
+            if active and not replace_existing:
+                raise DataError(
+                    "an owner credential is already enrolled; use the trusted replacement ceremony"
+                )
+            connection.execute(
+                """INSERT INTO owner_enrollment_requests
+                (request_id, token_hash, replace_existing, reason, created_at, expires_at, used_at)
+                VALUES (?, ?, ?, ?, ?, ?, NULL)""",
+                (rid, digest, int(replace_existing), clean_reason, created, expires),
+            )
+            connection.execute(
+                """INSERT INTO owner_credential_events
+                (event_id, credential_id, event_type, reason, occurred_at)
+                VALUES (?, NULL, 'enrollment_requested', ?, ?)""",
+                (str(uuid.uuid4()), clean_reason, created),
+            )
+        return {
+            "request_id": rid,
+            "replace_existing": replace_existing,
+            "created_at": created,
+            "expires_at": expires,
+        }
+
+    def get_owner_enrollment_request(self, *, token_hash: str, now: datetime) -> dict[str, object]:
+        digest = _required_text(token_hash, "owner enrollment token hash", max_length=64)
+        timestamp = _format_timestamp(now)
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM owner_enrollment_requests WHERE token_hash = ?", (digest,)
+            ).fetchone()
+        if row is None or row["used_at"] is not None:
+            raise DataError("owner enrollment request is invalid or already used")
+        if str(row["expires_at"]) <= timestamp:
+            raise DataError("owner enrollment request has expired")
+        return {
+            "request_id": str(row["request_id"]),
+            "replace_existing": bool(row["replace_existing"]),
+            "reason": str(row["reason"]),
+            "expires_at": str(row["expires_at"]),
+        }
+
+    def create_owner_auth_challenge(
+        self,
+        *,
+        ceremony: Literal["registration", "action"],
+        challenge: bytes,
+        binding: Mapping[str, object],
+        now: datetime,
+        expires_at: datetime,
+        enrollment_request_id: str | None = None,
+        challenge_id: str | None = None,
+    ) -> dict[str, object]:
+        cid = _new_uuid(challenge_id, "owner auth challenge_id")
+        if not isinstance(challenge, bytes) or len(challenge) != 32:
+            raise DataError("owner auth challenge must contain exactly 32 random bytes")
+        created = _format_timestamp(now)
+        expires = _format_timestamp(expires_at)
+        if expires_at <= now or expires_at - now > timedelta(seconds=60):
+            raise DataError("owner auth challenge lifetime must be in 1..60 seconds")
+        clean_binding = _json_object(binding, "owner auth binding")
+        enrollment_id = (
+            None
+            if enrollment_request_id is None
+            else _canonical_uuid(enrollment_request_id, "owner enrollment request_id")
+        )
+        if ceremony == "registration" and enrollment_id is None:
+            raise DataError("registration challenge requires an enrollment request")
+        if ceremony == "action" and enrollment_id is not None:
+            raise DataError("action challenge cannot carry an enrollment request")
+        with self._transaction(write=True) as connection:
+            if ceremony == "action":
+                active = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM owner_credentials WHERE revoked_at IS NULL"
+                    ).fetchone()[0]
+                )
+                if not active:
+                    raise DataError("owner Touch ID credential is not enrolled")
+            connection.execute(
+                """INSERT INTO owner_auth_challenges
+                (challenge_id, ceremony, challenge, enrollment_request_id, binding_json,
+                 created_at, expires_at, used_at, verified_credential_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)""",
+                (
+                    cid,
+                    ceremony,
+                    challenge,
+                    enrollment_id,
+                    _canonical_json(clean_binding, "owner auth binding"),
+                    created,
+                    expires,
+                ),
+            )
+        return {"challenge_id": cid, "expires_at": expires, "binding": clean_binding}
+
+    def get_owner_auth_challenge(
+        self,
+        challenge_id: str,
+        *,
+        ceremony: Literal["registration", "action"],
+        now: datetime,
+    ) -> dict[str, object]:
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        timestamp = _format_timestamp(now)
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+        if row is None or row["ceremony"] != ceremony or row["used_at"] is not None:
+            raise DataError("owner auth challenge is invalid or already used")
+        if str(row["expires_at"]) <= timestamp:
+            raise DataError("owner auth challenge has expired")
+        binding = _decode_json(row["binding_json"], "owner auth binding")
+        if not isinstance(binding, dict):
+            raise DataError("corrupt control store: owner auth binding is not an object")
+        return {
+            "challenge_id": cid,
+            "challenge": bytes(row["challenge"]),
+            "enrollment_request_id": row["enrollment_request_id"],
+            "binding": binding,
+            "expires_at": str(row["expires_at"]),
+        }
+
+    def list_active_owner_credentials(self) -> list[dict[str, object]]:
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                """SELECT credential_id, public_key, sign_count, actor, transports_json, created_at
+                FROM owner_credentials WHERE revoked_at IS NULL
+                ORDER BY created_at, credential_id"""
+            ).fetchall()
+        return [
+            {
+                "credential_id": str(row["credential_id"]),
+                "public_key": bytes(row["public_key"]),
+                "sign_count": int(row["sign_count"]),
+                "actor": str(row["actor"]),
+                "transports": _decode_json(row["transports_json"], "owner credential transports"),
+                "created_at": str(row["created_at"]),
+            }
+            for row in rows
+        ]
+
+    def complete_owner_registration(
+        self,
+        *,
+        token_hash: str,
+        challenge_id: str,
+        credential_id: str,
+        public_key: bytes,
+        sign_count: int,
+        transports: Sequence[str],
+        now: datetime,
+    ) -> dict[str, object]:
+        digest = _required_text(token_hash, "owner enrollment token hash", max_length=64)
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        encoded_credential = _required_text(credential_id, "owner credential_id", max_length=2048)
+        if not isinstance(public_key, bytes) or not public_key:
+            raise DataError("owner credential public key is required")
+        if isinstance(sign_count, bool) or sign_count < 0:
+            raise DataError("owner credential signature counter must be non-negative")
+        clean_transports = _strings(transports, "owner credential transport", limit=16)
+        timestamp = _format_timestamp(now)
+        actor = f"owner:{hashlib.sha256(encoded_credential.encode()).hexdigest()[:16]}"
+        with self._transaction(write=True) as connection:
+            enrollment = connection.execute(
+                "SELECT * FROM owner_enrollment_requests WHERE token_hash = ?", (digest,)
+            ).fetchone()
+            challenge = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            if (
+                enrollment is None
+                or enrollment["used_at"] is not None
+                or str(enrollment["expires_at"]) <= timestamp
+                or challenge is None
+                or challenge["ceremony"] != "registration"
+                or challenge["used_at"] is not None
+                or str(challenge["expires_at"]) <= timestamp
+                or challenge["enrollment_request_id"] != enrollment["request_id"]
+            ):
+                raise DataError("owner registration ceremony is invalid, expired, or already used")
+            existing = connection.execute(
+                "SELECT credential_id FROM owner_credentials WHERE revoked_at IS NULL"
+            ).fetchall()
+            replace = bool(enrollment["replace_existing"])
+            if existing and not replace:
+                raise DataError("owner credential replacement requires a trusted CLI ceremony")
+            for row in existing:
+                prior = str(row["credential_id"])
+                connection.execute(
+                    "UPDATE owner_credentials SET revoked_at = ? WHERE credential_id = ?",
+                    (timestamp, prior),
+                )
+                connection.execute(
+                    """INSERT INTO owner_credential_events
+                    (event_id, credential_id, event_type, reason, occurred_at)
+                    VALUES (?, ?, 'replaced', ?, ?)""",
+                    (str(uuid.uuid4()), prior, str(enrollment["reason"]), timestamp),
+                )
+            connection.execute(
+                """INSERT INTO owner_credentials
+                (credential_id, public_key, sign_count, actor, transports_json, created_at,
+                 revoked_at)
+                VALUES (?, ?, ?, ?, ?, ?, NULL)""",
+                (
+                    encoded_credential,
+                    public_key,
+                    sign_count,
+                    actor,
+                    _canonical_json(clean_transports, "owner credential transports"),
+                    timestamp,
+                ),
+            )
+            connection.execute(
+                "UPDATE owner_enrollment_requests SET used_at = ? WHERE request_id = ?",
+                (timestamp, enrollment["request_id"]),
+            )
+            connection.execute(
+                """UPDATE owner_auth_challenges
+                SET used_at = ?, verified_credential_id = ? WHERE challenge_id = ?""",
+                (timestamp, encoded_credential, cid),
+            )
+            connection.execute(
+                """INSERT INTO owner_credential_events
+                (event_id, credential_id, event_type, reason, occurred_at)
+                VALUES (?, ?, 'enrolled', ?, ?)""",
+                (str(uuid.uuid4()), encoded_credential, str(enrollment["reason"]), timestamp),
+            )
+        return {"credential_id": encoded_credential, "actor": actor, "created_at": timestamp}
+
+    def record_owner_action_authorization(
+        self,
+        *,
+        challenge_id: str,
+        credential_id: str,
+        previous_sign_count: int,
+        new_sign_count: int,
+        assertion_hash: str,
+        outcome: Mapping[str, object],
+        now: datetime,
+        receipt_id: str | None = None,
+    ) -> dict[str, object]:
+        """Consume one verified assertion and append its exact action-bound receipt once."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        rid = _new_uuid(receipt_id, "owner action receipt_id")
+        assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
+        if _SHA256_RE.fullmatch(assertion_digest) is None:
+            raise DataError("invalid control owner assertion hash")
+        if new_sign_count <= previous_sign_count:
+            raise DataError("owner credential signature counter regressed")
+        timestamp = _format_timestamp(now)
+        clean_outcome = _json_object(outcome, "owner action outcome")
+        with self._transaction(write=True) as connection:
+            challenge = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            credential = connection.execute(
+                "SELECT * FROM owner_credentials WHERE credential_id = ?", (credential_id,)
+            ).fetchone()
+            if (
+                challenge is None
+                or challenge["ceremony"] != "action"
+                or challenge["used_at"] is not None
+                or str(challenge["expires_at"]) <= timestamp
+                or credential is None
+                or credential["revoked_at"] is not None
+                or int(credential["sign_count"]) != previous_sign_count
+            ):
+                raise DataError(
+                    "owner action assertion is invalid, expired, stale, or already used"
+                )
+            binding = _decode_json(challenge["binding_json"], "owner action binding")
+            if not isinstance(binding, dict):
+                raise DataError("corrupt control store: owner action binding is not an object")
+            action_type = _enum_value(
+                binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
+            )
+            project_id = _canonical_uuid(str(binding.get("project_id")), "project_id")
+            artifact_hash = _required_text(
+                binding.get("artifact_hash"), "owner action artifact_hash", max_length=64
+            )
+            revision = _required_text(
+                binding.get("expected_case_revision"),
+                "owner action expected_case_revision",
+                max_length=64,
+            )
+            request_hash = _required_text(
+                binding.get("request_hash"), "owner action request_hash", max_length=64
+            )
+            consequence = _required_text(
+                binding.get("consequence_summary"), "owner action consequence summary"
+            )
+            reason = _required_text(binding.get("reason"), "owner action reason")
+            for label, value in (
+                ("artifact_hash", artifact_hash),
+                ("expected_case_revision", revision),
+                ("request_hash", request_hash),
+            ):
+                if _SHA256_RE.fullmatch(value) is None:
+                    raise DataError(f"invalid control owner action {label}")
+            actor = str(credential["actor"])
+            connection.execute(
+                "UPDATE owner_credentials SET sign_count = ? WHERE credential_id = ?",
+                (new_sign_count, credential_id),
+            )
+            connection.execute(
+                """UPDATE owner_auth_challenges
+                SET used_at = ?, verified_credential_id = ? WHERE challenge_id = ?""",
+                (timestamp, credential_id, cid),
+            )
+            connection.execute(
+                """INSERT INTO owner_action_receipts
+                (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+                 artifact_hash, expected_case_revision, consequence_summary, reason,
+                 request_hash, assertion_hash, outcome_json, performed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    rid,
+                    cid,
+                    credential_id,
+                    actor,
+                    action_type,
+                    project_id,
+                    artifact_hash,
+                    revision,
+                    consequence,
+                    reason,
+                    request_hash,
+                    assertion_digest,
+                    _canonical_json(clean_outcome, "owner action outcome"),
+                    timestamp,
+                ),
+            )
+        return {
+            "receipt_id": rid,
+            "action_type": action_type,
+            "project_id": project_id,
+            "actor": actor,
+            "outcome": clean_outcome,
+            "performed_at": timestamp,
+        }
+
 
 __all__ = [
     "ASSOCIATION_METHODS",
@@ -9896,6 +11450,8 @@ __all__ = [
     "JOB_EVENT_TYPES",
     "JOB_STATUSES",
     "LEGACY_SCHEMA_VERSION",
+    "OWNER_ACTION_TYPES",
+    "PREVIOUS_SCHEMA_VERSION",
     "PROJECT_STATUSES",
     "RESEARCH_CONTRACT_SCOPES",
     "RESEARCH_D2_REVISION_RELATIONS",
@@ -9916,6 +11472,7 @@ __all__ = [
     "EvidenceStatus",
     "JobStatus",
     "MonteCarloReviewDecision",
+    "OwnerActionType",
     "ProjectStatus",
     "ResearchContractScope",
     "ResearchD2State",
@@ -9927,4 +11484,5 @@ __all__ = [
     "ResearchReviewDecision",
     "StageState",
     "parse_timestamp",
+    "research_case_revision",
 ]

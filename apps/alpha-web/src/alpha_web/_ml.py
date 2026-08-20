@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import math
-import os
 import re
 import subprocess
 import threading
@@ -31,9 +30,10 @@ from alpha_cli.durable_lease import (
     terminate_and_reap,
 )
 from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KINDS
+from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
-from alpha_web._catalog import _command, _run_json, _strip_ansi
+from alpha_web._catalog import _cli_environment, _command, _run_json, _strip_ansi
 from alpha_web._catalog import commands as _catalog_commands
 
 MlAction = Literal[
@@ -641,6 +641,164 @@ def service_status(*, data_dir: Path) -> dict[str, Any]:
     }
 
 
+def _preflight_check(
+    check_id: str,
+    passed: bool,
+    message: str,
+    recovery_action: str,
+) -> dict[str, str]:
+    return {
+        "check_id": check_id,
+        "state": "pass" if passed else "blocked",
+        "message": message,
+        "recovery_action": "" if passed else recovery_action,
+    }
+
+
+def _aligned_history_count(*, data_dir: Path, snapshot_id: str, universe: Sequence[str]) -> int:
+    """Read the verified frozen snapshot through the CLI-owned PIT boundary."""
+    aligned: set[float] | None = None
+    for symbol in universe:
+        payload = _object(
+            _run_json(
+                ["data", "candles", symbol, "--snapshot", snapshot_id, "--json"],
+                data_dir=data_dir,
+            ),
+            "snapshot candles",
+        )
+        bars = _objects(payload.get("bars"), "snapshot bars")
+        sessions: set[float] = set()
+        for bar in bars:
+            timestamp = _finite(bar.get("t"), "snapshot bar timestamp")
+            sessions.add(timestamp)
+        aligned = sessions if aligned is None else aligned.intersection(sessions)
+    return len(aligned or ())
+
+
+def experiment_preflight(
+    *, project_id: str, data_dir: Path, experiment_id: str | None = None
+) -> dict[str, Any]:
+    """Recompute every local prerequisite before the UI can launch an ML experiment."""
+    status = service_status(data_dir=data_dir)
+    project = _object(
+        _run_json(
+            ["project", "show", project_id, "--lineage-limit", "100", "--json"],
+            data_dir=data_dir,
+        ),
+        "project",
+    )
+    selected_experiment_id = experiment_id or project.get("current_experiment_id")
+    experiments = _objects(project.get("experiments"), "project experiments")
+    experiment = next(
+        (
+            candidate
+            for candidate in experiments
+            if isinstance(selected_experiment_id, str)
+            and candidate.get("experiment_id") == selected_experiment_id
+        ),
+        None,
+    )
+    snapshot_id = experiment.get("snapshot_id") if experiment is not None else None
+    universe_value = experiment.get("universe") if experiment is not None else None
+    universe = (
+        cast(list[str], universe_value)
+        if isinstance(universe_value, list)
+        and all(isinstance(symbol, str) and symbol for symbol in universe_value)
+        else []
+    )
+    gate_state = project.get("research_gate_state")
+    active_job_id = status.get("active_job_id")
+
+    history_count = 0
+    history_readable = False
+    if isinstance(snapshot_id, str) and snapshot_id and universe:
+        try:
+            history_count = _aligned_history_count(
+                data_dir=data_dir,
+                snapshot_id=snapshot_id,
+                universe=universe,
+            )
+            history_readable = True
+        except (DataError, OSError, RuntimeError):
+            # The public projection intentionally does not repeat backend paths or raw store errors.
+            history_readable = False
+
+    experiment_ready = experiment is not None and isinstance(selected_experiment_id, str)
+    snapshot_ready = isinstance(snapshot_id, str) and bool(snapshot_id) and history_readable
+    gate_ready = gate_state in {"passed", "not_required", "overridden"}
+    worker_ready = status.get("worker_ready") is True
+    universe_ready = len(universe) >= MIN_SYMBOLS
+    history_ready = history_readable and history_count >= MIN_ALIGNED_SESSIONS
+    capacity_ready = active_job_id is None
+    checks = [
+        _preflight_check(
+            "experiment",
+            experiment_ready,
+            "A current immutable experiment is selected."
+            if experiment_ready
+            else "No current immutable experiment is selected.",
+            "Create or select an experiment in Development Center.",
+        ),
+        _preflight_check(
+            "snapshot",
+            snapshot_ready,
+            "The frozen snapshot is readable for every selected symbol."
+            if snapshot_ready
+            else "The experiment snapshot is missing or unreadable.",
+            "Bind a verified frozen snapshot to the experiment.",
+        ),
+        _preflight_check(
+            "research_gate",
+            gate_ready,
+            f"Research gate state is {gate_state}."
+            if gate_ready
+            else "The project research gate is still open.",
+            "Complete the Research Case before strategy development.",
+        ),
+        _preflight_check(
+            "worker",
+            worker_ready,
+            "The isolated Qlib worker and input producer are ready."
+            if worker_ready
+            else "The isolated Qlib worker or input producer is unavailable.",
+            "Repair the isolated worker readiness checks, then run preflight again.",
+        ),
+        _preflight_check(
+            "universe",
+            universe_ready,
+            f"The frozen universe contains {len(universe)} symbols.",
+            f"Freeze at least {MIN_SYMBOLS} symbols in the experiment universe.",
+        ),
+        _preflight_check(
+            "aligned_history",
+            history_ready,
+            f"The snapshot provides {history_count} fully aligned sessions.",
+            f"Provide at least {MIN_ALIGNED_SESSIONS} fully aligned sessions for every symbol.",
+        ),
+        _preflight_check(
+            "active_job",
+            capacity_ready,
+            "The single heavyweight-job slot is available."
+            if capacity_ready
+            else "A heavyweight Qlib or Kronos job is already active.",
+            "Wait for or cancel the active job before launching another.",
+        ),
+    ]
+    return {
+        "schema_version": 1,
+        "project_id": project_id,
+        "experiment_id": (
+            selected_experiment_id if isinstance(selected_experiment_id, str) else None
+        ),
+        "snapshot_id": snapshot_id if isinstance(snapshot_id, str) else None,
+        "universe_count": len(universe),
+        "aligned_sessions": history_count,
+        "active_job_id": active_job_id if isinstance(active_job_id, str) else None,
+        "ready": all(check["state"] == "pass" for check in checks),
+        "checks": checks,
+    }
+
+
 def _job_exchange(row: Mapping[str, Any]) -> str | None:
     request = row.get("request")
     if not isinstance(request, dict):
@@ -838,7 +996,7 @@ def _run_process(
     timeout_seconds: int,
     job_id: str | None = None,
 ) -> tuple[int, str, str]:
-    environment = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    environment = _cli_environment(data_dir, args)
     if job_id is not None:
         process = subprocess.Popen(
             _command(args),

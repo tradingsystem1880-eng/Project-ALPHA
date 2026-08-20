@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
+
+import pytest
 
 from alpha_cli import paper_readiness, paper_store
 
@@ -32,7 +35,7 @@ def test_empty_or_elapsed_history_never_passes(tmp_path: Path) -> None:
     assert report["derived_from_elapsed_time"] is False
 
 
-def test_every_scenario_requires_a_machine_journal_event(tmp_path: Path) -> None:
+def test_legacy_scenario_fields_never_satisfy_acceptance(tmp_path: Path) -> None:
     sandbox = _session(tmp_path, ibkr=False)
     ibkr = _session(tmp_path, ibkr=True)
     for mode, scenario, event_type, minimum_count in paper_readiness.required_scenarios().values():
@@ -45,7 +48,11 @@ def test_every_scenario_requires_a_machine_journal_event(tmp_path: Path) -> None
             )
 
     report = paper_readiness.readiness_report(tmp_path)
-    assert report["paper_passed"] is True
+    assert report["paper_passed"] is False
+    assert report["status"] == "pending"
+    requirements = cast(list[dict[str, object]], report["requirements"])
+    assert all(requirement["passed"] is False for requirement in requirements)
+    assert all(requirement["evidence"] == [] for requirement in requirements)
     assert report["futures_research_supported"] is False
 
     paper_store.append_event(
@@ -57,3 +64,16 @@ def test_every_scenario_requires_a_machine_journal_event(tmp_path: Path) -> None
     blocked = paper_readiness.readiness_report(tmp_path)
     assert blocked["paper_passed"] is False
     assert blocked["blocking_events"]
+
+
+def test_malformed_legacy_event_payload_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(paper_store, "list_sessions", lambda _: [{"session_id": "session"}])
+    monkeypatch.setattr(
+        paper_store,
+        "read_events",
+        lambda *_: [{"event_type": "risk_check", "payload": [], "sequence": 1}],
+    )
+    report = paper_readiness.readiness_report(tmp_path)
+    assert report["blocking_events"] == []

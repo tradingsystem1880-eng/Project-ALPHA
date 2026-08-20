@@ -591,6 +591,8 @@ def run_identity_for(
             int(snapshot_hash, 16)
         except ValueError:
             raise DataError("snapshot_hash must be a 64-hex SHA-256 digest") from None
+    from alpha_cli.run_context import run_context_from_environment
+
     identity_payload = {
         "run_identity_version": RUN_IDENTITY_VERSION,
         "execution_fingerprint": execution,
@@ -599,6 +601,9 @@ def run_identity_for(
         "snapshot_hash": snapshot_hash,
         "payload": payload,
     }
+    run_context = run_context_from_environment()
+    if run_context is not None:
+        identity_payload["run_context"] = run_context
     canonical = json.dumps(
         identity_payload, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False
     )
@@ -633,6 +638,21 @@ def verified_snapshot_hash(data_dir: Path, snapshot_id: str | None) -> str | Non
     """Resolve one frozen snapshot to the exact verified manifest digest used by run identity."""
     if snapshot_id is None:
         return None
+    crypto_path = data_dir / "crypto" / "snapshots" / f"{snapshot_id}.json"
+    if crypto_path.exists():
+        if crypto_path.is_symlink() or not crypto_path.is_file():
+            raise DataError("crypto snapshot manifest path is unsafe")
+        from alpha_data.crypto.contracts import CryptoSnapshotV1
+
+        try:
+            raw = crypto_path.read_bytes()
+            parsed: object = json.loads(raw)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DataError("crypto snapshot manifest is unavailable or corrupt") from exc
+        snapshot = CryptoSnapshotV1.from_dict(parsed)
+        if snapshot.snapshot_id != snapshot_id:
+            raise DataError("crypto snapshot manifest identity does not match its filename")
+        return hashlib.sha256(raw).hexdigest()
     from alpha_data.snapshot import resolve_snapshot_dir
 
     return snapshot_manifest_hash(resolve_snapshot_dir(data_dir / "snapshots", snapshot_id))

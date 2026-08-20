@@ -5,16 +5,88 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
+- Add the Claude Code harness v2 agent operating system (ADR-0034): owner-token-gated
+  `gate.py override|ack|baseline` (agent self-serve and hash-chain-audited while the token is
+  unset), oracle test tiers for statistical code, a `< 200`-line `CLAUDE.md` core plus
+  path-scoped `.claude/rules/*.md`, and Codex (`gpt-5.3-codex-spark`) as an optional
+  read-only second-model review/research seam.
+- Land the Codex-assisted provider/crypto/paper-acceptance/owner-auth program (ADR-0030..0033):
+  Touch ID owner-presence for Workstation research actions, native Bybit/crypto market
+  families, the QuantPad research-data archive hardening, and further paper-acceptance
+  evidence.
+- Trim and split the harness (`scripts/gate.py` leaves now `scripts/harness_quant.py` and
+  `scripts/harness_awareness.py`), apply 49 confirmed review rows (43 deduplicated findings) across the crypto/CLI delta,
+  add bias guards for the new surfaces, and reconcile README/CLAUDE.md/BUILD-STATUS/harness
+  runbooks with the merged tree.
+
+- Correct the live QuantPad REST contract (`X-API-Key`, epoch-ms dates, current CSV bars), add a
+  UUID-pinned exact-byte research archive with internal content-addressed manifests and offline
+  verification, and record the owner-attested written private-retention basis without repository
+  storage of the correspondence or identifiers.
+- Add archived QuantPad universe-search receipts and resumable compressed Arrow acquisition for
+  provider-native futures bars. A current 53-symbol futures catalog is complete only because every
+  alphanumeric search page stayed below the documented 50-result cap; data remains research-only.
+- Recognize a codesign-verified official local IB Gateway as a reviewed installation alternative to
+  a container digest. Its machine-local path is never persisted; paper authorization, market data,
+  and paper readiness remain separate checks.
+
 **Private local-use state:** The research-first R1–R6 program is integrated and scientifically
 hardened as of 2026-08-11. ALPHA is permanently a private, single-owner application for the owner's
 local device; production, sale, distribution, hosting, and multi-user release work are out of scope.
 The owner real-case pilot remains empirical validation rather than a software release gate.
 The R-14 public Binance quote smoke passed locally on 2026-08-04,
-while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. Daily-data/IBKR
-Paper hardening is implemented offline; current-universe Tiingo qualification and every real IBKR
-Paper acceptance scenario remain pending.
+while durable Binance readiness evidence and the R-24 UTC-rollover soak remain open. The bounded
+IBKR Paper what-if preview is verified against the real loopback gateway; current-universe Tiingo
+qualification and all separately authorized paper-acceptance scenarios remain pending.
 
 ### Added
+
+- The branch simplification and crypto lifecycle acceptance report records the exact local gates,
+  public-surface coverage, behavior-preserving CLI/UI extractions, honest real-case boundary, and
+  remaining owner/environment checkpoints. Crypto Playwright journeys now live in a dedicated
+  specification over the shared typed Workstation harness. This does not claim publication, paper
+  readiness, or an owner decision.
+
+- ADR-0033 and the registered `bybit_btcusdt_crowding_reversal_v1` research operator, including
+  exact qualified-snapshot preflight, causal funding/OI/premium/mark/index observations, mechanical
+  D0 acceptance scenarios, the existing group-atomic D1/D2 boundary, and honest insufficient-event
+  classification. The separate `hedged_basis_crowding_v1` fixture exercises the complete sandbox
+  development suite with exact Bybit-perpetual/Binance-spot lineage, 40 bp costs, crypto calendar
+  semantics, and a mandatory `UNSUPPORTED_MULTI_VENUE_PAPER` terminal preflight.
+- Repair-program Stages 3–5: one-action Touch ID research ceremonies, bounded lawful literature
+  discovery/acquisition/extraction with verifiable text anchors, cited non-authoritative research
+  recommendations, explicit provider verification receipts, mechanically recomputed
+  `PaperAcceptanceV2`, and a non-crediting IBKR paper-account what-if preview.
+- Crypto data-house Stages 0–3: dataset-family authority and retention governance; additive
+  family/venue/unit-aware receipts, quality/snapshot contracts; UUID- and reserve-gated Expansion
+  storage with resumable external-first publication; native checksum-verified Binance
+  spot/USD-M/COIN-M history; and credential-free Bybit V5 instruments, funding, OI, holder ratios,
+  trade/mark/index/premium bars, hourly volatility, option chains, IV, and Greeks. Current four- and
+  five-part option symbols are identity-checked, native linear/inverse units remain distinct, and
+  real-network smoke tests are explicitly network-gated.
+- A closed `IBKRWhatIfPlanV2` and CLI-only one-shot executor for the exact SPY one-share DAY limit
+  preview. It binds the masked account by fingerprint, verifies position before/after, rejects any
+  order-status or execution callback, and writes a redacted receipt with no paper-readiness credit.
+- Repair-program Stage 2 guided workspace: Research is the six-screen shell's front door, Guided
+  mode is remembered per project, Advanced mode reveals lineage without extra authority, and the
+  owner receives one canonical next action plus direct source, dataset, and provider recovery links.
+- A server-authoritative ML experiment preflight verifies the experiment, frozen snapshot,
+  research gate, isolated worker, universe, aligned history, and active-job capacity before any job
+  is created.
+- Repair-program Stage 1 research/data contracts: typed material questions now retain prompts,
+  blocking reasons, consequences, capability availability, and a complete recommendation bundle.
+  `ResearchProposalOptionsV1` projects only registered atomic answer bundles plus compatible frozen
+  packs, qualified datasets, current blockers, and an optimistic case revision; proposal submission
+  revalidates all selected inputs through the authoritative CLI.
+- Compact `ResearchD2BoundaryV2` commitments bind exact ordered membership by count/sequence digest
+  and retain derived zone indices, endpoints, counts, and membership digests. New contracts use V2;
+  V1 remains byte-identically readable and is never migrated.
+- Repair-program Stage 0 launch integrity: every Workstation empirical launch carries a validated
+  governed-project or permanently unqualified standalone context through request, child process,
+  run identity, immutable manifest, run history, and generated API contracts. Historical runs are
+  labeled `LEGACY_CONTEXT_UNKNOWN` without rewriting them.
+- A single redacted `ApiErrorV1` response contract for REST and SSE entry points, with request IDs,
+  recovery guidance, bounded field errors, and secret/path/account/terminal traceback suppression.
 
 - Python-authoritative tiered research readiness with stable blocker codes and evidence references,
   conservative required-control aggregation, a low-cluster D2 reliability floor, and promotion
@@ -36,6 +108,36 @@ Paper acceptance scenario remain pending.
 
 ### Changed
 
+- Crypto acquisition planning now lives behind a focused private module while retaining the
+  existing Typer commands and historical import seams; the Workstation acquisition form is a
+  focused view rather than another monolithic Crypto Data Center render block. CLI children,
+  Qlib workers, MCP/web children, candle projections, and macOS volume verification receive only
+  the environment required for their exact task instead of unrelated provider credentials.
+- Fixed Crypto Data House volume verification for nested directories on the reviewed Expansion
+  mount without weakening UUID enforcement. Live Bybit acceptance now preserves provider-native
+  premium-index tuples, permits valid same-time option cross-sections, filters option contracts by
+  exact base/quote identity, and freezes independently verifiable perpetual and option snapshots.
+- IBKR readiness now grants only `paper_what_if_preview` from a content-verified receipt. The
+  current TWS protocol requires wire `transmit=true` to process `whatIf=true`; the contract records
+  `broker_order_transmitted=false` separately, and V1 plans remain readable but non-executable.
+- Mounted panels now share one active project workspace context. Project changes clear dependent
+  symbol/run/snapshot/version state, remount visible panels, and discard stale asynchronous
+  responses. Research Data separates contract-bound and global datasets; run history defaults to
+  the current project and distinctly labels standalone and legacy work.
+- Build now separates governed strategy development from the permanently
+  `STANDALONE_UNQUALIFIED` sandbox. Material questions are accessible cards above the fold;
+  comparisons do not highlight ties; options clear stale results; project lists use supported
+  pagination; results explain supporting and contradictory evidence, uncertainty, and the valid
+  next action.
+- The data-audit AR(1) effective sample size is conservatively capped at the observation count; the
+  versioned method is identity-bound and the raw lag-one autocorrelation remains visible. arXiv PDF
+  locators normalize to HTTPS and acquisition rejects PDF responses from abstract landing URLs.
+- The generic job API rejects research lifecycle, project, evidence mutation, data repair, and
+  paper-operation commands; governed empirical work fails closed on missing/unreadable/open gates.
+  Strategy comparison no longer names a preferred strategy for ties, zero-trade, incomplete, or
+  otherwise non-comparable results. Legacy paper journal scenario flags remain monitoring-only and
+  can no longer satisfy readiness. The literature fetch worker now receives a minimal environment,
+  fixed hosts, closed argv, and OS resource limits.
 - Simplified project governance around the permanent private/local-only scope: no root project
   license or distribution-release review is required unless the owner explicitly changes that
   scope. Third-party notices, service terms, and data-retention restrictions remain enforced.

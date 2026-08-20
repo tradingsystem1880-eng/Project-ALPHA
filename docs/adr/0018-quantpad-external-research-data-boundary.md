@@ -42,6 +42,18 @@ execution feed.
   use the data to train a model. Permanent bulk retention, retention after subscription lapse, and
   any commercial or public use require explicit written QuantPad permission because the public
   product guide and license language are not sufficiently aligned on those cases.
+- On 2026-08-18 the owner attested that QuantPad supplied written permission to download and retain
+  all data available to the subscribed account. ALPHA treats that owner-held correspondence as the
+  retention basis for private local archival; it does not infer redistribution, public display,
+  model-training, execution, or commercial rights. The correspondence itself and its private
+  identifiers are not stored in the repository.
+- Exact REST responses may be archived by `alpha quantpad-data archive` on the UUID-pinned external
+  bulk volume. External bytes are published before content-addressed internal manifests, remain
+  `research_only`, and must reverify before use. A key, absolute path, or raw vendor error is never
+  part of the archive identity.
+- Archive transport retries only transient failures, rate limits, and 5xx responses, for at most
+  three attempts. A `Retry-After` value is honored within a one-to-sixty-second bound; other 4xx
+  responses are explicit unavailable/rejected gaps, never silently retried or represented as data.
 
 ## Implementation anchors
 
@@ -58,5 +70,5 @@ execution feed.
   scraping browser pages.
 - QuantPad expands research coverage without weakening Tiingo, CCXT, Nautilus, IBKR Paper, or the
   CLI composition boundary.
-- Canonical QuantPad ingestion remains unimplemented and fail-closed until a separate tested adapter
-  slice and license/retention evidence are approved.
+- Canonical QuantPad ingestion remains unimplemented and fail-closed. The tested archive and daily
+  adapter preserve research inputs, but qualification and promotion remain separate gates.

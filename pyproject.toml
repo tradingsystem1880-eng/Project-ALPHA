@@ -83,6 +83,9 @@ strict = true
 warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 explicit_package_bases = true
+# scripts/ on the search path so tests (and the harness gate step) resolve the
+# top-level `gate` / `claude_hooks` / `harness_models` modules under scripts/.
+mypy_path = ["scripts"]
 exclude = '(^|/)_vendor/'
 
 [[tool.mypy.overrides]]
@@ -120,10 +123,13 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers --import-mode=importlib"
-pythonpath = ["."]
+pythonpath = [".", "scripts"]
 markers = [
     "bias_guard: tests that mechanically prevent look-ahead / survivorship bias (gated in CI)",
     "network: tests that hit the live network (skipped in CI / offline runs)",
+    "oracle: fast metamorphic / differential oracle tests over statistical primitives",
+    "slow_oracle: known-truth calibration and coverage oracles (nightly + on-touch of quant modules)",
+    "holdout: hidden behaviour tests the authoring agent never reads or edits (tests/holdout)",
 ]
 filterwarnings = [
     "error",
@@ -252,6 +258,9 @@ name = "alpha_web imports only public platform surfaces"
 type = "forbidden"
 source_modules = ["alpha_web"]
 forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_mcp"]
+# Exact in-process cryptographic seam accepted by ADR-0030. It owns WebAuthn verification and
+# narrow control-store persistence; no other alpha_cli module becomes a transitive web exemption.
+ignore_imports = ["alpha_web.api.owner_auth -> alpha_cli.owner_auth"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_patterns depends only on core"

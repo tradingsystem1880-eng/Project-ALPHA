@@ -11,6 +11,7 @@ import importlib.util
 import os
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from alpha_data.adapters.base import DataAdapter
@@ -64,6 +65,12 @@ class ProviderDefinition:
     budget_tier: str
     installed: bool
     configured: bool
+    configuration_state: str
+    verification_state: str
+    verified_at: str | None
+    last_receipt_id: str | None
+    granted_capabilities: tuple[str, ...]
+    recovery_action: str
     historical_adapter_factory: HistoricalAdapterFactory | None = field(
         default=None, repr=False, compare=False
     )
@@ -85,6 +92,12 @@ class ProviderDefinition:
             "budget_tier": self.budget_tier,
             "installed": self.installed,
             "configured": self.configured,
+            "configuration_state": self.configuration_state,
+            "verification_state": self.verification_state,
+            "verified_at": self.verified_at,
+            "last_receipt_id": self.last_receipt_id,
+            "granted_capabilities": list(self.granted_capabilities),
+            "recovery_action": self.recovery_action,
         }
 
 
@@ -121,9 +134,32 @@ def _definition(
     factory: HistoricalAdapterFactory | None,
     environ: Mapping[str, str],
     module_available: ModuleAvailable,
+    verification: Mapping[str, object],
 ) -> ProviderDefinition:
     installed = module_available(module)
     credentials = _credentials(credential_names, environ)
+    configured = installed and all(credential.present for credential in credentials)
+    granted = verification["granted_capabilities"]
+    if not isinstance(granted, list | tuple):
+        raise RuntimeError("provider verification capabilities must be a sequence")
+    if not installed:
+        configuration_state = "not_installed"
+    elif provider_id == "finnhub" and not configured:
+        configuration_state = "optional_disabled"
+    elif credential_names and not configured:
+        configuration_state = "needs_process_injection"
+    elif credential_names:
+        configuration_state = "process_injected_unverified"
+    else:
+        configuration_state = "available_without_credentials"
+    recovery_action = str(verification["recovery_action"])
+    if configuration_state == "needs_process_injection" and verification["verification_state"] in {
+        "unverified",
+        "verified",
+    }:
+        recovery_action = (
+            "Use the provider's Keychain launcher before acquisition or a new explicit check."
+        )
     return ProviderDefinition(
         id=provider_id,
         label=label,
@@ -138,7 +174,15 @@ def _definition(
         paper_execution=paper_execution,
         budget_tier=budget_tier,
         installed=installed,
-        configured=installed and all(credential.present for credential in credentials),
+        configured=configured,
+        configuration_state=configuration_state,
+        verification_state=str(verification["verification_state"]),
+        verified_at=(str(verification["verified_at"]) if verification["verified_at"] else None),
+        last_receipt_id=(
+            str(verification["last_receipt_id"]) if verification["last_receipt_id"] else None
+        ),
+        granted_capabilities=tuple(str(item) for item in granted),
+        recovery_action=recovery_action,
         historical_adapter_factory=factory,
     )
 
@@ -147,9 +191,31 @@ def provider_definitions(
     *,
     environ: Mapping[str, str] | None = None,
     module_available: ModuleAvailable = _module_available,
+    data_dir: Path | None = None,
 ) -> tuple[ProviderDefinition, ...]:
     """Build the registry against current local packages and environment configuration."""
     env = os.environ if environ is None else environ
+    from alpha_cli.provider_readiness import last_check_status
+
+    def verification(provider_id: str) -> Mapping[str, object]:
+        if provider_id == "finnhub" and not env.get("ALPHA_FINNHUB_API_KEY", "").strip():
+            return {
+                "verification_state": "optional_disabled",
+                "verified_at": None,
+                "last_receipt_id": None,
+                "granted_capabilities": [],
+                "recovery_action": "No action required unless Finnhub quote/news is wanted.",
+            }
+        if data_dir is None:
+            return {
+                "verification_state": "unverified",
+                "verified_at": None,
+                "last_receipt_id": None,
+                "granted_capabilities": [],
+                "recovery_action": "Run an explicit provider check from the Readiness Center.",
+            }
+        return last_check_status(data_dir, provider_id)
+
     providers = (
         _definition(
             provider_id="yfinance",
@@ -171,6 +237,7 @@ def provider_definitions(
             factory=YFinanceAdapter,
             environ=env,
             module_available=module_available,
+            verification=verification("yfinance"),
         ),
         _definition(
             provider_id="ccxt",
@@ -198,6 +265,7 @@ def provider_definitions(
             factory=CCXTAdapter,
             environ=env,
             module_available=module_available,
+            verification=verification("ccxt"),
         ),
         _definition(
             provider_id="stooq",
@@ -219,6 +287,7 @@ def provider_definitions(
             factory=StooqAdapter,
             environ=env,
             module_available=module_available,
+            verification=verification("stooq"),
         ),
         _definition(
             provider_id="quantpad",
@@ -242,6 +311,7 @@ def provider_definitions(
             factory=None,
             environ=env,
             module_available=module_available,
+            verification=verification("quantpad"),
         ),
         _definition(
             provider_id="tiingo",
@@ -269,6 +339,7 @@ def provider_definitions(
             factory=TiingoAdapter,
             environ=env,
             module_available=module_available,
+            verification=verification("tiingo"),
         ),
         _definition(
             provider_id="finnhub",
@@ -287,16 +358,27 @@ def provider_definitions(
             factory=None,
             environ=env,
             module_available=module_available,
+            verification=verification("finnhub"),
         ),
         _definition(
             provider_id="binance",
-            label="Binance Live Data (NautilusTrader)",
-            capabilities=("live_bars", "live_quotes", "sandbox_paper"),
+            label="Binance Native Market Data + Local Sandbox Paper",
+            capabilities=(
+                "crypto_market_bars",
+                "crypto_trades",
+                "crypto_aggregate_trades",
+                "crypto_book_snapshots",
+                "live_bars",
+                "live_quotes",
+                "sandbox_paper",
+            ),
             module="nautilus_trader.adapters.binance",
             network_required=True,
             credential_names=(),
             options={},
             limitations=(
+                "Native public archives/REST are the CEX spot/futures history authority; spot, "
+                "USD-M, and COIN-M identities remain distinct.",
                 "Public Binance market data only; ALPHA never constructs Binance execution.",
                 "Paper orders route exclusively to local Nautilus sandbox execution.",
             ),
@@ -308,6 +390,111 @@ def provider_definitions(
             factory=None,
             environ=env,
             module_available=module_available,
+            verification=verification("binance"),
+        ),
+        _definition(
+            provider_id="bybit",
+            label="Bybit Public Derivatives and Options",
+            capabilities=(
+                "crypto_funding",
+                "crypto_open_interest",
+                "crypto_long_short_ratio",
+                "crypto_mark_bars",
+                "crypto_index_bars",
+                "crypto_premium_bars",
+                "crypto_option_instruments",
+                "crypto_option_quotes",
+                "crypto_historical_volatility",
+            ),
+            module="alpha_data.crypto.providers.bybit",
+            network_required=True,
+            credential_names=(),
+            options={},
+            limitations=(
+                "Public market data only; no Bybit account, credential, order, or execution path.",
+                "Family-scoped authority for advanced derivatives/options only; venue prices, "
+                "linear/inverse units, and USD/USDT/USDC identities remain distinct.",
+                "Historical volatility is hourly and provider-limited; option chains are "
+                "point-in-time snapshots, not reconstructed history.",
+            ),
+            asset_classes=("crypto",),
+            timeframes=("5m", "1h", "1D", "snapshot"),
+            research_authority=True,
+            paper_execution=False,
+            budget_tier="free_public",
+            factory=None,
+            environ=env,
+            module_available=module_available,
+            verification=verification("bybit"),
+        ),
+        _definition(
+            provider_id="coingecko",
+            label="CoinGecko Demo Asset and Market Reference",
+            capabilities=("crypto_asset_metadata", "crypto_market_reference"),
+            module="alpha_data.crypto.providers.coingecko",
+            network_required=True,
+            credential_names=("ALPHA_COINGECKO_API_KEY",),
+            options={},
+            limitations=(
+                "Asset identity and broad market reference only; never execution-price evidence.",
+                "Demo quotas apply; detailed metadata is limited to tracked or requested assets.",
+            ),
+            asset_classes=("crypto",),
+            timeframes=("1D", "snapshot"),
+            research_authority=True,
+            paper_execution=False,
+            budget_tier="free_demo",
+            factory=None,
+            environ=env,
+            module_available=module_available,
+            verification=verification("coingecko"),
+        ),
+        _definition(
+            provider_id="geckoterminal",
+            label="GeckoTerminal Public DEX Data",
+            capabilities=("crypto_dex_pools", "crypto_dex_ohlcv", "crypto_dex_transactions"),
+            module="alpha_data.crypto.providers.geckoterminal",
+            network_required=True,
+            credential_names=(),
+            options={},
+            limitations=(
+                "Keyless public pool observations are manipulable and require explicit quality "
+                "checks.",
+                "Only reviewed networks and exact owner-requested pool history are acquired; "
+                "the immutable receipt records the pool and no all-pool mirror exists.",
+            ),
+            asset_classes=("crypto",),
+            timeframes=("1m", "1h", "1D", "snapshot"),
+            research_authority=True,
+            paper_execution=False,
+            budget_tier="free_public",
+            factory=None,
+            environ=env,
+            module_available=module_available,
+            verification=verification("geckoterminal"),
+        ),
+        _definition(
+            provider_id="coinmetrics",
+            label="Coin Metrics Community Network Data",
+            capabilities=("crypto_onchain_metrics",),
+            module="alpha_data.crypto.providers.coinmetrics",
+            network_required=True,
+            credential_names=(),
+            options={},
+            limitations=(
+                "Community catalog availability is authoritative; unsupported metrics fail closed.",
+                "Provider status and revisions are preserved; reference metrics do not replace "
+                "CoinGecko.",
+            ),
+            asset_classes=("crypto",),
+            timeframes=("1D",),
+            research_authority=True,
+            paper_execution=False,
+            budget_tier="free_community",
+            factory=None,
+            environ=env,
+            module_available=module_available,
+            verification=verification("coinmetrics"),
         ),
         _definition(
             provider_id="ibkr",
@@ -335,6 +522,7 @@ def provider_definitions(
             factory=None,
             environ=env,
             module_available=module_available,
+            verification=verification("ibkr"),
         ),
     )
     ids = [provider.id for provider in providers]
@@ -360,9 +548,9 @@ def historical_adapter_factories() -> dict[str, HistoricalAdapterFactory]:
     }
 
 
-def provider_catalog() -> list[dict[str, Any]]:
+def provider_catalog(*, data_dir: Path | None = None) -> list[dict[str, Any]]:
     """Redacted JSON-ready provider catalog."""
-    return [provider.to_dict() for provider in provider_definitions()]
+    return [provider.to_dict() for provider in provider_definitions(data_dir=data_dir)]
 
 
 def provider_option_choices(provider_id: str, option_name: str) -> tuple[str, ...]:

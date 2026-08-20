@@ -19,9 +19,12 @@ from alpha_research.artifacts import (
 )
 from alpha_research.boundary import (
     ResearchChartFingerprintV1,
+    ResearchD2Boundary,
     ResearchD2BoundaryV1,
+    ResearchD2BoundaryV2,
     ResearchEvidenceSharesV1,
     ResearchEvidenceZoneBoundaryV1,
+    research_d2_boundary_from_dict,
 )
 from alpha_research.conditional_returns import (
     conditional_return_summary,
@@ -36,8 +39,25 @@ from alpha_research.confirmation import (
     ConfirmationStatus,
     classify_confirmation,
 )
+from alpha_research.crypto_crowding import (
+    CryptoCrowdingD0AcceptanceV1,
+    CryptoCrowdingEstimateV1,
+    CryptoCrowdingEvaluationV1,
+    CryptoCrowdingEventV1,
+    CryptoCrowdingLongShortDiagnosticV1,
+    CryptoCrowdingObservationV1,
+    CryptoCrowdingRegimeDiagnosticV1,
+    CryptoCrowdingResearchPlanV1,
+    CryptoCrowdingSensitivityV1,
+    CryptoCrowdingShiftedPlaceboV1,
+    evaluate_crypto_crowding,
+    execute_crypto_crowding_d0,
+    registered_crypto_crowding_plan,
+    select_registered_crypto_crowding_events,
+)
 from alpha_research.data import EqualDurationResearchBars, ResearchBar, ResearchDatasetRef
 from alpha_research.descriptives import (
+    AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION,
     autocorrelation,
     coverage_summary,
     effective_sample_size,
@@ -107,6 +127,7 @@ from alpha_research.topology import (
 
 __version__ = version("alpha-research")
 __all__ = [
+    "AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION",
     "ArtifactKind",
     "ChartEvidencePhase",
     "ChartWatermark",
@@ -114,6 +135,16 @@ __all__ = [
     "ConfirmationEvidence",
     "ConfirmationOutcome",
     "ConfirmationStatus",
+    "CryptoCrowdingD0AcceptanceV1",
+    "CryptoCrowdingEstimateV1",
+    "CryptoCrowdingEvaluationV1",
+    "CryptoCrowdingEventV1",
+    "CryptoCrowdingLongShortDiagnosticV1",
+    "CryptoCrowdingObservationV1",
+    "CryptoCrowdingRegimeDiagnosticV1",
+    "CryptoCrowdingResearchPlanV1",
+    "CryptoCrowdingSensitivityV1",
+    "CryptoCrowdingShiftedPlaceboV1",
     "DoubleBottomEvent",
     "DoubleBottomSpec",
     "EqualDurationResearchBars",
@@ -140,7 +171,9 @@ __all__ = [
     "ResearchChartFingerprintV1",
     "ResearchChartPoint",
     "ResearchChartSeries",
+    "ResearchD2Boundary",
     "ResearchD2BoundaryV1",
+    "ResearchD2BoundaryV2",
     "ResearchDatasetRef",
     "ResearchDisposition",
     "ResearchEvidenceSharesV1",
@@ -160,6 +193,8 @@ __all__ = [
     "difference_in_means",
     "derive_market_state",
     "effective_sample_size",
+    "execute_crypto_crowding_d0",
+    "evaluate_crypto_crowding",
     "evaluate_event_association",
     "evaluate_matched_association",
     "forward_returns",
@@ -174,6 +209,9 @@ __all__ = [
     "render_research_line_chart",
     "required_observations_known_sigma",
     "return_distribution",
+    "registered_crypto_crowding_plan",
+    "select_registered_crypto_crowding_events",
+    "research_d2_boundary_from_dict",
     "rolling_effect_size",
     "rolling_rank_ic",
     "seasonality_by_weekday",

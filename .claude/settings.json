@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(codex login status)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(sed -n *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(wc *)",
+      "Bash(file *)",
+      "Bash(stat *)",
+      "Bash(diff *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(cut *)",
+      "Bash(awk *)",
+      "Bash(tr *)",
+      "Bash(basename *)",
+      "Bash(dirname *)",
+      "Bash(realpath *)",
+      "Bash(du *)",
+      "Bash(df *)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(pwd)",
+      "Bash(jq *)",
+      "Bash(shasum *)",
+      "Bash(sha256sum *)",
+      "Bash(test *)",
+      "Bash(pgrep*)",
+      "Bash(mount)",
+      "Bash(diskutil info*)",
+      "Bash(diskutil list*)",
+      "Bash(env)",
+      "Bash(date*)",
+      "Bash(uname*)",
+      "Bash(sw_vers*)",
+      "Bash(git branch*)",
+      "Bash(git remote*)",
+      "Bash(git rev-parse*)",
+      "Bash(git blame*)",
+      "Bash(git ls-files*)",
+      "Bash(git tag*)",
+      "Bash(git describe*)",
+      "Bash(git shortlog*)",
+      "Bash(git cat-file*)",
+      "Bash(git for-each-ref*)",
+      "Bash(git config --get*)",
+      "Bash(git add*)",
+      "Bash(git restore --staged*)",
+      "Bash(git commit*)",
+      "Bash(git merge*)",
+      "Bash(git mv*)",
+      "Bash(git worktree*)",
+      "Bash(git stash*)",
+      "Bash(git switch*)",
+      "Bash(git fetch*)",
+      "Bash(uv run*)",
+      "Bash(uv sync*)",
+      "Bash(uv lock*)",
+      "Bash(uv build*)",
+      "Bash(uv tree*)",
+      "Bash(uv pip list*)",
+      "Bash(uv export*)",
+      "Bash(python3 *)",
+      "Bash(.venv/bin/python *)",
+      "Bash(alpha *)",
+      "Bash(.venv/bin/alpha *)",
+      "Bash(scripts/alpha-with-keychain-provider *)",
+      "Bash(codex --version)",
+      "Bash(codex mcp*)",
+      "Bash(codex exec*)",
+      "Bash(security find-generic-password -s *)",
+      "Bash(security list-keychains*)",
+      "Bash(npm ci*)",
+      "Bash(npm run*)",
+      "Bash(npm test*)",
+      "Bash(npx playwright*)",
+      "Bash(mkdir -p /private/tmp/claude-501/*)",
+      "Write(/private/tmp/claude-501/**)",
+      "Edit(/private/tmp/claude-501/**)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git commit --amend*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git stash drop*)",
+      "Bash(uv run alpha research approve*)",
+      "Bash(uv run alpha research reject*)",
+      "Bash(uv run alpha research decide*)",
+      "Bash(uv run alpha project override-research-gate*)",
+      "Bash(uv run alpha project reveal-holdout*)",
+      "Bash(alpha research approve*)",
+      "Bash(alpha research reject*)",
+      "Bash(alpha research decide*)",
+      "Bash(alpha project override-research-gate*)",
+      "Bash(alpha project reveal-holdout*)",
+      "Bash(.venv/bin/alpha research approve*)",
+      "Bash(.venv/bin/alpha research reject*)",
+      "Bash(.venv/bin/alpha research decide*)",
+      "Bash(.venv/bin/alpha project override-research-gate*)",
+      "Bash(.venv/bin/alpha project reveal-holdout*)",
+      "Bash(uv run alpha owner-auth enroll*)",
+      "Bash(uv run alpha owner-auth recover*)",
+      "Bash(alpha owner-auth enroll*)",
+      "Bash(alpha owner-auth recover*)",
+      "Bash(.venv/bin/alpha owner-auth enroll*)",
+      "Bash(.venv/bin/alpha owner-auth recover*)",
+      "Bash(uv run alpha paper ibkr-run*)",
+      "Bash(alpha paper ibkr-run*)",
+      "Bash(.venv/bin/alpha paper ibkr-run*)",
+      "Bash(uv run alpha paper ibkr-what-if-execute*)",
+      "Bash(alpha paper ibkr-what-if-execute*)",
+      "Bash(.venv/bin/alpha paper ibkr-what-if-execute*)",
+      "Bash(security find-generic-password *-w*)",
+      "Bash(security add-generic-password*)",
+      "Bash(security delete-generic-password*)",
+      "Bash(security dump-keychain*)",
+      "Bash(security unlock-keychain*)",
+      "Bash(printenv*)",
+      "Bash(cat .env*)",
+      "Bash(cat ./.env*)",
+      "Bash(head .env*)",
+      "Bash(tail .env*)",
+      "Bash(less .env*)",
+      "Bash(more .env*)",
+      "Bash(git worktree remove --force*)",
+      "Bash(git worktree remove -f*)",
+      "Bash(git branch -D*)",
+      "Bash(git branch -d*)",
+      "Bash(git branch -m*)",
+      "Bash(git branch -M*)",
+      "Bash(git tag -d*)",
+      "Bash(find * -delete*)",
+      "Bash(find * -exec rm*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "s=\"$CLAUDE_PROJECT_DIR/.claude/statusline.py\"; [ -f \"$s\" ] || s=.claude/statusline.py; [ -f \"$s\" ] || exit 0; python3 \"$s\""
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-edit-guard",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-read-guard",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-bash-guard",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__alpha__.*|mcp__codex__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-mcp-guard",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-edit",
+            "timeout": 90
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-bash",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" tool-log",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-tool-failure",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" subagent-stop",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" task-completed",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" config-change",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" stop-guard",
+            "timeout": 60
+          },
+          {
+            "type": "prompt",
+            "prompt": "You are an advisory Karpathy/honesty judge for a coding session that is about to stop. Read the final assistant message and recent transcript: $ARGUMENTS\n\nAnswer with JSON {\"ok\": true} unless BOTH of the following hold: (a) source code was edited in this session, and (b) the final message either claims tests pass / work is done using hedged, unverified language (e.g. 'should work', 'probably passes', 'I believe this is correct') without showing a check that was actually run, OR it never states its assumptions and never mentions the simpler alternative it rejected, OR (goal contract) the session ran /implement and the final message declares the feature complete while the transcript shows a plan slice still pending / in_progress or a gate/verify command that was never shown passing. If a previous stop was already blocked by this judge for the same issue, answer {\"ok\": true}. Otherwise answer {\"ok\": false, \"reason\": \"<one sentence: which claim is unverified or which Karpathy step (assumptions / simpler alternative / surgical scope) is missing; instruct to run the check or state UNVERIFIED:>\"}.",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" session-start",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" prompt-context",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" pre-compact",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || exit 0; python3 \"$h\" post-compact",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

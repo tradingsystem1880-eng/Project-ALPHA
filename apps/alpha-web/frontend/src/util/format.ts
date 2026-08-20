@@ -31,3 +31,15 @@ export function fmtPct(v: unknown, digits = 1): string {
 export function shortId(id: string): string {
   return id.length > 10 ? id.slice(0, 10) : id
 }
+
+export function fmtBytes(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let size = value
+  let unit = 0
+  while (size >= 1000 && unit < units.length - 1) {
+    size /= 1000
+    unit += 1
+  }
+  return `${size.toFixed(unit < 2 ? 0 : 1)} ${units[unit]}`
+}

@@ -16,6 +16,39 @@ contract's source policy already labels all external text `UNTRUSTED_SOURCE`.
 
 ## Decision
 
+### 2026-08-12 usability and isolation addendum
+
+The local Workstation may start an explicit owner-clicked, allowlisted literature discovery,
+open-access acquisition, or deterministic extraction job. Opening or refreshing a page never
+starts network work. These browser actions confer no evidence authority: external bytes and text
+remain `UNTRUSTED_SOURCE`, Codex output remains draft-only, and screened claims plus frozen packs
+still require a separately authenticated owner action.
+
+Every literature child receives a minimal explicit environment and closed argument vector rather
+than inheriting the Workstation process environment. It receives no provider credentials, shell
+state, arbitrary host override, or broker context. Search and acquisition receipts are
+content-addressed; extraction and anchored-claim contracts are introduced by the implementation
+that consumes this addendum.
+
+### 2026-08-13 extraction and citation addendum
+
+Discovery is a bounded, content-addressed `LiteratureDiscoveryV1` record across OpenAlex,
+Crossref, arXiv, and DOI-specific Unpaywall enrichment. Candidate ordering reports literal title
+concept matches and access state; it is not a quality or "best paper" judgment. Acquisition is
+available only for a recorded `direct_pdf` candidate and preserves the fixed HTTPS/host/MIME/byte
+checks.
+
+The isolated worker pins `pypdf==6.14.2` (BSD-3-Clause) and emits immutable
+`ResearchDocumentTextV1` artifacts with source/config/page hashes and `UNTRUSTED_SOURCE`.
+Encrypted, malformed, image-only, over-limit, and failed documents are recorded honestly; OCR and
+paywall bypass remain prohibited. New full-text claims require `SourceAnchorV1`, and screening
+re-verifies the exact page span against the immutable artifact. Historical unanchored claims are
+not rewritten and display `LEGACY — NO TEXT ANCHOR`.
+
+`ResearchRecommendationV1` ranks only allowed research-next actions from current blockers and
+cited evidence. It is always `DRAFT — UNSCREENED`, carries uncertainty/change conditions, and has
+no screening, pack-freeze, approval, launch, strategy-rule, profitability, or validation authority.
+
 - **Claim-level evidence.** Add append-only `research_source_claims` linking a source to the
   hypothesis version it bears on: `claim_text`, `direction ∈ {supports, contradicts,
   contextualizes, method}`, `strength ∈ {weak, moderate, strong}`, `method_summary`,

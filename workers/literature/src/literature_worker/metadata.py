@@ -13,7 +13,7 @@ import json
 import re
 import xml.etree.ElementTree as ElementTree
 from typing import Final
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from literature_worker._errors import DataError
 
@@ -26,6 +26,17 @@ PROVIDER_HOSTS: Final = {
 
 _ATOM_NS: Final = "{http://www.w3.org/2005/Atom}"
 _DOI_PREFIX: Final = re.compile(r"^https?://(dx\.)?doi\.org/", re.IGNORECASE)
+
+
+def _arxiv_pdf_url(identifier: str) -> str | None:
+    if not identifier:
+        return None
+    parsed = urlsplit(identifier)
+    host = (parsed.hostname or "").lower()
+    if host not in {"arxiv.org", "export.arxiv.org"} or not parsed.path.startswith("/abs/"):
+        raise DataError("arxiv entry id is not a canonical arxiv abstract URL")
+    path = "/pdf/" + parsed.path.removeprefix("/abs/")
+    return urlunsplit(("https", host, path, "", ""))
 
 
 def normalize_doi(value: str) -> str:
@@ -268,7 +279,7 @@ def parse_arxiv(raw: bytes) -> list[dict[str, object]]:
                 authors=[name for name in authors if name],
                 retracted=None,
                 version=None if version_match is None else f"v{version_match.group(1)}",
-                open_access_url=identifier.replace("/abs/", "/pdf/") if identifier else None,
+                open_access_url=_arxiv_pdf_url(identifier),
             )
         )
     return records

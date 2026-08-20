@@ -19,7 +19,7 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def test_quote_unconfigured_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     resp = _client(tmp_path, monkeypatch).get("/api/screener/quote", params={"symbol": "AAPL"})
     assert resp.status_code == 503
-    assert "ALPHA_FINNHUB_API_KEY" in resp.json()["detail"]
+    assert "ALPHA_FINNHUB_API_KEY" in resp.json()["message"]
 
 
 def test_news_unconfigured_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

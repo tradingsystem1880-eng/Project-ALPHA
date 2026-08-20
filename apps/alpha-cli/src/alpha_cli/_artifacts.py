@@ -978,6 +978,14 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
 
 def write_manifest(rdir: Path, manifest: dict[str, Any]) -> None:
     """Publish an immutable v3 completion marker after hashing every deterministic sidecar."""
+    from alpha_cli.run_context import run_context_from_environment
+
+    run_context = run_context_from_environment()
+    if run_context is not None:
+        supplied_context = manifest.get("run_context")
+        if supplied_context is not None and supplied_context != run_context:
+            raise DataError("manifest run context differs from the authenticated child context")
+        manifest = {**manifest, "run_context": run_context}
     _validate_identity_fields(manifest)
     # Compare the same JSON-domain value that is persisted.  In-memory specs legitimately carry
     # tuples (for example normalized strategy parameters); after the first read those values are

@@ -1,3 +1,10 @@
+# Project-level Codex config (Codex sessions opened in this repo; the same rules dir
+# `.claude/rules/` and CLAUDE.md/AGENTS.md apply to Codex reviewing this repo).
+# The harness's second-model seam (`scripts/codex_bridge.py`) does NOT rely on a profile
+# block here: codex-cli 0.146 `-p` layers `$CODEX_HOME/<name>.config.toml`, so the bridge
+# passes every override explicitly (`-m gpt-5.3-codex-spark`, `-s read-only`, `--ephemeral`,
+# `-c approval_policy="never"`, `-c model_reasoning_effort="xhigh"`, `--output-schema`).
+
 [mcp_servers.alpha]
 command = "uv"
 args = [

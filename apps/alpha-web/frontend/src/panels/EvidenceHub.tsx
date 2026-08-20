@@ -4,8 +4,9 @@
 
 import { useEffect, useState } from 'react'
 
-import { api } from '../api/client'
+import { api, type LiteratureAcquisitionResult, type LiteratureDiscoveryResult } from '../api/client'
 import type { ResearchEvidenceHub, ResearchEvidenceHubSections } from '../api/types'
+import { contentAddressHash, payloadHash, performOwnerAction, researchCaseRevision } from '../auth/ownerAuth'
 import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
@@ -58,12 +59,215 @@ function FindingsSection({
   )
 }
 
+function LiteratureSection({
+  literature,
+  projectId,
+  onRefresh,
+}: {
+  literature: ResearchEvidenceHubSections['literature']
+  projectId: string
+  onRefresh: () => void
+}) {
+  const claims = literature.claims as Array<Record<string, unknown>>
+  const recommendation = literature.recommendation as Record<string, unknown>
+  const actions = Array.isArray(recommendation['allowed_next_actions'])
+    ? recommendation['allowed_next_actions'] as Array<Record<string, unknown>>
+    : []
+  const [query, setQuery] = useState('')
+  const [email, setEmail] = useState('')
+  const [discovery, setDiscovery] = useState<LiteratureDiscoveryResult | null>(null)
+  const [acquisition, setAcquisition] = useState<LiteratureAcquisitionResult | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [reason, setReason] = useState('I reviewed the cited text and its stated limitations.')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDiscovery(null)
+    setAcquisition(null)
+    setSelected(new Set())
+    setError(null)
+  }, [projectId])
+
+  async function discover() {
+    setBusy('discover')
+    setError(null)
+    try {
+      setDiscovery(await api.researchLiteratureDiscover(projectId, {
+        query,
+        unpaywall_email: email,
+        max_candidates: 20,
+        max_full_texts: 5,
+      }))
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function acquire(candidateId: string) {
+    if (!discovery) return
+    setBusy(candidateId)
+    setError(null)
+    try {
+      const result = await api.researchLiteratureAcquire(projectId, {
+        discovery_id: discovery.discovery_id,
+        candidate_id: candidateId,
+      })
+      setAcquisition(result)
+      onRefresh()
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function ownerAction(action: 'screen_source_claim' | 'reject_source_claim', claimId: string) {
+    setBusy(`${action}:${claimId}`)
+    setError(null)
+    try {
+      const current = await api.researchCase(projectId)
+      await performOwnerAction({
+        action_type: action,
+        project_id: projectId,
+        artifact_hash: contentAddressHash(claimId),
+        expected_case_revision: await researchCaseRevision(current),
+        consequence_summary: action === 'screen_source_claim'
+          ? 'Elevate this exact anchored draft into owner-screened literature evidence.'
+          : 'Reject this draft claim while preserving its immutable history.',
+        reason,
+        payload: { claim_id: claimId },
+      })
+      onRefresh()
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function freezePack() {
+    const sourceIds = [...selected].sort()
+    const payload = {
+      source_ids: sourceIds,
+      definition: { workflow: 'LiteratureV1', balanced_review_required: true },
+    }
+    setBusy('freeze')
+    setError(null)
+    try {
+      const current = await api.researchCase(projectId)
+      await performOwnerAction({
+        action_type: 'freeze_source_pack',
+        project_id: projectId,
+        artifact_hash: await payloadHash(payload),
+        expected_case_revision: await researchCaseRevision(current),
+        consequence_summary: `Freeze exactly ${sourceIds.length} selected source(s) into an immutable pack.`,
+        reason,
+        payload,
+      })
+      onRefresh()
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="literature-workflow">
+      <div className="workbench-notice">
+        <strong>DRAFT — UNSCREENED DECISION SUPPORT</strong>
+        <span>{String(recommendation['authority'] ?? 'Suggestions cannot make gate decisions.')}</span>
+        {actions.map((action) => (
+          <span key={String(action['rank'])}>
+            Next: {String(action['action'] ?? '').replaceAll('_', ' ')} — {String(action['reason'] ?? '')}
+          </span>
+        ))}
+        <span>Uncertainty: {String(recommendation['uncertainty'] ?? 'Not assessed.')}</span>
+      </div>
+
+      <form className="literature-search" onSubmit={(event) => { event.preventDefault(); void discover() }}>
+        <label><span className="eyebrow">Search concepts</span><input className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="double bottom forward returns" /></label>
+        <label><span className="eyebrow">Unpaywall contact email</span><input className="field" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="owner@example.com" /></label>
+        <button className="btn primary" type="submit" disabled={!query.trim() || !email.trim() || busy !== null}>{busy === 'discover' ? 'Searching approved services…' : 'Search literature'}</button>
+        <span className="muted">Budget: 20 candidates · 5 full texts · explicit click only</span>
+      </form>
+      {error ? <div className="workbench-notice" role="alert"><strong>LITERATURE ACTION FAILED</strong><span>{error}</span></div> : null}
+      {discovery ? (
+        <div className="literature-candidates" aria-label="Literature candidates">
+          {discovery.candidates.map((candidate) => (
+            <article key={candidate.candidate_id} className="literature-candidate">
+              <span className="eyebrow">{candidate.provider} · {candidate.access_state} · {candidate.year ?? 'year unknown'}</span>
+              {candidate.retracted ? <span className="chip fail">RETRACTED</span> : null}
+              <h4>{candidate.title}</h4>
+              <p>{candidate.relevance_explanation}</p>
+              <p className="muted">{candidate.authors.join(', ') || 'Authors not returned.'} · {candidate.doi ?? 'No DOI'}</p>
+              <button className="btn" type="button" disabled={candidate.access_state !== 'direct_pdf' || busy !== null} onClick={() => void acquire(candidate.candidate_id)}>{busy === candidate.candidate_id ? 'Validating and extracting…' : candidate.access_state === 'direct_pdf' ? 'Acquire open PDF' : 'No direct PDF'}</button>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {acquisition ? (
+        <div className="workbench-notice">
+          <strong>EXTRACTION · {acquisition.document.status.toUpperCase()}</strong>
+          <span>{acquisition.document.page_count} pages · {acquisition.document.character_count} characters · UNTRUSTED_SOURCE</span>
+          {acquisition.document.warnings.map((warning) => <span key={warning}>{warning}</span>)}
+        </div>
+      ) : null}
+
+      <label className="literature-owner-reason"><span className="eyebrow">Reason bound to each Touch ID action</span><textarea className="field" value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+      {claims.length === 0 ? (
+        <Placeholder big="NO CLAIMS RECORDED">Drafts require method, sample, markets, limitations, and a verified text anchor for full-text sources.</Placeholder>
+      ) : (
+        <div className="research-findings" aria-label="Balanced claims map">
+          {claims.map((claim) => {
+            const claimId = String(claim['claim_id'] ?? '')
+            const status = String(claim['status'] ?? 'draft')
+            const anchor = claim['source_anchor'] as Record<string, unknown> | null
+            return (
+              <article key={claimId}>
+                <span className="eyebrow">{String(claim['direction'] ?? '')} · {String(claim['strength'] ?? '')} · {String(claim['author_kind'] ?? '')}</span>
+                <span className={status === 'screened' ? 'chip pass' : 'chip'}>{status === 'screened' ? 'SCREENED' : 'DRAFT — UNSCREENED'}</span>
+                <p>{String(claim['claim_text'] ?? '')}</p>
+                <dl className="literature-claim-detail">
+                  <dt>Method</dt><dd>{String(claim['method_summary'] ?? 'Not recorded.')}</dd>
+                  <dt>Sample</dt><dd>{String(claim['sample_summary'] ?? 'Not recorded.')}</dd>
+                  <dt>Markets</dt><dd>{Array.isArray(claim['markets']) ? claim['markets'].join(', ') : 'Not recorded.'}</dd>
+                  <dt>Limitations</dt><dd>{String(claim['limitations'] ?? 'Not recorded.')}</dd>
+                </dl>
+                <blockquote>{anchor ? `p. ${String(anchor['page'])}: ${String(anchor['excerpt'] ?? '')}` : String(claim['anchor_state'] ?? 'LEGACY — NO TEXT ANCHOR')}</blockquote>
+                {status === 'draft' ? <div className="literature-claim-actions"><button className="btn primary" type="button" disabled={!reason.trim() || busy !== null || !anchor} onClick={() => void ownerAction('screen_source_claim', claimId)}>Touch ID · screen anchored claim</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('reject_source_claim', claimId)}>Touch ID · reject</button></div> : null}
+              </article>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="research-findings">
+        {literature.sources.map((source) => (
+          <label key={source.source_id} className="literature-source-row">
+            <input type="checkbox" checked={selected.has(source.source_id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(source.source_id); else next.delete(source.source_id); return next })} />
+            <span><span className="eyebrow">{source.provider} · {source.access_mode} · {source.extraction_status ?? 'metadata only'}</span><strong>{source.title}</strong><span className="mono muted">{source.locator}</span></span>
+          </label>
+        ))}
+      </div>
+      <button className="btn primary" type="button" disabled={!selected.size || !reason.trim() || busy !== null} onClick={() => void freezePack()}>Touch ID · freeze selected source pack</button>
+    </div>
+  )
+}
+
 function SectionBody({
   section,
   sections,
+  projectId,
+  onRefresh,
 }: {
   section: SectionId
   sections: ResearchEvidenceHubSections
+  projectId: string
+  onRefresh: () => void
 }) {
   switch (section) {
     case 'overview': {
@@ -96,54 +300,7 @@ function SectionBody({
         </Placeholder>
       )
     case 'literature': {
-      const literature = sections.literature
-      const claims = literature.claims as Array<Record<string, unknown>>
-      return (
-        <>
-          {claims.length === 0 ? (
-            <Placeholder big="NO CLAIMS RECORDED">
-              Claim-level literature evidence is drafted by Codex and elevated only by owner
-              screening; screened sources are listed below in the meantime.
-            </Placeholder>
-          ) : (
-            <div className="research-findings" aria-label="Claims map">
-              {claims.map((claim) => {
-                const claimId = String(claim['claim_id'] ?? '')
-                const status = String(claim['status'] ?? 'draft')
-                return (
-                  <div key={claimId}>
-                    <span className="eyebrow">
-                      {String(claim['direction'] ?? '')} · {String(claim['strength'] ?? '')} ·{' '}
-                      {String(claim['author_kind'] ?? '')}
-                    </span>
-                    <span className={status === 'screened' ? 'chip pass' : 'chip'}>
-                      {status === 'screened' ? 'SCREENED' : 'DRAFT — UNSCREENED'}
-                    </span>
-                    <p>{String(claim['claim_text'] ?? '')}</p>
-                    <p className="muted">{String(claim['limitations'] ?? '')}</p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          {literature.sources.length ? (
-            <div className="research-findings">
-              {literature.sources.map((source) => (
-                <div key={source.source_id}>
-                  <span className="eyebrow">{source.provider} · {source.access_mode}</span>
-                  <span className={source.screening === 'include' ? 'chip pass' : 'chip'}>
-                    {source.screening ?? 'unscreened'}
-                  </span>
-                  <p>{source.title}</p>
-                  <p className="mono muted">{source.locator}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">No recorded sources.</p>
-          )}
-        </>
-      )
+      return <LiteratureSection literature={sections.literature} projectId={projectId} onRefresh={onRefresh} />
     }
     case 'mechanism': {
       const mechanism = sections.mechanism
@@ -278,12 +435,21 @@ function SectionBody({
 }
 
 export function EvidenceHub(props: PanelHandleProps) {
+  const params = (props.params ?? {}) as {
+    initialSection?: unknown
+    compactLiterature?: unknown
+  }
+  const initialSection = SECTION_ORDER.some((section) => section.id === params.initialSection)
+    ? (params.initialSection as SectionId)
+    : 'overview'
+  const compactLiterature = params.compactLiterature === true
   const panelLink = usePanelLinked(props)
   const projectId = panelLink.linked.projectId
   const [hub, setHub] = useState<ResearchEvidenceHub | null>(null)
   const [scorecardOpen, setScorecardOpen] = useState(false)
-  const [active, setActive] = useState<SectionId>('overview')
+  const [active, setActive] = useState<SectionId>(initialSection)
   const [error, setError] = useState<string | null>(null)
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
     if (!projectId) {
@@ -306,16 +472,21 @@ export function EvidenceHub(props: PanelHandleProps) {
     return () => {
       live = false
     }
-  }, [projectId])
+  }, [projectId, refresh])
+  const visibleHub = hub?.project_id === projectId ? hub : null
 
   return (
     <div className="panel">
       <div className="panel-toolbar">
-        <span className="title">Evidence Hub</span>
+        <span className="title">{compactLiterature ? 'Literature' : 'Evidence'}</span>
         <span className="chip kind">READ-ONLY</span>
-        <span className="muted">for & against · equal prominence · nothing disappears</span>
+        <span className="muted">
+          {compactLiterature
+            ? 'sources · claims · screening state · pack membership'
+            : 'for & against · equal prominence · nothing disappears'}
+        </span>
         <span className="spacer" />
-        {hub ? (
+        {visibleHub ? (
           <button className="kbd" type="button" onClick={() => setScorecardOpen((open) => !open)}>
             {scorecardOpen ? 'sections' : 'full scorecard'}
           </button>
@@ -334,13 +505,18 @@ export function EvidenceHub(props: PanelHandleProps) {
             evidence.
           </Placeholder>
         ) : null}
-        {hub && scorecardOpen ? (
-          <ScorecardDetail scorecard={hub.sections.overview.scorecard} />
+        {projectId && !visibleHub && !error ? (
+          <Placeholder big="LOADING EVIDENCE">
+            Loading only the selected project's current evidence projection.
+          </Placeholder>
         ) : null}
-        {hub && !scorecardOpen ? (
+        {visibleHub && scorecardOpen ? (
+          <ScorecardDetail scorecard={visibleHub.sections.overview.scorecard} />
+        ) : null}
+        {visibleHub && !scorecardOpen ? (
           <>
-            <div className="scorecard-strip" aria-label="Headline evidence board">
-              {headlineBoard(hub.sections).map((category) => (
+            {!compactLiterature ? <div className="scorecard-strip" aria-label="Headline evidence board">
+              {headlineBoard(visibleHub.sections).map((category) => (
                 <span
                   key={category.id}
                   className={stateChipClass(category.status.toLowerCase().replaceAll(' ', '_'))}
@@ -349,8 +525,8 @@ export function EvidenceHub(props: PanelHandleProps) {
                   {category.label} · {category.status}
                 </span>
               ))}
-            </div>
-            <div className="evidence-hub-tabs" role="tablist" aria-label="Evidence sections">
+            </div> : null}
+            {!compactLiterature ? <div className="evidence-hub-tabs" role="tablist" aria-label="Evidence sections">
               {SECTION_ORDER.map((section) => (
                 <button
                   key={section.id}
@@ -363,9 +539,9 @@ export function EvidenceHub(props: PanelHandleProps) {
                   {section.label}
                 </button>
               ))}
-            </div>
+            </div> : null}
             <div className="evidence-hub-body">
-              <SectionBody section={active} sections={hub.sections} />
+              <SectionBody section={active} sections={visibleHub.sections} projectId={visibleHub.project_id} onRefresh={() => setRefresh((value) => value + 1)} />
             </div>
           </>
         ) : null}

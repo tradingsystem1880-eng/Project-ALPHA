@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import uuid
 from collections.abc import Mapping, Sequence
@@ -261,6 +260,7 @@ def source_claim_draft(
     sample_summary: str,
     markets: Sequence[str],
     limitations: str,
+    source_anchor: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     """Draft one claim; MCP claims are always agent-authored and never screened here."""
     args = [
@@ -292,6 +292,8 @@ def source_claim_draft(
     ]
     for market in markets:
         args += ["--market", market]
+    if source_anchor is not None:
+        args += ["--anchor-json", _json(source_anchor)]
     args += ["--json"]
     return _object(_invoke.run_json(args, data_dir=data_dir), "research source claim")
 
@@ -812,7 +814,7 @@ def launch_suite(
         "suite reservation",
     )
     plan = _object(reservation.get("plan"), "suite reservation plan")
-    env = {**os.environ, "ALPHA_DATA_DIR": str(data_dir)}
+    env = _invoke._cli_environment(data_dir)
     try:
         subprocess.Popen(
             [

@@ -194,7 +194,7 @@ def _empirical_contract(ref: Mapping[str, object], bars: Any) -> dict[str, Any]:
 
 
 def _sealed_boundary(contract: Mapping[str, object]) -> Any:
-    from alpha_research import ResearchD2BoundaryV1
+    from alpha_research import research_d2_boundary_from_dict
 
     protocol = contract["protocol"]
     assert isinstance(protocol, dict)
@@ -202,7 +202,7 @@ def _sealed_boundary(contract: Mapping[str, object]) -> Any:
     assert isinstance(topology, dict)
     boundary_value = topology["boundary"]
     assert isinstance(boundary_value, dict)
-    return ResearchD2BoundaryV1.from_dict(boundary_value)
+    return research_d2_boundary_from_dict(boundary_value)
 
 
 def test_deep_run_verifies_the_sealed_empirical_boundary_end_to_end(tmp_path: Path) -> None:

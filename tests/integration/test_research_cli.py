@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
@@ -15,6 +19,7 @@ from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import ControlStore
 from alpha_cli.main import app
 from alpha_core import DataError
+from alpha_research import CryptoCrowdingObservationV1
 from tests.fixtures.cli_fixtures import seed_store
 
 runner = CliRunner()
@@ -41,6 +46,289 @@ def _rewrite_d0_acceptance_and_manifest(data_dir: Path, run_id: str) -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["artifacts"]["d0_acceptance.json"] = artifact_metadata(acceptance_path)
     manifest_path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+def test_proposal_options_are_executable_atomic_bundles_with_exact_prerequisites(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke(
+        "capture", "I notice the S&P500 bounces after double bottoms on the 4h time frame"
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    empty = _invoke("proposal-options", project_id)
+    assert empty["recommended_answer_bundle_id"] == "synthetic_spy_60m_four_hour_v1"
+    assert empty["approval_ready"] is False
+    assert [row["code"] for row in cast(list[dict[str, object]], empty["blockers"])] == [
+        "SOURCE_PACK_REQUIRED"
+    ]
+
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Technical trading revisited",
+        locator="doi:10.0000/example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id, source_ids=[str(source["source_id"])], definition={}
+    )
+    dataset = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="SPY",
+        provider="tiingo",
+        start_ts="2010-01-01",
+        end_ts="2024-12-31",
+        bar_duration_minutes=1_440,
+        origin={"snapshot_id": "spy-qualified", "manifest_sha256": "a" * 64},
+        registered_by="owner",
+    )
+    store.record_research_dataset_audit(
+        str(dataset["ref_id"]),
+        project_id=project_id,
+        run_id="deadbeefdeadbeef",
+        summary={
+            "audit_schema": "ResearchDataAuditV1",
+            "blocking_count": 0,
+            "limiting_count": 0,
+            "notes": [],
+        },
+    )
+    crypto = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2026-08-04T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "b" * 64,
+            "manifest_sha256": "c" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+
+    options = _invoke("proposal-options", project_id)
+    assert options["approval_ready"] is True
+    assert (
+        cast(list[dict[str, object]], options["compatible_source_packs"])[0]["pack_id"]
+        == pack["pack_id"]
+    )
+    assert (
+        cast(list[dict[str, object]], options["compatible_datasets"])[0]["ref_id"]
+        == dataset["ref_id"]
+    )
+    assert crypto["ref_id"] not in {
+        row["ref_id"] for row in cast(list[dict[str, object]], options["compatible_datasets"])
+    }
+    bundles = cast(list[dict[str, object]], options["valid_answer_bundles"])
+    assert {
+        (
+            str(bundle["bundle_id"]),
+            bool(bundle["available"]),
+            tuple(cast(list[str], bundle["compatible_dataset_ids"])),
+        )
+        for bundle in bundles
+    } == {
+        ("synthetic_spy_60m_four_hour_v1", True, ()),
+        ("tiingo_spy_daily_next_session_v1", True, (str(dataset["ref_id"]),)),
+        ("bybit_btcusdt_crowding_reversal_v1", False, ()),
+    }
+
+
+def test_crypto_proposal_options_require_authoritatively_compatible_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke(
+        "capture",
+        "On Bybit BTCUSDT linear perpetuals, test whether extreme positive funding with rising "
+        "open interest and premium predicts crowding reversal before the next funding event",
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Perpetual funding mechanics",
+        locator="doi:10.0000/crypto-example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition={},
+    )
+    compatible = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2025-01-01T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "b" * 64,
+            "manifest_sha256": "c" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+    incompatible = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2025-01-01T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "d" * 64,
+            "manifest_sha256": "e" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+
+    def compatibility(snapshot_id: str) -> dict[str, object]:
+        if snapshot_id == "d" * 64:
+            raise DataError("mixed quote asset")
+        return {
+            "snapshot_id": snapshot_id,
+            "bundle_id": "bybit_btcusdt_crowding_reversal_v1",
+            "operator_fingerprint": "f" * 64,
+            "asset_master_version": "reviewed-native-v1",
+            "qualification_versions": ["crypto-quality-v1"],
+            "eligible": True,
+        }
+
+    monkeypatch.setattr(
+        "alpha_cli.crypto_data_cmds.crypto_crowding_snapshot_compatibility",
+        compatibility,
+    )
+    observation = cast(
+        CryptoCrowdingObservationV1,
+        SimpleNamespace(funding_time=datetime(2025, 1, 1, tzinfo=UTC)),
+    )
+    monkeypatch.setattr(
+        "alpha_cli.crypto_data_cmds.crypto_crowding_observations",
+        lambda _snapshot_id: (observation,),
+    )
+
+    binding = research_cmds._crypto_empirical_dataset(store, str(compatible["ref_id"]))
+    assert binding.snapshot_id == "b" * 64
+    assert binding.operator_fingerprint == "f" * 64
+    assert binding.observations == (observation,)
+
+    options = _invoke("proposal-options", project_id)
+
+    assert options["recommended_answer_bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    assert options["approval_ready"] is True
+    bundles = cast(list[dict[str, object]], options["valid_answer_bundles"])
+    selected = next(
+        bundle for bundle in bundles if bundle["bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    )
+    assert selected["available"] is True
+    assert selected["compatible_dataset_ids"] == [compatible["ref_id"]]
+    assert incompatible["ref_id"] not in cast(list[str], selected["compatible_dataset_ids"])
+
+
+def test_crypto_draft_freezes_exact_snapshot_operator_and_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke(
+        "capture",
+        "On Bybit BTCUSDT linear perpetuals, test whether extreme positive funding with rising "
+        "open interest and premium predicts crowding reversal before the next funding event",
+    )
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Perpetual funding mechanics",
+        locator="doi:10.0000/crypto-example",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    pack = store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition={},
+    )
+    dataset = store.register_research_dataset(
+        dataset_kind="snapshot",
+        instrument="BTC",
+        provider="crypto-data-house",
+        start_ts="2025-01-01T00:00:00Z",
+        end_ts="2026-08-14T00:00:00Z",
+        bar_duration_minutes=60,
+        origin={
+            "snapshot_id": "b" * 64,
+            "manifest_sha256": "c" * 64,
+            "snapshot_schema": "CryptoSnapshotV1",
+        },
+        registered_by="owner",
+    )
+    start = datetime(2025, 1, 1, tzinfo=UTC)
+    binding = research_cmds._CryptoEmpiricalDataset(
+        ref=dataset,
+        snapshot_id="b" * 64,
+        snapshot_hash="c" * 64,
+        operator_fingerprint="f" * 64,
+        asset_master_version="reviewed-native-v1",
+        qualification_versions=("crypto-quality-v1",),
+        observations=tuple(
+            cast(
+                CryptoCrowdingObservationV1,
+                SimpleNamespace(funding_time=start + timedelta(hours=8 * index)),
+            )
+            for index in range(10)
+        ),
+    )
+    monkeypatch.setattr(research_cmds, "_crypto_empirical_dataset", lambda *_args: binding)
+    monkeypatch.setattr(
+        "alpha_cli.crypto_data_cmds.crypto_crowding_snapshot_compatibility",
+        lambda _snapshot_id: {
+            "snapshot_id": "b" * 64,
+            "bundle_id": "bybit_btcusdt_crowding_reversal_v1",
+            "operator_fingerprint": "f" * 64,
+            "eligible": True,
+        },
+    )
+    options = _invoke("proposal-options", project_id)
+
+    drafted = _invoke(
+        "draft",
+        project_id,
+        "--source-pack-id",
+        str(pack["pack_id"]),
+        "--answer-bundle",
+        "bybit_btcusdt_crowding_reversal_v1",
+        "--dataset",
+        str(dataset["ref_id"]),
+        "--expected-case-revision",
+        str(options["case_revision"]),
+    )
+
+    contract = cast(dict[str, object], drafted["contract"])
+    payload = cast(dict[str, object], contract["payload"])
+    assert payload["answer_bundle_id"] == "bybit_btcusdt_crowding_reversal_v1"
+    assert cast(dict[str, object], payload["hashes"])["data"] == "b" * 64
+    protocol = cast(dict[str, object], payload["protocol"])
+    assert cast(dict[str, object], protocol["d0_operator"])["name"] == (
+        "bybit_btcusdt_crowding_reversal"
+    )
+    authority = cast(dict[str, object], protocol["boundary_authority"])
+    assert authority == {
+        "kind": "empirical_dataset",
+        "real_market_evidence": True,
+        "empirical_confirmation_authorized": True,
+    }
+    empirical = cast(dict[str, object], protocol["empirical_dataset"])
+    assert empirical["snapshot_id"] == "b" * 64
+    assert empirical["operator_fingerprint"] == "f" * 64
+    assert empirical["session_group_count"] == 10
 
 
 def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
@@ -1545,9 +1833,11 @@ def test_research_dataset_register_list_and_audit_round_trip(
     assert manifest["watermark"] == "EXPLORATORY"
     assert manifest["real_market_evidence"] is False
     assert manifest["eligible_for_holdout_or_execution"] is False
+    assert manifest["research_data_audit_method_version"] == "ar1-conservative-cap-v2"
     audit = cast(dict[str, object], audited["audit"])
     summary = cast(dict[str, object], audit["summary"])
     assert summary["audit_schema"] == "ResearchDataAuditV1"
+    assert summary["method_version"] == "ar1-conservative-cap-v2"
     # A four-bar dataset is honestly blocking: far below any usable sample.
     assert cast(int, summary["blocking_count"]) >= 1
     assert audit["project_id"] == project_id
@@ -2437,7 +2727,10 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     import subprocess
 
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "SECRET_SENTINEL")
+    monkeypatch.setenv("SHELL", "/secret/interactive-shell")
     captured_argv: list[list[str]] = []
+    captured_kwargs: list[dict[str, object]] = []
 
     class _Completed:
         returncode = 0
@@ -2455,20 +2748,29 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
         stderr = ""
 
     def fake_run(argv: list[str], **kwargs: object) -> _Completed:
-        del kwargs
         captured_argv.append(argv)
+        captured_kwargs.append(kwargs)
         return _Completed()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     fetched = _invoke("sources", "fetch", "https://arxiv.org/pdf/1234v1")
     assert fetched["trust_label"] == "UNTRUSTED_SOURCE"
+    assert "object_path" not in fetched and "receipt_path" not in fetched
     assert len(captured_argv) == 1
     argv = captured_argv[0]
-    assert argv[:4] == ["uv", "run", "--project", argv[3]]
+    assert Path(argv[0]).name == "uv"
+    assert argv[1:4] == ["run", "--project", argv[3]]
     assert argv[3].endswith("workers/literature")
     assert argv[4:7] == ["literature-worker", "fetch", "--url"]
     assert argv[7] == "https://arxiv.org/pdf/1234v1"
     assert "--objects-dir" in argv
+    child_env = cast(dict[str, str], captured_kwargs[0]["env"])
+    assert "ALPHA_TIINGO_API_KEY" not in child_env
+    assert "SHELL" not in child_env
+    assert "HOME" not in child_env
+    assert set(child_env) == {"LANG", "LC_ALL", "PATH", "UV_NO_CONFIG", "UV_OFFLINE"}
+    assert captured_kwargs[0]["start_new_session"] is True
+    assert callable(captured_kwargs[0]["preexec_fn"])
 
     class _Failed(_Completed):
         returncode = 1
@@ -2481,6 +2783,113 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     )
     assert rejected.exit_code != 0
     assert "not allowlisted" in rejected.output
+
+
+def test_literature_discovery_acquisition_and_extraction_link_end_to_end_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = str(
+        cast(dict[str, object], _invoke("capture", "SPY pattern literature workflow")["project"])[
+            "project_id"
+        ]
+    )
+    discovery_id = "ld_" + "1" * 64
+    candidate_id = "lc_" + "2" * 64
+    source_sha = hashlib.sha256(b"%PDF-offline-fixture").hexdigest()
+    extraction_id = "rx_" + "3" * 64
+    discovery = {
+        "schema": "LiteratureDiscoveryV1",
+        "discovery_id": discovery_id,
+        "query": "SPY pattern",
+        "candidates": [
+            {
+                "candidate_id": candidate_id,
+                "provider": "arxiv",
+                "title": "SPY pattern evidence",
+                "doi": None,
+                "year": 2024,
+                "authors": ["A. Author"],
+                "open_access_url": "https://arxiv.org/pdf/1234.5678",
+                "access_state": "direct_pdf",
+                "relevance_explanation": "matched title concepts: pattern.",
+                "matched_concepts": ["pattern"],
+                "retracted": None,
+                "dedup_key": "content:" + "4" * 32,
+                "trust_label": "UNTRUSTED_SOURCE",
+            }
+        ],
+        "receipt": {
+            "receipt_id": discovery_id,
+            "budget": {"max_candidates": 20, "max_full_texts": 5},
+            "trust_label": "UNTRUSTED_SOURCE",
+        },
+    }
+    extraction = {
+        "schema": "ResearchDocumentTextV1",
+        "extraction_id": extraction_id,
+        "source_sha256": source_sha,
+        "parser": "pypdf",
+        "parser_version": "6.14.2",
+        "config_hash": "5" * 64,
+        "normalization": "NFC_LF_RSTRIP_V1",
+        "status": "image_only",
+        "pages": [
+            {
+                "page": 1,
+                "text": "",
+                "character_count": 0,
+                "text_sha256": hashlib.sha256(b"").hexdigest(),
+            }
+        ],
+        "page_count": 1,
+        "character_count": 0,
+        "warnings": ["No extractable text; OCR is out of scope."],
+        "trust_label": "UNTRUSTED_SOURCE",
+    }
+    outputs: Iterator[dict[str, object]] = iter(
+        [
+            cast(dict[str, object], discovery),
+            {
+                "final_url": "https://arxiv.org/pdf/1234.5678",
+                "media_type": "application/pdf",
+                "byte_count": 20,
+                "sha256": source_sha,
+                "trust_label": "UNTRUSTED_SOURCE",
+                "object_path": str(tmp_path / "research" / "objects" / source_sha),
+                "receipt_path": str(
+                    tmp_path / "research" / "objects" / f"{source_sha}.receipt.json"
+                ),
+            },
+            extraction,
+        ]
+    )
+
+    class _Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, payload: dict[str, object]) -> None:
+            self.stdout = json.dumps(payload)
+
+    monkeypatch.setattr(subprocess, "run", lambda argv, **kwargs: _Completed(next(outputs)))
+    discovered = _invoke(
+        "sources",
+        "discover",
+        project_id,
+        "--query",
+        "SPY pattern",
+        "--unpaywall-email",
+        "owner@example.com",
+    )
+    assert discovered["discovery_id"] == discovery_id
+    acquired = _invoke("sources", "acquire", project_id, discovery_id, candidate_id)
+    assert cast(dict[str, object], acquired["document"])["status"] == "image_only"
+    assert "artifact_relpath" not in cast(dict[str, object], acquired["document"])
+    sources = ControlStore(tmp_path).list_research_sources(project_id)
+    assert sources[0]["extraction_status"] == "image_only"
 
 
 def _approved_deep_ready_project() -> str:

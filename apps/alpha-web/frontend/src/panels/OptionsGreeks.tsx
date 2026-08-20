@@ -33,13 +33,22 @@ export function OptionsGreeks() {
   // greeks depend on spot — refetch on any input
   useEffect(() => {
     let live = true
+    setGreeks(null)
+    setError(null)
     const timer = setTimeout(() => {
-      setError(null)
       const q = new URLSearchParams({ spot, strike, vol, days, rate, kind })
       api
         .optionsGreeks(q.toString())
-        .then((r) => live && setGreeks(r))
-        .catch((e: unknown) => live && setError(String(e)))
+        .then((r) => {
+          if (!live) return
+          setGreeks(r)
+          setError(null)
+        })
+        .catch((e: unknown) => {
+          if (!live) return
+          setGreeks(null)
+          setError(String(e))
+        })
     }, 180)
     return () => {
       live = false
@@ -50,6 +59,7 @@ export function OptionsGreeks() {
   // the curve is spot-independent — only refetch when its inputs change
   useEffect(() => {
     let live = true
+    setCurve(null)
     const timer = setTimeout(() => {
       const q = new URLSearchParams({ strike, vol, days, rate, kind, points: '61' })
       api

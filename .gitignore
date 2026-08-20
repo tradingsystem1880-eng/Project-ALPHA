@@ -32,3 +32,14 @@ apps/alpha-web/frontend/test-results/
 
 # Data is large + reproducible from snapshots; never commit it
 data/
+.quantpad/
+
+# Claude Code harness: local overrides + machine-local state (stamps, audit, session
+# journals) stay out of the tree; .claude/settings.json and skills/agents/commands ARE
+# committed
+.claude/settings.local.json
+.claude/*.local.json
+.claude/state/
+.claude/worktrees/
+.claude/agent-memory/
+.claude/agent-memory-local/

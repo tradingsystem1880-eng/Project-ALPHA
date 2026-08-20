@@ -240,8 +240,49 @@ describe('Research Cockpit REST projection helpers', () => {
       interpretation: 'Predictive association, not causation.',
       alternatives: ['weekday', 'volatility regime'],
       blocking_questions: [],
+      valid_answer_bundles: [],
+      recommended_answer_bundle_id: null,
       approval_ready: true,
     })
+  })
+
+  it('preserves object-shaped material questions and choice consequences', () => {
+    const researchCase = projectedCase()
+    researchCase.active_contract.payload.blocking_questions = [
+      {
+        id: 'chart_construction',
+        prompt: 'Which exact chart defines the claim?',
+        blocking_reason: 'It changes the event population.',
+        recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+        choices: [
+          {
+            id: 'spy_rth_60m_four_hour_window',
+            label: 'SPY 60-minute RTH proxy',
+            consequence: 'Uses equal 60-minute bars.',
+            availability: 'available',
+            blocked_reason: null,
+          },
+        ],
+      },
+    ]
+
+    expect(researchContractView(researchCase).blocking_questions).toEqual([
+      {
+        id: 'chart_construction',
+        prompt: 'Which exact chart defines the claim?',
+        blocking_reason: 'It changes the event population.',
+        recommended_answer_bundle_id: 'synthetic_spy_60m_four_hour_v1',
+        choices: [
+          {
+            id: 'spy_rth_60m_four_hour_window',
+            label: 'SPY 60-minute RTH proxy',
+            consequence: 'Uses equal 60-minute bars.',
+            availability: 'available',
+            blocked_reason: null,
+          },
+        ],
+      },
+    ])
   })
 
   it('keeps heterogeneous budget resources separate', () => {

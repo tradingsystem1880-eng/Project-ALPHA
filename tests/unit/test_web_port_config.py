@@ -1,11 +1,13 @@
 """``alpha_web.app.main`` port resolution: env-configurable, loopback-only, fail-loud.
 
-The serve port comes from ``ALPHA_WEB_PORT`` first, then ``PORT``, defaulting to 8800.
+The serve port comes from ``ALPHA_WEB_PORT`` first, then ``PORT``, defaulting to 8801.
 Invalid values raise :class:`alpha_core.AlphaError` naming the bad value; the host is
 always ``127.0.0.1``.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 import uvicorn
@@ -13,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from alpha_core import AlphaError
+from alpha_web import app as web_app_module
 from alpha_web.app import create_app, main
 
 
@@ -40,12 +43,12 @@ def run_capture(monkeypatch: pytest.MonkeyPatch) -> RunCapture:
     return capture
 
 
-def test_default_port_is_8800_on_loopback(run_capture: RunCapture) -> None:
+def test_default_port_is_8801_on_loopback(run_capture: RunCapture) -> None:
     main()
     args, kwargs = run_capture.only_call()
     assert isinstance(args[0], FastAPI)
     assert kwargs["host"] == "127.0.0.1"
-    assert kwargs["port"] == 8800
+    assert kwargs["port"] == 8801
 
 
 def test_alpha_web_port_env_sets_port(
@@ -121,3 +124,30 @@ def test_large_json_responses_use_gzip() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "gzip"
+
+
+def test_loopback_ip_redirects_to_exact_localhost_origin() -> None:
+    with TestClient(create_app(), base_url="http://127.0.0.1:8801") as client:
+        response = client.get("/owner-auth/enroll?step=1", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "http://localhost:8801/owner-auth/enroll?step=1"
+
+
+def test_canonical_origin_serves_health_and_owner_enrollment() -> None:
+    with TestClient(create_app(), base_url="http://localhost:8801") as client:
+        health = client.get("/healthz")
+        enrollment = client.get("/owner-auth/enroll")
+    assert health.json() == {"status": "ok"}
+    assert enrollment.status_code == 200
+    assert "text/html" in enrollment.headers["content-type"]
+
+
+def test_missing_spa_fails_with_build_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(web_app_module, "_APP_INDEX", tmp_path / "not-built.html")
+    with TestClient(create_app(), base_url="http://localhost:8801") as client:
+        response = client.get("/owner-auth/enroll")
+    assert response.status_code == 503
+    assert "npm run build" in response.json()["message"]

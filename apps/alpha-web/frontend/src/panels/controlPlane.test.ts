@@ -26,6 +26,12 @@ const PROVIDERS: ProviderDefinition[] = [
     budget_tier: 'free_optional',
     installed: true,
     configured: false,
+    configuration_state: 'optional_disabled',
+    verification_state: 'optional_disabled',
+    verified_at: null,
+    last_receipt_id: null,
+    granted_capabilities: [],
+    recovery_action: 'No action required.',
   },
   {
     id: 'ccxt',
@@ -44,6 +50,12 @@ const PROVIDERS: ProviderDefinition[] = [
     budget_tier: 'free_public',
     installed: true,
     configured: true,
+    configuration_state: 'available_without_credentials',
+    verification_state: 'unverified',
+    verified_at: null,
+    last_receipt_id: null,
+    granted_capabilities: [],
+    recovery_action: 'Run an explicit check.',
   },
   {
     id: 'stooq',
@@ -60,6 +72,12 @@ const PROVIDERS: ProviderDefinition[] = [
     budget_tier: 'free_audit_only',
     installed: false,
     configured: false,
+    configuration_state: 'not_installed',
+    verification_state: 'unverified',
+    verified_at: null,
+    last_receipt_id: null,
+    granted_capabilities: [],
+    recovery_action: 'Install it.',
   },
 ]
 
@@ -75,9 +93,9 @@ describe('provider-driven Data Explorer', () => {
 
   it('reports missing credential names without carrying any secret values', () => {
     expect(missingCredentialNames(PROVIDERS[0])).toEqual(['ALPHA_FINNHUB_API_KEY'])
-    expect(providerReadinessLabel(PROVIDERS[0])).toBe('NEEDS CONFIG')
+    expect(providerReadinessLabel(PROVIDERS[0])).toBe('OPTIONAL DISABLED')
     expect(providerReadinessLabel(PROVIDERS[2])).toBe('NOT INSTALLED')
-    expect(providerReadinessLabel(PROVIDERS[1])).toBe('READY')
+    expect(providerReadinessLabel(PROVIDERS[1])).toBe('UNVERIFIED')
   })
 
   it('threads the CCXT venue into the CLI and omits it for other sources', () => {

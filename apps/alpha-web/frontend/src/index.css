@@ -561,7 +561,8 @@ button.btn:disabled {
 }
 
 input.field,
-select.field {
+select.field,
+textarea.field {
   width: 100%;
   padding: 6px 9px;
   border-radius: var(--r);
@@ -572,10 +573,30 @@ select.field {
   font-size: 12px;
 }
 input.field:focus,
-select.field:focus {
+select.field:focus,
+textarea.field:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.literature-workflow { display: flex; flex-direction: column; gap: 14px; }
+.literature-search { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(220px, 1fr) auto; gap: 10px; align-items: end; }
+.literature-search label, .literature-owner-reason { display: flex; flex-direction: column; gap: 5px; }
+.literature-search > .muted { grid-column: 1 / -1; }
+.literature-candidates { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+.literature-candidate { border: 1px solid var(--line); background: var(--panel-2); padding: 11px; display: flex; flex-direction: column; gap: 7px; }
+.literature-candidate h4, .literature-candidate p { margin: 0; }
+.literature-owner-reason textarea { min-height: 68px; resize: vertical; }
+.literature-claim-detail { display: grid; grid-template-columns: 80px 1fr; gap: 4px 10px; margin: 8px 0; }
+.literature-claim-detail dt { color: var(--muted); }
+.literature-claim-detail dd { margin: 0; }
+.literature-claim-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.literature-source-row { display: flex; gap: 10px; align-items: start; cursor: pointer; }
+.literature-source-row > span { display: flex; flex-direction: column; gap: 3px; }
+
+@media (max-width: 900px) {
+  .literature-search { grid-template-columns: 1fr; }
 }
 
 /* ==========================================================================
@@ -693,6 +714,157 @@ select.field:focus {
   margin-bottom: 9px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--line);
+}
+
+.crypto-center {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.crypto-center-head,
+.crypto-actions,
+.crypto-storage-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.crypto-center-head {
+  justify-content: space-between;
+}
+.crypto-center-head p {
+  margin: 3px 0 0;
+}
+.crypto-next {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.crypto-next.ready {
+  border-color: rgba(82, 193, 142, 0.45);
+}
+.crypto-next.blocked {
+  border-color: rgba(225, 95, 89, 0.5);
+}
+.crypto-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding-bottom: 3px;
+}
+.crypto-tabs .area-tab {
+  flex: 0 0 auto;
+}
+.crypto-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.crypto-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 8px;
+}
+.crypto-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crypto-form-grid .btn {
+  align-self: end;
+}
+.crypto-coverage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crypto-market-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px;
+  max-height: 240px;
+  margin: 8px 0;
+  padding: 6px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.crypto-market-picker label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px;
+}
+.crypto-market-picker label > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.crypto-market-picker small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crypto-dataset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 10.5px;
+}
+.crypto-dataset.selected {
+  border-color: rgba(82, 193, 142, 0.5);
+  background: rgba(82, 193, 142, 0.05);
+}
+.crypto-dataset.selected .chip.pass {
+  color: #63c77d;
+}
+.crypto-dataset-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.crypto-dataset-select > span,
+.crypto-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.crypto-dataset > .advanced-only {
+  grid-column: 1 / -1;
+}
+.crypto-dataset > .mono,
+.crypto-dataset > .muted {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.crypto-detail {
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 11px;
+}
+.crypto-storage-stats > span:not(.chip) {
+  padding-right: 10px;
+  border-right: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+.research-data-explorer .mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .leak {
   padding: 8px 12px;
@@ -3159,6 +3331,76 @@ select.field:focus {
   gap: 9px;
 }
 
+.owner-action-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(215, 166, 59, 0.55);
+  background: var(--gold-soft);
+}
+
+.owner-action-boundary > .eyebrow {
+  color: var(--ink-dim);
+}
+
+.owner-action-boundary p {
+  max-width: 82ch;
+  margin: 0;
+  color: var(--ink-dim);
+  line-height: 1.45;
+}
+
+.owner-action-boundary label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.owner-action-boundary textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.owner-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.owner-enrollment-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.owner-enrollment-card {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: var(--shadow-lg);
+}
+
+.owner-enrollment-card h1,
+.owner-enrollment-card p {
+  margin: 0;
+}
+
+.owner-enrollment-card p {
+  color: var(--ink-dim);
+  line-height: 1.55;
+}
+
+.owner-enrollment-card .btn {
+  align-self: flex-start;
+}
+
 .research-intake-grid {
   display: grid;
   grid-template-columns: minmax(360px, 1.25fr) minmax(280px, 0.75fr);
@@ -4238,6 +4480,25 @@ select.field:focus {
 .area-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
 .area-body { flex: 1; min-height: 0; overflow: hidden; }
 
+.workspace-mode { display: inline-flex; gap: 1px; }
+.workspace-mode .kbd.active { color: var(--ink); border-color: var(--accent); }
+html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
+
+.research-next-action {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+}
+.research-next-action strong { font-size: calc(var(--font-size) + 2px); }
+.research-material-questions { padding: 8px 0; }
+.research-material-questions > ol { display: grid; gap: 8px; margin: 0; padding-left: 24px; }
+.research-material-question { padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); }
+.research-material-question > p { margin: 4px 0 8px; color: var(--ink-dim); }
+.research-choice-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+.research-choice-card { display: grid; gap: 4px; padding: 7px; border: 1px solid var(--line); background: var(--bg); }
+
 /* Results is one full-bleed column: a figure needs the width. */
 .screen--results { grid-template-areas: 'main'; grid-template-columns: minmax(0, 1fr); }
 .screen--compare { grid-template-areas: 'main'; grid-template-columns: minmax(0, 1fr); }
@@ -4276,6 +4537,16 @@ select.field:focus {
   border-left: 2px solid var(--gold); background: var(--panel);
   color: var(--gold); font-size: calc(var(--font-size) - 1px);
 }
+.run-outcome-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1px;
+  margin: var(--pad);
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+.run-outcome-summary > div { padding: var(--pad-sm); background: var(--panel); }
+.run-outcome-summary p { margin: 4px 0 0; }
 .compare-table td.best { color: var(--up); }
 .compare-figures { margin-top: var(--pad); }
 .compare-figure-pick { display: flex; align-items: center; gap: var(--pad-sm); margin-bottom: var(--pad); }

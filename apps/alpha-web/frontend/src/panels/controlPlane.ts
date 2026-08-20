@@ -26,8 +26,11 @@ export function missingCredentialNames(provider: ProviderDefinition): string[] {
 }
 
 export function providerReadinessLabel(provider: ProviderDefinition): string {
-  if (provider.configured) return 'READY'
-  return provider.installed ? 'NEEDS CONFIG' : 'NOT INSTALLED'
+  if (provider.verification_state === 'verified') return 'VERIFIED'
+  if (provider.configuration_state === 'optional_disabled') return 'OPTIONAL DISABLED'
+  if (provider.configuration_state === 'needs_process_injection') return 'NEEDS PROCESS INJECTION'
+  if (provider.configuration_state === 'not_installed') return 'NOT INSTALLED'
+  return provider.verification_state.replaceAll('_', ' ').toUpperCase()
 }
 
 interface PullArgs {

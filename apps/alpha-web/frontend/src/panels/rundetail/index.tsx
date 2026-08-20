@@ -107,6 +107,38 @@ export function RunDetail(props: PanelHandleProps) {
   // Identity lives at the top level on some manifests and under `metadata` on others.
   const metadata = (manifest.metadata ?? {}) as Record<string, unknown>
   const symbol = asStr(manifest.symbol) ?? asStr(metadata.symbol) ?? ''
+  const typedVerdict = asStr(manifest.verdict)
+    ?? asStr((manifest.verdict as Record<string, unknown> | undefined)?.overall)
+  const resultContext = detail.run_context_kind
+
+  const outcomeSummary = (
+    <section className="run-outcome-summary" aria-label="Run outcome summary">
+      <div>
+        <span className="eyebrow">What changed</span>
+        <p>This run recorded {detail.has_trades ? 'trades and ' : ''}new immutable analysis artifacts. It did not change research or execution authority.</p>
+      </div>
+      <div>
+        <span className="eyebrow">Evidence supporting the result</span>
+        <p>{typedVerdict ?? (manifest.passed === true ? 'The recorded validation checks passed.' : 'No typed validation verdict was recorded; inspect the figures before drawing a conclusion.')}</p>
+      </div>
+      <div>
+        <span className="eyebrow">Contradictory evidence</span>
+        <p>{leak ?? 'No contradiction summary was recorded. Failed gates and adverse figures remain visible in this report.'}</p>
+      </div>
+      <div>
+        <span className="eyebrow">Uncertainty</span>
+        <p>A single run cannot establish a durable edge. Snapshot choice, sampling error, costs, and untested regimes still matter.</p>
+      </div>
+      <div>
+        <span className="eyebrow">Valid next action</span>
+        <p>{resultContext === 'standalone_sandbox'
+          ? 'Keep this result outside governed evidence; start or return to a Research Case if the observation is worth testing.'
+          : resultContext === 'legacy_context_unknown'
+            ? 'Rerun with an explicit governed-project or standalone context before relying on the result.'
+            : 'Review the evidence and gates; continue only through the selected project’s governed next action.'}</p>
+      </div>
+    </section>
+  )
 
   const body = (() => {
     switch (tab) {
@@ -143,7 +175,7 @@ export function RunDetail(props: PanelHandleProps) {
               type="button"
               role="tab"
               aria-selected={tab === item.id}
-              className={`rd-tab${tab === item.id ? ' active' : ''}`}
+              className={`rd-tab${tab === item.id ? ' active' : ''}${item.id === 'artifacts' ? ' advanced-only' : ''}`}
               onClick={() => setTab(item.id)}
             >
               {item.label}
@@ -162,8 +194,13 @@ export function RunDetail(props: PanelHandleProps) {
           ▲ {gateWatermark} — launched under an owner research-gate override
         </div>
       ) : null}
+      {detail.run_context_watermark ? (
+        <div className="leak rg-watermark-banner">
+          ▲ {detail.run_context_watermark} — this run is not governed research evidence
+        </div>
+      ) : null}
       {leak ? <p className="leak-warning">{leak}</p> : null}
-      <div className="panel-body rd-body">{body}</div>
+      <div className="panel-body rd-body">{tab === 'report' ? outcomeSummary : null}{body}</div>
     </div>
   )
 }

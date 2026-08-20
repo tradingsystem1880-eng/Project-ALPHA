@@ -40,7 +40,7 @@ from alpha_research import (
     ResearchChartData,
     ResearchChartPoint,
     ResearchChartSeries,
-    ResearchD2BoundaryV1,
+    ResearchD2Boundary,
     ResearchEvidenceTopology,
     classify_confirmation,
     detect_double_bottom_events,
@@ -531,7 +531,7 @@ def run_confirmation(
     contract_id: str,
     contract: Mapping[str, object],
     bars: EqualDurationResearchBars,
-    boundary: ResearchD2BoundaryV1,
+    boundary: ResearchD2Boundary,
     on_checkpoint: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Execute the frozen one-shot confirmation on the sealed D2 share and publish one run."""
