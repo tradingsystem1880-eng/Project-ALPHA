@@ -91,7 +91,7 @@
       "expected": "178 cli_command leaves, 62 mcp_tool nodes, argv-AST maps a known action tool to its CLI path",
       "rollback": "git checkout -- tools/alpha-atlas architecture/atlas && git clean -fd tools/alpha-atlas architecture/atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/generators/cli_tree.py", "tools/alpha-atlas/src/alpha_atlas/generators/mcp_tools.py", "architecture/atlas/generated/cache/cli-commands.json"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S7 API routes + frontend scan: the connected layer",
@@ -411,6 +411,21 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   declared 86 / implemented 425 / tested 173 / unknown 51; the Unknowns
   review queue (`generated/views/unknowns.json`) lists the two rule-less
   worker components and undocumented modules only.
+
+- **CLI cache placement** (S6): the committed command cache lives at
+  `architecture/atlas/cache/cli-commands.json`, not under `generated/` as the
+  plan layout sketched — generated outputs are forbidden inputs (the
+  self-reference guard), and the cache IS an input, refreshed only explicitly
+  via `generate --refresh-cli` (single-line canonical JSON; 172 leaves today —
+  the plan's "178" was the audit-time count). Normal generation stays
+  offline/deterministic and never subprocesses.
+- **S6 verification note**: 80 pytest tests, mypy --strict, ruff, and
+  `generate --check` fresh. Graph 990 nodes / 2629 edges; `connected` is live
+  (56 nodes): the nine argv-literal MCP action tools bridge to their CLI
+  leaves (exactly nine `args = [...]` sites exist in server.py; the other
+  tools use in-process seams and honestly get no calls edge), and add_typer
+  registrations bridge CLI groups to their `*_cmds` modules with file:line
+  provenance. The 62-tool MCP pin is asserted in tests.
 
 ## 9b. Out-of-plan edits (justified)
 

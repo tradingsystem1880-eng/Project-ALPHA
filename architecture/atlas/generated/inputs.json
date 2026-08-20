@@ -156,6 +156,7 @@
     "apps/alpha-web/src/alpha_web/api/workspaces.py": "6088032ba835e90bdea3d990ccfcb95ce066bb3714a9273358826ba777505adb",
     "apps/alpha-web/src/alpha_web/app.py": "0e792f9572ef9590038b895d202884b000bacaef67b4f71586547b1a50821377",
     "apps/alpha-web/src/alpha_web/run_authority.py": "31bb0bfff6ca88104d734e7c575e577eefac9c36426999f7c58f410da4222542",
+    "architecture/atlas/cache/cli-commands.json": "50efaed31a607ff7bca287f181685a5688a5221ccde989036b58329a2586f73e",
     "architecture/atlas/definitions/data-lineage.json": "0849ab648c6badad8f20b514023522953b29e08c76e558b42af194c950ff90ce",
     "architecture/atlas/definitions/research-lifecycle.json": "193c8d3a86996796624e2a3cb1965f8f65efe186ac126d5d89fcaaaddd996ad5",
     "docs/adr/0001-strict-layered-dag.md": "6525eb4d5365ea1beb953b80fb4cd908427d1679af5a454528e357031ff1e72a",
