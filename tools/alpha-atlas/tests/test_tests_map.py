@@ -30,3 +30,16 @@ class TestTestsMap:
             e for e in fragment.edges if e.type == "validates" and e.target == "wf:research.d1"
         ]
         assert any(e.source == "test:tests/unit/test_research_d1_executor.py" for e in d1_edges)
+
+    def test_module_targets_gain_validates_edges(self, repo_root: Path) -> None:
+        fragment, _ = extract(
+            repo_root,
+            workflow_fragment=None,
+            module_ids={"module:alpha_cli.research_d1"},
+        )
+        assert any(
+            e.type == "validates"
+            and e.source == "test:tests/unit/test_research_d1_executor.py"
+            and e.target == "module:alpha_cli.research_d1"
+            for e in fragment.edges
+        )

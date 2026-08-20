@@ -45,8 +45,14 @@ def _anchor_index(workflow_fragment: Fragment | None) -> dict[str, list[str]]:
     return {path: sorted(ids) for path, ids in index.items()}
 
 
-def extract(root: Path, *, workflow_fragment: Fragment | None) -> tuple[Fragment, dict[str, str]]:
+def extract(
+    root: Path,
+    *,
+    workflow_fragment: Fragment | None,
+    module_ids: set[str] | None = None,
+) -> tuple[Fragment, dict[str, str]]:
     anchored = _anchor_index(workflow_fragment)
+    known_modules = module_ids or set()
     roots = module_roots(root)
     nodes: list[Node] = []
     edges: list[Edge] = []
@@ -72,6 +78,26 @@ def extract(root: Path, *, workflow_fragment: Fragment | None) -> tuple[Fragment
                 )
             )
             for target in targets:
+                module_id = f"module:{target}"
+                if module_id in known_modules:
+                    edges.append(
+                        Edge(
+                            id=edge_id(test_id, module_id, "validates"),
+                            type="validates",
+                            source=test_id,
+                            target=module_id,
+                            evidence=Evidence(
+                                level="implemented",
+                                provenance=[
+                                    Provenance(
+                                        extractor=EXTRACTOR,
+                                        source=rel,
+                                        detail=f"imports {target}",
+                                    )
+                                ],
+                            ),
+                        )
+                    )
                 resolved = module_to_path(root, target, roots)
                 if resolved is None:
                     continue

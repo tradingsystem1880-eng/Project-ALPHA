@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from alpha_atlas.generate import GRAPH_PATH, INPUTS_PATH, build_outputs
+from alpha_atlas.generate import GRAPH_PATH, INPUTS_PATH, UNKNOWNS_PATH, build_outputs
 
 
 class TestDeterminism:
@@ -30,3 +30,20 @@ class TestDeterminism:
         inputs = json.loads(outputs[INPUTS_PATH])
         assert not any(p.startswith("architecture/atlas/generated/") for p in inputs["files"])
         assert not any(p.startswith("docs/atlas/") for p in inputs["files"])
+
+
+class TestFullResolution:
+    def test_unknowns_view_lists_exactly_the_unknown_nodes(self, repo_root: Path) -> None:
+        outputs = build_outputs(repo_root)
+        view = json.loads(outputs[UNKNOWNS_PATH])
+        graph = json.loads(outputs[GRAPH_PATH])
+        expected = sorted(n["id"] for n in graph["nodes"] if n["evidence"]["level"] == "unknown")
+        assert view["unknown_node_ids"] == expected
+
+    def test_documented_module_reaches_implemented_end_to_end(self, repo_root: Path) -> None:
+        outputs = build_outputs(repo_root)
+        graph = json.loads(outputs[GRAPH_PATH])
+        levels = {n["id"]: n["evidence"]["level"] for n in graph["nodes"]}
+        # research_d1.py has a MODULE MAP row and unit tests importing it.
+        assert levels["module:alpha_cli.research_d1"] == "tested"
+        assert levels["component:alpha-core"] in ("implemented", "connected", "tested")

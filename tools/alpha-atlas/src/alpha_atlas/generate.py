@@ -28,10 +28,18 @@ from alpha_atlas.core.model import (
     merge_fragments,
     validate_graph,
 )
-from alpha_atlas.generators import docs_scan, importlinter, tests_map, workflow
+from alpha_atlas.generators import (
+    components,
+    docs_scan,
+    importlinter,
+    python_modules,
+    tests_map,
+    workflow,
+)
 
 GRAPH_PATH = "architecture/atlas/generated/graph.json"
 INPUTS_PATH = "architecture/atlas/generated/inputs.json"
+UNKNOWNS_PATH = "architecture/atlas/generated/views/unknowns.json"
 
 _FORBIDDEN_INPUT_PREFIXES = ("architecture/atlas/generated/", "docs/atlas/")
 
@@ -54,15 +62,27 @@ def build_outputs(root: Path) -> dict[str, str]:
 
     add(importlinter.extract(root))
     add(docs_scan.extract(root))
+    add(components.extract(root))
+    modules_fragment = add(python_modules.extract(root))
     workflow_fragment = add(workflow.extract(root))
-    add(tests_map.extract(root, workflow_fragment=workflow_fragment))
+    module_ids = {n.id for n in modules_fragment.nodes}
+    add(tests_map.extract(root, workflow_fragment=workflow_fragment, module_ids=module_ids))
     graph = merge_fragments(fragments)
     resolve_levels(graph)
     validate_graph(graph)
     inputs_text = dumps_canonical({"schema_version": 1, "files": inputs})
     inputs_hash = hashlib.sha256(inputs_text.encode("utf-8")).hexdigest()
     graph_text = dumps_compact(graph_payload(graph, inputs_hash))
-    return {GRAPH_PATH: graph_text, INPUTS_PATH: inputs_text}
+    unknowns = sorted(node.id for node in graph.nodes.values() if node.evidence.level == "unknown")
+    unknowns_text = dumps_canonical(
+        {
+            "schema_version": 1,
+            "inputs_hash": inputs_hash,
+            "purpose": "review queue: nodes with no doc anchor, test, or cross-layer link",
+            "unknown_node_ids": unknowns,
+        }
+    )
+    return {GRAPH_PATH: graph_text, INPUTS_PATH: inputs_text, UNKNOWNS_PATH: unknowns_text}
 
 
 def discover_repo_root() -> Path:
