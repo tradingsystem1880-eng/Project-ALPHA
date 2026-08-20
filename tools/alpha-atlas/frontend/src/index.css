@@ -80,6 +80,35 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.explorer-bar input {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  min-width: 340px;
+}
+
+.impact-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+}
+
+.impact-body h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+.impact-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .explorer-bar select {
   background: var(--panel);
   color: var(--ink);

@@ -123,7 +123,7 @@
       "expected": "research-entity chain rendered; impact BFS fixture test green with a known blast radius",
       "rollback": "git checkout -- tools/alpha-atlas/frontend",
       "files": ["tools/alpha-atlas/frontend/src/views/DataLineage.tsx", "tools/alpha-atlas/frontend/src/views/ChangeImpact.tsx", "tools/alpha-atlas/frontend/src/model/impact.ts"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S11 polish: stale banner, README, final acceptance walkthrough",
@@ -470,6 +470,15 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   3 new vitest tests (10 total, all passing); tsc+vite build clean; the
   served SPA and /api/meta curl-verified against the fresh 1220-node graph.
   In-browser click-through remains UNVERIFIED in the authoring session.
+
+- **S10 verification note**: DataLineage (entity chain + produced artifacts,
+  React Flow + NodePanel) and ChangeImpact (datalist node picker; pure
+  `model/impact.ts` reverse-BFS over depends_on/calls/serves with depth
+  ordering and affected-test collection, rendered as a bounded list rather
+  than an unreadable graph) ship behind #lineage/#impact. 3 new impact vitest
+  fixtures (13 total, all passing); tsc+vite build clean; the served bundle
+  curl-verified. In-browser click-through remains UNVERIFIED in the
+  authoring session.
 
 ## 9b. Out-of-plan edits (justified)
 

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 
 import { getJSON } from './api'
 import type { AtlasGraph } from './model/types'
+import { ChangeImpact } from './views/ChangeImpact'
 import { CodeExplorer } from './views/CodeExplorer'
+import { DataLineage } from './views/DataLineage'
 import { ResearchLifecycle } from './views/ResearchLifecycle'
 import { SystemMap } from './views/SystemMap'
 
@@ -16,6 +18,8 @@ const VIEWS = [
   { hash: 'lifecycle', label: 'Research Lifecycle' },
   { hash: 'system', label: 'System Map' },
   { hash: 'code', label: 'Code Explorer' },
+  { hash: 'lineage', label: 'Data Lineage' },
+  { hash: 'impact', label: 'Change Impact' },
 ] as const
 
 function currentView(): string {
@@ -60,6 +64,8 @@ export default function App() {
         {graph && view === 'lifecycle' && <ResearchLifecycle graph={graph} />}
         {graph && view === 'system' && <SystemMap graph={graph} />}
         {graph && view === 'code' && <CodeExplorer graph={graph} />}
+        {graph && view === 'lineage' && <DataLineage graph={graph} />}
+        {graph && view === 'impact' && <ChangeImpact graph={graph} />}
       </div>
     </div>
   )
