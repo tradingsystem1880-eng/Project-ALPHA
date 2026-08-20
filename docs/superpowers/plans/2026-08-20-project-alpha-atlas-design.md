@@ -99,7 +99,7 @@
       "expected": "method-count floor >=100; every extracted client path joins an openapi path; one known screen->panel->method->route->cli->module chain asserted; connected level live",
       "rollback": "git checkout -- tools/alpha-atlas architecture/atlas && git clean -fd tools/alpha-atlas architecture/atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/generators/api_routes.py", "tools/alpha-atlas/src/alpha_atlas/generators/frontend_scan.py"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S8 mermaid emitter + docs/atlas + root consistency test + root ruff extend-exclude for the Atlas frontend",
@@ -426,6 +426,25 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   tools use in-process seams and honestly get no calls edge), and add_typer
   registrations bridge CLI groups to their `*_cmds` modules with file:line
   provenance. The 62-tool MCP pin is asserted in tests.
+
+- **Route→module serves, not route→CLI** (S7): the web layer's CLI invocation
+  is request-dynamic (`req.command.split()` in jobs.py), so no static
+  route→CLI claim is honest; the extracted truth is openapi operation →
+  router-decorator anchor (file:line, `{param:converter}` normalized) →
+  `serves` edge to the router module. The `/api/v3/*` aliases that v3.py
+  re-mounts from development/ml routers in a runtime loop stay `declared`
+  (55 of 199 routes carry no direct decorator anchor — v3 aliases plus the
+  SPA root) — a recorded limitation, not silent overclaiming.
+- **Resolver refinement** (S7): a code node participating in a code-extracted
+  cross-layer edge is promoted to `connected` even without a documentation
+  anchor — the Unknowns queue promises "no doc, no test, no cross-layer link",
+  so a linked-but-undocumented node must not sit at `unknown`.
+- **S7 verification note**: 90 pytest tests, mypy --strict, ruff, and
+  `generate --check` fresh. Graph 1220 nodes / 2859 edges; 199 api_route +
+  6 screen + 25 panel nodes; 114 client.ts methods joined (floor 100,
+  orphans fail loud — the join caught and rejected a normalization collision
+  during development); PriceChart → GET /api/candles/{symbol} →
+  alpha_web.api.candles resolves connected end-to-end.
 
 ## 9b. Out-of-plan edits (justified)
 
