@@ -51,7 +51,7 @@
       "expected": "14 contract nodes with source/forbidden lists in graph.json; two consecutive runs byte-identical; validator fails loud on a dangling edge; root ruff clean",
       "rollback": "git checkout -- tools/alpha-atlas architecture/atlas && git clean -fd tools/alpha-atlas architecture/atlas",
       "files": ["tools/alpha-atlas/pyproject.toml", "tools/alpha-atlas/src/alpha_atlas/core/model.py", "tools/alpha-atlas/src/alpha_atlas/generators/importlinter.py", "tools/alpha-atlas/src/alpha_atlas/generate.py", "architecture/atlas/schema/atlas-schema.json"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S2 research-lifecycle vertical data: docs_scan, curated definitions with anti-drift metadata, workflow+entity extractor with anchor verification, tests_map, minimal evidence resolver",
@@ -252,9 +252,12 @@ tested < observed`, computed by the resolver, never hand-asserted:
   `{trace_id, span_id, execution_id, timestamp}` now so OTel later is additive.
 
 Every node and edge carries provenance `[{extractor, source, line, detail}]`.
-`generated/graph.json` is `{schema_version, tree_hash, nodes[], edges[], stats}`,
+`generated/graph.json` is `{schema_version, inputs_hash, nodes[], edges[], stats}`,
 sorted by id, `sort_keys=True`, **no timestamps** — two runs on one tree are
-byte-identical.
+byte-identical. `inputs_hash` is a sha256 over `generated/inputs.json`, which
+records the exact repository files (path → content sha256) the extractors read;
+generated outputs are never inputs, so regeneration can never invalidate itself
+(a whole-tree hash would: writing graph.json changes the tree it stamps).
 
 ### 4.1 Curated definitions (anti-drift contract)
 
@@ -341,7 +344,8 @@ review queue. Freshness: Atlas gate `generate --check` byte-equality + one
 stdlib-only root test (`tests/unit/test_atlas_consistency.py`) asserting
 internal consistency (schema-valid, no dangling references, mermaid matches
 graph) — the root gate never forces a regen; the UI shows a stale banner when
-`graph.json.tree_hash` differs from the live tree.
+the recorded input-file hashes in `generated/inputs.json` no longer match the
+working tree.
 
 ## 9. Milestones
 

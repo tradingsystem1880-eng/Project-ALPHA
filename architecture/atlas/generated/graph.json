@@ -1,0 +1,502 @@
+{
+  "edges": [],
+  "inputs_hash": "64511c88622816476e39b12251028ae05358da9f3cd93ce6d80669c518efadb0",
+  "nodes": [
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_backtest depends only on core + data'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-backtest-depends-only-on-core-data",
+      "kind": "contract",
+      "label": "alpha_backtest depends only on core + data",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_strategies",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_backtest"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_core imports nothing internal'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-core-imports-nothing-internal",
+      "kind": "contract",
+      "label": "alpha_core imports nothing internal",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_core"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_data depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-data-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_data depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_data"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_forecast depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-forecast-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_forecast depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_forecast"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_mcp imports only public platform surfaces'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-mcp-imports-only-public-platform-surfaces",
+      "kind": "contract",
+      "label": "alpha_mcp imports only public platform surfaces",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_web"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_mcp"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_mcp sits atop the DAG (nothing imports it)'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-mcp-sits-atop-the-dag-nothing-imports-it",
+      "kind": "contract",
+      "label": "alpha_mcp sits atop the DAG (nothing imports it)",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_mcp"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_core",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_options depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-options-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_options depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_options"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_patterns depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-patterns-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_patterns depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli",
+          "alpha_mcp",
+          "alpha_web"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_patterns"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_research depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-research-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_research depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_cli",
+          "alpha_mcp",
+          "alpha_web"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_research"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_screener depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-screener-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_screener depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_screener"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_strategies depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-strategies-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_strategies depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_strategies"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_validation depends only on core'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-validation-depends-only-on-core",
+      "kind": "contract",
+      "label": "alpha_validation depends only on core",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_validation"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_web imports only public platform surfaces'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-web-imports-only-public-platform-surfaces",
+      "kind": "contract",
+      "label": "alpha_web imports only public platform surfaces",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_patterns",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_mcp"
+        ],
+        "ignore_imports": [
+          "alpha_web.api.owner_auth -> alpha_cli.owner_auth"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_web"
+        ]
+      },
+      "path": "pyproject.toml"
+    },
+    {
+      "evidence": {
+        "level": "declared",
+        "provenance": [
+          {
+            "detail": "[tool.importlinter] forbidden contract 'alpha_web sits atop the DAG (nothing imports it)'",
+            "extractor": "importlinter",
+            "source": "pyproject.toml"
+          }
+        ]
+      },
+      "id": "contract:alpha-web-sits-atop-the-dag-nothing-imports-it",
+      "kind": "contract",
+      "label": "alpha_web sits atop the DAG (nothing imports it)",
+      "meta": {
+        "contract_type": "import_linter",
+        "forbidden_modules": [
+          "alpha_web"
+        ],
+        "linter_type": "forbidden",
+        "source_modules": [
+          "alpha_core",
+          "alpha_data",
+          "alpha_strategies",
+          "alpha_backtest",
+          "alpha_validation",
+          "alpha_forecast",
+          "alpha_options",
+          "alpha_screener",
+          "alpha_research",
+          "alpha_cli",
+          "alpha_mcp"
+        ]
+      },
+      "path": "pyproject.toml"
+    }
+  ],
+  "schema_version": 1,
+  "stats": {
+    "edge_count": 0,
+    "edges_by_type": {},
+    "node_count": 14,
+    "nodes_by_kind": {
+      "contract": 14
+    }
+  }
+}
