@@ -3,10 +3,17 @@ name = "alpha-atlas"
 version = "0.1.0"
 description = "Read-only architecture knowledge graph and explanation layer for Project ALPHA."
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+alpha-atlas = "alpha_atlas.backend.app:main"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.27",
     "mypy==2.1.0",
     "pytest==9.1.0",
     "ruff==0.15.17",
