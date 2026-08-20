@@ -19,6 +19,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from alpha_atlas.core.model import AtlasError
+from alpha_atlas.core.prompt_pack import build_prompt_pack, load_rule_globs
+
 GRAPH_REL = "architecture/atlas/generated/graph.json"
 INPUTS_REL = "architecture/atlas/generated/inputs.json"
 
@@ -127,6 +130,21 @@ def create_app(root: Path | None = None) -> FastAPI:
             "total_lines": len(lines),
             "lines": lines[first - 1 : last],
         }
+
+    rules = load_rule_globs(repo_root)
+
+    @app.post("/api/prompt-pack")
+    def prompt_pack(body: dict[str, Any]) -> dict[str, str]:
+        node_ids = body.get("node_ids")
+        if not isinstance(node_ids, list) or not all(isinstance(i, str) for i in node_ids):
+            raise HTTPException(status_code=400, detail="body must be {node_ids: [str, ...]}")
+        if not node_ids:
+            raise HTTPException(status_code=400, detail="node_ids must be non-empty")
+        try:
+            markdown = build_prompt_pack(_load_graph(repo_root), node_ids, rules)
+        except AtlasError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return {"markdown": markdown}
 
     dist = repo_root / "tools/alpha-atlas/frontend/dist"
     if dist.is_dir():
