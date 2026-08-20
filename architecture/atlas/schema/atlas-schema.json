@@ -1,0 +1,114 @@
+{
+  "$id": "https://project-alpha.local/atlas/schema/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project Alpha Atlas graph",
+  "description": "Deterministic knowledge graph generated from repository truth. Evidence levels are computed, never asserted. The 'observed' level and runtime provenance fields (trace_id, span_id, execution_id, timestamp) are reserved for the deferred Phase 7 runtime layer and are never emitted by the v1 generator.",
+  "type": "object",
+  "required": ["schema_version", "inputs_hash", "nodes", "edges", "stats"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "inputs_hash": {
+      "type": "string",
+      "description": "sha256 over the canonical generated/inputs.json content: the exact repository files the extractors read. Self-reference-free staleness key (generated outputs are never inputs)."
+    },
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "edges": {"type": "array", "items": {"$ref": "#/$defs/edge"}},
+    "stats": {"type": "object"}
+  },
+  "$defs": {
+    "evidence_level": {
+      "enum": ["unknown", "declared", "implemented", "connected", "tested", "observed"]
+    },
+    "node_kind": {
+      "enum": [
+        "component",
+        "module",
+        "cli_command",
+        "mcp_tool",
+        "api_route",
+        "screen",
+        "panel",
+        "workflow_node",
+        "test",
+        "doc",
+        "rule",
+        "artifact",
+        "contract",
+        "research_case",
+        "hypothesis",
+        "dataset",
+        "experiment",
+        "decision",
+        "strategy_version",
+        "runtime_observation"
+      ]
+    },
+    "edge_type": {
+      "enum": [
+        "depends_on",
+        "implements",
+        "validates",
+        "defines",
+        "calls",
+        "serves",
+        "produces",
+        "part_of"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["extractor", "source", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "extractor": {"type": "string"},
+        "source": {"type": "string", "description": "repo-relative file that produced this claim"},
+        "detail": {"type": "string"},
+        "line": {"type": ["integer", "null"]},
+        "trace_id": {"type": "string", "description": "reserved for Phase 7"},
+        "span_id": {"type": "string", "description": "reserved for Phase 7"},
+        "execution_id": {"type": "string", "description": "reserved for Phase 7"},
+        "timestamp": {"type": "string", "description": "reserved for Phase 7"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["level", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {"$ref": "#/$defs/evidence_level"},
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/provenance"}
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "label", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {"$ref": "#/$defs/node_kind"},
+        "label": {"type": "string"},
+        "path": {"type": ["string", "null"]},
+        "component": {"type": ["string", "null"]},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "meta": {"type": "object"}
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "type", "source", "target", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"},
+        "type": {"$ref": "#/$defs/edge_type"},
+        "source": {"type": "string"},
+        "target": {"type": "string"},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      }
+    }
+  }
+}
