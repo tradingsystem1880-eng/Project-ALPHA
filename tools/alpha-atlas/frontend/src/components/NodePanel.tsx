@@ -25,10 +25,14 @@ export function NodePanel({ nodeId }: { nodeId: string }) {
   const [detail, setDetail] = useState<NodeDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [excerpt, setExcerpt] = useState<Excerpt | null>(null)
+  const [pack, setPack] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setDetail(null)
     setExcerpt(null)
+    setPack(null)
+    setCopied(false)
     setError(null)
     getJSON<NodeDetail>(`/api/node/${encodeURIComponent(nodeId).replaceAll('%2F', '/')}`).then(
       setDetail,
@@ -52,6 +56,28 @@ export function NodePanel({ nodeId }: { nodeId: string }) {
     getJSON<Excerpt>(
       `/api/excerpt?path=${encodeURIComponent(anchor.path)}&start=${start}&end=${anchor.line + 18}`,
     ).then(setExcerpt, (e: Error) => setError(e.message))
+  }
+
+  const generateContext = async () => {
+    setCopied(false)
+    const response = await fetch('/api/prompt-pack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ node_ids: [node.id] }),
+    })
+    if (!response.ok) {
+      setError(`prompt pack failed: ${response.status}`)
+      return
+    }
+    const payload = (await response.json()) as { markdown: string }
+    setPack(payload.markdown)
+  }
+
+  const copyPack = async () => {
+    if (pack) {
+      await navigator.clipboard.writeText(pack)
+      setCopied(true)
+    }
   }
 
   return (
@@ -165,6 +191,19 @@ export function NodePanel({ nodeId }: { nodeId: string }) {
           </ul>
         </>
       )}
+
+      <h3>AI context</h3>
+      <p>
+        <button className="cta" onClick={generateContext}>
+          Generate AI Context
+        </button>{' '}
+        {pack && (
+          <button className="cta" onClick={copyPack}>
+            {copied ? 'Copied ✓' : 'Copy for Codex / Claude'}
+          </button>
+        )}
+      </p>
+      {pack && <div className="excerpt">{pack}</div>}
 
       <div className="meta-footer">
         {typeof meta['owner'] === 'string' && <div>curated by: {meta['owner']}</div>}

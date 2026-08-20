@@ -143,6 +143,17 @@ body {
   overflow-y: auto;
 }
 
+.cta {
+  background: var(--accent);
+  color: #0b0e14;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .meta-footer {
   margin-top: 18px;
   padding-top: 10px;

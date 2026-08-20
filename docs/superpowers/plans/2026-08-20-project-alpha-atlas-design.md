@@ -75,7 +75,7 @@
       "expected": "all 12 sections in fixed order with correct DO-NOT-CHANGE and VALIDATION-COMMANDS content; lifecycle explorable end-to-end with copyable context",
       "rollback": "git checkout -- tools/alpha-atlas && git clean -fd tools/alpha-atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/core/prompt_pack.py"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S5 python modules + components extractors + full evidence resolver including unknown and the Unknowns review queue",
@@ -384,6 +384,15 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   /api/excerpt, and the served SPA. In-browser click-through UNVERIFIED in the
   authoring session (Chrome extension unavailable); server runs on :8803 via
   `uv run alpha-atlas`.
+
+- **S4 verification note / Milestone A complete**: prompt packs verified by 8
+  new pytest tests (56 total), mypy --strict, ruff, 7 vitest tests, production
+  build, and a live curl of `POST /api/prompt-pack` for `wf:research.d1`
+  (12 sections in order, D1 anchors/ADR/tests/rules present). The NodePanel
+  "Generate AI Context / Copy for Codex" button ships in the rebuilt SPA served
+  on :8803. In-browser click-through remains UNVERIFIED in the authoring
+  session (Chrome extension unavailable); the Definition-of-Done core path is
+  otherwise exercised end-to-end via API. Milestone A (S0–S4) is complete.
 
 ## 9b. Out-of-plan edits (justified)
 
