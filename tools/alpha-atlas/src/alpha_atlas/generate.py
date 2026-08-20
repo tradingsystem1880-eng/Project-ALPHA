@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 from alpha_atlas.core.evidence import resolve_levels
+from alpha_atlas.core.mermaid import emit_docs
 from alpha_atlas.core.model import (
     AtlasError,
     Fragment,
@@ -80,7 +81,8 @@ def build_outputs(root: Path) -> dict[str, str]:
     validate_graph(graph)
     inputs_text = dumps_canonical({"schema_version": 1, "files": inputs})
     inputs_hash = hashlib.sha256(inputs_text.encode("utf-8")).hexdigest()
-    graph_text = dumps_compact(graph_payload(graph, inputs_hash))
+    payload = graph_payload(graph, inputs_hash)
+    graph_text = dumps_compact(payload)
     unknowns = sorted(node.id for node in graph.nodes.values() if node.evidence.level == "unknown")
     unknowns_text = dumps_canonical(
         {
@@ -90,7 +92,12 @@ def build_outputs(root: Path) -> dict[str, str]:
             "unknown_node_ids": unknowns,
         }
     )
-    return {GRAPH_PATH: graph_text, INPUTS_PATH: inputs_text, UNKNOWNS_PATH: unknowns_text}
+    return {
+        GRAPH_PATH: graph_text,
+        INPUTS_PATH: inputs_text,
+        UNKNOWNS_PATH: unknowns_text,
+        **emit_docs(payload),
+    }
 
 
 def discover_repo_root() -> Path:
