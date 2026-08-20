@@ -364,6 +364,15 @@ Slice details, verification commands, and rollbacks are in the FeaturePlan front
 block above. Small conventional commits per slice (`feat(atlas): ...`); root
 `gate.py full` stamp per commit (docs-only commits waived).
 
+## 9b. Out-of-plan edits (justified)
+
+- `tests/integration/test_crypto_coverage_completion.py` (commit 6437909): the
+  S1 full-gate run exposed that `test_read_only_projections_answer_honestly_
+  when_no_volume_is_configured` monkeypatched the env var but not the cwd
+  `.env`, so an owner machine with a configured Expansion volume broke the
+  test's premise. Fixed by running from a tmp cwd. Unrelated to Atlas code;
+  required for any commit on this machine to obtain a full-gate stamp.
+
 ## 10. GitNexus evaluation (Phase 8 — evaluation only)
 
 GitNexus appears nowhere in this repository (verified: zero grep matches). It is
