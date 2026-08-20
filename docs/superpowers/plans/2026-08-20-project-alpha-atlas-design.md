@@ -59,7 +59,7 @@
       "expected": "34 ADR doc nodes; 10 workflow nodes + 6 research-entity nodes with verified control-store anchors; schema test rejects a definition missing owner/created_from/last_verified_commit/confidence; rot-guard test fails on a bogus anchor; lifecycle nodes carry validates edges",
       "rollback": "git checkout -- tools/alpha-atlas architecture/atlas && git clean -fd tools/alpha-atlas architecture/atlas",
       "files": ["tools/alpha-atlas/src/alpha_atlas/generators/docs_scan.py", "tools/alpha-atlas/src/alpha_atlas/generators/workflow.py", "tools/alpha-atlas/src/alpha_atlas/generators/tests_map.py", "architecture/atlas/definitions/research-lifecycle.json", "architecture/atlas/definitions/data-lineage.json"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S3 minimal viewer: read-only backend (meta/graph/views/node/excerpt with jail) + frontend scaffold + React Flow ResearchLifecycle view + NodePanel",
@@ -363,6 +363,19 @@ DataLineage / ChangeImpact, polish.
 Slice details, verification commands, and rollbacks are in the FeaturePlan front
 block above. Small conventional commits per slice (`feat(atlas): ...`); root
 `gate.py full` stamp per commit (docs-only commits waived).
+
+## 9a. Implementation refinements (recorded as they land)
+
+- **inputs_hash over tree_hash** (S1): the staleness key hashes the exact input
+  files read, so regeneration can never invalidate itself.
+- **Primary-anchor validates rule** (S2): tests join a workflow/entity node only
+  through its first (primary) anchor. Secondary anchors like `control_store.py`
+  span six lifecycle nodes; joining through them would let any store test
+  "validate" all of them — the overclaiming Atlas exists to prevent.
+- **Compact graph.json** (S2): the merged graph is emitted as single-line
+  canonical JSON (13k+ indented lines would trip the per-commit line guard on
+  every regen and diff as pure noise). Humans review views and docs/atlas;
+  `inputs.json` stays indented.
 
 ## 9b. Out-of-plan edits (justified)
 

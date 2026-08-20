@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "nodes": [
+    {
+      "id": "research_case",
+      "kind": "research_case",
+      "label": "Research Case",
+      "purpose": "The governed container for one idea: phases, contracts, sources, datasets, runs, and decisions all hang off it. Stored as append-only event tables in the SQLite control plane; nothing is ever overwritten.",
+      "limitations": ["Type-level node: Atlas describes the entity, it does not read live case rows"],
+      "docs": [
+        "doc:ADR-0019",
+        "doc:docs/superpowers/specs/2026-08-07-research-first-workstation-design.md"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "capture_research_case"}
+      ],
+      "produces": ["hypothesis"],
+      "owner": "agent",
+      "created_from": ["ADR-0019", "spec §13 lineage chain", "control_store.py _SCHEMA_V2"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "hypothesis",
+      "kind": "hypothesis",
+      "label": "Hypothesis Contract",
+      "purpose": "The bounded, falsifiable claim under test: the rc_<sha256> contract and its HypothesisCard projection (spec §5.1). Revisions link to parents — hypotheses have lineage, not edits.",
+      "limitations": ["A hypothesis is a claim, never evidence; only D1/D2 runs produce evidence"],
+      "docs": ["doc:ADR-0019"],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_gate_packet.py", "symbol": "research_hypothesis_card"},
+        {"path": "apps/alpha-cli/src/alpha_cli/research_intake.py", "symbol": "draft_exploration_contract"}
+      ],
+      "produces": [],
+      "owner": "agent",
+      "created_from": ["ADR-0019", "spec §5.1"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "dataset",
+      "kind": "dataset",
+      "label": "Registered Dataset",
+      "purpose": "An rd_<sha256> reference bound fail-closed to exact snapshot-manifest bytes (per-symbol sha256 chains). The registration proves byte-identity of what an experiment may read.",
+      "limitations": ["Registration proves identity, not quality — audits report separately"],
+      "docs": ["doc:ADR-0023", "doc:ADR-0032"],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "register_research_dataset"}
+      ],
+      "produces": [],
+      "owner": "agent",
+      "created_from": ["ADR-0023", "spec §8"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "experiment",
+      "kind": "experiment",
+      "label": "Experiment (reservation → attempt → run)",
+      "purpose": "One governed execution: a launch reservation (rl_…) leads to an attempt record (ra_…) linked to an immutable run_id whose v3 identity hashes configuration, snapshot, seed, and code fingerprints. D0/D1/D2 runners all publish through this chain.",
+      "limitations": ["Verification never trusts producer flags — attempts are re-verified against run bytes"],
+      "docs": ["doc:ADR-0025", "doc:ADR-0026"],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_runtime.py", "symbol": "run_synthetic_pilot"},
+        {"path": "apps/alpha-cli/src/alpha_cli/research_d1.py", "symbol": "run_deep_research"},
+        {"path": "apps/alpha-cli/src/alpha_cli/research_d2.py", "symbol": "run_confirmation"}
+      ],
+      "depends_on": ["hypothesis", "dataset"],
+      "produces": [],
+      "owner": "agent",
+      "created_from": ["ADR-0025", "spec §9", "spec §13"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "decision",
+      "kind": "decision",
+      "label": "Research Decision",
+      "purpose": "The owner's recorded disposition (SUPPORTED/CONTRADICTED/INCONCLUSIVE/INVALID outcome; advance/revise/park/reject) in the append-only decision ledger, assembled from the fourteen-question checklist and the terminal gate packet.",
+      "limitations": ["Owner-only authority; deliberately absent from the MCP surface"],
+      "docs": ["doc:ADR-0026", "doc:ADR-0027"],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "record_research_decision"}
+      ],
+      "depends_on": ["experiment"],
+      "produces": [],
+      "owner": "agent",
+      "created_from": ["ADR-0026", "spec §10"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "strategy_version",
+      "kind": "strategy_version",
+      "label": "Strategy Version (promoted)",
+      "purpose": "Strategy development unlocked by a passed research gate: the strategy AgentBrief embeds the as-of-filtered research_promotion reference, so every strategy version traces back to the evidence that justified it.",
+      "limitations": ["An overridden gate is the only unlinked path, and it watermarks every run permanently"],
+      "docs": ["doc:ADR-0026"],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_gate_packet.py", "symbol": "build_strategy_promotion_payload"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "_record_strategy_promotion_packet"}
+      ],
+      "depends_on": ["decision"],
+      "produces": [],
+      "owner": "agent",
+      "created_from": ["ADR-0026", "spec §11", "spec §15"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    }
+  ],
+  "artifacts": []
+}

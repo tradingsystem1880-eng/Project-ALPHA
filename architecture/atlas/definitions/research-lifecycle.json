@@ -1,0 +1,309 @@
+{
+  "schema_version": 1,
+  "workflow": "research",
+  "nodes": [
+    {
+      "id": "wf:research.idea",
+      "kind": "workflow_node",
+      "label": "Idea Capture",
+      "order": 1,
+      "purpose": "Preserve a raw market observation verbatim and open a governed Research Case before any strategy code exists. Capture is idempotent and grants no runner, strategy, holdout, paper, or execution authority.",
+      "inputs": ["A raw idea or observation, stated in the owner's words"],
+      "outputs": ["A research case in phase 'captured' with an append-only governance record"],
+      "limitations": [
+        "Capture records the idea; it does not vet it — triage and the exploration contract do that"
+      ],
+      "safe_change": [
+        "CLI help text and projection formatting",
+        "Never: phase order, idempotent capture identity, authority grants"
+      ],
+      "docs": [
+        "doc:ADR-0019",
+        "doc:docs/superpowers/specs/2026-08-07-research-first-workstation-design.md"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_cmds.py", "symbol": "capture"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "capture_research_case"}
+      ],
+      "produces": ["artifact:research-case-record", "research_case"],
+      "owner": "agent",
+      "created_from": ["ADR-0019", "research-first workstation spec §4", "control_store.py phase Literal"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.case",
+      "kind": "workflow_node",
+      "label": "Research Case & Hypothesis Contract",
+      "order": 2,
+      "purpose": "Draft the bounded, falsifiable exploration contract (HypothesisCard) from the captured idea: competing explanations, scope, and the frozen analysis intent. Contracts are content-addressed (rc_<sha256>) and never overwritten — revisions create lineage.",
+      "inputs": ["Captured research case", "Owner triage"],
+      "outputs": ["A reviewable exploration contract awaiting owner approval"],
+      "limitations": [
+        "A drafted contract carries no execution authority until the owner approves it"
+      ],
+      "safe_change": [
+        "Proposal option bundles and drafting ergonomics",
+        "Never: contract content-addressing, review-event append-only ledger"
+      ],
+      "docs": [
+        "doc:ADR-0019",
+        "doc:docs/superpowers/specs/2026-08-07-research-first-workstation-design.md"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_intake.py", "symbol": "draft_exploration_contract"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "create_research_contract"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "review_research_contract"}
+      ],
+      "produces": ["artifact:research-contract", "hypothesis"],
+      "owner": "agent",
+      "created_from": ["ADR-0019", "spec §5 Hypothesis Standard", "research_intake.py"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.literature",
+      "kind": "workflow_node",
+      "label": "Literature Discovery & Claims",
+      "order": 3,
+      "purpose": "Acquire scholarly sources through the isolated literature worker (the one research network surface) and turn them into anchored, owner-screened claims. Every stored object is content-addressed with a SourceReceipt labelled UNTRUSTED_SOURCE.",
+      "inputs": ["Search intents from the research case"],
+      "outputs": ["Source records, receipts, extracted text, screened claims, frozen source packs"],
+      "limitations": [
+        "External text is untrusted input; claims gain standing only through owner screening",
+        "The worker runs in a scrubbed subprocess with rlimits; a non-zero exit fails loud"
+      ],
+      "safe_change": [
+        "Discovery query ergonomics and metadata parsing inside workers/literature",
+        "Never: the fail-closed acquisition primitives or the untrusted-source labelling"
+      ],
+      "docs": [
+        "doc:ADR-0024",
+        "doc:docs/superpowers/specs/2026-08-06-research-scientist-program-design.md"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_cmds.py", "symbol": "_run_literature_worker"},
+        {"path": "workers/literature/src/literature_worker/discovery.py"}
+      ],
+      "produces": ["artifact:source-receipt"],
+      "owner": "agent",
+      "created_from": ["ADR-0024", "workers/literature README"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.data-audit",
+      "kind": "workflow_node",
+      "label": "Dataset Registration & Data Audit",
+      "order": 4,
+      "purpose": "Bind the case to exact immutable data: register dataset refs (rd_<sha256>) fail-closed against snapshot-manifest bytes, then run the descriptive data audit as an immutable EXPLORATORY run before any hypothesis-specific analysis.",
+      "inputs": ["Snapshot manifests / crypto registrations / QuantPad receipts"],
+      "outputs": ["Registered dataset refs and an audit run with descriptive analytics"],
+      "limitations": [
+        "Registration proves byte-identity, not data quality — the audit reports; it does not bless"
+      ],
+      "safe_change": [
+        "Additional descriptive analytics in alpha_research.descriptives",
+        "Never: the sha256 binding of refs to snapshot bytes, PIT access discipline"
+      ],
+      "docs": [
+        "doc:ADR-0023",
+        "doc:docs/superpowers/specs/2026-08-07-research-first-workstation-design.md"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_data_audit.py", "symbol": "run_data_audit"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "register_research_dataset"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "record_research_dataset_audit"}
+      ],
+      "produces": ["artifact:dataset-registration", "dataset"],
+      "owner": "agent",
+      "created_from": ["ADR-0023", "ADR-0018", "ADR-0032", "spec §8 Research Data Hub"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.contract",
+      "kind": "workflow_node",
+      "label": "Contract Approval & Freeze",
+      "order": 5,
+      "purpose": "Owner approval freezes the exploration contract — analysis plan, topology, boundary, and implementation fingerprints — and advances the phase machine (strictly +1) into 'pilot'. Implementation drift after freeze is detected by hash comparison and fails loud.",
+      "inputs": ["Drafted contract", "Owner review decision"],
+      "outputs": ["A frozen contract and phase transition into the pilot stage"],
+      "limitations": [
+        "Approval is a trusted-local owner ceremony; it is deliberately absent from MCP"
+      ],
+      "safe_change": [
+        "Review-projection wording",
+        "Never: the strict phase order, the frozen-plan hashes, owner-only approval"
+      ],
+      "docs": [
+        "doc:ADR-0025",
+        "doc:ADR-0030",
+        "doc:docs/superpowers/specs/2026-08-07-research-first-workstation-design.md"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "transition_research_phase"},
+        {"path": "apps/alpha-cli/src/alpha_cli/research_analysis_plan.py"}
+      ],
+      "produces": [],
+      "owner": "agent",
+      "created_from": ["ADR-0025", "control_store.py RESEARCH_PHASE_ORDER"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.d0",
+      "kind": "workflow_node",
+      "label": "D0 Synthetic Pilot",
+      "order": 6,
+      "purpose": "Prove the detector and power analysis on deterministic synthetic data before touching real market bars. The D0 power seed is protocol-frozen (never derived from AlphaSettings.random_seed) so acceptance is re-verified by exact recomputation on every reader.",
+      "inputs": ["Frozen contract", "Registered detector spec and fixtures"],
+      "outputs": ["An immutable EXPLORATORY run (evidence_zone D0) with d0_acceptance.json"],
+      "limitations": [
+        "D0 evidence is synthetic-only; it can never support a market claim",
+        "Changing any registered D0 constant is a breaking generation change (_D0_FIXTURE_VERSION)"
+      ],
+      "safe_change": [
+        "Report/chart presentation of pilot results",
+        "Never: the frozen power seed, fixture generation constants, acceptance recomputation"
+      ],
+      "docs": [
+        "doc:ADR-0019",
+        "doc:ADR-0020"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_runtime.py", "symbol": "run_synthetic_pilot"}
+      ],
+      "produces": ["artifact:run-manifest", "experiment"],
+      "owner": "agent",
+      "created_from": ["ADR-0019", "CLAUDE.md Research D0 read integrity"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.d1",
+      "kind": "workflow_node",
+      "label": "D1 Deep Research",
+      "order": 7,
+      "purpose": "Execute the frozen analysis plan strictly on the discovery share of real data (owner-CLI-launched only): conditional returns, rank IC, stability, lead-lag, and the frozen Holm secondary family. Evidence artifacts are content-hashed and mechanically re-verified at admission.",
+      "inputs": ["Frozen analysis plan", "Registered dataset (discovery share only)"],
+      "outputs": ["A D1 run (evidence_zone D1) with d1_analyses.json and gate evidence"],
+      "limitations": [
+        "D1 sees only the discovery share; readers never trust producer flags — evidence is recomputed",
+        "Launch is owner-CLI-only; the web/MCP surfaces can inspect but never launch with authority"
+      ],
+      "safe_change": [
+        "Additional D1 analysis families in alpha_research (pure, core-only, fail-loud)",
+        "Never: share topology, admission recomputation, launch authority"
+      ],
+      "docs": [
+        "doc:ADR-0025"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_d1.py", "symbol": "run_deep_research"}
+      ],
+      "produces": ["artifact:run-manifest", "artifact:gate-evidence"],
+      "owner": "agent",
+      "created_from": ["ADR-0025", "spec §9"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.d2",
+      "kind": "workflow_node",
+      "label": "D2 One-Shot Confirmation",
+      "order": 8,
+      "purpose": "The sealed confirmation: owner approval authorizes the sealed share, the frozen primary reads it exactly once, and every admission and read re-verifies by exact recomputation. A pre-flight integrity failure contaminates the share (owner INVALID-only exit).",
+      "inputs": ["Frozen confirmation contract drawn from admitted D1 evidence", "Sealed share"],
+      "outputs": ["A REGISTERED CONFIRMATORY run with d2_analyses.json and gate evidence"],
+      "limitations": [
+        "One shot by construction — a consumed or contaminated share can never be re-read",
+        "D2 state machine: sealed → authorized → consumed | contaminated (append-only events)"
+      ],
+      "safe_change": [
+        "Presentation of confirmation findings",
+        "Never: one-shot semantics, contamination handling, boundary commitments"
+      ],
+      "docs": [
+        "doc:ADR-0026"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_d2.py", "symbol": "run_confirmation"}
+      ],
+      "produces": ["artifact:gate-evidence"],
+      "owner": "agent",
+      "created_from": ["ADR-0026", "spec §9"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.decision",
+      "kind": "workflow_node",
+      "label": "Owner Decision",
+      "order": 9,
+      "purpose": "Assemble the decision view — the fourteen-question spec-§10.1 edge-validation checklist (typed finding statuses or explicit NOT_TESTED, never a numeric aggregate), the readiness scorecard, and the terminal gate packet — and record the owner's disposition (advance/revise/park/reject) in the append-only decision ledger.",
+      "inputs": ["D1/D2 verified evidence", "Readiness scorecard", "Gate packet"],
+      "outputs": ["A recorded research decision and phase transition toward 'closed'"],
+      "limitations": [
+        "The checklist never aggregates into a single score — honest NOT_TESTED is a first-class answer"
+      ],
+      "safe_change": [
+        "Decision-view rendering on CLI/REST surfaces",
+        "Never: the fourteen-question contract, append-only decision events, owner-only authority"
+      ],
+      "docs": [
+        "doc:ADR-0026",
+        "doc:ADR-0027"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_gate_packet.py", "symbol": "research_decision_view_projection"},
+        {"path": "apps/alpha-cli/src/alpha_cli/research_gate_packet.py", "symbol": "derive_research_checklist"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "record_research_decision"}
+      ],
+      "produces": ["artifact:gate-packet", "decision"],
+      "owner": "agent",
+      "created_from": ["ADR-0026", "ADR-0027", "spec §10.1"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    },
+    {
+      "id": "wf:research.promotion",
+      "kind": "workflow_node",
+      "label": "Strategy Promotion",
+      "order": 10,
+      "purpose": "When the owner decision is advance_to_strategy, record the lossless spec-§11 strategy_promotion dossier atomically inside the closing phase transition (HypothesisCard, gate-packet id+hash, registered datasets, screened claims, ledgers, verified chart references, open questions). The research gate then reads 'passed' and strategy creation unlocks.",
+      "inputs": ["Closing decision advance_to_strategy", "Terminal gate packet"],
+      "outputs": ["strategy_promotion packet (cp_<sha256>) embedded in the strategy AgentBrief"],
+      "limitations": [
+        "The only unlinked path around this gate is an owner override, permanently watermarked on every run it touches"
+      ],
+      "safe_change": [
+        "AgentBrief rendering of the promotion reference",
+        "Never: atomic recording inside the closing transaction, gate-state derivation precedence"
+      ],
+      "docs": [
+        "doc:ADR-0026"
+      ],
+      "anchors": [
+        {"path": "apps/alpha-cli/src/alpha_cli/research_gate_packet.py", "symbol": "build_strategy_promotion_payload"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "_record_strategy_promotion_packet"},
+        {"path": "apps/alpha-cli/src/alpha_cli/control_store.py", "symbol": "research_gate_state"}
+      ],
+      "produces": ["artifact:promotion-dossier", "strategy_version"],
+      "owner": "agent",
+      "created_from": ["ADR-0026", "spec §11", "spec §15"],
+      "last_verified_commit": "3e8bcd1",
+      "confidence": "high"
+    }
+  ],
+  "artifacts": [
+    {"id": "artifact:research-case-record", "label": "Research case record", "description": "Append-only project + governance rows opened at capture (SQLite control plane)."},
+    {"id": "artifact:research-contract", "label": "Research contract", "description": "Content-addressed rc_<sha256> hypothesis contract with review-event lineage."},
+    {"id": "artifact:source-receipt", "label": "Source receipt", "description": "Content-addressed SourceReceipt for an acquired document, labelled UNTRUSTED_SOURCE."},
+    {"id": "artifact:dataset-registration", "label": "Dataset registration", "description": "rd_<sha256> ref bound fail-closed to exact snapshot-manifest bytes, plus audit records."},
+    {"id": "artifact:run-manifest", "label": "Run manifest", "description": "Immutable run directory manifest (schema v3): evidence_zone, watermark, snapshot hash, fingerprints; written last as the completion marker."},
+    {"id": "artifact:gate-evidence", "label": "Research gate evidence", "description": "Content-hashed ResearchGateEvidenceV1 selectors; re-verified by exact recomputation on every read."},
+    {"id": "artifact:gate-packet", "label": "Research gate packet", "description": "Fail-closed terminal packet (packet_hash) assembled for closed cases."},
+    {"id": "artifact:promotion-dossier", "label": "Strategy promotion dossier", "description": "Lossless spec-§11 strategy_promotion packet recorded atomically at close."}
+  ]
+}
