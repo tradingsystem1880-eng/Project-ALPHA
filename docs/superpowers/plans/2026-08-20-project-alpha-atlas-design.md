@@ -115,7 +115,7 @@
       "expected": "collapse/expand model tests green; drift and Unknowns badges render",
       "rollback": "git checkout -- tools/alpha-atlas/frontend",
       "files": ["tools/alpha-atlas/frontend/src/views/SystemMap.tsx", "tools/alpha-atlas/frontend/src/views/CodeExplorer.tsx"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S10 DataLineage + ChangeImpact views",
@@ -461,6 +461,15 @@ block above. Small conventional commits per slice (`feat(atlas): ...`); root
   emitter), enumerations are collapsed, every diagram carries a
   `<!-- nodes: ... -->` id comment proven against the graph, and each mermaid
   block has a text fallback.
+
+- **S9 verification note**: SystemMap (components + aggregated import arrows;
+  click-to-expand one component at a time; unknown-count review-queue badges)
+  and CodeExplorer (per-component module graph, ✓n validating-test badges,
+  external fan-out summary) ship behind hash navigation
+  (#lifecycle/#system/#code). Pure models in `model/systemMap.ts` covered by
+  3 new vitest tests (10 total, all passing); tsc+vite build clean; the
+  served SPA and /api/meta curl-verified against the fresh 1220-node graph.
+  In-browser click-through remains UNVERIFIED in the authoring session.
 
 ## 9b. Out-of-plan edits (justified)
 
