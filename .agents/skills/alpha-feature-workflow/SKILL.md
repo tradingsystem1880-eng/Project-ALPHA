@@ -12,7 +12,7 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
 
 ## When to skip
 
-- Single-file fix with an obvious test → skip straight to TDD + `/gate-fast`.
+- Single-file fix with an obvious test → skip straight to TDD + `/gate fast`.
   No plan doc; the harness still enforces stamps and reviews at commit time.
 - Docs-only change → just edit and commit (the commit guard waives docs-only diffs).
 - Never skip for: anything touching quant paths, `alpha_backtest`, the seven
@@ -29,7 +29,7 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
    each, a per-slice verify command, and explicit DAG / look-ahead / determinism
    impact. Never a 1-step plan; if it would be, no plan was needed.
 3. **TDD implement** — per slice: failing test → minimal code → green →
-   `/gate-fast` → conventional commit. Data/strategy changes require a
+   `/gate fast` → conventional commit. Data/strategy changes require a
    `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
    Load `incremental-implementation` for the slicing discipline.
 4. **Gate** — `/gate` (full tier) before any commit; the pre-bash guard enforces

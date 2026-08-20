@@ -219,6 +219,19 @@ whole-repo semgrep (nightly) is red on those two lines — visibly, not silently
 | `bias_guard_tests` baseline pin | 32 | 35 | three crypto future-poison guard files added in Task 9 (batches 1–2); re-pinned after the final whole-branch review flagged the stale count |
 | stamp tier | full | full | — |
 
+### D.2a Post-`ea54427` delta
+
+Later commits: `0617afd` (this record, docs), `ec13713` (baseline re-pin 32→35 + one private rename
+in `paper_acceptance.py`, targeted suites green), `76e99fc` (CI frontend job installs uv for the
+Playwright real-backend server — the branch-introduced webServer command exited 127 on GitHub
+runners, exposed by PR #42's first CI run). `gate.py full` re-ran PASS with a stamp for the
+`76e99fc` tree; the PR-review-toolkit review of the whole range (READY after fixes) and the
+final-review fix round are ledgered. The Codex second-model audit could not run — the ChatGPT
+account's usage limit is exhausted until 2026-08-21 (Spark 2026-08-25); recorded, not skipped
+silently. Deferred (follow-up): `derive_available_at` returns the last bar's open timestamp for
+period-start kline families — the tightest legal bound, one cadence earlier than true knowability;
+`--available-at` overrides, and no PIT gate reads the column (crowding builds per-row availability).
+
 ### D.3 Worktree note
 
 `tests/holdout/` does not exist in this worktree (only `tests/holdout_seed/`); the pre-read guard
