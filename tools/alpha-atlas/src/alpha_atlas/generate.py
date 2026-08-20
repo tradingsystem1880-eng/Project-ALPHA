@@ -16,23 +16,22 @@ import argparse
 import hashlib
 import os
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
+from alpha_atlas.core.evidence import resolve_levels
 from alpha_atlas.core.model import (
     AtlasError,
     Fragment,
     dumps_canonical,
+    dumps_compact,
     graph_payload,
     merge_fragments,
     validate_graph,
 )
-from alpha_atlas.generators import importlinter
+from alpha_atlas.generators import docs_scan, importlinter, tests_map, workflow
 
 GRAPH_PATH = "architecture/atlas/generated/graph.json"
 INPUTS_PATH = "architecture/atlas/generated/inputs.json"
-
-_EXTRACTORS: tuple[Callable[[Path], tuple[Fragment, dict[str, str]]], ...] = (importlinter.extract,)
 
 _FORBIDDEN_INPUT_PREFIXES = ("architecture/atlas/generated/", "docs/atlas/")
 
@@ -41,8 +40,9 @@ def build_outputs(root: Path) -> dict[str, str]:
     """Run the full pipeline in memory; returns {repo-relative path: file content}."""
     fragments: list[Fragment] = []
     inputs: dict[str, str] = {}
-    for extract in _EXTRACTORS:
-        fragment, read = extract(root)
+
+    def add(result: tuple[Fragment, dict[str, str]]) -> Fragment:
+        fragment, read = result
         fragments.append(fragment)
         for path, digest in read.items():
             if path.startswith(_FORBIDDEN_INPUT_PREFIXES):
@@ -50,11 +50,18 @@ def build_outputs(root: Path) -> dict[str, str]:
             if inputs.get(path, digest) != digest:
                 raise AtlasError(f"inconsistent input digests for {path}")
             inputs[path] = digest
+        return fragment
+
+    add(importlinter.extract(root))
+    add(docs_scan.extract(root))
+    workflow_fragment = add(workflow.extract(root))
+    add(tests_map.extract(root, workflow_fragment=workflow_fragment))
     graph = merge_fragments(fragments)
+    resolve_levels(graph)
     validate_graph(graph)
     inputs_text = dumps_canonical({"schema_version": 1, "files": inputs})
     inputs_hash = hashlib.sha256(inputs_text.encode("utf-8")).hexdigest()
-    graph_text = dumps_canonical(graph_payload(graph, inputs_hash))
+    graph_text = dumps_compact(graph_payload(graph, inputs_hash))
     return {GRAPH_PATH: graph_text, INPUTS_PATH: inputs_text}
 
 

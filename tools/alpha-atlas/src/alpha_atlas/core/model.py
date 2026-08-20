@@ -256,3 +256,13 @@ def graph_payload(graph: Graph, inputs_hash: str) -> dict[str, Any]:
 
 def dumps_canonical(payload: Any) -> str:
     return json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n"
+
+
+def dumps_compact(payload: Any) -> str:
+    """Single-line canonical JSON for large generated artifacts.
+
+    A tall indented graph.json is line-diff noise (and trips the harness's
+    per-commit line guard on every regeneration); humans review the graph
+    through views and docs/atlas, never raw.
+    """
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
