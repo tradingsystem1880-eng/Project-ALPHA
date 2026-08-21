@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_study._contracts import canonical_study_sha256
 from alpha_study.adapters import (
     adapt_double_bottom_events,
     project_double_bottom_events,
@@ -49,6 +50,7 @@ __all__ = [
     "FeatureInputRefV1",
     "FeatureValueV1",
     "project_double_bottom_events",
+    "canonical_study_sha256",
     "DetectorValidationV1",
     "ExplorationMandateV1",
     "OperatorRegistrationV1",

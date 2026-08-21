@@ -82,6 +82,7 @@ from alpha_cli.research_runtime import (
     run_synthetic_pilot,
     validate_d0_pilot_contract,
 )
+from alpha_cli.study_semantic import VerifiedBlindSemanticReadV1
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_research import (
@@ -94,6 +95,7 @@ from alpha_research import (
     registered_crypto_crowding_plan,
     research_d2_boundary_from_dict,
 )
+from alpha_study import project_blind_semantic_read
 
 _LITERATURE_DOCUMENT_HOSTS: Final = frozenset({"arxiv.org", "export.arxiv.org"})
 
@@ -2954,6 +2956,43 @@ def evidence_hub(
     sections = hub["sections"]
     section_names = ", ".join(sections) if isinstance(sections, dict) else ""
     _emit(hub, json_out=json_out, fallback=f"evidence hub sections: {section_names}")
+
+
+@research_app.command("semantic-projection")
+def semantic_projection(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Read the verified, server-masked semantic projection for one D0 lineage."""
+    try:
+        store = _store()
+        artifacts = store.verified_blind_semantic_artifacts(project_id)
+        acceptance_bytes = artifacts.get("acceptance_bytes")
+        events_bytes = artifacts.get("events_bytes")
+        chart_data_bytes = artifacts.get("chart_data_bytes")
+        run_id = artifacts.get("run_id")
+        if (
+            not isinstance(acceptance_bytes, bytes)
+            or not isinstance(events_bytes, bytes)
+            or not isinstance(chart_data_bytes, bytes)
+            or not isinstance(run_id, str)
+        ):
+            raise DataError("verified semantic artifact resolver returned a corrupt result")
+        projection = project_blind_semantic_read(
+            acceptance_bytes=acceptance_bytes,
+            events_bytes=events_bytes,
+            chart_data_bytes=chart_data_bytes,
+        )
+        if projection.run_id != run_id:
+            raise DataError("verified semantic run identity disagrees with D0 artifacts")
+        response = VerifiedBlindSemanticReadV1(run_id=run_id, projection=projection)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        response.to_dict(),
+        json_out=json_out,
+        fallback=f"verified blind semantic projection for D0 run {response.run_id}",
+    )
 
 
 @context_app.command("build")

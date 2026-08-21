@@ -13,6 +13,7 @@ import math
 import os
 import re
 import sqlite3
+import stat
 import tempfile
 import uuid
 from collections.abc import Iterator, Mapping, Sequence
@@ -93,6 +94,8 @@ OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
 PREVIOUS_SCHEMA_VERSION: Final = 3
 SCHEMA_VERSION: Final = 4
 DATABASE_NAME: Final = "workstation.sqlite3"
+_SEMANTIC_READ_ARTIFACTS: Final = ("d0_acceptance.json", "events.json", "chart-data.json")
+_SEMANTIC_READ_MAX_BYTES: Final = 8 * 1024 * 1024
 PROJECT_STATUSES: Final = frozenset({"active", "accepted", "rejected", "archived"})
 STAGE_STATES: Final = frozenset(
     {"not_started", "ready", "queued", "running", "pass", "warning", "fail", "stale"}
@@ -5638,6 +5641,170 @@ class ControlStore:
                 contract_payload=payload,
             )
         return {"attempt": attempt, "manifest": manifest}
+
+    @staticmethod
+    def _read_verified_semantic_artifacts(
+        run_dir: Path, manifest: Mapping[str, object]
+    ) -> dict[str, bytes]:
+        """Read only the bounded, manifest-declared bytes used by the blind projection."""
+
+        artifacts = manifest.get("artifacts")
+        if not isinstance(artifacts, Mapping):
+            raise DataError("verified D0 run manifest has no artifact map")
+        result: dict[str, bytes] = {}
+        for filename in _SEMANTIC_READ_ARTIFACTS:
+            metadata = artifacts.get(filename)
+            if not isinstance(metadata, Mapping):
+                raise DataError(f"verified D0 run is missing {filename} metadata")
+            expected_size = metadata.get("size_bytes")
+            expected_hash = metadata.get("sha256")
+            if (
+                isinstance(expected_size, int)
+                and not isinstance(expected_size, bool)
+                and expected_size > _SEMANTIC_READ_MAX_BYTES
+            ):
+                raise DataError(
+                    f"verified D0 run {filename} exceeds the bounded semantic-read size"
+                )
+            if (
+                isinstance(expected_size, bool)
+                or not isinstance(expected_size, int)
+                or expected_size < 0
+                or not isinstance(expected_hash, str)
+                or _SHA256_RE.fullmatch(expected_hash) is None
+            ):
+                raise DataError(f"verified D0 run has invalid {filename} metadata")
+            path = run_dir / filename
+            flags = os.O_RDONLY
+            no_follow = getattr(os, "O_NOFOLLOW", 0)
+            close_on_exec = getattr(os, "O_CLOEXEC", 0)
+            if no_follow == 0 and path.is_symlink():
+                raise DataError(f"verified D0 run {filename} must be a regular file")
+            try:
+                descriptor = os.open(path, flags | no_follow | close_on_exec)
+            except OSError as exc:
+                raise DataError(f"verified D0 run {filename} cannot be opened") from exc
+            try:
+                file_stat = os.fstat(descriptor)
+                if not stat.S_ISREG(file_stat.st_mode):
+                    raise DataError(f"verified D0 run {filename} must be a regular file")
+                if file_stat.st_size != expected_size:
+                    raise DataError(f"verified D0 run {filename} size changed during read")
+                remaining = expected_size + 1
+                chunks: list[bytes] = []
+                total = 0
+                while total < remaining:
+                    chunk = os.read(descriptor, remaining - total)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                raw = b"".join(chunks)
+            except OSError as exc:
+                raise DataError(f"verified D0 run {filename} cannot be read") from exc
+            finally:
+                os.close(descriptor)
+            if len(raw) != expected_size:
+                raise DataError(f"verified D0 run {filename} size changed during read")
+            if len(raw) != expected_size or hashlib.sha256(raw).hexdigest() != expected_hash:
+                raise DataError(f"verified D0 run {filename} hash changed during read")
+            result[filename] = raw
+        return result
+
+    def verified_blind_semantic_artifacts(self, project_id: str) -> dict[str, object]:
+        """Resolve one active exploration D0 lineage and return verified projection bytes.
+
+        This is deliberately read-only.  A confirmation contract resolves to its exploration
+        parent because the S5a semantic gallery is grounded only in the synthetic D0 pilot.
+        The existing D0 verifier remains the sole quantitative authority.
+        """
+
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            phase = self._latest_research_phase(connection, project_id)
+            if phase is None:
+                raise DataError("research case has no active phase")
+            active = self._require_research_contract(
+                connection, project_id, str(phase["contract_id"])
+            )
+            exploration = active
+            if active["scope"] == "confirmation":
+                parent_id = active["parent_contract_id"]
+                if not isinstance(parent_id, str):
+                    raise DataError("confirmation contract has no exploration parent")
+                exploration = self._require_research_contract(connection, project_id, parent_id)
+            if exploration["scope"] != "exploration":
+                raise DataError("blind semantic read requires an exploration contract")
+            payload = _decode_json(
+                exploration["payload_json"], "blind semantic exploration contract payload"
+            )
+            if not isinstance(payload, dict):
+                raise DataError("blind semantic exploration contract payload is corrupt")
+            from alpha_cli.research_runtime import (  # noqa: PLC0415
+                validate_d0_acceptance_bytes,
+                validate_d0_pilot_contract,
+            )
+
+            operator = validate_d0_pilot_contract(payload)
+            operator_identity = operator.get("operator")
+            if not isinstance(operator_identity, Mapping) or operator_identity.get("name") != (
+                "double_bottom"
+            ):
+                raise DataError("blind semantic read supports only registered double_bottom D0")
+            attempt = self._require_completed_d0_attempt(
+                connection,
+                project_id=project_id,
+                contract_id=str(exploration["contract_id"]),
+                contract_payload=payload,
+            )
+            attempt_view = self._research_attempt_view(attempt)
+            run_id = attempt_view.get("run_id")
+            if not isinstance(run_id, str):  # pragma: no cover - guarded by the helper above.
+                raise DataError("completed D0 attempt has no run identity")
+            run_dir, manifest = self._verified_run(run_id)
+            selected = self._read_verified_semantic_artifacts(run_dir, manifest)
+            post_dir, post_manifest = self._verified_run(run_id)
+            if post_dir != run_dir:
+                raise DataError("verified D0 run directory changed during semantic read")
+            before_artifacts = manifest.get("artifacts")
+            after_artifacts = post_manifest.get("artifacts")
+            if not isinstance(before_artifacts, Mapping) or not isinstance(
+                after_artifacts, Mapping
+            ):
+                raise DataError("verified D0 run manifest artifact map changed during read")
+            for filename in _SEMANTIC_READ_ARTIFACTS:
+                if before_artifacts.get(filename) != after_artifacts.get(filename):
+                    raise DataError(f"verified D0 run {filename} manifest changed during read")
+            config_fingerprint = attempt_view.get("config_fingerprint")
+            fixture = operator.get("fixture")
+            dataset_hash = (
+                fixture.get("definition_fingerprint") if isinstance(fixture, Mapping) else None
+            )
+            operator_fingerprint = operator.get("fingerprint")
+            if (
+                not isinstance(config_fingerprint, str)
+                or not isinstance(dataset_hash, str)
+                or not isinstance(operator_fingerprint, str)
+            ):
+                raise DataError("completed D0 attempt has corrupt verifier inputs")
+            validate_d0_acceptance_bytes(
+                selected["d0_acceptance.json"],
+                post_manifest,
+                project_id=project_id,
+                contract_id=str(exploration["contract_id"]),
+                contract_hash=hashlib.sha256(
+                    _canonical_json(payload, "research D0 acceptance contract").encode("utf-8")
+                ).hexdigest(),
+                dataset_hash=dataset_hash,
+                execution_fingerprint=config_fingerprint,
+                d0_operator_fingerprint=operator_fingerprint,
+            )
+        return {
+            "run_id": run_id,
+            "acceptance_bytes": selected["d0_acceptance.json"],
+            "events_bytes": selected["events.json"],
+            "chart_data_bytes": selected["chart-data.json"],
+        }
 
     def record_research_attempt(
         self,

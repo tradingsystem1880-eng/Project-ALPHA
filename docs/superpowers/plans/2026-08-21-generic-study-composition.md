@@ -157,21 +157,24 @@
     {
       "title": "S5a2 verified D0 resolver and CLI semantic read",
       "verify": "Before protected bias-guard edits run uv run python scripts/gate.py ack --reason \"Add future-poison protection for the verified blind semantic read\"; test bounded selected-byte reads, verify/read race hashes, wrong lineage/no D0, manifest/artifact tamper, no-write database equality, CLI JSON, and the unchanged 62-tool MCP denial. The future-poison guard compares cutoff and every emitted pre-cutoff point identity, clock, and value while allowing the bound chart hash and aggregate masked_count to change; it asserts no post-cutoff identity, clock, feature, or value is emitted, and its must-fail leaky twin exposes the appended poisoned post-cutoff value. Run focused, determinism, fast, and full gates before commit",
-      "expected": "A narrow read-only ControlStore helper derives the current active exploration contract from the research case, including the exploration parent when the current contract is confirmatory, and rejects unless exactly one attempt for that active lineage has phase pilot, kind d0-synthetic-pilot, status completed, an immutable run, and the registered double-bottom operator. It invokes the existing mechanical D0 verifier, then reads only bounded regular d0_acceptance.json, events.json, and chart-data.json files and rechecks each selected byte hash against the verified manifest. The CLI accepts only PROJECT_ID and --json and returns a strict VerifiedBlindSemanticReadV1 whose exact keys are schema, schema_version, source_verification, authority, run_id, projection, and content_sha256; their fixed values include schema VerifiedBlindSemanticReadV1, schema_version 1, source_verification verified_completed_d0_recomputation, and authority none. content_sha256 is the established canonical JSON SHA-256 of the other six fields and excludes itself; no extra key is accepted. It creates no event, reservation, attempt, receipt, job, phase transition, owner-freeze claim, or MCP tool.",
+      "expected": "A narrow read-only ControlStore helper derives the current active exploration contract from the research case, including the exploration parent when the current contract is confirmatory, and rejects unless exactly one attempt for that active lineage has phase pilot, kind d0-synthetic-pilot, status completed, an immutable run, and the registered double-bottom operator. It invokes the existing mechanical D0 verifier, then reads only bounded regular d0_acceptance.json, events.json, and chart-data.json files and rechecks each selected byte hash against the verified manifest. The acceptance validator delegates the existing canonical, identity, and mechanical checks to exact in-memory bytes after binding; detector, fixture, estimator, power, and other quantitative semantics are unchanged. The CLI accepts only PROJECT_ID and --json and returns a strict VerifiedBlindSemanticReadV1 whose exact keys are schema, schema_version, source_verification, authority, run_id, projection, and content_sha256; their fixed values include schema VerifiedBlindSemanticReadV1, schema_version 1, source_verification verified_completed_d0_recomputation, and authority none. content_sha256 is the established canonical JSON SHA-256 of the other six fields and excludes itself; no extra key is accepted. It creates no event, reservation, attempt, receipt, job, phase transition, owner-freeze claim, or MCP tool.",
       "rollback": "Revert the S5a2 read-helper/CLI/guard commit; retain S5a1 and all immutable D0 records unchanged",
       "files": [
         "apps/alpha-cli/src/alpha_cli/control_store.py",
         "apps/alpha-cli/src/alpha_cli/research_cmds.py",
+        "apps/alpha-cli/src/alpha_cli/research_runtime.py",
         "apps/alpha-cli/src/alpha_cli/study_semantic.py",
+        "packages/alpha-study/src/alpha_study/__init__.py",
         "tests/unit/test_research_control_store.py",
+        "tests/unit/study/test_double_bottom_adapter.py",
         "tests/integration/test_research_cli.py",
         "tests/integration/test_research_mcp.py",
-        "tests/bias_guards/test_semantic_projection_future_poison.py",
+        "tests/bias_guards/test_verified_semantic_read_future_poison.py",
         ".claude/rules/alpha-cli.md",
         "docs/**",
         "CLAUDE.md"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S5a3 web-only semantic GET projection",

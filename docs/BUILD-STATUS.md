@@ -147,11 +147,11 @@ events, cross-artifact identity/clock disagreements, nonnumeric chart values, in
 dataset/protocol/series lineage, and noncanonical visible-point collections; and emits only points
 available by the acceptance-event cutoff plus an aggregate masked count. The cutoff source remains
 an explicit acceptance-measurement reference with `lineage_verification: not_checked`: existing CLI
-mechanical D0 verification, server projection, future-poison guard, persistence, owner semantic
-actions, and UI are still pending. Focused semantic tests, the study+bias suite, strict typing, all
+mechanical D0 verification is now composed by the S5a2 read slice; server projection, persistence,
+owner semantic actions, and UI are still pending. Focused semantic tests, the study+bias suite, strict typing, all
 15 import contracts,
 perturbed-environment determinism, fast gate, and independent Terra review pass. S5a remains in
-progress until the existing CLI verifier, server projection, and protected future-poison slice land.
+progress until server projection and the later protected persistence/semantic-action slices land.
 
 **Generic study composition S5a2 boundary freeze (2026-08-22)** 🚧 — the next read slice is
 split from web delivery. A narrow ControlStore resolver will reuse the existing completed-D0
@@ -162,6 +162,20 @@ as `VerifiedBlindSemanticReadV1`: an outer verified-source envelope around the u
 `BlindSemanticProjectionV1`, with no operational timestamp or mutation authority. REST delivery is
 deferred to S5a3. This planning refinement changes no runtime, database, owner action, MCP, D1/D2,
 promotion, paper, broker, or order behavior.
+
+**Generic study composition S5a2 verified semantic read (2026-08-22)** 🚧 — implemented as a
+read-only CLI composition. `ControlStore.verified_blind_semantic_artifacts` resolves the active
+exploration lineage (including a confirmation parent), requires the single registered
+`double_bottom` completed D0 pilot through the existing mechanical verifier, and returns only
+bounded `d0_acceptance.json`, `events.json`, and `chart-data.json` bytes after a post-read manifest
+recheck. `alpha research semantic-projection PROJECT_ID --json` wraps the unchanged
+`BlindSemanticProjectionV1` in the exact seven-key `VerifiedBlindSemanticReadV1` envelope with
+`verified_completed_d0_recomputation` and no authority. Focused envelope, integration, future-poison,
+leaky-twin, race/tamper, no-write, and MCP-surface tests pass. The D0 runtime now delegates its
+existing canonical/identity/mechanical acceptance checks to exact in-memory bytes after binding;
+detector, fixture, estimator, power, and other quantitative semantics are unchanged. REST/UI,
+semantic writes, and owner actions remain deferred to later S5 slices. Independent Terra review
+passes; S5a2 is complete and S5a3 remains pending.
 
 The S5a2 envelope is now frozen to exactly seven keys (`schema`, `schema_version`,
 `source_verification`, `authority`, `run_id`, `projection`, and `content_sha256`), with explicit

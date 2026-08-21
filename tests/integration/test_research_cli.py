@@ -450,6 +450,20 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
         "artifact": "d0_acceptance.json",
         "content_sha256": manifest["artifacts"]["d0_acceptance.json"]["sha256"],
     }
+    semantic = _invoke("semantic-projection", project_id)
+    assert set(semantic) == {
+        "schema",
+        "schema_version",
+        "source_verification",
+        "authority",
+        "run_id",
+        "projection",
+        "content_sha256",
+    }
+    assert semantic["schema"] == "VerifiedBlindSemanticReadV1"
+    assert semantic["source_verification"] == "verified_completed_d0_recomputation"
+    assert semantic["authority"] == "none"
+    assert semantic["run_id"] == manifest["run_id"]
     assert pilot_case["d2_state"] == "sealed"
     assert pilot_case["latest_run_id"] == manifest["run_id"]
     assert pilot_case["latest_run_fingerprint"] == manifest["execution_fingerprint"]

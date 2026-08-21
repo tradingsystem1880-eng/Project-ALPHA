@@ -16,8 +16,7 @@ from alpha_research import (
     detect_double_bottom_events,
 )
 from alpha_research.artifacts import ResearchArtifactRef
-from alpha_study import EventTableV1, adapt_double_bottom_events
-from alpha_study._contracts import canonical_study_sha256
+from alpha_study import EventTableV1, adapt_double_bottom_events, canonical_study_sha256
 
 HASH = "a" * 64
 SPEC = DoubleBottomSpec(1, 2, 3, 6, 0.03, 0.05)

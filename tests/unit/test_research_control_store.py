@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 import threading
@@ -2985,6 +2986,59 @@ def test_research_attempt_accepts_only_exact_contract_bound_run(tmp_path: Path) 
     )
 
     assert attempt["run_id"] == run_id
+
+
+def test_verified_blind_semantic_resolver_reads_registered_d0_without_writing(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, payload = _approved_pilot(store)
+    run_id = _record_completed_d0(store, contract_id, payload, at=START + timedelta(minutes=8))
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    before = database.read_bytes()
+
+    resolved = store.verified_blind_semantic_artifacts(PROJECT_ID)
+
+    assert resolved["run_id"] == run_id
+    assert isinstance(resolved["acceptance_bytes"], bytes)
+    assert isinstance(resolved["events_bytes"], bytes)
+    assert isinstance(resolved["chart_data_bytes"], bytes)
+    assert database.read_bytes() == before
+
+
+def test_verified_semantic_selected_read_uses_one_descriptor_and_hard_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    contents = {
+        "d0_acceptance.json": b"acceptance",
+        "events.json": b"events",
+        "chart-data.json": b"chart",
+    }
+    manifest_artifacts: dict[str, object] = {}
+    for filename, content in contents.items():
+        (run_dir / filename).write_bytes(content)
+        manifest_artifacts[filename] = {
+            "size_bytes": len(content),
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+    calls: list[int] = []
+    original_read = os.read
+
+    def bounded_read(descriptor: int, amount: int) -> bytes:
+        calls.append(amount)
+        return original_read(descriptor, amount)
+
+    monkeypatch.setattr(os, "read", bounded_read)
+    resolved = ControlStore._read_verified_semantic_artifacts(
+        run_dir, {"artifacts": manifest_artifacts}
+    )
+
+    assert resolved["events.json"] == b"events"
+    assert calls
+    assert max(calls) <= max(len(content) for content in contents.values()) + 1
 
 
 def test_research_run_admission_rejects_legacy_manifest_downgrade(tmp_path: Path) -> None:
