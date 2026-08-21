@@ -100,9 +100,13 @@
       "rollback": "Revert the S3b reference-contract commit; leave all D0 recomputation, contract approval, reservation, and launch truth in the existing CLI and ControlStore",
       "files": [
         "packages/alpha-study/**",
-        "tests/unit/study/**"
+        "tests/unit/study/**",
+        ".claude/rules/alpha-study.md",
+        "CLAUDE.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BUILD-STATUS.md"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S3c derived study projections",
@@ -113,7 +117,7 @@
         "packages/alpha-study/**",
         "tests/unit/study/**"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "S4 one existing operator parity slice",

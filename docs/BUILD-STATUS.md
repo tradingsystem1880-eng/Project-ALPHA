@@ -92,3 +92,14 @@ content-bound; row/table order and IDs are canonical. All lineages remain
 outcomes. Focused study tests pass (`22 passed`), the environment-perturbed determinism gate passes,
 and the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
 exact wheel import smoke. No authority surface changed.
+
+**Generic study composition S3b authority references (2026-08-21)** ✅ — `alpha-study`
+now publishes one closed Git-owned declaration of the existing causal double-bottom operator plus
+strict `DetectorValidationV1` and `ExplorationMandateV1` projections. The projections bind current
+ControlStore/run identity shapes (`rc_`, `ra_`, 16-hex D0 run, `rl_`, SHA-256 execution
+fingerprints, and exact `d0_acceptance.json`) and hash-bind frozen D1 inputs and child references.
+They are explicitly `not_checked`/`not_attested`, create no D1 reservation, and expose no launch,
+approval, budget mutation, or verdict authority. Focused study tests, strict typing, all 15 import
+contracts, perturbed-environment golden determinism, fast gate, and independent Terra review pass;
+the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
+exact wheel import smoke.

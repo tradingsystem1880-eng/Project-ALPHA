@@ -12,12 +12,23 @@ vintage, computation, provider, family, frequency, venue, operator, and universe
 lineage. Event tables contain no realized outcomes; none contain operational timestamps
 or grant evidence or execution authority.
 
+S3b adds a closed Git-owned `double_bottom.v1` operator declaration plus immutable
+`DetectorValidationV1` and `ExplorationMandateV1` references. Those references bind
+the exact existing project, `rc_` contract, `ra_` attempt, D0 run, `rl_` D0 reservation,
+execution fingerprints, `d0_acceptance.json`, frozen plan/topology/budget hashes, and
+child content hashes. They are permanently `not_checked`, grant no verdict, and create
+no D1 reservation or launch authority.
+
 ## Module map
 
 - `values.py` — strict, content-hashed `FeatureInputRefV1` and `FeatureValueV1`
   unverified lineage projections.
 - `tables.py` — sealed event-occurrence and cross-sectional factor geometries with
   canonical ordering, derived IDs, universe availability, and `authority: none`.
+- `_operator_registry.py` — closed source-owned declarations; S3b registers only the
+  existing causal double-bottom detector.
+- `authority.py` — strict reference-only projections of existing ControlStore/run
+  identities; it performs no live lookup, approval, reservation, or launch.
 
 The package owns no persistence, CLI commands, UI, external dependencies, approvals,
 D1/D2 transitions, promotion, paper, broker, or order authority. Canonical projections
