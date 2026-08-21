@@ -22,6 +22,14 @@ from alpha_study.projections import (
     ProjectionRefV1,
     StudyWorkspaceManifestV1,
 )
+from alpha_study.semantic import (
+    BlindSemanticProjectionV1,
+    SemanticEventIdentityV1,
+    SemanticPointV1,
+    blind_semantic_projection,
+    normalize_semantic_event,
+    project_blind_semantic_read,
+)
 from alpha_study.tables import (
     EventRowV1,
     EventTableV1,
@@ -45,11 +53,17 @@ __all__ = [
     "ExplorationMandateV1",
     "OperatorRegistrationV1",
     "AdvisorProposalV1",
+    "BlindSemanticProjectionV1",
     "FindingV1",
     "MechanismEdgeV1",
     "MechanismGraphV1",
     "MechanismNodeV1",
+    "SemanticEventIdentityV1",
+    "SemanticPointV1",
     "ProjectionRefV1",
+    "blind_semantic_projection",
+    "normalize_semantic_event",
+    "project_blind_semantic_read",
     "StudyWorkspaceManifestV1",
     "__version__",
 ]

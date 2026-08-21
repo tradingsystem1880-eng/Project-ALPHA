@@ -135,7 +135,20 @@ closed without a semantic label/freeze action. ADR-0035 and the FeaturePlan now 
 S5a read-only masking at the mechanically recomputed `d0_acceptance.json` event cutoff after exact
 identity/clock agreement with integrity-checked `events.json` and `chart-data.json.events`, S5b
 additive exact-backup SQLite v5 semantic definition/review events with action-bound Touch ID receipt
-and case-revision binding,
-and S5c presentation inside the existing Research screen. This hardening changes no runtime,
+and case-revision binding, and S5c presentation inside the existing Research screen. This hardening
+changes no runtime,
 schema, owner authority, MCP tool, D1/D2, promotion, paper, broker, or order behavior; S5a remains
 the next implementation slice.
+
+**Generic study composition S5a1 blind-read contract (2026-08-22)** 🚧 — `alpha-study` now
+publishes a strict byte-bound `BlindSemanticProjectionV1`. The pure builder hashes the complete D0
+acceptance, events, and chart artifacts internally; rejects duplicate JSON keys, missing/extra
+events, cross-artifact identity/clock disagreements, nonnumeric chart values, inconsistent
+dataset/protocol/series lineage, and noncanonical visible-point collections; and emits only points
+available by the acceptance-event cutoff plus an aggregate masked count. The cutoff source remains
+an explicit acceptance-measurement reference with `lineage_verification: not_checked`: existing CLI
+mechanical D0 verification, server projection, future-poison guard, persistence, owner semantic
+actions, and UI are still pending. Focused semantic tests, the study+bias suite, strict typing, all
+15 import contracts,
+perturbed-environment determinism, fast gate, and independent Terra review pass. S5a remains in
+progress until the existing CLI verifier, server projection, and protected future-poison slice land.

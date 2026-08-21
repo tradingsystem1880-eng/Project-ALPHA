@@ -35,6 +35,10 @@ no D1 reservation or launch authority.
 - `adapters.py` — one thin projection of the registered existing double-bottom detector into
   `EventTableV1`; it duplicates no geometry, requires artifact/dataset hash agreement, and uses
   the detector's full causal `confirmed_at` clock. Event-study inference remains deferred.
+- `semantic.py` — the S5a1 byte-bound blind-read contract. It hashes complete D0 acceptance,
+  events, and chart artifacts; requires exact one-event identity/clock agreement; derives points
+  only from the bound chart series; and emits pre-cutoff values plus an aggregate masked count.
+  Its cutoff is an unverified acceptance-measurement reference until the CLI verifier composes it.
 
 The package owns no persistence, CLI commands, UI, external dependencies, approvals,
 D1/D2 transitions, promotion, paper, broker, or order authority. Canonical projections
