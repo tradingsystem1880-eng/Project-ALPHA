@@ -79,15 +79,41 @@
       "status": "done"
     },
     {
-      "title": "S3 canonical projections and provenance",
-      "verify": "uv run pytest -q tests/unit/study -m \"not network\" && uv run mypy packages/alpha-study && uv run python scripts/gate.py fast && uv run python scripts/gate.py full before commit",
-      "expected": "Strict deterministic projections map EventTableV1, operator/D0 validation, mandate, findings, mechanism, and workspace concepts to existing authorities; unknown keys, stale hashes, missing availability lineage, and authority claims fail closed",
-      "rollback": "Revert the S3 projection commit; retain existing alpha_research and control-store artifacts byte-identically",
+      "title": "S3a canonical lineage and observation tables",
+      "verify": "Before rule/manual edits run uv run python scripts/gate.py ack --reason \"Publish the accepted alpha-study V1 lineage and observation contracts\"; run uv run pytest -q tests/unit/study -m \"not network\", uv run mypy packages/alpha-study, uv run python scripts/gate.py determinism, uv run python scripts/gate.py fast, and uv run python scripts/gate.py full before commit",
+      "expected": "FeatureValueV1, EventTableV1, and the separate FactorObservationTableV1 use strict exact-key schemas, UTC causal clocks, finite typed values, immutable artifact/snapshot/computation lineage, canonical ordering, and tamper-evident hashes; semantic timestamps affect identity while operational timestamps are absent; no outcome, authority, persistence, or execution behavior is added",
+      "rollback": "Revert the S3a contract commit; retain existing alpha_research artifacts and inference byte-identically",
+      "files": [
+        "packages/alpha-study/**",
+        "tests/unit/study/**",
+        ".claude/rules/alpha-study.md",
+        "CLAUDE.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BUILD-STATUS.md"
+      ],
+      "status": "in_progress"
+    },
+    {
+      "title": "S3b operator and existing-authority references",
+      "verify": "uv run pytest -q tests/unit/study -m \"not network\" && uv run mypy packages/alpha-study && uv run python scripts/gate.py determinism && uv run python scripts/gate.py fast && uv run python scripts/gate.py full before commit",
+      "expected": "OperatorRegistrationV1 is closed and Git-owned; DetectorValidationV1 and ExplorationMandateV1 are non-authoritative immutable references to exact existing D0 artifacts, contracts, frozen plans, topology, fingerprints, reservations, and approved budgets. They expose no producer pass flag, approval, launchability, mutable status, remaining budget, or parallel ledger",
+      "rollback": "Revert the S3b reference-contract commit; leave all D0 recomputation, contract approval, reservation, and launch truth in the existing CLI and ControlStore",
       "files": [
         "packages/alpha-study/**",
         "tests/unit/study/**"
       ],
-      "status": "in_progress"
+      "status": "pending"
+    },
+    {
+      "title": "S3c derived study projections",
+      "verify": "uv run pytest -q tests/unit/study -m \"not network\" && uv run mypy packages/alpha-study && uv run python scripts/gate.py determinism && uv run python scripts/gate.py fast && uv run python scripts/gate.py full before commit",
+      "expected": "FindingV1, MechanismGraphV1, AdvisorProposalV1, and StudyWorkspaceManifestV1 are deterministic source-linked projections only; they contain no raw dataset copy, writable authority, owner approval, D2 reveal, promotion, paper, broker, or order claim",
+      "rollback": "Revert the S3c projection commit; retain authoritative artifacts, ControlStore records, and existing workspace/UI behavior unchanged",
+      "files": [
+        "packages/alpha-study/**",
+        "tests/unit/study/**"
+      ],
+      "status": "pending"
     },
     {
       "title": "S4 one existing operator parity slice",

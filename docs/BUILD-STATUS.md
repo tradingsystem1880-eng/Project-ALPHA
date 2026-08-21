@@ -73,3 +73,12 @@ and seam tests pass (`51 passed`), all 15 import contracts are kept, and the can
 passes the complete non-network suite with coverage, OpenAPI freshness, 14 wheel builds, and exact
 wheel import smoke. No canonical contracts, persistence, CLI command, UI, external dependency,
 owner/D1/D2, promotion, paper, broker, or order authority was added.
+
+**Generic study composition S3a1 feature-lineage contracts (2026-08-21)** 🚧 —
+`alpha-study` now defines strict immutable feature-input/value lineage. Canonical identities
+content-bind UTC semantic clocks and non-empty multi-artifact, snapshot, vintage, computation,
+provider, family, frequency, and explicit venue references; every lineage is permanently labelled
+`unverified_reference` until the existing-authority verifier checks it. Operational timestamps are
+absent. Focused seam/lineage tests pass (`12 passed`); event/factor table and cross-process
+determinism completion remain pending in S3a2. These projections grant no evidence, approval,
+D1/D2, promotion, paper, broker, order, persistence, CLI, MCP, web, or provider authority.
