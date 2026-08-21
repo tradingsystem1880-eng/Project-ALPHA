@@ -69,6 +69,14 @@ projections must not be forced into an under-specified universal event row.
   mutation, semantic labeling, D1 launch, D2, or promotion capability.
 - Touch ID owner presence and exact payload/revision binding remain the authority for
   closed research-lifecycle actions.
+- Blind semantic delivery is split deliberately. Its first slice obtains each cutoff from the
+  mechanically recomputed `d0_acceptance.json` measurement event and rejects unless normalized
+  identities and clocks in integrity-checked `events.json` and `chart-data.json.events` exactly
+  match that acceptance source. A caller or browser never supplies the time, and the read path
+  does not rerun the detector. That slice cannot claim an owner label or freeze. A later additive
+  SQLite v5 slice may add append-only
+  semantic-definition/review events only with exact Touch ID receipt, payload-hash, and
+  case-revision binding; it does not create a second research authority or any MCP capability.
 - External packages are not dependencies of this ADR or S0. Future adapters/workers
   require separate version, lock, licence, provenance, isolation, and acceptance review.
 - Existing ALPHA data authority remains provider-, venue-, family-, unit-, frequency-,
@@ -87,10 +95,12 @@ execution order, verification, rollback, and scope. Its slices are:
 3. S2: empty `alpha-study` package seam and import boundary.
 4. S3: strict canonical projections and provenance.
 5. S4: one existing operator parity slice with D0/bias/determinism checks.
-6. S5: server-enforced blind semantic projection using existing owner authority.
-7. S6: owner-only D1 integration mapped to existing contracts and ledgers.
-8. S7: individually approved external adapters/workers/oracles.
-9. S8: acceptance studies, UI projections, and cleanup only after parity.
+6. S5a: nonpersistent server-masked semantic read projection from verified D0 artifacts.
+7. S5b: additive SQLite v5 semantic definition/review events and Touch ID binding.
+8. S5c: semantic presentation inside the existing Research screen.
+9. S6: owner-only D1 integration mapped to existing contracts and ledgers.
+10. S7: individually approved external adapters/workers/oracles.
+11. S8: acceptance studies, UI projections, and cleanup only after parity.
 
 Every slice is additive and independently revertable. No later slice may widen scope
 because an external library or a favorable research result makes it convenient.

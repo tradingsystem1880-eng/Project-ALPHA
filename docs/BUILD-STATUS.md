@@ -127,3 +127,15 @@ confirmation-bar mapping can precede full causal knowledge under delayed earlier
 198-test study+bias suite, strict typing, all 15 import contracts, fast gate, and independent Terra
 review pass. The canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel
 builds, and exact wheel import smoke.
+
+**Generic study composition S5 scope hardening (2026-08-22)** 🚧 — independent Terra review
+found that the combined semantic slice could not truthfully use an “existing” owner semantic action:
+the control store remains schema v4 and the CLI, database, and web owner-action vocabularies are
+closed without a semantic label/freeze action. ADR-0035 and the FeaturePlan now split delivery into
+S5a read-only masking at the mechanically recomputed `d0_acceptance.json` event cutoff after exact
+identity/clock agreement with integrity-checked `events.json` and `chart-data.json.events`, S5b
+additive exact-backup SQLite v5 semantic definition/review events with action-bound Touch ID receipt
+and case-revision binding,
+and S5c presentation inside the existing Research screen. This hardening changes no runtime,
+schema, owner authority, MCP tool, D1/D2, promotion, paper, broker, or order behavior; S5a remains
+the next implementation slice.

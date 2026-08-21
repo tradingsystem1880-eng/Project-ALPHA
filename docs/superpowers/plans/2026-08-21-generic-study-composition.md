@@ -140,18 +140,58 @@
       "status": "done"
     },
     {
-      "title": "S5 blind semantic projection",
-      "verify": "uv run pytest -q tests/unit/study tests/integration -k \"semantic or gallery or availability\" -m \"not network\" && run the affected frontend lint/test/generated-contract/build checks, uv run python scripts/gate.py fast, and uv run python scripts/gate.py full before commit",
-      "expected": "A server-enforced projection masks all post-available_at values before owner freeze; owner labels use the existing owner-authenticated path; MCP gains no owner mutation",
-      "rollback": "Revert the S5 projection/UI commit; retain the existing research UI and owner-action surface",
+      "title": "S5a server-masked semantic read projection",
+      "verify": "Before protected bias-guard edits run uv run python scripts/gate.py ack --reason \"Add future-poison protection for the blind semantic read projection\"; test missing, extra, changed, or mismatched acceptance/events/chart event identity and confirmed_at failures; run uv run pytest -q tests/unit/study tests/bias_guards tests/integration -k \"semantic or gallery or availability\" -m \"not network\", uv run python scripts/gate.py determinism, uv run python scripts/gate.py fast, and uv run python scripts/gate.py full before commit",
+      "expected": "A strict read-only projection takes each cutoff from the existing mechanically recomputed d0_acceptance.json measurements.planted_events event and rejects unless normalized identities and clocks in the separately integrity-checked events.json and chart-data.json.events match that acceptance source exactly. The read path does not rerun the detector and no caller or browser supplies an as-of time. It returns only rows and values available at that cutoff plus an aggregate masked count. It exposes no post-cutoff identity, clock, feature, value, or raw payload; creates no database event, owner receipt, reservation, attempt, job, D1/D2 transition, or owner-freeze claim; MCP remains unchanged.",
+      "rollback": "Revert the S5a projection/API commit; retain D0 artifacts, the existing Research UI, schema v4, and owner-action surface unchanged",
       "files": [
         "packages/alpha-study/**",
         "apps/alpha-cli/**",
-        "apps/alpha-web/**",
+        "apps/alpha-web/src/**",
         "tests/unit/study/**",
-        "tests/integration/**"
+        "tests/bias_guards/**",
+        "tests/integration/**",
+        ".claude/rules/alpha-study.md",
+        "CLAUDE.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BUILD-STATUS.md"
       ],
       "status": "in_progress"
+    },
+    {
+      "title": "S5b SQLite v5 semantic definition and owner review",
+      "verify": "Before implementation, freeze the canonical semantic-definition/review IDs, content hashes, event ordering, closed owner action type, and exact payload schema in this plan/ADR; before protected owner-auth/control-plane edits use the required audited acknowledgement; run the v4-to-v5 exact-backup, migration recovery/concurrency, append-only event, receipt binding, stale-revision, payload-tamper, CLI, REST, MCP-denial, fast, and full gates before commit",
+      "expected": "An additive exact-backup SQLite v5 migration records append-only semantic definition/review/freeze events that bind the project, contract and case revision, canonical semantic artifact ID/hash, server cutoff, owner actor/reason, and one exact action-bound Touch ID receipt. Event sequencing and the owner action payload are closed before code. There is no mutable frozen flag, no parallel attempt ledger, no D1/D2 transition, and no MCP semantic action.",
+      "rollback": "Revert S5b before migration or deployment. After a committed migration, recovery requires a separate explicit owner-approved procedure with an exact data-loss assessment and forward-migration policy; never overwrite a v5 store or discard append-only semantic events implicitly.",
+      "files": [
+        "apps/alpha-cli/src/alpha_cli/control_store.py",
+        "apps/alpha-cli/src/alpha_cli/owner_auth.py",
+        "apps/alpha-cli/src/alpha_cli/research_cmds.py",
+        "apps/alpha-web/src/alpha_web/api/owner_auth.py",
+        "tests/unit/test_research_control_store.py",
+        "tests/unit/test_owner_auth_store.py",
+        "tests/unit/test_owner_auth.py",
+        "tests/unit/test_owner_auth_api.py",
+        "tests/integration/test_research_cli.py",
+        "tests/integration/test_web_api_research.py",
+        "docs/**",
+        "CLAUDE.md"
+      ],
+      "status": "pending"
+    },
+    {
+      "title": "S5c existing-screen semantic presentation",
+      "verify": "Run the affected frontend unit, generated-contract, lint, production-build, accessibility/E2E checks plus the Python integration, fast, and full gates before commit",
+      "expected": "The existing ResearchCockpit renders only the S5a masked response and S5b owner state through server projections. No seventh Workstation screen, browser-side mask, raw artifact download, MCP action, D1/D2 control, promotion, paper, broker, or order control is added.",
+      "rollback": "Revert the S5c UI/projection commit; retain S5a/S5b server contracts and all existing six-screen behavior",
+      "files": [
+        "apps/alpha-web/frontend/**",
+        "apps/alpha-web/src/**",
+        "tests/integration/**",
+        "docs/**",
+        "CLAUDE.md"
+      ],
+      "status": "pending"
     },
     {
       "title": "S6 owner-only D1 integration",
@@ -215,7 +255,7 @@
     "Ambiguous repository identities and unverified licence/version/platform claims from the report",
     "Big-bang migration, deletion of legacy workflows, or raw-data copying into study workspaces",
     "Distribution, hosting, multi-user, sale, or production scope; Project ALPHA remains private and local-only",
-    "Changing AGENTS.md, harness policy, owner-auth authority, generated capability counts, or workflow behavior beyond the mechanical fourteenth-wheel build/import smoke required by S2"
+    "Changing AGENTS.md, harness policy, generated capability counts, or owner-auth authority beyond the exact S5b Touch ID-bound semantic definition/review actions; no other workflow behavior may change beyond the mechanical fourteenth-wheel build/import smoke required by S2"
   ],
   "files": [
     "docs/superpowers/plans/2026-08-21-generic-study-composition.md",
