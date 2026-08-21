@@ -178,8 +178,8 @@
     },
     {
       "title": "S5a3 web-only semantic GET projection",
-      "verify": "Freeze strict Pydantic models for VerifiedBlindSemanticReadV1, then run subprocess-wrapper, REST failure, malformed/extra response, OpenAPI freshness, generated-contract, unchanged mutation-route, unchanged 62-tool MCP, fast, and full gates before commit",
-      "expected": "A GET endpoint returns only the verified CLI envelope through the existing subprocess seam. Generated OpenAPI/client/type artifacts may change to mirror the server contract, but there is no frontend presentation or UI behavior. No caller cutoff, browser-side mask, owner action, job, D1/D2 control, promotion, paper, broker, order, or MCP capability is added.",
+      "verify": "Test exact subprocess argv with no cutoff flag, non-object/invalid/extra parsed output, strict nested literals/hashes/UTC/finite floats/counts, GET success, 404 CLI unavailability, redacted 502 structurally malformed parsed CLI output, GET-only OpenAPI with no query/body parameters, generated OpenAPI/types freshness, generated operation classification/matrix freshness, unchanged handwritten frontend client/types, unchanged mutation routes, unchanged 62-tool MCP, fast gate, and full gate before commit",
+      "expected": "GET /api/research/cases/{project_id}/semantic-projection has no request body or query parameters and invokes only alpha research semantic-projection PROJECT_ID --json through the existing bounded subprocess seam. It returns the exact CLI object through three strict Pydantic models: the outer VerifiedBlindSemanticReadV1 has exactly schema=VerifiedBlindSemanticReadV1, schema_version=1, source_verification=verified_completed_d0_recomputation, authority=none, 16-lowercase-hex run_id, projection, and lowercase-SHA-256 content_sha256; its BlindSemanticProjectionV1 child has exactly schema=BlindSemanticProjectionV1, schema_version=1, authority=none, cutoff_source=d0_acceptance_measurement_reference, lineage_verification=not_checked, semantic_status=unfrozen, matching 16-hex run_id, three lowercase artifact SHA-256 values, canonical UTC-Z cutoff_confirmed_at, a nonnegative strict masked_count, points, and lowercase content_sha256; each point has exactly point_id, canonical UTC-Z available_at, and a strict finite float value. Web does not recompute hashes, detector geometry, cutoff, or masking. CLI subprocess/unavailable failures map to 404; a parsed non-object or any missing, extra, malformed, noncanonical, nonfinite, or wrong-literal response maps to a redacted 502 without returning the invalid payload. Only openapi.json, generated.ts, and generated operation-governance records change; handwritten client.ts/types.ts and all frontend presentation remain unchanged. No browser cutoff, owner action, job, D1/D2 control, promotion, paper, broker, order, or MCP capability is added.",
       "rollback": "Revert the S5a3 web projection commit; retain the verified CLI read and all existing Workstation screens unchanged",
       "files": [
         "apps/alpha-web/src/alpha_web/_research.py",
@@ -187,8 +187,8 @@
         "apps/alpha-web/src/alpha_web/api/research.py",
         "apps/alpha-web/frontend/openapi.json",
         "apps/alpha-web/frontend/src/api/generated.ts",
-        "apps/alpha-web/frontend/src/api/client.ts",
-        "apps/alpha-web/frontend/src/api/types.ts",
+        "docs/governance/openapi-operation-classification.json",
+        "docs/governance/capability-authority-matrix.md",
         "tests/unit/test_web_research_projection.py",
         "tests/integration/test_web_api_research.py",
         "tests/integration/test_research_mcp.py",

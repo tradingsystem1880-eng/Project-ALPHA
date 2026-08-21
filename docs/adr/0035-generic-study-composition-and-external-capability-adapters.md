@@ -103,7 +103,11 @@ execution order, verification, rollback, and scope. Its slices are:
 5. S4: one existing operator parity slice with D0/bias/determinism checks.
 6. S5a1: pure byte-bound non-authoritative semantic projection contract.
 7. S5a2: verified completed-D0 artifact resolver, CLI envelope, and future-poison guard.
-8. S5a3: web-only GET projection with no frontend or mutation surface.
+8. S5a3: `GET /api/research/cases/{project_id}/semantic-projection`, with no request body or
+   query parameters, returning the unchanged verified CLI envelope through strict nested response
+   models. CLI unavailability is a 404; structurally malformed parsed CLI output is a redacted 502.
+   Only generated OpenAPI/types and operation-governance records change—no handwritten frontend
+   client, presentation, or mutation surface.
 9. S5b: additive SQLite v5 semantic definition/review events and Touch ID binding.
 10. S5c: semantic presentation inside the existing Research screen.
 11. S6: owner-only D1 integration mapped to existing contracts and ledgers.
