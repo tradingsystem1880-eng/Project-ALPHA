@@ -1,6 +1,6 @@
 # Project ALPHA — Architecture
 
-**Last reviewed:** 2026-08-14
+**Last reviewed:** 2026-08-21
 **Status:** Living (six-screen Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
 **Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
@@ -27,6 +27,7 @@ graph TD
     strat[alpha_strategies]
     val[alpha_validation]
     research[alpha_research]
+    study[alpha_study]
     fc[alpha_forecast]
     opt[alpha_options]
     screen[alpha_screener]
@@ -40,6 +41,7 @@ graph TD
     cli --> strat
     cli --> val
     cli --> research
+    cli --> study
     cli --> fc
     cli --> opt
     cli --> screen
@@ -50,6 +52,11 @@ graph TD
     strat --> core
     val --> core
     research --> core
+    study --> core
+    study --> data
+    study --> patterns
+    study --> research
+    patterns[alpha_patterns] --> core
     fc --> core
     opt --> core
     screen --> core
@@ -64,16 +71,16 @@ alpha_mcp   alpha_web          surfaces: subprocess `alpha`; public metadata/rea
       alpha_cli               sole composer; may import every package below
       /   |   \
      /    |    +------------ alpha_backtest ---- alpha_data ----+
-alpha_strategies  alpha_validation  alpha_research  alpha_forecast  alpha_options  alpha_screener
+alpha_strategies  alpha_validation  alpha_research  alpha_study  alpha_forecast  alpha_options  alpha_screener
     \             |                 |               |               |              /
      +------------+-----------------+---------------+---------------+-------------+ -> alpha_core
                                                                imports nothing internal
 ```
 </details>
 
-**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_research`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
+**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_patterns` depends on `alpha_core`; `alpha_strategies`, `alpha_validation`, `alpha_research`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_study` is an additive projection/composition seam over `alpha_core`, `alpha_data`, `alpha_patterns`, and `alpha_research`; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `alpha_study` owns no canonical contract, persistence, authority, or command. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
 
-**Enforcement:** fourteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
+**Enforcement:** fifteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports and the bidirectional alpha-study seam. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
 
 ## 3. Layer Responsibilities
 
@@ -86,11 +93,12 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, four-family path-risk primitives, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_research` | 1 — research | Pure deterministic research primitives: fixed-duration research bars and identity, group-atomic chronological D1/D2/D3 allocation, causal pattern detection, prospective power and confirmation, point-in-time matched event studies, multiplicity control, lineage-bound charts, and terminal gate packets. D1/D2 are admitted only through governed contracts/phases; the package grants no strategy, validation, holdout, paper, or execution authority. | `core` |
+| `alpha_study` | 2 — research composition | Empty additive seam for future generic study projections over existing research/control-store authorities. S2 owns metadata only: no canonical contracts, persistence, commands, UI, approvals, D1/D2, promotion, paper, broker, or order authority. | `core`, `data`, `patterns`, `research` |
 | `alpha_forecast` | 1 — model | Kronos foundation-model facade: vendored pinned weights code, typed `Forecaster` protocol, per-sample OHLCV paths, deterministic seeding, offline `FakeForecaster`. torch/pandas confined inside; importing the package never imports torch. See [ADR-0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md). | `core` |
 | `alpha_options` | 1 — analytics | Pure Black–Scholes pricing, Greeks, and implied volatility. | `core` |
 | `alpha_screener` | 1 — market edge | Typed Finnhub quote/news parsing plus the opt-in API-key-gated network adapter. | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
-| `alpha_cli` | 3 — compose/control | The **only** composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the SQLite project/job/evidence/research-governance control plane, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
+| `alpha_cli` | 3 — compose/control | The **only** operational composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the SQLite project/job/evidence/research-governance control plane, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
 | `alpha_mcp` | 4 — surface | stdio MCP server whose generated capability matrix records the current bounded tool count and authority. **Subprocesses the `alpha` CLI**, composes nothing, cannot approve/decide research, consume D2, reveal a holdout, or place orders. | `core`, supported public `cli` seams |
 | `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed six-screen SPA (Research, Build, Results, Compare, Studios, Operate). It subprocesses CLI actions/projections and serves server-rendered figures plus typed artifact/control records. It never queries SQLite, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
 | `workers/qlib` | isolated process | Daily cross-sectional Alpha158-style/LightGBM training with fold-local preprocessing. Accepts an immutable exchange bundle and returns validated close-stamped OOS predictions; models/pickles never cross the boundary. | its own `pyqlib`/LightGBM lock only |

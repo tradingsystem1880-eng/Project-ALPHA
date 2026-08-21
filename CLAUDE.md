@@ -40,18 +40,19 @@ Private, single-owner, local quantitative research platform. **Written and opera
 
 
 ## Rules (path-scoped, `.claude/rules/`; load when matching files are touched)
-`00-karpathy.md` (always) · `alpha-core.md` · `alpha-data.md` · `alpha-strategies.md` · `alpha-backtest.md` · `alpha-validation.md` · `alpha-research.md` · `alpha-forecast.md` · `alpha-analytics.md` (options/screener) · `alpha-patterns.md` · `alpha-cli.md` (full CLI surface + module map) · `alpha-mcp.md` · `alpha-web.md` (+ frontend) · `quant.md` (gauntlet gates + oracle duties) · `tests.md` · `docs.md`. The MODULE MAP and CLI surface were relocated there verbatim (`tests/unit/test_claude_md_relocation.py` proves zero loss against `tests/fixtures/claude_md_v1.md`). Generated awareness: `uv run python scripts/gate.py brief` (session brief) and `gate.py index` (`.claude/state/repo-index.json`).
+`00-karpathy.md` (always) · `alpha-core.md` · `alpha-data.md` · `alpha-strategies.md` · `alpha-backtest.md` · `alpha-validation.md` · `alpha-research.md` · `alpha-forecast.md` · `alpha-analytics.md` (options/screener) · `alpha-patterns.md` · `alpha-study.md` · `alpha-cli.md` (full CLI surface + module map) · `alpha-mcp.md` · `alpha-web.md` (+ frontend) · `quant.md` (gauntlet gates + oracle duties) · `tests.md` · `docs.md`. The MODULE MAP and CLI surface were relocated there verbatim (`tests/unit/test_claude_md_relocation.py` proves zero loss against `tests/fixtures/claude_md_v1.md`). Generated awareness: `uv run python scripts/gate.py brief` (session brief) and `gate.py index` (`.claude/state/repo-index.json`).
 - ADRs: `docs/adr/` holds ADRs 0001-0035 (index `docs/adr/README.md`); ADR-0029 four-family Monte Carlo validation; ADR-0030 Touch ID owner presence; ADR-0031 provider readiness + paper acceptance v2; ADR-0032 governed crypto data house; ADR-0033 governed crypto crowding research + sandbox basis; ADR-0034 agent operating system v2 (harness); latest ADR-0035 generic study composition (projection-only). Every ADR id must be referenced here or in a rule.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
-`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, `alpha_screener`, `alpha_research` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_core` + public `alpha_cli` seams (top of DAG).
+`alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_patterns` → `alpha_core`; `alpha_study` → `alpha_core` + `alpha_data` + `alpha_patterns` + `alpha_research`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, `alpha_screener`, `alpha_research` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_core` + public `alpha_cli` seams (top of DAG).
 - `alpha_core` imports nothing internal.
 - `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_forecast` → core only (only `alpha_cli` may import it). `alpha_options` → core only. `alpha_screener` → core only. `alpha_research` → core only. `alpha_backtest` → core + data only.
 - `alpha_patterns` → core only (pure pattern geometry; no app consumer yet — see `.claude/rules/alpha-patterns.md`).
+- `alpha_study` → core/data/patterns/research only. It is an empty additive composition seam in S2: future projections map to existing research/control-store authorities; it owns no canonical contracts, persistence, CLI command, UI, approval, D1/D2, promotion, paper, broker, or order authority (see `.claude/rules/alpha-study.md`).
 - `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
 - `alpha_mcp` and `alpha_web` sit atop the DAG and compose nothing — actions plus provider/system and engine-backed projections subprocess the `alpha` CLI. Their in-process reads are limited to supported public CLI seams (catalog/run store, artifact contract/run projection, job capacity/durable lease, and paper store) plus bounded Polars artifact projection. They never import or execute the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Nothing imports either surface.
 - The MCP surface is consciously **pinned at 62 tools** — adding or removing one is a deliberate governance change that must move `server.py`, the `test_research_mcp.py` pin, and this line together.
-- Contracts live in root `pyproject.toml` `[tool.importlinter]` (14 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
+- Contracts live in root `pyproject.toml` `[tool.importlinter]` (15 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
 - **Engineering workflow discipline.** Before writing, reviewing, or refactoring code, load
@@ -93,7 +94,7 @@ Private, single-owner, local quantitative research platform. **Written and opera
 ## Commands
 - Install: `uv sync`
 - Full Python gate (run before every commit; mirrors CI `.github/workflows/ci.yml`):
-  `uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run lint-imports && uv run mypy packages apps tests && uv run pytest -q -m "not network" --cov --cov-report=term-missing && uv run python scripts/generate_web_openapi.py --check && uv run python scripts/check_openapi_operations.py && uv build --all-packages` followed by reinstall/import smoke for all 13 built wheels (see CI for the exact module assertion).
+  `uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run lint-imports && uv run mypy packages apps tests && uv run pytest -q -m "not network" --cov --cov-report=term-missing && uv run python scripts/generate_web_openapi.py --check && uv run python scripts/check_openapi_operations.py && uv build --all-packages` followed by reinstall/import smoke for all 14 built wheels (see CI for the exact module assertion).
 - Frontend gate: `cd apps/alpha-web/frontend && npm ci && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npx playwright install chromium && npm run test:e2e` (`test:e2e` builds the production SPA; generated contracts and `static/app` must stay clean; Playwright/axe covers six desks, the three required viewport sizes, keyboard use, and serious/critical accessibility failures).
 - Isolated literature worker gate: `cd workers/literature && uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest -q -m "not network"`. Stdlib-only; deliberately not a root workspace member.
 - Isolated Qlib worker gate: `cd workers/qlib && uv lock --check && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest -q`. It is deliberately not a root workspace member.
@@ -110,6 +111,7 @@ Relocated verbatim, one layer per path-scoped rule (`.claude/rules/alpha-*.md`, 
 - **New strategy** → `alpha_strategies`: pure decision fn(s) in a new module + a `nautilus Strategy` subclass; bias-guard test required. Wire defaults via `_runner.RunSpec` / CLI flags.
 - **New data source** → `alpha_data/adapters/<name>_adapter.py`: a pure parser fn + a `DataAdapter` class (`name`/`version`/`parser_version`); add one evidence-gated `ProviderDefinition` so `data_cmds` derives it. Live-net code under `@pytest.mark.network`.
 - **New validation gate / statistic** → `alpha_validation`: engine-agnostic primitive (numpy/scipy, fail-loud), then wire into `alpha_cli/_gauntlet.py` and extend `tearsheet.build_outcomes`/the report schema.
+- **New generic study projection/composition** → `alpha_study`: map to an existing `alpha_research`/`alpha_cli`/control-store authority and keep the seam deterministic and projection-only; do not add canonical contracts, persistence, CLI commands, UI, or external dependencies in the package.
 - **Anything composing engine + gauntlet / multi-package orchestration** → `alpha_cli` ONLY (the DAG forbids it elsewhere). Keep engine imports lazy.
 - **New domain type / error / protocol / setting** → `alpha_core` (export via `__init__.py`).
 - **New net-new analytics module** (e.g. options/screener) → a new core-only `packages/alpha-*` + its own import-linter "depends only on core" contract + an `alpha_cli/<x>_cmds.py` sub-app emitting `--json` (register in `main.py`).
@@ -149,7 +151,7 @@ Claude Code sessions in this repo run under a hard-blocking hook harness (full d
 `docs/operations/claude-code-harness.md`). The prose rules above stay authoritative; the harness
 makes the load-bearing ones mechanical:
 - **Gate stamps.** `uv run python scripts/gate.py fast|full` runs the tiered gate and stamps the
-  current tree CONTENT (`full` mirrors CI incl. the 13-wheel smoke). Stopping a session after
+  current tree CONTENT (`full` mirrors CI incl. the 14-wheel smoke). Stopping a session after
   source edits requires a fast stamp; any `git commit` requires a full stamp (docs-only commits
   waived). Stamps invalidate on any content change and survive pure commits.
 - **Commit guard.** Conventional commit message enforced; >1000 changed non-docs lines blocked;

@@ -911,15 +911,15 @@ def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
     return (result.returncode == 0, time.monotonic() - started, output)
 
 
-# Mirrors CI's "Import built wheels" step byte-for-byte (13 wheels incl. alpha_patterns).
+# Mirrors CI's "Import built wheels" step byte-for-byte (14 wheels incl. alpha_study).
 _WHEEL_SMOKE_SH = (
     "uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl && "
     ".venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, "
     "alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, "
-    "alpha_patterns, alpha_cli, alpha_mcp, alpha_web; "
+    "alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web; "
     'assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, '
     "alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, "
-    "alpha_research, alpha_patterns, alpha_cli, alpha_mcp, alpha_web))'"
+    "alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web))'"
 )
 
 HARNESS_SCRIPTS = (

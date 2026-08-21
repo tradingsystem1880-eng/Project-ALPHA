@@ -29,6 +29,7 @@ members = [
     "alpha-research",
     "alpha-screener",
     "alpha-strategies",
+    "alpha-study",
     "alpha-validation",
     "alpha-web",
     "project-alpha",
@@ -196,6 +197,7 @@ dependencies = [
     { name = "alpha-research" },
     { name = "alpha-screener" },
     { name = "alpha-strategies" },
+    { name = "alpha-study" },
     { name = "alpha-validation" },
     { name = "nautilus-trader", extra = ["docker", "ib"] },
     { name = "numpy" },
@@ -214,6 +216,7 @@ requires-dist = [
     { name = "alpha-research", editable = "packages/alpha-research" },
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
+    { name = "alpha-study", editable = "packages/alpha-study" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "nautilus-trader", extras = ["ib", "docker"], specifier = "==1.228.0" },
     { name = "numpy", specifier = ">=1.26" },
@@ -387,6 +390,25 @@ dependencies = [
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "nautilus-trader", specifier = "==1.228.0" },
+]
+
+[[package]]
+name = "alpha-study"
+version = "1.0.0"
+source = { editable = "packages/alpha-study" }
+dependencies = [
+    { name = "alpha-core" },
+    { name = "alpha-data" },
+    { name = "alpha-patterns" },
+    { name = "alpha-research" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "alpha-data", editable = "packages/alpha-data" },
+    { name = "alpha-patterns", editable = "packages/alpha-patterns" },
+    { name = "alpha-research", editable = "packages/alpha-research" },
 ]
 
 [[package]]
@@ -2496,6 +2518,7 @@ dependencies = [
     { name = "alpha-research" },
     { name = "alpha-screener" },
     { name = "alpha-strategies" },
+    { name = "alpha-study" },
     { name = "alpha-validation" },
     { name = "alpha-web" },
 ]
@@ -2525,6 +2548,7 @@ requires-dist = [
     { name = "alpha-research", editable = "packages/alpha-research" },
     { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
+    { name = "alpha-study", editable = "packages/alpha-study" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
     { name = "alpha-web", editable = "apps/alpha-web" },
 ]

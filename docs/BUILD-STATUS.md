@@ -62,3 +62,14 @@ Qlib worker, figure engine, and six-screen Workstation. S0/S1 add documentation 
 runtime behavior begin in later independently verified slices. Every third-party capability remains
 subject to its own ADR-0011 evidence gate, and this checkpoint grants no provider, paper, broker,
 order, holdout, or execution authority.
+
+**Generic study composition S2 package seam (2026-08-21)** ✅ — the additive `alpha-study`
+workspace package now has versioned metadata, a `py.typed` marker, and no runtime composition
+behavior. `alpha-cli` declares the workspace dependency; root isort/coverage awareness and the
+15-contract import-linter boundary enforce the approved research-plane inputs and bidirectional
+exclusion from lower layers and top surfaces. CI and the canonical gate now build/import 14
+wheels. Independent Terra reviews cleared both delivery findings; focused documentation, awareness,
+and seam tests pass (`51 passed`), all 15 import contracts are kept, and the canonical full gate
+passes the complete non-network suite with coverage, OpenAPI freshness, 14 wheel builds, and exact
+wheel import smoke. No canonical contracts, persistence, CLI command, UI, external dependency,
+owner/D1/D2, promotion, paper, broker, or order authority was added.

@@ -42,7 +42,7 @@ Private, single-owner, local quantitative research platform. **Written and opera
 - `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_forecast` → core only (only `alpha_cli` may import it). `alpha_options` → core only. `alpha_screener` → core only. `alpha_research` → core only. `alpha_backtest` → core + data only.
 - `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
 - `alpha_mcp` and `alpha_web` sit atop the DAG and compose nothing — actions plus provider/system and engine-backed projections subprocess the `alpha` CLI. Their in-process reads are limited to supported public CLI seams (catalog/run store, artifact contract/run projection, job capacity/durable lease, and paper store) plus bounded Polars artifact projection. They never import or execute the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Nothing imports either surface.
-- Contracts live in root `pyproject.toml` `[tool.importlinter]` (14 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
+- Contracts live in root `pyproject.toml` `[tool.importlinter]` (15 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
 
 ## Golden rules (invariants)
 - **Engineering workflow discipline.** Before writing, reviewing, or refactoring code, load

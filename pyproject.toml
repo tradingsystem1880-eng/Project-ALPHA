@@ -14,6 +14,7 @@ dependencies = [
     "alpha-patterns",
     "alpha-screener",
     "alpha-research",
+    "alpha-study",
     "alpha-cli",
     "alpha-mcp",
     "alpha-web",
@@ -36,6 +37,7 @@ alpha-options = { workspace = true }
 alpha-patterns = { workspace = true }
 alpha-screener = { workspace = true }
 alpha-research = { workspace = true }
+alpha-study = { workspace = true }
 alpha-cli = { workspace = true }
 alpha-mcp = { workspace = true }
 alpha-web = { workspace = true }
@@ -75,7 +77,7 @@ extend-exclude = [
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["alpha_core", "alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli", "alpha_mcp", "alpha_web"]
+known-first-party = ["alpha_core", "alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -141,6 +143,7 @@ filterwarnings = [
 source = [
     "alpha_core",
     "alpha_data",
+    "alpha_patterns",
     "alpha_strategies",
     "alpha_backtest",
     "alpha_validation",
@@ -148,6 +151,7 @@ source = [
     "alpha_options",
     "alpha_screener",
     "alpha_research",
+    "alpha_study",
     "alpha_cli",
     "alpha_mcp",
     "alpha_web",
@@ -173,9 +177,9 @@ root_packages = [
     "alpha_validation",
     "alpha_forecast",
     "alpha_options",
-    "alpha_patterns",
     "alpha_screener",
     "alpha_research",
+    "alpha_study",
     "alpha_cli",
     "alpha_mcp",
     "alpha_web",
@@ -185,79 +189,79 @@ root_packages = [
 name = "alpha_core imports nothing internal"
 type = "forbidden"
 source_modules = ["alpha_core"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_data depends only on core"
 type = "forbidden"
 source_modules = ["alpha_data"]
-forbidden_modules = ["alpha_patterns", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_strategies depends only on core"
 type = "forbidden"
 source_modules = ["alpha_strategies"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_validation depends only on core"
 type = "forbidden"
 source_modules = ["alpha_validation"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_backtest depends only on core + data"
 type = "forbidden"
 source_modules = ["alpha_backtest"]
-forbidden_modules = ["alpha_patterns", "alpha_strategies", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_strategies", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_forecast depends only on core"
 type = "forbidden"
 source_modules = ["alpha_forecast"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_options depends only on core"
 type = "forbidden"
 source_modules = ["alpha_options"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_screener", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_screener depends only on core"
 type = "forbidden"
 source_modules = ["alpha_screener"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_research", "alpha_cli"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_research depends only on core"
 type = "forbidden"
 source_modules = ["alpha_research"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli", "alpha_mcp", "alpha_web"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_mcp sits atop the DAG (nothing imports it)"
 type = "forbidden"
-source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli"]
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 forbidden_modules = ["alpha_mcp"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_web sits atop the DAG (nothing imports it)"
 type = "forbidden"
-source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli", "alpha_mcp"]
+source_modules = ["alpha_core", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli", "alpha_mcp"]
 forbidden_modules = ["alpha_web"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_mcp imports only public platform surfaces"
 type = "forbidden"
 source_modules = ["alpha_mcp"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_web"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_web"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_web imports only public platform surfaces"
 type = "forbidden"
 source_modules = ["alpha_web"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_mcp"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_mcp"]
 # Exact in-process cryptographic seam accepted by ADR-0030. It owns WebAuthn verification and
 # narrow control-store persistence; no other alpha_cli module becomes a transitive web exemption.
 ignore_imports = ["alpha_web.api.owner_auth -> alpha_cli.owner_auth"]
@@ -266,4 +270,10 @@ ignore_imports = ["alpha_web.api.owner_auth -> alpha_cli.owner_auth"]
 name = "alpha_patterns depends only on core"
 type = "forbidden"
 source_modules = ["alpha_patterns"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_cli", "alpha_mcp", "alpha_web"]
+forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
+
+[[tool.importlinter.contracts]]
+name = "alpha_study composes only research-plane primitives"
+type = "forbidden"
+source_modules = ["alpha_study"]
+forbidden_modules = ["alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_cli", "alpha_mcp", "alpha_web"]

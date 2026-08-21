@@ -76,7 +76,7 @@
         "pyproject.toml",
         "tests/unit/study/**"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S3 canonical projections and provenance",
@@ -87,7 +87,7 @@
         "packages/alpha-study/**",
         "tests/unit/study/**"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "S4 one existing operator parity slice",
@@ -177,7 +177,7 @@
     "Ambiguous repository identities and unverified licence/version/platform claims from the report",
     "Big-bang migration, deletion of legacy workflows, or raw-data copying into study workspaces",
     "Distribution, hosting, multi-user, sale, or production scope; Project ALPHA remains private and local-only",
-    "Changing AGENTS.md, harness policy, workflows, owner-auth authority, or generated capability counts"
+    "Changing AGENTS.md, harness policy, owner-auth authority, generated capability counts, or workflow behavior beyond the mechanical fourteenth-wheel build/import smoke required by S2"
   ],
   "files": [
     "docs/superpowers/plans/2026-08-21-generic-study-composition.md",
@@ -190,7 +190,10 @@
     "pyproject.toml",
     "uv.lock",
     "CLAUDE.md",
-    ".claude/rules/alpha-study.md"
+    ".claude/rules/alpha-study.md",
+    "docs/operations/claude-code-harness.md",
+    "scripts/gate.py",
+    ".github/workflows/ci.yml"
   ]
 }
 ```
