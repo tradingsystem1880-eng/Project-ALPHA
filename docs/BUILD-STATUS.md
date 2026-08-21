@@ -82,3 +82,13 @@ provider, family, frequency, and explicit venue references; every lineage is per
 absent. Focused seam/lineage tests pass (`12 passed`); event/factor table and cross-process
 determinism completion remain pending in S3a2. These projections grant no evidence, approval,
 D1/D2, promotion, paper, broker, order, persistence, CLI, MCP, web, or provider authority.
+
+**Generic study composition S3a2 observation tables (2026-08-21)** ✅ — `alpha-study`
+adds sealed `EventRowV1`/`EventTableV1` occurrence geometry and a separate
+`FactorObservationV1`/`FactorObservationTableV1` cross-sectional geometry. Event clocks,
+operator/code/parameter fingerprints, source availability, and factor universe availability are
+content-bound; row/table order and IDs are canonical. All lineages remain
+`unverified_reference`, every table declares `authority: none`, and event schemas reject realized
+outcomes. Focused study tests pass (`22 passed`), the environment-perturbed determinism gate passes,
+and the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
+exact wheel import smoke. No authority surface changed.

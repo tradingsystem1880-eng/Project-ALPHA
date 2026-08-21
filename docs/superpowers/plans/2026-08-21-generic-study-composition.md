@@ -91,7 +91,7 @@
         "docs/ARCHITECTURE.md",
         "docs/BUILD-STATUS.md"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S3b operator and existing-authority references",
@@ -102,7 +102,7 @@
         "packages/alpha-study/**",
         "tests/unit/study/**"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "S3c derived study projections",

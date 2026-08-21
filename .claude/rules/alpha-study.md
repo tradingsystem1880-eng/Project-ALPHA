@@ -4,17 +4,20 @@ paths:
 ---
 # alpha_study rules
 
-`alpha_study` is an additive research-plane composition/projection seam. S3a1 owns
-strict immutable `FeatureInputRefV1` and `FeatureValueV1` contracts. They carry
-content-bound, explicitly `unverified_reference` declarations for causal UTC clocks
-and multi-artifact, snapshot, vintage, computation, provider, family, frequency, and
-venue lineage. They contain no operational timestamps and grant no evidence or
-execution authority.
+`alpha_study` is an additive research-plane composition/projection seam. S3a owns
+strict immutable `FeatureInputRefV1`, `FeatureValueV1`, `EventTableV1`, and the
+separate `FactorObservationTableV1` contracts. They carry content-bound, explicitly
+`unverified_reference` declarations for causal UTC clocks and multi-artifact, snapshot,
+vintage, computation, provider, family, frequency, venue, operator, and universe
+lineage. Event tables contain no realized outcomes; none contain operational timestamps
+or grant evidence or execution authority.
 
 ## Module map
 
 - `values.py` — strict, content-hashed `FeatureInputRefV1` and `FeatureValueV1`
   unverified lineage projections.
+- `tables.py` — sealed event-occurrence and cross-sectional factor geometries with
+  canonical ordering, derived IDs, universe availability, and `authority: none`.
 
 The package owns no persistence, CLI commands, UI, external dependencies, approvals,
 D1/D2 transitions, promotion, paper, broker, or order authority. Canonical projections
