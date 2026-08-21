@@ -1927,6 +1927,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/semantic-projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Semantic Projection
+         * @description Read the verified, non-authoritative D0 semantic projection.
+         */
+        get: operations["research_semantic_projection_api_research_cases__project_id__semantic_projection_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/status": {
         parameters: {
             query?: never;
@@ -3800,6 +3820,55 @@ export interface components {
         AttemptStatusValue: "queued" | "running" | "completed" | "passed" | "warning" | "failed" | "pruned" | "rejected" | "cancelled";
         /** @enum {string} */
         AuthorKindValue: "human" | "agent";
+        /** BlindSemanticProjectionV1 */
+        BlindSemanticProjectionV1: {
+            /** Acceptance Artifact Sha256 */
+            acceptance_artifact_sha256: string;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Chart Data Artifact Sha256 */
+            chart_data_artifact_sha256: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Cutoff Confirmed At */
+            cutoff_confirmed_at: string;
+            /**
+             * Cutoff Source
+             * @constant
+             */
+            cutoff_source: "d0_acceptance_measurement_reference";
+            /** Events Artifact Sha256 */
+            events_artifact_sha256: string;
+            /**
+             * Lineage Verification
+             * @constant
+             */
+            lineage_verification: "not_checked";
+            /** Masked Count */
+            masked_count: number;
+            /** Points */
+            points: components["schemas"]["SemanticPointV1"][];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "BlindSemanticProjectionV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Semantic Status
+             * @constant
+             */
+            semantic_status: "unfrozen";
+        };
         /** Candle */
         Candle: {
             /** C */
@@ -9409,6 +9478,15 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** SemanticPointV1 */
+        SemanticPointV1: {
+            /** Available At */
+            available_at: string;
+            /** Point Id */
+            point_id: string;
+            /** Value */
+            value: number;
+        };
         /** StageLinkCreateRequest */
         StageLinkCreateRequest: {
             /** Experiment Id */
@@ -9605,6 +9683,34 @@ export interface components {
             nautilus: components["schemas"]["NautilusStatus"];
             /** Paper Enabled */
             paper_enabled: boolean;
+        };
+        /** VerifiedBlindSemanticReadV1 */
+        VerifiedBlindSemanticReadV1: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Content Sha256 */
+            content_sha256: string;
+            projection: components["schemas"]["BlindSemanticProjectionV1"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "VerifiedBlindSemanticReadV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Source Verification
+             * @constant
+             */
+            source_verification: "verified_completed_d0_recomputation";
         };
         /**
          * WorkspaceBody
@@ -13357,6 +13463,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchScorecard"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_semantic_projection_api_research_cases__project_id__semantic_projection_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedBlindSemanticReadV1"];
                 };
             };
             /** @description Stable, redacted Workstation error */

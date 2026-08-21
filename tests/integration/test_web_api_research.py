@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import HTTPException
@@ -25,6 +26,39 @@ from alpha_web.app import create_app
 from alpha_web.run_authority import RunContextDenied
 from tests.fixtures.cli_fixtures import seed_store
 from tests.unit.test_research_gate_packet import _inputs_with_evidence
+
+
+def _semantic_projection_payload() -> dict[str, object]:
+    return {
+        "schema": "VerifiedBlindSemanticReadV1",
+        "schema_version": 1,
+        "source_verification": "verified_completed_d0_recomputation",
+        "authority": "none",
+        "run_id": "0123456789abcdef",
+        "projection": {
+            "schema": "BlindSemanticProjectionV1",
+            "schema_version": 1,
+            "run_id": "0123456789abcdef",
+            "acceptance_artifact_sha256": "a" * 64,
+            "events_artifact_sha256": "b" * 64,
+            "chart_data_artifact_sha256": "c" * 64,
+            "cutoff_confirmed_at": "2024-01-01T00:00:00Z",
+            "points": [
+                {
+                    "point_id": "price:0",
+                    "available_at": "2024-01-01T00:00:00Z",
+                    "value": 1.25,
+                }
+            ],
+            "masked_count": 0,
+            "authority": "none",
+            "cutoff_source": "d0_acceptance_measurement_reference",
+            "lineage_verification": "not_checked",
+            "semantic_status": "unfrozen",
+            "content_sha256": "d" * 64,
+        },
+        "content_sha256": "e" * 64,
+    }
 
 
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -79,6 +113,66 @@ def test_research_read_routes_translate_backend_failures_without_raw_500s(
             call()
         assert raised.value.status_code == expected_status
         assert raised.value.detail == "safe recovery detail"
+
+
+def test_semantic_projection_success_and_redacted_failure_mapping(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        _research, "semantic_projection", lambda *args, **kwargs: _semantic_projection_payload()
+    )
+    response = client.get("/api/research/cases/project-1/semantic-projection")
+    assert response.status_code == 200, response.text
+    assert response.json() == _semantic_projection_payload()
+
+    monkeypatch.setattr(
+        _research,
+        "semantic_projection",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("private path and secret")),
+    )
+    unavailable = client.get("/api/research/cases/project-1/semantic-projection")
+    assert unavailable.status_code == 404
+    assert unavailable.json()["message"] == "The semantic projection is unavailable."
+    assert "private path" not in unavailable.text
+
+    monkeypatch.setattr(
+        _research,
+        "semantic_projection",
+        lambda *args, **kwargs: {"invalid_payload": "must not leak"},
+    )
+    invalid = client.get("/api/research/cases/project-1/semantic-projection")
+    assert invalid.status_code == 502
+    assert invalid.json()["message"] == "The semantic projection is invalid."
+    assert "must not leak" not in invalid.text
+
+    malformed = _semantic_projection_payload()
+    malformed_projection = cast(dict[str, object], malformed["projection"])
+    malformed_projection["points"] = [
+        {"point_id": " poison\n", "available_at": "2024-01-01T00:00:00Z", "value": 1.25}
+    ]
+    malformed["projection"] = malformed_projection
+    monkeypatch.setattr(_research, "semantic_projection", lambda *args, **kwargs: malformed)
+    malformed_response = client.get("/api/research/cases/project-1/semantic-projection")
+    assert malformed_response.status_code == 502
+    assert malformed_response.json()["message"] == "The semantic projection is invalid."
+    assert "poison" not in malformed_response.text
+
+
+def test_semantic_projection_openapi_is_get_only_without_request_inputs() -> None:
+    operation = create_app().openapi()["paths"][
+        "/api/research/cases/{project_id}/semantic-projection"
+    ]
+    assert set(operation) == {"get"}
+    assert operation["get"].get("parameters") == [
+        {
+            "name": "project_id",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string", "title": "Project Id"},
+        }
+    ]
+    assert "requestBody" not in operation["get"]
 
 
 def test_research_mutation_routes_translate_backend_failures_without_raw_500s(
@@ -530,6 +624,7 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         "/api/research/cases/{project_id}/evidence-hub",
         "/api/research/cases/{project_id}/scorecard",
         "/api/research/cases/{project_id}/decision-view",
+        "/api/research/cases/{project_id}/semantic-projection",
     }
     assert read_only_paths <= set(research_routes)
 

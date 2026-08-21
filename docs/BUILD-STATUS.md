@@ -177,15 +177,16 @@ detector, fixture, estimator, power, and other quantitative semantics are unchan
 semantic writes, and owner actions remain deferred to later S5 slices. Independent Terra review
 passes; S5a2 is complete and S5a3 remains pending.
 
-**Generic study composition S5a3 boundary freeze (2026-08-22)** 🚧 — the web slice is fixed as
+**Generic study composition S5a3 web projection (2026-08-22)** ✅ — the web slice is fixed as
 `GET /api/research/cases/{project_id}/semantic-projection`, with no query or body input and only the
 existing CLI command as its source. Strict nested server models preserve the exact seven-key outer
 envelope, fourteen-key inner projection, and three-key points; the web layer does not recompute
 hashes, cutoff, masking, or detector semantics. CLI unavailability maps to 404 and structurally
 invalid parsed CLI output to a redacted 502. Only generated OpenAPI/types and operation-governance
 records may change; handwritten frontend client/types, presentation, mutations, jobs, owner actions,
-MCP, D1/D2, promotion, paper, broker, and order surfaces remain unchanged. This freeze changes no
-runtime behavior.
+MCP, D1/D2, promotion, paper, broker, and order surfaces remain unchanged. The exact-argv
+subprocess adapter and strict frozen response models are implemented; malformed parsed output is
+redacted at 502 and CLI unavailability at 404.
 
 The S5a2 envelope is now frozen to exactly seven keys (`schema`, `schema_version`,
 `source_verification`, `authority`, `run_id`, `projection`, and `content_sha256`), with explicit

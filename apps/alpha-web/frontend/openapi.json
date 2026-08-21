@@ -454,6 +454,94 @@
         ],
         "type": "string"
       },
+      "BlindSemanticProjectionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance_artifact_sha256": {
+            "title": "Acceptance Artifact Sha256",
+            "type": "string"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "chart_data_artifact_sha256": {
+            "title": "Chart Data Artifact Sha256",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "cutoff_confirmed_at": {
+            "title": "Cutoff Confirmed At",
+            "type": "string"
+          },
+          "cutoff_source": {
+            "const": "d0_acceptance_measurement_reference",
+            "title": "Cutoff Source",
+            "type": "string"
+          },
+          "events_artifact_sha256": {
+            "title": "Events Artifact Sha256",
+            "type": "string"
+          },
+          "lineage_verification": {
+            "const": "not_checked",
+            "title": "Lineage Verification",
+            "type": "string"
+          },
+          "masked_count": {
+            "title": "Masked Count",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SemanticPointV1"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "BlindSemanticProjectionV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "semantic_status": {
+            "const": "unfrozen",
+            "title": "Semantic Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "schema_version",
+          "run_id",
+          "acceptance_artifact_sha256",
+          "events_artifact_sha256",
+          "chart_data_artifact_sha256",
+          "cutoff_confirmed_at",
+          "points",
+          "masked_count",
+          "authority",
+          "cutoff_source",
+          "lineage_verification",
+          "semantic_status",
+          "content_sha256"
+        ],
+        "title": "BlindSemanticProjectionV1",
+        "type": "object"
+      },
       "Candle": {
         "additionalProperties": false,
         "properties": {
@@ -17609,6 +17697,30 @@
         "title": "ScreenerQuote",
         "type": "object"
       },
+      "SemanticPointV1": {
+        "additionalProperties": false,
+        "properties": {
+          "available_at": {
+            "title": "Available At",
+            "type": "string"
+          },
+          "point_id": {
+            "title": "Point Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "point_id",
+          "available_at",
+          "value"
+        ],
+        "title": "SemanticPointV1",
+        "type": "object"
+      },
       "StageLinkCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -18152,6 +18264,53 @@
           "ibkr_paper_enabled"
         ],
         "title": "SystemStatus",
+        "type": "object"
+      },
+      "VerifiedBlindSemanticReadV1": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/BlindSemanticProjectionV1"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "VerifiedBlindSemanticReadV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source_verification": {
+            "const": "verified_completed_d0_recomputation",
+            "title": "Source Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "schema_version",
+          "source_verification",
+          "authority",
+          "run_id",
+          "projection",
+          "content_sha256"
+        ],
+        "title": "VerifiedBlindSemanticReadV1",
         "type": "object"
       },
       "WorkspaceBody": {
@@ -24245,6 +24404,49 @@
           }
         },
         "summary": "Research Scorecard",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/semantic-projection": {
+      "get": {
+        "description": "Read the verified, non-authoritative D0 semantic projection.",
+        "operationId": "research_semantic_projection_api_research_cases__project_id__semantic_projection_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifiedBlindSemanticReadV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Semantic Projection",
         "tags": [
           "research"
         ]

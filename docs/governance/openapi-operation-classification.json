@@ -780,6 +780,13 @@
     {
       "method": "GET",
       "mode": "fixture_backed",
+      "operation_id": "research_semantic_projection_api_research_cases__project_id__semantic_projection_get",
+      "path": "/api/research/cases/{project_id}/semantic-projection",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
       "operation_id": "research_status_api_research_cases__project_id__status_get",
       "path": "/api/research/cases/{project_id}/status",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."

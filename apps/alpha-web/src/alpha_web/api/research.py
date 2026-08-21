@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import ValidationError
 
 from alpha_web import _research
 from alpha_web.api._common import data_dir
@@ -30,6 +31,7 @@ from alpha_web.api.models import (
     ResearchProtocolLibrary,
     ResearchReport,
     ResearchScorecard,
+    VerifiedBlindSemanticReadV1,
 )
 from alpha_web.run_authority import RunContextDenied, resolve_run_context
 
@@ -227,6 +229,25 @@ def research_get(project_id: str) -> dict[str, Any]:
         return _research.get(project_id, data_dir=data_dir())
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/research/cases/{project_id}/semantic-projection",
+    response_model=VerifiedBlindSemanticReadV1,
+)
+def research_semantic_projection(project_id: str) -> VerifiedBlindSemanticReadV1:
+    """Read the verified, non-authoritative D0 semantic projection."""
+    try:
+        payload = _research.semantic_projection(project_id, data_dir=data_dir())
+        return VerifiedBlindSemanticReadV1.model_validate(payload)
+    except _research.InvalidSemanticProjection as exc:
+        raise HTTPException(status_code=502, detail="The semantic projection is invalid.") from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=502, detail="The semantic projection is invalid.") from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=404, detail="The semantic projection is unavailable."
+        ) from exc
 
 
 @router.get(

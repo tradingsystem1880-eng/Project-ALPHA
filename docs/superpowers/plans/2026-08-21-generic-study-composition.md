@@ -192,10 +192,11 @@
         "tests/unit/test_web_research_projection.py",
         "tests/integration/test_web_api_research.py",
         "tests/integration/test_research_mcp.py",
+        ".claude/rules/alpha-web.md",
         "docs/**",
         "CLAUDE.md"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S5b SQLite v5 semantic definition and owner review",
