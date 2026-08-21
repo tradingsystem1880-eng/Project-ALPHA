@@ -19,6 +19,8 @@ Private, single-owner, local quantitative research platform. **Written and opera
   inventory is `docs/governance/capability-authority-matrix.md`.
 - Crypto data house: `docs/adr/0032-governed-crypto-data-house.md`; provider authority is assigned
   per dataset family and existing CCXT/paper bytes remain immutable.
+- Generic study composition: `docs/adr/0035-generic-study-composition-and-external-capability-adapters.md`;
+  the accepted projection-only boundary adds no authority until its staged implementation lands.
 - Workstation v3 program: `docs/superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`
   + `2026-07-19-workstation-v3-development-control-plane-design.md`
   + `2026-07-19-workstation-v3-evidence-agent-design.md`
@@ -39,7 +41,7 @@ Private, single-owner, local quantitative research platform. **Written and opera
 
 ## Rules (path-scoped, `.claude/rules/`; load when matching files are touched)
 `00-karpathy.md` (always) · `alpha-core.md` · `alpha-data.md` · `alpha-strategies.md` · `alpha-backtest.md` · `alpha-validation.md` · `alpha-research.md` · `alpha-forecast.md` · `alpha-analytics.md` (options/screener) · `alpha-patterns.md` · `alpha-cli.md` (full CLI surface + module map) · `alpha-mcp.md` · `alpha-web.md` (+ frontend) · `quant.md` (gauntlet gates + oracle duties) · `tests.md` · `docs.md`. The MODULE MAP and CLI surface were relocated there verbatim (`tests/unit/test_claude_md_relocation.py` proves zero loss against `tests/fixtures/claude_md_v1.md`). Generated awareness: `uv run python scripts/gate.py brief` (session brief) and `gate.py index` (`.claude/state/repo-index.json`).
-- ADRs: `docs/adr/` holds ADRs 0001-0034 (index `docs/adr/README.md`); ADR-0029 four-family Monte Carlo validation; ADR-0030 Touch ID owner presence; ADR-0031 provider readiness + paper acceptance v2; ADR-0032 governed crypto data house; ADR-0033 governed crypto crowding research + sandbox basis; latest ADR-0034 agent operating system v2 (harness). Every ADR id must be referenced here or in a rule.
+- ADRs: `docs/adr/` holds ADRs 0001-0035 (index `docs/adr/README.md`); ADR-0029 four-family Monte Carlo validation; ADR-0030 Touch ID owner presence; ADR-0031 provider readiness + paper acceptance v2; ADR-0032 governed crypto data house; ADR-0033 governed crypto crowding research + sandbox basis; ADR-0034 agent operating system v2 (harness); latest ADR-0035 generic study composition (projection-only). Every ADR id must be referenced here or in a rule.
 
 ## Architecture DAG (import-linter enforced — NEVER violate)
 `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_forecast`, `alpha_options`, `alpha_screener`, `alpha_research` ← `alpha_core`; `alpha_cli` ← everything; `alpha_mcp`, `alpha_web` ← `alpha_core` + public `alpha_cli` seams (top of DAG).
