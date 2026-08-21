@@ -24,6 +24,8 @@ GOLDEN_TABLE_SHA256 = "24d162cd90911e01f21fc8842ef404de37aa8c3271fa984094e74cd8d
 GOLDEN_BYTES_SHA256 = "e9be07ff3b444cfd6a6e95665f2c6853e2a283dc1416ec013285a3bbc25219cf"
 GOLDEN_OPERATOR_SHA256 = "1e50b85c3c9f271661acd37b5acaa09ac38e61dad8cb0903cc02b762d5b6331f"
 GOLDEN_OPERATOR_BYTES_SHA256 = "c8bb882774a36c3844059d296811ee5938d0a86119be535718117b24ffd41688"
+GOLDEN_WORKSPACE_SHA256 = "e002ac9559aecd73fc77d4d082e986a2ef863958a281202ee62beb48e443c349"
+GOLDEN_WORKSPACE_BYTES_SHA256 = "8342ee5feac46aea8b0f44dde75aa8dd0f2093b2b52d706d744f24906d97eb0f"
 
 
 def _event_table() -> EventTableV1:
@@ -107,6 +109,19 @@ def _operator_subprocess_bytes(*, seed: str, timezone: str) -> bytes:
     return subprocess.check_output([sys.executable, "-c", code], cwd=ROOT, env=environment).strip()
 
 
+def _workspace_subprocess_bytes(*, seed: str, timezone: str) -> bytes:
+    code = (
+        "import json; "
+        "from tests.unit.study.test_projections import workspace; "
+        "print(json.dumps(workspace().to_dict(), sort_keys=True, "
+        "separators=(',', ':'), allow_nan=False))"
+    )
+    environment = os.environ.copy()
+    environment["PYTHONHASHSEED"] = seed
+    environment["TZ"] = timezone
+    return subprocess.check_output([sys.executable, "-c", code], cwd=ROOT, env=environment).strip()
+
+
 def test_study_contract_identity_is_golden_and_environment_independent() -> None:
     utc_bytes = _subprocess_bytes(seed="1", timezone="UTC")
     brisbane_bytes = _subprocess_bytes(seed="999", timezone="Australia/Brisbane")
@@ -125,3 +140,13 @@ def test_registered_operator_identity_is_golden_and_environment_independent() ->
     payload = json.loads(utc_bytes)
     assert payload["content_sha256"] == GOLDEN_OPERATOR_SHA256
     assert hashlib.sha256(utc_bytes).hexdigest() == GOLDEN_OPERATOR_BYTES_SHA256
+
+
+def test_workspace_identity_is_golden_and_environment_independent() -> None:
+    utc_bytes = _workspace_subprocess_bytes(seed="1", timezone="UTC")
+    brisbane_bytes = _workspace_subprocess_bytes(seed="999", timezone="Australia/Brisbane")
+
+    assert utc_bytes == brisbane_bytes
+    payload = json.loads(utc_bytes)
+    assert payload["content_sha256"] == GOLDEN_WORKSPACE_SHA256
+    assert hashlib.sha256(utc_bytes).hexdigest() == GOLDEN_WORKSPACE_BYTES_SHA256

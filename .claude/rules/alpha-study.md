@@ -29,6 +29,9 @@ no D1 reservation or launch authority.
   existing causal double-bottom detector.
 - `authority.py` — strict reference-only projections of existing ControlStore/run
   identities; it performs no live lookup, approval, reservation, or launch.
+- `projections.py` — typed finding copies, source-bound mechanism graphs,
+  non-executable advisor proposals, and reference-only workspace manifests. Every
+  relationship/action vocabulary is closed and every collection enforces its source kind.
 
 The package owns no persistence, CLI commands, UI, external dependencies, approvals,
 D1/D2 transitions, promotion, paper, broker, or order authority. Canonical projections

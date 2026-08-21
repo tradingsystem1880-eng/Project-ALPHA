@@ -103,3 +103,14 @@ approval, budget mutation, or verdict authority. Focused study tests, strict typ
 contracts, perturbed-environment golden determinism, fast gate, and independent Terra review pass;
 the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
 exact wheel import smoke.
+
+**Generic study composition S3c derived projections (2026-08-22)** ✅ — `alpha-study`
+adds strict content-hashed `FindingV1`, `MechanismGraphV1`, `AdvisorProposalV1`, and
+`StudyWorkspaceManifestV1` projections. Findings copy only registered typed D1/D2 fields with
+field-specific statuses and exact evidence provenance; graph node and edge vocabularies enforce
+source-kind semantics; advisor actions are closed non-executable recommendation codes; workspace
+collections enforce exact reference kinds and contain no raw data or mutable authority. All objects
+remain `authority: none` and `verification: not_checked`. Focused study tests, strict typing,
+perturbed-environment golden determinism, fast gate, and independent Terra review pass; the
+canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and exact
+wheel import smoke.

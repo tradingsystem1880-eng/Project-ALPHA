@@ -115,9 +115,13 @@
       "rollback": "Revert the S3c projection commit; retain authoritative artifacts, ControlStore records, and existing workspace/UI behavior unchanged",
       "files": [
         "packages/alpha-study/**",
-        "tests/unit/study/**"
+        "tests/unit/study/**",
+        ".claude/rules/alpha-study.md",
+        "CLAUDE.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BUILD-STATUS.md"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S4 one existing operator parity slice",
@@ -129,7 +133,7 @@
         "tests/unit/study/**",
         "tests/bias_guards/**"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "S5 blind semantic projection",

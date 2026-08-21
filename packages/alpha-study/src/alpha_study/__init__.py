@@ -9,6 +9,15 @@ from alpha_study.authority import (
     ExplorationMandateV1,
     OperatorRegistrationV1,
 )
+from alpha_study.projections import (
+    AdvisorProposalV1,
+    FindingV1,
+    MechanismEdgeV1,
+    MechanismGraphV1,
+    MechanismNodeV1,
+    ProjectionRefV1,
+    StudyWorkspaceManifestV1,
+)
 from alpha_study.tables import (
     EventRowV1,
     EventTableV1,
@@ -29,5 +38,12 @@ __all__ = [
     "DetectorValidationV1",
     "ExplorationMandateV1",
     "OperatorRegistrationV1",
+    "AdvisorProposalV1",
+    "FindingV1",
+    "MechanismEdgeV1",
+    "MechanismGraphV1",
+    "MechanismNodeV1",
+    "ProjectionRefV1",
+    "StudyWorkspaceManifestV1",
     "__version__",
 ]
