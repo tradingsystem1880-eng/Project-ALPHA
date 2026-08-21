@@ -72,8 +72,14 @@ projections must not be forced into an under-specified universal event row.
 - Blind semantic delivery is split deliberately. Its first slice obtains each cutoff from the
   mechanically recomputed `d0_acceptance.json` measurement event and rejects unless normalized
   identities and clocks in integrity-checked `events.json` and `chart-data.json.events` exactly
-  match that acceptance source. A caller or browser never supplies the time, and the read path
-  does not rerun the detector. That slice cannot claim an owner label or freeze. A later additive
+  match that acceptance source. A caller or browser never supplies the time. The pure
+  `alpha_study` projection never imports or calls a detector; the CLI boundary invokes the existing
+  ControlStore D0 verifier, which mechanically recomputes the registered fixture before supplying
+  verified artifact bytes. The CLI emits a closed `VerifiedBlindSemanticReadV1` envelope whose
+  only keys are `schema`, `schema_version`, `source_verification`, `authority`, `run_id`,
+  `projection`, and `content_sha256`; `authority` is always `none`, and the hash covers the other
+  six canonical semantic fields rather than itself. That slice cannot claim an owner label or
+  freeze. A later additive
   SQLite v5 slice may add append-only
   semantic-definition/review events only with exact Touch ID receipt, payload-hash, and
   case-revision binding; it does not create a second research authority or any MCP capability.
@@ -95,12 +101,14 @@ execution order, verification, rollback, and scope. Its slices are:
 3. S2: empty `alpha-study` package seam and import boundary.
 4. S3: strict canonical projections and provenance.
 5. S4: one existing operator parity slice with D0/bias/determinism checks.
-6. S5a: nonpersistent server-masked semantic read projection from verified D0 artifacts.
-7. S5b: additive SQLite v5 semantic definition/review events and Touch ID binding.
-8. S5c: semantic presentation inside the existing Research screen.
-9. S6: owner-only D1 integration mapped to existing contracts and ledgers.
-10. S7: individually approved external adapters/workers/oracles.
-11. S8: acceptance studies, UI projections, and cleanup only after parity.
+6. S5a1: pure byte-bound non-authoritative semantic projection contract.
+7. S5a2: verified completed-D0 artifact resolver, CLI envelope, and future-poison guard.
+8. S5a3: web-only GET projection with no frontend or mutation surface.
+9. S5b: additive SQLite v5 semantic definition/review events and Touch ID binding.
+10. S5c: semantic presentation inside the existing Research screen.
+11. S6: owner-only D1 integration mapped to existing contracts and ledgers.
+12. S7: individually approved external adapters/workers/oracles.
+13. S8: acceptance studies, UI projections, and cleanup only after parity.
 
 Every slice is additive and independently revertable. No later slice may widen scope
 because an external library or a favorable research result makes it convenient.

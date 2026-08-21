@@ -140,23 +140,59 @@
       "status": "done"
     },
     {
-      "title": "S5a server-masked semantic read projection",
-      "verify": "Before protected bias-guard edits run uv run python scripts/gate.py ack --reason \"Add future-poison protection for the blind semantic read projection\"; test missing, extra, changed, or mismatched acceptance/events/chart event identity and confirmed_at failures; run uv run pytest -q tests/unit/study tests/bias_guards tests/integration -k \"semantic or gallery or availability\" -m \"not network\", uv run python scripts/gate.py determinism, uv run python scripts/gate.py fast, and uv run python scripts/gate.py full before commit",
-      "expected": "A strict read-only projection takes each cutoff from the existing mechanically recomputed d0_acceptance.json measurements.planted_events event and rejects unless normalized identities and clocks in the separately integrity-checked events.json and chart-data.json.events match that acceptance source exactly. The read path does not rerun the detector and no caller or browser supplies an as-of time. It returns only rows and values available at that cutoff plus an aggregate masked count. It exposes no post-cutoff identity, clock, feature, value, or raw payload; creates no database event, owner receipt, reservation, attempt, job, D1/D2 transition, or owner-freeze claim; MCP remains unchanged.",
-      "rollback": "Revert the S5a projection/API commit; retain D0 artifacts, the existing Research UI, schema v4, and owner-action surface unchanged",
+      "title": "S5a1 byte-bound blind semantic contract",
+      "verify": "Run strict schema/tamper/cardinality/value/order tests, the study suite, mypy, Ruff, all import contracts, perturbed-environment determinism, independent review, fast gate, and full gate before commit",
+      "expected": "The pure alpha_study contract hashes complete D0 acceptance/events/chart bytes, requires exact one-event identity and clock agreement, derives numeric chart points only from the bound chart series, and emits only pre-cutoff values plus an aggregate masked count. It remains authority none, semantic status unfrozen, and lineage not_checked; it never imports or calls a detector.",
+      "rollback": "Revert the additive S5a1 package commit; retain every D0 artifact and CLI/web behavior unchanged",
       "files": [
         "packages/alpha-study/**",
-        "apps/alpha-cli/**",
-        "apps/alpha-web/src/**",
         "tests/unit/study/**",
-        "tests/bias_guards/**",
-        "tests/integration/**",
         ".claude/rules/alpha-study.md",
         "CLAUDE.md",
         "docs/ARCHITECTURE.md",
         "docs/BUILD-STATUS.md"
       ],
+      "status": "done"
+    },
+    {
+      "title": "S5a2 verified D0 resolver and CLI semantic read",
+      "verify": "Before protected bias-guard edits run uv run python scripts/gate.py ack --reason \"Add future-poison protection for the verified blind semantic read\"; test bounded selected-byte reads, verify/read race hashes, wrong lineage/no D0, manifest/artifact tamper, no-write database equality, CLI JSON, and the unchanged 62-tool MCP denial. The future-poison guard compares cutoff and every emitted pre-cutoff point identity, clock, and value while allowing the bound chart hash and aggregate masked_count to change; it asserts no post-cutoff identity, clock, feature, or value is emitted, and its must-fail leaky twin exposes the appended poisoned post-cutoff value. Run focused, determinism, fast, and full gates before commit",
+      "expected": "A narrow read-only ControlStore helper derives the current active exploration contract from the research case, including the exploration parent when the current contract is confirmatory, and rejects unless exactly one attempt for that active lineage has phase pilot, kind d0-synthetic-pilot, status completed, an immutable run, and the registered double-bottom operator. It invokes the existing mechanical D0 verifier, then reads only bounded regular d0_acceptance.json, events.json, and chart-data.json files and rechecks each selected byte hash against the verified manifest. The CLI accepts only PROJECT_ID and --json and returns a strict VerifiedBlindSemanticReadV1 whose exact keys are schema, schema_version, source_verification, authority, run_id, projection, and content_sha256; their fixed values include schema VerifiedBlindSemanticReadV1, schema_version 1, source_verification verified_completed_d0_recomputation, and authority none. content_sha256 is the established canonical JSON SHA-256 of the other six fields and excludes itself; no extra key is accepted. It creates no event, reservation, attempt, receipt, job, phase transition, owner-freeze claim, or MCP tool.",
+      "rollback": "Revert the S5a2 read-helper/CLI/guard commit; retain S5a1 and all immutable D0 records unchanged",
+      "files": [
+        "apps/alpha-cli/src/alpha_cli/control_store.py",
+        "apps/alpha-cli/src/alpha_cli/research_cmds.py",
+        "apps/alpha-cli/src/alpha_cli/study_semantic.py",
+        "tests/unit/test_research_control_store.py",
+        "tests/integration/test_research_cli.py",
+        "tests/integration/test_research_mcp.py",
+        "tests/bias_guards/test_semantic_projection_future_poison.py",
+        ".claude/rules/alpha-cli.md",
+        "docs/**",
+        "CLAUDE.md"
+      ],
       "status": "in_progress"
+    },
+    {
+      "title": "S5a3 web-only semantic GET projection",
+      "verify": "Freeze strict Pydantic models for VerifiedBlindSemanticReadV1, then run subprocess-wrapper, REST failure, malformed/extra response, OpenAPI freshness, generated-contract, unchanged mutation-route, unchanged 62-tool MCP, fast, and full gates before commit",
+      "expected": "A GET endpoint returns only the verified CLI envelope through the existing subprocess seam. Generated OpenAPI/client/type artifacts may change to mirror the server contract, but there is no frontend presentation or UI behavior. No caller cutoff, browser-side mask, owner action, job, D1/D2 control, promotion, paper, broker, order, or MCP capability is added.",
+      "rollback": "Revert the S5a3 web projection commit; retain the verified CLI read and all existing Workstation screens unchanged",
+      "files": [
+        "apps/alpha-web/src/alpha_web/_research.py",
+        "apps/alpha-web/src/alpha_web/api/models.py",
+        "apps/alpha-web/src/alpha_web/api/research.py",
+        "apps/alpha-web/frontend/openapi.json",
+        "apps/alpha-web/frontend/src/api/generated.ts",
+        "apps/alpha-web/frontend/src/api/client.ts",
+        "apps/alpha-web/frontend/src/api/types.ts",
+        "tests/unit/test_web_research_projection.py",
+        "tests/integration/test_web_api_research.py",
+        "tests/integration/test_research_mcp.py",
+        "docs/**",
+        "CLAUDE.md"
+      ],
+      "status": "pending"
     },
     {
       "title": "S5b SQLite v5 semantic definition and owner review",

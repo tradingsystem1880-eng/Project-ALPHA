@@ -152,3 +152,21 @@ actions, and UI are still pending. Focused semantic tests, the study+bias suite,
 15 import contracts,
 perturbed-environment determinism, fast gate, and independent Terra review pass. S5a remains in
 progress until the existing CLI verifier, server projection, and protected future-poison slice land.
+
+**Generic study composition S5a2 boundary freeze (2026-08-22)** 🚧 — the next read slice is
+split from web delivery. A narrow ControlStore resolver will reuse the existing completed-D0
+mechanical verifier, then return only bounded acceptance/events/chart bytes after rechecking their
+hashes against the verified manifest. This verifier may recompute the registered synthetic fixture;
+the pure `alpha_study` projection still never imports or calls a detector. The CLI response is frozen
+as `VerifiedBlindSemanticReadV1`: an outer verified-source envelope around the unchanged inner
+`BlindSemanticProjectionV1`, with no operational timestamp or mutation authority. REST delivery is
+deferred to S5a3. This planning refinement changes no runtime, database, owner action, MCP, D1/D2,
+promotion, paper, broker, or order behavior.
+
+The S5a2 envelope is now frozen to exactly seven keys (`schema`, `schema_version`,
+`source_verification`, `authority`, `run_id`, `projection`, and `content_sha256`), with explicit
+`authority: none` and a self-excluding canonical hash. Selection is limited to the unique completed
+pilot attempt on the current active exploration lineage; a confirmation case resolves through its
+exploration parent. The future-poison invariant compares only cutoff and emitted pre-cutoff point
+semantics because the source hash and aggregate masked count are expected to change when future
+data is appended. This clarification is planning-only.
