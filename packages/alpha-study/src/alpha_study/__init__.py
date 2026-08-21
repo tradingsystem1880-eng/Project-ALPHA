@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_study.adapters import (
+    adapt_double_bottom_events,
+    project_double_bottom_events,
+)
 from alpha_study.authority import (
     DetectorValidationV1,
     ExplorationMandateV1,
@@ -29,12 +33,14 @@ from alpha_study.values import FeatureInputRefV1, FeatureValueV1
 __version__ = version("alpha-study")
 
 __all__ = [
+    "adapt_double_bottom_events",
     "EventRowV1",
     "EventTableV1",
     "FactorObservationTableV1",
     "FactorObservationV1",
     "FeatureInputRefV1",
     "FeatureValueV1",
+    "project_double_bottom_events",
     "DetectorValidationV1",
     "ExplorationMandateV1",
     "OperatorRegistrationV1",

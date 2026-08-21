@@ -114,3 +114,16 @@ remain `authority: none` and `verification: not_checked`. Focused study tests, s
 perturbed-environment golden determinism, fast gate, and independent Terra review pass; the
 canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and exact
 wheel import smoke.
+
+**Generic study composition S4 double-bottom parity (2026-08-22)** ✅ — the first generic
+vertical calls the existing `detect_double_bottom_events` source of truth exactly once and projects
+its geometry into content-hashed `EventTableV1` rows. The adapter binds the closed registry, frozen
+parameter hash, exact artifact/dataset hash, provider/frequency/venue lineage, and the detector's
+full causal availability clock. Tests reproduce the registered 60-minute `d0-planted`,
+`d0-monotonic`, and `d0-single-trough` identities and 1/0/0 results; future-append, delayed-input,
+must-fail leaky-twin, round-trip, and perturbed-environment golden guards pass. The existing D1
+confirmation-bar mapping can precede full causal knowledge under delayed earlier inputs, so an
+`EventStudyObservation` bridge is explicitly deferred rather than introducing look-ahead. The
+198-test study+bias suite, strict typing, all 15 import contracts, fast gate, and independent Terra
+review pass. The canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel
+builds, and exact wheel import smoke.

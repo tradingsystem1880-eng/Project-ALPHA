@@ -32,6 +32,9 @@ no D1 reservation or launch authority.
 - `projections.py` — typed finding copies, source-bound mechanism graphs,
   non-executable advisor proposals, and reference-only workspace manifests. Every
   relationship/action vocabulary is closed and every collection enforces its source kind.
+- `adapters.py` — one thin projection of the registered existing double-bottom detector into
+  `EventTableV1`; it duplicates no geometry, requires artifact/dataset hash agreement, and uses
+  the detector's full causal `confirmed_at` clock. Event-study inference remains deferred.
 
 The package owns no persistence, CLI commands, UI, external dependencies, approvals,
 D1/D2 transitions, promotion, paper, broker, or order authority. Canonical projections

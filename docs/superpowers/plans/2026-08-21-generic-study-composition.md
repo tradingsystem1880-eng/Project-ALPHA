@@ -131,9 +131,13 @@
       "files": [
         "packages/alpha-study/**",
         "tests/unit/study/**",
-        "tests/bias_guards/**"
+        "tests/bias_guards/**",
+        ".claude/rules/alpha-study.md",
+        "CLAUDE.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BUILD-STATUS.md"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S5 blind semantic projection",
@@ -147,7 +151,7 @@
         "tests/unit/study/**",
         "tests/integration/**"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "S6 owner-only D1 integration",

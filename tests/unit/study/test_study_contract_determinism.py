@@ -26,6 +26,8 @@ GOLDEN_OPERATOR_SHA256 = "1e50b85c3c9f271661acd37b5acaa09ac38e61dad8cb0903cc02b7
 GOLDEN_OPERATOR_BYTES_SHA256 = "c8bb882774a36c3844059d296811ee5938d0a86119be535718117b24ffd41688"
 GOLDEN_WORKSPACE_SHA256 = "e002ac9559aecd73fc77d4d082e986a2ef863958a281202ee62beb48e443c349"
 GOLDEN_WORKSPACE_BYTES_SHA256 = "8342ee5feac46aea8b0f44dde75aa8dd0f2093b2b52d706d744f24906d97eb0f"
+GOLDEN_ADAPTER_SHA256 = "73d2c92d584b847dd93c7ddfff70cadcd302c1d528dd17000956dccbb0ff9d2a"
+GOLDEN_ADAPTER_BYTES_SHA256 = "095445e059b1efb61fa8178aae4268af0c157ef42df05bcfc94a34031c0e7715"
 
 
 def _event_table() -> EventTableV1:
@@ -122,6 +124,21 @@ def _workspace_subprocess_bytes(*, seed: str, timezone: str) -> bytes:
     return subprocess.check_output([sys.executable, "-c", code], cwd=ROOT, env=environment).strip()
 
 
+def _adapter_subprocess_bytes(*, seed: str, timezone: str) -> bytes:
+    code = (
+        "import json; "
+        "from alpha_study import adapt_double_bottom_events; "
+        "from tests.unit.study.test_double_bottom_adapter import _artifact,_bars,LOWS,SPEC; "
+        "value=adapt_double_bottom_events(_bars(LOWS),SPEC,study_id='study-double-bottom',"
+        "input_artifact=_artifact(),asset_class='equity'); "
+        "print(json.dumps(value.to_dict(), sort_keys=True, separators=(',', ':'), allow_nan=False))"
+    )
+    environment = os.environ.copy()
+    environment["PYTHONHASHSEED"] = seed
+    environment["TZ"] = timezone
+    return subprocess.check_output([sys.executable, "-c", code], cwd=ROOT, env=environment).strip()
+
+
 def test_study_contract_identity_is_golden_and_environment_independent() -> None:
     utc_bytes = _subprocess_bytes(seed="1", timezone="UTC")
     brisbane_bytes = _subprocess_bytes(seed="999", timezone="Australia/Brisbane")
@@ -150,3 +167,13 @@ def test_workspace_identity_is_golden_and_environment_independent() -> None:
     payload = json.loads(utc_bytes)
     assert payload["content_sha256"] == GOLDEN_WORKSPACE_SHA256
     assert hashlib.sha256(utc_bytes).hexdigest() == GOLDEN_WORKSPACE_BYTES_SHA256
+
+
+def test_adapter_identity_is_golden_and_environment_independent() -> None:
+    utc_bytes = _adapter_subprocess_bytes(seed="1", timezone="UTC")
+    brisbane_bytes = _adapter_subprocess_bytes(seed="999", timezone="Australia/Brisbane")
+
+    assert utc_bytes == brisbane_bytes
+    payload = json.loads(utc_bytes)
+    assert payload["content_sha256"] == GOLDEN_ADAPTER_SHA256
+    assert hashlib.sha256(utc_bytes).hexdigest() == GOLDEN_ADAPTER_BYTES_SHA256
