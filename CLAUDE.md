@@ -146,6 +146,17 @@ paper trading, QuantPad, Workstation v1–v4, Research Scientist program, resear
 R1–R6, four-family Monte Carlo) is relocated verbatim to `docs/BUILD-STATUS.md` —
 consult it before changing any governed surface; append new delivery records there.
 
+**Generic study composition S5b current state:** the CLI-owned SQLite control plane is schema v5
+with a protected append-only semantic definition/review/freeze ledger and exact v4 backup/lossless
+receipt-check migration boundary. Canonical persisted reads fail closed on hash, sequence,
+transition, source, or receipt linkage defects; after a committed-v5 protected-object failure,
+recovery is an owner-approved forensic assessment followed by a forward migration. The existing
+owner-auth challenge/perform routes special-dispatch `record_semantic_event` through one atomic
+Touch ID receipt/event transaction with read-only response recovery; there is no direct semantic-write
+CLI command. `alpha-study` remains projection-only, the MCP surface remains pinned at 62 tools,
+owner-only D1/D2/promotion authority is unchanged, and S5b adds no screen, UI authority, or public
+semantic presentation.
+
 ## Claude Code harness (mechanical enforcement)
 Claude Code sessions in this repo run under a hard-blocking hook harness (full doc:
 `docs/operations/claude-code-harness.md`). The prose rules above stay authoritative; the harness

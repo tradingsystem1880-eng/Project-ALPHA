@@ -218,7 +218,7 @@
         "tests/integration/test_web_api_research.py",
         "docs/**"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S5c existing-screen semantic presentation",

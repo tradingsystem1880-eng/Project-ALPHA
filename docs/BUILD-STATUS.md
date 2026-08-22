@@ -195,3 +195,24 @@ pilot attempt on the current active exploration lineage; a confirmation case res
 exploration parent. The future-poison invariant compares only cutoff and emitted pre-cutoff point
 semantics because the source hash and aggregate masked count are expected to change when future
 data is appended. This clarification is planning-only.
+
+**Generic study composition S5b semantic owner-event delivery (2026-08-23)** ✅ — the bounded S5b
+implementation is delivered across `5fd3d02`, `07d48bb`, `3f18f4c`, `9ca9377`, and `c72b9ee`.
+The CLI-owned ControlStore now opens at schema v5, with the exact v4 backup and lossless
+`owner_action_receipts` `CHECK` rebuild, protected append-only `research_semantic_events` DDL,
+canonical `sd_`/`sr_`/`sf_` artifacts and `se_` event identities, contiguous definition→review→freeze
+transitions, receipt/event bijection, fail-closed persisted reads, and explicit owner-approved
+forensic forward recovery after a committed-v5 protected-object failure. The owner-auth seam binds
+the server-derived artifact and current case/source/head to one fresh Touch ID assertion and commits
+credential counter, challenge consumption, exactly one receipt, and exactly one semantic event in
+one transaction; exact response-loss retries are read-only linkage-validated recovery. The existing
+owner-auth REST challenge/perform routes accept the single closed `record_semantic_event` literal and
+special-dispatch that seam without `_action_argv`, `_run_json`, a subprocess, CLI job, or second
+mutator; existing actions retain their behavior. Focused owner-auth/API, semantic projection/CLI,
+web, and MCP tests passed (including the exact 62-tool pin); the final canonical full gate passed
+4,206 tests with 93.01% coverage, OpenAPI freshness, 14-wheel build/import smoke, typing, imports,
+lint, harness, and semgrep. The verified semantic CLI read and existing semantic GET bytes remain
+unfrozen and unchanged in meaning; there is no direct semantic-write CLI command, new REST route,
+screen, handwritten frontend or frontend-derived authority, MCP semantic capability, D1/D2 or
+promotion authority, holdout access, paper, broker, or order widening. S5c presentation remains
+pending.
