@@ -56,6 +56,87 @@ def _project(store: ControlStore, project_id: str = PROJECT_ID) -> None:
     )
 
 
+def _v4_database(tmp_path: Path) -> tuple[Path, str]:
+    """Build a committed v4 store without opening the v5 runtime path."""
+    root = tmp_path / "control"
+    root.mkdir()
+    database = root / "workstation.sqlite3"
+    connection = sqlite3.connect(database, isolation_level=None)
+    try:
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("BEGIN IMMEDIATE")
+        control_store_module._execute_static_sql_script(connection, control_store_module._SCHEMA)
+        control_store_module._execute_static_sql_script(connection, control_store_module._SCHEMA_V2)
+        control_store_module._execute_static_sql_script(connection, control_store_module._SCHEMA_V3)
+        control_store_module._execute_static_sql_script(connection, control_store_module._SCHEMA_V4)
+        connection.execute(
+            """INSERT INTO projects VALUES (?, ?, ?, ?, 'active', NULL, NULL, ?, ?)""",
+            (
+                PROJECT_ID,
+                "v4 migration project",
+                "Preserve this v4 row",
+                "Reject if migration loses it",
+                "2026-08-13T00:00:00.000000Z",
+                "2026-08-13T00:00:00.000000Z",
+            ),
+        )
+        control_store_module._execute_static_sql_script(
+            connection, control_store_module._GOVERNANCE_BACKFILL
+        )
+        connection.execute("PRAGMA user_version = 4")
+        connection.commit()
+    finally:
+        connection.close()
+    return database, PROJECT_ID
+
+
+def _insert_v4_receipt(database: Path) -> list[tuple[object, ...]]:
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(
+            "INSERT INTO owner_credentials VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("cred-1", b"key", 1, "owner", "[]", "2026-08-13T00:00:00Z", None),
+        )
+        connection.execute(
+            "INSERT INTO owner_auth_challenges VALUES (?, 'action', ?, NULL, ?, ?, ?, NULL, NULL)",
+            (
+                "challenge-1",
+                b"challenge",
+                '{"action_type":"approve_exploration"}',
+                "2026-08-13T00:00:00Z",
+                "2026-08-13T01:00:00Z",
+            ),
+        )
+        connection.execute(
+            """INSERT INTO owner_action_receipts VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )""",
+            (
+                "receipt-1",
+                "challenge-1",
+                "cred-1",
+                "owner",
+                "approve_exploration",
+                PROJECT_ID,
+                "a" * 64,
+                "b" * 64,
+                "approve",
+                "test receipt",
+                "c" * 64,
+                "d" * 64,
+                '{"status":"performed"}',
+                "2026-08-13T00:00:01Z",
+            ),
+        )
+        rows = connection.execute(
+            "SELECT * FROM owner_action_receipts ORDER BY receipt_id"
+        ).fetchall()
+        connection.commit()
+        return rows
+    finally:
+        connection.close()
+
+
 def _source_pack(store: ControlStore) -> str:
     source = store.create_research_source(
         PROJECT_ID,
@@ -871,7 +952,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 4
+    assert SCHEMA_VERSION == 5
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -926,6 +1007,193 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
             parameter_space={},
             at=START,
         )
+
+
+def test_fresh_store_is_v5_with_protected_semantic_ledger_and_closed_receipt_action(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / "workstation.sqlite3"
+    connection = sqlite3.connect(database)
+    try:
+        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+        objects = {
+            str(row[0])
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+            )
+        }
+        assert {
+            "research_semantic_events",
+            "idx_research_semantic_events_contract",
+            "idx_research_semantic_events_source",
+            "idx_research_semantic_events_artifact",
+            "idx_research_semantic_events_one_review",
+            "idx_research_semantic_events_one_freeze",
+            "research_semantic_events_no_update",
+            "research_semantic_events_no_delete",
+        } <= objects
+        table_info = connection.execute("PRAGMA table_info(research_semantic_events)").fetchall()
+        assert [str(row[1]) for row in table_info] == [
+            "event_id",
+            "event_sha256",
+            "project_id",
+            "sequence",
+            "event_type",
+            "case_contract_id",
+            "source_contract_id",
+            "case_revision",
+            "prior_semantic_head_sha256",
+            "semantic_artifact_id",
+            "semantic_artifact_sha256",
+            "verified_read_sha256",
+            "projection_sha256",
+            "run_id",
+            "cutoff_confirmed_at",
+            "definition_id",
+            "review_id",
+            "review_decision",
+            "payload_json",
+            "payload_sha256",
+            "receipt_id",
+            "actor",
+            "reason",
+            "recorded_at",
+        ]
+        receipt_sql = str(
+            connection.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'owner_action_receipts'"
+            ).fetchone()[0]
+        )
+        assert "record_semantic_event" in receipt_sql
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    finally:
+        connection.close()
+
+
+def test_v4_to_v5_rebuild_is_lossless_and_retains_exact_backup(tmp_path: Path) -> None:
+    database, _ = _v4_database(tmp_path)
+    before_rows = _insert_v4_receipt(database)
+    before_connection = sqlite3.connect(database)
+    try:
+        before_digest = hashlib.sha256(
+            json.dumps(before_rows, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    finally:
+        before_connection.close()
+
+    assert ControlStore(tmp_path).list_projects()[0]["project_id"] == PROJECT_ID
+    migrated = sqlite3.connect(database)
+    backup = sqlite3.connect(database.with_name("workstation.sqlite3.v4.bak"))
+    try:
+        assert migrated.execute("PRAGMA user_version").fetchone() == (5,)
+        after_rows = migrated.execute(
+            "SELECT * FROM owner_action_receipts ORDER BY receipt_id"
+        ).fetchall()
+        after_digest = hashlib.sha256(
+            json.dumps(after_rows, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+        assert after_rows == before_rows
+        assert len(after_rows) == len(before_rows)
+        assert after_digest == before_digest
+        assert backup.execute("PRAGMA user_version").fetchone() == (4,)
+        assert backup.execute("SELECT * FROM owner_action_receipts").fetchall() == before_rows
+    finally:
+        migrated.close()
+        backup.close()
+
+
+def test_v4_to_v5_failure_rolls_back_and_exact_retry_succeeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database, _ = _v4_database(tmp_path)
+    original = control_store_module._SCHEMA_V5
+    monkeypatch.setattr(
+        control_store_module,
+        "_SCHEMA_V5",
+        original + "\nTHIS IS AN INJECTED V5 MIGRATION FAILURE;",
+    )
+    with pytest.raises(DataError, match="cannot initialize control store"):
+        ControlStore(tmp_path).list_projects()
+    source = sqlite3.connect(database)
+    backup = sqlite3.connect(database.with_name("workstation.sqlite3.v4.bak"))
+    try:
+        assert source.execute("PRAGMA user_version").fetchone() == (4,)
+        assert backup.execute("PRAGMA user_version").fetchone() == (4,)
+        assert (
+            source.execute(
+                "SELECT 1 FROM sqlite_master WHERE name = 'research_semantic_events'"
+            ).fetchone()
+            is None
+        )
+    finally:
+        source.close()
+        backup.close()
+    monkeypatch.setattr(control_store_module, "_SCHEMA_V5", original)
+    assert ControlStore(tmp_path).list_projects()[0]["project_id"] == PROJECT_ID
+
+
+def test_v4_to_v5_rejects_unsafe_existing_backup(tmp_path: Path) -> None:
+    database, _ = _v4_database(tmp_path)
+    backup = database.with_name("workstation.sqlite3.v4.bak")
+    backup.mkdir()
+    with pytest.raises(DataError, match="backup is not a file"):
+        ControlStore(tmp_path).list_projects()
+    connection = sqlite3.connect(database)
+    try:
+        assert connection.execute("PRAGMA user_version").fetchone() == (4,)
+    finally:
+        connection.close()
+
+
+def test_concurrent_v4_migrators_have_one_winner_and_one_backup(tmp_path: Path) -> None:
+    database, _ = _v4_database(tmp_path)
+    barrier = threading.Barrier(2)
+    errors: list[BaseException] = []
+
+    def migrate() -> None:
+        try:
+            barrier.wait(timeout=5)
+            ControlStore(tmp_path).list_projects()
+        except BaseException as exc:  # pragma: no cover - assertion reports any race failure
+            errors.append(exc)
+
+    threads = [threading.Thread(target=migrate) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []
+    connection = sqlite3.connect(database)
+    try:
+        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+    finally:
+        connection.close()
+    assert database.with_name("workstation.sqlite3.v4.bak").is_file()
+
+
+def test_v5_missing_protected_semantic_object_fails_closed_without_healing(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / "workstation.sqlite3"
+    connection = sqlite3.connect(database)
+    connection.execute("DROP INDEX idx_research_semantic_events_contract")
+    connection.commit()
+    connection.close()
+    with pytest.raises(DataError, match="protected schema object"):
+        ControlStore(tmp_path).list_projects()
+    check = sqlite3.connect(database)
+    try:
+        assert (
+            check.execute(
+                "SELECT 1 FROM sqlite_master WHERE name = 'idx_research_semantic_events_contract'"
+            ).fetchone()
+            is None
+        )
+    finally:
+        check.close()
 
 
 def test_schema_v1_migration_failure_rolls_back_all_ddl_and_retries(
@@ -1188,11 +1456,11 @@ def test_static_schema_helpers_fail_closed_and_rollback(
 def test_locked_v1_migration_rejects_unsupported_version_and_rolls_back(tmp_path: Path) -> None:
     database = tmp_path / "unsupported.sqlite3"
     connection = sqlite3.connect(database, isolation_level=None)
-    connection.execute("PRAGMA user_version = 5")
-    with pytest.raises(DataError, match="unsupported control store schema version 5"):
+    connection.execute("PRAGMA user_version = 99")
+    with pytest.raises(DataError, match="unsupported control store schema version 99"):
         control_store_module._migrate_schema_v1(connection, database)
     assert connection.in_transaction is False
-    assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+    assert connection.execute("PRAGMA user_version").fetchone() == (99,)
     connection.close()
 
 

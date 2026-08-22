@@ -92,7 +92,8 @@ type OwnerActionType = Literal[
 LEGACY_SCHEMA_VERSION: Final = 1
 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
 PREVIOUS_SCHEMA_VERSION: Final = 3
-SCHEMA_VERSION: Final = 4
+V4_SCHEMA_VERSION: Final = 4
+SCHEMA_VERSION: Final = 5
 DATABASE_NAME: Final = "workstation.sqlite3"
 _SEMANTIC_READ_ARTIFACTS: Final = ("d0_acceptance.json", "events.json", "chart-data.json")
 _SEMANTIC_READ_MAX_BYTES: Final = 8 * 1024 * 1024
@@ -1113,6 +1114,130 @@ BEFORE DELETE ON research_source_claim_anchors
 BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
 """
 
+_SCHEMA_V5_RECEIPT = """
+CREATE TABLE IF NOT EXISTS owner_action_receipts (
+    receipt_id TEXT PRIMARY KEY,
+    challenge_id TEXT NOT NULL UNIQUE REFERENCES owner_auth_challenges(challenge_id),
+    credential_id TEXT NOT NULL REFERENCES owner_credentials(credential_id),
+    actor TEXT NOT NULL,
+    action_type TEXT NOT NULL CHECK (action_type IN (
+        'screen_source_claim', 'reject_source_claim', 'revise_source_claim',
+        'freeze_source_pack', 'approve_exploration', 'reject_exploration',
+        'revise_exploration', 'launch_d1', 'approve_confirmation',
+        'reject_confirmation', 'launch_d2', 'record_final_disposition',
+        'record_semantic_event'
+    )),
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    artifact_hash TEXT NOT NULL,
+    expected_case_revision TEXT NOT NULL,
+    consequence_summary TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    request_hash TEXT NOT NULL,
+    assertion_hash TEXT NOT NULL,
+    outcome_json TEXT NOT NULL,
+    performed_at TEXT NOT NULL
+) STRICT;
+"""
+
+_SCHEMA_V5 = (
+    _SCHEMA_V5_RECEIPT
+    + """
+CREATE TABLE IF NOT EXISTS research_semantic_events (
+    event_id TEXT PRIMARY KEY,
+    event_sha256 TEXT NOT NULL UNIQUE,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL CHECK (sequence >= 1),
+    event_type TEXT NOT NULL CHECK (event_type IN ('definition', 'review', 'freeze')),
+    case_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    source_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    case_revision TEXT NOT NULL,
+    prior_semantic_head_sha256 TEXT NOT NULL,
+    semantic_artifact_id TEXT NOT NULL,
+    semantic_artifact_sha256 TEXT NOT NULL,
+    verified_read_sha256 TEXT NOT NULL,
+    projection_sha256 TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    cutoff_confirmed_at TEXT NOT NULL,
+    definition_id TEXT NOT NULL,
+    review_id TEXT,
+    review_decision TEXT CHECK (review_decision IN ('approve', 'reject')),
+    payload_json TEXT NOT NULL,
+    payload_sha256 TEXT NOT NULL,
+    receipt_id TEXT NOT NULL UNIQUE REFERENCES owner_action_receipts(receipt_id),
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE (project_id, sequence),
+    UNIQUE (project_id, semantic_artifact_id),
+    FOREIGN KEY (project_id, case_contract_id)
+        REFERENCES research_contracts(project_id, contract_id),
+    FOREIGN KEY (project_id, source_contract_id)
+        REFERENCES research_contracts(project_id, contract_id),
+    FOREIGN KEY (project_id, definition_id)
+        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
+    FOREIGN KEY (project_id, review_id)
+        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
+    CHECK (event_id = 'se_' || event_sha256),
+    CHECK (length(event_sha256) = 64),
+    CHECK (length(case_revision) = 64),
+    CHECK (length(prior_semantic_head_sha256) = 64),
+    CHECK (length(semantic_artifact_sha256) = 64),
+    CHECK (length(verified_read_sha256) = 64),
+    CHECK (length(projection_sha256) = 64),
+    CHECK (length(payload_sha256) = 64),
+    CHECK (length(run_id) = 16),
+    CHECK (
+        (event_type = 'definition'
+            AND substr(semantic_artifact_id, 1, 3) = 'sd_'
+            AND definition_id = semantic_artifact_id
+            AND review_id IS NULL AND review_decision IS NULL)
+        OR
+        (event_type = 'review'
+            AND substr(semantic_artifact_id, 1, 3) = 'sr_'
+            AND substr(definition_id, 1, 3) = 'sd_'
+            AND review_id = semantic_artifact_id
+            AND review_decision IS NOT NULL)
+        OR
+        (event_type = 'freeze'
+            AND substr(semantic_artifact_id, 1, 3) = 'sf_'
+            AND substr(definition_id, 1, 3) = 'sd_'
+            AND substr(review_id, 1, 3) = 'sr_'
+            AND review_decision IS NULL)
+    ),
+    CHECK (semantic_artifact_sha256 = substr(semantic_artifact_id, 4))
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_owner_action_receipts_project
+    ON owner_action_receipts(project_id, performed_at, receipt_id);
+CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_update
+BEFORE UPDATE ON owner_action_receipts
+BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_delete
+BEFORE DELETE ON owner_action_receipts
+BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
+
+CREATE INDEX IF NOT EXISTS idx_research_semantic_events_contract
+    ON research_semantic_events(project_id, case_contract_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_research_semantic_events_source
+    ON research_semantic_events(project_id, source_contract_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_research_semantic_events_artifact
+    ON research_semantic_events(project_id, verified_read_sha256, sequence);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_semantic_events_one_review
+    ON research_semantic_events(project_id, definition_id)
+    WHERE event_type = 'review';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_semantic_events_one_freeze
+    ON research_semantic_events(project_id, definition_id)
+    WHERE event_type = 'freeze';
+
+CREATE TRIGGER IF NOT EXISTS research_semantic_events_no_update
+BEFORE UPDATE ON research_semantic_events
+BEGIN SELECT RAISE(ABORT, 'research semantic events are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_semantic_events_no_delete
+BEFORE DELETE ON research_semantic_events
+BEGIN SELECT RAISE(ABORT, 'research semantic events are append-only'); END;
+"""
+)
+
 # Executed exactly once, inside the schema-v2 writer transaction (migration or fresh creation).
 # It must never run on a steady-state open: a re-executed backfill would silently re-derive a
 # lost governance row from the caller-controlled ``created_at`` date rule, and the write lock it
@@ -1139,6 +1264,23 @@ _EXPECTED_SCHEMA_OBJECTS: Final = frozenset(
     + _DDL_OBJECT_NAME.findall(_SCHEMA_V3)
     + _DDL_OBJECT_NAME.findall(_SCHEMA_V4)
 )
+_PROTECTED_V5_SCHEMA_OBJECTS: Final = frozenset(
+    {
+        "owner_action_receipts",
+        "idx_owner_action_receipts_project",
+        "owner_action_receipts_no_update",
+        "owner_action_receipts_no_delete",
+        "research_semantic_events",
+        "idx_research_semantic_events_contract",
+        "idx_research_semantic_events_source",
+        "idx_research_semantic_events_artifact",
+        "idx_research_semantic_events_one_review",
+        "idx_research_semantic_events_one_freeze",
+        "research_semantic_events_no_update",
+        "research_semantic_events_no_delete",
+    }
+)
+_EXPECTED_HEALABLE_SCHEMA_OBJECTS: Final = _EXPECTED_SCHEMA_OBJECTS - _PROTECTED_V5_SCHEMA_OBJECTS
 
 
 def _required_text(value: object, field: str, *, max_length: int = _MAX_TEXT) -> str:
@@ -1490,6 +1632,110 @@ def _verified_v3_backup(connection: sqlite3.Connection, database: Path) -> None:
             temporary.unlink()
 
 
+def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
+    """Create one atomic, integrity-checked backup before the v4->v5 migration."""
+    backup = database.with_name(f"{database.name}.v4.bak")
+    if backup.is_symlink():
+        raise DataError(f"control store migration backup must not be a symlink: {backup}")
+    if backup.exists():
+        if not backup.is_file():
+            raise DataError(f"control store migration backup is not a file: {backup}")
+        existing = sqlite3.connect(backup)
+        try:
+            integrity = existing.execute("PRAGMA integrity_check").fetchone()
+            version = existing.execute("PRAGMA user_version").fetchone()
+            fingerprint = _logical_database_fingerprint(existing)
+        finally:
+            existing.close()
+        if integrity != ("ok",) or version != (V4_SCHEMA_VERSION,):
+            raise DataError("existing control store v4 migration backup is invalid")
+        if fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("existing control store v4 migration backup does not match")
+        return
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
+    os.close(fd)
+    temporary = Path(raw_tmp)
+    snapshot: sqlite3.Connection | None = None
+    target: sqlite3.Connection | None = None
+    try:
+        snapshot = sqlite3.connect(database, timeout=5.0, isolation_level=None)
+        snapshot.execute("PRAGMA query_only = ON")
+        snapshot.execute("PRAGMA busy_timeout = 5000")
+        snapshot.execute("BEGIN")
+        target = sqlite3.connect(temporary)
+        snapshot.backup(target)
+        if target.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+            raise DataError("cannot verify control store v4 migration backup")
+        if target.execute("PRAGMA user_version").fetchone() != (V4_SCHEMA_VERSION,):
+            raise DataError("cannot verify control store v4 migration backup version")
+        target_fingerprint = _logical_database_fingerprint(target)
+        target.close()
+        target = None
+        if target_fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("control store v4 migration backup does not match")
+        os.replace(temporary, backup)
+    finally:
+        if target is not None:
+            target.close()
+        if snapshot is not None:
+            if snapshot.in_transaction:
+                snapshot.rollback()
+            snapshot.close()
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _owner_receipt_rows_digest(connection: sqlite3.Connection, table: str) -> str:
+    if table not in {"owner_action_receipts", "owner_action_receipts_v4_old"}:
+        raise DataError("invalid owner receipt digest table")
+    rows = connection.execute(
+        f"SELECT * FROM {table} ORDER BY receipt_id"  # noqa: S608 - closed static table names
+    ).fetchall()
+    arrays = [list(row) for row in rows]
+    return hashlib.sha256(_canonical_json(arrays, "owner action receipt rows").encode()).hexdigest()
+
+
+def _drop_owner_receipt_support(connection: sqlite3.Connection) -> None:
+    connection.execute("DROP TRIGGER IF EXISTS owner_action_receipts_no_update")
+    connection.execute("DROP TRIGGER IF EXISTS owner_action_receipts_no_delete")
+    connection.execute("DROP INDEX IF EXISTS idx_owner_action_receipts_project")
+
+
+def _rebuild_owner_action_receipts(connection: sqlite3.Connection) -> None:
+    """Rebuild only the closed action CHECK while preserving every v4 receipt row."""
+    before_count = int(
+        connection.execute("SELECT COUNT(*) FROM owner_action_receipts").fetchone()[0]
+    )
+    before_digest = _owner_receipt_rows_digest(connection, "owner_action_receipts")
+    _drop_owner_receipt_support(connection)
+    connection.execute("ALTER TABLE owner_action_receipts RENAME TO owner_action_receipts_v4_old")
+    _execute_static_sql_script(connection, _SCHEMA_V5_RECEIPT)
+    connection.execute(
+        """INSERT INTO owner_action_receipts
+        SELECT receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+               artifact_hash, expected_case_revision, consequence_summary, reason,
+               request_hash, assertion_hash, outcome_json, performed_at
+        FROM owner_action_receipts_v4_old ORDER BY receipt_id"""
+    )
+    after_count = int(
+        connection.execute("SELECT COUNT(*) FROM owner_action_receipts").fetchone()[0]
+    )
+    after_digest = _owner_receipt_rows_digest(connection, "owner_action_receipts")
+    if after_count != before_count or after_digest != before_digest:
+        raise DataError("owner action receipt rebuild changed row count or digest")
+    connection.execute("DROP TABLE owner_action_receipts_v4_old")
+
+
+def _apply_schema_v5_locked(connection: sqlite3.Connection) -> None:
+    if not connection.in_transaction:
+        raise sqlite3.OperationalError("schema-v5 application requires an active transaction")
+    _rebuild_owner_action_receipts(connection)
+    _execute_static_sql_script(connection, _SCHEMA_V5)
+    if connection.execute("PRAGMA foreign_key_check").fetchall():
+        raise DataError("control store v5 foreign-key check failed")
+    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+
 def _execute_static_sql_script(connection: sqlite3.Connection, script: str) -> None:
     """Execute trusted static DDL without ``executescript`` committing the caller's transaction."""
 
@@ -1516,7 +1762,7 @@ def _apply_schema_v2_locked(
     _execute_static_sql_script(connection, _SCHEMA_V3)
     _execute_static_sql_script(connection, _SCHEMA_V4)
     _execute_static_sql_script(connection, _GOVERNANCE_BACKFILL)
-    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    connection.execute(f"PRAGMA user_version = {V4_SCHEMA_VERSION}")
 
 
 def _apply_schema_v2(
@@ -1529,6 +1775,26 @@ def _apply_schema_v2(
         _apply_schema_v2_locked(connection, include_legacy_schema=include_legacy_schema)
         connection.commit()
     except sqlite3.Error:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _apply_schema_v5_fresh(connection: sqlite3.Connection) -> None:
+    """Create a new store through v4 and v5 in one atomic writer transaction."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != 0:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _apply_schema_v2_locked(connection, include_legacy_schema=True)
+        _apply_schema_v5_locked(connection)
+        connection.commit()
+    except Exception:
         if connection.in_transaction:
             connection.rollback()
         raise
@@ -1551,7 +1817,55 @@ def _missing_schema_objects(connection: sqlite3.Connection) -> bool:
             "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
         )
     }
-    return not present >= _EXPECTED_SCHEMA_OBJECTS
+    return not present >= _EXPECTED_HEALABLE_SCHEMA_OBJECTS
+
+
+def _validate_protected_v5_schema(connection: sqlite3.Connection) -> None:
+    present = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+        )
+    }
+    missing = sorted(_PROTECTED_V5_SCHEMA_OBJECTS - present)
+    if missing:
+        raise DataError(f"protected schema object missing: {', '.join(missing)}")
+    receipt_sql = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'owner_action_receipts'"
+    ).fetchone()
+    if receipt_sql is None or "record_semantic_event" not in str(receipt_sql[0]):
+        raise DataError("protected schema object owner_action_receipts is invalid")
+    semantic_columns = [
+        str(row[1]) for row in connection.execute("PRAGMA table_info(research_semantic_events)")
+    ]
+    expected_columns = [
+        "event_id",
+        "event_sha256",
+        "project_id",
+        "sequence",
+        "event_type",
+        "case_contract_id",
+        "source_contract_id",
+        "case_revision",
+        "prior_semantic_head_sha256",
+        "semantic_artifact_id",
+        "semantic_artifact_sha256",
+        "verified_read_sha256",
+        "projection_sha256",
+        "run_id",
+        "cutoff_confirmed_at",
+        "definition_id",
+        "review_id",
+        "review_decision",
+        "payload_json",
+        "payload_sha256",
+        "receipt_id",
+        "actor",
+        "reason",
+        "recorded_at",
+    ]
+    if semantic_columns != expected_columns:
+        raise DataError("protected schema object research_semantic_events is invalid")
 
 
 def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
@@ -1562,6 +1876,7 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
     governance backfill, which runs exactly once at migration or fresh creation.
     """
 
+    _validate_protected_v5_schema(connection)
     if not _missing_schema_objects(connection) and not _missing_source_record_columns(connection):
         return
     connection.execute("BEGIN IMMEDIATE")
@@ -1649,7 +1964,7 @@ def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
             # Another process completed the migration while this connection waited for the lock.
             connection.commit()
             return
@@ -1670,7 +1985,7 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
@@ -1678,7 +1993,7 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
         _verified_v2_backup(connection, database)
         _execute_static_sql_script(connection, _SCHEMA_V3)
         _execute_static_sql_script(connection, _SCHEMA_V4)
-        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.execute(f"PRAGMA user_version = {V4_SCHEMA_VERSION}")
         connection.commit()
     except Exception:
         if connection.in_transaction:
@@ -1692,14 +2007,34 @@ def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != PREVIOUS_SCHEMA_VERSION:
             raise DataError(f"unsupported control store schema version {locked_version}")
         _verified_v3_backup(connection, database)
         _execute_static_sql_script(connection, _SCHEMA_V4)
-        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.execute(f"PRAGMA user_version = {V4_SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
+    """Serialize the exact backup, receipt rebuild, and protected v5 DDL."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != V4_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _verified_v4_backup(connection, database)
+        _apply_schema_v5_locked(connection)
         connection.commit()
     except Exception:
         if connection.in_transaction:
@@ -1840,19 +2175,23 @@ class ControlStore:
                 LEGACY_SCHEMA_VERSION,
                 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,
                 PREVIOUS_SCHEMA_VERSION,
+                V4_SCHEMA_VERSION,
                 SCHEMA_VERSION,
             }:
                 raise DataError(f"unsupported control store schema version {version}")
-            if version == LEGACY_SCHEMA_VERSION:
+            if version == 0:
+                _apply_schema_v5_fresh(connection)
+            elif version == LEGACY_SCHEMA_VERSION:
                 _migrate_schema_v1(connection, database)
             elif version == OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
                 _migrate_schema_v2(connection, database)
             elif version == PREVIOUS_SCHEMA_VERSION:
                 _migrate_schema_v3(connection, database)
-            elif version < SCHEMA_VERSION:
-                connection.executescript(_SCHEMA)
-                _apply_schema_v2(connection)
-            else:
+            version_row = connection.execute("PRAGMA user_version").fetchone()
+            version = 0 if version_row is None else int(version_row[0])
+            if version == V4_SCHEMA_VERSION:
+                _migrate_schema_v4(connection, database)
+            elif version == SCHEMA_VERSION:
                 # A store already at SCHEMA_VERSION opens with a read-only completeness
                 # probe: no write-bearing statement runs on the steady-state path (reads
                 # must not contend for the writer lock, and a lost governance row must
