@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from webauthn.helpers import bytes_to_base64url
 
+import alpha_cli.control_store as control_store_module
 from alpha_cli import owner_auth
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_core import DataError
@@ -24,6 +27,84 @@ CASE = {
     "execution_state": "idle",
     "source_pack_id": "sp_" + "b" * 64,
 }
+
+
+def _semantic_source(case_revision: str) -> dict[str, object]:
+    return {
+        "project_id": PROJECT_ID,
+        "case_contract_id": "rc_" + "1" * 64,
+        "source_contract_id": "rc_" + "2" * 64,
+        "case_revision": case_revision,
+        "verified_read_sha256": "b" * 64,
+        "projection_sha256": "c" * 64,
+        "run_id": "0123456789abcdef",
+        "cutoff_confirmed_at": "2026-08-13T00:00:00.000000Z",
+    }
+
+
+def _semantic_payload(source: dict[str, object], head: str) -> dict[str, object]:
+    return {
+        "schema": "SemanticOwnerActionV1",
+        "schema_version": 1,
+        "event_type": "definition",
+        "verified_read_sha256": source["verified_read_sha256"],
+        "projection_sha256": source["projection_sha256"],
+        "run_id": source["run_id"],
+        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
+        "expected_semantic_head_sha256": head,
+        "definition_label": "Bounded semantic definition",
+        "definition_text": "A definition committed by the owner.",
+    }
+
+
+def _semantic_owner_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[ControlStore, str, dict[str, object], dict[str, object], dict[str, object]]:
+    store = ControlStore(tmp_path)
+    _project(store)
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        for contract_id in ("rc_" + "1" * 64, "rc_" + "2" * 64):
+            connection.execute(
+                """INSERT INTO research_contracts
+                (contract_id, project_id, scope, parent_contract_id, payload_json,
+                 created_by, author_kind, created_at)
+                VALUES (?, ?, 'exploration', NULL, '{}', 'owner', 'human', ?)""",
+                (contract_id, PROJECT_ID, NOW.isoformat().replace("+00:00", "Z")),
+            )
+    credential_id = _enroll_credential(store)
+    revision = research_case_revision(CASE)
+    source = _semantic_source(revision)
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    payload = _semantic_payload(source, head)
+    monkeypatch.setattr(ControlStore, "research_case_summary", lambda *_: CASE)
+    monkeypatch.setattr(
+        ControlStore,
+        "_research_case_revision_locked",
+        lambda self, _connection, _project_id: revision,
+    )
+    monkeypatch.setattr(
+        ControlStore,
+        "_verified_semantic_source_locked",
+        lambda self, _connection, _project_id: source,
+    )
+    binding = owner_auth.action_binding(
+        data_dir=tmp_path,
+        action_type="record_semantic_event",
+        project_id=PROJECT_ID,
+        artifact_hash="browser-commitment",
+        expected_case_revision=revision,
+        consequence_summary="Record the exact semantic event.",
+        reason="owner reviewed the semantic definition.",
+        payload=payload,
+    )
+    challenge = store.create_owner_auth_challenge(
+        ceremony="action",
+        challenge=b"s" * 32,
+        binding=binding,
+        now=NOW,
+        expires_at=NOW + timedelta(seconds=60),
+    )
+    return store, credential_id, payload, challenge, binding
 
 
 def _project(store: ControlStore) -> None:
@@ -450,6 +531,303 @@ def test_action_binding_rejects_wrong_action_revision_and_hash(
             consequence_summary="exact consequence",
             reason="reviewed",
             payload={"contract_id": "rc_" + "a" * 64},
+        )
+
+
+def test_semantic_action_binding_uses_server_prepared_artifact_and_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ControlStore, "research_case_summary", lambda *_: CASE)
+    payload = {"event_type": "definition", "definition_text": "bounded"}
+    monkeypatch.setattr(
+        ControlStore,
+        "prepare_semantic_action",
+        lambda self, project_id, payload, expected_case_revision: {
+            "artifact_hash": "e" * 64,
+            "request_hash": "f" * 64,
+            "case_revision": expected_case_revision,
+        },
+        raising=False,
+    )
+    binding = owner_auth.action_binding(
+        data_dir=tmp_path,
+        action_type="record_semantic_event",
+        project_id=PROJECT_ID,
+        artifact_hash="browser-commitment",
+        expected_case_revision=research_case_revision(CASE),
+        consequence_summary="Record the exact semantic event.",
+        reason="owner reviewed the semantic definition.",
+        payload=payload,
+    )
+    assert binding["artifact_hash"] == "e" * 64
+    assert binding["request_hash"] == "f" * 64
+
+
+def test_semantic_assertion_is_atomic_and_idempotently_recoverable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        for contract_id in ("rc_" + "1" * 64, "rc_" + "2" * 64):
+            connection.execute(
+                """INSERT INTO research_contracts
+                (contract_id, project_id, scope, parent_contract_id, payload_json,
+                 created_by, author_kind, created_at)
+                VALUES (?, ?, 'exploration', NULL, '{}', 'owner', 'human', ?)""",
+                (contract_id, PROJECT_ID, NOW.isoformat().replace("+00:00", "Z")),
+            )
+    credential_id = _enroll_credential(store)
+    revision = research_case_revision(CASE)
+    source = _semantic_source(revision)
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    payload = _semantic_payload(source, head)
+    monkeypatch.setattr(ControlStore, "research_case_summary", lambda *_: CASE)
+    monkeypatch.setattr(
+        ControlStore,
+        "_research_case_revision_locked",
+        lambda self, _connection, _project_id: revision,
+    )
+    monkeypatch.setattr(
+        ControlStore,
+        "_verified_semantic_source_locked",
+        lambda self, _connection, _project_id: source,
+    )
+    binding = owner_auth.action_binding(
+        data_dir=tmp_path,
+        action_type="record_semantic_event",
+        project_id=PROJECT_ID,
+        artifact_hash="browser-commitment",
+        expected_case_revision=revision,
+        consequence_summary="Record the exact semantic event.",
+        reason="owner reviewed the semantic definition.",
+        payload=payload,
+    )
+    challenge = store.create_owner_auth_challenge(
+        ceremony="action",
+        challenge=b"s" * 32,
+        binding=binding,
+        now=NOW,
+        expires_at=NOW + timedelta(seconds=60),
+    )
+    monkeypatch.setattr(
+        owner_auth,
+        "verify_authentication_response",
+        lambda **_: SimpleNamespace(new_sign_count=2),
+    )
+    credential = {"id": credential_id, "response": {"signature": "redacted"}}
+    result = owner_auth.verify_action_assertion(
+        data_dir=tmp_path,
+        challenge_id=str(challenge["challenge_id"]),
+        credential=credential,
+        payload=payload,
+        now=NOW + timedelta(seconds=2),
+    )
+    result_outcome = cast(dict[str, object], result["outcome"])
+    assert result_outcome["status"] == "semantic_event_recorded"
+    assert str(result_outcome["semantic_event_id"]).startswith("se_")
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        assert connection.execute(
+            "SELECT sign_count FROM owner_credentials WHERE credential_id = ?",
+            (credential_id,),
+        ).fetchone() == (2,)
+        assert connection.execute("SELECT COUNT(*) FROM research_semantic_events").fetchone() == (
+            1,
+        )
+    monkeypatch.setattr(
+        owner_auth,
+        "verify_authentication_response",
+        lambda **_: pytest.fail("recovery must not verify WebAuthn"),
+    )
+    recovered = owner_auth.verify_action_assertion(
+        data_dir=tmp_path,
+        challenge_id=str(challenge["challenge_id"]),
+        credential=credential,
+        payload=payload,
+        now=NOW + timedelta(minutes=5),
+    )
+    assert recovered["outcome"] == result["outcome"]
+    with pytest.raises(DataError, match="payload hash"):
+        owner_auth.verify_action_assertion(
+            data_dir=tmp_path,
+            challenge_id=str(challenge["challenge_id"]),
+            credential=credential,
+            payload={**payload, "definition_text": "different"},
+            now=NOW + timedelta(minutes=5),
+        )
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        connection.execute(
+            "UPDATE owner_auth_challenges SET binding_json = ? WHERE challenge_id = ?",
+            (
+                owner_auth._canonical_json({**binding, "artifact_hash": "f" * 64}, "binding"),
+                challenge["challenge_id"],
+            ),
+        )
+        connection.commit()
+    with pytest.raises(DataError, match="recovery receipt binding"):
+        owner_auth.verify_action_assertion(
+            data_dir=tmp_path,
+            challenge_id=str(challenge["challenge_id"]),
+            credential=credential,
+            payload=payload,
+            now=NOW + timedelta(minutes=5),
+        )
+
+
+def test_semantic_assertion_rolls_back_and_retries_after_append_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, credential_id, payload, challenge, _binding = _semantic_owner_fixture(
+        tmp_path, monkeypatch
+    )
+    monkeypatch.setattr(
+        owner_auth,
+        "verify_authentication_response",
+        lambda **_: SimpleNamespace(new_sign_count=2),
+    )
+    original_append = ControlStore.append_semantic_event
+
+    def fail_append(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise DataError("injected semantic append failure")
+
+    monkeypatch.setattr(ControlStore, "append_semantic_event", fail_append)
+    credential = {"id": credential_id, "response": {"signature": "redacted"}}
+    with pytest.raises(DataError, match="injected semantic append failure"):
+        owner_auth.verify_action_assertion(
+            data_dir=tmp_path,
+            challenge_id=str(challenge["challenge_id"]),
+            credential=credential,
+            payload=payload,
+            now=NOW + timedelta(seconds=2),
+        )
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        assert connection.execute(
+            "SELECT sign_count FROM owner_credentials WHERE credential_id = ?",
+            (credential_id,),
+        ).fetchone() == (1,)
+        assert connection.execute(
+            "SELECT used_at FROM owner_auth_challenges WHERE challenge_id = ?",
+            (challenge["challenge_id"],),
+        ).fetchone() == (None,)
+        assert connection.execute("SELECT COUNT(*) FROM owner_action_receipts").fetchone() == (0,)
+        assert connection.execute("SELECT COUNT(*) FROM research_semantic_events").fetchone() == (
+            0,
+        )
+
+    monkeypatch.setattr(ControlStore, "append_semantic_event", original_append)
+    result = owner_auth.verify_action_assertion(
+        data_dir=tmp_path,
+        challenge_id=str(challenge["challenge_id"]),
+        credential=credential,
+        payload=payload,
+        now=NOW + timedelta(seconds=3),
+    )
+    assert cast(dict[str, object], result["outcome"])["status"] == "semantic_event_recorded"
+
+
+def test_semantic_assertion_rejects_tampered_artifact_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, credential_id, payload, challenge, binding = _semantic_owner_fixture(
+        tmp_path, monkeypatch
+    )
+    tampered = {**binding, "artifact_hash": "f" * 64}
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        connection.execute(
+            "UPDATE owner_auth_challenges SET binding_json = ? WHERE challenge_id = ?",
+            (owner_auth._canonical_json(tampered, "binding"), challenge["challenge_id"]),
+        )
+        connection.commit()
+    with pytest.raises(DataError, match="artifact binding"):
+        store.record_semantic_event_authorization(
+            challenge_id=str(challenge["challenge_id"]),
+            credential_id=credential_id,
+            previous_sign_count=1,
+            new_sign_count=2,
+            assertion_hash="a" * 64,
+            payload=payload,
+            now=NOW + timedelta(seconds=2),
+            receipt_id="11111111-1111-4111-8111-111111111111",
+        )
+
+
+@pytest.mark.parametrize("failure", ["case", "source", "head", "counter", "challenge"])
+def test_semantic_assertion_rechecks_all_atomic_preconditions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    store, credential_id, payload, challenge, binding = _semantic_owner_fixture(
+        tmp_path, monkeypatch
+    )
+    if failure == "case":
+        monkeypatch.setattr(
+            ControlStore,
+            "_research_case_revision_locked",
+            lambda self, _connection, _project_id: "f" * 64,
+        )
+    elif failure == "source":
+        changed_source = {**_semantic_source(research_case_revision(CASE)), "run_id": "f" * 16}
+        monkeypatch.setattr(
+            ControlStore,
+            "_verified_semantic_source_locked",
+            lambda self, _connection, _project_id: changed_source,
+        )
+    elif failure == "head":
+        changed_payload = {**payload, "expected_semantic_head_sha256": "f" * 64}
+        changed_binding = {
+            **binding,
+            "request_hash": hashlib.sha256(
+                owner_auth._canonical_json(changed_payload, "payload").encode()
+            ).hexdigest(),
+        }
+        with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+            connection.execute(
+                "UPDATE owner_auth_challenges SET binding_json = ? WHERE challenge_id = ?",
+                (
+                    owner_auth._canonical_json(changed_binding, "binding"),
+                    challenge["challenge_id"],
+                ),
+            )
+            connection.commit()
+        payload = changed_payload
+    elif failure == "counter":
+        with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+            connection.execute(
+                "UPDATE owner_credentials SET sign_count = 9 WHERE credential_id = ?",
+                (credential_id,),
+            )
+            connection.commit()
+    else:
+        with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+            connection.execute(
+                "UPDATE owner_auth_challenges SET used_at = ? WHERE challenge_id = ?",
+                ("2026-08-13T02:00:01.000000Z", challenge["challenge_id"]),
+            )
+            connection.commit()
+    expected_sign_count = 9 if failure == "counter" else 1
+    expected_used_at = "2026-08-13T02:00:01.000000Z" if failure == "challenge" else None
+    with pytest.raises(DataError):
+        store.record_semantic_event_authorization(
+            challenge_id=str(challenge["challenge_id"]),
+            credential_id=credential_id,
+            previous_sign_count=1,
+            new_sign_count=2,
+            assertion_hash="a" * 64,
+            payload=payload,
+            now=NOW + timedelta(seconds=2),
+            receipt_id="22222222-2222-4222-8222-222222222222",
+        )
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        assert connection.execute(
+            "SELECT sign_count FROM owner_credentials WHERE credential_id = ?",
+            (credential_id,),
+        ).fetchone() == (expected_sign_count,)
+        assert connection.execute(
+            "SELECT used_at FROM owner_auth_challenges WHERE challenge_id = ?",
+            (challenge["challenge_id"],),
+        ).fetchone() == (expected_used_at,)
+        assert connection.execute("SELECT COUNT(*) FROM owner_action_receipts").fetchone() == (0,)
+        assert connection.execute("SELECT COUNT(*) FROM research_semantic_events").fetchone() == (
+            0,
         )
 
 

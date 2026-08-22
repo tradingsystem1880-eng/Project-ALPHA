@@ -87,6 +87,7 @@ type OwnerActionType = Literal[
     "reject_confirmation",
     "launch_d2",
     "record_final_disposition",
+    "record_semantic_event",
 ]
 
 LEGACY_SCHEMA_VERSION: Final = 1
@@ -416,6 +417,7 @@ OWNER_ACTION_TYPES: Final = frozenset(
         "reject_confirmation",
         "launch_d2",
         "record_final_disposition",
+        "record_semantic_event",
     }
 )
 _RESEARCH_GATE_EVIDENCE_ARTIFACT: Final = "research_gate_evidence.json"
@@ -6376,6 +6378,371 @@ class ControlStore:
             "status": "semantic_event_recorded",
         }:
             raise DataError("semantic receipt outcome does not match event")
+
+    def _research_case_revision_locked(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> str:
+        pid = _canonical_uuid(project_id, "project_id")
+        phase = self._latest_research_phase(connection, pid)
+        execution = self._latest_research_execution(connection, pid)
+        if phase is None or execution is None:
+            raise DataError("research case has no active phase or execution state")
+        contract = self._require_research_contract(connection, pid, str(phase["contract_id"]))
+        payload = _decode_json(contract["payload_json"], "research contract payload")
+        if not isinstance(payload, dict):
+            raise DataError("research contract payload is corrupt")
+        return research_case_revision(
+            {
+                "project_id": pid,
+                "active_contract_id": contract["contract_id"],
+                "phase": phase["phase"],
+                "execution_state": execution["state"],
+                "source_pack_id": payload.get("source_pack_id"),
+            }
+        )
+
+    def prepare_semantic_action(
+        self,
+        project_id: str,
+        payload: Mapping[str, object],
+        *,
+        expected_case_revision: str,
+    ) -> dict[str, object]:
+        """Prepare a server-derived semantic Touch ID binding without mutating state."""
+        pid = _canonical_uuid(project_id, "project_id")
+        clean_payload = _semantic_payload(payload)
+        with self._transaction(write=False) as connection:
+            current_revision = self._research_case_revision_locked(connection, pid)
+            if expected_case_revision != current_revision:
+                raise DataError("research case changed; refresh before requesting Touch ID")
+            source = self._verified_semantic_source_locked(connection, pid)
+            source_map = _semantic_source_map(source)
+            if source_map["project_id"] != pid:
+                raise DataError("verified semantic source project binding is stale")
+            if source_map["case_revision"] != current_revision:
+                raise DataError("verified semantic source case revision is stale")
+            for field in (
+                "verified_read_sha256",
+                "projection_sha256",
+                "run_id",
+                "cutoff_confirmed_at",
+            ):
+                if clean_payload[field] != source_map[field]:
+                    raise DataError(f"semantic payload {field} does not match verified source")
+            current = self._semantic_event_rows_locked(connection, project_id=pid, source=None)
+            prior_head = (
+                _semantic_empty_head_sha256(pid)
+                if not current
+                else str(current[-1]["event_sha256"])
+            )
+            if clean_payload["expected_semantic_head_sha256"] != prior_head:
+                raise DataError("semantic expected head is stale")
+            event_type = str(clean_payload["event_type"])
+            artifact_id, artifact_sha, _ = _semantic_artifact(source_map, clean_payload, prior_head)
+            definition_id = (
+                artifact_id if event_type == "definition" else str(clean_payload["definition_id"])
+            )
+            review_id = (
+                None
+                if event_type == "definition"
+                else artifact_id
+                if event_type == "review"
+                else str(clean_payload["review_id"])
+            )
+            _semantic_transition(
+                current,
+                event_type=event_type,
+                definition_id=definition_id,
+                review_id=review_id,
+            )
+        return {
+            "artifact_hash": artifact_sha,
+            "request_hash": hashlib.sha256(
+                _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode("utf-8")
+            ).hexdigest(),
+            "case_revision": current_revision,
+        }
+
+    def record_semantic_event_authorization(
+        self,
+        *,
+        challenge_id: str,
+        credential_id: str,
+        previous_sign_count: int,
+        new_sign_count: int,
+        assertion_hash: str,
+        payload: Mapping[str, object],
+        now: datetime,
+        receipt_id: str,
+    ) -> dict[str, object]:
+        """Atomically consume a semantic Touch ID action and append its ledger event."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        rid = _new_uuid(receipt_id, "owner action receipt_id")
+        assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
+        if _SHA256_RE.fullmatch(assertion_digest) is None:
+            raise DataError("invalid control owner assertion hash")
+        if new_sign_count <= previous_sign_count:
+            raise DataError("owner credential signature counter regressed")
+        clean_payload = _semantic_payload(payload)
+        timestamp = _format_timestamp(now)
+        with self._transaction(write=True) as connection:
+            challenge = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            credential = connection.execute(
+                "SELECT * FROM owner_credentials WHERE credential_id = ?", (credential_id,)
+            ).fetchone()
+            if (
+                challenge is None
+                or challenge["ceremony"] != "action"
+                or challenge["used_at"] is not None
+                or str(challenge["expires_at"]) <= timestamp
+                or credential is None
+                or credential["revoked_at"] is not None
+                or int(credential["sign_count"]) != previous_sign_count
+            ):
+                raise DataError("owner semantic action is invalid, expired, stale, or already used")
+            binding = _decode_json(challenge["binding_json"], "owner action binding")
+            if not isinstance(binding, dict):
+                raise DataError("corrupt control store: owner action binding is not an object")
+            action_type = _enum_value(
+                binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
+            )
+            if action_type != "record_semantic_event":
+                raise DataError("owner semantic transaction requires record_semantic_event")
+            project_id = _canonical_uuid(str(binding.get("project_id")), "project_id")
+            artifact_hash = _required_text(
+                binding.get("artifact_hash"), "owner action artifact_hash", max_length=64
+            )
+            expected_revision = _required_text(
+                binding.get("expected_case_revision"),
+                "owner action expected_case_revision",
+                max_length=64,
+            )
+            request_hash = _required_text(
+                binding.get("request_hash"), "owner action request_hash", max_length=64
+            )
+            consequence = _required_text(
+                binding.get("consequence_summary"), "owner action consequence summary"
+            )
+            reason = _required_text(binding.get("reason"), "owner action reason")
+            for label, value in (
+                ("artifact_hash", artifact_hash),
+                ("expected_case_revision", expected_revision),
+                ("request_hash", request_hash),
+            ):
+                if _SHA256_RE.fullmatch(value) is None:
+                    raise DataError(f"invalid control owner action {label}")
+            payload_hash = hashlib.sha256(
+                _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode("utf-8")
+            ).hexdigest()
+            if payload_hash != request_hash:
+                raise DataError("semantic payload request binding is stale")
+            current_revision = self._research_case_revision_locked(connection, project_id)
+            if current_revision != expected_revision:
+                raise DataError("research case changed after the Touch ID challenge was issued")
+            source = self._verified_semantic_source_locked(connection, project_id)
+            source_map = _semantic_source_map(source)
+            if source_map["project_id"] != project_id:
+                raise DataError("verified semantic source project binding is stale")
+            if source_map["case_revision"] != current_revision:
+                raise DataError("verified semantic source case revision is stale")
+            for field in (
+                "verified_read_sha256",
+                "projection_sha256",
+                "run_id",
+                "cutoff_confirmed_at",
+            ):
+                if clean_payload[field] != source_map[field]:
+                    raise DataError(f"semantic payload {field} does not match verified source")
+            current = self._semantic_event_rows_locked(
+                connection,
+                project_id=project_id,
+                source=None,
+                pending_receipt_id=rid,
+            )
+            prior_head = (
+                _semantic_empty_head_sha256(project_id)
+                if not current
+                else str(current[-1]["event_sha256"])
+            )
+            if clean_payload["expected_semantic_head_sha256"] != prior_head:
+                raise DataError("semantic expected head is stale")
+            artifact_id, semantic_artifact_sha, _ = _semantic_artifact(
+                source_map, clean_payload, prior_head
+            )
+            if artifact_hash != semantic_artifact_sha:
+                raise DataError("semantic artifact binding is stale")
+            event_type = str(clean_payload["event_type"])
+            definition_id = (
+                artifact_id if event_type == "definition" else str(clean_payload["definition_id"])
+            )
+            review_id = (
+                None
+                if event_type == "definition"
+                else artifact_id
+                if event_type == "review"
+                else str(clean_payload["review_id"])
+            )
+            _semantic_transition(
+                current,
+                event_type=event_type,
+                definition_id=definition_id,
+                review_id=review_id,
+            )
+            actor = str(credential["actor"])
+            event_id, _identity = _semantic_event_identity(
+                source=source_map,
+                payload=clean_payload,
+                sequence=len(current) + 1,
+                prior_head=prior_head,
+                semantic_artifact_id=artifact_id,
+                semantic_artifact_sha256=semantic_artifact_sha,
+                receipt_id=rid,
+                actor=actor,
+                reason=reason,
+                recorded_at=timestamp,
+            )
+            outcome = {
+                "semantic_event_id": event_id,
+                "semantic_event_sha256": event_id[3:],
+                "status": "semantic_event_recorded",
+            }
+            connection.execute(
+                "UPDATE owner_credentials SET sign_count = ? WHERE credential_id = ?",
+                (new_sign_count, credential_id),
+            )
+            connection.execute(
+                """UPDATE owner_auth_challenges
+                SET used_at = ?, verified_credential_id = ? WHERE challenge_id = ?""",
+                (timestamp, credential_id, cid),
+            )
+            connection.execute(
+                """INSERT INTO owner_action_receipts
+                (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+                 artifact_hash, expected_case_revision, consequence_summary, reason,
+                 request_hash, assertion_hash, outcome_json, performed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    rid,
+                    cid,
+                    credential_id,
+                    actor,
+                    action_type,
+                    project_id,
+                    semantic_artifact_sha,
+                    current_revision,
+                    consequence,
+                    reason,
+                    payload_hash,
+                    assertion_digest,
+                    _canonical_json(outcome, "owner action outcome"),
+                    timestamp,
+                ),
+            )
+            self.append_semantic_event(
+                connection,
+                project_id=project_id,
+                payload=clean_payload,
+                receipt_id=rid,
+                actor=actor,
+                reason=reason,
+                recorded_at=timestamp,
+            )
+        return {
+            "receipt_id": rid,
+            "action_type": action_type,
+            "project_id": project_id,
+            "actor": actor,
+            "outcome": outcome,
+            "performed_at": timestamp,
+        }
+
+    def recover_semantic_event_authorization(
+        self,
+        *,
+        challenge_id: str,
+        payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Return an already committed semantic action without re-verifying authority."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        clean_payload = _semantic_payload(payload)
+        payload_hash = hashlib.sha256(
+            _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode("utf-8")
+        ).hexdigest()
+        with self._transaction(write=False) as connection:
+            challenge = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            if challenge is None or challenge["ceremony"] != "action":
+                raise DataError("owner auth challenge is invalid or not an action")
+            if challenge["used_at"] is None:
+                raise DataError("semantic action recovery requires a consumed challenge")
+            binding = _decode_json(challenge["binding_json"], "owner action binding")
+            if not isinstance(binding, dict) or binding.get("action_type") != (
+                "record_semantic_event"
+            ):
+                raise DataError("owner action recovery is not a semantic event")
+            if binding.get("request_hash") != payload_hash:
+                raise DataError("semantic recovery payload hash does not match the receipt")
+            project_id = _canonical_uuid(str(binding.get("project_id")), "project_id")
+            receipt = connection.execute(
+                "SELECT * FROM owner_action_receipts WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            if receipt is None:
+                raise DataError("semantic recovery receipt is missing")
+            event_row = connection.execute(
+                "SELECT * FROM research_semantic_events WHERE receipt_id = ?",
+                (receipt["receipt_id"],),
+            ).fetchone()
+            if event_row is None:
+                raise DataError("semantic recovery event is missing")
+            identities = self._semantic_event_rows_locked(
+                connection, project_id=project_id, source=None
+            )
+            event = next(
+                (item for item in identities if item["event_id"] == event_row["event_id"]),
+                None,
+            )
+            if event is None:
+                raise DataError("semantic recovery event linkage is invalid")
+            if (
+                receipt["challenge_id"] != cid
+                or receipt["credential_id"] != challenge["verified_credential_id"]
+                or receipt["artifact_hash"] != event_row["semantic_artifact_sha256"]
+                or receipt["expected_case_revision"] != event_row["case_revision"]
+                or receipt["request_hash"] != event_row["payload_sha256"]
+                or receipt["project_id"] != project_id
+                or binding.get("artifact_hash") != event_row["semantic_artifact_sha256"]
+                or binding.get("expected_case_revision") != event_row["case_revision"]
+                or receipt["consequence_summary"] != binding.get("consequence_summary")
+                or receipt["reason"] != binding.get("reason")
+            ):
+                raise DataError("semantic recovery receipt binding is invalid")
+            outcome = _decode_json(receipt["outcome_json"], "semantic receipt outcome")
+            self._semantic_receipt_matches(
+                receipt,
+                project_id=project_id,
+                semantic_artifact_sha256=str(event_row["semantic_artifact_sha256"]),
+                case_revision=str(event_row["case_revision"]),
+                payload_sha256=str(event_row["payload_sha256"]),
+                event_id=str(event_row["event_id"]),
+                event_sha256=str(event_row["event_sha256"]),
+                actor=str(event_row["actor"]),
+                reason=str(event_row["reason"]),
+                recorded_at=str(event_row["recorded_at"]),
+            )
+            if not isinstance(outcome, dict):
+                raise DataError("semantic recovery outcome is not an object")
+        return {
+            "receipt_id": str(receipt["receipt_id"]),
+            "action_type": "record_semantic_event",
+            "project_id": project_id,
+            "actor": str(receipt["actor"]),
+            "outcome": outcome,
+            "performed_at": str(receipt["performed_at"]),
+            "binding": binding,
+        }
 
     def _semantic_event_rows_locked(
         self,
@@ -12432,6 +12799,36 @@ class ControlStore:
             "enrollment_request_id": row["enrollment_request_id"],
             "binding": binding,
             "expires_at": str(row["expires_at"]),
+        }
+
+    def get_owner_action_challenge_snapshot(
+        self, challenge_id: str, *, now: datetime
+    ) -> dict[str, object]:
+        """Read an action challenge, permitting only consumed semantic recovery after expiry."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        timestamp = _format_timestamp(now)
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+        if row is None or row["ceremony"] != "action":
+            raise DataError("owner auth challenge is invalid or already used")
+        binding = _decode_json(row["binding_json"], "owner auth binding")
+        if not isinstance(binding, dict):
+            raise DataError("corrupt control store: owner auth binding is not an object")
+        semantic = binding.get("action_type") == "record_semantic_event"
+        used = row["used_at"] is not None
+        if used and not semantic:
+            raise DataError("owner auth challenge is invalid or already used")
+        if not used and str(row["expires_at"]) <= timestamp:
+            raise DataError("owner auth challenge has expired")
+        return {
+            "challenge_id": cid,
+            "challenge": bytes(row["challenge"]),
+            "binding": binding,
+            "expires_at": str(row["expires_at"]),
+            "used_at": row["used_at"],
+            "verified_credential_id": row["verified_credential_id"],
         }
 
     def list_active_owner_credentials(self) -> list[dict[str, object]]:
