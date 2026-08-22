@@ -60,6 +60,213 @@ hash, immutable source, revision binding, availability/vintage semantics, error 
 and read/write authority are documented. Domain-specific macro and cross-sectional
 projections must not be forced into an under-specified universal event row.
 
+## S5b semantic owner-event freeze
+
+S5b adds one append-only `research_semantic_events` ledger to schema v5. It does not add a
+mutable frozen flag, second attempt/approval ledger, or a semantic write to `alpha-study`.
+The only new closed owner action is `record_semantic_event`, used for the exact sequence
+`definition -> review -> freeze`. Each event requires its own fresh Touch ID assertion and is
+committed atomically with exactly one owner-action receipt.
+
+The migration is logically additive: every v4 row is preserved and only semantic-event
+capability is added. SQLite cannot alter the existing closed
+`owner_action_receipts.action_type` `CHECK` in place, so the v4-to-v5 transaction performs one
+explicit physical table rebuild solely to add `record_semantic_event` to that check. The rebuild
+must preserve the existing columns, constraints, rows, index, and append-only triggers exactly;
+row count and canonical row content are compared before the old table is dropped. The receipt-row
+digest is SHA-256 over canonical JSON of rows ordered by `receipt_id`, with each row represented as
+an array in this exact column order: `receipt_id`, `challenge_id`, `credential_id`, `actor`,
+`action_type`, `project_id`, `artifact_hash`, `expected_case_revision`, `consequence_summary`,
+`reason`, `request_hash`, `assertion_hash`, `outcome_json`, `performed_at`. Count and digest must
+match after copying and before dropping the old table. No second receipt table or authority is
+permitted.
+
+The new strict table is exactly:
+
+```sql
+CREATE TABLE research_semantic_events (
+    event_id TEXT PRIMARY KEY,
+    event_sha256 TEXT NOT NULL UNIQUE,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL CHECK (sequence >= 1),
+    event_type TEXT NOT NULL CHECK (event_type IN ('definition', 'review', 'freeze')),
+    case_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    source_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    case_revision TEXT NOT NULL,
+    prior_semantic_head_sha256 TEXT NOT NULL,
+    semantic_artifact_id TEXT NOT NULL,
+    semantic_artifact_sha256 TEXT NOT NULL,
+    verified_read_sha256 TEXT NOT NULL,
+    projection_sha256 TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    cutoff_confirmed_at TEXT NOT NULL,
+    definition_id TEXT NOT NULL,
+    review_id TEXT,
+    review_decision TEXT CHECK (review_decision IN ('approve', 'reject')),
+    payload_json TEXT NOT NULL,
+    payload_sha256 TEXT NOT NULL,
+    receipt_id TEXT NOT NULL UNIQUE REFERENCES owner_action_receipts(receipt_id),
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE (project_id, sequence),
+    UNIQUE (project_id, semantic_artifact_id),
+    FOREIGN KEY (project_id, case_contract_id)
+        REFERENCES research_contracts(project_id, contract_id),
+    FOREIGN KEY (project_id, source_contract_id)
+        REFERENCES research_contracts(project_id, contract_id),
+    FOREIGN KEY (project_id, definition_id)
+        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
+    FOREIGN KEY (project_id, review_id)
+        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
+    CHECK (event_id = 'se_' || event_sha256),
+    CHECK (length(event_sha256) = 64),
+    CHECK (length(case_revision) = 64),
+    CHECK (length(prior_semantic_head_sha256) = 64),
+    CHECK (length(semantic_artifact_sha256) = 64),
+    CHECK (length(verified_read_sha256) = 64),
+    CHECK (length(projection_sha256) = 64),
+    CHECK (length(payload_sha256) = 64),
+    CHECK (length(run_id) = 16),
+    CHECK (
+        (event_type = 'definition'
+            AND substr(semantic_artifact_id, 1, 3) = 'sd_'
+            AND definition_id = semantic_artifact_id
+            AND review_id IS NULL AND review_decision IS NULL)
+        OR
+        (event_type = 'review'
+            AND substr(semantic_artifact_id, 1, 3) = 'sr_'
+            AND substr(definition_id, 1, 3) = 'sd_'
+            AND review_id = semantic_artifact_id
+            AND review_decision IS NOT NULL)
+        OR
+        (event_type = 'freeze'
+            AND substr(semantic_artifact_id, 1, 3) = 'sf_'
+            AND substr(definition_id, 1, 3) = 'sd_'
+            AND substr(review_id, 1, 3) = 'sr_'
+            AND review_decision IS NULL)
+    ),
+    CHECK (semantic_artifact_sha256 = substr(semantic_artifact_id, 4))
+) STRICT;
+
+CREATE INDEX idx_research_semantic_events_contract
+    ON research_semantic_events(project_id, case_contract_id, sequence);
+CREATE INDEX idx_research_semantic_events_source
+    ON research_semantic_events(project_id, source_contract_id, sequence);
+CREATE INDEX idx_research_semantic_events_artifact
+    ON research_semantic_events(project_id, verified_read_sha256, sequence);
+CREATE UNIQUE INDEX idx_research_semantic_events_one_review
+    ON research_semantic_events(project_id, definition_id)
+    WHERE event_type = 'review';
+CREATE UNIQUE INDEX idx_research_semantic_events_one_freeze
+    ON research_semantic_events(project_id, definition_id)
+    WHERE event_type = 'freeze';
+```
+
+`research_semantic_events_no_update` and `research_semantic_events_no_delete` abort every
+update or delete. Insert code and persisted-read verification require a contiguous project-local
+sequence beginning at one. The `definition` event is allowed at genesis, after a rejected review,
+or after a freeze; `review` must immediately follow and reference the latest unfrozen definition;
+`freeze` must immediately follow and reference that definition's sole approving review. A rejected
+review cannot freeze, and retry starts a new definition.
+
+Canonical JSON uses sorted keys, compact separators, UTF-8, and `allow_nan=False`; every hash below
+is lowercase SHA-256 over the UTF-8 canonical JSON bytes. The verified-source map is exactly
+`project_id`, `case_contract_id`, `source_contract_id`, `case_revision`,
+`verified_read_sha256`, `projection_sha256`, `run_id`, and `cutoff_confirmed_at`.
+`verified_read_sha256` is the outer `VerifiedBlindSemanticReadV1.content_sha256`, and
+`projection_sha256` is SHA-256 of canonical JSON for the exact inner
+`BlindSemanticProjectionV1.to_dict()`. Before that full-object hash is accepted, the embedded
+`content_sha256` is separately recomputed from its specified self-excluding map and verified.
+
+The empty semantic head is the hash of exactly
+`{"schema":"ResearchSemanticHeadV1","schema_version":1,"project_id":PROJECT_ID,"event_sha256":null}`;
+after the first append the head is the latest `event_sha256`. The exact semantic-artifact maps are:
+
+- Definition: `schema: ResearchSemanticDefinitionV1`, `schema_version: 1`,
+  `event_type: definition`, the verified-source map, `prior_semantic_head_sha256`,
+  `definition_label`, and `definition_text`.
+- Review: `schema: ResearchSemanticReviewV1`, `schema_version: 1`, `event_type: review`, the
+  verified-source map, `prior_semantic_head_sha256`, `definition_id`, `review_decision`, and
+  `review_text`.
+- Freeze: `schema: ResearchSemanticFreezeV1`, `schema_version: 1`, `event_type: freeze`, the
+  verified-source map, `prior_semantic_head_sha256`, `definition_id`, and `review_id`.
+
+The semantic artifact hash is the hash of that exact map and its ID is respectively
+`sd_<sha256>`, `sr_<sha256>`, or `sf_<sha256>`. Receipt identity and operational time are not
+semantic-artifact inputs. `payload_sha256` is the hash of the exact `SemanticOwnerActionV1`
+payload below. `ResearchSemanticEventIdentityV1` contains exactly `schema`, `schema_version`,
+`event_type`, the verified-source map, `sequence`, `prior_semantic_head_sha256`,
+`semantic_artifact_id`, `semantic_artifact_sha256`, `definition_id`, `review_id`,
+`review_decision`, the decoded canonical `payload`, `payload_sha256`, `receipt_id`, `actor`,
+`reason`, and `recorded_at`. `event_sha256` hashes that exact map and `event_id` is
+`se_<event_sha256>`. Persisted reads recompute all four hashes and fail closed on any gap, bad
+reference, invalid transition, or receipt mismatch.
+
+For that identity map, `schema` is exactly `ResearchSemanticEventIdentityV1` and
+`schema_version` is exactly `1`.
+
+The exact `SemanticOwnerActionV1` payload has `schema: SemanticOwnerActionV1`,
+`schema_version: 1`, and no extra keys. Common keys are `schema`, `schema_version`, `event_type`,
+`verified_read_sha256`, `projection_sha256`, `run_id`, `cutoff_confirmed_at`, and
+`expected_semantic_head_sha256`. A definition adds `definition_label` (1..256 safe characters)
+and `definition_text` (1..8192); a review adds `definition_id`, `review_decision` (`approve` or
+`reject`), and `review_text` (1..8192); a freeze adds `definition_id` and `review_id`.
+The server mechanically recomputes and must exactly match all source fields from the current
+`VerifiedBlindSemanticReadV1`; the browser never supplies an authoritative cutoff. The expected
+semantic head is the latest event hash, or the SHA-256 of the canonical empty
+`ResearchSemanticHeadV1` for that project. It is bound in addition to the existing case revision,
+because semantic appends do not change `research_case_revision`.
+
+The generic owner-action executor is not used for `record_semantic_event`: it currently consumes
+a receipt before delegating to a CLI subprocess. After WebAuthn verification, one dedicated
+`BEGIN IMMEDIATE` transaction re-reads the unused challenge and credential counter, current case
+revision, current semantic head, active case/source contracts, and mechanically verified semantic
+source; validates the exact payload and transition; then increments the counter, consumes the
+challenge, appends the receipt, and appends one semantic event. Any failure rolls back all four
+effects. The receipt outcome is exactly `status: semantic_event_recorded`,
+`semantic_event_id`, and `semantic_event_sha256`. The event must equal its receipt on these exact
+bindings: `action_type = record_semantic_event`; project IDs; receipt `artifact_hash` = event
+`semantic_artifact_sha256`; receipt `expected_case_revision` = event `case_revision`; receipt
+`request_hash` = event `payload_sha256`; actor; reason; and receipt `performed_at` = event
+`recorded_at`. The receipt outcome IDs/hashes must also match the event. These rules make linkage
+bijective.
+
+A failure before commit leaves the challenge unused, credential counter unchanged, and no receipt
+or event; the same still-valid assertion may retry the exact transaction. Once commit succeeds,
+the action is complete even if the HTTP response is lost. A retry of that consumed challenge with
+the exact original request hash performs a read-only linkage validation and returns the already
+committed receipt/event result; it never verifies new authority, increments the counter, executes,
+or appends again. A different request hash or any linkage defect fails closed. This is idempotent
+response recovery, not reusable authorization. Public semantic presentation remains deferred to
+S5c.
+
+CLI authority does not widen: `alpha research semantic-projection PROJECT_ID --json` remains the
+verified read source and there is no direct semantic-write CLI command. REST adds no route: only
+the existing owner-auth challenge/perform endpoints accept the new closed action and special-case
+its atomic transaction. MCP adds no read or write and remains pinned at 62 tools. S5b does not add
+a screen, frontend-derived authority, D1/D2 transition, promotion, holdout, paper, broker, order,
+or future-value reveal; the S5a projection remains `semantic_status: unfrozen`.
+
+Migration takes one `BEGIN IMMEDIATE` lock from before creation and exact verification of
+`workstation.sqlite3.v4.bak` through the receipt-table rebuild, v5 DDL, `foreign_key_check`, v5
+marker, and commit. The backup rejects symlinks/non-files and requires `integrity_check = ok`,
+`user_version = 4`, and exact logical fingerprint equality. A waiting migrator re-reads the
+version under the lock and returns after v5 wins. Failure rolls back to v4 while retaining the
+verified backup for an exact retry. V5 receipt/semantic objects are protected and excluded from
+steady-state schema healing; a missing object, hash/sequence/transition defect, or receipt/event
+mismatch fails closed without repair. After a committed v5 migration there is no automatic
+downgrade or backup restore. Recovery requires a separate owner-approved forensic, data-loss, and
+forward-migration procedure; S5b adds no recovery command.
+
+All supported openings finish at v5 through the same reviewed v4-to-v5 boundary. A fresh v0 store
+creates v5 atomically. Existing v1, v2, and v3 stores first use their existing exact
+`.v1.bak`/`.v2.bak`/`.v3.bak` migration discipline to commit v4, then re-read `user_version` and
+run the specified v4-to-v5 transaction, including a new exact `.v4.bak`. An existing v4 store runs
+that transaction directly. `PRAGMA foreign_key_check` must return zero rows before the v5 marker.
+Every waiting migrator re-reads the version under each lock and a v5 winner returns; no path runs
+the receipt rebuild twice.
+
 ## Governance boundaries
 
 - D1 remains owner-only through the existing trusted CLI and approved research contract.

@@ -200,22 +200,23 @@
     },
     {
       "title": "S5b SQLite v5 semantic definition and owner review",
-      "verify": "Before implementation, freeze the canonical semantic-definition/review IDs, content hashes, event ordering, closed owner action type, and exact payload schema in this plan/ADR; before protected owner-auth/control-plane edits use the required audited acknowledgement; run the v4-to-v5 exact-backup, migration recovery/concurrency, append-only event, receipt binding, stale-revision, payload-tamper, CLI, REST, MCP-denial, fast, and full gates before commit",
-      "expected": "An additive exact-backup SQLite v5 migration records append-only semantic definition/review/freeze events that bind the project, contract and case revision, canonical semantic artifact ID/hash, server cutoff, owner actor/reason, and one exact action-bound Touch ID receipt. Event sequencing and the owner action payload are closed before code. There is no mutable frozen flag, no parallel attempt ledger, no D1/D2 transition, and no MCP semantic action.",
-      "rollback": "Revert S5b before migration or deployment. After a committed migration, recovery requires a separate explicit owner-approved procedure with an exact data-loss assessment and forward-migration policy; never overwrite a v5 store or discard append-only semantic events implicitly.",
+      "verify": "Before runtime work, freeze the valid v5 schema, receipt-table CHECK widening, sd_/sr_/sf_/se_ canonical identities, exact SemanticOwnerActionV1 variants, semantic-head plus case-revision binding, atomic receipt/event transaction, migration/recovery policy, and CLI/REST/MCP boundary in this plan and ADR; run plan-check and obtain independent Terra APPROVE. For implementation, test v1/v2/v3 progression through committed v4 and the exact v4 backup, lossless receipt-row rebuild, rollback/retry, post-commit response-loss idempotent return, concurrent migrators, protected-v5 no-heal, canonical hashes, contiguous definition->review->freeze sequencing, rejected-review denial, stale case/head/source, payload tamper, receipt/event bijection, injected atomic failure, unchanged semantic read/GET, REST special dispatch, OpenAPI freshness, and the 62-tool MCP denial; run focused, determinism, fast, and full gates before every commit.",
+      "expected": "Schema v5 is logically additive and preserves every v4 row; one transactional physical rebuild widens only the owner_action_receipts action_type CHECK with record_semantic_event. The new strict append-only research_semantic_events table records canonical definition, review, and freeze artifacts bound to the active case contract, S5a exploration source contract, case revision, semantic head, mechanically reverified semantic read/hash/run/cutoff, verified actor/reason, and exactly one receipt. One dedicated BEGIN IMMEDIATE transaction consumes the Touch ID assertion, writes its receipt, and writes exactly one event or rolls everything back. There is no direct CLI write, mutable frozen flag, parallel attempt ledger, D1/D2 transition, future reveal, new REST route, frontend authority, or MCP semantic capability.",
+      "rollback": "Before commit/deployment, revert the S5b change. Migration failure rolls the database transaction back to v4 and retains only the verified exact v4 backup for retry. After a committed v5 migration, never auto-downgrade, overwrite the v5 database, restore the backup, heal missing protected v5 objects, or discard semantic events; recovery requires a separate owner-approved forensic data-loss assessment and forward migration.",
       "files": [
         "apps/alpha-cli/src/alpha_cli/control_store.py",
         "apps/alpha-cli/src/alpha_cli/owner_auth.py",
-        "apps/alpha-cli/src/alpha_cli/research_cmds.py",
         "apps/alpha-web/src/alpha_web/api/owner_auth.py",
+        ".claude/rules/alpha-cli.md",
+        ".claude/rules/alpha-web.md",
+        "CLAUDE.md",
         "tests/unit/test_research_control_store.py",
         "tests/unit/test_owner_auth_store.py",
         "tests/unit/test_owner_auth.py",
         "tests/unit/test_owner_auth_api.py",
         "tests/integration/test_research_cli.py",
         "tests/integration/test_web_api_research.py",
-        "docs/**",
-        "CLAUDE.md"
+        "docs/**"
       ],
       "status": "pending"
     },
@@ -315,6 +316,55 @@
   ]
 }
 ```
+
+## S5b invariant freeze
+
+S5b follows the exact schema, identity, payload, sequencing, atomicity, migration, recovery, and
+authority contract in ADR-0035's `S5b semantic owner-event freeze` section. The implementation is
+split into bounded red-to-green slices:
+
+1. Documentation freeze only: `plan-check`, documentation truth checks, and independent Terra
+   review. Runtime remains untouched.
+2. Schema v5: exact `.v4.bak`, one lossless receipt-table rebuild solely to add
+   `record_semantic_event`, new protected semantic DDL, rollback/retry, and concurrent-migrator
+   tests. V1/v2/v3 fixtures prove their existing migrations commit v4 before the common
+   v4-to-v5 path runs.
+3. Ledger: canonical `sd_`/`sr_`/`sf_` artifacts and `se_` events, contiguous append-only
+   transitions, current case/source contracts, verified semantic source, stale case/head/source,
+   receipt bijection, and tamper tests.
+4. Owner presence: special atomic WebAuthn assertion/credential/challenge/receipt/event transaction,
+   injected rollback points, changed-payload replay denial, and read-only idempotent recovery of an
+   already committed result after response loss. Existing owner actions retain ADR-0030 behavior.
+5. REST contract: add the one literal to strict models, route it only through the atomic path,
+   prove `_action_argv`/`_run_json` are not used, and refresh only generated OpenAPI/types and
+   operation-governance outputs.
+6. Boundary regression and state documentation: existing semantic CLI/GET bytes stay unchanged and
+   unfrozen, the Research router mutation set and handwritten frontend remain unchanged, MCP stays
+   at 62 tools, and current-state docs describe only delivered behavior.
+
+Exact focused tests are
+`tests/unit/test_research_control_store.py`, `tests/unit/test_owner_auth_store.py`,
+`tests/unit/test_owner_auth.py`, `tests/unit/test_owner_auth_api.py`,
+`tests/integration/test_research_cli.py`, `tests/integration/test_web_api_research.py`, and
+`tests/integration/test_research_mcp.py`. No hidden holdout, bias-guard, oracle, harness, MCP config,
+or import-linter file is read or changed.
+
+Use each path-scoped acknowledgement immediately before editing that one file. Never arm these
+together: the acknowledgement is one-shot and a later command would replace the earlier token.
+
+```text
+# Run, then edit only .claude/rules/alpha-cli.md:
+uv run python scripts/gate.py ack --path .claude/rules/alpha-cli.md --reason "Document receipt-bound SQLite v5 semantic events without widening authority"
+
+# After the prior acknowledgement has been consumed, run, then edit only .claude/rules/alpha-web.md:
+uv run python scripts/gate.py ack --path .claude/rules/alpha-web.md --reason "Document atomic Touch ID semantic-event dispatch without a new route"
+
+# After the prior acknowledgement has been consumed, run, then edit only CLAUDE.md:
+uv run python scripts/gate.py ack --path CLAUDE.md --reason "Record the delivered S5b authority and recovery boundary"
+```
+
+No acknowledgement is armed for unprotected runtime/test files. If owner-token policy denies the
+`CLAUDE.md` acknowledgement, implementation stops for owner direction rather than bypassing it.
 
 ## S0 delivery boundary
 
