@@ -11619,7 +11619,8 @@
               "approve_confirmation",
               "reject_confirmation",
               "launch_d2",
-              "record_final_disposition"
+              "record_final_disposition",
+              "record_semantic_event"
             ],
             "title": "Action Type",
             "type": "string"
