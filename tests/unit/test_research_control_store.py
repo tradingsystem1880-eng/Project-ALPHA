@@ -3974,6 +3974,10 @@ def test_verified_blind_semantic_resolver_reads_registered_d0_without_writing(
     contract_id, payload = _approved_pilot(store)
     run_id = _record_completed_d0(store, contract_id, payload, at=START + timedelta(minutes=8))
     database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "DELETE FROM research_execution_events WHERE project_id = ?", (PROJECT_ID,)
+        )
     before = database.read_bytes()
 
     resolved = store.verified_blind_semantic_artifacts(PROJECT_ID)

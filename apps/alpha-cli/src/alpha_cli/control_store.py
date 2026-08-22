@@ -2437,7 +2437,6 @@ class ControlStore:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute("PRAGMA busy_timeout = 5000")
-            connection.execute("PRAGMA journal_mode = WAL")
             connection.execute("PRAGMA synchronous = FULL")
             version_row = connection.execute("PRAGMA user_version").fetchone()
             version = 0 if version_row is None else int(version_row[0])
@@ -2469,6 +2468,11 @@ class ControlStore:
                 # fail loud, never regenerate from the created_at date rule). Idempotent
                 # DDL healing runs only when a declared object is actually missing.
                 _heal_missing_schema_objects(connection)
+            # Journal-mode negotiation is deliberately after the version/migration path.
+            # SQLite treats changing the mode as a database-wide write; doing it before the
+            # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
+            # IMMEDIATE can serialize them.
+            connection.execute("PRAGMA journal_mode = WAL")
             _heal_missing_development_stage_rows(connection)
             return connection
         except (OSError, sqlite3.Error) as exc:
@@ -7040,9 +7044,8 @@ class ControlStore:
         pid = _canonical_uuid(project_id, "project_id")
         self._require_project(connection, pid)
         phase = self._latest_research_phase(connection, pid)
-        execution = self._latest_research_execution(connection, pid)
-        if phase is None or execution is None:
-            raise DataError("research case has no active phase or execution state")
+        if phase is None:
+            raise DataError("research case has no active phase")
         active = self._require_research_contract(connection, pid, str(phase["contract_id"]))
         exploration = active
         if active["scope"] == "confirmation":
@@ -7128,6 +7131,9 @@ class ControlStore:
                 "run_id": run_id,
                 "verified_artifacts": selected,
             }
+        execution = self._latest_research_execution(connection, pid)
+        if execution is None:
+            raise DataError("research case has no active execution state")
         projection = project_blind_semantic_read(
             acceptance_bytes=selected["d0_acceptance.json"],
             events_bytes=selected["events.json"],
