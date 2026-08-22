@@ -324,6 +324,76 @@ def test_semantic_owner_payload_and_empty_head_are_canonical_and_closed(tmp_path
         control_store_module._semantic_payload({**payload, "extra": True})
 
 
+@pytest.mark.parametrize(
+    ("event_type", "field", "maximum"),
+    [
+        pytest.param("definition", "definition_label", 256, id="definition-label"),
+        pytest.param("definition", "definition_text", 8192, id="definition-text"),
+        pytest.param("review", "review_text", 8192, id="review-text"),
+    ],
+)
+def test_semantic_payload_requires_canonical_text(
+    event_type: str, field: str, maximum: int
+) -> None:
+    source = _semantic_source()
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    definition_id = "sd_" + "d" * 64
+    payload = (
+        _semantic_definition_payload(source, head)
+        if event_type == "definition"
+        else _semantic_review_payload(source, head, definition_id, "approve")
+    )
+    exact = "x" * maximum
+    payload[field] = exact
+    assert control_store_module._semantic_payload(payload)[field] == exact
+    payload[field] = f" {exact} "
+    with pytest.raises(DataError, match="canonical"):
+        control_store_module._semantic_payload(payload)
+
+
+def test_semantic_freeze_check_rejects_null_review_id_directly(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _seed_semantic_dependencies(tmp_path)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    with (
+        sqlite3.connect(database) as connection,
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+    ):
+        connection.execute(
+            """INSERT INTO research_semantic_events (
+                    event_id, event_sha256, project_id, sequence, event_type,
+                    case_contract_id, source_contract_id, case_revision,
+                    prior_semantic_head_sha256, semantic_artifact_id,
+                    semantic_artifact_sha256, verified_read_sha256, projection_sha256,
+                    run_id, cutoff_confirmed_at, definition_id, review_id,
+                    review_decision, payload_json, payload_sha256, receipt_id,
+                    actor, reason, recorded_at
+                ) VALUES (?, ?, ?, 1, 'freeze', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL,
+                          NULL, '{}', ?, ?, 'owner', 'reason', ?)
+                """,
+            (
+                "se_" + "e" * 64,
+                "e" * 64,
+                PROJECT_ID,
+                "rc_" + "1" * 64,
+                "rc_" + "2" * 64,
+                "a" * 64,
+                "b" * 64,
+                "sf_" + "f" * 64,
+                "f" * 64,
+                "c" * 64,
+                "d" * 64,
+                "0123456789abcdef",
+                "2026-08-13T00:00:00.000000Z",
+                "sd_" + "d" * 64,
+                "p" * 64,
+                "receipt-missing",
+                "2026-08-13T00:00:01.000000Z",
+            ),
+        )
+
+
 def test_semantic_ledger_append_and_read_rejects_tamper(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -949,6 +1019,7 @@ def test_compact_v2_full_history_contract_persists_under_the_existing_json_limit
 def _approved_contracts(
     store: ControlStore,
     *,
+    confirmation_pack_id: str | None = None,
     outcome: str = "SUPPORTED",
     disposition: str = "advance_to_strategy",
     record_confirmation_evidence: bool = True,
@@ -1022,7 +1093,10 @@ def _approved_contracts(
         responsibility="codex",
         at=START + timedelta(minutes=8),
     )
-    confirmation_payload = _payload(pack_id, confirmation=True)
+    confirmation_payload = _payload(
+        confirmation_pack_id or pack_id,
+        confirmation=True,
+    )
     confirmation = store.create_research_contract(
         PROJECT_ID,
         scope="confirmation",
@@ -1669,6 +1743,76 @@ def test_v4_to_v5_rebuild_is_lossless_and_retains_exact_backup(tmp_path: Path) -
     finally:
         migrated.close()
         backup.close()
+
+
+@pytest.mark.parametrize("legacy_version", [1, 2, 3])
+def test_legacy_v1_v2_v3_migrations_commit_common_v4_to_v5_path(
+    tmp_path: Path, legacy_version: int
+) -> None:
+    root = tmp_path / "control"
+    root.mkdir()
+    database = root / "workstation.sqlite3"
+    connection = sqlite3.connect(database, isolation_level=None)
+    try:
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("BEGIN IMMEDIATE")
+        if legacy_version == 1:
+            control_store_module._execute_static_sql_script(
+                connection, control_store_module._SCHEMA
+            )
+        else:
+            control_store_module._execute_static_sql_script(
+                connection, control_store_module._SCHEMA
+            )
+            control_store_module._execute_static_sql_script(
+                connection, control_store_module._SCHEMA_V2
+            )
+            if legacy_version == 3:
+                control_store_module._execute_static_sql_script(
+                    connection, control_store_module._SCHEMA_V3
+                )
+        connection.execute(
+            "INSERT INTO projects VALUES (?, ?, ?, ?, 'active', NULL, NULL, ?, ?)",
+            (
+                PROJECT_ID,
+                f"v{legacy_version} migration project",
+                "Preserve this committed legacy row",
+                "Reject if common migration is skipped",
+                "2026-08-13T00:00:00.000000Z",
+                "2026-08-13T00:00:00.000000Z",
+            ),
+        )
+        if legacy_version >= 2:
+            control_store_module._execute_static_sql_script(
+                connection, control_store_module._GOVERNANCE_BACKFILL
+            )
+        connection.execute(f"PRAGMA user_version = {legacy_version}")
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert ControlStore(tmp_path).list_projects()[0]["project_id"] == PROJECT_ID
+    backup = database.with_name("workstation.sqlite3.v4.bak")
+    assert backup.is_file()
+    with sqlite3.connect(backup) as backup_connection:
+        assert backup_connection.execute("PRAGMA user_version").fetchone() == (4,)
+        assert backup_connection.execute("SELECT project_id FROM projects").fetchone() == (
+            PROJECT_ID,
+        )
+        assert (
+            backup_connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE name = 'research_semantic_events'"
+            ).fetchone()
+            is None
+        )
+    with sqlite3.connect(database) as migrated:
+        assert migrated.execute("PRAGMA user_version").fetchone() == (5,)
+        assert (
+            migrated.execute(
+                "SELECT 1 FROM sqlite_master WHERE name = 'research_semantic_events'"
+            ).fetchone()
+            is not None
+        )
 
 
 def test_v4_to_v5_failure_rolls_back_and_exact_retry_succeeds(
@@ -3839,6 +3983,109 @@ def test_verified_blind_semantic_resolver_reads_registered_d0_without_writing(
     assert isinstance(resolved["events_bytes"], bytes)
     assert isinstance(resolved["chart_data_bytes"], bytes)
     assert database.read_bytes() == before
+
+
+def test_confirmation_semantic_resolver_binds_active_source_pack_and_shared_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    confirmation_pack = _source_pack(store)
+    _approved_contracts(store, confirmation_pack_id=confirmation_pack)
+    projection_data = {
+        "schema": "BlindSemanticProjectionV1",
+        "schema_version": 1,
+        "cutoff_confirmed_at": "2026-08-13T00:00:00.000000Z",
+    }
+    with store._transaction(write=False) as connection:
+        d0_run_id = connection.execute(
+            "SELECT run_id FROM research_attempt_records WHERE kind = 'd0-synthetic-pilot'"
+        ).fetchone()[0]
+    projection = SimpleNamespace(run_id=str(d0_run_id), to_dict=lambda: projection_data)
+    monkeypatch.setattr(
+        "alpha_study.project_blind_semantic_read",
+        lambda **_kwargs: projection,
+    )
+
+    class _Verified:
+        content_sha256 = "d" * 64
+
+        def __init__(self, *, run_id: str, projection: object) -> None:
+            self.run_id = run_id
+            self.projection = projection
+
+    monkeypatch.setattr("alpha_cli.study_semantic.VerifiedBlindSemanticReadV1", _Verified)
+    with store._transaction(write=False) as connection:
+        source = store._verified_semantic_source_locked(connection, PROJECT_ID)
+        phase = store._latest_research_phase(connection, PROJECT_ID)
+        execution = store._latest_research_execution(connection, PROJECT_ID)
+    assert phase is not None
+    assert execution is not None
+    artifacts = store.verified_blind_semantic_artifacts(PROJECT_ID)
+    assert source["case_revision"] == control_store_module.research_case_revision(
+        {
+            "project_id": PROJECT_ID,
+            "active_contract_id": source["case_contract_id"],
+            "phase": phase["phase"],
+            "execution_state": execution["state"],
+            "source_pack_id": confirmation_pack,
+        }
+    )
+    assert artifacts["run_id"] == source["run_id"]
+    assert artifacts["acceptance_bytes"]
+    payload = _semantic_definition_payload(
+        source, control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    )
+    prepared = store.prepare_semantic_action(
+        PROJECT_ID, payload, expected_case_revision=str(source["case_revision"])
+    )
+    challenge_id = "11111111-1111-4111-8111-111111111111"
+    credential_id = "confirmation-semantic-credential"
+    with sqlite3.connect(tmp_path / "control" / control_store_module.DATABASE_NAME) as connection:
+        connection.execute(
+            "INSERT INTO owner_credentials VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (credential_id, b"key", 1, "owner", "[]", "2026-08-13T00:00:00Z", None),
+        )
+        connection.execute(
+            """INSERT INTO owner_auth_challenges
+            VALUES (?, 'action', ?, NULL, ?, ?, ?, NULL, NULL)""",
+            (
+                challenge_id,
+                b"confirmation-semantic-challenge",
+                json.dumps(
+                    {
+                        "action_type": "record_semantic_event",
+                        "artifact_hash": prepared["artifact_hash"],
+                        "expected_case_revision": prepared["case_revision"],
+                        "request_hash": prepared["request_hash"],
+                        "project_id": PROJECT_ID,
+                        "consequence_summary": "Record confirmation semantic definition.",
+                        "reason": "Owner approved confirmation semantic definition.",
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "2026-08-23T00:00:00Z",
+                "2026-08-23T01:00:00Z",
+            ),
+        )
+    committed = store.record_semantic_event_authorization(
+        challenge_id=challenge_id,
+        credential_id=credential_id,
+        previous_sign_count=1,
+        new_sign_count=2,
+        assertion_hash="a" * 64,
+        payload=payload,
+        now=datetime(2026, 8, 23, 0, 1, tzinfo=UTC),
+        receipt_id="22222222-2222-4222-8222-222222222222",
+    )
+    assert cast(dict[str, object], committed["outcome"])["status"] == ("semantic_event_recorded")
+    monkeypatch.setattr(
+        store,
+        "_verified_semantic_source_locked",
+        lambda *_args: pytest.fail("public artifacts must use the shared resolver"),
+    )
+    assert store.verified_blind_semantic_artifacts(PROJECT_ID)["run_id"] == source["run_id"]
 
 
 def test_verified_semantic_selected_read_uses_one_descriptor_and_hard_cap(

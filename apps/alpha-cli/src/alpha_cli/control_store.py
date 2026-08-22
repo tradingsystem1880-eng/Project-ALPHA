@@ -1230,6 +1230,7 @@ CREATE TABLE IF NOT EXISTS research_semantic_events (
             AND substr(semantic_artifact_id, 1, 3) = 'sf_'
             AND substr(definition_id, 1, 3) = 'sd_'
             AND substr(review_id, 1, 3) = 'sr_'
+            AND review_id IS NOT NULL
             AND review_decision IS NULL)
     ),
     CHECK (semantic_artifact_sha256 = substr(semantic_artifact_id, 4))
@@ -1488,7 +1489,11 @@ def _semantic_payload(payload: Mapping[str, object]) -> dict[str, object]:
         raise DataError("SemanticOwnerActionV1 cutoff_confirmed_at is invalid")
     if event_type == "definition":
         for field, maximum in (("definition_label", 256), ("definition_text", 8192)):
-            _required_text(clean[field], f"SemanticOwnerActionV1 {field}", max_length=maximum)
+            canonical = _required_text(
+                clean[field], f"SemanticOwnerActionV1 {field}", max_length=maximum
+            )
+            if clean[field] != canonical:
+                raise DataError(f"SemanticOwnerActionV1 {field} must be canonical")
     elif event_type == "review":
         definition_id = clean["definition_id"]
         if (
@@ -1499,7 +1504,11 @@ def _semantic_payload(payload: Mapping[str, object]) -> dict[str, object]:
             raise DataError("invalid semantic definition_id")
         if clean["review_decision"] not in {"approve", "reject"}:
             raise DataError("SemanticOwnerActionV1 review_decision is invalid")
-        _required_text(clean["review_text"], "SemanticOwnerActionV1 review_text", max_length=8192)
+        canonical = _required_text(
+            clean["review_text"], "SemanticOwnerActionV1 review_text", max_length=8192
+        )
+        if clean["review_text"] != canonical:
+            raise DataError("SemanticOwnerActionV1 review_text must be canonical")
     else:
         definition_id = clean["definition_id"]
         review_id = clean["review_id"]
@@ -6706,6 +6715,14 @@ class ControlStore:
             )
             if event is None:
                 raise DataError("semantic recovery event linkage is invalid")
+            receipt_consequence = _required_text(
+                receipt["consequence_summary"], "owner action consequence summary"
+            )
+            binding_consequence = _required_text(
+                binding.get("consequence_summary"), "owner action consequence summary"
+            )
+            receipt_reason = _required_text(receipt["reason"], "owner action reason")
+            binding_reason = _required_text(binding.get("reason"), "owner action reason")
             if (
                 receipt["challenge_id"] != cid
                 or receipt["credential_id"] != challenge["verified_credential_id"]
@@ -6715,8 +6732,8 @@ class ControlStore:
                 or receipt["project_id"] != project_id
                 or binding.get("artifact_hash") != event_row["semantic_artifact_sha256"]
                 or binding.get("expected_case_revision") != event_row["case_revision"]
-                or receipt["consequence_summary"] != binding.get("consequence_summary")
-                or receipt["reason"] != binding.get("reason")
+                or receipt_consequence != binding_consequence
+                or receipt_reason != binding_reason
             ):
                 raise DataError("semantic recovery receipt binding is invalid")
             outcome = _decode_json(receipt["outcome_json"], "semantic receipt outcome")
@@ -7013,8 +7030,12 @@ class ControlStore:
         identity["event_sha256"] = event_id[3:]
         return identity
 
-    def _verified_semantic_source_locked(
-        self, connection: sqlite3.Connection, project_id: str
+    def _verified_blind_semantic_resolver_locked(
+        self,
+        connection: sqlite3.Connection,
+        project_id: str,
+        *,
+        include_projection: bool = True,
     ) -> dict[str, object]:
         pid = _canonical_uuid(project_id, "project_id")
         self._require_project(connection, pid)
@@ -7031,6 +7052,9 @@ class ControlStore:
             exploration = self._require_research_contract(connection, pid, parent_id)
         if exploration["scope"] != "exploration":
             raise DataError("blind semantic read requires an exploration contract")
+        active_payload = _decode_json(active["payload_json"], "active semantic contract payload")
+        if not isinstance(active_payload, dict):
+            raise DataError("active semantic contract payload is corrupt")
         contract_payload = _decode_json(
             exploration["payload_json"], "blind semantic exploration contract payload"
         )
@@ -7095,6 +7119,15 @@ class ControlStore:
             execution_fingerprint=config_fingerprint,
             d0_operator_fingerprint=operator_fingerprint,
         )
+        if not include_projection:
+            return {
+                "active_contract": active,
+                "source_contract": exploration,
+                "active_payload": active_payload,
+                "source_payload": contract_payload,
+                "run_id": run_id,
+                "verified_artifacts": selected,
+            }
         projection = project_blind_semantic_read(
             acceptance_bytes=selected["d0_acceptance.json"],
             events_bytes=selected["events.json"],
@@ -7103,7 +7136,7 @@ class ControlStore:
         if projection.run_id != run_id:
             raise DataError("verified semantic run identity disagrees with D0 artifacts")
         verified = VerifiedBlindSemanticReadV1(run_id=run_id, projection=projection)
-        contract_source_pack = contract_payload.get("source_pack_id")
+        contract_source_pack = active_payload.get("source_pack_id")
         summary = {
             "project_id": pid,
             "active_contract_id": active["contract_id"],
@@ -7124,7 +7157,25 @@ class ControlStore:
             "cutoff_confirmed_at": projection.to_dict()["cutoff_confirmed_at"],
         }
         _semantic_source_map(source)
-        return source
+        return {
+            "source": source,
+            "active_contract": active,
+            "source_contract": exploration,
+            "active_payload": active_payload,
+            "source_payload": contract_payload,
+            "run_id": run_id,
+            "verified_artifacts": selected,
+        }
+
+    def _verified_semantic_source_locked(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> dict[str, object]:
+        """Return the source contract from the locked verified-blind resolver."""
+        resolved = self._verified_blind_semantic_resolver_locked(connection, project_id)
+        source = resolved.get("source")
+        if not isinstance(source, Mapping):
+            raise DataError("verified semantic resolver returned an invalid source")
+        return dict(source)
 
     def verified_blind_semantic_artifacts(self, project_id: str) -> dict[str, object]:
         """Resolve one active exploration D0 lineage and return verified projection bytes.
@@ -7135,87 +7186,14 @@ class ControlStore:
         """
 
         with self._transaction(write=False) as connection:
-            self._require_project(connection, project_id)
-            phase = self._latest_research_phase(connection, project_id)
-            if phase is None:
-                raise DataError("research case has no active phase")
-            active = self._require_research_contract(
-                connection, project_id, str(phase["contract_id"])
+            resolved = self._verified_blind_semantic_resolver_locked(
+                connection, project_id, include_projection=False
             )
-            exploration = active
-            if active["scope"] == "confirmation":
-                parent_id = active["parent_contract_id"]
-                if not isinstance(parent_id, str):
-                    raise DataError("confirmation contract has no exploration parent")
-                exploration = self._require_research_contract(connection, project_id, parent_id)
-            if exploration["scope"] != "exploration":
-                raise DataError("blind semantic read requires an exploration contract")
-            payload = _decode_json(
-                exploration["payload_json"], "blind semantic exploration contract payload"
-            )
-            if not isinstance(payload, dict):
-                raise DataError("blind semantic exploration contract payload is corrupt")
-            from alpha_cli.research_runtime import (  # noqa: PLC0415
-                validate_d0_acceptance_bytes,
-                validate_d0_pilot_contract,
-            )
-
-            operator = validate_d0_pilot_contract(payload)
-            operator_identity = operator.get("operator")
-            if not isinstance(operator_identity, Mapping) or operator_identity.get("name") != (
-                "double_bottom"
-            ):
-                raise DataError("blind semantic read supports only registered double_bottom D0")
-            attempt = self._require_completed_d0_attempt(
-                connection,
-                project_id=project_id,
-                contract_id=str(exploration["contract_id"]),
-                contract_payload=payload,
-            )
-            attempt_view = self._research_attempt_view(attempt)
-            run_id = attempt_view.get("run_id")
-            if not isinstance(run_id, str):  # pragma: no cover - guarded by the helper above.
-                raise DataError("completed D0 attempt has no run identity")
-            run_dir, manifest = self._verified_run(run_id)
-            selected = self._read_verified_semantic_artifacts(run_dir, manifest)
-            post_dir, post_manifest = self._verified_run(run_id)
-            if post_dir != run_dir:
-                raise DataError("verified D0 run directory changed during semantic read")
-            before_artifacts = manifest.get("artifacts")
-            after_artifacts = post_manifest.get("artifacts")
-            if not isinstance(before_artifacts, Mapping) or not isinstance(
-                after_artifacts, Mapping
-            ):
-                raise DataError("verified D0 run manifest artifact map changed during read")
-            for filename in _SEMANTIC_READ_ARTIFACTS:
-                if before_artifacts.get(filename) != after_artifacts.get(filename):
-                    raise DataError(f"verified D0 run {filename} manifest changed during read")
-            config_fingerprint = attempt_view.get("config_fingerprint")
-            fixture = operator.get("fixture")
-            dataset_hash = (
-                fixture.get("definition_fingerprint") if isinstance(fixture, Mapping) else None
-            )
-            operator_fingerprint = operator.get("fingerprint")
-            if (
-                not isinstance(config_fingerprint, str)
-                or not isinstance(dataset_hash, str)
-                or not isinstance(operator_fingerprint, str)
-            ):
-                raise DataError("completed D0 attempt has corrupt verifier inputs")
-            validate_d0_acceptance_bytes(
-                selected["d0_acceptance.json"],
-                post_manifest,
-                project_id=project_id,
-                contract_id=str(exploration["contract_id"]),
-                contract_hash=hashlib.sha256(
-                    _canonical_json(payload, "research D0 acceptance contract").encode("utf-8")
-                ).hexdigest(),
-                dataset_hash=dataset_hash,
-                execution_fingerprint=config_fingerprint,
-                d0_operator_fingerprint=operator_fingerprint,
-            )
+            selected = resolved.get("verified_artifacts")
+            if not isinstance(selected, Mapping):
+                raise DataError("verified semantic resolver returned invalid artifacts")
         return {
-            "run_id": run_id,
+            "run_id": resolved["run_id"],
             "acceptance_bytes": selected["d0_acceptance.json"],
             "events_bytes": selected["events.json"],
             "chart_data_bytes": selected["chart-data.json"],

@@ -144,6 +144,7 @@ CREATE TABLE research_semantic_events (
             AND substr(semantic_artifact_id, 1, 3) = 'sf_'
             AND substr(definition_id, 1, 3) = 'sd_'
             AND substr(review_id, 1, 3) = 'sr_'
+            AND review_id IS NOT NULL
             AND review_decision IS NULL)
     ),
     CHECK (semantic_artifact_sha256 = substr(semantic_artifact_id, 4))

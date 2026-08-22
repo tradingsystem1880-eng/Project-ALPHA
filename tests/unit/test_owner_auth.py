@@ -610,6 +610,20 @@ def test_semantic_assertion_is_atomic_and_idempotently_recoverable(
         now=NOW,
         expires_at=NOW + timedelta(seconds=60),
     )
+    whitespace_binding = {
+        **binding,
+        "consequence_summary": f"  {binding['consequence_summary']}  ",
+        "reason": f"  {binding['reason']}  ",
+    }
+    with sqlite3.connect(tmp_path / "control" / "workstation.sqlite3") as connection:
+        connection.execute(
+            "UPDATE owner_auth_challenges SET binding_json = ? WHERE challenge_id = ?",
+            (
+                owner_auth._canonical_json(whitespace_binding, "binding"),
+                challenge["challenge_id"],
+            ),
+        )
+        connection.commit()
     monkeypatch.setattr(
         owner_auth,
         "verify_authentication_response",
