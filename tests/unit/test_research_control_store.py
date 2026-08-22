@@ -137,6 +137,572 @@ def _insert_v4_receipt(database: Path) -> list[tuple[object, ...]]:
         connection.close()
 
 
+def _semantic_source() -> dict[str, object]:
+    return {
+        "project_id": PROJECT_ID,
+        "case_contract_id": "rc_" + "1" * 64,
+        "source_contract_id": "rc_" + "2" * 64,
+        "case_revision": "a" * 64,
+        "verified_read_sha256": "b" * 64,
+        "projection_sha256": "c" * 64,
+        "run_id": "0123456789abcdef",
+        "cutoff_confirmed_at": "2026-08-13T00:00:00.000000Z",
+    }
+
+
+def _semantic_definition_payload(source: dict[str, object], head: str) -> dict[str, object]:
+    return {
+        "schema": "SemanticOwnerActionV1",
+        "schema_version": 1,
+        "event_type": "definition",
+        "verified_read_sha256": source["verified_read_sha256"],
+        "projection_sha256": source["projection_sha256"],
+        "run_id": source["run_id"],
+        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
+        "expected_semantic_head_sha256": head,
+        "definition_label": "Test definition",
+        "definition_text": "A bounded semantic definition.",
+    }
+
+
+def _semantic_review_payload(
+    source: dict[str, object], head: str, definition_id: str, decision: str
+) -> dict[str, object]:
+    return {
+        "schema": "SemanticOwnerActionV1",
+        "schema_version": 1,
+        "event_type": "review",
+        "verified_read_sha256": source["verified_read_sha256"],
+        "projection_sha256": source["projection_sha256"],
+        "run_id": source["run_id"],
+        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
+        "expected_semantic_head_sha256": head,
+        "definition_id": definition_id,
+        "review_decision": decision,
+        "review_text": "Review the bounded semantic definition.",
+    }
+
+
+def _semantic_freeze_payload(
+    source: dict[str, object], head: str, definition_id: str, review_id: str
+) -> dict[str, object]:
+    return {
+        "schema": "SemanticOwnerActionV1",
+        "schema_version": 1,
+        "event_type": "freeze",
+        "verified_read_sha256": source["verified_read_sha256"],
+        "projection_sha256": source["projection_sha256"],
+        "run_id": source["run_id"],
+        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
+        "expected_semantic_head_sha256": head,
+        "definition_id": definition_id,
+        "review_id": review_id,
+    }
+
+
+def _seed_semantic_dependencies(tmp_path: Path) -> None:
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        for contract_id in ("rc_" + "1" * 64, "rc_" + "2" * 64):
+            connection.execute(
+                """INSERT INTO research_contracts
+                (contract_id, project_id, scope, parent_contract_id, payload_json,
+                 created_by, author_kind, created_at)
+                VALUES (?, ?, 'exploration', NULL, '{}', 'owner', 'human', ?)""",
+                (contract_id, PROJECT_ID, "2026-08-13T00:00:00.000000Z"),
+            )
+        connection.execute(
+            "INSERT INTO owner_credentials VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("cred-semantic", b"key", 1, "owner", "[]", "2026-08-13T00:00:00Z", None),
+        )
+        connection.execute(
+            """INSERT INTO owner_auth_challenges
+            VALUES (?, 'action', ?, NULL, ?, ?, ?, NULL, NULL)""",
+            (
+                "challenge-semantic",
+                b"challenge",
+                '{"action_type":"record_semantic_event"}',
+                "2026-08-13T00:00:00Z",
+                "2026-08-14T00:00:00Z",
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def _insert_semantic_receipt(
+    tmp_path: Path,
+    *,
+    source: dict[str, object],
+    payload: dict[str, object],
+    receipt_id: str,
+    sequence: int,
+    prior_head: str,
+) -> tuple[str, str]:
+    artifact_id, artifact_sha, _ = control_store_module._semantic_artifact(
+        source, payload, prior_head
+    )
+    event_id, identity = control_store_module._semantic_event_identity(
+        source=source,
+        payload=payload,
+        sequence=sequence,
+        prior_head=prior_head,
+        semantic_artifact_id=artifact_id,
+        semantic_artifact_sha256=artifact_sha,
+        receipt_id=receipt_id,
+        actor="owner",
+        reason="owner test",
+        recorded_at="2026-08-13T00:00:01.000000Z",
+    )
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        challenge_id = f"challenge-{receipt_id}"
+        connection.execute(
+            """INSERT INTO owner_auth_challenges
+            VALUES (?, 'action', ?, NULL, ?, ?, ?, NULL, NULL)""",
+            (
+                challenge_id,
+                b"challenge-" + receipt_id.encode(),
+                '{"action_type":"record_semantic_event"}',
+                "2026-08-13T00:00:00Z",
+                "2026-08-14T00:00:00Z",
+            ),
+        )
+        connection.execute(
+            """INSERT INTO owner_action_receipts VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )""",
+            (
+                receipt_id,
+                challenge_id,
+                "cred-semantic",
+                "owner",
+                "record_semantic_event",
+                PROJECT_ID,
+                artifact_sha,
+                source["case_revision"],
+                "record semantic event",
+                "owner test",
+                identity["payload_sha256"],
+                "d" * 64,
+                json.dumps(
+                    {
+                        "status": "semantic_event_recorded",
+                        "semantic_event_id": event_id,
+                        "semantic_event_sha256": event_id[3:],
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "2026-08-13T00:00:01.000000Z",
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return event_id, artifact_id
+
+
+def test_semantic_owner_payload_and_empty_head_are_canonical_and_closed(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    source = _semantic_source()
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    payload = _semantic_definition_payload(source, head)
+    artifact_id, artifact_sha, artifact = control_store_module._semantic_artifact(
+        source, payload, head
+    )
+    assert artifact_id == f"sd_{artifact_sha}"
+    assert artifact["schema"] == "ResearchSemanticDefinitionV1"
+    assert control_store_module._canonical_json(payload, "payload") == json.dumps(
+        payload, sort_keys=True, separators=(",", ":")
+    )
+    with pytest.raises(DataError, match="keys are not exact"):
+        control_store_module._semantic_payload({**payload, "extra": True})
+
+
+def test_semantic_ledger_append_and_read_rejects_tamper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _seed_semantic_dependencies(tmp_path)
+    source = _semantic_source()
+    monkeypatch.setattr(
+        store,
+        "_verified_semantic_source_locked",
+        lambda _connection, _project_id: source,
+    )
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    payload = _semantic_definition_payload(source, head)
+    artifact_id, artifact_sha, _ = control_store_module._semantic_artifact(source, payload, head)
+    payload_sha = hashlib.sha256(
+        control_store_module._canonical_json(payload, "payload").encode()
+    ).hexdigest()
+    connection = sqlite3.connect(tmp_path / "control" / control_store_module.DATABASE_NAME)
+    try:
+        connection.execute(
+            """INSERT INTO owner_action_receipts VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )""",
+            (
+                "receipt-semantic-1",
+                "challenge-semantic",
+                "cred-semantic",
+                "owner",
+                "record_semantic_event",
+                PROJECT_ID,
+                artifact_sha,
+                source["case_revision"],
+                "record semantic definition",
+                "owner test",
+                payload_sha,
+                "d" * 64,
+                json.dumps(
+                    {
+                        "status": "semantic_event_recorded",
+                        "semantic_event_id": "pending",
+                        "semantic_event_sha256": "pending",
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "2026-08-13T00:00:01.000000Z",
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    with (
+        pytest.raises(DataError, match="receipt outcome"),
+        store._transaction(write=True) as transaction,
+    ):
+        store.append_semantic_event(
+            transaction,
+            project_id=PROJECT_ID,
+            payload=payload,
+            receipt_id="receipt-semantic-1",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+
+
+def test_semantic_ledger_append_and_persisted_read_are_hash_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _seed_semantic_dependencies(tmp_path)
+    source = _semantic_source()
+    monkeypatch.setattr(
+        store,
+        "_verified_semantic_source_locked",
+        lambda _connection, _project_id: source,
+    )
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    payload = _semantic_definition_payload(source, head)
+    event_id, artifact_id = _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=payload,
+        receipt_id="receipt-semantic-success",
+        sequence=1,
+        prior_head=head,
+    )
+    with store._transaction(write=True) as connection:
+        event = store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=payload,
+            receipt_id="receipt-semantic-success",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+    assert event["event_id"] == event_id
+    assert event["semantic_artifact_id"] == artifact_id
+    monkeypatch.setattr(
+        store,
+        "_verified_semantic_source_locked",
+        lambda _connection, _project_id: pytest.fail(
+            "persisted read must not require current source"
+        ),
+    )
+    persisted = store.read_semantic_events(PROJECT_ID)
+    assert len(persisted) == 1
+    assert persisted[0]["event_id"] == event_id
+    assert store.semantic_head_sha256(PROJECT_ID) == event_id[3:]
+
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("DROP TRIGGER research_semantic_events_no_update")
+        connection.execute(
+            "UPDATE research_semantic_events SET payload_json = '{\"tampered\":true}' "
+            "WHERE event_id = ?",
+            (event_id,),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    with pytest.raises(DataError, match="protected schema object"):
+        store.read_semantic_events(PROJECT_ID)
+
+
+def test_semantic_persisted_read_rejects_orphan_record_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _seed_semantic_dependencies(tmp_path)
+    source = _semantic_source()
+    monkeypatch.setattr(
+        store,
+        "_verified_semantic_source_locked",
+        lambda _connection, _project_id: source,
+    )
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=_semantic_definition_payload(source, head),
+        receipt_id="receipt-semantic-orphan",
+        sequence=1,
+        prior_head=head,
+    )
+    with pytest.raises(DataError, match="bijective"):
+        store.read_semantic_events(PROJECT_ID)
+
+
+def test_verified_semantic_source_revalidates_current_d0_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    contract_id = "rc_" + "1" * 64
+    payload = {
+        "schema": "ResearchContractV1",
+        "scope": "exploration",
+        "source_pack_id": "sp_" + "2" * 64,
+    }
+    monkeypatch.setattr(store, "_require_project", lambda _connection, _project_id: None)
+    monkeypatch.setattr(
+        store,
+        "_latest_research_phase",
+        lambda _connection, _project_id: {"contract_id": contract_id, "phase": "pilot"},
+    )
+    monkeypatch.setattr(
+        store,
+        "_latest_research_execution",
+        lambda _connection, _project_id: {"state": "running"},
+    )
+    monkeypatch.setattr(
+        store,
+        "_require_research_contract",
+        lambda _connection, _project_id, _contract_id: {
+            "contract_id": contract_id,
+            "scope": "exploration",
+            "parent_contract_id": None,
+            "payload_json": json.dumps(payload, separators=(",", ":")),
+        },
+    )
+    monkeypatch.setattr(
+        store,
+        "_require_completed_d0_attempt",
+        lambda *_args, **_kwargs: {"attempt": True},
+    )
+    monkeypatch.setattr(
+        store,
+        "_research_attempt_view",
+        lambda _attempt: {"run_id": "0123456789abcdef", "config_fingerprint": "a" * 64},
+    )
+    manifest = {
+        "artifacts": {
+            filename: {"sha256": "a" * 64}
+            for filename in control_store_module._SEMANTIC_READ_ARTIFACTS
+        }
+    }
+    monkeypatch.setattr(
+        store,
+        "_verified_run",
+        lambda _run_id: (tmp_path, manifest),
+    )
+    monkeypatch.setattr(
+        store,
+        "_read_verified_semantic_artifacts",
+        lambda _run_dir, _manifest: {
+            filename: b"{}" for filename in control_store_module._SEMANTIC_READ_ARTIFACTS
+        },
+    )
+    projection_data = {
+        "schema": "BlindSemanticProjectionV1",
+        "schema_version": 1,
+        "cutoff_confirmed_at": "2026-08-13T00:00:00.000000Z",
+    }
+    projection = SimpleNamespace(run_id="0123456789abcdef", to_dict=lambda: projection_data)
+    monkeypatch.setattr(
+        "alpha_cli.research_runtime.validate_d0_pilot_contract",
+        lambda _contract: {
+            "operator": {"name": "double_bottom"},
+            "fixture": {"definition_fingerprint": "b" * 64},
+            "fingerprint": "c" * 64,
+        },
+    )
+    monkeypatch.setattr(
+        "alpha_cli.research_runtime.validate_d0_acceptance_bytes",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr("alpha_study.project_blind_semantic_read", lambda **_kwargs: projection)
+
+    class _Verified:
+        content_sha256 = "d" * 64
+
+        def __init__(self, *, run_id: str, projection: object) -> None:
+            self.run_id = run_id
+            self.projection = projection
+
+    monkeypatch.setattr("alpha_cli.study_semantic.VerifiedBlindSemanticReadV1", _Verified)
+    with store._transaction(write=False) as connection:
+        source = store._verified_semantic_source_locked(connection, PROJECT_ID)
+    assert source["case_contract_id"] == contract_id
+    assert source["source_contract_id"] == contract_id
+    assert source["verified_read_sha256"] == "d" * 64
+
+
+def test_semantic_ledger_enforces_rejected_retry_and_approved_freeze(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    _seed_semantic_dependencies(tmp_path)
+    source = _semantic_source()
+    monkeypatch.setattr(
+        store,
+        "_verified_semantic_source_locked",
+        lambda _connection, _project_id: source,
+    )
+
+    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    definition = _semantic_definition_payload(source, head)
+    first_event, definition_id = _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=definition,
+        receipt_id="receipt-transition-1",
+        sequence=1,
+        prior_head=head,
+    )
+    with store._transaction(write=True) as connection:
+        store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=definition,
+            receipt_id="receipt-transition-1",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+
+    rejected = _semantic_review_payload(source, first_event[3:], definition_id, "reject")
+    second_event, review_id = _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=rejected,
+        receipt_id="receipt-transition-2",
+        sequence=2,
+        prior_head=first_event[3:],
+    )
+    with store._transaction(write=True) as connection:
+        store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=rejected,
+            receipt_id="receipt-transition-2",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+    rejected_freeze = _semantic_freeze_payload(source, second_event[3:], definition_id, review_id)
+    with (
+        pytest.raises(DataError, match="rejected review"),
+        store._transaction(write=True) as connection,
+    ):
+        store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=rejected_freeze,
+            receipt_id="receipt-transition-rejected-freeze",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+
+    retry_definition = _semantic_definition_payload(source, second_event[3:])
+    retry_definition["definition_label"] = "Retried definition"
+    retry_event, retry_definition_id = _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=retry_definition,
+        receipt_id="receipt-transition-3",
+        sequence=3,
+        prior_head=second_event[3:],
+    )
+    with store._transaction(write=True) as connection:
+        store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=retry_definition,
+            receipt_id="receipt-transition-3",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+    approved = _semantic_review_payload(source, retry_event[3:], retry_definition_id, "approve")
+    approved_event, approved_review_id = _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=approved,
+        receipt_id="receipt-transition-4",
+        sequence=4,
+        prior_head=retry_event[3:],
+    )
+    with store._transaction(write=True) as connection:
+        store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=approved,
+            receipt_id="receipt-transition-4",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+    freeze = _semantic_freeze_payload(
+        source, approved_event[3:], retry_definition_id, approved_review_id
+    )
+    _insert_semantic_receipt(
+        tmp_path,
+        source=source,
+        payload=freeze,
+        receipt_id="receipt-transition-5",
+        sequence=5,
+        prior_head=approved_event[3:],
+    )
+    with store._transaction(write=True) as connection:
+        store.append_semantic_event(
+            connection,
+            project_id=PROJECT_ID,
+            payload=freeze,
+            receipt_id="receipt-transition-5",
+            actor="owner",
+            reason="owner test",
+            recorded_at="2026-08-13T00:00:01.000000Z",
+        )
+    assert len(store.read_semantic_events(PROJECT_ID)) == 5
+
+
 def _source_pack(store: ControlStore) -> str:
     source = store.create_research_source(
         PROJECT_ID,

@@ -361,6 +361,32 @@ _RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
 }
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc|ld|rx)_[0-9a-f]{64}")
+_SEMANTIC_ID_RE = re.compile(r"(?P<prefix>sd|sr|sf|se)_[0-9a-f]{64}")
+_SEMANTIC_RUN_ID_RE = re.compile(r"[0-9a-f]{16}")
+_SEMANTIC_COMMON_PAYLOAD_KEYS: Final = frozenset(
+    {
+        "schema",
+        "schema_version",
+        "event_type",
+        "verified_read_sha256",
+        "projection_sha256",
+        "run_id",
+        "cutoff_confirmed_at",
+        "expected_semantic_head_sha256",
+    }
+)
+_SEMANTIC_SOURCE_KEYS: Final = frozenset(
+    {
+        "project_id",
+        "case_contract_id",
+        "source_contract_id",
+        "case_revision",
+        "verified_read_sha256",
+        "projection_sha256",
+        "run_id",
+        "cutoff_confirmed_at",
+    }
+)
 _SOURCE_CLAIM_DIRECTIONS: Final = frozenset({"supports", "contradicts", "contextualizes", "method"})
 _SOURCE_CLAIM_STRENGTHS: Final = frozenset({"weak", "moderate", "strong"})
 # Columns added to research_source_records after schema v2 shipped (ADR-0024).  The heal
@@ -1382,6 +1408,240 @@ def _canonical_json(value: object, label: str) -> str:
     if len(result.encode("utf-8")) > _MAX_JSON_BYTES:
         raise DataError(f"invalid control {label}: JSON exceeds {_MAX_JSON_BYTES} bytes")
     return result
+
+
+def _semantic_empty_head_sha256(project_id: str) -> str:
+    pid = _canonical_uuid(project_id, "project_id")
+    value = {
+        "schema": "ResearchSemanticHeadV1",
+        "schema_version": 1,
+        "project_id": pid,
+        "event_sha256": None,
+    }
+    return hashlib.sha256(_canonical_json(value, "semantic empty head").encode("utf-8")).hexdigest()
+
+
+def _semantic_source_map(source: Mapping[str, object]) -> dict[str, object]:
+    clean = _json_object(source, "verified semantic source")
+    extras = set(clean) - _SEMANTIC_SOURCE_KEYS
+    if extras or set(clean) != _SEMANTIC_SOURCE_KEYS:
+        raise DataError("verified semantic source keys are not exact")
+    pid = _canonical_uuid(str(clean["project_id"]), "project_id")
+    for field in (
+        "case_revision",
+        "verified_read_sha256",
+        "projection_sha256",
+    ):
+        value = clean[field]
+        if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+            raise DataError(f"verified semantic source {field} is invalid")
+    for field in ("case_contract_id", "source_contract_id"):
+        _require_content_id(str(clean[field]), f"verified semantic source {field}", prefix="rc")
+    run_id = clean["run_id"]
+    if not isinstance(run_id, str) or _SEMANTIC_RUN_ID_RE.fullmatch(run_id) is None:
+        raise DataError("verified semantic source run_id is invalid")
+    cutoff = clean["cutoff_confirmed_at"]
+    if not isinstance(cutoff, str) or _format_timestamp(parse_timestamp(cutoff)) != cutoff:
+        raise DataError("verified semantic source cutoff_confirmed_at is invalid")
+    return {
+        "project_id": pid,
+        "case_contract_id": clean["case_contract_id"],
+        "source_contract_id": clean["source_contract_id"],
+        "case_revision": clean["case_revision"],
+        "verified_read_sha256": clean["verified_read_sha256"],
+        "projection_sha256": clean["projection_sha256"],
+        "run_id": run_id,
+        "cutoff_confirmed_at": cutoff,
+    }
+
+
+def _semantic_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    clean = _json_object(payload, "SemanticOwnerActionV1 payload")
+    if clean.get("schema") != "SemanticOwnerActionV1" or clean.get("schema_version") != 1:
+        raise DataError("unsupported SemanticOwnerActionV1 payload")
+    event_type = clean.get("event_type")
+    if event_type not in {"definition", "review", "freeze"}:
+        raise DataError("SemanticOwnerActionV1 event_type is invalid")
+    type_keys = {
+        "definition": {"definition_label", "definition_text"},
+        "review": {"definition_id", "review_decision", "review_text"},
+        "freeze": {"definition_id", "review_id"},
+    }[str(event_type)]
+    expected_keys = set(_SEMANTIC_COMMON_PAYLOAD_KEYS) | type_keys
+    if set(clean) != expected_keys:
+        raise DataError("SemanticOwnerActionV1 payload keys are not exact")
+    for field in (
+        "verified_read_sha256",
+        "projection_sha256",
+        "expected_semantic_head_sha256",
+    ):
+        value = clean[field]
+        if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+            raise DataError(f"SemanticOwnerActionV1 {field} is invalid")
+    run_id = clean["run_id"]
+    if not isinstance(run_id, str) or _SEMANTIC_RUN_ID_RE.fullmatch(run_id) is None:
+        raise DataError("SemanticOwnerActionV1 run_id is invalid")
+    cutoff = clean["cutoff_confirmed_at"]
+    if not isinstance(cutoff, str) or _format_timestamp(parse_timestamp(cutoff)) != cutoff:
+        raise DataError("SemanticOwnerActionV1 cutoff_confirmed_at is invalid")
+    if event_type == "definition":
+        for field, maximum in (("definition_label", 256), ("definition_text", 8192)):
+            _required_text(clean[field], f"SemanticOwnerActionV1 {field}", max_length=maximum)
+    elif event_type == "review":
+        definition_id = clean["definition_id"]
+        if (
+            not isinstance(definition_id, str)
+            or not definition_id.startswith("sd_")
+            or _SEMANTIC_ID_RE.fullmatch(definition_id) is None
+        ):
+            raise DataError("invalid semantic definition_id")
+        if clean["review_decision"] not in {"approve", "reject"}:
+            raise DataError("SemanticOwnerActionV1 review_decision is invalid")
+        _required_text(clean["review_text"], "SemanticOwnerActionV1 review_text", max_length=8192)
+    else:
+        definition_id = clean["definition_id"]
+        review_id = clean["review_id"]
+        if (
+            not isinstance(definition_id, str)
+            or _SEMANTIC_ID_RE.fullmatch(definition_id) is None
+            or not definition_id.startswith("sd_")
+        ):
+            raise DataError("invalid semantic definition_id")
+        if (
+            not isinstance(review_id, str)
+            or _SEMANTIC_ID_RE.fullmatch(review_id) is None
+            or not review_id.startswith("sr_")
+        ):
+            raise DataError("invalid semantic review_id")
+    return clean
+
+
+def _semantic_artifact(
+    source: Mapping[str, object], payload: Mapping[str, object], prior_head: str
+) -> tuple[str, str, dict[str, object]]:
+    source_map = _semantic_source_map(source)
+    clean = _semantic_payload(payload)
+    event_type = str(clean["event_type"])
+    artifact: dict[str, object] = {
+        "schema": f"ResearchSemantic{event_type.title()}V1",
+        "schema_version": 1,
+        "event_type": event_type,
+        **source_map,
+        "prior_semantic_head_sha256": prior_head,
+    }
+    if event_type == "definition":
+        artifact.update(
+            {
+                "definition_label": clean["definition_label"],
+                "definition_text": clean["definition_text"],
+            }
+        )
+        prefix = "sd"
+    elif event_type == "review":
+        artifact.update(
+            {
+                "definition_id": clean["definition_id"],
+                "review_decision": clean["review_decision"],
+                "review_text": clean["review_text"],
+            }
+        )
+        prefix = "sr"
+    else:
+        artifact.update({"definition_id": clean["definition_id"], "review_id": clean["review_id"]})
+        prefix = "sf"
+    digest = hashlib.sha256(
+        _canonical_json(artifact, "semantic artifact").encode("utf-8")
+    ).hexdigest()
+    return f"{prefix}_{digest}", digest, artifact
+
+
+def _semantic_event_identity(
+    *,
+    source: Mapping[str, object],
+    payload: Mapping[str, object],
+    sequence: int,
+    prior_head: str,
+    semantic_artifact_id: str,
+    semantic_artifact_sha256: str,
+    receipt_id: str,
+    actor: str,
+    reason: str,
+    recorded_at: str,
+) -> tuple[str, dict[str, object]]:
+    source_map = _semantic_source_map(source)
+    clean = _semantic_payload(payload)
+    event_type = str(clean["event_type"])
+    identity: dict[str, object] = {
+        "schema": "ResearchSemanticEventIdentityV1",
+        "schema_version": 1,
+        "event_type": event_type,
+        **source_map,
+        "sequence": sequence,
+        "prior_semantic_head_sha256": prior_head,
+        "semantic_artifact_id": semantic_artifact_id,
+        "semantic_artifact_sha256": semantic_artifact_sha256,
+        "definition_id": (
+            semantic_artifact_id if event_type == "definition" else clean["definition_id"]
+        ),
+        "review_id": (
+            None
+            if event_type == "definition"
+            else semantic_artifact_id
+            if event_type == "review"
+            else clean["review_id"]
+        ),
+        "review_decision": None if event_type != "review" else clean["review_decision"],
+        "payload": clean,
+        "payload_sha256": hashlib.sha256(
+            _canonical_json(clean, "SemanticOwnerActionV1 payload").encode("utf-8")
+        ).hexdigest(),
+        "receipt_id": receipt_id,
+        "actor": actor,
+        "reason": reason,
+        "recorded_at": recorded_at,
+    }
+    digest = hashlib.sha256(
+        _canonical_json(identity, "semantic event identity").encode()
+    ).hexdigest()
+    return f"se_{digest}", identity
+
+
+def _semantic_transition(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    event_type: str,
+    definition_id: str,
+    review_id: str | None,
+) -> None:
+    for expected_sequence, row in enumerate(rows, start=1):
+        if row.get("sequence") != expected_sequence:
+            raise DataError("semantic event sequence is not contiguous")
+    latest = None if not rows else rows[-1]
+    if event_type == "definition":
+        if latest is not None and latest.get("event_type") not in {"review", "freeze"}:
+            raise DataError("definition must begin a project or follow a review or freeze")
+        if (
+            latest is not None
+            and latest.get("event_type") == "review"
+            and latest.get("review_decision") != "reject"
+        ):
+            raise DataError("definition cannot follow an approving review")
+        return
+    if event_type == "review":
+        if latest is None or latest.get("event_type") != "definition":
+            raise DataError("review must immediately follow its definition")
+        if latest.get("semantic_artifact_id") != definition_id:
+            raise DataError("review definition reference is stale")
+        return
+    if latest is None or latest.get("event_type") != "review":
+        raise DataError("freeze must immediately follow its review")
+    if latest.get("review_decision") != "approve":
+        raise DataError("rejected review cannot freeze")
+    if (
+        latest.get("definition_id") != definition_id
+        or latest.get("semantic_artifact_id") != review_id
+    ):
+        raise DataError("freeze definition or review reference is stale")
 
 
 def research_case_revision(summary: Mapping[str, object]) -> str:
@@ -6049,6 +6309,455 @@ class ControlStore:
                 raise DataError(f"verified D0 run {filename} hash changed during read")
             result[filename] = raw
         return result
+
+    def _semantic_head_locked(self, connection: sqlite3.Connection, project_id: str) -> str:
+        pid = _canonical_uuid(project_id, "project_id")
+        rows = connection.execute(
+            "SELECT sequence, event_sha256 FROM research_semantic_events "
+            "WHERE project_id = ? ORDER BY sequence",
+            (pid,),
+        ).fetchall()
+        if not rows:
+            return _semantic_empty_head_sha256(pid)
+        for expected, row in enumerate(rows, start=1):
+            if (
+                int(row["sequence"]) != expected
+                or _SHA256_RE.fullmatch(str(row["event_sha256"])) is None
+            ):
+                raise DataError("semantic event sequence or head is corrupt")
+        return str(rows[-1]["event_sha256"])
+
+    def semantic_head_sha256(self, project_id: str) -> str:
+        """Return the verified project-local semantic head without mutation."""
+        with self._transaction(write=False) as connection:
+            events = self._semantic_event_rows_locked(
+                connection, project_id=project_id, source=None
+            )
+            return (
+                _semantic_empty_head_sha256(project_id)
+                if not events
+                else str(events[-1]["event_sha256"])
+            )
+
+    @staticmethod
+    def _semantic_receipt_matches(
+        receipt: sqlite3.Row,
+        *,
+        project_id: str,
+        semantic_artifact_sha256: str,
+        case_revision: str,
+        payload_sha256: str,
+        event_id: str,
+        event_sha256: str,
+        actor: str,
+        reason: str,
+        recorded_at: str,
+    ) -> None:
+        if receipt["action_type"] != "record_semantic_event":
+            raise DataError("semantic receipt action type is invalid")
+        if receipt["project_id"] != project_id:
+            raise DataError("semantic receipt project binding is invalid")
+        if receipt["artifact_hash"] != semantic_artifact_sha256:
+            raise DataError("semantic receipt artifact binding is invalid")
+        if receipt["expected_case_revision"] != case_revision:
+            raise DataError("semantic receipt case revision binding is invalid")
+        if receipt["request_hash"] != payload_sha256:
+            raise DataError("semantic receipt payload binding is invalid")
+        if receipt["actor"] != actor or receipt["reason"] != reason:
+            raise DataError("semantic receipt actor or reason binding is invalid")
+        if receipt["performed_at"] != recorded_at:
+            raise DataError("semantic receipt time binding is invalid")
+        outcome = _decode_json(receipt["outcome_json"], "semantic receipt outcome")
+        if not isinstance(outcome, dict):
+            raise DataError("semantic receipt outcome is not an object")
+        if outcome != {
+            "semantic_event_id": event_id,
+            "semantic_event_sha256": event_sha256,
+            "status": "semantic_event_recorded",
+        }:
+            raise DataError("semantic receipt outcome does not match event")
+
+    def _semantic_event_rows_locked(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        source: Mapping[str, object] | None,
+        pending_receipt_id: str | None = None,
+    ) -> list[dict[str, object]]:
+        pid = _canonical_uuid(project_id, "project_id")
+        if source is not None:
+            _semantic_source_map(source)
+        rows = connection.execute(
+            "SELECT * FROM research_semantic_events WHERE project_id = ? ORDER BY sequence",
+            (pid,),
+        ).fetchall()
+        identities: list[dict[str, object]] = []
+        prior_head = _semantic_empty_head_sha256(pid)
+        for expected_sequence, row in enumerate(rows, start=1):
+            if int(row["sequence"]) != expected_sequence:
+                raise DataError("semantic event sequence is not contiguous")
+            row_source = _semantic_source_map(
+                {field: row[field] for field in _SEMANTIC_SOURCE_KEYS}
+            )
+            payload = _decode_json(row["payload_json"], "semantic event payload")
+            if not isinstance(payload, dict):
+                raise DataError("semantic event payload is not an object")
+            clean_payload = _semantic_payload(payload)
+            if clean_payload["expected_semantic_head_sha256"] != prior_head:
+                raise DataError("semantic expected head is stale or corrupt")
+            for field in (
+                "verified_read_sha256",
+                "projection_sha256",
+                "run_id",
+                "cutoff_confirmed_at",
+            ):
+                if clean_payload[field] != row_source[field]:
+                    raise DataError("semantic event payload source binding is corrupt")
+            if (
+                row["payload_sha256"]
+                != hashlib.sha256(
+                    _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode()
+                ).hexdigest()
+            ):
+                raise DataError("semantic event payload hash is invalid")
+            expected_artifact_id, expected_artifact_sha, _ = _semantic_artifact(
+                row_source, clean_payload, prior_head
+            )
+            if (
+                row["semantic_artifact_id"],
+                row["semantic_artifact_sha256"],
+            ) != (expected_artifact_id, expected_artifact_sha):
+                raise DataError("semantic event artifact hash is invalid")
+            definition_id = (
+                expected_artifact_id
+                if clean_payload["event_type"] == "definition"
+                else str(clean_payload["definition_id"])
+            )
+            review_id = (
+                None if clean_payload["event_type"] != "freeze" else str(clean_payload["review_id"])
+            )
+            expected_review_id = (
+                None
+                if clean_payload["event_type"] == "definition"
+                else expected_artifact_id
+                if clean_payload["event_type"] == "review"
+                else str(clean_payload["review_id"])
+            )
+            expected_review_decision = (
+                None
+                if clean_payload["event_type"] != "review"
+                else clean_payload["review_decision"]
+            )
+            if (
+                row["event_type"] != clean_payload["event_type"]
+                or row["prior_semantic_head_sha256"] != prior_head
+                or row["definition_id"] != definition_id
+                or row["review_id"] != expected_review_id
+                or row["review_decision"] != expected_review_decision
+            ):
+                raise DataError("semantic event transition fields are corrupt")
+            prior_rows = identities
+            _semantic_transition(
+                prior_rows,
+                event_type=str(clean_payload["event_type"]),
+                definition_id=definition_id,
+                review_id=review_id,
+            )
+            event_id, identity = _semantic_event_identity(
+                source=row_source,
+                payload=clean_payload,
+                sequence=expected_sequence,
+                prior_head=prior_head,
+                semantic_artifact_id=expected_artifact_id,
+                semantic_artifact_sha256=expected_artifact_sha,
+                receipt_id=str(row["receipt_id"]),
+                actor=str(row["actor"]),
+                reason=str(row["reason"]),
+                recorded_at=str(row["recorded_at"]),
+            )
+            if row["event_id"] != event_id or row["event_sha256"] != event_id[3:]:
+                raise DataError("semantic event identity hash is invalid")
+            receipt = connection.execute(
+                "SELECT * FROM owner_action_receipts WHERE receipt_id = ?",
+                (row["receipt_id"],),
+            ).fetchone()
+            if receipt is None:
+                raise DataError("semantic event receipt is missing")
+            self._semantic_receipt_matches(
+                receipt,
+                project_id=pid,
+                semantic_artifact_sha256=expected_artifact_sha,
+                case_revision=str(row["case_revision"]),
+                payload_sha256=str(row["payload_sha256"]),
+                event_id=event_id,
+                event_sha256=event_id[3:],
+                actor=str(row["actor"]),
+                reason=str(row["reason"]),
+                recorded_at=str(row["recorded_at"]),
+            )
+            identity["event_id"] = event_id
+            identity["event_sha256"] = event_id[3:]
+            identities.append(identity)
+            prior_head = event_id[3:]
+        receipt_rows = connection.execute(
+            """SELECT receipt_id FROM owner_action_receipts
+            WHERE project_id = ? AND action_type = 'record_semantic_event'""",
+            (pid,),
+        ).fetchall()
+        receipt_ids = {str(row["receipt_id"]) for row in receipt_rows}
+        event_receipt_ids = {str(row["receipt_id"]) for row in rows}
+        if pending_receipt_id is not None and pending_receipt_id in receipt_ids:
+            event_receipt_ids.add(pending_receipt_id)
+        if receipt_ids != event_receipt_ids:
+            raise DataError("semantic receipt and event sets are not bijective")
+        return identities
+
+    def read_semantic_events(self, project_id: str) -> list[dict[str, object]]:
+        """Return semantic events after recomputing hashes, transitions, source, and receipts."""
+        with self._transaction(write=False) as connection:
+            return self._semantic_event_rows_locked(connection, project_id=project_id, source=None)
+
+    def append_semantic_event(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        payload: Mapping[str, object],
+        receipt_id: str,
+        actor: str,
+        reason: str,
+        recorded_at: str,
+    ) -> dict[str, object]:
+        """Append one validated event inside a caller-owned transaction."""
+        if not connection.in_transaction:
+            raise sqlite3.OperationalError("semantic append requires an active transaction")
+        pid = _canonical_uuid(project_id, "project_id")
+        clean_payload = _semantic_payload(payload)
+        source = self._verified_semantic_source_locked(connection, pid)
+        source_map = _semantic_source_map(source)
+        for field in (
+            "verified_read_sha256",
+            "projection_sha256",
+            "run_id",
+            "cutoff_confirmed_at",
+        ):
+            if clean_payload[field] != source_map[field]:
+                raise DataError(f"semantic payload {field} does not match verified source")
+        current = self._semantic_event_rows_locked(
+            connection,
+            project_id=pid,
+            source=source_map,
+            pending_receipt_id=receipt_id,
+        )
+        prior_head = (
+            _semantic_empty_head_sha256(pid) if not current else str(current[-1]["event_sha256"])
+        )
+        expected_head = clean_payload["expected_semantic_head_sha256"]
+        if expected_head != prior_head:
+            raise DataError("semantic expected head is stale")
+        event_type = str(clean_payload["event_type"])
+        artifact_id, artifact_sha, _ = _semantic_artifact(source_map, clean_payload, prior_head)
+        definition_id = (
+            artifact_id if event_type == "definition" else str(clean_payload["definition_id"])
+        )
+        review_id = (
+            None
+            if event_type == "definition"
+            else artifact_id
+            if event_type == "review"
+            else str(clean_payload["review_id"])
+        )
+        _semantic_transition(
+            current,
+            event_type=event_type,
+            definition_id=definition_id,
+            review_id=review_id,
+        )
+        clean_actor = _required_text(actor, "semantic event actor", max_length=200)
+        clean_reason = _required_text(reason, "semantic event reason")
+        if _format_timestamp(parse_timestamp(recorded_at)) != recorded_at:
+            raise DataError("semantic event recorded_at is invalid")
+        event_id, identity = _semantic_event_identity(
+            source=source_map,
+            payload=clean_payload,
+            sequence=len(current) + 1,
+            prior_head=prior_head,
+            semantic_artifact_id=artifact_id,
+            semantic_artifact_sha256=artifact_sha,
+            receipt_id=_required_text(receipt_id, "semantic receipt_id"),
+            actor=clean_actor,
+            reason=clean_reason,
+            recorded_at=recorded_at,
+        )
+        receipt = connection.execute(
+            "SELECT * FROM owner_action_receipts WHERE receipt_id = ?", (receipt_id,)
+        ).fetchone()
+        if receipt is None:
+            raise DataError("semantic event receipt is missing")
+        self._semantic_receipt_matches(
+            receipt,
+            project_id=pid,
+            semantic_artifact_sha256=artifact_sha,
+            case_revision=str(source_map["case_revision"]),
+            payload_sha256=str(identity["payload_sha256"]),
+            event_id=event_id,
+            event_sha256=event_id[3:],
+            actor=clean_actor,
+            reason=clean_reason,
+            recorded_at=recorded_at,
+        )
+        connection.execute(
+            """INSERT INTO research_semantic_events
+            (event_id, event_sha256, project_id, sequence, event_type, case_contract_id,
+             source_contract_id, case_revision, prior_semantic_head_sha256, semantic_artifact_id,
+             semantic_artifact_sha256, verified_read_sha256, projection_sha256, run_id,
+             cutoff_confirmed_at, definition_id, review_id, review_decision, payload_json,
+             payload_sha256, receipt_id, actor, reason, recorded_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                event_id,
+                event_id[3:],
+                pid,
+                len(current) + 1,
+                event_type,
+                source_map["case_contract_id"],
+                source_map["source_contract_id"],
+                source_map["case_revision"],
+                prior_head,
+                artifact_id,
+                artifact_sha,
+                source_map["verified_read_sha256"],
+                source_map["projection_sha256"],
+                source_map["run_id"],
+                source_map["cutoff_confirmed_at"],
+                definition_id,
+                review_id,
+                None if event_type != "review" else clean_payload["review_decision"],
+                _canonical_json(clean_payload, "SemanticOwnerActionV1 payload"),
+                identity["payload_sha256"],
+                receipt_id,
+                clean_actor,
+                clean_reason,
+                recorded_at,
+            ),
+        )
+        identity["event_id"] = event_id
+        identity["event_sha256"] = event_id[3:]
+        return identity
+
+    def _verified_semantic_source_locked(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> dict[str, object]:
+        pid = _canonical_uuid(project_id, "project_id")
+        self._require_project(connection, pid)
+        phase = self._latest_research_phase(connection, pid)
+        execution = self._latest_research_execution(connection, pid)
+        if phase is None or execution is None:
+            raise DataError("research case has no active phase or execution state")
+        active = self._require_research_contract(connection, pid, str(phase["contract_id"]))
+        exploration = active
+        if active["scope"] == "confirmation":
+            parent_id = active["parent_contract_id"]
+            if not isinstance(parent_id, str):
+                raise DataError("confirmation contract has no exploration parent")
+            exploration = self._require_research_contract(connection, pid, parent_id)
+        if exploration["scope"] != "exploration":
+            raise DataError("blind semantic read requires an exploration contract")
+        contract_payload = _decode_json(
+            exploration["payload_json"], "blind semantic exploration contract payload"
+        )
+        if not isinstance(contract_payload, dict):
+            raise DataError("blind semantic exploration contract payload is corrupt")
+        from alpha_cli.research_runtime import (  # noqa: PLC0415
+            validate_d0_acceptance_bytes,
+            validate_d0_pilot_contract,
+        )
+        from alpha_cli.study_semantic import VerifiedBlindSemanticReadV1  # noqa: PLC0415
+        from alpha_study import project_blind_semantic_read  # noqa: PLC0415
+
+        operator = validate_d0_pilot_contract(contract_payload)
+        operator_identity = operator.get("operator")
+        if not isinstance(operator_identity, Mapping) or operator_identity.get("name") != (
+            "double_bottom"
+        ):
+            raise DataError("blind semantic read supports only registered double_bottom D0")
+        attempt = self._require_completed_d0_attempt(
+            connection,
+            project_id=pid,
+            contract_id=str(exploration["contract_id"]),
+            contract_payload=contract_payload,
+        )
+        attempt_view = self._research_attempt_view(attempt)
+        run_id = attempt_view.get("run_id")
+        if not isinstance(run_id, str):
+            raise DataError("completed D0 attempt has no run identity")
+        run_dir, manifest = self._verified_run(run_id)
+        selected = self._read_verified_semantic_artifacts(run_dir, manifest)
+        post_dir, post_manifest = self._verified_run(run_id)
+        if post_dir != run_dir:
+            raise DataError("verified D0 run directory changed during semantic read")
+        before_artifacts = manifest.get("artifacts")
+        after_artifacts = post_manifest.get("artifacts")
+        if not isinstance(before_artifacts, Mapping) or not isinstance(after_artifacts, Mapping):
+            raise DataError("verified D0 run manifest artifact map changed during read")
+        for filename in _SEMANTIC_READ_ARTIFACTS:
+            if before_artifacts.get(filename) != after_artifacts.get(filename):
+                raise DataError(f"verified D0 run {filename} manifest changed during read")
+        config_fingerprint = attempt_view.get("config_fingerprint")
+        fixture = operator.get("fixture")
+        dataset_hash = (
+            fixture.get("definition_fingerprint") if isinstance(fixture, Mapping) else None
+        )
+        operator_fingerprint = operator.get("fingerprint")
+        if (
+            not isinstance(config_fingerprint, str)
+            or not isinstance(dataset_hash, str)
+            or not isinstance(operator_fingerprint, str)
+        ):
+            raise DataError("completed D0 attempt has corrupt verifier inputs")
+        validate_d0_acceptance_bytes(
+            selected["d0_acceptance.json"],
+            post_manifest,
+            project_id=pid,
+            contract_id=str(exploration["contract_id"]),
+            contract_hash=hashlib.sha256(
+                _canonical_json(contract_payload, "research D0 acceptance contract").encode("utf-8")
+            ).hexdigest(),
+            dataset_hash=dataset_hash,
+            execution_fingerprint=config_fingerprint,
+            d0_operator_fingerprint=operator_fingerprint,
+        )
+        projection = project_blind_semantic_read(
+            acceptance_bytes=selected["d0_acceptance.json"],
+            events_bytes=selected["events.json"],
+            chart_data_bytes=selected["chart-data.json"],
+        )
+        if projection.run_id != run_id:
+            raise DataError("verified semantic run identity disagrees with D0 artifacts")
+        verified = VerifiedBlindSemanticReadV1(run_id=run_id, projection=projection)
+        contract_source_pack = contract_payload.get("source_pack_id")
+        summary = {
+            "project_id": pid,
+            "active_contract_id": active["contract_id"],
+            "phase": phase["phase"],
+            "execution_state": execution["state"],
+            "source_pack_id": contract_source_pack,
+        }
+        source = {
+            "project_id": pid,
+            "case_contract_id": active["contract_id"],
+            "source_contract_id": exploration["contract_id"],
+            "case_revision": research_case_revision(summary),
+            "verified_read_sha256": str(verified.content_sha256),
+            "projection_sha256": hashlib.sha256(
+                _canonical_json(projection.to_dict(), "blind semantic projection").encode("utf-8")
+            ).hexdigest(),
+            "run_id": run_id,
+            "cutoff_confirmed_at": projection.to_dict()["cutoff_confirmed_at"],
+        }
+        _semantic_source_map(source)
+        return source
 
     def verified_blind_semantic_artifacts(self, project_id: str) -> dict[str, object]:
         """Resolve one active exploration D0 lineage and return verified projection bytes.
