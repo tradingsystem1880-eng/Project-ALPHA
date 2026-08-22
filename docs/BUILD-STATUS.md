@@ -197,7 +197,8 @@ semantics because the source hash and aggregate masked count are expected to cha
 data is appended. This clarification is planning-only.
 
 **Generic study composition S5b semantic owner-event delivery (2026-08-23)** ✅ — the bounded S5b
-implementation is delivered across `5fd3d02`, `07d48bb`, `3f18f4c`, `9ca9377`, and `c72b9ee`.
+implementation is delivered across `5fd3d02`, `07d48bb`, `3f18f4c`, `9ca9377`, `c72b9ee`,
+`6804db5`, `40861b6`, and `f935744`.
 The CLI-owned ControlStore now opens at schema v5, with the exact v4 backup and lossless
 `owner_action_receipts` `CHECK` rebuild, protected append-only `research_semantic_events` DDL,
 canonical `sd_`/`sr_`/`sf_` artifacts and `se_` event identities, contiguous definition→review→freeze
@@ -208,10 +209,13 @@ credential counter, challenge consumption, exactly one receipt, and exactly one 
 one transaction; exact response-loss retries are read-only linkage-validated recovery. The existing
 owner-auth REST challenge/perform routes accept the single closed `record_semantic_event` literal and
 special-dispatch that seam without `_action_argv`, `_run_json`, a subprocess, CLI job, or second
-mutator; existing actions retain their behavior. Focused owner-auth/API, semantic projection/CLI,
-web, and MCP tests passed (including the exact 62-tool pin); the final canonical full gate passed
-4,206 tests with 93.01% coverage, OpenAPI freshness, 14-wheel build/import smoke, typing, imports,
-lint, harness, and semgrep. The verified semantic CLI read and existing semantic GET bytes remain
+mutator; existing actions retain their behavior. The final Terra review is APPROVE; all six identified
+S5b blockers were repaired, including resolver/source-pack parity, the explicit freeze review binding,
+canonical semantic text, whitespace-safe recovery, legacy migration proof, and deterministic concurrent
+migration setup. Focused ControlStore/owner-auth suites pass (`150 passed`), a deterministic
+100-run concurrent v4→v5 migration stress passes with zero failures, and the final canonical full
+gate passes pytest/coverage, OpenAPI freshness, 14-wheel build/import smoke, typing, imports, lint,
+harness, and semgrep. The verified semantic CLI read and existing semantic GET bytes remain
 unfrozen and unchanged in meaning; there is no direct semantic-write CLI command, new REST route,
 screen, handwritten frontend or frontend-derived authority, MCP semantic capability, D1/D2 or
 promotion authority, holdout access, paper, broker, or order widening. S5c presentation remains
