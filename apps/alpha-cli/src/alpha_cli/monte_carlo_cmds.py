@@ -588,7 +588,7 @@ def classical(
         raise typer.BadParameter(str(exc)) from exc
 
     typer.echo(
-        f"monte-carlo classical run {identity.run_id}: "
+        f"monte-carlo classical -> run {identity.run_id}: "
         + ", ".join(f"{row.family}={row.status}/{row.risk_grade}" for row in summaries)
         + f"; manifest at {rdir / 'manifest.json'}"
     )
@@ -906,7 +906,7 @@ def kronos(
         raise typer.BadParameter(str(exc)) from exc
 
     typer.echo(
-        f"monte-carlo kronos run {identity.run_id}: "
+        f"monte-carlo kronos -> run {identity.run_id}: "
         f"{summary.status}/{summary.risk_grade}, {paths} full-engine paths; "
         f"manifest at {rdir / 'manifest.json'}"
     )

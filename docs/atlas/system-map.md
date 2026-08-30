@@ -2,9 +2,9 @@
 
 # System map
 
-15 components (packages, apps, workers), 289 Python modules, 14 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+16 components (packages, apps, workers), 301 Python modules, 15 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
-<!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-options|component:alpha-patterns|component:alpha-research|component:alpha-screener|component:alpha-strategies|component:alpha-validation|component:alpha-web|component:literature|component:qlib -->
+<!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-options|component:alpha-patterns|component:alpha-research|component:alpha-screener|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib -->
 ```mermaid
 flowchart LR
     n0["alpha-backtest"]
@@ -18,10 +18,11 @@ flowchart LR
     n8["alpha-research"]
     n9["alpha-screener"]
     n10["alpha-strategies"]
-    n11["alpha-validation"]
-    n12["alpha-web"]
-    n13["literature"]
-    n14["qlib"]
+    n11["alpha-study"]
+    n12["alpha-validation"]
+    n13["alpha-web"]
+    n14["literature"]
+    n15["qlib"]
     n0 --> n2
     n1 --> n0
     n1 --> n2
@@ -32,6 +33,7 @@ flowchart LR
     n1 --> n9
     n1 --> n10
     n1 --> n11
+    n1 --> n12
     n3 --> n2
     n4 --> n2
     n5 --> n1
@@ -42,8 +44,10 @@ flowchart LR
     n9 --> n2
     n10 --> n2
     n11 --> n2
-    n12 --> n1
+    n11 --> n8
     n12 --> n2
+    n13 --> n1
+    n13 --> n2
 ```
 
 <details><summary>Text fallback</summary>
@@ -58,6 +62,7 @@ component:alpha-cli -> component:alpha-options
 component:alpha-cli -> component:alpha-research
 component:alpha-cli -> component:alpha-screener
 component:alpha-cli -> component:alpha-strategies
+component:alpha-cli -> component:alpha-study
 component:alpha-cli -> component:alpha-validation
 component:alpha-data -> component:alpha-core
 component:alpha-forecast -> component:alpha-core
@@ -68,6 +73,8 @@ component:alpha-patterns -> component:alpha-core
 component:alpha-research -> component:alpha-core
 component:alpha-screener -> component:alpha-core
 component:alpha-strategies -> component:alpha-core
+component:alpha-study -> component:alpha-core
+component:alpha-study -> component:alpha-research
 component:alpha-validation -> component:alpha-core
 component:alpha-web -> component:alpha-cli
 component:alpha-web -> component:alpha-core
@@ -77,33 +84,35 @@ component:alpha-web -> component:alpha-core
 
 ## Enforced contracts
 
-<details><summary>14 import-linter forbidden contracts</summary>
+<details><summary>15 import-linter forbidden contracts</summary>
 
 | Contract | Sources | Forbidden |
 |---|---|---|
-| alpha_backtest depends only on core + data | `alpha_backtest` | `alpha_patterns, alpha_strategies, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli` |
-| alpha_core imports nothing internal | `alpha_core` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli` |
-| alpha_data depends only on core | `alpha_data` | `alpha_patterns, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli` |
-| alpha_forecast depends only on core | `alpha_forecast` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_options, alpha_screener, alpha_research, alpha_cli` |
-| alpha_mcp imports only public platform surfaces | `alpha_mcp` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_web` |
-| alpha_mcp sits atop the DAG (nothing imports it) | `alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli` | `alpha_mcp` |
-| alpha_options depends only on core | `alpha_options` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_screener, alpha_research, alpha_cli` |
-| alpha_patterns depends only on core | `alpha_patterns` | `alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli, alpha_mcp, alpha_web` |
-| alpha_research depends only on core | `alpha_research` | `alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_cli, alpha_mcp, alpha_web` |
-| alpha_screener depends only on core | `alpha_screener` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_research, alpha_cli` |
-| alpha_strategies depends only on core | `alpha_strategies` | `alpha_patterns, alpha_data, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli` |
-| alpha_validation depends only on core | `alpha_validation` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli` |
-| alpha_web imports only public platform surfaces | `alpha_web` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_mcp` |
-| alpha_web sits atop the DAG (nothing imports it) | `alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_cli, alpha_mcp` | `alpha_web` |
+| alpha_backtest depends only on core + data | `alpha_backtest` | `alpha_patterns, alpha_strategies, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_core imports nothing internal | `alpha_core` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_data depends only on core | `alpha_data` | `alpha_patterns, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_forecast depends only on core | `alpha_forecast` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_mcp imports only public platform surfaces | `alpha_mcp` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_web` |
+| alpha_mcp sits atop the DAG (nothing imports it) | `alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` | `alpha_mcp` |
+| alpha_options depends only on core | `alpha_options` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_patterns depends only on core | `alpha_patterns` | `alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli, alpha_mcp, alpha_web` |
+| alpha_research depends only on core | `alpha_research` | `alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_study, alpha_cli, alpha_mcp, alpha_web` |
+| alpha_screener depends only on core | `alpha_screener` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_research, alpha_study, alpha_cli` |
+| alpha_strategies depends only on core | `alpha_strategies` | `alpha_patterns, alpha_data, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_study composes only research-plane primitives | `alpha_study` | `alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_cli, alpha_mcp, alpha_web` |
+| alpha_validation depends only on core | `alpha_validation` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli` |
+| alpha_web imports only public platform surfaces | `alpha_web` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_mcp` |
+| alpha_web sits atop the DAG (nothing imports it) | `alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_study, alpha_cli, alpha_mcp` | `alpha_web` |
 
 </details>
 
 ## Unknowns review queue
 
-34 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
+43 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
 
-<details><summary>34 unknown-level node(s)</summary>
+<details><summary>43 unknown-level node(s)</summary>
 
+- `component:alpha-study`
 - `component:literature`
 - `component:qlib`
 - `module:alpha_backtest`
@@ -125,6 +134,14 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_research.figures.theme`
 - `module:alpha_research.figures.version`
 - `module:alpha_strategies`
+- `module:alpha_study._contracts`
+- `module:alpha_study._operator_registry`
+- `module:alpha_study.adapters`
+- `module:alpha_study.authority`
+- `module:alpha_study.projections`
+- `module:alpha_study.semantic`
+- `module:alpha_study.tables`
+- `module:alpha_study.values`
 - `module:alpha_validation._atomic`
 - `module:alpha_validation.conditional`
 - `module:alpha_web._atomic`

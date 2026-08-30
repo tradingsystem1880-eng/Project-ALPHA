@@ -98,15 +98,27 @@ def _version_args(project_id: str, *extra: str) -> list[str]:
         "version",
         project_id,
         "--strategy",
-        "double_bottom",
+        "mean_reversion",
         "--source-fingerprint",
         "git:acceptance0",
         "--definition-json",
-        '{"detector": "causal-double-bottom-v1"}',
+        '{"entry_z": 1.5, "starting_cash": 100000, "window": 20}',
         "--parameter-space-json",
-        '{"tolerance": [0.005, 0.01]}',
+        '{"window": [10, 20]}',
         *extra,
     ]
+
+
+def _suite_cli(project_id: str, experiment_id: str, action: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["suite", "run", project_id, experiment_id, action, "--json"],
+    )
+    assert result.exit_code == 0, result.output
+    value: object = json.loads(result.output)
+    assert isinstance(value, dict)
+    assert value["status"] == "succeeded", value
+    return value
 
 
 def test_program_golden_path_reaches_the_strategy_brief_losslessly(
@@ -280,6 +292,107 @@ def test_program_golden_path_reaches_the_strategy_brief_losslessly(
     assert promotion_ref["contract_id"] == confirmation_id
     assert promotion_ref["gate_packet_id"] == report["packet_id"]
     assert promotion_ref["gate_packet_hash"] == report["packet_hash"]
+
+    # The promoted case continues through the registered development runtime in the same
+    # isolated data directory. The event-study finding is translated into the existing closed
+    # mean-reversion strategy contract; the research contract remains its exact provenance.
+    experiment = _project_cli(
+        "experiment",
+        project_id,
+        "--version-id",
+        str(version["version_id"]),
+        "--snapshot",
+        "gate4-spy",
+        "--universe",
+        "SPY",
+        "--split-policy-json",
+        '{"embargo": 2, "test": 40, "train": 200}',
+        "--costs-json",
+        '{"fee_bps": 0, "slippage_bps": 0}',
+        "--seeds-json",
+        '{"master": 7}',
+        "--stage-config-json",
+        (
+            '{"kronos_context": 100, "kronos_eval_samples": 2, "kronos_horizon": 5, '
+            '"kronos_model": "fake", "kronos_monte_carlo_paths": 2, '
+            '"kronos_samples": 2, "kronos_stride": 40, "max_workers": 1, '
+            '"mean_block": 5, "monte_carlo_min_state_observations": 5, '
+            '"monte_carlo_min_state_transitions": 2, "monte_carlo_paths": 64, '
+            '"monte_carlo_regime_window": 20, "n_resamples": 100, '
+            '"tier1_paths": 100, "tier2_paths": 1}'
+        ),
+        "--research-contract-id",
+        confirmation_id,
+    )
+    experiment_id = str(experiment["experiment_id"])
+    _project_cli(
+        "seal-holdout",
+        project_id,
+        experiment_id,
+        "--actor",
+        "owner",
+        "--reason",
+        "Reserve the final interval before strategy development acceptance.",
+        "--start-date",
+        "2021-06-01",
+        "--end-date",
+        "2021-08-01",
+    )
+
+    baseline = _suite_cli(project_id, experiment_id, "baseline")
+    assert cast(dict[str, object], baseline["result"])["stage_state"] == "pass"
+    oos = _suite_cli(project_id, experiment_id, "inner_oos")
+    assert cast(dict[str, object], oos["result"])["stage_state"] == "pass"
+    robustness = _suite_cli(project_id, experiment_id, "three_null_families")
+    robustness_result = cast(dict[str, object], robustness["result"])
+    validation_runs = cast(list[str], robustness_result["run_ids"])
+    assert len(validation_runs) == 3
+    assert robustness_result["stage_state"] in {"pass", "fail"}
+
+    # The disclosed fake model establishes only the model-family interface needed by the
+    # suite-owned scenario path. Monte Carlo remains separate from the randomized-price null
+    # verdict, and any warning/failure is retained rather than upgraded.
+    kronos = _suite_cli(project_id, experiment_id, "kronos")
+    assert cast(dict[str, object], kronos["result"])["stage_state"] == "pass"
+    monte_carlo = _suite_cli(project_id, experiment_id, "monte_carlo")
+    monte_carlo_result = cast(dict[str, object], monte_carlo["result"])
+    monte_carlo_runs = cast(list[str], monte_carlo_result["run_ids"])
+    assert len(monte_carlo_runs) == 2, json.dumps(monte_carlo, sort_keys=True, indent=2)
+    assert monte_carlo_result["stage_state"] in {"pass", "warning", "fail"}
+
+    stored_report = runner.invoke(app, ["report", validation_runs[0]])
+    assert stored_report.exit_code == 0, stored_report.output
+    assert validation_runs[0] in stored_report.output
+    assert "gate[randomized_price_null]" in stored_report.output
+    monte_carlo_report = runner.invoke(app, ["report", monte_carlo_runs[0]])
+    assert monte_carlo_report.exit_code == 0, monte_carlo_report.output
+    assert "Monte Carlo stage status:" in monte_carlo_report.output
+    assert "family[iid_empirical]" in monte_carlo_report.output
+
+    workspace = _project_cli("workspace", "sync", project_id)
+    workspace_manifest = cast(dict[str, object], workspace["workspace"])
+    assert workspace_manifest["authority"] == "none"
+    assert workspace_manifest["execution_authority"] is False
+    revision_root = (
+        tmp_path
+        / str(workspace["workspace_root"])
+        / "revisions"
+        / str(workspace_manifest["revision_id"])
+    )
+    validation_index = json.loads(
+        (revision_root / "indexes" / "validation.json").read_text(encoding="utf-8")
+    )
+    report_index = json.loads(
+        (revision_root / "indexes" / "reports.json").read_text(encoding="utf-8")
+    )
+    validation_ids = {
+        row["reference_id"] for row in cast(list[dict[str, object]], validation_index["references"])
+    }
+    report_ids = {
+        row["reference_id"] for row in cast(list[dict[str, object]], report_index["references"])
+    }
+    assert {validation_runs[0], *monte_carlo_runs} <= validation_ids
+    assert {validation_runs[0], *monte_carlo_runs} <= report_ids
 
 
 def test_supported_outcome_with_a_non_advancing_disposition_never_promotes(

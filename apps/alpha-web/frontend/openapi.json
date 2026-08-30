@@ -454,6 +454,94 @@
         ],
         "type": "string"
       },
+      "BlindSemanticProjectionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance_artifact_sha256": {
+            "title": "Acceptance Artifact Sha256",
+            "type": "string"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "chart_data_artifact_sha256": {
+            "title": "Chart Data Artifact Sha256",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "cutoff_confirmed_at": {
+            "title": "Cutoff Confirmed At",
+            "type": "string"
+          },
+          "cutoff_source": {
+            "const": "d0_acceptance_measurement_reference",
+            "title": "Cutoff Source",
+            "type": "string"
+          },
+          "events_artifact_sha256": {
+            "title": "Events Artifact Sha256",
+            "type": "string"
+          },
+          "lineage_verification": {
+            "const": "not_checked",
+            "title": "Lineage Verification",
+            "type": "string"
+          },
+          "masked_count": {
+            "title": "Masked Count",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SemanticPointV1"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "BlindSemanticProjectionV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "semantic_status": {
+            "const": "unfrozen",
+            "title": "Semantic Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "schema_version",
+          "run_id",
+          "acceptance_artifact_sha256",
+          "events_artifact_sha256",
+          "chart_data_artifact_sha256",
+          "cutoff_confirmed_at",
+          "points",
+          "masked_count",
+          "authority",
+          "cutoff_source",
+          "lineage_verification",
+          "semantic_status",
+          "content_sha256"
+        ],
+        "title": "BlindSemanticProjectionV1",
+        "type": "object"
+      },
       "Candle": {
         "additionalProperties": false,
         "properties": {
@@ -11531,7 +11619,8 @@
               "approve_confirmation",
               "reject_confirmation",
               "launch_d2",
-              "record_final_disposition"
+              "record_final_disposition",
+              "record_semantic_event"
             ],
             "title": "Action Type",
             "type": "string"
@@ -13831,6 +13920,16 @@
             ],
             "title": "Source Pack Id"
           },
+          "study_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchStudyStatusV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "terminal_attempt_count": {
             "minimum": 0.0,
             "title": "Terminal Attempt Count",
@@ -14308,6 +14407,96 @@
           "latest_review"
         ],
         "title": "ResearchContract",
+        "type": "object"
+      },
+      "ResearchD1AttemptViewV1": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "contract_id": {
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "contract_id",
+          "status",
+          "run_id",
+          "recorded_at"
+        ],
+        "title": "ResearchD1AttemptViewV1",
+        "type": "object"
+      },
+      "ResearchD1StateV1": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchD1AttemptViewV1"
+            },
+            "title": "Attempts",
+            "type": "array"
+          },
+          "elapsed_budget": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "launch_authority": {
+            "const": "owner_cli_only",
+            "title": "Launch Authority",
+            "type": "string"
+          },
+          "remaining_budget": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "status": {
+            "enum": [
+              "not_started",
+              "queued",
+              "running",
+              "paused",
+              "blocked",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "launch_authority",
+          "status",
+          "attempts",
+          "elapsed_budget",
+          "remaining_budget"
+        ],
+        "title": "ResearchD1StateV1",
         "type": "object"
       },
       "ResearchD2Event": {
@@ -16118,6 +16307,31 @@
         "title": "ResearchPromotionReference",
         "type": "object"
       },
+      "ResearchPromotionStateV1": {
+        "additionalProperties": false,
+        "properties": {
+          "packet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Id"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/ResearchReadinessProjection"
+          }
+        },
+        "required": [
+          "packet_id",
+          "readiness"
+        ],
+        "title": "ResearchPromotionStateV1",
+        "type": "object"
+      },
       "ResearchProposalBlockerV1": {
         "additionalProperties": false,
         "properties": {
@@ -16749,6 +16963,202 @@
         "title": "ResearchScorecardRecommendation",
         "type": "object"
       },
+      "ResearchSemanticEventViewV1": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "artifact_id": {
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "artifact_id",
+          "receipt_id",
+          "actor",
+          "reason",
+          "recorded_at",
+          "payload"
+        ],
+        "title": "ResearchSemanticEventViewV1",
+        "type": "object"
+      },
+      "ResearchSemanticStateV1": {
+        "additionalProperties": false,
+        "properties": {
+          "case_contract_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Contract Id"
+          },
+          "case_revision": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Revision"
+          },
+          "cutoff_confirmed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff Confirmed At"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchSemanticEventViewV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_count": {
+            "minimum": 0.0,
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "freeze": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchSemanticEventViewV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "head_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Head Sha256",
+            "type": "string"
+          },
+          "next_owner_action": {
+            "title": "Next Owner Action",
+            "type": "string"
+          },
+          "projection_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection Sha256"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchSemanticEventViewV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "source_state": {
+            "enum": [
+              "not_recorded",
+              "current",
+              "stale"
+            ],
+            "title": "Source State",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "definition_required",
+              "review_required",
+              "freeze_required",
+              "frozen",
+              "stale"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "verified_read_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified Read Sha256"
+          }
+        },
+        "required": [
+          "state",
+          "source_state",
+          "case_contract_id",
+          "run_id",
+          "cutoff_confirmed_at",
+          "event_count",
+          "head_sha256",
+          "definition",
+          "review",
+          "freeze",
+          "next_owner_action"
+        ],
+        "title": "ResearchSemanticStateV1",
+        "type": "object"
+      },
       "ResearchSourcePackOptionV1": {
         "additionalProperties": false,
         "properties": {
@@ -16783,6 +17193,69 @@
           "created_at"
         ],
         "title": "ResearchSourcePackOptionV1",
+        "type": "object"
+      },
+      "ResearchStudyStatusV1": {
+        "additionalProperties": false,
+        "properties": {
+          "active_contract_id": {
+            "title": "Active Contract Id",
+            "type": "string"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "d1": {
+            "$ref": "#/components/schemas/ResearchD1StateV1"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "promotion": {
+            "$ref": "#/components/schemas/ResearchPromotionStateV1"
+          },
+          "responsibility": {
+            "enum": [
+              "owner",
+              "codex"
+            ],
+            "title": "Responsibility",
+            "type": "string"
+          },
+          "schema": {
+            "const": "ResearchStudyStatusV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "semantic": {
+            "$ref": "#/components/schemas/ResearchSemanticStateV1"
+          }
+        },
+        "required": [
+          "schema",
+          "schema_version",
+          "authority",
+          "project_id",
+          "active_contract_id",
+          "semantic",
+          "d1",
+          "promotion",
+          "next_action",
+          "responsibility"
+        ],
+        "title": "ResearchStudyStatusV1",
         "type": "object"
       },
       "RiskProvenance": {
@@ -17609,6 +18082,30 @@
         "title": "ScreenerQuote",
         "type": "object"
       },
+      "SemanticPointV1": {
+        "additionalProperties": false,
+        "properties": {
+          "available_at": {
+            "title": "Available At",
+            "type": "string"
+          },
+          "point_id": {
+            "title": "Point Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "point_id",
+          "available_at",
+          "value"
+        ],
+        "title": "SemanticPointV1",
+        "type": "object"
+      },
       "StageLinkCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -17805,6 +18302,194 @@
           "supports_live_paper"
         ],
         "title": "StrategyDefinition",
+        "type": "object"
+      },
+      "StrategyProjectWorkspace": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "enum": [
+                "research",
+                "sources",
+                "datasets",
+                "study-state",
+                "promotion",
+                "strategy-versions",
+                "experiments",
+                "runs",
+                "validation",
+                "figures",
+                "reports",
+                "sandbox-eligibility"
+              ],
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "content_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "indexes": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyProjectWorkspaceIndexDescriptor"
+            },
+            "title": "Indexes",
+            "type": "array"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Project Name Sha256",
+            "type": "string"
+          },
+          "revision_id": {
+            "pattern": "^spw_[0-9a-f]{64}$",
+            "title": "Revision Id",
+            "type": "string"
+          },
+          "sandbox_classification": {
+            "const": "non-transmitting-sandbox-only",
+            "title": "Sandbox Classification",
+            "type": "string"
+          },
+          "schema_name": {
+            "const": "StrategyProjectWorkspaceV1",
+            "title": "Schema Name",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_name",
+          "schema_version",
+          "revision_id",
+          "project_id",
+          "project_name_sha256",
+          "authority",
+          "execution_authority",
+          "categories",
+          "indexes",
+          "sandbox_classification",
+          "content_sha256"
+        ],
+        "title": "StrategyProjectWorkspace",
+        "type": "object"
+      },
+      "StrategyProjectWorkspaceIndexDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "research",
+              "sources",
+              "datasets",
+              "study-state",
+              "promotion",
+              "strategy-versions",
+              "experiments",
+              "runs",
+              "validation",
+              "figures",
+              "reports",
+              "sandbox-eligibility"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "reference_count": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Reference Count",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "path",
+          "sha256",
+          "reference_count"
+        ],
+        "title": "StrategyProjectWorkspaceIndexDescriptor",
+        "type": "object"
+      },
+      "StrategyProjectWorkspaceProjection": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "schema_name": {
+            "const": "StrategyProjectWorkspaceProjectionV1",
+            "title": "Schema Name",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/StrategyProjectWorkspace"
+          },
+          "workspace_root": {
+            "title": "Workspace Root",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_name",
+          "schema_version",
+          "project_id",
+          "workspace_root",
+          "changed",
+          "recovered",
+          "stale",
+          "workspace"
+        ],
+        "title": "StrategyProjectWorkspaceProjection",
         "type": "object"
       },
       "StrategyVersion": {
@@ -18152,6 +18837,53 @@
           "ibkr_paper_enabled"
         ],
         "title": "SystemStatus",
+        "type": "object"
+      },
+      "VerifiedBlindSemanticReadV1": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/BlindSemanticProjectionV1"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "VerifiedBlindSemanticReadV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source_verification": {
+            "const": "verified_completed_d0_recomputation",
+            "title": "Source Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "schema_version",
+          "source_verification",
+          "authority",
+          "run_id",
+          "projection",
+          "content_sha256"
+        ],
+        "title": "VerifiedBlindSemanticReadV1",
         "type": "object"
       },
       "WorkspaceBody": {
@@ -23407,6 +24139,92 @@
         ]
       }
     },
+    "/api/projects/{project_id}/workspace": {
+      "get": {
+        "description": "Read the verified non-authoritative generated workspace projection.",
+        "operationId": "get_project_workspace_api_projects__project_id__workspace_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Get Project Workspace",
+        "tags": [
+          "development"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/workspace/refresh": {
+      "post": {
+        "description": "Refresh generated references only; this grants no research or execution authority.",
+        "operationId": "refresh_project_workspace_api_projects__project_id__workspace_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Refresh Project Workspace",
+        "tags": [
+          "development"
+        ]
+      }
+    },
     "/api/providers": {
       "get": {
         "description": "Configured provider capabilities with credential names/presence, never secret values.",
@@ -24245,6 +25063,49 @@
           }
         },
         "summary": "Research Scorecard",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/semantic-projection": {
+      "get": {
+        "description": "Read the verified, non-authoritative D0 semantic projection.",
+        "operationId": "research_semantic_projection_api_research_cases__project_id__semantic_projection_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifiedBlindSemanticReadV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Semantic Projection",
         "tags": [
           "research"
         ]
@@ -28433,6 +29294,94 @@
           }
         },
         "summary": "V3 Get Strategy Version",
+        "tags": [
+          "workstation-v3",
+          "development"
+        ]
+      }
+    },
+    "/api/v3/projects/{project_id}/workspace": {
+      "get": {
+        "description": "Read the verified non-authoritative generated workspace projection.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/workspace`.",
+        "operationId": "v3_get_project_workspace_api_v3_projects__project_id__workspace_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "V3 Get Project Workspace",
+        "tags": [
+          "workstation-v3",
+          "development"
+        ]
+      }
+    },
+    "/api/v3/projects/{project_id}/workspace/refresh": {
+      "post": {
+        "description": "Refresh generated references only; this grants no research or execution authority.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/workspace/refresh`.",
+        "operationId": "v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "V3 Refresh Project Workspace",
         "tags": [
           "workstation-v3",
           "development"

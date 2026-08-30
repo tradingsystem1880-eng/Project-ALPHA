@@ -1,0 +1,64 @@
+---
+paths:
+  - "packages/alpha-study/**"
+---
+# alpha_study rules
+
+`alpha_study` is an additive research-plane composition/projection seam. S3a owns
+strict immutable `FeatureInputRefV1`, `FeatureValueV1`, `EventTableV1`, and the
+separate `FactorObservationTableV1` contracts. They carry content-bound, explicitly
+`unverified_reference` declarations for causal UTC clocks and multi-artifact, snapshot,
+vintage, computation, provider, family, frequency, venue, operator, and universe
+lineage. Event tables contain no realized outcomes; none contain operational timestamps
+or grant evidence or execution authority.
+
+S3b adds a closed Git-owned `double_bottom.v1` operator declaration plus immutable
+`DetectorValidationV1` and `ExplorationMandateV1` references. Those references bind
+the exact existing project, `rc_` contract, `ra_` attempt, D0 run, `rl_` D0 reservation,
+execution fingerprints, `d0_acceptance.json`, frozen plan/topology/budget hashes, and
+child content hashes. They are permanently `not_checked`, grant no verdict, and create
+no D1 reservation or launch authority.
+
+## Module map
+
+- `values.py` — strict, content-hashed `FeatureInputRefV1` and `FeatureValueV1`
+  unverified lineage projections.
+- `tables.py` — sealed event-occurrence and cross-sectional factor geometries with
+  canonical ordering, derived IDs, universe availability, and `authority: none`.
+- `_operator_registry.py` — closed source-owned declarations; S3b registers only the
+  existing causal double-bottom detector.
+- `authority.py` — strict reference-only projections of existing ControlStore/run
+  identities; it performs no live lookup, approval, reservation, or launch.
+- `projections.py` — typed finding copies, source-bound mechanism graphs,
+  non-executable advisor proposals, and reference-only workspace manifests. Every
+  relationship/action vocabulary is closed and every collection enforces its source kind.
+- `adapters.py` — one thin projection of the registered existing double-bottom detector into
+  `EventTableV1`; it duplicates no geometry, requires artifact/dataset hash agreement, and uses
+  the detector's full causal `confirmed_at` clock. Event-study inference remains deferred.
+- `semantic.py` — the S5a1 byte-bound blind-read contract. It hashes complete D0 acceptance,
+  events, and chart artifacts; requires exact one-event identity/clock agreement; derives points
+  only from the bound chart series; and emits pre-cutoff values plus an aggregate masked count.
+  Its cutoff is an unverified acceptance-measurement reference until the CLI verifier composes it.
+
+The package owns no persistence, CLI commands, UI, external dependencies, approvals,
+D1/D2 transitions, promotion, paper, broker, or order authority. Canonical projections
+must remain derived, content-hashed references to existing authoritative records.
+
+The package may depend only on the approved lower-layer inputs recorded in the root
+import-linter contract: `alpha_core`, `alpha_data`, `alpha_patterns`, and
+`alpha_research`. The package must not import strategy, backtest, validation,
+forecast, options, screener, CLI, MCP, or web surfaces. Lower layers and the two
+top-of-DAG surfaces must not import `alpha_study`.
+
+Only an existing-authority CLI/ControlStore verifier may upgrade a reference into
+usable PIT lineage. Any future analytical or authority-linked implementation must map
+to that seam before code is added. D1 remains owner-launched, MCP
+remains pinned at 62 tools, and external capabilities remain deferred until separately
+approved and isolated.
+
+S7 adopts no new generic-study dependency for the 2026-08-30 private-local crypto closure. The
+existing separately locked Qlib diagnostic worker remains unchanged and outside `alpha_study`;
+every other named candidate remains deferred behind its own future ADR-0011 packet. S8 accepts
+technical-event and BTCUSDT crowding rows through `EventTableV1`, and cross-sectional BTC/ETH rows
+through `FactorObservationTableV1`. These are deterministic, PIT, non-authoritative projection
+fixtures only; they add no empirical result, D2, promotion, execution, paper, broker, or order seam.

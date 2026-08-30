@@ -3,10 +3,135 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from alpha_web import _research
+from alpha_web.api.models import VerifiedBlindSemanticReadV1
+
+
+def _projection() -> dict[str, object]:
+    return {
+        "schema": "VerifiedBlindSemanticReadV1",
+        "schema_version": 1,
+        "source_verification": "verified_completed_d0_recomputation",
+        "authority": "none",
+        "run_id": "0123456789abcdef",
+        "projection": {
+            "schema": "BlindSemanticProjectionV1",
+            "schema_version": 1,
+            "run_id": "0123456789abcdef",
+            "acceptance_artifact_sha256": "a" * 64,
+            "events_artifact_sha256": "b" * 64,
+            "chart_data_artifact_sha256": "c" * 64,
+            "cutoff_confirmed_at": "2024-01-01T00:00:00Z",
+            "points": [
+                {
+                    "point_id": "price:0",
+                    "available_at": "2024-01-01T00:00:00Z",
+                    "value": 1.25,
+                }
+            ],
+            "masked_count": 2,
+            "authority": "none",
+            "cutoff_source": "d0_acceptance_measurement_reference",
+            "lineage_verification": "not_checked",
+            "semantic_status": "unfrozen",
+            "content_sha256": "d" * 64,
+        },
+        "content_sha256": "e" * 64,
+    }
+
+
+def test_semantic_projection_uses_exact_cli_argv_without_cutoff_or_body(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[list[str], Path]] = []
+
+    def fake_run_json(args: list[str], *, data_dir: Path, **kwargs: object) -> object:
+        calls.append((args, data_dir))
+        assert kwargs == {}
+        return _projection()
+
+    monkeypatch.setattr(_research, "_run_json", fake_run_json)
+    assert _research.semantic_projection("project", data_dir=tmp_path) == _projection()
+    assert calls == [(["research", "semantic-projection", "project", "--json"], tmp_path)]
+
+
+@pytest.mark.parametrize("payload", [[], "projection", 1, None])
+def test_semantic_projection_distinguishes_non_object_output(
+    payload: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_research, "_run_json", lambda *args, **kwargs: payload)
+    with pytest.raises(_research.InvalidSemanticProjection, match="invalid semantic projection"):
+        _research.semantic_projection("project", data_dir=tmp_path)
+
+
+def test_verified_projection_model_is_strict_and_checks_nested_run_identity() -> None:
+    payload = _projection()
+    assert VerifiedBlindSemanticReadV1.model_validate(payload).model_dump(by_alias=True) == payload
+
+    mismatched = _projection()
+    projection = cast(dict[str, object], mismatched["projection"])
+    mismatched["projection"] = {**projection, "run_id": "fedcba9876543210"}
+    with pytest.raises(ValueError):
+        VerifiedBlindSemanticReadV1.model_validate(mismatched)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"extra": True},
+        {"run_id": "0123456789ABCDEf"},
+        {"projection": {"cutoff_confirmed_at": "2024-01-01T00:00:00+00:00"}},
+        {
+            "projection": {
+                "points": [
+                    {
+                        "point_id": "price:0",
+                        "available_at": "2024-01-01T00:00:00Z",
+                        "value": float("nan"),
+                    }
+                ]
+            }
+        },
+        {
+            "projection": {
+                "points": [{"point_id": "", "available_at": "2024-01-01T00:00:00Z", "value": 1.25}]
+            }
+        },
+        {
+            "projection": {
+                "points": [
+                    {"point_id": " price:0", "available_at": "2024-01-01T00:00:00Z", "value": 1.25}
+                ]
+            }
+        },
+        {
+            "projection": {
+                "points": [
+                    {
+                        "point_id": "price:" + chr(10) + "0",
+                        "available_at": "2024-01-01T00:00:00Z",
+                        "value": 1.25,
+                    }
+                ]
+            }
+        },
+        {"projection": {"masked_count": True}},
+    ],
+)
+def test_verified_projection_model_rejects_malformed_values(change: dict[str, object]) -> None:
+    payload = _projection()
+    for key, value in change.items():
+        if key == "projection":
+            projection = cast(dict[str, object], payload["projection"])
+            payload["projection"] = {**projection, **cast(dict[str, object], value)}
+        else:
+            payload[key] = value
+    with pytest.raises(ValueError):
+        VerifiedBlindSemanticReadV1.model_validate(payload)
 
 
 def test_research_projection_uses_only_the_bounded_cli_vocabulary(

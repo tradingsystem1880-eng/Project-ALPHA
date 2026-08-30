@@ -1,6 +1,6 @@
 # Project ALPHA — Architecture
 
-**Last reviewed:** 2026-08-14
+**Last reviewed:** 2026-08-30
 **Status:** Living (six-screen Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
 **Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
@@ -27,6 +27,7 @@ graph TD
     strat[alpha_strategies]
     val[alpha_validation]
     research[alpha_research]
+    study[alpha_study]
     fc[alpha_forecast]
     opt[alpha_options]
     screen[alpha_screener]
@@ -40,6 +41,7 @@ graph TD
     cli --> strat
     cli --> val
     cli --> research
+    cli --> study
     cli --> fc
     cli --> opt
     cli --> screen
@@ -50,6 +52,11 @@ graph TD
     strat --> core
     val --> core
     research --> core
+    study --> core
+    study --> data
+    study --> patterns
+    study --> research
+    patterns[alpha_patterns] --> core
     fc --> core
     opt --> core
     screen --> core
@@ -64,16 +71,16 @@ alpha_mcp   alpha_web          surfaces: subprocess `alpha`; public metadata/rea
       alpha_cli               sole composer; may import every package below
       /   |   \
      /    |    +------------ alpha_backtest ---- alpha_data ----+
-alpha_strategies  alpha_validation  alpha_research  alpha_forecast  alpha_options  alpha_screener
+alpha_strategies  alpha_validation  alpha_research  alpha_study  alpha_forecast  alpha_options  alpha_screener
     \             |                 |               |               |              /
      +------------+-----------------+---------------+---------------+-------------+ -> alpha_core
                                                                imports nothing internal
 ```
 </details>
 
-**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_strategies`, `alpha_validation`, `alpha_research`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
+**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_patterns` depends on `alpha_core`; `alpha_strategies`, `alpha_validation`, `alpha_research`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_study` is an additive projection/composition seam over `alpha_core`, `alpha_data`, `alpha_patterns`, and `alpha_research`; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `alpha_study` owns immutable content-hashed lineage/event/factor projections, one closed source-owned operator registry, and exact `not_checked` references to existing D0/control-plane records; it owns no persistence, empirical evidence, D1 reservation, launch authority, or command. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
 
-**Enforcement:** fourteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
+**Enforcement:** fifteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports and the bidirectional alpha-study seam. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
 
 ## 3. Layer Responsibilities
 
@@ -86,13 +93,14 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, four-family path-risk primitives, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_research` | 1 — research | Pure deterministic research primitives: fixed-duration research bars and identity, group-atomic chronological D1/D2/D3 allocation, causal pattern detection, prospective power and confirmation, point-in-time matched event studies, multiplicity control, lineage-bound charts, and terminal gate packets. D1/D2 are admitted only through governed contracts/phases; the package grants no strategy, validation, holdout, paper, or execution authority. | `core` |
+| `alpha_study` | 2 — research composition | Strict immutable feature/event/factor contracts, a closed Git-owned operator declaration, exact existing-authority references, derived finding/mechanism/advisor/workspace projections, one thin existing-double-bottom event-table adapter, and an S5a1 byte-bound blind semantic-read contract. The semantic contract emits only chart points available by its D0 acceptance-event reference and an aggregate masked count; its lineage remains unchecked until CLI composition. The package owns no persistence, commands, UI, approvals, empirical authority, D1/D2 transitions, promotion, paper, broker, or order authority. | `core`, `data`, `patterns`, `research` |
 | `alpha_forecast` | 1 — model | Kronos foundation-model facade: vendored pinned weights code, typed `Forecaster` protocol, per-sample OHLCV paths, deterministic seeding, offline `FakeForecaster`. torch/pandas confined inside; importing the package never imports torch. See [ADR-0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md). | `core` |
 | `alpha_options` | 1 — analytics | Pure Black–Scholes pricing, Greeks, and implied volatility. | `core` |
 | `alpha_screener` | 1 — market edge | Typed Finnhub quote/news parsing plus the opt-in API-key-gated network adapter. | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
-| `alpha_cli` | 3 — compose/control | The **only** composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the SQLite project/job/evidence/research-governance control plane, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
+| `alpha_cli` | 3 — compose/control | The **only** operational composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the schema-v5 SQLite project/job/evidence/research-governance control plane with its protected append-only semantic owner-event ledger, canonical semantic reads, and dedicated atomic owner-auth receipt/event seam, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
 | `alpha_mcp` | 4 — surface | stdio MCP server whose generated capability matrix records the current bounded tool count and authority. **Subprocesses the `alpha` CLI**, composes nothing, cannot approve/decide research, consume D2, reveal a holdout, or place orders. | `core`, supported public `cli` seams |
-| `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed six-screen SPA (Research, Build, Results, Compare, Studios, Operate). It subprocesses CLI actions/projections and serves server-rendered figures plus typed artifact/control records. It never queries SQLite, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
+| `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed six-screen SPA (Research, Build, Results, Compare, Studios, Operate). It subprocesses CLI actions/projections and serves server-rendered figures plus typed artifact/control records; the existing owner-auth challenge/perform routes are the one dedicated Touch ID atomic semantic-event exception and call the supported `alpha_cli.owner_auth` seam without generic CLI dispatch. The existing Research Study tab renders the unchanged server-masked semantic GET beside additive non-authoritative semantic/D1 status; D1 launch remains owner-CLI-only. It never queries SQLite directly, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
 | `workers/qlib` | isolated process | Daily cross-sectional Alpha158-style/LightGBM training with fold-local preprocessing. Accepts an immutable exchange bundle and returns validated close-stamped OOS predictions; models/pickles never cross the boundary. | its own `pyqlib`/LightGBM lock only |
 
 The two surface layers use `alpha_core` settings and supported CLI-owned catalog/run-store,
@@ -138,7 +146,17 @@ the one-to-one terminal-attempt link prevents a completed or failed attempt from
 
 SQLite is the only mutable authority. Dossiers are deterministic projections under
 `data_dir/research/projects/<project_id>/`; they are never parsed back into control state. The
-default real-data commitment assigns chronologically ordered, indivisible eligible date/session/
+generated strategy-project workspace under
+`data_dir/strategy-workspaces/<project-slug>--<project-id>/` follows the same one-way rule. Its
+`StrategyProjectWorkspaceV1` manifest and twelve categorized indexes contain identifiers and hashes,
+not copied research/data/run bytes. A complete content-addressed revision is verified before an
+atomic `current.json` pointer replacement; tamper blocks synchronization until explicit recovery
+quarantines invalid generated state. Project creation commits SQLite authority first, and a failed
+workspace materialization cannot roll that transaction back. The Workstation reads and refreshes
+this projection only through `alpha project workspace`; neither operation grants research-gate,
+promotion, sandbox, paper, broker, or order authority.
+
+The default real-data commitment assigns chronologically ordered, indivisible eligible date/session/
 dependency groups 60/20/20 to D1/D2/D3. An alternative must be event-blind, owner-approved before
 D1, and retain at least 20% in D3. Governed runners consume only their assigned D1 or D2 share;
 D3 remains prohibited to research. Pre-launch projects already present when schema v2 migrates are explicitly
@@ -413,11 +431,14 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **Vendor bytes qualify before strategy visibility.** Tiingo daily responses become immutable receipts and candidates; only the configured authority can auto-promote after every critical check, and no comparison feed can silently replace it. → [ADR-0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)
 - **QuantPad discovery and bulk payloads are separate.** MCP is for bounded discovery/previews; the official API/SDK is for bulk historical research. Neither becomes canonical or paper-authoritative without receipt-backed qualification. → [ADR-0018](adr/0018-quantpad-external-research-data-boundary.md)
 - **Development state is external lineage.** Mutable projects, stages, attempts, sealed holdouts, jobs, and decisions are atomic CLI-owned SQLite records; immutable manifests are never edited to attach workflow state. Append-only project-scope selection events support point-in-time AgentBrief projections. Direct and suite Qlib/Kronos launches share one transactional capacity class. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
+- **Project workspaces are disposable projections.** Each project gets deterministic hash-only research/source/data/study/promotion/version/experiment/run/validation/figure/report/sandbox indexes. Immutable revisions and an atomic current pointer preserve the last valid view; tamper requires explicit quarantine-and-rebuild recovery. SQLite and immutable artifacts remain authority, and the workspace confers no execution capability. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
 - **Null evidence and path risk answer different questions.** The required `monte_carlo` stage follows randomized-price robustness and independently reports IID empirical, causal regime Markov, Student-t, and Kronos full-engine paths. No majority vote exists; warnings require an exact-hash CLI-only owner disposition. → [ADR-0029](adr/0029-four-family-monte-carlo-validation.md)
 - **Evidence is cited, revisioned, and time-aware.** Agent findings begin as drafts and must name exact run/artifact/field selectors; supplied experiment/version links must match the immutable lineage. As-of AgentBrief reads filter version/experiment scope, stages, run links, holdout audit, and evidence to the requested cutoff; no opaque vector memory is authoritative. → [ADR-0015](adr/0015-evidence-ledger-not-agent-memory.md)
 - **Qlib is isolated; ALPHA replay is authoritative.** The root runtime never imports Qlib/LightGBM or deserializes models. Fold-local, close-stamped predictions must pass strict contract and future-leakage validation before synchronized canonical replay. Qlib diagnostics remain advisory, and replay is labeled model-not-recomputed until a counterfactual retraining design exists. → [ADR-0016](adr/0016-isolated-qlib-worker.md)
 - **Research is upstream and finite.** Fresh projects automatically receive a governed Research Case; no strategy version can bypass its approved confirmation contract, mechanical readiness, and owner-advance link. D0 is synthetic; D1 is registered discovery; D2 is one-shot confirmation; D3 remains prohibited to research. Migrated pre-launch projects alone retain explicit grandfathered compatibility. → [ADR-0019](adr/0019-governed-research-cases-before-strategy-development.md), [ADR-0027](adr/0027-tiered-research-readiness-semantics.md)
 - **Owner presence is authenticated per research action.** The closed research-lifecycle UI action set requires a fresh, one-use Touch ID assertion bound to exact origin, RP, action, project, artifact hash, case revision, consequence, and reason. The verified credential determines the actor. MCP and generic jobs cannot obtain challenges or credentials; trusted CLI is the separately audited enrollment/recovery path. This grants no holdout, paper, broker, order, or research-gate-override authority. → [ADR-0030](adr/0030-touch-id-owner-presence-for-research-actions.md)
+- **Semantic owner events are a protected v5 ledger.** `record_semantic_event` is the one additional closed action: the existing owner-auth challenge/perform routes call the dedicated `alpha_cli.owner_auth` transaction, which binds one fresh assertion to one receipt and one canonical definition/review/freeze event. The v4 backup and lossless receipt `CHECK` rebuild are verified before the v5 marker; protected-object defects fail closed, and post-commit recovery is read-only. S5c/S6 expose only a non-authoritative existing-screen read projection: exact server-masked D0 points, the current semantic cycle, active contract, existing D1 attempts/budgets, promotion readiness, and next-owner-action guidance. There is no direct semantic-write CLI command, new route or screen, frontend-derived authority, MCP capability, or browser D1 launch; committed-v5 forensic recovery requires owner approval and a forward migration. → [ADR-0035](adr/0035-generic-study-composition-and-external-capability-adapters.md)
+- **Generic crypto studies reuse two non-authoritative geometries.** Causal technical events and registered Bybit BTCUSDT crowding events project through `EventTableV1`; exact-universe Binance BTC/ETH cross-sectional observations project through `FactorObservationTableV1`. Both preserve provider-native instrument/venue, separate family lineage, unit, vintage, universe, and availability clocks, round-trip deterministically, and remain `authority: none`. S7 adds no new dependency, and these S8 acceptance fixtures create no D2, promotion, execution, paper, broker, or order path. → [ADR-0035](adr/0035-generic-study-composition-and-external-capability-adapters.md)
 - **Intraday research cannot inherit daily authority.** Gate 1 uses only synthetic fixed-duration proxy bars. There is no qualified real intraday adapter, and research bars/results cannot enter daily snapshots, validation, holdout, paper, or orders. → [ADR-0020](adr/0020-intraday-event-research-is-not-daily-validation-evidence.md)
 - **Surface state is bounded and recoverable.** REST publishes an explicit contract version and endpoint limits; chart windows filter bars and every linked evidence series together; figures report downsampling bounds; the fixed six-screen shell mounts only visible panels; direct and suite durable jobs rehydrate, expose failure, and use owner-driven heartbeat/cancellation/reconciliation rather than raw PID authority. Journal recovery alone does not prove an orphan child has stopped.
 - **Paper authority is narrow and never live capital.** Crypto execution is local Sandbox only. IBKR is paper-account only and consumes an exact immutable intent after reconciliation, dual flags, fresh quote, and cutoff checks. Futures remain connectivity probes, not research. Kronos has no live-paper support without a separately approved causal cache.

@@ -683,8 +683,8 @@ def _recomputed_d0_measurements(generation: _D0Generation) -> dict[str, object]:
     return _execute_registered_d0_fixture(generation).measurements
 
 
-def validate_d0_acceptance_artifact(
-    run_dir: Path,
+def validate_d0_acceptance_bytes(
+    raw: bytes,
     manifest: Mapping[str, object],
     *,
     project_id: str,
@@ -694,15 +694,10 @@ def validate_d0_acceptance_artifact(
     execution_fingerprint: str,
     d0_operator_fingerprint: str,
 ) -> dict[str, object]:
-    """Validate the hashed typed D0 result; manifest outcome prose is never run authority."""
+    """Validate exact in-memory acceptance bytes; manifest prose is never run authority."""
 
-    path = run_dir / _D0_ACCEPTANCE_ARTIFACT
-    if path.is_symlink() or not path.is_file():
-        raise DataError("completed D0 run is missing its typed acceptance artifact")
-    try:
-        raw = path.read_bytes()
-    except OSError as exc:  # pragma: no cover - the manifest verifier normally catches this first.
-        raise DataError("D0 acceptance artifact cannot be read") from exc
+    if not isinstance(raw, bytes):
+        raise DataError("D0 acceptance artifact must be bytes")
     if len(raw) > _D0_ACCEPTANCE_MAX_BYTES:
         raise DataError("D0 acceptance artifact exceeds the bounded JSON size")
     try:
@@ -791,6 +786,38 @@ def validate_d0_acceptance_artifact(
     if set(acceptance) != expected_fields:
         raise DataError("D0 acceptance artifact contains unregistered fields")
     return acceptance
+
+
+def validate_d0_acceptance_artifact(
+    run_dir: Path,
+    manifest: Mapping[str, object],
+    *,
+    project_id: str,
+    contract_id: str,
+    contract_hash: str,
+    dataset_hash: str,
+    execution_fingerprint: str,
+    d0_operator_fingerprint: str,
+) -> dict[str, object]:
+    """Read one regular acceptance file, then delegate to the exact-byte validator."""
+
+    path = run_dir / _D0_ACCEPTANCE_ARTIFACT
+    if path.is_symlink() or not path.is_file():
+        raise DataError("completed D0 run is missing its typed acceptance artifact")
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:  # pragma: no cover - the manifest verifier normally catches this first.
+        raise DataError("D0 acceptance artifact cannot be read") from exc
+    return validate_d0_acceptance_bytes(
+        raw,
+        manifest,
+        project_id=project_id,
+        contract_id=contract_id,
+        contract_hash=contract_hash,
+        dataset_hash=dataset_hash,
+        execution_fingerprint=execution_fingerprint,
+        d0_operator_fingerprint=d0_operator_fingerprint,
+    )
 
 
 def run_synthetic_pilot(

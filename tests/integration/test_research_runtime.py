@@ -16,6 +16,7 @@ from alpha_cli.research_runtime import (
     d0_execution_fingerprint,
     registered_d0_operator,
     run_synthetic_pilot,
+    validate_d0_acceptance_bytes,
     validate_d0_pilot_contract,
 )
 from alpha_core import DataError
@@ -258,6 +259,39 @@ def test_synthetic_pilot_records_null_controls_and_no_real_data_claim(tmp_path: 
     assert measurements["topology"]["forward_outcome_observations"] == 4
     assert measurements["topology"]["rejected_boundaries"] == ["D1_D2", "D2_D3"]
     assert measurements["power"]["estimated_power"] >= 0.89
+
+
+def test_d0_acceptance_byte_validator_matches_file_validator(tmp_path: Path) -> None:
+    manifest = run_synthetic_pilot(
+        tmp_path,
+        project_id="11111111-1111-4111-8111-111111111111",
+        contract_id="rc_" + "c" * 64,
+        contract=_contract(),
+    )
+    run_dir = tmp_path / "runs" / str(manifest["run_id"])
+    raw = (run_dir / "d0_acceptance.json").read_bytes()
+    validated = validate_d0_acceptance_bytes(
+        raw,
+        manifest,
+        project_id=str(manifest["project_id"]),
+        contract_id=str(manifest["research_contract_id"]),
+        contract_hash=str(manifest["contract_hash"]),
+        dataset_hash=str(manifest["dataset_hash"]),
+        execution_fingerprint=str(manifest["execution_fingerprint"]),
+        d0_operator_fingerprint=str(manifest["d0_operator_fingerprint"]),
+    )
+    assert validated["run_id"] == manifest["run_id"]
+    with pytest.raises(DataError, match="canonical JSON"):
+        validate_d0_acceptance_bytes(
+            raw + b"\n",
+            manifest,
+            project_id=str(manifest["project_id"]),
+            contract_id=str(manifest["research_contract_id"]),
+            contract_hash=str(manifest["contract_hash"]),
+            dataset_hash=str(manifest["dataset_hash"]),
+            execution_fingerprint=str(manifest["execution_fingerprint"]),
+            d0_operator_fingerprint=str(manifest["d0_operator_fingerprint"]),
+        )
     assert manifest["real_market_evidence"] is False
     assert manifest["eligible_for_holdout_or_execution"] is False
 

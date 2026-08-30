@@ -85,6 +85,7 @@ const RESEARCH_QUESTIONS: components['schemas']['ResearchMaterialQuestionV1'][] 
 // Typed against the generated contract so ANY future ResearchCase drift fails the
 // frontend type gate instead of silently passing a stale mocked shape to e2e.
 const RESEARCH_CONTRACT_ID = `rc_${'a'.repeat(64)}`
+const RESEARCH_SEMANTIC_HASH = 'c'.repeat(64)
 
 const RESEARCH_CASE: components['schemas']['ResearchCase'] = {
   schema_version: 1,
@@ -171,6 +172,103 @@ const RESEARCH_CLOSED_CASE: components['schemas']['ResearchCase'] = {
   },
   next_action: 'Research Case is closed.',
   remaining_milestones: [],
+  study_status: {
+    schema: 'ResearchStudyStatusV1',
+    schema_version: 1,
+    authority: 'none',
+    project_id: RESEARCH_CASE.project_id,
+    active_contract_id: RESEARCH_CONTRACT_ID,
+    semantic: {
+      state: 'freeze_required',
+      source_state: 'current',
+      case_contract_id: RESEARCH_CONTRACT_ID,
+      case_revision: '9'.repeat(64),
+      verified_read_sha256: '8'.repeat(64),
+      projection_sha256: '7'.repeat(64),
+      run_id: '0123456789abcdef',
+      cutoff_confirmed_at: '2026-08-29T23:00:00Z',
+      event_count: 2,
+      head_sha256: RESEARCH_SEMANTIC_HASH,
+      definition: {
+        event_id: `se_${'1'.repeat(64)}`,
+        artifact_id: `sd_${'2'.repeat(64)}`,
+        receipt_id: 'semantic-receipt-1',
+        actor: 'owner',
+        reason: 'Define the visible shape.',
+        recorded_at: '2026-08-30T00:00:01Z',
+        payload: {
+          event_type: 'definition',
+          definition_label: 'bounded reversal',
+          definition_text: 'Visible troughs only; no post-cutoff values.',
+        },
+      },
+      review: {
+        event_id: `se_${RESEARCH_SEMANTIC_HASH}`,
+        artifact_id: `sr_${'3'.repeat(64)}`,
+        receipt_id: 'semantic-receipt-2',
+        actor: 'owner',
+        reason: 'Approve the bounded definition.',
+        recorded_at: '2026-08-30T00:00:02Z',
+        payload: {
+          event_type: 'review',
+          review_decision: 'approve',
+          review_text: 'The definition uses only the masked read.',
+        },
+      },
+      freeze: null,
+      next_owner_action: 'Freeze the approved semantic definition with fresh Touch ID.',
+    },
+    d1: {
+      launch_authority: 'owner_cli_only',
+      status: 'completed',
+      attempts: [{
+        attempt_id: 'd1-attempt-1',
+        contract_id: RESEARCH_CONTRACT_ID,
+        status: 'completed',
+        run_id: '0123456789abcdef',
+        recorded_at: '2026-08-30T00:01:00Z',
+      }],
+      elapsed_budget: { variants: 3 },
+      remaining_budget: { variants: 61 },
+    },
+    promotion: {
+      packet_id: null,
+      readiness: {
+        state: 'blocked',
+        blockers: [{
+          code: 'confirmation_not_supported',
+          evidence_refs: ['research_gate_evidence.confirmation_classification'],
+        }],
+      },
+    },
+    next_action: 'Review evidence before any owner decision.',
+    responsibility: 'owner',
+  },
+}
+
+const RESEARCH_SEMANTIC_READ: components['schemas']['VerifiedBlindSemanticReadV1'] = {
+  schema: 'VerifiedBlindSemanticReadV1',
+  schema_version: 1,
+  source_verification: 'verified_completed_d0_recomputation',
+  authority: 'none',
+  run_id: '0123456789abcdef',
+  projection: {
+    schema: 'BlindSemanticProjectionV1',
+    schema_version: 1,
+    run_id: '0123456789abcdef',
+    acceptance_artifact_sha256: '4'.repeat(64),
+    events_artifact_sha256: '5'.repeat(64),
+    chart_data_artifact_sha256: '6'.repeat(64),
+    cutoff_confirmed_at: '2026-08-29T23:00:00Z',
+    points: [{ point_id: 'visible-1', available_at: '2026-08-29T22:00:00Z', value: 101.5 }],
+    masked_count: 8,
+    authority: 'none',
+    cutoff_source: 'd0_acceptance_measurement_reference',
+    lineage_verification: 'not_checked',
+    semantic_status: 'unfrozen',
+    content_sha256: '7'.repeat(64),
+  },
+  content_sha256: '8'.repeat(64),
 }
 
 const RESEARCH_CASE_ROW: components['schemas']['ResearchCaseSummaryRow'] = {
@@ -1345,6 +1443,54 @@ function projectDetail(
   }
 }
 
+const PROJECT_WORKSPACE_CATEGORIES = [
+  'research',
+  'sources',
+  'datasets',
+  'study-state',
+  'promotion',
+  'strategy-versions',
+  'experiments',
+  'runs',
+  'validation',
+  'figures',
+  'reports',
+  'sandbox-eligibility',
+] as const
+
+function projectWorkspace(
+  projectId: string,
+): components['schemas']['StrategyProjectWorkspaceProjection'] {
+  const revisionId = `spw_${'a'.repeat(64)}`
+  return {
+    schema_name: 'StrategyProjectWorkspaceProjectionV1',
+    schema_version: 1,
+    project_id: projectId,
+    workspace_root: `strategy-workspaces/project--${projectId}`,
+    changed: false,
+    recovered: false,
+    stale: false,
+    workspace: {
+      schema_name: 'StrategyProjectWorkspaceV1',
+      schema_version: 1,
+      revision_id: revisionId,
+      project_id: projectId,
+      project_name_sha256: 'b'.repeat(64),
+      authority: 'none',
+      execution_authority: false,
+      categories: [...PROJECT_WORKSPACE_CATEGORIES],
+      indexes: PROJECT_WORKSPACE_CATEGORIES.map((category) => ({
+        category,
+        path: `indexes/${category}.json`,
+        sha256: 'c'.repeat(64),
+        reference_count: 0,
+      })),
+      sandbox_classification: 'non-transmitting-sandbox-only',
+      content_sha256: 'd'.repeat(64),
+    },
+  }
+}
+
 const CANDIDATE_DETAIL = {
   ...projectDetail(CANDIDATE_PROJECT),
   versions: [
@@ -1469,6 +1615,9 @@ function responseFor(route: Route, options: MockOptions): unknown {
   ) return RESEARCH_CLOSED_CASE
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/status`) {
     return RESEARCH_CASE
+  }
+  if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/semantic-projection`) {
+    return RESEARCH_SEMANTIC_READ
   }
   if (
     url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/report`
@@ -1987,6 +2136,8 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (options.candidateProject && url.pathname === `/api/projects/${CANDIDATE_PROJECT.project_id}`) {
     return CANDIDATE_DETAIL
   }
+  const workspaceMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/workspace(?:\/refresh)?$/)
+  if (workspaceMatch) return projectWorkspace(decodeURIComponent(workspaceMatch[1]))
   const candidatePlanMatch = url.pathname.match(
     /^\/api\/projects\/project-hedged-basis\/experiments\/experiment-hedged-basis\/suite\/([^/]+)\/plan$/,
   )
@@ -2371,6 +2522,24 @@ test('Research Cockpit Decision tab assembles checklist, scorecard, packet, and 
   await expect(page.getByText('MORE RESEARCH REQUIRED').first()).toBeVisible()
   await expect(page.getByText('90-second Research Gate conclusion', { exact: true })).toBeVisible()
   await expect(page.getByText(/INCONCLUSIVE · PARK · owner \(human\)/)).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('Research Cockpit Study tab preserves masking and owner-only D1 authority', async ({ page }) => {
+  await preparePage(page)
+
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
+  await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
+  await page.getByRole('button', { name: 'open case' }).click()
+  await page.getByRole('tab', { name: 'Study', exact: true }).click()
+
+  await expect(page.getByLabel('Verified semantic study status')).toBeVisible()
+  await expect(page.getByText('visible-1', { exact: true })).toBeVisible()
+  await expect(page.getByText('8', { exact: true })).toBeVisible()
+  await expect(page.getByText('bounded reversal', { exact: true })).toBeVisible()
+  await expect(page.getByText('OWNER CLI ONLY', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Freeze the approved semantic definition with fresh Touch ID/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /launch.*D1/i })).toHaveCount(0)
   await expectReleaseAccessibility(page)
 })
 

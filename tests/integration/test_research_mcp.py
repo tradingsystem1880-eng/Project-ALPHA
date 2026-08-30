@@ -91,6 +91,8 @@ def test_research_mcp_surface_is_pinned_without_owner_authority(
     assert names == _EXPECTED_MCP_TOOLS
     # ADR-0022 budget: 48 + 6 Codex-seam (R2) + 5 data-inventory (R3) + 3 source-plane (R4).
     assert len(names) == 62
+    assert "semantic_projection" not in names
+    assert "research_semantic_projection" not in names
     assert {name for name in names if name.startswith("research_")} == {
         "research_capture",
         "research_get",

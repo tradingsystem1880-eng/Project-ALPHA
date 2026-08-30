@@ -12,6 +12,18 @@ from alpha_web.app import create_app
 
 PROJECT_ID = "6f14da94-55fc-470a-b11a-d009f5ea15d9"
 CONTRACT_ID = "rc_" + "a" * 64
+SEMANTIC_PAYLOAD = {
+    "schema": "SemanticOwnerActionV1",
+    "schema_version": 1,
+    "event_type": "definition",
+    "verified_read_sha256": "a" * 64,
+    "projection_sha256": "b" * 64,
+    "run_id": "0123456789abcdef",
+    "cutoff_confirmed_at": "2024-01-01T00:00:00Z",
+    "expected_semantic_head_sha256": "c" * 64,
+    "definition_label": "Bounded definition",
+    "definition_text": "Exact semantic definition.",
+}
 
 
 def test_action_argv_uses_only_verified_actor_and_closed_mapping() -> None:
@@ -37,6 +49,14 @@ def test_action_argv_uses_only_verified_actor_and_closed_mapping() -> None:
     with pytest.raises(DataError, match="unsupported owner action"):
         owner_api._action_argv(
             action_type="reveal_holdout",
+            project_id=PROJECT_ID,
+            payload={},
+            actor="owner:verified-credential",
+            reason="not permitted",
+        )
+    with pytest.raises(DataError, match="semantic owner action is not a CLI action"):
+        owner_api._action_argv(
+            action_type="record_semantic_event",
             project_id=PROJECT_ID,
             payload={},
             actor="owner:verified-credential",
@@ -238,6 +258,82 @@ def test_route_handlers_delegate_only_to_owner_auth_seam(
     )
     assert performed["authorization"] == authorization
     assert performed["result"] == {"status": "recorded"}
+
+
+def test_semantic_challenge_uses_server_derived_artifact_and_rejects_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    derived = "e" * 64
+    binding = {
+        "action_type": "record_semantic_event",
+        "project_id": PROJECT_ID,
+        "artifact_hash": derived,
+        "expected_case_revision": "b" * 64,
+        "request_hash": "f" * 64,
+        "reason": "record exact semantic event",
+    }
+    monkeypatch.setattr(owner_api, "derive_action_artifact_hash", lambda **_: derived)
+    monkeypatch.setattr(owner_api, "action_binding", lambda **_: binding)
+    monkeypatch.setattr(owner_api, "authentication_options", lambda **_: {"step": "assert"})
+    body = owner_api.OwnerActionChallengeRequest(
+        action_type="record_semantic_event",
+        project_id=PROJECT_ID,
+        artifact_hash=derived,
+        expected_case_revision="b" * 64,
+        consequence_summary="Record one exact semantic event.",
+        reason="record exact semantic event",
+        payload=SEMANTIC_PAYLOAD,
+    )
+    assert owner_api.start_action(body) == {"step": "assert"}
+    with pytest.raises(HTTPException, match="409"):
+        owner_api.start_action(body.model_copy(update={"artifact_hash": "f" * 64}))
+
+
+def test_semantic_perform_returns_atomic_result_without_cli_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    authorization = {
+        "actor": "owner:verified",
+        "binding": {
+            "action_type": "record_semantic_event",
+            "project_id": PROJECT_ID,
+            "reason": "record exact semantic event",
+        },
+        "receipt_id": "receipt",
+        "outcome": {
+            "status": "semantic_event_recorded",
+            "semantic_event_id": "se_" + "a" * 64,
+            "semantic_event_sha256": "a" * 64,
+        },
+    }
+    monkeypatch.setattr(owner_api, "verify_action_assertion", lambda **_: authorization)
+
+    def fail(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise AssertionError("semantic owner action must not dispatch through CLI")
+
+    monkeypatch.setattr(owner_api, "_action_argv", fail)
+    monkeypatch.setattr(owner_api, "_run_json", fail)
+    body = owner_api.OwnerActionPerformRequest(
+        challenge_id="challenge",
+        credential={"id": "credential"},
+        payload=SEMANTIC_PAYLOAD,
+    )
+    assert owner_api.perform_action(body) == {
+        "authorization": authorization,
+        "result": authorization,
+    }
+
+    recovered = {
+        **authorization,
+        "receipt_id": "receipt",
+        "recovered": True,
+    }
+    monkeypatch.setattr(owner_api, "verify_action_assertion", lambda **_: recovered)
+    assert owner_api.perform_action(body) == {
+        "authorization": recovered,
+        "result": recovered,
+    }
 
 
 def test_route_handlers_convert_safe_domain_failures_to_conflict(

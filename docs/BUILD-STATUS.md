@@ -53,3 +53,242 @@ QuantPad-parity track (separate from the internal phase numbers above): A–F Ve
 **Crypto derived-feature persistence checkpoint (2026-08-15)** — the six Stage-5 feature families now publish exact deterministic Parquet bytes through a content-addressed `CryptoFeatureArtifactV1` manifest instead of remaining transient frames. Every create/show/list operation re-verifies the feature bytes, expected named input set and order, top-level lineage IDs, each qualified normalized source and exact artifact hash, availability, and method identity. CLI and REST expose the same closed feature enum. The Guided Crypto Data Center derives inputs only from human-selected compatible qualified datasets, reports missing or cross-identity blockers without requiring opaque IDs, and lists frozen features; Advanced shows the same command and hashes without additional authority. Features remain non-authoritative research inputs beside an exact snapshot and cannot change a gate, paper state, broker, or order path. Stages 6–7 remain pending.
 **Crypto guided acquisition-control checkpoint (2026-08-15)** — the Storage & Jobs view now projects immutable profile summaries and filtered 25-task cadence pages through typed REST/TypeScript contracts, starts provider work only after one explicit bounded click, and resumes only failed content-addressed batches. It exposes human-readable task identity, counts, progress, and recovery without requiring manifest or task IDs. The same view freezes an exact prior-day Binance top-liquidity scope and offers paginated selection of at most 50 daily-member markets for a fresh case-revision-bound one-minute profile; cross-paired spot/linear/inverse quote scopes, future profile clocks, stale case revisions, and stale async profile pages fail closed. Critical guided acquisition/feature/snapshot/storage behavior passes at 1280×720, 1440×900, and 1920×1080 with accessibility and horizontal-overflow assertions. This completes the planned Stage-6 control surfaces, but Stage-7 exhaustive acceptance and remaining real-network breadth are still pending.
 **QuantPad external research access (updated 2026-08-18)** — the current REST contract is live-verified; owner-attested written permission is the private-retention basis. `alpha quantpad-data archive` streams exact symbol-scoped responses to UUID-pinned external storage and publishes content-addressed internal manifests last. The provider exposes no complete universe export, so coverage is an explicit backlog and never guessed. All artifacts remain research-only—not canonical, validation, paper, or execution authority—until separately qualified (ADR-0018).
+
+**Generic study composition architecture freeze (2026-08-21)** ✅ — ADR-0035 accepts
+`alpha-study` only as a future composition/projection layer over the existing governed research
+program. The authority map preserves the current ControlStore, immutable D0/D1/D2 artifacts,
+owner-only D1 launch, one-shot D2, Touch ID, strategy-promotion firewall, 62-tool MCP pin, existing
+Qlib worker, figure engine, and six-screen Workstation. S0/S1 add documentation only; package and
+runtime behavior begin in later independently verified slices. Every third-party capability remains
+subject to its own ADR-0011 evidence gate, and this checkpoint grants no provider, paper, broker,
+order, holdout, or execution authority.
+
+**Generic study composition S2 package seam (2026-08-21)** ✅ — the additive `alpha-study`
+workspace package now has versioned metadata, a `py.typed` marker, and no runtime composition
+behavior. `alpha-cli` declares the workspace dependency; root isort/coverage awareness and the
+15-contract import-linter boundary enforce the approved research-plane inputs and bidirectional
+exclusion from lower layers and top surfaces. CI and the canonical gate now build/import 14
+wheels. Independent Terra reviews cleared both delivery findings; focused documentation, awareness,
+and seam tests pass (`51 passed`), all 15 import contracts are kept, and the canonical full gate
+passes the complete non-network suite with coverage, OpenAPI freshness, 14 wheel builds, and exact
+wheel import smoke. No canonical contracts, persistence, CLI command, UI, external dependency,
+owner/D1/D2, promotion, paper, broker, or order authority was added.
+
+**Generic study composition S3a1 feature-lineage contracts (2026-08-21)** 🚧 —
+`alpha-study` now defines strict immutable feature-input/value lineage. Canonical identities
+content-bind UTC semantic clocks and non-empty multi-artifact, snapshot, vintage, computation,
+provider, family, frequency, and explicit venue references; every lineage is permanently labelled
+`unverified_reference` until the existing-authority verifier checks it. Operational timestamps are
+absent. Focused seam/lineage tests pass (`12 passed`); event/factor table and cross-process
+determinism completion remain pending in S3a2. These projections grant no evidence, approval,
+D1/D2, promotion, paper, broker, order, persistence, CLI, MCP, web, or provider authority.
+
+**Generic study composition S3a2 observation tables (2026-08-21)** ✅ — `alpha-study`
+adds sealed `EventRowV1`/`EventTableV1` occurrence geometry and a separate
+`FactorObservationV1`/`FactorObservationTableV1` cross-sectional geometry. Event clocks,
+operator/code/parameter fingerprints, source availability, and factor universe availability are
+content-bound; row/table order and IDs are canonical. All lineages remain
+`unverified_reference`, every table declares `authority: none`, and event schemas reject realized
+outcomes. Focused study tests pass (`22 passed`), the environment-perturbed determinism gate passes,
+and the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
+exact wheel import smoke. No authority surface changed.
+
+**Generic study composition S3b authority references (2026-08-21)** ✅ — `alpha-study`
+now publishes one closed Git-owned declaration of the existing causal double-bottom operator plus
+strict `DetectorValidationV1` and `ExplorationMandateV1` projections. The projections bind current
+ControlStore/run identity shapes (`rc_`, `ra_`, 16-hex D0 run, `rl_`, SHA-256 execution
+fingerprints, and exact `d0_acceptance.json`) and hash-bind frozen D1 inputs and child references.
+They are explicitly `not_checked`/`not_attested`, create no D1 reservation, and expose no launch,
+approval, budget mutation, or verdict authority. Focused study tests, strict typing, all 15 import
+contracts, perturbed-environment golden determinism, fast gate, and independent Terra review pass;
+the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
+exact wheel import smoke.
+
+**Generic study composition S3c derived projections (2026-08-22)** ✅ — `alpha-study`
+adds strict content-hashed `FindingV1`, `MechanismGraphV1`, `AdvisorProposalV1`, and
+`StudyWorkspaceManifestV1` projections. Findings copy only registered typed D1/D2 fields with
+field-specific statuses and exact evidence provenance; graph node and edge vocabularies enforce
+source-kind semantics; advisor actions are closed non-executable recommendation codes; workspace
+collections enforce exact reference kinds and contain no raw data or mutable authority. All objects
+remain `authority: none` and `verification: not_checked`. Focused study tests, strict typing,
+perturbed-environment golden determinism, fast gate, and independent Terra review pass; the
+canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and exact
+wheel import smoke.
+
+**Generic study composition S4 double-bottom parity (2026-08-22)** ✅ — the first generic
+vertical calls the existing `detect_double_bottom_events` source of truth exactly once and projects
+its geometry into content-hashed `EventTableV1` rows. The adapter binds the closed registry, frozen
+parameter hash, exact artifact/dataset hash, provider/frequency/venue lineage, and the detector's
+full causal availability clock. Tests reproduce the registered 60-minute `d0-planted`,
+`d0-monotonic`, and `d0-single-trough` identities and 1/0/0 results; future-append, delayed-input,
+must-fail leaky-twin, round-trip, and perturbed-environment golden guards pass. The existing D1
+confirmation-bar mapping can precede full causal knowledge under delayed earlier inputs, so an
+`EventStudyObservation` bridge is explicitly deferred rather than introducing look-ahead. The
+198-test study+bias suite, strict typing, all 15 import contracts, fast gate, and independent Terra
+review pass. The canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel
+builds, and exact wheel import smoke.
+
+**Generic study composition S5 scope hardening (2026-08-22)** 🚧 — independent Terra review
+found that the combined semantic slice could not truthfully use an “existing” owner semantic action:
+the control store remains schema v4 and the CLI, database, and web owner-action vocabularies are
+closed without a semantic label/freeze action. ADR-0035 and the FeaturePlan now split delivery into
+S5a read-only masking at the mechanically recomputed `d0_acceptance.json` event cutoff after exact
+identity/clock agreement with integrity-checked `events.json` and `chart-data.json.events`, S5b
+additive exact-backup SQLite v5 semantic definition/review events with action-bound Touch ID receipt
+and case-revision binding, and S5c presentation inside the existing Research screen. This hardening
+changes no runtime,
+schema, owner authority, MCP tool, D1/D2, promotion, paper, broker, or order behavior; S5a remains
+the next implementation slice.
+
+**Generic study composition S5a1 blind-read contract (2026-08-22)** 🚧 — `alpha-study` now
+publishes a strict byte-bound `BlindSemanticProjectionV1`. The pure builder hashes the complete D0
+acceptance, events, and chart artifacts internally; rejects duplicate JSON keys, missing/extra
+events, cross-artifact identity/clock disagreements, nonnumeric chart values, inconsistent
+dataset/protocol/series lineage, and noncanonical visible-point collections; and emits only points
+available by the acceptance-event cutoff plus an aggregate masked count. The cutoff source remains
+an explicit acceptance-measurement reference with `lineage_verification: not_checked`: existing CLI
+mechanical D0 verification is now composed by the S5a2 read slice; server projection, persistence,
+owner semantic actions, and UI are still pending. Focused semantic tests, the study+bias suite, strict typing, all
+15 import contracts,
+perturbed-environment determinism, fast gate, and independent Terra review pass. S5a remains in
+progress until server projection and the later protected persistence/semantic-action slices land.
+
+**Generic study composition S5a2 boundary freeze (2026-08-22)** 🚧 — the next read slice is
+split from web delivery. A narrow ControlStore resolver will reuse the existing completed-D0
+mechanical verifier, then return only bounded acceptance/events/chart bytes after rechecking their
+hashes against the verified manifest. This verifier may recompute the registered synthetic fixture;
+the pure `alpha_study` projection still never imports or calls a detector. The CLI response is frozen
+as `VerifiedBlindSemanticReadV1`: an outer verified-source envelope around the unchanged inner
+`BlindSemanticProjectionV1`, with no operational timestamp or mutation authority. REST delivery is
+deferred to S5a3. This planning refinement changes no runtime, database, owner action, MCP, D1/D2,
+promotion, paper, broker, or order behavior.
+
+**Generic study composition S5a2 verified semantic read (2026-08-22)** 🚧 — implemented as a
+read-only CLI composition. `ControlStore.verified_blind_semantic_artifacts` resolves the active
+exploration lineage (including a confirmation parent), requires the single registered
+`double_bottom` completed D0 pilot through the existing mechanical verifier, and returns only
+bounded `d0_acceptance.json`, `events.json`, and `chart-data.json` bytes after a post-read manifest
+recheck. `alpha research semantic-projection PROJECT_ID --json` wraps the unchanged
+`BlindSemanticProjectionV1` in the exact seven-key `VerifiedBlindSemanticReadV1` envelope with
+`verified_completed_d0_recomputation` and no authority. Focused envelope, integration, future-poison,
+leaky-twin, race/tamper, no-write, and MCP-surface tests pass. The D0 runtime now delegates its
+existing canonical/identity/mechanical acceptance checks to exact in-memory bytes after binding;
+detector, fixture, estimator, power, and other quantitative semantics are unchanged. REST/UI,
+semantic writes, and owner actions remain deferred to later S5 slices. Independent Terra review
+passes; S5a2 is complete and S5a3 remains pending.
+
+**Generic study composition S5a3 web projection (2026-08-22)** ✅ — the web slice is fixed as
+`GET /api/research/cases/{project_id}/semantic-projection`, with no query or body input and only the
+existing CLI command as its source. Strict nested server models preserve the exact seven-key outer
+envelope, fourteen-key inner projection, and three-key points; the web layer does not recompute
+hashes, cutoff, masking, or detector semantics. CLI unavailability maps to 404 and structurally
+invalid parsed CLI output to a redacted 502. Only generated OpenAPI/types and operation-governance
+records may change; handwritten frontend client/types, presentation, mutations, jobs, owner actions,
+MCP, D1/D2, promotion, paper, broker, and order surfaces remain unchanged. The exact-argv
+subprocess adapter and strict frozen response models are implemented; malformed parsed output is
+redacted at 502 and CLI unavailability at 404.
+
+The S5a2 envelope is now frozen to exactly seven keys (`schema`, `schema_version`,
+`source_verification`, `authority`, `run_id`, `projection`, and `content_sha256`), with explicit
+`authority: none` and a self-excluding canonical hash. Selection is limited to the unique completed
+pilot attempt on the current active exploration lineage; a confirmation case resolves through its
+exploration parent. The future-poison invariant compares only cutoff and emitted pre-cutoff point
+semantics because the source hash and aggregate masked count are expected to change when future
+data is appended. This clarification is planning-only.
+
+**Generic study composition S5b semantic owner-event delivery (2026-08-23)** ✅ — the bounded S5b
+implementation is delivered across `5fd3d02`, `07d48bb`, `3f18f4c`, `9ca9377`, `c72b9ee`,
+`6804db5`, `40861b6`, and `f935744`.
+The CLI-owned ControlStore now opens at schema v5, with the exact v4 backup and lossless
+`owner_action_receipts` `CHECK` rebuild, protected append-only `research_semantic_events` DDL,
+canonical `sd_`/`sr_`/`sf_` artifacts and `se_` event identities, contiguous definition→review→freeze
+transitions, receipt/event bijection, fail-closed persisted reads, and explicit owner-approved
+forensic forward recovery after a committed-v5 protected-object failure. The owner-auth seam binds
+the server-derived artifact and current case/source/head to one fresh Touch ID assertion and commits
+credential counter, challenge consumption, exactly one receipt, and exactly one semantic event in
+one transaction; exact response-loss retries are read-only linkage-validated recovery. The existing
+owner-auth REST challenge/perform routes accept the single closed `record_semantic_event` literal and
+special-dispatch that seam without `_action_argv`, `_run_json`, a subprocess, CLI job, or second
+mutator; existing actions retain their behavior. The final Terra review is APPROVE; all six identified
+S5b blockers were repaired, including resolver/source-pack parity, the explicit freeze review binding,
+canonical semantic text, whitespace-safe recovery, legacy migration proof, and deterministic concurrent
+migration setup. Focused ControlStore/owner-auth suites pass (`150 passed`), a deterministic
+100-run concurrent v4→v5 migration stress passes with zero failures, and the final canonical full
+gate passes pytest/coverage, OpenAPI freshness, 14-wheel build/import smoke, typing, imports, lint,
+harness, and semgrep. The verified semantic CLI read and existing semantic GET bytes remain
+unfrozen and unchanged in meaning; there is no direct semantic-write CLI command, new REST route,
+screen, handwritten frontend or frontend-derived authority, MCP semantic capability, D1/D2 or
+promotion authority, holdout access, paper, broker, or order widening. S5c presentation remains
+pending.
+
+**Generic study composition S5c/S6 existing-screen delivery (2026-08-30)** ✅ — the existing
+ResearchCockpit Study tab now renders the unchanged seven-key server-masked semantic response beside
+additive `ResearchStudyStatusV1`. The CLI-owned status projection verifies the append-only ledger,
+reads events and their head in one SQLite transaction, projects only the semantic cycle bound to the
+current contract and case revision, and marks an older cycle stale instead of pairing it with current
+masked points. It links the existing D1 terminal-attempt ledger and live queued/running/paused/failed
+execution state, elapsed/remaining budgets, promotion dossier reference/readiness, and
+Python-authoritative next-owner action. A real D0→D1 path also closes the second-precision semantic
+cutoff compatibility defect without changing the frozen S5a response bytes.
+
+The browser derives neither masking nor authority: a stale or hash-mismatched semantic source hides
+the masked read, D1 is labeled `OWNER CLI ONLY`, and no launch affordance exists. CLI/REST parity is
+proved on one data directory with a populated Touch-ID-bound semantic event and completed D1 attempt.
+The focused Python suite passes (`208 passed`), frontend coverage passes (`167 passed`), the Study-tab
+Playwright/accessibility case passes at all three supported viewports, generated OpenAPI/TypeScript and
+committed SPA assets are fresh, the MCP surface remains exactly 62 tools, and the fast and canonical
+full gates pass on the exact tree. No route, screen, MCP tool, owner action, D2/promotion control,
+paper, broker, or order authority was added.
+
+**Crypto operational-readiness C2 project workspaces (2026-08-30)** ✅ — every governed strategy
+project now has one deterministic `StrategyProjectWorkspaceV1` reference projection at
+`data/strategy-workspaces/<project-slug>--<project-id>/`. Twelve strict category indexes store only
+reference identifiers, availability, and hashes; SQLite, research dossiers, datasets, snapshots,
+immutable runs, figures, and reports remain in place and authoritative. A complete self-verified
+content-addressed revision is durably staged before atomically replacing `current.json`; repeated
+sync is byte-idempotent, a failed pointer publication preserves the prior current revision, and
+generated-state tamper fails closed until `alpha project workspace recover` quarantines invalid
+bytes and rebuilds solely from authority. `sync`, `sync-all`, `show`, and explicit `recover` are
+CLI-owned; project creation commits its authoritative transaction before initial materialization.
+
+The existing Development Center renders the same strict REST/CLI projection and one bounded refresh
+action. It labels authority `none`, execution disabled, and the non-transmitting sandbox
+classification; FastAPI remains a thin CLI relay. Focused unit/integration tests cover deterministic
+bytes, stale revisions, missing immutable-run references, raw-byte exclusion, atomic failure,
+tamper recovery, two-project backfill, creation failure timing, and exact CLI/REST parity. The
+Workstation walkthrough passes at all three supported viewports. No SQLite identity, run ID,
+artifact layout, research gate, owner-auth ceremony, MCP tool, D1/D2/promotion action, paper,
+broker, or order authority changed.
+
+**Generic study composition S7/S8 closure (2026-08-30)** ✅ — the crypto-readiness release adopts
+no new `alpha-study` adapter or dependency. ADR-0035 records an explicit disposition for TA-Lib,
+Twelve Data, Alphalens, mplfinance, Qlib, RD-Agent, PyPortfolioOpt, Riskfolio-Lib, `bt`, Zipline
+Reloaded, pfhedge, and pybotters. The existing separately locked Qlib diagnostic worker is retained
+unchanged; it is not newly adopted into the study layer. Every future candidate still requires a
+separate ADR-0011 evidence packet.
+
+S8 acceptance uses the existing common contracts: provider-native BTCUSDT technical and registered
+Bybit linear BTCUSDT/USDT crowding events round-trip through `EventTableV1`, while an exact Binance
+spot/USDT BTC/ETH universe round-trips through `FactorObservationTableV1`. The fixtures bind causal
+availability, input, vintage, universe-snapshot, provider, family, venue, instrument, and quote
+identity; future source/universe poison fails closed. The focused study/provider/bias suite passes
+(139 tests), the complete bias-guard family passes (158 tests), two perturbed-environment
+determinism passes are green, and the canonical full gate passes on the exact tree. No empirical
+support, owner decision,
+D2, promotion, execution, paper, broker, order, MCP, or new UI authority is introduced; no legacy
+or immutable artifact is deleted.
+
+**Crypto operational-readiness C4/C5 checkpoint (2026-08-30)** 🚧 — the release remains blocked,
+with exact evidence in `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`. The
+Expansion mount is read-write, UUID-matched, and has 1.949 TB free, but the Codex process receives
+`Operation not permitted` at the configured bulk root; full inventory/rehash and provider-backed BTC
+case evidence are therefore not accepted. Four scoped public crypto network tests pass and the
+canonical CoinGecko Keychain check is freshly verified. The isolated program acceptance now composes
+the public research lifecycle through a matching research-contract-bound experiment, suite-owned
+baseline/OOS/validation, disclosed fake-model interface evidence, classical plus Kronos path-risk
+Monte Carlo, stored reports, and the non-authoritative project workspace. This exposed and repaired
+the missing experiment contract relay and noncanonical Monte Carlo run-output token. The standalone
+hedged-basis suite passes and its live preflight remains `UNSUPPORTED_MULTI_VENUE_PAPER` with no
+credentials, broker connection, order, fill, or position change. A provider-backed BTC journey, the
+connected-browser six-area walkthrough, fresh owner Touch ID ceremonies, C6 gates/CI, and merge are
+still pending; no readiness, profitability, paper, broker, or order claim follows from this checkpoint.

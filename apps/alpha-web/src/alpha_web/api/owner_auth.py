@@ -48,6 +48,7 @@ class OwnerActionChallengeRequest(StrictModel):
         "reject_confirmation",
         "launch_d2",
         "record_final_disposition",
+        "record_semantic_event",
     ]
     project_id: str
     artifact_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -93,6 +94,8 @@ def _action_argv(
     actor: str,
     reason: str,
 ) -> list[str]:
+    if action_type == "record_semantic_event":
+        raise DataError("semantic owner action is not a CLI action")
     if action_type == "screen_source_claim":
         return [
             "research",
@@ -260,6 +263,8 @@ def perform_action(body: OwnerActionPerformRequest) -> dict[str, object]:
         )
         binding = cast(dict[str, object], authorization["binding"])
         action_type = str(binding["action_type"])
+        if action_type == "record_semantic_event":
+            return {"authorization": authorization, "result": authorization}
         project_id = str(binding["project_id"])
         argv = _action_argv(
             action_type=action_type,

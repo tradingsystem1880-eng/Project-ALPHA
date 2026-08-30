@@ -1603,6 +1603,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Workspace
+         * @description Read the verified non-authoritative generated workspace projection.
+         */
+        get: operations["get_project_workspace_api_projects__project_id__workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/workspace/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Project Workspace
+         * @description Refresh generated references only; this grants no research or execution authority.
+         */
+        post: operations["refresh_project_workspace_api_projects__project_id__workspace_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/providers": {
         parameters: {
             query?: never;
@@ -1919,6 +1959,26 @@ export interface paths {
          * @description Read the readiness scorecard: enumerated states, never a numeric aggregate.
          */
         get: operations["research_scorecard_api_research_cases__project_id__scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/semantic-projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Semantic Projection
+         * @description Read the verified, non-authoritative D0 semantic projection.
+         */
+        get: operations["research_semantic_projection_api_research_cases__project_id__semantic_projection_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3408,6 +3468,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v3/projects/{project_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 Get Project Workspace
+         * @description Read the verified non-authoritative generated workspace projection.
+         *
+         *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/workspace`.
+         */
+        get: operations["v3_get_project_workspace_api_v3_projects__project_id__workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v3/projects/{project_id}/workspace/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * V3 Refresh Project Workspace
+         * @description Refresh generated references only; this grants no research or execution authority.
+         *
+         *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/workspace/refresh`.
+         */
+        post: operations["v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v3/research-gate-overrides": {
         parameters: {
             query?: never;
@@ -3800,6 +3904,55 @@ export interface components {
         AttemptStatusValue: "queued" | "running" | "completed" | "passed" | "warning" | "failed" | "pruned" | "rejected" | "cancelled";
         /** @enum {string} */
         AuthorKindValue: "human" | "agent";
+        /** BlindSemanticProjectionV1 */
+        BlindSemanticProjectionV1: {
+            /** Acceptance Artifact Sha256 */
+            acceptance_artifact_sha256: string;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Chart Data Artifact Sha256 */
+            chart_data_artifact_sha256: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Cutoff Confirmed At */
+            cutoff_confirmed_at: string;
+            /**
+             * Cutoff Source
+             * @constant
+             */
+            cutoff_source: "d0_acceptance_measurement_reference";
+            /** Events Artifact Sha256 */
+            events_artifact_sha256: string;
+            /**
+             * Lineage Verification
+             * @constant
+             */
+            lineage_verification: "not_checked";
+            /** Masked Count */
+            masked_count: number;
+            /** Points */
+            points: components["schemas"]["SemanticPointV1"][];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "BlindSemanticProjectionV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Semantic Status
+             * @constant
+             */
+            semantic_status: "unfrozen";
+        };
         /** Candle */
         Candle: {
             /** C */
@@ -7440,7 +7593,7 @@ export interface components {
              * Action Type
              * @enum {string}
              */
-            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition";
+            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition" | "record_semantic_event";
             /** Artifact Hash */
             artifact_hash: string;
             /** Consequence Summary */
@@ -8214,6 +8367,7 @@ export interface components {
             scorecard?: components["schemas"]["ResearchScorecard"] | null;
             /** Source Pack Id */
             source_pack_id: string | null;
+            study_status?: components["schemas"]["ResearchStudyStatusV1"] | null;
             /** Terminal Attempt Count */
             terminal_attempt_count: number;
             /** Unfinalized Launch Count */
@@ -8341,6 +8495,39 @@ export interface components {
              * @enum {string}
              */
             scope: "exploration" | "confirmation";
+        };
+        /** ResearchD1AttemptViewV1 */
+        ResearchD1AttemptViewV1: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Contract Id */
+            contract_id: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Run Id */
+            run_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "completed" | "failed";
+        };
+        /** ResearchD1StateV1 */
+        ResearchD1StateV1: {
+            /** Attempts */
+            attempts: components["schemas"]["ResearchD1AttemptViewV1"][];
+            elapsed_budget: components["schemas"]["JsonObject"];
+            /**
+             * Launch Authority
+             * @constant
+             */
+            launch_authority: "owner_cli_only";
+            remaining_budget: components["schemas"]["JsonObject"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_started" | "queued" | "running" | "paused" | "blocked" | "completed" | "failed";
         };
         /** ResearchD2Event */
         ResearchD2Event: {
@@ -8949,6 +9136,12 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
         };
+        /** ResearchPromotionStateV1 */
+        ResearchPromotionStateV1: {
+            /** Packet Id */
+            packet_id: string | null;
+            readiness: components["schemas"]["ResearchReadinessProjection"];
+        };
         /** ResearchProposalBlockerV1 */
         ResearchProposalBlockerV1: {
             /** Code */
@@ -9153,6 +9346,56 @@ export interface components {
              */
             value: "READY FOR STRATEGY RESEARCH" | "MORE RESEARCH REQUIRED" | "REFORMULATE HYPOTHESIS" | "EVIDENCE DOES NOT SUPPORT CONTINUATION";
         };
+        /** ResearchSemanticEventViewV1 */
+        ResearchSemanticEventViewV1: {
+            /** Actor */
+            actor: string;
+            /** Artifact Id */
+            artifact_id: string;
+            /** Event Id */
+            event_id: string;
+            payload: components["schemas"]["JsonObject"];
+            /** Reason */
+            reason: string;
+            /** Receipt Id */
+            receipt_id: string;
+            /** Recorded At */
+            recorded_at: string;
+        };
+        /** ResearchSemanticStateV1 */
+        ResearchSemanticStateV1: {
+            /** Case Contract Id */
+            case_contract_id: string | null;
+            /** Case Revision */
+            case_revision?: string | null;
+            /** Cutoff Confirmed At */
+            cutoff_confirmed_at: string | null;
+            definition: components["schemas"]["ResearchSemanticEventViewV1"] | null;
+            /** Event Count */
+            event_count: number;
+            freeze: components["schemas"]["ResearchSemanticEventViewV1"] | null;
+            /** Head Sha256 */
+            head_sha256: string;
+            /** Next Owner Action */
+            next_owner_action: string;
+            /** Projection Sha256 */
+            projection_sha256?: string | null;
+            review: components["schemas"]["ResearchSemanticEventViewV1"] | null;
+            /** Run Id */
+            run_id: string | null;
+            /**
+             * Source State
+             * @enum {string}
+             */
+            source_state: "not_recorded" | "current" | "stale";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "definition_required" | "review_required" | "freeze_required" | "frozen" | "stale";
+            /** Verified Read Sha256 */
+            verified_read_sha256?: string | null;
+        };
         /** ResearchSourcePackOptionV1 */
         ResearchSourcePackOptionV1: {
             /** Created At */
@@ -9164,6 +9407,38 @@ export interface components {
             project_id: string;
             /** Source Ids */
             source_ids: string[];
+        };
+        /** ResearchStudyStatusV1 */
+        ResearchStudyStatusV1: {
+            /** Active Contract Id */
+            active_contract_id: string;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            d1: components["schemas"]["ResearchD1StateV1"];
+            /** Next Action */
+            next_action: string;
+            /** Project Id */
+            project_id: string;
+            promotion: components["schemas"]["ResearchPromotionStateV1"];
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "ResearchStudyStatusV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            semantic: components["schemas"]["ResearchSemanticStateV1"];
         };
         /** RiskProvenance */
         RiskProvenance: {
@@ -9409,6 +9684,15 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** SemanticPointV1 */
+        SemanticPointV1: {
+            /** Available At */
+            available_at: string;
+            /** Point Id */
+            point_id: string;
+            /** Value */
+            value: number;
+        };
         /** StageLinkCreateRequest */
         StageLinkCreateRequest: {
             /** Experiment Id */
@@ -9483,6 +9767,84 @@ export interface components {
             params: components["schemas"]["ParamDefinition"][];
             /** Supports Live Paper */
             supports_live_paper: boolean;
+        };
+        /** StrategyProjectWorkspace */
+        StrategyProjectWorkspace: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Categories */
+            categories: ("research" | "sources" | "datasets" | "study-state" | "promotion" | "strategy-versions" | "experiments" | "runs" | "validation" | "figures" | "reports" | "sandbox-eligibility")[];
+            /** Content Sha256 */
+            content_sha256: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Indexes */
+            indexes: components["schemas"]["StrategyProjectWorkspaceIndexDescriptor"][];
+            /** Project Id */
+            project_id: string;
+            /** Project Name Sha256 */
+            project_name_sha256: string;
+            /** Revision Id */
+            revision_id: string;
+            /**
+             * Sandbox Classification
+             * @constant
+             */
+            sandbox_classification: "non-transmitting-sandbox-only";
+            /**
+             * Schema Name
+             * @constant
+             */
+            schema_name: "StrategyProjectWorkspaceV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** StrategyProjectWorkspaceIndexDescriptor */
+        StrategyProjectWorkspaceIndexDescriptor: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "research" | "sources" | "datasets" | "study-state" | "promotion" | "strategy-versions" | "experiments" | "runs" | "validation" | "figures" | "reports" | "sandbox-eligibility";
+            /** Path */
+            path: string;
+            /** Reference Count */
+            reference_count: number;
+            /** Sha256 */
+            sha256: string;
+        };
+        /** StrategyProjectWorkspaceProjection */
+        StrategyProjectWorkspaceProjection: {
+            /** Changed */
+            changed: boolean;
+            /** Project Id */
+            project_id: string;
+            /** Recovered */
+            recovered: boolean;
+            /**
+             * Schema Name
+             * @constant
+             */
+            schema_name: "StrategyProjectWorkspaceProjectionV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Stale */
+            stale: boolean;
+            workspace: components["schemas"]["StrategyProjectWorkspace"];
+            /** Workspace Root */
+            workspace_root: string;
         };
         /** StrategyVersion */
         StrategyVersion: {
@@ -9605,6 +9967,34 @@ export interface components {
             nautilus: components["schemas"]["NautilusStatus"];
             /** Paper Enabled */
             paper_enabled: boolean;
+        };
+        /** VerifiedBlindSemanticReadV1 */
+        VerifiedBlindSemanticReadV1: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Content Sha256 */
+            content_sha256: string;
+            projection: components["schemas"]["BlindSemanticProjectionV1"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "VerifiedBlindSemanticReadV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Source Verification
+             * @constant
+             */
+            source_verification: "verified_completed_d0_recomputation";
         };
         /**
          * WorkspaceBody
@@ -12815,6 +13205,68 @@ export interface operations {
             };
         };
     };
+    get_project_workspace_api_projects__project_id__workspace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    refresh_project_workspace_api_projects__project_id__workspace_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     get_providers_api_providers_get: {
         parameters: {
             query?: never;
@@ -13357,6 +13809,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchScorecard"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_semantic_projection_api_research_cases__project_id__semantic_projection_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedBlindSemanticReadV1"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -15791,6 +16274,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyVersion"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_get_project_workspace_api_v3_projects__project_id__workspace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
                 };
             };
             /** @description Stable, redacted Workstation error */

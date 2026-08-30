@@ -65,11 +65,13 @@ import type {
   ProjectDetail,
   ProjectPage,
   ProjectSummary,
+  StrategyProjectWorkspaceProjection,
   ResearchCaptureRequest,
   ResearchCaptureResponse,
   ResearchCase,
   ResearchCasePage,
   ResearchCaseReport,
+  VerifiedBlindSemanticReadV1,
   ResearchContextPacket,
   ResearchContextPacketPage,
   ResearchDatasetPage,
@@ -509,6 +511,8 @@ export const api = {
     postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/launch`, { stage: 'pilot' }),
   researchStatus: (projectId: string): Promise<ResearchCase> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/status`),
+  researchSemanticProjection: (projectId: string): Promise<VerifiedBlindSemanticReadV1> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/semantic-projection`),
   researchProgressReport: (projectId: string): Promise<ResearchCaseReport> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/report`),
   researchCases: (query: { limit?: number; offset?: number } = {}): Promise<ResearchCasePage> =>
@@ -569,6 +573,10 @@ export const api = {
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>
     getJSON(`/api/projects/${encodeURIComponent(id)}?lineage_limit=${lineageLimit}`),
+  projectWorkspace: (id: string): Promise<StrategyProjectWorkspaceProjection> =>
+    getJSON(`/api/projects/${encodeURIComponent(id)}/workspace`),
+  refreshProjectWorkspace: (id: string): Promise<StrategyProjectWorkspaceProjection> =>
+    postJSON(`/api/projects/${encodeURIComponent(id)}/workspace/refresh`, {}),
   createProject: (body: {
     name: string
     hypothesis: string

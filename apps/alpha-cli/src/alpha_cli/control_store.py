@@ -13,6 +13,7 @@ import math
 import os
 import re
 import sqlite3
+import stat
 import tempfile
 import uuid
 from collections.abc import Iterator, Mapping, Sequence
@@ -86,13 +87,17 @@ type OwnerActionType = Literal[
     "reject_confirmation",
     "launch_d2",
     "record_final_disposition",
+    "record_semantic_event",
 ]
 
 LEGACY_SCHEMA_VERSION: Final = 1
 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
 PREVIOUS_SCHEMA_VERSION: Final = 3
-SCHEMA_VERSION: Final = 4
+V4_SCHEMA_VERSION: Final = 4
+SCHEMA_VERSION: Final = 5
 DATABASE_NAME: Final = "workstation.sqlite3"
+_SEMANTIC_READ_ARTIFACTS: Final = ("d0_acceptance.json", "events.json", "chart-data.json")
+_SEMANTIC_READ_MAX_BYTES: Final = 8 * 1024 * 1024
 PROJECT_STATUSES: Final = frozenset({"active", "accepted", "rejected", "archived"})
 STAGE_STATES: Final = frozenset(
     {"not_started", "ready", "queued", "running", "pass", "warning", "fail", "stale"}
@@ -357,6 +362,32 @@ _RESEARCH_DATASET_ORIGIN_FIELDS: Final = {
 }
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _CONTENT_ID_RE = re.compile(r"(?P<prefix>sv|ex|rs|sp|rc|ra|rl|cp|rn|rd|sc|ld|rx)_[0-9a-f]{64}")
+_SEMANTIC_ID_RE = re.compile(r"(?P<prefix>sd|sr|sf|se)_[0-9a-f]{64}")
+_SEMANTIC_RUN_ID_RE = re.compile(r"[0-9a-f]{16}")
+_SEMANTIC_COMMON_PAYLOAD_KEYS: Final = frozenset(
+    {
+        "schema",
+        "schema_version",
+        "event_type",
+        "verified_read_sha256",
+        "projection_sha256",
+        "run_id",
+        "cutoff_confirmed_at",
+        "expected_semantic_head_sha256",
+    }
+)
+_SEMANTIC_SOURCE_KEYS: Final = frozenset(
+    {
+        "project_id",
+        "case_contract_id",
+        "source_contract_id",
+        "case_revision",
+        "verified_read_sha256",
+        "projection_sha256",
+        "run_id",
+        "cutoff_confirmed_at",
+    }
+)
 _SOURCE_CLAIM_DIRECTIONS: Final = frozenset({"supports", "contradicts", "contextualizes", "method"})
 _SOURCE_CLAIM_STRENGTHS: Final = frozenset({"weak", "moderate", "strong"})
 # Columns added to research_source_records after schema v2 shipped (ADR-0024).  The heal
@@ -386,6 +417,7 @@ OWNER_ACTION_TYPES: Final = frozenset(
         "reject_confirmation",
         "launch_d2",
         "record_final_disposition",
+        "record_semantic_event",
     }
 )
 _RESEARCH_GATE_EVIDENCE_ARTIFACT: Final = "research_gate_evidence.json"
@@ -1110,6 +1142,131 @@ BEFORE DELETE ON research_source_claim_anchors
 BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
 """
 
+_SCHEMA_V5_RECEIPT = """
+CREATE TABLE IF NOT EXISTS owner_action_receipts (
+    receipt_id TEXT PRIMARY KEY,
+    challenge_id TEXT NOT NULL UNIQUE REFERENCES owner_auth_challenges(challenge_id),
+    credential_id TEXT NOT NULL REFERENCES owner_credentials(credential_id),
+    actor TEXT NOT NULL,
+    action_type TEXT NOT NULL CHECK (action_type IN (
+        'screen_source_claim', 'reject_source_claim', 'revise_source_claim',
+        'freeze_source_pack', 'approve_exploration', 'reject_exploration',
+        'revise_exploration', 'launch_d1', 'approve_confirmation',
+        'reject_confirmation', 'launch_d2', 'record_final_disposition',
+        'record_semantic_event'
+    )),
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    artifact_hash TEXT NOT NULL,
+    expected_case_revision TEXT NOT NULL,
+    consequence_summary TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    request_hash TEXT NOT NULL,
+    assertion_hash TEXT NOT NULL,
+    outcome_json TEXT NOT NULL,
+    performed_at TEXT NOT NULL
+) STRICT;
+"""
+
+_SCHEMA_V5 = (
+    _SCHEMA_V5_RECEIPT
+    + """
+CREATE TABLE IF NOT EXISTS research_semantic_events (
+    event_id TEXT PRIMARY KEY,
+    event_sha256 TEXT NOT NULL UNIQUE,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    sequence INTEGER NOT NULL CHECK (sequence >= 1),
+    event_type TEXT NOT NULL CHECK (event_type IN ('definition', 'review', 'freeze')),
+    case_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    source_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    case_revision TEXT NOT NULL,
+    prior_semantic_head_sha256 TEXT NOT NULL,
+    semantic_artifact_id TEXT NOT NULL,
+    semantic_artifact_sha256 TEXT NOT NULL,
+    verified_read_sha256 TEXT NOT NULL,
+    projection_sha256 TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    cutoff_confirmed_at TEXT NOT NULL,
+    definition_id TEXT NOT NULL,
+    review_id TEXT,
+    review_decision TEXT CHECK (review_decision IN ('approve', 'reject')),
+    payload_json TEXT NOT NULL,
+    payload_sha256 TEXT NOT NULL,
+    receipt_id TEXT NOT NULL UNIQUE REFERENCES owner_action_receipts(receipt_id),
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE (project_id, sequence),
+    UNIQUE (project_id, semantic_artifact_id),
+    FOREIGN KEY (project_id, case_contract_id)
+        REFERENCES research_contracts(project_id, contract_id),
+    FOREIGN KEY (project_id, source_contract_id)
+        REFERENCES research_contracts(project_id, contract_id),
+    FOREIGN KEY (project_id, definition_id)
+        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
+    FOREIGN KEY (project_id, review_id)
+        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
+    CHECK (event_id = 'se_' || event_sha256),
+    CHECK (length(event_sha256) = 64),
+    CHECK (length(case_revision) = 64),
+    CHECK (length(prior_semantic_head_sha256) = 64),
+    CHECK (length(semantic_artifact_sha256) = 64),
+    CHECK (length(verified_read_sha256) = 64),
+    CHECK (length(projection_sha256) = 64),
+    CHECK (length(payload_sha256) = 64),
+    CHECK (length(run_id) = 16),
+    CHECK (
+        (event_type = 'definition'
+            AND substr(semantic_artifact_id, 1, 3) = 'sd_'
+            AND definition_id = semantic_artifact_id
+            AND review_id IS NULL AND review_decision IS NULL)
+        OR
+        (event_type = 'review'
+            AND substr(semantic_artifact_id, 1, 3) = 'sr_'
+            AND substr(definition_id, 1, 3) = 'sd_'
+            AND review_id = semantic_artifact_id
+            AND review_decision IS NOT NULL)
+        OR
+        (event_type = 'freeze'
+            AND substr(semantic_artifact_id, 1, 3) = 'sf_'
+            AND substr(definition_id, 1, 3) = 'sd_'
+            AND substr(review_id, 1, 3) = 'sr_'
+            AND review_id IS NOT NULL
+            AND review_decision IS NULL)
+    ),
+    CHECK (semantic_artifact_sha256 = substr(semantic_artifact_id, 4))
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_owner_action_receipts_project
+    ON owner_action_receipts(project_id, performed_at, receipt_id);
+CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_update
+BEFORE UPDATE ON owner_action_receipts
+BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_delete
+BEFORE DELETE ON owner_action_receipts
+BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
+
+CREATE INDEX IF NOT EXISTS idx_research_semantic_events_contract
+    ON research_semantic_events(project_id, case_contract_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_research_semantic_events_source
+    ON research_semantic_events(project_id, source_contract_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_research_semantic_events_artifact
+    ON research_semantic_events(project_id, verified_read_sha256, sequence);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_semantic_events_one_review
+    ON research_semantic_events(project_id, definition_id)
+    WHERE event_type = 'review';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_semantic_events_one_freeze
+    ON research_semantic_events(project_id, definition_id)
+    WHERE event_type = 'freeze';
+
+CREATE TRIGGER IF NOT EXISTS research_semantic_events_no_update
+BEFORE UPDATE ON research_semantic_events
+BEGIN SELECT RAISE(ABORT, 'research semantic events are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS research_semantic_events_no_delete
+BEFORE DELETE ON research_semantic_events
+BEGIN SELECT RAISE(ABORT, 'research semantic events are append-only'); END;
+"""
+)
+
 # Executed exactly once, inside the schema-v2 writer transaction (migration or fresh creation).
 # It must never run on a steady-state open: a re-executed backfill would silently re-derive a
 # lost governance row from the caller-controlled ``created_at`` date rule, and the write lock it
@@ -1136,6 +1293,23 @@ _EXPECTED_SCHEMA_OBJECTS: Final = frozenset(
     + _DDL_OBJECT_NAME.findall(_SCHEMA_V3)
     + _DDL_OBJECT_NAME.findall(_SCHEMA_V4)
 )
+_PROTECTED_V5_SCHEMA_OBJECTS: Final = frozenset(
+    {
+        "owner_action_receipts",
+        "idx_owner_action_receipts_project",
+        "owner_action_receipts_no_update",
+        "owner_action_receipts_no_delete",
+        "research_semantic_events",
+        "idx_research_semantic_events_contract",
+        "idx_research_semantic_events_source",
+        "idx_research_semantic_events_artifact",
+        "idx_research_semantic_events_one_review",
+        "idx_research_semantic_events_one_freeze",
+        "research_semantic_events_no_update",
+        "research_semantic_events_no_delete",
+    }
+)
+_EXPECTED_HEALABLE_SCHEMA_OBJECTS: Final = _EXPECTED_SCHEMA_OBJECTS - _PROTECTED_V5_SCHEMA_OBJECTS
 
 
 def _required_text(value: object, field: str, *, max_length: int = _MAX_TEXT) -> str:
@@ -1237,6 +1411,260 @@ def _canonical_json(value: object, label: str) -> str:
     if len(result.encode("utf-8")) > _MAX_JSON_BYTES:
         raise DataError(f"invalid control {label}: JSON exceeds {_MAX_JSON_BYTES} bytes")
     return result
+
+
+def _semantic_empty_head_sha256(project_id: str) -> str:
+    pid = _canonical_uuid(project_id, "project_id")
+    value = {
+        "schema": "ResearchSemanticHeadV1",
+        "schema_version": 1,
+        "project_id": pid,
+        "event_sha256": None,
+    }
+    return hashlib.sha256(_canonical_json(value, "semantic empty head").encode("utf-8")).hexdigest()
+
+
+def _is_semantic_utc_timestamp(value: object) -> bool:
+    """Accept frozen study ISO spelling and the existing control-plane microsecond spelling."""
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = parse_timestamp(value)
+    except DataError:
+        return False
+    study_spelling = parsed.isoformat().replace("+00:00", "Z")
+    return value in {study_spelling, _format_timestamp(parsed)}
+
+
+def _semantic_source_map(source: Mapping[str, object]) -> dict[str, object]:
+    clean = _json_object(source, "verified semantic source")
+    extras = set(clean) - _SEMANTIC_SOURCE_KEYS
+    if extras or set(clean) != _SEMANTIC_SOURCE_KEYS:
+        raise DataError("verified semantic source keys are not exact")
+    pid = _canonical_uuid(str(clean["project_id"]), "project_id")
+    for field in (
+        "case_revision",
+        "verified_read_sha256",
+        "projection_sha256",
+    ):
+        value = clean[field]
+        if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+            raise DataError(f"verified semantic source {field} is invalid")
+    for field in ("case_contract_id", "source_contract_id"):
+        _require_content_id(str(clean[field]), f"verified semantic source {field}", prefix="rc")
+    run_id = clean["run_id"]
+    if not isinstance(run_id, str) or _SEMANTIC_RUN_ID_RE.fullmatch(run_id) is None:
+        raise DataError("verified semantic source run_id is invalid")
+    cutoff = clean["cutoff_confirmed_at"]
+    if not _is_semantic_utc_timestamp(cutoff):
+        raise DataError("verified semantic source cutoff_confirmed_at is invalid")
+    return {
+        "project_id": pid,
+        "case_contract_id": clean["case_contract_id"],
+        "source_contract_id": clean["source_contract_id"],
+        "case_revision": clean["case_revision"],
+        "verified_read_sha256": clean["verified_read_sha256"],
+        "projection_sha256": clean["projection_sha256"],
+        "run_id": run_id,
+        "cutoff_confirmed_at": cutoff,
+    }
+
+
+def _semantic_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    clean = _json_object(payload, "SemanticOwnerActionV1 payload")
+    if clean.get("schema") != "SemanticOwnerActionV1" or clean.get("schema_version") != 1:
+        raise DataError("unsupported SemanticOwnerActionV1 payload")
+    event_type = clean.get("event_type")
+    if event_type not in {"definition", "review", "freeze"}:
+        raise DataError("SemanticOwnerActionV1 event_type is invalid")
+    type_keys = {
+        "definition": {"definition_label", "definition_text"},
+        "review": {"definition_id", "review_decision", "review_text"},
+        "freeze": {"definition_id", "review_id"},
+    }[str(event_type)]
+    expected_keys = set(_SEMANTIC_COMMON_PAYLOAD_KEYS) | type_keys
+    if set(clean) != expected_keys:
+        raise DataError("SemanticOwnerActionV1 payload keys are not exact")
+    for field in (
+        "verified_read_sha256",
+        "projection_sha256",
+        "expected_semantic_head_sha256",
+    ):
+        value = clean[field]
+        if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+            raise DataError(f"SemanticOwnerActionV1 {field} is invalid")
+    run_id = clean["run_id"]
+    if not isinstance(run_id, str) or _SEMANTIC_RUN_ID_RE.fullmatch(run_id) is None:
+        raise DataError("SemanticOwnerActionV1 run_id is invalid")
+    cutoff = clean["cutoff_confirmed_at"]
+    if not _is_semantic_utc_timestamp(cutoff):
+        raise DataError("SemanticOwnerActionV1 cutoff_confirmed_at is invalid")
+    if event_type == "definition":
+        for field, maximum in (("definition_label", 256), ("definition_text", 8192)):
+            canonical = _required_text(
+                clean[field], f"SemanticOwnerActionV1 {field}", max_length=maximum
+            )
+            if clean[field] != canonical:
+                raise DataError(f"SemanticOwnerActionV1 {field} must be canonical")
+    elif event_type == "review":
+        definition_id = clean["definition_id"]
+        if (
+            not isinstance(definition_id, str)
+            or not definition_id.startswith("sd_")
+            or _SEMANTIC_ID_RE.fullmatch(definition_id) is None
+        ):
+            raise DataError("invalid semantic definition_id")
+        if clean["review_decision"] not in {"approve", "reject"}:
+            raise DataError("SemanticOwnerActionV1 review_decision is invalid")
+        canonical = _required_text(
+            clean["review_text"], "SemanticOwnerActionV1 review_text", max_length=8192
+        )
+        if clean["review_text"] != canonical:
+            raise DataError("SemanticOwnerActionV1 review_text must be canonical")
+    else:
+        definition_id = clean["definition_id"]
+        review_id = clean["review_id"]
+        if (
+            not isinstance(definition_id, str)
+            or _SEMANTIC_ID_RE.fullmatch(definition_id) is None
+            or not definition_id.startswith("sd_")
+        ):
+            raise DataError("invalid semantic definition_id")
+        if (
+            not isinstance(review_id, str)
+            or _SEMANTIC_ID_RE.fullmatch(review_id) is None
+            or not review_id.startswith("sr_")
+        ):
+            raise DataError("invalid semantic review_id")
+    return clean
+
+
+def _semantic_artifact(
+    source: Mapping[str, object], payload: Mapping[str, object], prior_head: str
+) -> tuple[str, str, dict[str, object]]:
+    source_map = _semantic_source_map(source)
+    clean = _semantic_payload(payload)
+    event_type = str(clean["event_type"])
+    artifact: dict[str, object] = {
+        "schema": f"ResearchSemantic{event_type.title()}V1",
+        "schema_version": 1,
+        "event_type": event_type,
+        **source_map,
+        "prior_semantic_head_sha256": prior_head,
+    }
+    if event_type == "definition":
+        artifact.update(
+            {
+                "definition_label": clean["definition_label"],
+                "definition_text": clean["definition_text"],
+            }
+        )
+        prefix = "sd"
+    elif event_type == "review":
+        artifact.update(
+            {
+                "definition_id": clean["definition_id"],
+                "review_decision": clean["review_decision"],
+                "review_text": clean["review_text"],
+            }
+        )
+        prefix = "sr"
+    else:
+        artifact.update({"definition_id": clean["definition_id"], "review_id": clean["review_id"]})
+        prefix = "sf"
+    digest = hashlib.sha256(
+        _canonical_json(artifact, "semantic artifact").encode("utf-8")
+    ).hexdigest()
+    return f"{prefix}_{digest}", digest, artifact
+
+
+def _semantic_event_identity(
+    *,
+    source: Mapping[str, object],
+    payload: Mapping[str, object],
+    sequence: int,
+    prior_head: str,
+    semantic_artifact_id: str,
+    semantic_artifact_sha256: str,
+    receipt_id: str,
+    actor: str,
+    reason: str,
+    recorded_at: str,
+) -> tuple[str, dict[str, object]]:
+    source_map = _semantic_source_map(source)
+    clean = _semantic_payload(payload)
+    event_type = str(clean["event_type"])
+    identity: dict[str, object] = {
+        "schema": "ResearchSemanticEventIdentityV1",
+        "schema_version": 1,
+        "event_type": event_type,
+        **source_map,
+        "sequence": sequence,
+        "prior_semantic_head_sha256": prior_head,
+        "semantic_artifact_id": semantic_artifact_id,
+        "semantic_artifact_sha256": semantic_artifact_sha256,
+        "definition_id": (
+            semantic_artifact_id if event_type == "definition" else clean["definition_id"]
+        ),
+        "review_id": (
+            None
+            if event_type == "definition"
+            else semantic_artifact_id
+            if event_type == "review"
+            else clean["review_id"]
+        ),
+        "review_decision": None if event_type != "review" else clean["review_decision"],
+        "payload": clean,
+        "payload_sha256": hashlib.sha256(
+            _canonical_json(clean, "SemanticOwnerActionV1 payload").encode("utf-8")
+        ).hexdigest(),
+        "receipt_id": receipt_id,
+        "actor": actor,
+        "reason": reason,
+        "recorded_at": recorded_at,
+    }
+    digest = hashlib.sha256(
+        _canonical_json(identity, "semantic event identity").encode()
+    ).hexdigest()
+    return f"se_{digest}", identity
+
+
+def _semantic_transition(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    event_type: str,
+    definition_id: str,
+    review_id: str | None,
+) -> None:
+    for expected_sequence, row in enumerate(rows, start=1):
+        if row.get("sequence") != expected_sequence:
+            raise DataError("semantic event sequence is not contiguous")
+    latest = None if not rows else rows[-1]
+    if event_type == "definition":
+        if latest is not None and latest.get("event_type") not in {"review", "freeze"}:
+            raise DataError("definition must begin a project or follow a review or freeze")
+        if (
+            latest is not None
+            and latest.get("event_type") == "review"
+            and latest.get("review_decision") != "reject"
+        ):
+            raise DataError("definition cannot follow an approving review")
+        return
+    if event_type == "review":
+        if latest is None or latest.get("event_type") != "definition":
+            raise DataError("review must immediately follow its definition")
+        if latest.get("semantic_artifact_id") != definition_id:
+            raise DataError("review definition reference is stale")
+        return
+    if latest is None or latest.get("event_type") != "review":
+        raise DataError("freeze must immediately follow its review")
+    if latest.get("review_decision") != "approve":
+        raise DataError("rejected review cannot freeze")
+    if (
+        latest.get("definition_id") != definition_id
+        or latest.get("semantic_artifact_id") != review_id
+    ):
+        raise DataError("freeze definition or review reference is stale")
 
 
 def research_case_revision(summary: Mapping[str, object]) -> str:
@@ -1487,6 +1915,110 @@ def _verified_v3_backup(connection: sqlite3.Connection, database: Path) -> None:
             temporary.unlink()
 
 
+def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
+    """Create one atomic, integrity-checked backup before the v4->v5 migration."""
+    backup = database.with_name(f"{database.name}.v4.bak")
+    if backup.is_symlink():
+        raise DataError(f"control store migration backup must not be a symlink: {backup}")
+    if backup.exists():
+        if not backup.is_file():
+            raise DataError(f"control store migration backup is not a file: {backup}")
+        existing = sqlite3.connect(backup)
+        try:
+            integrity = existing.execute("PRAGMA integrity_check").fetchone()
+            version = existing.execute("PRAGMA user_version").fetchone()
+            fingerprint = _logical_database_fingerprint(existing)
+        finally:
+            existing.close()
+        if integrity != ("ok",) or version != (V4_SCHEMA_VERSION,):
+            raise DataError("existing control store v4 migration backup is invalid")
+        if fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("existing control store v4 migration backup does not match")
+        return
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
+    os.close(fd)
+    temporary = Path(raw_tmp)
+    snapshot: sqlite3.Connection | None = None
+    target: sqlite3.Connection | None = None
+    try:
+        snapshot = sqlite3.connect(database, timeout=5.0, isolation_level=None)
+        snapshot.execute("PRAGMA query_only = ON")
+        snapshot.execute("PRAGMA busy_timeout = 5000")
+        snapshot.execute("BEGIN")
+        target = sqlite3.connect(temporary)
+        snapshot.backup(target)
+        if target.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+            raise DataError("cannot verify control store v4 migration backup")
+        if target.execute("PRAGMA user_version").fetchone() != (V4_SCHEMA_VERSION,):
+            raise DataError("cannot verify control store v4 migration backup version")
+        target_fingerprint = _logical_database_fingerprint(target)
+        target.close()
+        target = None
+        if target_fingerprint != _logical_database_fingerprint(connection):
+            raise DataError("control store v4 migration backup does not match")
+        os.replace(temporary, backup)
+    finally:
+        if target is not None:
+            target.close()
+        if snapshot is not None:
+            if snapshot.in_transaction:
+                snapshot.rollback()
+            snapshot.close()
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _owner_receipt_rows_digest(connection: sqlite3.Connection, table: str) -> str:
+    if table not in {"owner_action_receipts", "owner_action_receipts_v4_old"}:
+        raise DataError("invalid owner receipt digest table")
+    rows = connection.execute(
+        f"SELECT * FROM {table} ORDER BY receipt_id"  # noqa: S608 - closed static table names
+    ).fetchall()
+    arrays = [list(row) for row in rows]
+    return hashlib.sha256(_canonical_json(arrays, "owner action receipt rows").encode()).hexdigest()
+
+
+def _drop_owner_receipt_support(connection: sqlite3.Connection) -> None:
+    connection.execute("DROP TRIGGER IF EXISTS owner_action_receipts_no_update")
+    connection.execute("DROP TRIGGER IF EXISTS owner_action_receipts_no_delete")
+    connection.execute("DROP INDEX IF EXISTS idx_owner_action_receipts_project")
+
+
+def _rebuild_owner_action_receipts(connection: sqlite3.Connection) -> None:
+    """Rebuild only the closed action CHECK while preserving every v4 receipt row."""
+    before_count = int(
+        connection.execute("SELECT COUNT(*) FROM owner_action_receipts").fetchone()[0]
+    )
+    before_digest = _owner_receipt_rows_digest(connection, "owner_action_receipts")
+    _drop_owner_receipt_support(connection)
+    connection.execute("ALTER TABLE owner_action_receipts RENAME TO owner_action_receipts_v4_old")
+    _execute_static_sql_script(connection, _SCHEMA_V5_RECEIPT)
+    connection.execute(
+        """INSERT INTO owner_action_receipts
+        SELECT receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+               artifact_hash, expected_case_revision, consequence_summary, reason,
+               request_hash, assertion_hash, outcome_json, performed_at
+        FROM owner_action_receipts_v4_old ORDER BY receipt_id"""
+    )
+    after_count = int(
+        connection.execute("SELECT COUNT(*) FROM owner_action_receipts").fetchone()[0]
+    )
+    after_digest = _owner_receipt_rows_digest(connection, "owner_action_receipts")
+    if after_count != before_count or after_digest != before_digest:
+        raise DataError("owner action receipt rebuild changed row count or digest")
+    connection.execute("DROP TABLE owner_action_receipts_v4_old")
+
+
+def _apply_schema_v5_locked(connection: sqlite3.Connection) -> None:
+    if not connection.in_transaction:
+        raise sqlite3.OperationalError("schema-v5 application requires an active transaction")
+    _rebuild_owner_action_receipts(connection)
+    _execute_static_sql_script(connection, _SCHEMA_V5)
+    if connection.execute("PRAGMA foreign_key_check").fetchall():
+        raise DataError("control store v5 foreign-key check failed")
+    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+
 def _execute_static_sql_script(connection: sqlite3.Connection, script: str) -> None:
     """Execute trusted static DDL without ``executescript`` committing the caller's transaction."""
 
@@ -1513,7 +2045,7 @@ def _apply_schema_v2_locked(
     _execute_static_sql_script(connection, _SCHEMA_V3)
     _execute_static_sql_script(connection, _SCHEMA_V4)
     _execute_static_sql_script(connection, _GOVERNANCE_BACKFILL)
-    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    connection.execute(f"PRAGMA user_version = {V4_SCHEMA_VERSION}")
 
 
 def _apply_schema_v2(
@@ -1526,6 +2058,26 @@ def _apply_schema_v2(
         _apply_schema_v2_locked(connection, include_legacy_schema=include_legacy_schema)
         connection.commit()
     except sqlite3.Error:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _apply_schema_v5_fresh(connection: sqlite3.Connection) -> None:
+    """Create a new store through v4 and v5 in one atomic writer transaction."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != 0:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _apply_schema_v2_locked(connection, include_legacy_schema=True)
+        _apply_schema_v5_locked(connection)
+        connection.commit()
+    except Exception:
         if connection.in_transaction:
             connection.rollback()
         raise
@@ -1548,7 +2100,55 @@ def _missing_schema_objects(connection: sqlite3.Connection) -> bool:
             "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
         )
     }
-    return not present >= _EXPECTED_SCHEMA_OBJECTS
+    return not present >= _EXPECTED_HEALABLE_SCHEMA_OBJECTS
+
+
+def _validate_protected_v5_schema(connection: sqlite3.Connection) -> None:
+    present = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+        )
+    }
+    missing = sorted(_PROTECTED_V5_SCHEMA_OBJECTS - present)
+    if missing:
+        raise DataError(f"protected schema object missing: {', '.join(missing)}")
+    receipt_sql = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'owner_action_receipts'"
+    ).fetchone()
+    if receipt_sql is None or "record_semantic_event" not in str(receipt_sql[0]):
+        raise DataError("protected schema object owner_action_receipts is invalid")
+    semantic_columns = [
+        str(row[1]) for row in connection.execute("PRAGMA table_info(research_semantic_events)")
+    ]
+    expected_columns = [
+        "event_id",
+        "event_sha256",
+        "project_id",
+        "sequence",
+        "event_type",
+        "case_contract_id",
+        "source_contract_id",
+        "case_revision",
+        "prior_semantic_head_sha256",
+        "semantic_artifact_id",
+        "semantic_artifact_sha256",
+        "verified_read_sha256",
+        "projection_sha256",
+        "run_id",
+        "cutoff_confirmed_at",
+        "definition_id",
+        "review_id",
+        "review_decision",
+        "payload_json",
+        "payload_sha256",
+        "receipt_id",
+        "actor",
+        "reason",
+        "recorded_at",
+    ]
+    if semantic_columns != expected_columns:
+        raise DataError("protected schema object research_semantic_events is invalid")
 
 
 def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
@@ -1559,6 +2159,7 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
     governance backfill, which runs exactly once at migration or fresh creation.
     """
 
+    _validate_protected_v5_schema(connection)
     if not _missing_schema_objects(connection) and not _missing_source_record_columns(connection):
         return
     connection.execute("BEGIN IMMEDIATE")
@@ -1646,7 +2247,7 @@ def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
             # Another process completed the migration while this connection waited for the lock.
             connection.commit()
             return
@@ -1667,7 +2268,7 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
@@ -1675,7 +2276,7 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
         _verified_v2_backup(connection, database)
         _execute_static_sql_script(connection, _SCHEMA_V3)
         _execute_static_sql_script(connection, _SCHEMA_V4)
-        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.execute(f"PRAGMA user_version = {V4_SCHEMA_VERSION}")
         connection.commit()
     except Exception:
         if connection.in_transaction:
@@ -1689,14 +2290,34 @@ def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != PREVIOUS_SCHEMA_VERSION:
             raise DataError(f"unsupported control store schema version {locked_version}")
         _verified_v3_backup(connection, database)
         _execute_static_sql_script(connection, _SCHEMA_V4)
-        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.execute(f"PRAGMA user_version = {V4_SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+
+
+def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
+    """Serialize the exact backup, receipt rebuild, and protected v5 DDL."""
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version_row = connection.execute("PRAGMA user_version").fetchone()
+        locked_version = 0 if version_row is None else int(version_row[0])
+        if locked_version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if locked_version != V4_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {locked_version}")
+        _verified_v4_backup(connection, database)
+        _apply_schema_v5_locked(connection)
         connection.commit()
     except Exception:
         if connection.in_transaction:
@@ -1828,7 +2449,6 @@ class ControlStore:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute("PRAGMA busy_timeout = 5000")
-            connection.execute("PRAGMA journal_mode = WAL")
             connection.execute("PRAGMA synchronous = FULL")
             version_row = connection.execute("PRAGMA user_version").fetchone()
             version = 0 if version_row is None else int(version_row[0])
@@ -1837,25 +2457,34 @@ class ControlStore:
                 LEGACY_SCHEMA_VERSION,
                 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,
                 PREVIOUS_SCHEMA_VERSION,
+                V4_SCHEMA_VERSION,
                 SCHEMA_VERSION,
             }:
                 raise DataError(f"unsupported control store schema version {version}")
-            if version == LEGACY_SCHEMA_VERSION:
+            if version == 0:
+                _apply_schema_v5_fresh(connection)
+            elif version == LEGACY_SCHEMA_VERSION:
                 _migrate_schema_v1(connection, database)
             elif version == OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
                 _migrate_schema_v2(connection, database)
             elif version == PREVIOUS_SCHEMA_VERSION:
                 _migrate_schema_v3(connection, database)
-            elif version < SCHEMA_VERSION:
-                connection.executescript(_SCHEMA)
-                _apply_schema_v2(connection)
-            else:
+            version_row = connection.execute("PRAGMA user_version").fetchone()
+            version = 0 if version_row is None else int(version_row[0])
+            if version == V4_SCHEMA_VERSION:
+                _migrate_schema_v4(connection, database)
+            elif version == SCHEMA_VERSION:
                 # A store already at SCHEMA_VERSION opens with a read-only completeness
                 # probe: no write-bearing statement runs on the steady-state path (reads
                 # must not contend for the writer lock, and a lost governance row must
                 # fail loud, never regenerate from the created_at date rule). Idempotent
                 # DDL healing runs only when a declared object is actually missing.
                 _heal_missing_schema_objects(connection)
+            # Journal-mode negotiation is deliberately after the version/migration path.
+            # SQLite treats changing the mode as a database-wide write; doing it before the
+            # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
+            # IMMEDIATE can serialize them.
+            connection.execute("PRAGMA journal_mode = WAL")
             _heal_missing_development_stage_rows(connection)
             return connection
         except (OSError, sqlite3.Error) as exc:
@@ -5639,6 +6268,961 @@ class ControlStore:
             )
         return {"attempt": attempt, "manifest": manifest}
 
+    @staticmethod
+    def _read_verified_semantic_artifacts(
+        run_dir: Path, manifest: Mapping[str, object]
+    ) -> dict[str, bytes]:
+        """Read only the bounded, manifest-declared bytes used by the blind projection."""
+
+        artifacts = manifest.get("artifacts")
+        if not isinstance(artifacts, Mapping):
+            raise DataError("verified D0 run manifest has no artifact map")
+        result: dict[str, bytes] = {}
+        for filename in _SEMANTIC_READ_ARTIFACTS:
+            metadata = artifacts.get(filename)
+            if not isinstance(metadata, Mapping):
+                raise DataError(f"verified D0 run is missing {filename} metadata")
+            expected_size = metadata.get("size_bytes")
+            expected_hash = metadata.get("sha256")
+            if (
+                isinstance(expected_size, int)
+                and not isinstance(expected_size, bool)
+                and expected_size > _SEMANTIC_READ_MAX_BYTES
+            ):
+                raise DataError(
+                    f"verified D0 run {filename} exceeds the bounded semantic-read size"
+                )
+            if (
+                isinstance(expected_size, bool)
+                or not isinstance(expected_size, int)
+                or expected_size < 0
+                or not isinstance(expected_hash, str)
+                or _SHA256_RE.fullmatch(expected_hash) is None
+            ):
+                raise DataError(f"verified D0 run has invalid {filename} metadata")
+            path = run_dir / filename
+            flags = os.O_RDONLY
+            no_follow = getattr(os, "O_NOFOLLOW", 0)
+            close_on_exec = getattr(os, "O_CLOEXEC", 0)
+            if no_follow == 0 and path.is_symlink():
+                raise DataError(f"verified D0 run {filename} must be a regular file")
+            try:
+                descriptor = os.open(path, flags | no_follow | close_on_exec)
+            except OSError as exc:
+                raise DataError(f"verified D0 run {filename} cannot be opened") from exc
+            try:
+                file_stat = os.fstat(descriptor)
+                if not stat.S_ISREG(file_stat.st_mode):
+                    raise DataError(f"verified D0 run {filename} must be a regular file")
+                if file_stat.st_size != expected_size:
+                    raise DataError(f"verified D0 run {filename} size changed during read")
+                remaining = expected_size + 1
+                chunks: list[bytes] = []
+                total = 0
+                while total < remaining:
+                    chunk = os.read(descriptor, remaining - total)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                raw = b"".join(chunks)
+            except OSError as exc:
+                raise DataError(f"verified D0 run {filename} cannot be read") from exc
+            finally:
+                os.close(descriptor)
+            if len(raw) != expected_size:
+                raise DataError(f"verified D0 run {filename} size changed during read")
+            if len(raw) != expected_size or hashlib.sha256(raw).hexdigest() != expected_hash:
+                raise DataError(f"verified D0 run {filename} hash changed during read")
+            result[filename] = raw
+        return result
+
+    def _semantic_head_locked(self, connection: sqlite3.Connection, project_id: str) -> str:
+        pid = _canonical_uuid(project_id, "project_id")
+        rows = connection.execute(
+            "SELECT sequence, event_sha256 FROM research_semantic_events "
+            "WHERE project_id = ? ORDER BY sequence",
+            (pid,),
+        ).fetchall()
+        if not rows:
+            return _semantic_empty_head_sha256(pid)
+        for expected, row in enumerate(rows, start=1):
+            if (
+                int(row["sequence"]) != expected
+                or _SHA256_RE.fullmatch(str(row["event_sha256"])) is None
+            ):
+                raise DataError("semantic event sequence or head is corrupt")
+        return str(rows[-1]["event_sha256"])
+
+    def semantic_head_sha256(self, project_id: str) -> str:
+        """Return the verified project-local semantic head without mutation."""
+        _, head_sha256 = self.read_semantic_state(project_id)
+        return head_sha256
+
+    @staticmethod
+    def _semantic_receipt_matches(
+        receipt: sqlite3.Row,
+        *,
+        project_id: str,
+        semantic_artifact_sha256: str,
+        case_revision: str,
+        payload_sha256: str,
+        event_id: str,
+        event_sha256: str,
+        actor: str,
+        reason: str,
+        recorded_at: str,
+    ) -> None:
+        if receipt["action_type"] != "record_semantic_event":
+            raise DataError("semantic receipt action type is invalid")
+        if receipt["project_id"] != project_id:
+            raise DataError("semantic receipt project binding is invalid")
+        if receipt["artifact_hash"] != semantic_artifact_sha256:
+            raise DataError("semantic receipt artifact binding is invalid")
+        if receipt["expected_case_revision"] != case_revision:
+            raise DataError("semantic receipt case revision binding is invalid")
+        if receipt["request_hash"] != payload_sha256:
+            raise DataError("semantic receipt payload binding is invalid")
+        if receipt["actor"] != actor or receipt["reason"] != reason:
+            raise DataError("semantic receipt actor or reason binding is invalid")
+        if receipt["performed_at"] != recorded_at:
+            raise DataError("semantic receipt time binding is invalid")
+        outcome = _decode_json(receipt["outcome_json"], "semantic receipt outcome")
+        if not isinstance(outcome, dict):
+            raise DataError("semantic receipt outcome is not an object")
+        if outcome != {
+            "semantic_event_id": event_id,
+            "semantic_event_sha256": event_sha256,
+            "status": "semantic_event_recorded",
+        }:
+            raise DataError("semantic receipt outcome does not match event")
+
+    def _research_case_revision_locked(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> str:
+        pid = _canonical_uuid(project_id, "project_id")
+        phase = self._latest_research_phase(connection, pid)
+        execution = self._latest_research_execution(connection, pid)
+        if phase is None or execution is None:
+            raise DataError("research case has no active phase or execution state")
+        contract = self._require_research_contract(connection, pid, str(phase["contract_id"]))
+        payload = _decode_json(contract["payload_json"], "research contract payload")
+        if not isinstance(payload, dict):
+            raise DataError("research contract payload is corrupt")
+        return research_case_revision(
+            {
+                "project_id": pid,
+                "active_contract_id": contract["contract_id"],
+                "phase": phase["phase"],
+                "execution_state": execution["state"],
+                "source_pack_id": payload.get("source_pack_id"),
+            }
+        )
+
+    def prepare_semantic_action(
+        self,
+        project_id: str,
+        payload: Mapping[str, object],
+        *,
+        expected_case_revision: str,
+    ) -> dict[str, object]:
+        """Prepare a server-derived semantic Touch ID binding without mutating state."""
+        pid = _canonical_uuid(project_id, "project_id")
+        clean_payload = _semantic_payload(payload)
+        with self._transaction(write=False) as connection:
+            current_revision = self._research_case_revision_locked(connection, pid)
+            if expected_case_revision != current_revision:
+                raise DataError("research case changed; refresh before requesting Touch ID")
+            source = self._verified_semantic_source_locked(connection, pid)
+            source_map = _semantic_source_map(source)
+            if source_map["project_id"] != pid:
+                raise DataError("verified semantic source project binding is stale")
+            if source_map["case_revision"] != current_revision:
+                raise DataError("verified semantic source case revision is stale")
+            for field in (
+                "verified_read_sha256",
+                "projection_sha256",
+                "run_id",
+                "cutoff_confirmed_at",
+            ):
+                if clean_payload[field] != source_map[field]:
+                    raise DataError(f"semantic payload {field} does not match verified source")
+            current = self._semantic_event_rows_locked(connection, project_id=pid, source=None)
+            prior_head = (
+                _semantic_empty_head_sha256(pid)
+                if not current
+                else str(current[-1]["event_sha256"])
+            )
+            if clean_payload["expected_semantic_head_sha256"] != prior_head:
+                raise DataError("semantic expected head is stale")
+            event_type = str(clean_payload["event_type"])
+            artifact_id, artifact_sha, _ = _semantic_artifact(source_map, clean_payload, prior_head)
+            definition_id = (
+                artifact_id if event_type == "definition" else str(clean_payload["definition_id"])
+            )
+            review_id = (
+                None
+                if event_type == "definition"
+                else artifact_id
+                if event_type == "review"
+                else str(clean_payload["review_id"])
+            )
+            _semantic_transition(
+                current,
+                event_type=event_type,
+                definition_id=definition_id,
+                review_id=review_id,
+            )
+        return {
+            "artifact_hash": artifact_sha,
+            "request_hash": hashlib.sha256(
+                _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode("utf-8")
+            ).hexdigest(),
+            "case_revision": current_revision,
+        }
+
+    def record_semantic_event_authorization(
+        self,
+        *,
+        challenge_id: str,
+        credential_id: str,
+        previous_sign_count: int,
+        new_sign_count: int,
+        assertion_hash: str,
+        payload: Mapping[str, object],
+        now: datetime,
+        receipt_id: str,
+    ) -> dict[str, object]:
+        """Atomically consume a semantic Touch ID action and append its ledger event."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        rid = _new_uuid(receipt_id, "owner action receipt_id")
+        assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
+        if _SHA256_RE.fullmatch(assertion_digest) is None:
+            raise DataError("invalid control owner assertion hash")
+        if new_sign_count <= previous_sign_count:
+            raise DataError("owner credential signature counter regressed")
+        clean_payload = _semantic_payload(payload)
+        timestamp = _format_timestamp(now)
+        with self._transaction(write=True) as connection:
+            challenge = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            credential = connection.execute(
+                "SELECT * FROM owner_credentials WHERE credential_id = ?", (credential_id,)
+            ).fetchone()
+            if (
+                challenge is None
+                or challenge["ceremony"] != "action"
+                or challenge["used_at"] is not None
+                or str(challenge["expires_at"]) <= timestamp
+                or credential is None
+                or credential["revoked_at"] is not None
+                or int(credential["sign_count"]) != previous_sign_count
+            ):
+                raise DataError("owner semantic action is invalid, expired, stale, or already used")
+            binding = _decode_json(challenge["binding_json"], "owner action binding")
+            if not isinstance(binding, dict):
+                raise DataError("corrupt control store: owner action binding is not an object")
+            action_type = _enum_value(
+                binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
+            )
+            if action_type != "record_semantic_event":
+                raise DataError("owner semantic transaction requires record_semantic_event")
+            project_id = _canonical_uuid(str(binding.get("project_id")), "project_id")
+            artifact_hash = _required_text(
+                binding.get("artifact_hash"), "owner action artifact_hash", max_length=64
+            )
+            expected_revision = _required_text(
+                binding.get("expected_case_revision"),
+                "owner action expected_case_revision",
+                max_length=64,
+            )
+            request_hash = _required_text(
+                binding.get("request_hash"), "owner action request_hash", max_length=64
+            )
+            consequence = _required_text(
+                binding.get("consequence_summary"), "owner action consequence summary"
+            )
+            reason = _required_text(binding.get("reason"), "owner action reason")
+            for label, value in (
+                ("artifact_hash", artifact_hash),
+                ("expected_case_revision", expected_revision),
+                ("request_hash", request_hash),
+            ):
+                if _SHA256_RE.fullmatch(value) is None:
+                    raise DataError(f"invalid control owner action {label}")
+            payload_hash = hashlib.sha256(
+                _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode("utf-8")
+            ).hexdigest()
+            if payload_hash != request_hash:
+                raise DataError("semantic payload request binding is stale")
+            current_revision = self._research_case_revision_locked(connection, project_id)
+            if current_revision != expected_revision:
+                raise DataError("research case changed after the Touch ID challenge was issued")
+            source = self._verified_semantic_source_locked(connection, project_id)
+            source_map = _semantic_source_map(source)
+            if source_map["project_id"] != project_id:
+                raise DataError("verified semantic source project binding is stale")
+            if source_map["case_revision"] != current_revision:
+                raise DataError("verified semantic source case revision is stale")
+            for field in (
+                "verified_read_sha256",
+                "projection_sha256",
+                "run_id",
+                "cutoff_confirmed_at",
+            ):
+                if clean_payload[field] != source_map[field]:
+                    raise DataError(f"semantic payload {field} does not match verified source")
+            current = self._semantic_event_rows_locked(
+                connection,
+                project_id=project_id,
+                source=None,
+                pending_receipt_id=rid,
+            )
+            prior_head = (
+                _semantic_empty_head_sha256(project_id)
+                if not current
+                else str(current[-1]["event_sha256"])
+            )
+            if clean_payload["expected_semantic_head_sha256"] != prior_head:
+                raise DataError("semantic expected head is stale")
+            artifact_id, semantic_artifact_sha, _ = _semantic_artifact(
+                source_map, clean_payload, prior_head
+            )
+            if artifact_hash != semantic_artifact_sha:
+                raise DataError("semantic artifact binding is stale")
+            event_type = str(clean_payload["event_type"])
+            definition_id = (
+                artifact_id if event_type == "definition" else str(clean_payload["definition_id"])
+            )
+            review_id = (
+                None
+                if event_type == "definition"
+                else artifact_id
+                if event_type == "review"
+                else str(clean_payload["review_id"])
+            )
+            _semantic_transition(
+                current,
+                event_type=event_type,
+                definition_id=definition_id,
+                review_id=review_id,
+            )
+            actor = str(credential["actor"])
+            event_id, _identity = _semantic_event_identity(
+                source=source_map,
+                payload=clean_payload,
+                sequence=len(current) + 1,
+                prior_head=prior_head,
+                semantic_artifact_id=artifact_id,
+                semantic_artifact_sha256=semantic_artifact_sha,
+                receipt_id=rid,
+                actor=actor,
+                reason=reason,
+                recorded_at=timestamp,
+            )
+            outcome = {
+                "semantic_event_id": event_id,
+                "semantic_event_sha256": event_id[3:],
+                "status": "semantic_event_recorded",
+            }
+            connection.execute(
+                "UPDATE owner_credentials SET sign_count = ? WHERE credential_id = ?",
+                (new_sign_count, credential_id),
+            )
+            connection.execute(
+                """UPDATE owner_auth_challenges
+                SET used_at = ?, verified_credential_id = ? WHERE challenge_id = ?""",
+                (timestamp, credential_id, cid),
+            )
+            connection.execute(
+                """INSERT INTO owner_action_receipts
+                (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+                 artifact_hash, expected_case_revision, consequence_summary, reason,
+                 request_hash, assertion_hash, outcome_json, performed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    rid,
+                    cid,
+                    credential_id,
+                    actor,
+                    action_type,
+                    project_id,
+                    semantic_artifact_sha,
+                    current_revision,
+                    consequence,
+                    reason,
+                    payload_hash,
+                    assertion_digest,
+                    _canonical_json(outcome, "owner action outcome"),
+                    timestamp,
+                ),
+            )
+            self.append_semantic_event(
+                connection,
+                project_id=project_id,
+                payload=clean_payload,
+                receipt_id=rid,
+                actor=actor,
+                reason=reason,
+                recorded_at=timestamp,
+            )
+        return {
+            "receipt_id": rid,
+            "action_type": action_type,
+            "project_id": project_id,
+            "actor": actor,
+            "outcome": outcome,
+            "performed_at": timestamp,
+        }
+
+    def recover_semantic_event_authorization(
+        self,
+        *,
+        challenge_id: str,
+        payload: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Return an already committed semantic action without re-verifying authority."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        clean_payload = _semantic_payload(payload)
+        payload_hash = hashlib.sha256(
+            _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode("utf-8")
+        ).hexdigest()
+        with self._transaction(write=False) as connection:
+            challenge = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            if challenge is None or challenge["ceremony"] != "action":
+                raise DataError("owner auth challenge is invalid or not an action")
+            if challenge["used_at"] is None:
+                raise DataError("semantic action recovery requires a consumed challenge")
+            binding = _decode_json(challenge["binding_json"], "owner action binding")
+            if not isinstance(binding, dict) or binding.get("action_type") != (
+                "record_semantic_event"
+            ):
+                raise DataError("owner action recovery is not a semantic event")
+            if binding.get("request_hash") != payload_hash:
+                raise DataError("semantic recovery payload hash does not match the receipt")
+            project_id = _canonical_uuid(str(binding.get("project_id")), "project_id")
+            receipt = connection.execute(
+                "SELECT * FROM owner_action_receipts WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+            if receipt is None:
+                raise DataError("semantic recovery receipt is missing")
+            event_row = connection.execute(
+                "SELECT * FROM research_semantic_events WHERE receipt_id = ?",
+                (receipt["receipt_id"],),
+            ).fetchone()
+            if event_row is None:
+                raise DataError("semantic recovery event is missing")
+            identities = self._semantic_event_rows_locked(
+                connection, project_id=project_id, source=None
+            )
+            event = next(
+                (item for item in identities if item["event_id"] == event_row["event_id"]),
+                None,
+            )
+            if event is None:
+                raise DataError("semantic recovery event linkage is invalid")
+            receipt_consequence = _required_text(
+                receipt["consequence_summary"], "owner action consequence summary"
+            )
+            binding_consequence = _required_text(
+                binding.get("consequence_summary"), "owner action consequence summary"
+            )
+            receipt_reason = _required_text(receipt["reason"], "owner action reason")
+            binding_reason = _required_text(binding.get("reason"), "owner action reason")
+            if (
+                receipt["challenge_id"] != cid
+                or receipt["credential_id"] != challenge["verified_credential_id"]
+                or receipt["artifact_hash"] != event_row["semantic_artifact_sha256"]
+                or receipt["expected_case_revision"] != event_row["case_revision"]
+                or receipt["request_hash"] != event_row["payload_sha256"]
+                or receipt["project_id"] != project_id
+                or binding.get("artifact_hash") != event_row["semantic_artifact_sha256"]
+                or binding.get("expected_case_revision") != event_row["case_revision"]
+                or receipt_consequence != binding_consequence
+                or receipt_reason != binding_reason
+            ):
+                raise DataError("semantic recovery receipt binding is invalid")
+            outcome = _decode_json(receipt["outcome_json"], "semantic receipt outcome")
+            self._semantic_receipt_matches(
+                receipt,
+                project_id=project_id,
+                semantic_artifact_sha256=str(event_row["semantic_artifact_sha256"]),
+                case_revision=str(event_row["case_revision"]),
+                payload_sha256=str(event_row["payload_sha256"]),
+                event_id=str(event_row["event_id"]),
+                event_sha256=str(event_row["event_sha256"]),
+                actor=str(event_row["actor"]),
+                reason=str(event_row["reason"]),
+                recorded_at=str(event_row["recorded_at"]),
+            )
+            if not isinstance(outcome, dict):
+                raise DataError("semantic recovery outcome is not an object")
+        return {
+            "receipt_id": str(receipt["receipt_id"]),
+            "action_type": "record_semantic_event",
+            "project_id": project_id,
+            "actor": str(receipt["actor"]),
+            "outcome": outcome,
+            "performed_at": str(receipt["performed_at"]),
+            "binding": binding,
+        }
+
+    def _semantic_event_rows_locked(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        source: Mapping[str, object] | None,
+        pending_receipt_id: str | None = None,
+    ) -> list[dict[str, object]]:
+        pid = _canonical_uuid(project_id, "project_id")
+        if source is not None:
+            _semantic_source_map(source)
+        rows = connection.execute(
+            "SELECT * FROM research_semantic_events WHERE project_id = ? ORDER BY sequence",
+            (pid,),
+        ).fetchall()
+        identities: list[dict[str, object]] = []
+        prior_head = _semantic_empty_head_sha256(pid)
+        for expected_sequence, row in enumerate(rows, start=1):
+            if int(row["sequence"]) != expected_sequence:
+                raise DataError("semantic event sequence is not contiguous")
+            row_source = _semantic_source_map(
+                {field: row[field] for field in _SEMANTIC_SOURCE_KEYS}
+            )
+            payload = _decode_json(row["payload_json"], "semantic event payload")
+            if not isinstance(payload, dict):
+                raise DataError("semantic event payload is not an object")
+            clean_payload = _semantic_payload(payload)
+            if clean_payload["expected_semantic_head_sha256"] != prior_head:
+                raise DataError("semantic expected head is stale or corrupt")
+            for field in (
+                "verified_read_sha256",
+                "projection_sha256",
+                "run_id",
+                "cutoff_confirmed_at",
+            ):
+                if clean_payload[field] != row_source[field]:
+                    raise DataError("semantic event payload source binding is corrupt")
+            if (
+                row["payload_sha256"]
+                != hashlib.sha256(
+                    _canonical_json(clean_payload, "SemanticOwnerActionV1 payload").encode()
+                ).hexdigest()
+            ):
+                raise DataError("semantic event payload hash is invalid")
+            expected_artifact_id, expected_artifact_sha, _ = _semantic_artifact(
+                row_source, clean_payload, prior_head
+            )
+            if (
+                row["semantic_artifact_id"],
+                row["semantic_artifact_sha256"],
+            ) != (expected_artifact_id, expected_artifact_sha):
+                raise DataError("semantic event artifact hash is invalid")
+            definition_id = (
+                expected_artifact_id
+                if clean_payload["event_type"] == "definition"
+                else str(clean_payload["definition_id"])
+            )
+            review_id = (
+                None if clean_payload["event_type"] != "freeze" else str(clean_payload["review_id"])
+            )
+            expected_review_id = (
+                None
+                if clean_payload["event_type"] == "definition"
+                else expected_artifact_id
+                if clean_payload["event_type"] == "review"
+                else str(clean_payload["review_id"])
+            )
+            expected_review_decision = (
+                None
+                if clean_payload["event_type"] != "review"
+                else clean_payload["review_decision"]
+            )
+            if (
+                row["event_type"] != clean_payload["event_type"]
+                or row["prior_semantic_head_sha256"] != prior_head
+                or row["definition_id"] != definition_id
+                or row["review_id"] != expected_review_id
+                or row["review_decision"] != expected_review_decision
+            ):
+                raise DataError("semantic event transition fields are corrupt")
+            prior_rows = identities
+            _semantic_transition(
+                prior_rows,
+                event_type=str(clean_payload["event_type"]),
+                definition_id=definition_id,
+                review_id=review_id,
+            )
+            event_id, identity = _semantic_event_identity(
+                source=row_source,
+                payload=clean_payload,
+                sequence=expected_sequence,
+                prior_head=prior_head,
+                semantic_artifact_id=expected_artifact_id,
+                semantic_artifact_sha256=expected_artifact_sha,
+                receipt_id=str(row["receipt_id"]),
+                actor=str(row["actor"]),
+                reason=str(row["reason"]),
+                recorded_at=str(row["recorded_at"]),
+            )
+            if row["event_id"] != event_id or row["event_sha256"] != event_id[3:]:
+                raise DataError("semantic event identity hash is invalid")
+            receipt = connection.execute(
+                "SELECT * FROM owner_action_receipts WHERE receipt_id = ?",
+                (row["receipt_id"],),
+            ).fetchone()
+            if receipt is None:
+                raise DataError("semantic event receipt is missing")
+            self._semantic_receipt_matches(
+                receipt,
+                project_id=pid,
+                semantic_artifact_sha256=expected_artifact_sha,
+                case_revision=str(row["case_revision"]),
+                payload_sha256=str(row["payload_sha256"]),
+                event_id=event_id,
+                event_sha256=event_id[3:],
+                actor=str(row["actor"]),
+                reason=str(row["reason"]),
+                recorded_at=str(row["recorded_at"]),
+            )
+            identity["event_id"] = event_id
+            identity["event_sha256"] = event_id[3:]
+            identities.append(identity)
+            prior_head = event_id[3:]
+        receipt_rows = connection.execute(
+            """SELECT receipt_id FROM owner_action_receipts
+            WHERE project_id = ? AND action_type = 'record_semantic_event'""",
+            (pid,),
+        ).fetchall()
+        receipt_ids = {str(row["receipt_id"]) for row in receipt_rows}
+        event_receipt_ids = {str(row["receipt_id"]) for row in rows}
+        if pending_receipt_id is not None and pending_receipt_id in receipt_ids:
+            event_receipt_ids.add(pending_receipt_id)
+        if receipt_ids != event_receipt_ids:
+            raise DataError("semantic receipt and event sets are not bijective")
+        return identities
+
+    def read_semantic_events(self, project_id: str) -> list[dict[str, object]]:
+        """Return semantic events after recomputing hashes, transitions, source, and receipts."""
+        events, _ = self.read_semantic_state(project_id)
+        return events
+
+    def read_semantic_state(self, project_id: str) -> tuple[list[dict[str, object]], str]:
+        """Return verified semantic events and their head from one read transaction."""
+        with self._transaction(write=False) as connection:
+            events = self._semantic_event_rows_locked(
+                connection, project_id=project_id, source=None
+            )
+            head_sha256 = (
+                _semantic_empty_head_sha256(project_id)
+                if not events
+                else str(events[-1]["event_sha256"])
+            )
+            return events, head_sha256
+
+    def append_semantic_event(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        project_id: str,
+        payload: Mapping[str, object],
+        receipt_id: str,
+        actor: str,
+        reason: str,
+        recorded_at: str,
+    ) -> dict[str, object]:
+        """Append one validated event inside a caller-owned transaction."""
+        if not connection.in_transaction:
+            raise sqlite3.OperationalError("semantic append requires an active transaction")
+        pid = _canonical_uuid(project_id, "project_id")
+        clean_payload = _semantic_payload(payload)
+        source = self._verified_semantic_source_locked(connection, pid)
+        source_map = _semantic_source_map(source)
+        for field in (
+            "verified_read_sha256",
+            "projection_sha256",
+            "run_id",
+            "cutoff_confirmed_at",
+        ):
+            if clean_payload[field] != source_map[field]:
+                raise DataError(f"semantic payload {field} does not match verified source")
+        current = self._semantic_event_rows_locked(
+            connection,
+            project_id=pid,
+            source=source_map,
+            pending_receipt_id=receipt_id,
+        )
+        prior_head = (
+            _semantic_empty_head_sha256(pid) if not current else str(current[-1]["event_sha256"])
+        )
+        expected_head = clean_payload["expected_semantic_head_sha256"]
+        if expected_head != prior_head:
+            raise DataError("semantic expected head is stale")
+        event_type = str(clean_payload["event_type"])
+        artifact_id, artifact_sha, _ = _semantic_artifact(source_map, clean_payload, prior_head)
+        definition_id = (
+            artifact_id if event_type == "definition" else str(clean_payload["definition_id"])
+        )
+        review_id = (
+            None
+            if event_type == "definition"
+            else artifact_id
+            if event_type == "review"
+            else str(clean_payload["review_id"])
+        )
+        _semantic_transition(
+            current,
+            event_type=event_type,
+            definition_id=definition_id,
+            review_id=review_id,
+        )
+        clean_actor = _required_text(actor, "semantic event actor", max_length=200)
+        clean_reason = _required_text(reason, "semantic event reason")
+        if _format_timestamp(parse_timestamp(recorded_at)) != recorded_at:
+            raise DataError("semantic event recorded_at is invalid")
+        event_id, identity = _semantic_event_identity(
+            source=source_map,
+            payload=clean_payload,
+            sequence=len(current) + 1,
+            prior_head=prior_head,
+            semantic_artifact_id=artifact_id,
+            semantic_artifact_sha256=artifact_sha,
+            receipt_id=_required_text(receipt_id, "semantic receipt_id"),
+            actor=clean_actor,
+            reason=clean_reason,
+            recorded_at=recorded_at,
+        )
+        receipt = connection.execute(
+            "SELECT * FROM owner_action_receipts WHERE receipt_id = ?", (receipt_id,)
+        ).fetchone()
+        if receipt is None:
+            raise DataError("semantic event receipt is missing")
+        self._semantic_receipt_matches(
+            receipt,
+            project_id=pid,
+            semantic_artifact_sha256=artifact_sha,
+            case_revision=str(source_map["case_revision"]),
+            payload_sha256=str(identity["payload_sha256"]),
+            event_id=event_id,
+            event_sha256=event_id[3:],
+            actor=clean_actor,
+            reason=clean_reason,
+            recorded_at=recorded_at,
+        )
+        connection.execute(
+            """INSERT INTO research_semantic_events
+            (event_id, event_sha256, project_id, sequence, event_type, case_contract_id,
+             source_contract_id, case_revision, prior_semantic_head_sha256, semantic_artifact_id,
+             semantic_artifact_sha256, verified_read_sha256, projection_sha256, run_id,
+             cutoff_confirmed_at, definition_id, review_id, review_decision, payload_json,
+             payload_sha256, receipt_id, actor, reason, recorded_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                event_id,
+                event_id[3:],
+                pid,
+                len(current) + 1,
+                event_type,
+                source_map["case_contract_id"],
+                source_map["source_contract_id"],
+                source_map["case_revision"],
+                prior_head,
+                artifact_id,
+                artifact_sha,
+                source_map["verified_read_sha256"],
+                source_map["projection_sha256"],
+                source_map["run_id"],
+                source_map["cutoff_confirmed_at"],
+                definition_id,
+                review_id,
+                None if event_type != "review" else clean_payload["review_decision"],
+                _canonical_json(clean_payload, "SemanticOwnerActionV1 payload"),
+                identity["payload_sha256"],
+                receipt_id,
+                clean_actor,
+                clean_reason,
+                recorded_at,
+            ),
+        )
+        identity["event_id"] = event_id
+        identity["event_sha256"] = event_id[3:]
+        return identity
+
+    def _verified_blind_semantic_resolver_locked(
+        self,
+        connection: sqlite3.Connection,
+        project_id: str,
+        *,
+        include_projection: bool = True,
+    ) -> dict[str, object]:
+        pid = _canonical_uuid(project_id, "project_id")
+        self._require_project(connection, pid)
+        phase = self._latest_research_phase(connection, pid)
+        if phase is None:
+            raise DataError("research case has no active phase")
+        active = self._require_research_contract(connection, pid, str(phase["contract_id"]))
+        exploration = active
+        if active["scope"] == "confirmation":
+            parent_id = active["parent_contract_id"]
+            if not isinstance(parent_id, str):
+                raise DataError("confirmation contract has no exploration parent")
+            exploration = self._require_research_contract(connection, pid, parent_id)
+        if exploration["scope"] != "exploration":
+            raise DataError("blind semantic read requires an exploration contract")
+        active_payload = _decode_json(active["payload_json"], "active semantic contract payload")
+        if not isinstance(active_payload, dict):
+            raise DataError("active semantic contract payload is corrupt")
+        contract_payload = _decode_json(
+            exploration["payload_json"], "blind semantic exploration contract payload"
+        )
+        if not isinstance(contract_payload, dict):
+            raise DataError("blind semantic exploration contract payload is corrupt")
+        from alpha_cli.research_runtime import (  # noqa: PLC0415
+            validate_d0_acceptance_bytes,
+            validate_d0_pilot_contract,
+        )
+        from alpha_cli.study_semantic import VerifiedBlindSemanticReadV1  # noqa: PLC0415
+        from alpha_study import project_blind_semantic_read  # noqa: PLC0415
+
+        operator = validate_d0_pilot_contract(contract_payload)
+        operator_identity = operator.get("operator")
+        if not isinstance(operator_identity, Mapping) or operator_identity.get("name") != (
+            "double_bottom"
+        ):
+            raise DataError("blind semantic read supports only registered double_bottom D0")
+        attempt = self._require_completed_d0_attempt(
+            connection,
+            project_id=pid,
+            contract_id=str(exploration["contract_id"]),
+            contract_payload=contract_payload,
+        )
+        attempt_view = self._research_attempt_view(attempt)
+        run_id = attempt_view.get("run_id")
+        if not isinstance(run_id, str):
+            raise DataError("completed D0 attempt has no run identity")
+        run_dir, manifest = self._verified_run(run_id)
+        selected = self._read_verified_semantic_artifacts(run_dir, manifest)
+        post_dir, post_manifest = self._verified_run(run_id)
+        if post_dir != run_dir:
+            raise DataError("verified D0 run directory changed during semantic read")
+        before_artifacts = manifest.get("artifacts")
+        after_artifacts = post_manifest.get("artifacts")
+        if not isinstance(before_artifacts, Mapping) or not isinstance(after_artifacts, Mapping):
+            raise DataError("verified D0 run manifest artifact map changed during read")
+        for filename in _SEMANTIC_READ_ARTIFACTS:
+            if before_artifacts.get(filename) != after_artifacts.get(filename):
+                raise DataError(f"verified D0 run {filename} manifest changed during read")
+        config_fingerprint = attempt_view.get("config_fingerprint")
+        fixture = operator.get("fixture")
+        dataset_hash = (
+            fixture.get("definition_fingerprint") if isinstance(fixture, Mapping) else None
+        )
+        operator_fingerprint = operator.get("fingerprint")
+        if (
+            not isinstance(config_fingerprint, str)
+            or not isinstance(dataset_hash, str)
+            or not isinstance(operator_fingerprint, str)
+        ):
+            raise DataError("completed D0 attempt has corrupt verifier inputs")
+        validate_d0_acceptance_bytes(
+            selected["d0_acceptance.json"],
+            post_manifest,
+            project_id=pid,
+            contract_id=str(exploration["contract_id"]),
+            contract_hash=hashlib.sha256(
+                _canonical_json(contract_payload, "research D0 acceptance contract").encode("utf-8")
+            ).hexdigest(),
+            dataset_hash=dataset_hash,
+            execution_fingerprint=config_fingerprint,
+            d0_operator_fingerprint=operator_fingerprint,
+        )
+        if not include_projection:
+            return {
+                "active_contract": active,
+                "source_contract": exploration,
+                "active_payload": active_payload,
+                "source_payload": contract_payload,
+                "run_id": run_id,
+                "verified_artifacts": selected,
+            }
+        execution = self._latest_research_execution(connection, pid)
+        if execution is None:
+            raise DataError("research case has no active execution state")
+        projection = project_blind_semantic_read(
+            acceptance_bytes=selected["d0_acceptance.json"],
+            events_bytes=selected["events.json"],
+            chart_data_bytes=selected["chart-data.json"],
+        )
+        if projection.run_id != run_id:
+            raise DataError("verified semantic run identity disagrees with D0 artifacts")
+        verified = VerifiedBlindSemanticReadV1(run_id=run_id, projection=projection)
+        contract_source_pack = active_payload.get("source_pack_id")
+        summary = {
+            "project_id": pid,
+            "active_contract_id": active["contract_id"],
+            "phase": phase["phase"],
+            "execution_state": execution["state"],
+            "source_pack_id": contract_source_pack,
+        }
+        source = {
+            "project_id": pid,
+            "case_contract_id": active["contract_id"],
+            "source_contract_id": exploration["contract_id"],
+            "case_revision": research_case_revision(summary),
+            "verified_read_sha256": str(verified.content_sha256),
+            "projection_sha256": hashlib.sha256(
+                _canonical_json(projection.to_dict(), "blind semantic projection").encode("utf-8")
+            ).hexdigest(),
+            "run_id": run_id,
+            "cutoff_confirmed_at": projection.to_dict()["cutoff_confirmed_at"],
+        }
+        _semantic_source_map(source)
+        return {
+            "source": source,
+            "active_contract": active,
+            "source_contract": exploration,
+            "active_payload": active_payload,
+            "source_payload": contract_payload,
+            "run_id": run_id,
+            "verified_artifacts": selected,
+        }
+
+    def _verified_semantic_source_locked(
+        self, connection: sqlite3.Connection, project_id: str
+    ) -> dict[str, object]:
+        """Return the source contract from the locked verified-blind resolver."""
+        resolved = self._verified_blind_semantic_resolver_locked(connection, project_id)
+        source = resolved.get("source")
+        if not isinstance(source, Mapping):
+            raise DataError("verified semantic resolver returned an invalid source")
+        return dict(source)
+
+    def verified_blind_semantic_artifacts(self, project_id: str) -> dict[str, object]:
+        """Resolve one active exploration D0 lineage and return verified projection bytes.
+
+        This is deliberately read-only.  A confirmation contract resolves to its exploration
+        parent because the S5a semantic gallery is grounded only in the synthetic D0 pilot.
+        The existing D0 verifier remains the sole quantitative authority.
+        """
+
+        with self._transaction(write=False) as connection:
+            resolved = self._verified_blind_semantic_resolver_locked(
+                connection, project_id, include_projection=False
+            )
+            selected = resolved.get("verified_artifacts")
+            if not isinstance(selected, Mapping):
+                raise DataError("verified semantic resolver returned invalid artifacts")
+        return {
+            "run_id": resolved["run_id"],
+            "acceptance_bytes": selected["d0_acceptance.json"],
+            "events_bytes": selected["events.json"],
+            "chart_data_bytes": selected["chart-data.json"],
+        }
+
     def record_research_attempt(
         self,
         project_id: str,
@@ -7564,6 +9148,17 @@ class ControlStore:
                 "recorded_at": str(row["created_at"]),
             }
         return None
+
+    def research_promotion_reference(
+        self, project_id: str, contract_id: str
+    ) -> dict[str, object] | None:
+        """Return the verified promotion-dossier reference for one research contract."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            self._require_research_contract(connection, project_id, contract_id)
+            return self._promotion_reference(
+                connection, project_id=project_id, contract_id=contract_id, cutoff=None
+            )
 
     def get_agent_brief_context(
         self,
@@ -11217,6 +12812,36 @@ class ControlStore:
             "enrollment_request_id": row["enrollment_request_id"],
             "binding": binding,
             "expires_at": str(row["expires_at"]),
+        }
+
+    def get_owner_action_challenge_snapshot(
+        self, challenge_id: str, *, now: datetime
+    ) -> dict[str, object]:
+        """Read an action challenge, permitting only consumed semantic recovery after expiry."""
+        cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
+        timestamp = _format_timestamp(now)
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT * FROM owner_auth_challenges WHERE challenge_id = ?", (cid,)
+            ).fetchone()
+        if row is None or row["ceremony"] != "action":
+            raise DataError("owner auth challenge is invalid or already used")
+        binding = _decode_json(row["binding_json"], "owner auth binding")
+        if not isinstance(binding, dict):
+            raise DataError("corrupt control store: owner auth binding is not an object")
+        semantic = binding.get("action_type") == "record_semantic_event"
+        used = row["used_at"] is not None
+        if used and not semantic:
+            raise DataError("owner auth challenge is invalid or already used")
+        if not used and str(row["expires_at"]) <= timestamp:
+            raise DataError("owner auth challenge has expired")
+        return {
+            "challenge_id": cid,
+            "challenge": bytes(row["challenge"]),
+            "binding": binding,
+            "expires_at": str(row["expires_at"]),
+            "used_at": row["used_at"],
+            "verified_credential_id": row["verified_credential_id"],
         }
 
     def list_active_owner_credentials(self) -> list[dict[str, object]]:

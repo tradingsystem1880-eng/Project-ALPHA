@@ -326,16 +326,23 @@ function finiteBudgetValue(value: unknown): number | null {
 }
 
 /** Preserve heterogeneous budget units as separate rows; summing seconds, requests, and variants is invalid. */
-export function researchBudgetRows(researchCase: ResearchCase): ResearchBudgetRow[] {
+export function researchBudgetValueRows(
+  elapsed: Record<string, unknown>,
+  remaining: Record<string, unknown>,
+): ResearchBudgetRow[] {
   const resources = new Set([
-    ...Object.keys(researchCase.elapsed_budget),
-    ...Object.keys(researchCase.remaining_budget),
+    ...Object.keys(elapsed),
+    ...Object.keys(remaining),
   ])
   return [...resources].sort().map((resource) => ({
     resource,
-    used: finiteBudgetValue(researchCase.elapsed_budget[resource]),
-    remaining: finiteBudgetValue(researchCase.remaining_budget[resource]),
+    used: finiteBudgetValue(elapsed[resource]),
+    remaining: finiteBudgetValue(remaining[resource]),
   }))
+}
+
+export function researchBudgetRows(researchCase: ResearchCase): ResearchBudgetRow[] {
+  return researchBudgetValueRows(researchCase.elapsed_budget, researchCase.remaining_budget)
 }
 
 export function researchPilotEligibility(researchCase: ResearchCase): {

@@ -48,7 +48,7 @@ It is a pure content hash: any byte change anywhere invalidates it; a pure `git 
 - `gate.py fast` — ruff check, ruff format --check, lint-imports, mypy (repo + harness),
   `lint-harness`, semgrep on changed files.
 - `gate.py full` — uv lock --check, uv sync --locked, fast steps, pytest -m "not network"
-  --cov (holdout included), OpenAPI freshness, uv build --all-packages, 13-wheel import smoke
+  --cov (holdout included), OpenAPI freshness, uv build --all-packages, 14-wheel import smoke
   (byte-mirrors `.github/workflows/ci.yml`); when a quant SOURCE module changed it also
   runs the `slow_oracle` suites and the mutation gate for those modules.
 - The stamp is deleted at gate start and written only on full success; `check --tier

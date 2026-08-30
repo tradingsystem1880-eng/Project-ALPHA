@@ -14,6 +14,7 @@ from typing import cast
 import pytest
 from typer.testing import CliRunner
 
+from alpha_cli import control_store as control_store_module
 from alpha_cli import research_cmds
 from alpha_cli.artifact_contract import artifact_metadata
 from alpha_cli.control_store import ControlStore
@@ -449,6 +450,59 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
     assert details["d0_acceptance_ref"] == {
         "artifact": "d0_acceptance.json",
         "content_sha256": manifest["artifacts"]["d0_acceptance.json"]["sha256"],
+    }
+    semantic = _invoke("semantic-projection", project_id)
+    assert set(semantic) == {
+        "schema",
+        "schema_version",
+        "source_verification",
+        "authority",
+        "run_id",
+        "projection",
+        "content_sha256",
+    }
+    assert semantic["schema"] == "VerifiedBlindSemanticReadV1"
+    assert semantic["source_verification"] == "verified_completed_d0_recomputation"
+    assert semantic["authority"] == "none"
+    assert semantic["run_id"] == manifest["run_id"]
+    current_status = _invoke("status", project_id)
+    study_status = current_status["study_status"]
+    assert isinstance(study_status, dict)
+    assert study_status == {
+        "schema": "ResearchStudyStatusV1",
+        "schema_version": 1,
+        "authority": "none",
+        "project_id": project_id,
+        "active_contract_id": frozen_id,
+        "semantic": {
+            "state": "definition_required",
+            "source_state": "not_recorded",
+            "case_contract_id": None,
+            "case_revision": None,
+            "verified_read_sha256": None,
+            "projection_sha256": None,
+            "run_id": None,
+            "cutoff_confirmed_at": None,
+            "event_count": 0,
+            "head_sha256": control_store_module._semantic_empty_head_sha256(project_id),
+            "definition": None,
+            "review": None,
+            "freeze": None,
+            "next_owner_action": "Record a semantic definition with fresh Touch ID.",
+        },
+        "d1": {
+            "launch_authority": "owner_cli_only",
+            "status": "not_started",
+            "attempts": [],
+            "elapsed_budget": current_status["elapsed_budget"],
+            "remaining_budget": current_status["remaining_budget"],
+        },
+        "promotion": {
+            "packet_id": None,
+            "readiness": current_status["promotion_readiness"],
+        },
+        "next_action": current_status["next_action"],
+        "responsibility": current_status["responsibility"],
     }
     assert pilot_case["d2_state"] == "sealed"
     assert pilot_case["latest_run_id"] == manifest["run_id"]

@@ -660,6 +660,20 @@
     },
     {
       "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "get_project_workspace_api_projects__project_id__workspace_get",
+      "path": "/api/projects/{project_id}/workspace",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "refresh_project_workspace_api_projects__project_id__workspace_refresh_post",
+      "path": "/api/projects/{project_id}/workspace/refresh",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
       "mode": "automatic",
       "operation_id": "get_providers_api_providers_get",
       "path": "/api/providers",
@@ -775,6 +789,13 @@
       "mode": "fixture_backed",
       "operation_id": "research_scorecard_api_research_cases__project_id__scorecard_get",
       "path": "/api/research/cases/{project_id}/scorecard",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_semantic_projection_api_research_cases__project_id__semantic_projection_get",
+      "path": "/api/research/cases/{project_id}/semantic-projection",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
@@ -1294,6 +1315,20 @@
       "operation_id": "v3_get_strategy_version_api_v3_projects__project_id__versions__version_id__get",
       "path": "/api/v3/projects/{project_id}/versions/{version_id}",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "v3_get_project_workspace_api_v3_projects__project_id__workspace_get",
+      "path": "/api/v3/projects/{project_id}/workspace",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post",
+      "path": "/api/v3/projects/{project_id}/workspace/refresh",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
     },
     {
       "method": "GET",

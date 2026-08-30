@@ -2,13 +2,149 @@
 
 from __future__ import annotations
 
+import math
+import re
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+_LOWER_HEX_16 = re.compile(r"^[0-9a-f]{16}$")
+_LOWER_HEX_64 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _canonical_utc_z(value: object) -> str:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{6})?Z", value
+    ):
+        raise ValueError("must be a canonical UTC-Z timestamp")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise ValueError("must be a canonical UTC-Z timestamp") from exc
+    if parsed.tzinfo is None:
+        raise ValueError("must be a canonical UTC-Z timestamp")
+    canonical = parsed.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    if parsed.microsecond == 0:
+        canonical = parsed.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    if value != canonical:
+        raise ValueError("must be a canonical UTC-Z timestamp")
+    return value
+
+
+def _canonical_point_id(value: object) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or any(ord(character) < 32 for character in value)
+    ):
+        raise ValueError("point_id must be non-empty canonical text")
+    return value
+
+
+class _FrozenSemanticModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+
+class SemanticPointV1(_FrozenSemanticModel):
+    point_id: str
+    available_at: str
+    value: float
+
+    _point_id = field_validator("point_id", mode="before")(_canonical_point_id)
+    _available_at = field_validator("available_at", mode="before")(_canonical_utc_z)
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _finite_float(cls, value: object) -> float:
+        if type(value) is not float or not math.isfinite(value):
+            raise ValueError("value must be a finite float")
+        return value
+
+
+class BlindSemanticProjectionV1(_FrozenSemanticModel):
+    schema_: Literal["BlindSemanticProjectionV1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    schema_version: Literal[1]
+    run_id: str
+    acceptance_artifact_sha256: str
+    events_artifact_sha256: str
+    chart_data_artifact_sha256: str
+    cutoff_confirmed_at: str
+    points: list[SemanticPointV1]
+    masked_count: int
+    authority: Literal["none"]
+    cutoff_source: Literal["d0_acceptance_measurement_reference"]
+    lineage_verification: Literal["not_checked"]
+    semantic_status: Literal["unfrozen"]
+    content_sha256: str
+
+    _cutoff_confirmed_at = field_validator("cutoff_confirmed_at", mode="before")(_canonical_utc_z)
+
+    @field_validator("run_id")
+    @classmethod
+    def _run_id(cls, value: str) -> str:
+        if _LOWER_HEX_16.fullmatch(value) is None:
+            raise ValueError("run_id must be lowercase 16-character hex")
+        return value
+
+    @field_validator(
+        "acceptance_artifact_sha256",
+        "events_artifact_sha256",
+        "chart_data_artifact_sha256",
+        "content_sha256",
+    )
+    @classmethod
+    def _sha256(cls, value: str) -> str:
+        if _LOWER_HEX_64.fullmatch(value) is None:
+            raise ValueError("value must be lowercase 64-character SHA-256 hex")
+        return value
+
+    @field_validator("masked_count", mode="before")
+    @classmethod
+    def _nonnegative_count(cls, value: object) -> int:
+        if type(value) is not int or value < 0:
+            raise ValueError("masked_count must be a non-negative integer")
+        return value
+
+
+class VerifiedBlindSemanticReadV1(_FrozenSemanticModel):
+    schema_: Literal["VerifiedBlindSemanticReadV1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    schema_version: Literal[1]
+    source_verification: Literal["verified_completed_d0_recomputation"]
+    authority: Literal["none"]
+    run_id: str
+    projection: BlindSemanticProjectionV1
+    content_sha256: str
+
+    @field_validator("run_id")
+    @classmethod
+    def _run_id(cls, value: str) -> str:
+        if _LOWER_HEX_16.fullmatch(value) is None:
+            raise ValueError("run_id must be lowercase 16-character hex")
+        return value
+
+    @field_validator("content_sha256")
+    @classmethod
+    def _sha256(cls, value: str) -> str:
+        if _LOWER_HEX_64.fullmatch(value) is None:
+            raise ValueError("content_sha256 must be lowercase 64-character SHA-256 hex")
+        return value
+
+    @model_validator(mode="after")
+    def _matching_run_id(self) -> VerifiedBlindSemanticReadV1:
+        if self.projection.run_id != self.run_id:
+            raise ValueError("run_id must match the blind semantic projection")
+        return self
 
 
 class ApiFieldErrorV1(StrictModel):
@@ -1310,6 +1446,54 @@ class ProjectPage(StrictModel):
     has_more: bool
 
 
+StrategyProjectWorkspaceCategory = Literal[
+    "research",
+    "sources",
+    "datasets",
+    "study-state",
+    "promotion",
+    "strategy-versions",
+    "experiments",
+    "runs",
+    "validation",
+    "figures",
+    "reports",
+    "sandbox-eligibility",
+]
+
+
+class StrategyProjectWorkspaceIndexDescriptor(StrictModel):
+    category: StrategyProjectWorkspaceCategory
+    path: str
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reference_count: int = Field(ge=0, le=10_000)
+
+
+class StrategyProjectWorkspace(StrictModel):
+    schema_name: Literal["StrategyProjectWorkspaceV1"]
+    schema_version: Literal[1]
+    revision_id: str = Field(pattern=r"^spw_[0-9a-f]{64}$")
+    project_id: str
+    project_name_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    authority: Literal["none"]
+    execution_authority: Literal[False]
+    categories: list[StrategyProjectWorkspaceCategory]
+    indexes: list[StrategyProjectWorkspaceIndexDescriptor]
+    sandbox_classification: Literal["non-transmitting-sandbox-only"]
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class StrategyProjectWorkspaceProjection(StrictModel):
+    schema_name: Literal["StrategyProjectWorkspaceProjectionV1"]
+    schema_version: Literal[1]
+    project_id: str
+    workspace_root: str
+    changed: bool
+    recovered: bool
+    stale: bool
+    workspace: StrategyProjectWorkspace
+
+
 class StrategyVersionCreateRequest(StrictModel):
     strategy_name: str = Field(min_length=1, max_length=200)
     source_fingerprint: str = Field(min_length=1, max_length=512)
@@ -2416,6 +2600,67 @@ class ResearchEvidenceHub(StrictModel):
     sections: ResearchEvidenceHubSections
 
 
+class ResearchSemanticEventViewV1(StrictModel):
+    event_id: str
+    artifact_id: str
+    receipt_id: str
+    actor: str
+    reason: str
+    recorded_at: str
+    payload: JsonObject
+
+
+class ResearchSemanticStateV1(StrictModel):
+    state: Literal["definition_required", "review_required", "freeze_required", "frozen", "stale"]
+    source_state: Literal["not_recorded", "current", "stale"]
+    case_contract_id: str | None
+    case_revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    verified_read_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    projection_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    run_id: str | None
+    cutoff_confirmed_at: str | None
+    event_count: int = Field(ge=0)
+    head_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    definition: ResearchSemanticEventViewV1 | None
+    review: ResearchSemanticEventViewV1 | None
+    freeze: ResearchSemanticEventViewV1 | None
+    next_owner_action: str
+
+
+class ResearchD1AttemptViewV1(StrictModel):
+    attempt_id: str
+    contract_id: str
+    status: Literal["completed", "failed"]
+    run_id: str | None
+    recorded_at: str
+
+
+class ResearchD1StateV1(StrictModel):
+    launch_authority: Literal["owner_cli_only"]
+    status: Literal["not_started", "queued", "running", "paused", "blocked", "completed", "failed"]
+    attempts: list[ResearchD1AttemptViewV1]
+    elapsed_budget: JsonObject
+    remaining_budget: JsonObject
+
+
+class ResearchPromotionStateV1(StrictModel):
+    packet_id: str | None
+    readiness: ResearchReadinessProjection
+
+
+class ResearchStudyStatusV1(StrictModel):
+    schema_: Literal["ResearchStudyStatusV1"] = Field(alias="schema", serialization_alias="schema")
+    schema_version: Literal[1]
+    authority: Literal["none"]
+    project_id: str
+    active_contract_id: str
+    semantic: ResearchSemanticStateV1
+    d1: ResearchD1StateV1
+    promotion: ResearchPromotionStateV1
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+
+
 class ResearchCase(StrictModel):
     schema_version: Literal[1]
     project_id: str
@@ -2463,6 +2708,7 @@ class ResearchCase(StrictModel):
     scorecard: ResearchScorecard | None = None
     confirmation_readiness: ResearchReadinessProjection | None = None
     promotion_readiness: ResearchReadinessProjection | None = None
+    study_status: ResearchStudyStatusV1 | None = None
 
 
 class ResearchCaptureResponse(StrictModel):

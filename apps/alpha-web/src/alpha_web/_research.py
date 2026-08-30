@@ -13,9 +13,21 @@ from typing import Any, cast
 from alpha_web._catalog import _run_json
 
 
+class InvalidSemanticProjection(RuntimeError):
+    """The CLI returned JSON, but not an object-shaped semantic projection."""
+
+
 def _object(value: object, label: str) -> dict[str, Any]:
     if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
         raise RuntimeError(f"alpha returned an invalid {label} projection")
+    return cast(dict[str, Any], value)
+
+
+def semantic_projection(project_id: str, *, data_dir: Path) -> dict[str, Any]:
+    """Read the CLI-owned verified projection with its exact bounded vocabulary."""
+    value = _run_json(["research", "semantic-projection", project_id, "--json"], data_dir=data_dir)
+    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+        raise InvalidSemanticProjection("invalid semantic projection")
     return cast(dict[str, Any], value)
 
 

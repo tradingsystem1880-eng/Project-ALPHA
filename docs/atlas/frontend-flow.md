@@ -57,7 +57,7 @@ screen:studios
 | EvidenceHub | `GET /api/research/cases/{project_id}`, `GET /api/research/cases/{project_id}/evidence-hub`, `POST /api/research/cases/{project_id}/literature/acquire`, `POST /api/research/cases/{project_id}/literature/discover` |
 | PriceChart | `GET /api/candles/{symbol}`, `GET /api/runs/{run_id}/chart-bundle` |
 | ResearchBacklog | `GET /api/research/cases` |
-| ResearchCockpit | `GET /api/research/cases/{project_id}`, `GET /api/research/cases/{project_id}/decision-view`, `GET /api/research/cases/{project_id}/proposal-options`, `GET /api/research/cases/{project_id}/report`, `GET /api/research/cases/{project_id}/status`, `POST /api/research/cases`, `POST /api/research/cases/{project_id}/launch`, `POST /api/research/cases/{project_id}/proposal` |
+| ResearchCockpit | `GET /api/research/cases/{project_id}`, `GET /api/research/cases/{project_id}/decision-view`, `GET /api/research/cases/{project_id}/proposal-options`, `GET /api/research/cases/{project_id}/report`, `GET /api/research/cases/{project_id}/semantic-projection`, `GET /api/research/cases/{project_id}/status`, `POST /api/research/cases`, `POST /api/research/cases/{project_id}/launch`, `POST /api/research/cases/{project_id}/proposal` |
 | ResearchDataExplorer | `GET /api/research/cases/{project_id}`, `GET /api/research/cases/{project_id}/proposal-options`, `GET /api/research/datasets`, `GET /api/symbols` |
 
 </details>

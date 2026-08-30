@@ -114,3 +114,12 @@ class TestRuleFiles:
         core = (ROOT / "CLAUDE.md").read_text()
         for rule in RULES.glob("*.md"):
             assert f"`{rule.name}`" in core, f"{rule.name} missing from the CLAUDE.md rules index"
+
+    def test_core_rule_index_references_existing_files(self) -> None:
+        core = (ROOT / "CLAUDE.md").read_text()
+        rules_section = core.split("## Rules", 1)[1].split("## Architecture DAG", 1)[0]
+        indexed_rules = re.findall(r"`([^`/]+\.md)`", rules_section)
+
+        assert indexed_rules, "CLAUDE.md rules index must name its rule files"
+        for rule_name in indexed_rules:
+            assert (RULES / rule_name).is_file(), f"indexed rule does not exist: {rule_name}"

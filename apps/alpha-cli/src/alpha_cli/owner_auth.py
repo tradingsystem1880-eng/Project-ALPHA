@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -92,6 +93,15 @@ def derive_action_artifact_hash(
 ) -> str:
     """Derive the immutable artifact commitment for one closed owner action."""
     clean_payload = _object(payload, "action payload")
+    if action_type == "record_semantic_event":
+        store = ControlStore(data_dir)
+        summary = store.research_case_summary(project_id)
+        prepared = store.prepare_semantic_action(
+            project_id,
+            clean_payload,
+            expected_case_revision=research_case_revision(summary),
+        )
+        return str(prepared["artifact_hash"])
     if action_type in {"screen_source_claim", "reject_source_claim", "revise_source_claim"}:
         identifier = clean_payload.get("claim_id")
     elif action_type in {
@@ -248,9 +258,23 @@ def action_binding(
     current_revision = research_case_revision(store.research_case_summary(project_id))
     if expected_case_revision != current_revision:
         raise DataError("research case changed; refresh before requesting Touch ID")
-    if len(artifact_hash) != 64 or any(char not in "0123456789abcdef" for char in artifact_hash):
-        raise DataError("owner action artifact hash must be lowercase SHA-256")
     payload_object = _object(payload, "action payload")
+    if action_type == "record_semantic_event":
+        prepared = store.prepare_semantic_action(
+            project_id,
+            payload_object,
+            expected_case_revision=current_revision,
+        )
+        artifact_hash = str(prepared["artifact_hash"])
+        request_hash = str(prepared["request_hash"])
+    else:
+        if len(artifact_hash) != 64 or any(
+            char not in "0123456789abcdef" for char in artifact_hash
+        ):
+            raise DataError("owner action artifact hash must be lowercase SHA-256")
+        request_hash = hashlib.sha256(
+            _canonical_json(payload_object, "action payload").encode()
+        ).hexdigest()
     return {
         "action_type": cast(OwnerActionType, action_type),
         "project_id": project_id,
@@ -258,9 +282,7 @@ def action_binding(
         "expected_case_revision": current_revision,
         "consequence_summary": consequence_summary,
         "reason": reason,
-        "request_hash": hashlib.sha256(
-            _canonical_json(payload_object, "action payload").encode()
-        ).hexdigest(),
+        "request_hash": request_hash,
     }
 
 
@@ -307,6 +329,48 @@ def verify_action_assertion(
     """Verify and consume one assertion before any action executor is called."""
     verified_at = _now() if now is None else now
     store = ControlStore(data_dir)
+    snapshot = store.get_owner_action_challenge_snapshot(challenge_id, now=verified_at)
+    snapshot_binding = _object(snapshot["binding"], "action binding")
+    if snapshot_binding.get("action_type") == "record_semantic_event":
+        if snapshot["used_at"] is not None:
+            recovered = store.recover_semantic_event_authorization(
+                challenge_id=challenge_id, payload=payload
+            )
+            return {**recovered, "binding": snapshot_binding}
+        credential_id = _credential_id(credential)
+        active = {
+            str(item["credential_id"]): item for item in store.list_active_owner_credentials()
+        }
+        stored = active.get(credential_id)
+        if stored is None:
+            raise DataError("Touch ID credential is not enrolled or has been revoked")
+        current_sign_count = cast(int, stored["sign_count"])
+        try:
+            verification = verify_authentication_response(
+                credential=dict(credential),
+                expected_challenge=cast(bytes, snapshot["challenge"]),
+                expected_rp_id=OWNER_RP_ID,
+                expected_origin=OWNER_ORIGIN,
+                credential_public_key=cast(bytes, stored["public_key"]),
+                credential_current_sign_count=current_sign_count,
+                require_user_verification=True,
+            )
+        except Exception as exc:
+            raise DataError("Touch ID assertion could not be verified") from exc
+        assertion_hash = hashlib.sha256(
+            _canonical_json(dict(credential), "assertion").encode()
+        ).hexdigest()
+        result = store.record_semantic_event_authorization(
+            challenge_id=challenge_id,
+            credential_id=credential_id,
+            previous_sign_count=current_sign_count,
+            new_sign_count=verification.new_sign_count,
+            assertion_hash=assertion_hash,
+            payload=payload,
+            now=verified_at,
+            receipt_id=str(uuid.uuid4()),
+        )
+        return {**result, "binding": snapshot_binding}
     challenge = store.get_owner_auth_challenge(challenge_id, ceremony="action", now=verified_at)
     binding = _object(challenge["binding"], "action binding")
     project_id = binding.get("project_id")
