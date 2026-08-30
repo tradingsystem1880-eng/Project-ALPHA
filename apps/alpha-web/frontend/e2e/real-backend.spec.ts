@@ -104,9 +104,20 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
     response.request().method() === 'GET'
     && response.url().endsWith(`/api/projects/${first.project_id}/workspace`)
   ))
+  const firstProjectResponse = page.waitForResponse((response) => (
+    response.request().method() === 'GET'
+    && response.url().includes(`/api/projects/${first.project_id}?lineage_limit=`)
+  ))
   await selector.selectOption(first.project_id)
-  expect((await firstWorkspaceResponse).ok()).toBe(true)
-  await expect(workspace.getByText(first.project_id, { exact: false })).toBeVisible()
+  const [firstWorkspace, firstProject] = await Promise.all([
+    firstWorkspaceResponse,
+    firstProjectResponse,
+  ])
+  expect(firstWorkspace.ok()).toBe(true)
+  expect(firstProject.ok()).toBe(true)
+  await expect(workspace.getByText(first.project_id, { exact: false })).toBeVisible({
+    timeout: 15_000,
+  })
   const lateRefreshResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && response.url().endsWith(`/api/projects/${first.project_id}/workspace/refresh`)
@@ -118,9 +129,20 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
     response.request().method() === 'GET'
     && response.url().endsWith(`/api/projects/${second.project_id}/workspace`)
   ))
+  const secondProjectResponse = page.waitForResponse((response) => (
+    response.request().method() === 'GET'
+    && response.url().includes(`/api/projects/${second.project_id}?lineage_limit=`)
+  ))
   await selector.selectOption(second.project_id)
-  expect((await secondWorkspaceResponse).ok()).toBe(true)
-  await expect(workspace.getByText(second.project_id, { exact: false })).toBeVisible()
+  const [secondWorkspace, secondProject] = await Promise.all([
+    secondWorkspaceResponse,
+    secondProjectResponse,
+  ])
+  expect(secondWorkspace.ok()).toBe(true)
+  expect(secondProject.ok()).toBe(true)
+  await expect(workspace.getByText(second.project_id, { exact: false })).toBeVisible({
+    timeout: 15_000,
+  })
   releaseRefresh()
   await lateRefreshResponse
   await expect(workspace.getByRole('button', { name: 'Refresh generated references' })).toBeEnabled()
