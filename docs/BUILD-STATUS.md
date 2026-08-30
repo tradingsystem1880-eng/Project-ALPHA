@@ -277,3 +277,18 @@ determinism passes are green, and the canonical full gate passes on the exact tr
 support, owner decision,
 D2, promotion, execution, paper, broker, order, MCP, or new UI authority is introduced; no legacy
 or immutable artifact is deleted.
+
+**Crypto operational-readiness C4/C5 checkpoint (2026-08-30)** 🚧 — the release remains blocked,
+with exact evidence in `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`. The
+Expansion mount is read-write, UUID-matched, and has 1.949 TB free, but the Codex process receives
+`Operation not permitted` at the configured bulk root; full inventory/rehash and provider-backed BTC
+case evidence are therefore not accepted. Four scoped public crypto network tests pass and the
+canonical CoinGecko Keychain check is freshly verified. The isolated program acceptance now composes
+the public research lifecycle through a matching research-contract-bound experiment, suite-owned
+baseline/OOS/validation, disclosed fake-model interface evidence, classical plus Kronos path-risk
+Monte Carlo, stored reports, and the non-authoritative project workspace. This exposed and repaired
+the missing experiment contract relay and noncanonical Monte Carlo run-output token. The standalone
+hedged-basis suite passes and its live preflight remains `UNSUPPORTED_MULTI_VENUE_PAPER` with no
+credentials, broker connection, order, fill, or position change. A provider-backed BTC journey, the
+connected-browser six-area walkthrough, fresh owner Touch ID ceremonies, C6 gates/CI, and merge are
+still pending; no readiness, profitability, paper, broker, or order claim follows from this checkpoint.

@@ -517,6 +517,10 @@ def experiment(
     costs_json: str = typer.Option(..., help="fee/slippage JSON object"),
     seeds_json: str = typer.Option(..., help="semantic seed JSON object"),
     stage_config_json: str = typer.Option("{}", help="stage configuration JSON object"),
+    research_contract_id: str | None = typer.Option(
+        None,
+        help="matching promoted research contract for a research-governed version",
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Create or reuse an immutable, content-addressed experiment specification."""
@@ -531,6 +535,7 @@ def experiment(
             costs=_object(costs_json, "--costs-json"),
             seeds=_object(seeds_json, "--seeds-json"),
             stage_config=_object(stage_config_json, "--stage-config-json"),
+            research_contract_id=research_contract_id,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc

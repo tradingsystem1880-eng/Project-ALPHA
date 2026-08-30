@@ -1,4 +1,4 @@
-"""The import-linter extractor captures all 14 contracts with their module lists."""
+"""The import-linter extractor captures all 15 contracts with their module lists."""
 
 from pathlib import Path
 
@@ -8,10 +8,10 @@ from alpha_atlas.generators.importlinter import extract
 
 
 class TestImportLinterExtractor:
-    def test_all_fourteen_contracts_become_nodes(self, repo_root: Path) -> None:
+    def test_all_fifteen_contracts_become_nodes(self, repo_root: Path) -> None:
         fragment, inputs = extract(repo_root)
         contracts = [n for n in fragment.nodes if n.kind == "contract"]
-        assert len(contracts) == 14
+        assert len(contracts) == 15
         assert fragment.edges == []
         assert "pyproject.toml" in inputs
 

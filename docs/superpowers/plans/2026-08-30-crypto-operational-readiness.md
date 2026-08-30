@@ -199,6 +199,27 @@ that its live environment is still healthy.
 | Content-addressed default breadth profile | Operational backlog | The latest profile `584cf038…b7bda8c` has 7,603 tasks; older 7,602-task profile `79f1c9d5…ee83a` remains immutable. Bounded cadence continues without a false completeness claim. |
 | Live capital, hosting, distribution, multi-user | Explicitly deferred | Requires separate owner decision, ADR, and threat/risk review. |
 
+## C4/C5 checkpoint — 2026-08-30
+
+C4 remains pending. The Expansion volume is mounted read-write, its UUID matches configuration,
+and 1.949 TB is free, but this Codex process receives `Operation not permitted` for the configured
+bulk root. `alpha crypto-data storage --json` therefore correctly reports
+`bulk_volume_not_writable`. Four profiles and nine completed bounded batches remain visible in the
+internal control plane; the latest profile has 7,603 tasks. The scoped public crypto network suite
+passed four tests and the CoinGecko Keychain launcher returned a fresh verified receipt, but no
+external-byte inventory, full rehash, snapshot/feature/comparison verification, batch resume, or
+provider-backed case is accepted while the archive is inaccessible.
+
+C5 also remains pending, with its offline portion complete. The isolated public-CLI acceptance now
+composes idea → source/data → D0 → D1 → one-shot D2 → honest decision → promotion-linked registered
+development proxy → experiment → sealed holdout → baseline/OOS → three validation families →
+disclosed fake-model interface check → two suite-owned Monte Carlo families → reports → project
+workspace. It preserves the observed robustness/path-risk statuses and claims neither executable
+double-bottom parity nor profitability. The standalone hedged-basis preflight remains blocked by
+design with no credential, broker, order, fill, or position side effect. The provider-backed BTC
+case, connected-browser six-area walkthrough, and fresh owner Touch ID ceremonies are still open.
+See `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`.
+
 ## Authority freeze
 
 - The only release meaning of “ready” is private-local research and non-transmitting sandbox use.
