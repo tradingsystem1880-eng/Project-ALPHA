@@ -220,6 +220,16 @@ design with no credential, broker, order, fill, or position side effect. The pro
 case, connected-browser six-area walkthrough, and fresh owner Touch ID ceremonies are still open.
 See `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`.
 
+**C4 recovery update — 2026-08-31:** iTerm removable-volumes access now reaches the exact
+UUID-matched Expansion root. The bounded create/write/hash/delete probe passes, `storage` reports
+`ready`, and `storage-verify` rehashed all 372 manifests and rederived all 14 snapshots (13
+research-eligible) with one asset master, zero staging entries, and no private paths exposed. All
+nine recorded batches are complete, both asset masters and all 12 derived feature artifacts verify,
+and execution authority remains false. The four-test bounded public-network suite passes freshly;
+the canonical CoinGecko Keychain check currently reports its explicit `rate_limited` receipt rather
+than a new success. The current Expansion access/full-rehash blocker is closed; R-63
+interruption/resume evidence, R-64, and the remaining C5 owner evidence stay open.
+
 ## Authority freeze
 
 - The only release meaning of “ready” is private-local research and non-transmitting sandbox use.

@@ -278,17 +278,23 @@ support, owner decision,
 D2, promotion, execution, paper, broker, order, MCP, or new UI authority is introduced; no legacy
 or immutable artifact is deleted.
 
-**Crypto operational-readiness C4/C5 checkpoint (2026-08-30)** 🚧 — the release remains blocked,
-with exact evidence in `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`. The
-Expansion mount is read-write, UUID-matched, and has 1.949 TB free, but the Codex process receives
-`Operation not permitted` at the configured bulk root; full inventory/rehash and provider-backed BTC
-case evidence are therefore not accepted. Four scoped public crypto network tests pass and the
-canonical CoinGecko Keychain check is freshly verified. The isolated program acceptance now composes
+**Crypto operational-readiness C4/C5 checkpoint (2026-08-31)** 🚧 — the release remains blocked,
+with exact evidence in `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`. After
+enabling iTerm removable-volumes access, the Expansion mount is read-write, UUID-matched, and has
+1.949 TB free. The exact-root write/hash/delete probe and ALPHA storage gate pass; full verification
+rehashes all 372 manifests and rederives all 14 snapshots, with 13 research-eligible snapshots, one
+asset master, zero staging entries, and no private paths exposed. All nine recorded bounded batches
+are complete, both asset masters and all 12 feature artifacts verify, and execution authority
+remains false. Four scoped public crypto network tests pass. The canonical CoinGecko Keychain check
+currently reports its `rate_limited` receipt, which remains an explicit provider blocker rather than
+a skipped success. The isolated program acceptance now composes
 the public research lifecycle through a matching research-contract-bound experiment, suite-owned
 baseline/OOS/validation, disclosed fake-model interface evidence, classical plus Kronos path-risk
 Monte Carlo, stored reports, and the non-authoritative project workspace. This exposed and repaired
 the missing experiment contract relay and noncanonical Monte Carlo run-output token. The standalone
 hedged-basis suite passes and its live preflight remains `UNSUPPORTED_MULTI_VENUE_PAPER` with no
-credentials, broker connection, order, fill, or position change. A provider-backed BTC journey, the
-connected-browser six-area walkthrough, fresh owner Touch ID ceremonies, C6 gates/CI, and merge are
-still pending; no readiness, profitability, paper, broker, or order claim follows from this checkpoint.
+credentials, broker connection, order, fill, or position change. The external-storage blocker is
+closed without rewriting historical warning or quarantined evidence. A provider-backed BTC
+journey, the connected-browser six-area walkthrough, fresh owner Touch ID ceremonies, C6 gates/CI,
+and merge are still pending; no readiness, profitability, paper, broker, or order claim follows from
+this checkpoint.
