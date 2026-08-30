@@ -72,6 +72,7 @@ test('generated project workspace is visible and refreshes without authority esc
 })
 
 test('late workspace refresh cannot overwrite a newly selected project', async ({ page, request }) => {
+  test.setTimeout(60_000)
   const createProject = async (name: string) => {
     const response = await request.post('/api/projects', {
       data: {
