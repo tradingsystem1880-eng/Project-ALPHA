@@ -41,6 +41,7 @@ from alpha_web.api.models import (
     StageLinkCreateRequest,
     StageRunLink,
     StageStateRequest,
+    StrategyProjectWorkspaceProjection,
     StrategyVersion,
     StrategyVersionCreateRequest,
     SuiteActionValue,
@@ -119,6 +120,30 @@ def get_project(
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/projects/{project_id}/workspace",
+    response_model=StrategyProjectWorkspaceProjection,
+)
+def get_project_workspace(project_id: str) -> dict[str, object]:
+    """Read the verified non-authoritative generated workspace projection."""
+    try:
+        return _development.project_workspace(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/projects/{project_id}/workspace/refresh",
+    response_model=StrategyProjectWorkspaceProjection,
+)
+def refresh_project_workspace(project_id: str) -> dict[str, object]:
+    """Refresh generated references only; this grants no research or execution authority."""
+    try:
+        return _development.refresh_project_workspace(project_id, data_dir=data_dir())
+    except RuntimeError as exc:
+        raise _bad_request(exc) from exc
 
 
 @router.get("/projects/{project_id}/versions/{version_id}", response_model=StrategyVersion)

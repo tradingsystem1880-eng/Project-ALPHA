@@ -65,6 +65,7 @@ import type {
   ProjectDetail,
   ProjectPage,
   ProjectSummary,
+  StrategyProjectWorkspaceProjection,
   ResearchCaptureRequest,
   ResearchCaptureResponse,
   ResearchCase,
@@ -572,6 +573,10 @@ export const api = {
     getJSON(`/api/projects?limit=${limit}&offset=${offset}`),
   project: (id: string, lineageLimit = 100): Promise<ProjectDetail> =>
     getJSON(`/api/projects/${encodeURIComponent(id)}?lineage_limit=${lineageLimit}`),
+  projectWorkspace: (id: string): Promise<StrategyProjectWorkspaceProjection> =>
+    getJSON(`/api/projects/${encodeURIComponent(id)}/workspace`),
+  refreshProjectWorkspace: (id: string): Promise<StrategyProjectWorkspaceProjection> =>
+    postJSON(`/api/projects/${encodeURIComponent(id)}/workspace/refresh`, {}),
   createProject: (body: {
     name: string
     hypothesis: string

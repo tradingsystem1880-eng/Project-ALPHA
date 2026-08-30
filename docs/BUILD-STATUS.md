@@ -239,3 +239,23 @@ Playwright/accessibility case passes at all three supported viewports, generated
 committed SPA assets are fresh, the MCP surface remains exactly 62 tools, and the fast and canonical
 full gates pass on the exact tree. No route, screen, MCP tool, owner action, D2/promotion control,
 paper, broker, or order authority was added.
+
+**Crypto operational-readiness C2 project workspaces (2026-08-30)** ✅ — every governed strategy
+project now has one deterministic `StrategyProjectWorkspaceV1` reference projection at
+`data/strategy-workspaces/<project-slug>--<project-id>/`. Twelve strict category indexes store only
+reference identifiers, availability, and hashes; SQLite, research dossiers, datasets, snapshots,
+immutable runs, figures, and reports remain in place and authoritative. A complete self-verified
+content-addressed revision is durably staged before atomically replacing `current.json`; repeated
+sync is byte-idempotent, a failed pointer publication preserves the prior current revision, and
+generated-state tamper fails closed until `alpha project workspace recover` quarantines invalid
+bytes and rebuilds solely from authority. `sync`, `sync-all`, `show`, and explicit `recover` are
+CLI-owned; project creation commits its authoritative transaction before initial materialization.
+
+The existing Development Center renders the same strict REST/CLI projection and one bounded refresh
+action. It labels authority `none`, execution disabled, and the non-transmitting sandbox
+classification; FastAPI remains a thin CLI relay. Focused unit/integration tests cover deterministic
+bytes, stale revisions, missing immutable-run references, raw-byte exclusion, atomic failure,
+tamper recovery, two-project backfill, creation failure timing, and exact CLI/REST parity. The
+Workstation walkthrough passes at all three supported viewports. No SQLite identity, run ID,
+artifact layout, research gate, owner-auth ceremony, MCP tool, D1/D2/promotion action, paper,
+broker, or order authority changed.

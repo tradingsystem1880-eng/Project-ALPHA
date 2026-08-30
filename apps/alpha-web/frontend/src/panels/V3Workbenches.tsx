@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from '../api/client'
 import type {
@@ -11,6 +11,7 @@ import type {
   ProjectSummary,
   SuiteAction,
   SuitePlan,
+  StrategyProjectWorkspaceProjection,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
@@ -198,6 +199,53 @@ function ExperimentSummary({ project }: { project: ProjectDetail }) {
   )
 }
 
+function ProjectWorkspaceCard({
+  workspace,
+  busy,
+  error,
+  onRefresh,
+}: {
+  workspace: StrategyProjectWorkspaceProjection | null
+  busy: boolean
+  error: string | null
+  onRefresh: () => Promise<void>
+}) {
+  return (
+    <section className="governance-block" aria-label="Project workspace">
+      <div className="governance-title">
+        <span>Generated project workspace</span>
+        {workspace ? (
+          <span className={`chip ${workspace.stale ? 'fail' : 'pass'}`}>
+            {workspace.stale ? 'STALE' : 'VERIFIED'}
+          </span>
+        ) : <span className="chip">NOT LOADED</span>}
+      </div>
+      {error ? <div className="workbench-notice" role="alert"><strong>WORKSPACE</strong><span>{error}</span></div> : null}
+      {workspace ? (
+        <>
+          <div className="development-spec">
+            <div><span className="eyebrow">Revision</span><span className="mono">{shortId(workspace.workspace.revision_id)}</span></div>
+            <div><span className="eyebrow">Authority</span><span className="mono">NONE · REFERENCE PROJECTION</span></div>
+            <div><span className="eyebrow">Scope</span><span className="mono">{workspace.workspace.sandbox_classification.replaceAll('-', ' ').toUpperCase()}</span></div>
+            <div><span className="eyebrow">Execution</span><span className="mono neg">NO BROKER OR ORDER AUTHORITY</span></div>
+            <div><span className="eyebrow">Location</span><span className="mono">{workspace.workspace_root}</span></div>
+          </div>
+          <div className="workspace-index-grid" aria-label="Workspace reference indexes">
+            {workspace.workspace.indexes.map((index) => (
+              <span className="chip" key={index.category}>
+                {index.category.toUpperCase()} · {index.reference_count}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : <p className="muted">Loading the verified generated reference projection.</p>}
+      <button className="btn" disabled={busy} onClick={() => void onRefresh()}>
+        {busy ? 'Refreshing…' : 'Refresh generated references'}
+      </button>
+    </section>
+  )
+}
+
 export function DevelopmentCenter() {
   const linked = useLinked()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -205,6 +253,11 @@ export function DevelopmentCenter() {
   const [projectsLoading, setProjectsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(linked.projectId ?? '')
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
+  const [workspace, setWorkspace] = useState<StrategyProjectWorkspaceProjection | null>(null)
+  const [workspaceBusy, setWorkspaceBusy] = useState(false)
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null)
+  const selectedIdRef = useRef(selectedId)
+  const workspaceRefreshToken = useRef(0)
   const [jobs, setJobs] = useState<ControlJob[]>([])
   const [error, setError] = useState<string | null>(null)
   const [plans, setPlans] = useState<Partial<Record<SuiteAction, SuitePlan>>>({})
@@ -251,8 +304,13 @@ export function DevelopmentCenter() {
   }
 
   useEffect(() => {
+    selectedIdRef.current = selectedId
+    workspaceRefreshToken.current += 1
+    setWorkspaceBusy(false)
     if (!selectedId) {
       setDetail(null)
+      setWorkspace(null)
+      setWorkspaceError(null)
       return
     }
     let live = true
@@ -268,6 +326,13 @@ export function DevelopmentCenter() {
         universe: experiment?.universe.join(',') ?? null,
       })
     }).catch((reason: unknown) => live && setError(String(reason)))
+    setWorkspace(null)
+    setWorkspaceError(null)
+    api.projectWorkspace(selectedId).then((projection) => {
+      if (live) setWorkspace(projection)
+    }).catch((reason: unknown) => {
+      if (live) setWorkspaceError(String(reason))
+    })
     return () => { live = false }
   }, [selectedId])
 
@@ -376,6 +441,27 @@ export function DevelopmentCenter() {
     })
   }
 
+  async function refreshWorkspace() {
+    if (!selectedId) return
+    const projectId = selectedId
+    const refreshToken = ++workspaceRefreshToken.current
+    setWorkspaceBusy(true); setWorkspaceError(null)
+    try {
+      const projection = await api.refreshProjectWorkspace(projectId)
+      if (selectedIdRef.current === projectId && workspaceRefreshToken.current === refreshToken) {
+        setWorkspace(projection)
+      }
+    } catch (reason) {
+      if (selectedIdRef.current === projectId && workspaceRefreshToken.current === refreshToken) {
+        setWorkspaceError(String(reason))
+      }
+    } finally {
+      if (selectedIdRef.current === projectId && workspaceRefreshToken.current === refreshToken) {
+        setWorkspaceBusy(false)
+      }
+    }
+  }
+
   async function prepareCodexTask() {
     if (!detail) return
     setBriefBusy(true); setBriefStatus(null); setError(null)
@@ -445,6 +531,12 @@ export function DevelopmentCenter() {
         {!selectedId ? <Placeholder big="NO PROJECT">Create or select a project to inspect immutable strategy-development lineage.</Placeholder> : !detail ? <div className="skeleton" style={{ height: 300 }} /> : (
           <>
             <ExperimentSummary project={detail} />
+            <ProjectWorkspaceCard
+              workspace={workspace}
+              busy={workspaceBusy}
+              error={workspaceError}
+              onRefresh={refreshWorkspace}
+            />
             {sandboxCandidate ? (
               <section className="governance-block" aria-label="Sandbox hedged basis candidate">
                 <div className="governance-title">

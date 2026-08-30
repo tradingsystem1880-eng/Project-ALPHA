@@ -1446,6 +1446,54 @@ class ProjectPage(StrictModel):
     has_more: bool
 
 
+StrategyProjectWorkspaceCategory = Literal[
+    "research",
+    "sources",
+    "datasets",
+    "study-state",
+    "promotion",
+    "strategy-versions",
+    "experiments",
+    "runs",
+    "validation",
+    "figures",
+    "reports",
+    "sandbox-eligibility",
+]
+
+
+class StrategyProjectWorkspaceIndexDescriptor(StrictModel):
+    category: StrategyProjectWorkspaceCategory
+    path: str
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reference_count: int = Field(ge=0, le=10_000)
+
+
+class StrategyProjectWorkspace(StrictModel):
+    schema_name: Literal["StrategyProjectWorkspaceV1"]
+    schema_version: Literal[1]
+    revision_id: str = Field(pattern=r"^spw_[0-9a-f]{64}$")
+    project_id: str
+    project_name_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    authority: Literal["none"]
+    execution_authority: Literal[False]
+    categories: list[StrategyProjectWorkspaceCategory]
+    indexes: list[StrategyProjectWorkspaceIndexDescriptor]
+    sandbox_classification: Literal["non-transmitting-sandbox-only"]
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class StrategyProjectWorkspaceProjection(StrictModel):
+    schema_name: Literal["StrategyProjectWorkspaceProjectionV1"]
+    schema_version: Literal[1]
+    project_id: str
+    workspace_root: str
+    changed: bool
+    recovered: bool
+    stale: bool
+    workspace: StrategyProjectWorkspace
+
+
 class StrategyVersionCreateRequest(StrictModel):
     strategy_name: str = Field(min_length=1, max_length=200)
     source_fingerprint: str = Field(min_length=1, max_length=512)

@@ -1443,6 +1443,54 @@ function projectDetail(
   }
 }
 
+const PROJECT_WORKSPACE_CATEGORIES = [
+  'research',
+  'sources',
+  'datasets',
+  'study-state',
+  'promotion',
+  'strategy-versions',
+  'experiments',
+  'runs',
+  'validation',
+  'figures',
+  'reports',
+  'sandbox-eligibility',
+] as const
+
+function projectWorkspace(
+  projectId: string,
+): components['schemas']['StrategyProjectWorkspaceProjection'] {
+  const revisionId = `spw_${'a'.repeat(64)}`
+  return {
+    schema_name: 'StrategyProjectWorkspaceProjectionV1',
+    schema_version: 1,
+    project_id: projectId,
+    workspace_root: `strategy-workspaces/project--${projectId}`,
+    changed: false,
+    recovered: false,
+    stale: false,
+    workspace: {
+      schema_name: 'StrategyProjectWorkspaceV1',
+      schema_version: 1,
+      revision_id: revisionId,
+      project_id: projectId,
+      project_name_sha256: 'b'.repeat(64),
+      authority: 'none',
+      execution_authority: false,
+      categories: [...PROJECT_WORKSPACE_CATEGORIES],
+      indexes: PROJECT_WORKSPACE_CATEGORIES.map((category) => ({
+        category,
+        path: `indexes/${category}.json`,
+        sha256: 'c'.repeat(64),
+        reference_count: 0,
+      })),
+      sandbox_classification: 'non-transmitting-sandbox-only',
+      content_sha256: 'd'.repeat(64),
+    },
+  }
+}
+
 const CANDIDATE_DETAIL = {
   ...projectDetail(CANDIDATE_PROJECT),
   versions: [
@@ -2088,6 +2136,8 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (options.candidateProject && url.pathname === `/api/projects/${CANDIDATE_PROJECT.project_id}`) {
     return CANDIDATE_DETAIL
   }
+  const workspaceMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/workspace(?:\/refresh)?$/)
+  if (workspaceMatch) return projectWorkspace(decodeURIComponent(workspaceMatch[1]))
   const candidatePlanMatch = url.pathname.match(
     /^\/api\/projects\/project-hedged-basis\/experiments\/experiment-hedged-basis\/suite\/([^/]+)\/plan$/,
   )

@@ -159,6 +159,10 @@ action as `ResearchStudyStatusV1` with `authority: none`. The existing ResearchC
 renders that status and the unchanged server-masked semantic GET; it does not derive masking or
 authority in the browser. `alpha-study` remains projection-only, the MCP surface remains pinned at
 62 tools, D1 launch remains owner-CLI-only, and D2/promotion/paper/broker/order authority is unchanged.
+Each project also gets one non-authoritative `StrategyProjectWorkspaceV1` under
+`data/strategy-workspaces/`: twelve identifier/hash-only indexes, immutable verified revisions, an
+atomic current pointer, and explicit quarantine recovery. CLI-owned `project workspace
+show|sync|sync-all|recover` and the thin Development Center relay grant no authority; MCP stays 62.
 
 ## Claude Code harness (mechanical enforcement)
 Claude Code sessions in this repo run under a hard-blocking hook harness (full doc:

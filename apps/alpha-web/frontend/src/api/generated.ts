@@ -1603,6 +1603,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Workspace
+         * @description Read the verified non-authoritative generated workspace projection.
+         */
+        get: operations["get_project_workspace_api_projects__project_id__workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/workspace/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Project Workspace
+         * @description Refresh generated references only; this grants no research or execution authority.
+         */
+        post: operations["refresh_project_workspace_api_projects__project_id__workspace_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/providers": {
         parameters: {
             query?: never;
@@ -3422,6 +3462,50 @@ export interface paths {
         get: operations["v3_get_strategy_version_api_v3_projects__project_id__versions__version_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v3/projects/{project_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 Get Project Workspace
+         * @description Read the verified non-authoritative generated workspace projection.
+         *
+         *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/workspace`.
+         */
+        get: operations["v3_get_project_workspace_api_v3_projects__project_id__workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v3/projects/{project_id}/workspace/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * V3 Refresh Project Workspace
+         * @description Refresh generated references only; this grants no research or execution authority.
+         *
+         *     Versioned Workstation-v3 alias of `/api/projects/{project_id}/workspace/refresh`.
+         */
+        post: operations["v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9684,6 +9768,84 @@ export interface components {
             /** Supports Live Paper */
             supports_live_paper: boolean;
         };
+        /** StrategyProjectWorkspace */
+        StrategyProjectWorkspace: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Categories */
+            categories: ("research" | "sources" | "datasets" | "study-state" | "promotion" | "strategy-versions" | "experiments" | "runs" | "validation" | "figures" | "reports" | "sandbox-eligibility")[];
+            /** Content Sha256 */
+            content_sha256: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Indexes */
+            indexes: components["schemas"]["StrategyProjectWorkspaceIndexDescriptor"][];
+            /** Project Id */
+            project_id: string;
+            /** Project Name Sha256 */
+            project_name_sha256: string;
+            /** Revision Id */
+            revision_id: string;
+            /**
+             * Sandbox Classification
+             * @constant
+             */
+            sandbox_classification: "non-transmitting-sandbox-only";
+            /**
+             * Schema Name
+             * @constant
+             */
+            schema_name: "StrategyProjectWorkspaceV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** StrategyProjectWorkspaceIndexDescriptor */
+        StrategyProjectWorkspaceIndexDescriptor: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "research" | "sources" | "datasets" | "study-state" | "promotion" | "strategy-versions" | "experiments" | "runs" | "validation" | "figures" | "reports" | "sandbox-eligibility";
+            /** Path */
+            path: string;
+            /** Reference Count */
+            reference_count: number;
+            /** Sha256 */
+            sha256: string;
+        };
+        /** StrategyProjectWorkspaceProjection */
+        StrategyProjectWorkspaceProjection: {
+            /** Changed */
+            changed: boolean;
+            /** Project Id */
+            project_id: string;
+            /** Recovered */
+            recovered: boolean;
+            /**
+             * Schema Name
+             * @constant
+             */
+            schema_name: "StrategyProjectWorkspaceProjectionV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Stale */
+            stale: boolean;
+            workspace: components["schemas"]["StrategyProjectWorkspace"];
+            /** Workspace Root */
+            workspace_root: string;
+        };
         /** StrategyVersion */
         StrategyVersion: {
             /** Created At */
@@ -13043,6 +13205,68 @@ export interface operations {
             };
         };
     };
+    get_project_workspace_api_projects__project_id__workspace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    refresh_project_workspace_api_projects__project_id__workspace_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     get_providers_api_providers_get: {
         parameters: {
             query?: never;
@@ -16050,6 +16274,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyVersion"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_get_project_workspace_api_v3_projects__project_id__workspace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyProjectWorkspaceProjection"];
                 };
             };
             /** @description Stable, redacted Workstation error */

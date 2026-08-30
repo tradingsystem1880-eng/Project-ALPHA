@@ -146,7 +146,17 @@ the one-to-one terminal-attempt link prevents a completed or failed attempt from
 
 SQLite is the only mutable authority. Dossiers are deterministic projections under
 `data_dir/research/projects/<project_id>/`; they are never parsed back into control state. The
-default real-data commitment assigns chronologically ordered, indivisible eligible date/session/
+generated strategy-project workspace under
+`data_dir/strategy-workspaces/<project-slug>--<project-id>/` follows the same one-way rule. Its
+`StrategyProjectWorkspaceV1` manifest and twelve categorized indexes contain identifiers and hashes,
+not copied research/data/run bytes. A complete content-addressed revision is verified before an
+atomic `current.json` pointer replacement; tamper blocks synchronization until explicit recovery
+quarantines invalid generated state. Project creation commits SQLite authority first, and a failed
+workspace materialization cannot roll that transaction back. The Workstation reads and refreshes
+this projection only through `alpha project workspace`; neither operation grants research-gate,
+promotion, sandbox, paper, broker, or order authority.
+
+The default real-data commitment assigns chronologically ordered, indivisible eligible date/session/
 dependency groups 60/20/20 to D1/D2/D3. An alternative must be event-blind, owner-approved before
 D1, and retain at least 20% in D3. Governed runners consume only their assigned D1 or D2 share;
 D3 remains prohibited to research. Pre-launch projects already present when schema v2 migrates are explicitly
@@ -421,6 +431,7 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **Vendor bytes qualify before strategy visibility.** Tiingo daily responses become immutable receipts and candidates; only the configured authority can auto-promote after every critical check, and no comparison feed can silently replace it. → [ADR-0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)
 - **QuantPad discovery and bulk payloads are separate.** MCP is for bounded discovery/previews; the official API/SDK is for bulk historical research. Neither becomes canonical or paper-authoritative without receipt-backed qualification. → [ADR-0018](adr/0018-quantpad-external-research-data-boundary.md)
 - **Development state is external lineage.** Mutable projects, stages, attempts, sealed holdouts, jobs, and decisions are atomic CLI-owned SQLite records; immutable manifests are never edited to attach workflow state. Append-only project-scope selection events support point-in-time AgentBrief projections. Direct and suite Qlib/Kronos launches share one transactional capacity class. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
+- **Project workspaces are disposable projections.** Each project gets deterministic hash-only research/source/data/study/promotion/version/experiment/run/validation/figure/report/sandbox indexes. Immutable revisions and an atomic current pointer preserve the last valid view; tamper requires explicit quarantine-and-rebuild recovery. SQLite and immutable artifacts remain authority, and the workspace confers no execution capability. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
 - **Null evidence and path risk answer different questions.** The required `monte_carlo` stage follows randomized-price robustness and independently reports IID empirical, causal regime Markov, Student-t, and Kronos full-engine paths. No majority vote exists; warnings require an exact-hash CLI-only owner disposition. → [ADR-0029](adr/0029-four-family-monte-carlo-validation.md)
 - **Evidence is cited, revisioned, and time-aware.** Agent findings begin as drafts and must name exact run/artifact/field selectors; supplied experiment/version links must match the immutable lineage. As-of AgentBrief reads filter version/experiment scope, stages, run links, holdout audit, and evidence to the requested cutoff; no opaque vector memory is authoritative. → [ADR-0015](adr/0015-evidence-ledger-not-agent-memory.md)
 - **Qlib is isolated; ALPHA replay is authoritative.** The root runtime never imports Qlib/LightGBM or deserializes models. Fold-local, close-stamped predictions must pass strict contract and future-leakage validation before synchronized canonical replay. Qlib diagnostics remain advisory, and replay is labeled model-not-recomputed until a counterfactual retraining design exists. → [ADR-0016](adr/0016-isolated-qlib-worker.md)

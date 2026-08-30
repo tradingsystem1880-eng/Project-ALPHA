@@ -138,6 +138,28 @@ def project_detail(project_id: str, *, data_dir: Path, lineage_limit: int) -> di
     return project
 
 
+def project_workspace(project_id: str, *, data_dir: Path) -> dict[str, object]:
+    """Relay the verified read-only generated workspace projection."""
+    return _object(
+        _run_json(
+            ["project", "workspace", "show", project_id, "--json"],
+            data_dir=data_dir,
+        ),
+        "project workspace",
+    )
+
+
+def refresh_project_workspace(project_id: str, *, data_dir: Path) -> dict[str, object]:
+    """Relay an idempotent generated-projection refresh; no authority is mutated."""
+    return _object(
+        _run_json(
+            ["project", "workspace", "sync", project_id, "--json"],
+            data_dir=data_dir,
+        ),
+        "project workspace",
+    )
+
+
 def active_research_gate_overrides(
     *, data_dir: Path, limit: int, offset: int
 ) -> list[dict[str, object]]:

@@ -7,6 +7,7 @@ from typing import cast
 
 import typer
 
+from alpha_cli import project_workspace
 from alpha_cli.control_store import (
     AttemptStatus,
     ControlStore,
@@ -23,6 +24,10 @@ from alpha_core.config import AlphaSettings
 project_app = typer.Typer(
     help="Strategy projects, immutable versions, experiments, and audit links."
 )
+workspace_app = typer.Typer(
+    help="Deterministic, non-authoritative strategy-project workspace projections."
+)
+project_app.add_typer(workspace_app, name="workspace")
 
 
 def _store() -> ControlStore:
@@ -82,7 +87,8 @@ def create(
 ) -> None:
     """Create a governed strategy project and immediately capture its research case."""
     try:
-        store = _store()
+        settings = AlphaSettings()
+        store = ControlStore(settings.data_dir)
         draft = draft_exploration_contract(hypothesis)
         questions = draft["blocking_questions"]
         if not isinstance(questions, list):  # pragma: no cover - intake invariant.
@@ -113,7 +119,94 @@ def create(
         row = cast(dict[str, object], captured["project"])
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
+    try:
+        project_workspace.sync_project_workspace(store, settings.data_dir, str(row["project_id"]))
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(
+            f"project authority committed, but initial workspace projection failed: {exc}; "
+            f"run `alpha project workspace recover {row['project_id']}`"
+        ) from exc
     _emit(row, json_out=json_out, fallback=f"created project {row['project_id']} {row['name']}")
+
+
+@workspace_app.command("show")
+def workspace_show(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Read and verify the current workspace projection and staleness."""
+    try:
+        settings = AlphaSettings()
+        row = project_workspace.read_project_workspace(
+            ControlStore(settings.data_dir), settings.data_dir, project_id
+        )
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    manifest = cast(dict[str, object], row["workspace"])
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=f"workspace {manifest['revision_id']} for {project_id}",
+    )
+
+
+@workspace_app.command("sync")
+def workspace_sync(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Idempotently publish one project workspace from authority."""
+    try:
+        settings = AlphaSettings()
+        row = project_workspace.sync_project_workspace(
+            ControlStore(settings.data_dir), settings.data_dir, project_id
+        )
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=f"workspace synced for {project_id}; changed={row['changed']}",
+    )
+
+
+@workspace_app.command("sync-all")
+def workspace_sync_all(
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Backfill every governed strategy project workspace."""
+    try:
+        settings = AlphaSettings()
+        row = project_workspace.sync_all_project_workspaces(
+            ControlStore(settings.data_dir), settings.data_dir
+        )
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=f"synced {row['project_count']} project workspaces",
+    )
+
+
+@workspace_app.command("recover")
+def workspace_recover(
+    project_id: str,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Quarantine invalid generated state and rebuild from authority."""
+    try:
+        settings = AlphaSettings()
+        row = project_workspace.recover_project_workspace(
+            ControlStore(settings.data_dir), settings.data_dir, project_id
+        )
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(
+        row,
+        json_out=json_out,
+        fallback=f"workspace recovered for {project_id}",
+    )
 
 
 @project_app.command("list")

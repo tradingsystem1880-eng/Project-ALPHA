@@ -85,7 +85,7 @@
         ".claude/rules/alpha-web.md",
         "CLAUDE.md"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C3 close S7 deferrals and S8 common-projection acceptance",
@@ -188,7 +188,7 @@ that its live environment is still healthy.
 | Generic-study S8 | Release-blocking | Accept technical-event, crypto-crowding, and cross-sectional crypto cases through one projection boundary. |
 | Crypto Data House Stages 0-6 | Complete baseline | Fresh storage/provider/core-universe evidence is still required. |
 | Crypto Data House Stage 7 publication/owner pilot | Release-blocking | Exact-tree UI, live, replay, tamper, documentation, CI, and owner evidence must close. |
-| Strategy project workspaces | Release-blocking | Add deterministic non-authoritative projection and backfill both existing projects. |
+| Strategy project workspaces | Complete implementation on unpublished branch | Deterministic non-authoritative projection, CLI/REST/UI refresh, and backfill are implemented; preserve exact-tree and post-merge acceptance evidence. |
 | R-59 through R-62 identity/unit/DEX/immutability controls | Complete baseline, reverify | Focused offline and BTC/ETH live evidence must remain green. |
 | R-63 storage substitution/capacity/interruption | Release-blocking | Current Expansion access failure must be resolved; then full rehash and resume evidence must pass. |
 | R-64 provider drift/rate limits | Release-blocking | Fresh redacted provider receipts and scoped live tests decide current state. |
@@ -204,8 +204,8 @@ that its live environment is still healthy.
 - The only release meaning of “ready” is private-local research and non-transmitting sandbox use.
 - Generated strategy workspaces contain references and hashes only. SQLite, immutable manifests,
   snapshots, runs, and research artifacts remain authoritative.
-- The workspace command contract is exactly `alpha project workspace sync PROJECT_ID --json`,
-  `alpha project workspace sync-all --json`, and
+- The workspace command contract is exactly `alpha project workspace show PROJECT_ID --json`,
+  `alpha project workspace sync PROJECT_ID --json`, `alpha project workspace sync-all --json`, and
   `alpha project workspace recover PROJECT_ID --json`. A project-creation transaction commits
   before best-effort initial materialization; a projection failure never rolls back authority.
 - Workspace publication writes a complete immutable revision below

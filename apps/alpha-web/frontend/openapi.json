@@ -18304,6 +18304,194 @@
         "title": "StrategyDefinition",
         "type": "object"
       },
+      "StrategyProjectWorkspace": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "enum": [
+                "research",
+                "sources",
+                "datasets",
+                "study-state",
+                "promotion",
+                "strategy-versions",
+                "experiments",
+                "runs",
+                "validation",
+                "figures",
+                "reports",
+                "sandbox-eligibility"
+              ],
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "content_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "indexes": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyProjectWorkspaceIndexDescriptor"
+            },
+            "title": "Indexes",
+            "type": "array"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Project Name Sha256",
+            "type": "string"
+          },
+          "revision_id": {
+            "pattern": "^spw_[0-9a-f]{64}$",
+            "title": "Revision Id",
+            "type": "string"
+          },
+          "sandbox_classification": {
+            "const": "non-transmitting-sandbox-only",
+            "title": "Sandbox Classification",
+            "type": "string"
+          },
+          "schema_name": {
+            "const": "StrategyProjectWorkspaceV1",
+            "title": "Schema Name",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_name",
+          "schema_version",
+          "revision_id",
+          "project_id",
+          "project_name_sha256",
+          "authority",
+          "execution_authority",
+          "categories",
+          "indexes",
+          "sandbox_classification",
+          "content_sha256"
+        ],
+        "title": "StrategyProjectWorkspace",
+        "type": "object"
+      },
+      "StrategyProjectWorkspaceIndexDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "research",
+              "sources",
+              "datasets",
+              "study-state",
+              "promotion",
+              "strategy-versions",
+              "experiments",
+              "runs",
+              "validation",
+              "figures",
+              "reports",
+              "sandbox-eligibility"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "reference_count": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Reference Count",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "path",
+          "sha256",
+          "reference_count"
+        ],
+        "title": "StrategyProjectWorkspaceIndexDescriptor",
+        "type": "object"
+      },
+      "StrategyProjectWorkspaceProjection": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "schema_name": {
+            "const": "StrategyProjectWorkspaceProjectionV1",
+            "title": "Schema Name",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/StrategyProjectWorkspace"
+          },
+          "workspace_root": {
+            "title": "Workspace Root",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_name",
+          "schema_version",
+          "project_id",
+          "workspace_root",
+          "changed",
+          "recovered",
+          "stale",
+          "workspace"
+        ],
+        "title": "StrategyProjectWorkspaceProjection",
+        "type": "object"
+      },
       "StrategyVersion": {
         "additionalProperties": false,
         "properties": {
@@ -23951,6 +24139,92 @@
         ]
       }
     },
+    "/api/projects/{project_id}/workspace": {
+      "get": {
+        "description": "Read the verified non-authoritative generated workspace projection.",
+        "operationId": "get_project_workspace_api_projects__project_id__workspace_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Get Project Workspace",
+        "tags": [
+          "development"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/workspace/refresh": {
+      "post": {
+        "description": "Refresh generated references only; this grants no research or execution authority.",
+        "operationId": "refresh_project_workspace_api_projects__project_id__workspace_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Refresh Project Workspace",
+        "tags": [
+          "development"
+        ]
+      }
+    },
     "/api/providers": {
       "get": {
         "description": "Configured provider capabilities with credential names/presence, never secret values.",
@@ -29020,6 +29294,94 @@
           }
         },
         "summary": "V3 Get Strategy Version",
+        "tags": [
+          "workstation-v3",
+          "development"
+        ]
+      }
+    },
+    "/api/v3/projects/{project_id}/workspace": {
+      "get": {
+        "description": "Read the verified non-authoritative generated workspace projection.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/workspace`.",
+        "operationId": "v3_get_project_workspace_api_v3_projects__project_id__workspace_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "V3 Get Project Workspace",
+        "tags": [
+          "workstation-v3",
+          "development"
+        ]
+      }
+    },
+    "/api/v3/projects/{project_id}/workspace/refresh": {
+      "post": {
+        "description": "Refresh generated references only; this grants no research or execution authority.\n\nVersioned Workstation-v3 alias of `/api/projects/{project_id}/workspace/refresh`.",
+        "operationId": "v3_refresh_project_workspace_api_v3_projects__project_id__workspace_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyProjectWorkspaceProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "V3 Refresh Project Workspace",
         "tags": [
           "workstation-v3",
           "development"

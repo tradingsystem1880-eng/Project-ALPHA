@@ -40,3 +40,80 @@ test('real backend captures a case and renders all material questions without ve
   await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
   expect(externalRequests).toEqual([])
 })
+
+test('generated project workspace is visible and refreshes without authority escalation', async ({
+  page,
+  request,
+}) => {
+  const created = await request.post('/api/projects', {
+    data: {
+      name: `Workspace walkthrough ${test.info().project.name}`,
+      hypothesis: 'A bounded BTC event effect may exist.',
+      falsification_criterion: 'Reject on an inconclusive locked result.',
+    },
+  })
+  expect(created.ok()).toBe(true)
+  const project = (await created.json()) as { project_id: string }
+
+  await page.goto('')
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
+  await page.getByLabel('Strategy project').selectOption(project.project_id)
+
+  const workspace = page.getByRole('region', { name: 'Project workspace' })
+  await expect(workspace).toBeVisible({ timeout: 15_000 })
+  await expect(workspace.getByText('VERIFIED', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('NONE · REFERENCE PROJECTION', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('NON TRANSMITTING SANDBOX ONLY', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('NO BROKER OR ORDER AUTHORITY', { exact: true })).toBeVisible()
+  await expect(workspace.getByLabel('Workspace reference indexes').locator('.chip')).toHaveCount(12)
+  await workspace.getByRole('button', { name: 'Refresh generated references' }).click()
+  await expect(workspace.getByRole('button', { name: 'Refresh generated references' })).toBeEnabled()
+})
+
+test('late workspace refresh cannot overwrite a newly selected project', async ({ page, request }) => {
+  const createProject = async (name: string) => {
+    const response = await request.post('/api/projects', {
+      data: {
+        name,
+        hypothesis: 'A bounded BTC event effect may exist.',
+        falsification_criterion: 'Reject on an inconclusive locked result.',
+      },
+    })
+    expect(response.ok()).toBe(true)
+    return (await response.json()) as { project_id: string }
+  }
+  const first = await createProject(`Workspace race A ${test.info().project.name}`)
+  const second = await createProject(`Workspace race B ${test.info().project.name}`)
+  let releaseRefresh!: () => void
+  let markStarted!: () => void
+  const refreshReleased = new Promise<void>((resolve) => { releaseRefresh = resolve })
+  const refreshStarted = new Promise<void>((resolve) => { markStarted = resolve })
+  await page.route(`**/api/projects/${first.project_id}/workspace/refresh`, async (route) => {
+    markStarted()
+    await refreshReleased
+    await route.continue()
+  })
+
+  await page.goto('')
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
+  const selector = page.getByLabel('Strategy project')
+  const workspace = page.getByRole('region', { name: 'Project workspace' })
+  await selector.selectOption(first.project_id)
+  await expect(workspace.getByText(first.project_id, { exact: false })).toBeVisible()
+  const lateRefreshResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && response.url().endsWith(`/api/projects/${first.project_id}/workspace/refresh`)
+  ))
+  await workspace.getByRole('button', { name: 'Refresh generated references' }).click()
+  await refreshStarted
+
+  await selector.selectOption(second.project_id)
+  await expect(workspace.getByText(second.project_id, { exact: false })).toBeVisible()
+  releaseRefresh()
+  await lateRefreshResponse
+  await expect(workspace.getByRole('button', { name: 'Refresh generated references' })).toBeEnabled()
+  await expect(workspace.getByText(second.project_id, { exact: false })).toBeVisible()
+  await expect(workspace.getByText(first.project_id, { exact: false })).toHaveCount(0)
+})
