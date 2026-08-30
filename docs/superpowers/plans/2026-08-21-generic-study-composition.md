@@ -232,7 +232,7 @@
         "docs/**",
         "CLAUDE.md"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S6 owner-only D1 integration",
@@ -245,7 +245,7 @@
         "tests/unit/study/**",
         "tests/integration/**"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S7 individually approved external adapters",

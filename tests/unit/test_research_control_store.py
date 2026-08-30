@@ -324,6 +324,20 @@ def test_semantic_owner_payload_and_empty_head_are_canonical_and_closed(tmp_path
         control_store_module._semantic_payload({**payload, "extra": True})
 
 
+def test_semantic_payload_accepts_the_frozen_study_second_precision_cutoff() -> None:
+    source = {**_semantic_source(), "cutoff_confirmed_at": "2026-08-13T00:00:00Z"}
+    payload = _semantic_definition_payload(
+        source, control_store_module._semantic_empty_head_sha256(PROJECT_ID)
+    )
+
+    assert control_store_module._semantic_source_map(source)["cutoff_confirmed_at"] == (
+        "2026-08-13T00:00:00Z"
+    )
+    assert control_store_module._semantic_payload(payload)["cutoff_confirmed_at"] == (
+        "2026-08-13T00:00:00Z"
+    )
+
+
 @pytest.mark.parametrize(
     ("event_type", "field", "maximum"),
     [

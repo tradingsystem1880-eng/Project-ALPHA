@@ -8283,6 +8283,7 @@ export interface components {
             scorecard?: components["schemas"]["ResearchScorecard"] | null;
             /** Source Pack Id */
             source_pack_id: string | null;
+            study_status?: components["schemas"]["ResearchStudyStatusV1"] | null;
             /** Terminal Attempt Count */
             terminal_attempt_count: number;
             /** Unfinalized Launch Count */
@@ -8410,6 +8411,39 @@ export interface components {
              * @enum {string}
              */
             scope: "exploration" | "confirmation";
+        };
+        /** ResearchD1AttemptViewV1 */
+        ResearchD1AttemptViewV1: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Contract Id */
+            contract_id: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Run Id */
+            run_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "completed" | "failed";
+        };
+        /** ResearchD1StateV1 */
+        ResearchD1StateV1: {
+            /** Attempts */
+            attempts: components["schemas"]["ResearchD1AttemptViewV1"][];
+            elapsed_budget: components["schemas"]["JsonObject"];
+            /**
+             * Launch Authority
+             * @constant
+             */
+            launch_authority: "owner_cli_only";
+            remaining_budget: components["schemas"]["JsonObject"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_started" | "queued" | "running" | "paused" | "blocked" | "completed" | "failed";
         };
         /** ResearchD2Event */
         ResearchD2Event: {
@@ -9018,6 +9052,12 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
         };
+        /** ResearchPromotionStateV1 */
+        ResearchPromotionStateV1: {
+            /** Packet Id */
+            packet_id: string | null;
+            readiness: components["schemas"]["ResearchReadinessProjection"];
+        };
         /** ResearchProposalBlockerV1 */
         ResearchProposalBlockerV1: {
             /** Code */
@@ -9222,6 +9262,56 @@ export interface components {
              */
             value: "READY FOR STRATEGY RESEARCH" | "MORE RESEARCH REQUIRED" | "REFORMULATE HYPOTHESIS" | "EVIDENCE DOES NOT SUPPORT CONTINUATION";
         };
+        /** ResearchSemanticEventViewV1 */
+        ResearchSemanticEventViewV1: {
+            /** Actor */
+            actor: string;
+            /** Artifact Id */
+            artifact_id: string;
+            /** Event Id */
+            event_id: string;
+            payload: components["schemas"]["JsonObject"];
+            /** Reason */
+            reason: string;
+            /** Receipt Id */
+            receipt_id: string;
+            /** Recorded At */
+            recorded_at: string;
+        };
+        /** ResearchSemanticStateV1 */
+        ResearchSemanticStateV1: {
+            /** Case Contract Id */
+            case_contract_id: string | null;
+            /** Case Revision */
+            case_revision?: string | null;
+            /** Cutoff Confirmed At */
+            cutoff_confirmed_at: string | null;
+            definition: components["schemas"]["ResearchSemanticEventViewV1"] | null;
+            /** Event Count */
+            event_count: number;
+            freeze: components["schemas"]["ResearchSemanticEventViewV1"] | null;
+            /** Head Sha256 */
+            head_sha256: string;
+            /** Next Owner Action */
+            next_owner_action: string;
+            /** Projection Sha256 */
+            projection_sha256?: string | null;
+            review: components["schemas"]["ResearchSemanticEventViewV1"] | null;
+            /** Run Id */
+            run_id: string | null;
+            /**
+             * Source State
+             * @enum {string}
+             */
+            source_state: "not_recorded" | "current" | "stale";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "definition_required" | "review_required" | "freeze_required" | "frozen" | "stale";
+            /** Verified Read Sha256 */
+            verified_read_sha256?: string | null;
+        };
         /** ResearchSourcePackOptionV1 */
         ResearchSourcePackOptionV1: {
             /** Created At */
@@ -9233,6 +9323,38 @@ export interface components {
             project_id: string;
             /** Source Ids */
             source_ids: string[];
+        };
+        /** ResearchStudyStatusV1 */
+        ResearchStudyStatusV1: {
+            /** Active Contract Id */
+            active_contract_id: string;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            d1: components["schemas"]["ResearchD1StateV1"];
+            /** Next Action */
+            next_action: string;
+            /** Project Id */
+            project_id: string;
+            promotion: components["schemas"]["ResearchPromotionStateV1"];
+            /**
+             * Responsibility
+             * @enum {string}
+             */
+            responsibility: "owner" | "codex";
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "ResearchStudyStatusV1";
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            semantic: components["schemas"]["ResearchSemanticStateV1"];
         };
         /** RiskProvenance */
         RiskProvenance: {

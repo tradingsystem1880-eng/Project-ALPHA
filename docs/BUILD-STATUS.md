@@ -220,3 +220,22 @@ unfrozen and unchanged in meaning; there is no direct semantic-write CLI command
 screen, handwritten frontend or frontend-derived authority, MCP semantic capability, D1/D2 or
 promotion authority, holdout access, paper, broker, or order widening. S5c presentation remains
 pending.
+
+**Generic study composition S5c/S6 existing-screen delivery (2026-08-30)** ✅ — the existing
+ResearchCockpit Study tab now renders the unchanged seven-key server-masked semantic response beside
+additive `ResearchStudyStatusV1`. The CLI-owned status projection verifies the append-only ledger,
+reads events and their head in one SQLite transaction, projects only the semantic cycle bound to the
+current contract and case revision, and marks an older cycle stale instead of pairing it with current
+masked points. It links the existing D1 terminal-attempt ledger and live queued/running/paused/failed
+execution state, elapsed/remaining budgets, promotion dossier reference/readiness, and
+Python-authoritative next-owner action. A real D0→D1 path also closes the second-precision semantic
+cutoff compatibility defect without changing the frozen S5a response bytes.
+
+The browser derives neither masking nor authority: a stale or hash-mismatched semantic source hides
+the masked read, D1 is labeled `OWNER CLI ONLY`, and no launch affordance exists. CLI/REST parity is
+proved on one data directory with a populated Touch-ID-bound semantic event and completed D1 attempt.
+The focused Python suite passes (`208 passed`), frontend coverage passes (`167 passed`), the Study-tab
+Playwright/accessibility case passes at all three supported viewports, generated OpenAPI/TypeScript and
+committed SPA assets are fresh, the MCP surface remains exactly 62 tools, and the fast and canonical
+full gates pass on the exact tree. No route, screen, MCP tool, owner action, D2/promotion control,
+paper, broker, or order authority was added.

@@ -1424,6 +1424,18 @@ def _semantic_empty_head_sha256(project_id: str) -> str:
     return hashlib.sha256(_canonical_json(value, "semantic empty head").encode("utf-8")).hexdigest()
 
 
+def _is_semantic_utc_timestamp(value: object) -> bool:
+    """Accept frozen study ISO spelling and the existing control-plane microsecond spelling."""
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = parse_timestamp(value)
+    except DataError:
+        return False
+    study_spelling = parsed.isoformat().replace("+00:00", "Z")
+    return value in {study_spelling, _format_timestamp(parsed)}
+
+
 def _semantic_source_map(source: Mapping[str, object]) -> dict[str, object]:
     clean = _json_object(source, "verified semantic source")
     extras = set(clean) - _SEMANTIC_SOURCE_KEYS
@@ -1444,7 +1456,7 @@ def _semantic_source_map(source: Mapping[str, object]) -> dict[str, object]:
     if not isinstance(run_id, str) or _SEMANTIC_RUN_ID_RE.fullmatch(run_id) is None:
         raise DataError("verified semantic source run_id is invalid")
     cutoff = clean["cutoff_confirmed_at"]
-    if not isinstance(cutoff, str) or _format_timestamp(parse_timestamp(cutoff)) != cutoff:
+    if not _is_semantic_utc_timestamp(cutoff):
         raise DataError("verified semantic source cutoff_confirmed_at is invalid")
     return {
         "project_id": pid,
@@ -1485,7 +1497,7 @@ def _semantic_payload(payload: Mapping[str, object]) -> dict[str, object]:
     if not isinstance(run_id, str) or _SEMANTIC_RUN_ID_RE.fullmatch(run_id) is None:
         raise DataError("SemanticOwnerActionV1 run_id is invalid")
     cutoff = clean["cutoff_confirmed_at"]
-    if not isinstance(cutoff, str) or _format_timestamp(parse_timestamp(cutoff)) != cutoff:
+    if not _is_semantic_utc_timestamp(cutoff):
         raise DataError("SemanticOwnerActionV1 cutoff_confirmed_at is invalid")
     if event_type == "definition":
         for field, maximum in (("definition_label", 256), ("definition_text", 8192)):
@@ -6344,15 +6356,8 @@ class ControlStore:
 
     def semantic_head_sha256(self, project_id: str) -> str:
         """Return the verified project-local semantic head without mutation."""
-        with self._transaction(write=False) as connection:
-            events = self._semantic_event_rows_locked(
-                connection, project_id=project_id, source=None
-            )
-            return (
-                _semantic_empty_head_sha256(project_id)
-                if not events
-                else str(events[-1]["event_sha256"])
-            )
+        _, head_sha256 = self.read_semantic_state(project_id)
+        return head_sha256
 
     @staticmethod
     def _semantic_receipt_matches(
@@ -6903,8 +6908,21 @@ class ControlStore:
 
     def read_semantic_events(self, project_id: str) -> list[dict[str, object]]:
         """Return semantic events after recomputing hashes, transitions, source, and receipts."""
+        events, _ = self.read_semantic_state(project_id)
+        return events
+
+    def read_semantic_state(self, project_id: str) -> tuple[list[dict[str, object]], str]:
+        """Return verified semantic events and their head from one read transaction."""
         with self._transaction(write=False) as connection:
-            return self._semantic_event_rows_locked(connection, project_id=project_id, source=None)
+            events = self._semantic_event_rows_locked(
+                connection, project_id=project_id, source=None
+            )
+            head_sha256 = (
+                _semantic_empty_head_sha256(project_id)
+                if not events
+                else str(events[-1]["event_sha256"])
+            )
+            return events, head_sha256
 
     def append_semantic_event(
         self,
@@ -9130,6 +9148,17 @@ class ControlStore:
                 "recorded_at": str(row["created_at"]),
             }
         return None
+
+    def research_promotion_reference(
+        self, project_id: str, contract_id: str
+    ) -> dict[str, object] | None:
+        """Return the verified promotion-dossier reference for one research contract."""
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            self._require_research_contract(connection, project_id, contract_id)
+            return self._promotion_reference(
+                connection, project_id=project_id, contract_id=contract_id, cutoff=None
+            )
 
     def get_agent_brief_context(
         self,

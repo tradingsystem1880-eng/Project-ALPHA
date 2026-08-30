@@ -2552,6 +2552,67 @@ class ResearchEvidenceHub(StrictModel):
     sections: ResearchEvidenceHubSections
 
 
+class ResearchSemanticEventViewV1(StrictModel):
+    event_id: str
+    artifact_id: str
+    receipt_id: str
+    actor: str
+    reason: str
+    recorded_at: str
+    payload: JsonObject
+
+
+class ResearchSemanticStateV1(StrictModel):
+    state: Literal["definition_required", "review_required", "freeze_required", "frozen", "stale"]
+    source_state: Literal["not_recorded", "current", "stale"]
+    case_contract_id: str | None
+    case_revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    verified_read_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    projection_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    run_id: str | None
+    cutoff_confirmed_at: str | None
+    event_count: int = Field(ge=0)
+    head_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    definition: ResearchSemanticEventViewV1 | None
+    review: ResearchSemanticEventViewV1 | None
+    freeze: ResearchSemanticEventViewV1 | None
+    next_owner_action: str
+
+
+class ResearchD1AttemptViewV1(StrictModel):
+    attempt_id: str
+    contract_id: str
+    status: Literal["completed", "failed"]
+    run_id: str | None
+    recorded_at: str
+
+
+class ResearchD1StateV1(StrictModel):
+    launch_authority: Literal["owner_cli_only"]
+    status: Literal["not_started", "queued", "running", "paused", "blocked", "completed", "failed"]
+    attempts: list[ResearchD1AttemptViewV1]
+    elapsed_budget: JsonObject
+    remaining_budget: JsonObject
+
+
+class ResearchPromotionStateV1(StrictModel):
+    packet_id: str | None
+    readiness: ResearchReadinessProjection
+
+
+class ResearchStudyStatusV1(StrictModel):
+    schema_: Literal["ResearchStudyStatusV1"] = Field(alias="schema", serialization_alias="schema")
+    schema_version: Literal[1]
+    authority: Literal["none"]
+    project_id: str
+    active_contract_id: str
+    semantic: ResearchSemanticStateV1
+    d1: ResearchD1StateV1
+    promotion: ResearchPromotionStateV1
+    next_action: str
+    responsibility: Literal["owner", "codex"]
+
+
 class ResearchCase(StrictModel):
     schema_version: Literal[1]
     project_id: str
@@ -2599,6 +2660,7 @@ class ResearchCase(StrictModel):
     scorecard: ResearchScorecard | None = None
     confirmation_readiness: ResearchReadinessProjection | None = None
     promotion_readiness: ResearchReadinessProjection | None = None
+    study_status: ResearchStudyStatusV1 | None = None
 
 
 class ResearchCaptureResponse(StrictModel):

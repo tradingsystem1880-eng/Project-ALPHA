@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import json
+import sqlite3
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from typer.testing import CliRunner
 
+from alpha_cli import control_store as control_store_module
 from alpha_cli.control_store import ControlStore
+from alpha_cli.main import app as alpha_app
 from alpha_core.config import AlphaSettings
 from alpha_research import build_research_gate_packet
 from alpha_web import _research
@@ -64,6 +70,78 @@ def _semantic_projection_payload() -> dict[str, object]:
 def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     return TestClient(create_app())
+
+
+def _record_test_semantic_definition(store: ControlStore, project_id: str) -> None:
+    with store._transaction(write=False) as connection:
+        source = store._verified_semantic_source_locked(connection, project_id)
+    head_sha256 = control_store_module._semantic_empty_head_sha256(project_id)
+    payload = {
+        "schema": "SemanticOwnerActionV1",
+        "schema_version": 1,
+        "event_type": "definition",
+        "verified_read_sha256": source["verified_read_sha256"],
+        "projection_sha256": source["projection_sha256"],
+        "run_id": source["run_id"],
+        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
+        "expected_semantic_head_sha256": head_sha256,
+        "definition_label": "Parity definition",
+        "definition_text": "Only the verified pre-cutoff points define this shape.",
+    }
+    prepared = store.prepare_semantic_action(
+        project_id,
+        payload,
+        expected_case_revision=str(source["case_revision"]),
+    )
+    now = datetime.now(UTC)
+    challenge_id = "00000000-0000-4000-8000-000000000101"
+    credential_id = "parity-test-credential"
+    database = store._data_dir / "control" / control_store_module.DATABASE_NAME
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute(
+            "INSERT INTO owner_credentials VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                credential_id,
+                b"test-key",
+                1,
+                "owner",
+                "[]",
+                control_store_module._format_timestamp(now - timedelta(minutes=1)),
+                None,
+            ),
+        )
+        binding = {
+            "action_type": "record_semantic_event",
+            "project_id": project_id,
+            "artifact_hash": prepared["artifact_hash"],
+            "expected_case_revision": prepared["case_revision"],
+            "request_hash": prepared["request_hash"],
+            "consequence_summary": "record semantic definition",
+            "reason": "prove CLI and REST parity",
+        }
+        connection.execute(
+            """INSERT INTO owner_auth_challenges
+            VALUES (?, 'action', ?, NULL, ?, ?, ?, NULL, NULL)""",
+            (
+                challenge_id,
+                b"test-challenge",
+                json.dumps(binding, sort_keys=True, separators=(",", ":")),
+                control_store_module._format_timestamp(now),
+                control_store_module._format_timestamp(now + timedelta(minutes=5)),
+            ),
+        )
+        connection.commit()
+    store.record_semantic_event_authorization(
+        challenge_id=challenge_id,
+        credential_id=credential_id,
+        previous_sign_count=1,
+        new_sign_count=2,
+        assertion_hash="f" * 64,
+        payload=payload,
+        now=now + timedelta(seconds=1),
+        receipt_id="00000000-0000-4000-8000-000000000102",
+    )
 
 
 def test_compare_endpoint_single_strategy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -335,6 +413,9 @@ def test_research_case_capture_propose_status_report_and_pilot_round_trip(
     assert shown.status_code == status.status_code == report.status_code == 200
     assert shown.json() == status.json()
     assert shown.json()["active_contract_id"] == contract_id
+    assert shown.json()["study_status"]["semantic"]["state"] == "definition_required"
+    assert shown.json()["study_status"]["d1"]["launch_authority"] == "owner_cli_only"
+    assert shown.json()["study_status"]["promotion"]["packet_id"] is None
     assert report.json()["report_schema"] == "ResearchProgressReportV1"
     assert report.json()["terminal"] is False
     assert "ResearchGatePacket" in report.json()["warning"]
@@ -370,6 +451,27 @@ def test_research_case_capture_propose_status_report_and_pilot_round_trip(
         "Launch `alpha research run deep` to execute the frozen analysis plan on D1."
     )
     assert launched["case"]["d2_state"] == "sealed"
+
+    deep = CliRunner().invoke(
+        alpha_app,
+        ["research", "run", "deep", project_id, "--json"],
+        env={"ALPHA_DATA_DIR": str(tmp_path)},
+    )
+    assert deep.exit_code == 0, deep.output
+    _record_test_semantic_definition(store, project_id)
+
+    direct_cli = CliRunner().invoke(
+        alpha_app,
+        ["research", "status", project_id, "--json"],
+        env={"ALPHA_DATA_DIR": str(tmp_path)},
+    )
+    assert direct_cli.exit_code == 0, direct_cli.output
+    cli_status = json.loads(direct_cli.output)
+    rest_status = client.get(f"/api/research/cases/{project_id}")
+    assert rest_status.status_code == 200, rest_status.text
+    assert rest_status.json() == cli_status
+    assert rest_status.json()["study_status"]["semantic"]["definition"] is not None
+    assert rest_status.json()["study_status"]["d1"]["attempts"]
 
 
 def test_research_rest_surface_cannot_approve_decide_reveal_or_confirm(

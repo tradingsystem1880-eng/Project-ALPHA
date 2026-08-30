@@ -70,6 +70,7 @@ import type {
   ResearchCase,
   ResearchCasePage,
   ResearchCaseReport,
+  VerifiedBlindSemanticReadV1,
   ResearchContextPacket,
   ResearchContextPacketPage,
   ResearchDatasetPage,
@@ -509,6 +510,8 @@ export const api = {
     postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/launch`, { stage: 'pilot' }),
   researchStatus: (projectId: string): Promise<ResearchCase> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/status`),
+  researchSemanticProjection: (projectId: string): Promise<VerifiedBlindSemanticReadV1> =>
+    getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/semantic-projection`),
   researchProgressReport: (projectId: string): Promise<ResearchCaseReport> =>
     getJSON(`/api/research/cases/${encodeURIComponent(projectId)}/report`),
   researchCases: (query: { limit?: number; offset?: number } = {}): Promise<ResearchCasePage> =>

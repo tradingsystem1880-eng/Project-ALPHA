@@ -3351,16 +3351,20 @@ def status(
     payload = active.get("payload") if isinstance(active, dict) else None
     card = research_hypothesis_card(payload if isinstance(payload, dict) else {})
     scorecard = research_scorecard_projection(_store(), project_id, summary=row)
+    status_row = {
+        **row,
+        "hypothesis_card": card,
+        "scorecard": scorecard,
+        "confirmation_readiness": scorecard["confirmation_readiness"],
+        "promotion_readiness": scorecard["promotion_readiness"],
+    }
+    from alpha_cli.research_study_status import research_study_status
+
+    status_row["study_status"] = research_study_status(_store(), project_id, summary=status_row)
     _emit(
         # Additive card/scorecard keys only: the summary itself stays byte-identical
         # because the dossier embeds and hashes it.
-        {
-            **row,
-            "hypothesis_card": card,
-            "scorecard": scorecard,
-            "confirmation_readiness": scorecard["confirmation_readiness"],
-            "promotion_readiness": scorecard["promotion_readiness"],
-        },
+        status_row,
         json_out=json_out,
         fallback=f"{row['phase']} / {row['execution_state']}: {row['next_action']}",
     )

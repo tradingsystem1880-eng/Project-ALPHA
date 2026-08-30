@@ -239,8 +239,16 @@ the action is complete even if the HTTP response is lost. A retry of that consum
 the exact original request hash performs a read-only linkage validation and returns the already
 committed receipt/event result; it never verifies new authority, increments the counter, executes,
 or appends again. A different request hash or any linkage defect fails closed. This is idempotent
-response recovery, not reusable authorization. Public semantic presentation remains deferred to
-S5c.
+response recovery, not reusable authorization.
+
+S5c and S6 add one non-authoritative read composition to the existing Research Case status. The
+CLI projects the verified current semantic definition/review/freeze cycle and its head from one
+SQLite read transaction, then links the existing active research contract, D1 attempt ledger and
+budgets, promotion dossier reference/readiness, and Python-authoritative next-owner-action guidance.
+The existing ResearchCockpit Study tab renders that status beside the unchanged seven-key S5a
+masked response. The browser never reads raw artifacts, computes the cutoff, unmasks future values,
+or derives authority. D1 remains launchable only through the trusted owner CLI; S5c/S6 add no route,
+owner action, MCP tool, D2/promotion control, paper, broker, or order capability.
 
 CLI authority does not widen: `alpha research semantic-projection PROJECT_ID --json` remains the
 verified read source and there is no direct semantic-write CLI command. REST adds no route: only
@@ -317,8 +325,10 @@ execution order, verification, rollback, and scope. Its slices are:
    Only generated OpenAPI/types and operation-governance records change—no handwritten frontend
    client, presentation, or mutation surface.
 9. S5b: additive SQLite v5 semantic definition/review events and Touch ID binding.
-10. S5c: semantic presentation inside the existing Research screen.
-11. S6: owner-only D1 integration mapped to existing contracts and ledgers.
+10. S5c: semantic presentation inside the existing Research screen through the unchanged masked
+    GET plus the additive non-authoritative research-status projection.
+11. S6: read-only D1 linkage mapped to existing contracts, attempts, budgets, promotion dossier,
+    and owner guidance; launch remains owner-CLI-only.
 12. S7: individually approved external adapters/workers/oracles.
 13. S8: acceptance studies, UI projections, and cleanup only after parity.
 

@@ -13,6 +13,8 @@ import type {
   ResearchGatePacket,
   ResearchMaterialAnswers,
   ResearchProposalOptionsV1,
+  ResearchStudyStatusV1,
+  VerifiedBlindSemanticReadV1,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { onNewIdea } from '../context/newIdea'
@@ -22,6 +24,7 @@ import { findingChipClass } from './researchChipModel'
 import { openProviderCenter, openResearchData, openResearchSources } from './actions'
 import {
   researchBudgetRows,
+  researchBudgetValueRows,
   researchContractView,
   researchEvidenceFirewall,
   researchPhaseLabel,
@@ -34,7 +37,7 @@ type ChartConstruction = ResearchMaterialAnswers['chart_construction']
 type EventAvailability = ResearchMaterialAnswers['event_availability']
 type PrimaryOutcome = ResearchMaterialAnswers['primary_outcome']
 type BusyOperation = 'capture' | 'load' | 'proposal' | 'pilot' | 'status' | 'report' | 'decision'
-type CockpitView = 'overview' | 'decision'
+type CockpitView = 'overview' | 'study' | 'decision'
 
 const CHART_OPTIONS: ReadonlyArray<{ value: ChartConstruction; label: string }> = [
   { value: 'spy_rth_60m_four_hour_window', label: 'Synthetic SPY-like 60m D0 · four-hour window' },
@@ -224,6 +227,116 @@ function DecisionViewSection({
       ) : (
         <span className="muted">No owner decisions recorded. Decisions are owner-only CLI acts.</span>
       )}
+    </section>
+  )
+}
+
+export function StudyStatusSection({
+  status,
+  semanticRead,
+  semanticError,
+}: {
+  status: ResearchStudyStatusV1 | null
+  semanticRead: VerifiedBlindSemanticReadV1 | null
+  semanticError: string | null
+}) {
+  if (!status) {
+    return (
+      <Placeholder big="STUDY STATUS UNAVAILABLE">
+        Refresh the case to read the CLI-owned semantic and D1 projection.
+      </Placeholder>
+    )
+  }
+  const events = [status.semantic.definition, status.semantic.review, status.semantic.freeze]
+    .filter((event) => event !== null)
+  const currentSemanticRead = semanticRead !== null && (
+    status.semantic.source_state === 'not_recorded' || (
+      status.semantic.source_state === 'current'
+      && status.semantic.verified_read_sha256 === semanticRead.content_sha256
+    )
+  ) ? semanticRead : null
+  const points = currentSemanticRead?.projection.points ?? []
+  return (
+    <section aria-label="Verified semantic study status">
+      <div className="rd-head">Masked semantic projection · server verified</div>
+      {currentSemanticRead ? (
+        <>
+          <div className="development-spec">
+            <div><span className="eyebrow">D0 run</span><code>{currentSemanticRead.run_id}</code></div>
+            <div><span className="eyebrow">Visible points</span><strong>{points.length}</strong></div>
+            <div><span className="eyebrow">Masked future points</span><strong>{currentSemanticRead.projection.masked_count}</strong></div>
+            <div><span className="eyebrow">Verified cutoff</span><code>{currentSemanticRead.projection.cutoff_confirmed_at}</code></div>
+            <div><span className="eyebrow">Authority</span><strong>NONE · READ ONLY</strong></div>
+          </div>
+          <div className="research-lineage" aria-label="Visible pre-cutoff semantic points">
+            {points.map((point) => (
+              <div key={point.point_id}>
+                <span className="eyebrow">{point.point_id}</span>
+                <span className="mono">{point.available_at} · {point.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="workbench-notice" role="status">
+          <strong>MASKED D0 PROJECTION UNAVAILABLE</strong>
+          <span>{semanticError ?? (
+            status.semantic.source_state === 'stale'
+              ? 'The case changed after the prior semantic cycle. Refresh before using the masked read.'
+              : 'Complete and mechanically verify the registered D0 pilot.'
+          )}</span>
+        </div>
+      )}
+
+      <div className="rd-head">Touch-ID-bound semantic state</div>
+      <div className="workbench-notice">
+        <strong>{status.semantic.state.replaceAll('_', ' ').toUpperCase()}</strong>
+        <span>{status.semantic.next_owner_action}</span>
+        <span>source {status.semantic.source_state.replaceAll('_', ' ')}</span>
+        <code>head {status.semantic.head_sha256}</code>
+      </div>
+      <div className="research-lineage" aria-label="Verified semantic owner events">
+        {events.map((event) => event && (
+          <div key={event.event_id}>
+            <span className="eyebrow">{String(event.payload.event_type)} · {event.recorded_at}</span>
+            <code>{event.artifact_id}</code>
+            {typeof event.payload.definition_label === 'string' ? (
+              <strong>{event.payload.definition_label}</strong>
+            ) : null}
+            {typeof event.payload.definition_text === 'string' ? (
+              <p>{event.payload.definition_text}</p>
+            ) : null}
+            {typeof event.payload.review_decision === 'string' ? (
+              <strong>{event.payload.review_decision.toUpperCase()}</strong>
+            ) : null}
+            {typeof event.payload.review_text === 'string' ? (
+              <p>{event.payload.review_text}</p>
+            ) : null}
+            <span>{event.actor} · {event.reason} · Touch ID receipt {event.receipt_id}</span>
+          </div>
+        ))}
+        {!events.length ? <span className="muted">No semantic owner event has been recorded.</span> : null}
+      </div>
+
+      <div className="rd-head">Existing research authority linkage</div>
+      <div className="development-spec">
+        <div><span className="eyebrow">Active contract</span><code>{status.active_contract_id}</code></div>
+        <div><span className="eyebrow">D1 state</span><strong>{status.d1.status.replaceAll('_', ' ').toUpperCase()}</strong></div>
+        <div><span className="eyebrow">D1 launch</span><strong>OWNER CLI ONLY</strong></div>
+        <div><span className="eyebrow">Promotion dossier</span><code>{status.promotion.packet_id ?? 'none'}</code></div>
+        <div><span className="eyebrow">Promotion readiness</span><strong>{status.promotion.readiness.state.toUpperCase()}</strong></div>
+      </div>
+      <div className="research-budget" aria-label="D1 research budget">
+        {researchBudgetValueRows(status.d1.elapsed_budget, status.d1.remaining_budget).map((row) => (
+          <div key={row.resource}>
+            <span>{row.resource.replaceAll('_', ' ')}</span>
+            <span className="mono">used {budgetValue(row.used)} · left {budgetValue(row.remaining)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="workbench-notice">
+        <strong>NEXT · {status.responsibility.toUpperCase()}</strong><span>{status.next_action}</span>
+      </div>
     </section>
   )
 }
@@ -523,6 +636,8 @@ export function ResearchCockpit(props: PanelHandleProps) {
   const [report, setReport] = useState<ResearchCaseReport | null>(null)
   const [view, setView] = useState<CockpitView>('overview')
   const [decisionView, setDecisionView] = useState<ResearchDecisionView | null>(null)
+  const [semanticRead, setSemanticRead] = useState<VerifiedBlindSemanticReadV1 | null>(null)
+  const [semanticError, setSemanticError] = useState<string | null>(null)
   const [lookupId, setLookupId] = useState(initialProjectId)
   const [idea, setIdea] = useState('')
   const [caseName, setCaseName] = useState('')
@@ -563,6 +678,8 @@ export function ResearchCockpit(props: PanelHandleProps) {
     setProposalOptionsError(null)
     setReport(null)
     setDecisionView(null)
+    setSemanticRead(null)
+    setSemanticError(null)
     setAnswerBundleId('')
     setChartConstruction('')
     setEventAvailability('')
@@ -748,6 +865,20 @@ export function ResearchCockpit(props: PanelHandleProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, researchCase, decisionView])
 
+  useEffect(() => {
+    if (view !== 'study' || !researchCase) return
+    const projectId = researchCase.project_id
+    let current = true
+    setSemanticRead(null)
+    setSemanticError(null)
+    void api.researchSemanticProjection(projectId).then((projection) => {
+      if (current && activeProjectRef.current === projectId) setSemanticRead(projection)
+    }).catch((reason: unknown) => {
+      if (current && activeProjectRef.current === projectId) setSemanticError(errorMessage(reason))
+    })
+    return () => { current = false }
+  }, [view, researchCase])
+
   async function loadReport(): Promise<void> {
     if (!researchCase) return
     const projectId = researchCase.project_id
@@ -841,6 +972,15 @@ export function ResearchCockpit(props: PanelHandleProps) {
                 Overview
               </button>
               <button
+                className={view === 'study' ? 'btn primary' : 'btn'}
+                type="button"
+                role="tab"
+                aria-selected={view === 'study'}
+                onClick={() => setView('study')}
+              >
+                Study
+              </button>
+              <button
                 className={view === 'decision' ? 'btn primary' : 'btn'}
                 type="button"
                 role="tab"
@@ -852,6 +992,12 @@ export function ResearchCockpit(props: PanelHandleProps) {
             </div>
             {view === 'decision' ? (
               <DecisionViewSection view={decisionView} busy={busy} />
+            ) : view === 'study' ? (
+              <StudyStatusSection
+                status={researchCase.study_status ?? null}
+                semanticRead={semanticRead}
+                semanticError={semanticError}
+              />
             ) : (
               <CaseSummary
                 researchCase={researchCase}

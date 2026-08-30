@@ -48,7 +48,7 @@ Private, single-owner, local quantitative research platform. **Written and opera
 - `alpha_core` imports nothing internal.
 - `alpha_data` → core only. `alpha_strategies` → core only. `alpha_validation` → core only. `alpha_forecast` → core only (only `alpha_cli` may import it). `alpha_options` → core only. `alpha_screener` → core only. `alpha_research` → core only. `alpha_backtest` → core + data only.
 - `alpha_patterns` → core only (pure pattern geometry; no app consumer yet — see `.claude/rules/alpha-patterns.md`).
-- `alpha_study` → core/data/patterns/research only. It publishes strict immutable feature-lineage, event/factor tables, closed operator registration, existing-authority references, derived finding/mechanism/advisor/workspace projections, one thin registered-double-bottom → `EventTableV1` adapter, and an S5a1 byte-bound blind semantic-read contract. The semantic contract binds the complete D0 acceptance/events/chart bytes, requires exact event agreement, and omits post-cutoff point identity/clocks/values; its cutoff lineage remains `not_checked` until the CLI verifier composes it. The read-only `alpha research semantic-projection PROJECT_ID --json` CLI now composes that verified envelope after the existing mechanical D0 verifier, and alpha_web exposes the same non-authoritative response through a strict GET projection. UI presentation remains deferred. It owns no persistence, CLI command, UI, approval, D1/D2 transition, promotion, paper, broker, or order authority (see `.claude/rules/alpha-study.md`).
+- `alpha_study` → core/data/patterns/research only. It publishes strict immutable feature-lineage, event/factor tables, closed operator registration, existing-authority references, derived finding/mechanism/advisor/workspace projections, one thin registered-double-bottom → `EventTableV1` adapter, and an S5a1 byte-bound blind semantic-read contract. The semantic contract binds the complete D0 acceptance/events/chart bytes, requires exact event agreement, and omits post-cutoff point identity/clocks/values; its cutoff lineage remains `not_checked` until the CLI verifier composes it. The read-only `alpha research semantic-projection PROJECT_ID --json` CLI composes that verified envelope after the existing mechanical D0 verifier, and alpha_web exposes the same non-authoritative response through a strict GET projection. The existing ResearchCockpit Study tab relays that exact masked response beside the CLI-owned semantic/D1 status projection; `alpha_study` still owns no persistence, CLI command, UI, approval, D1/D2 transition, promotion, paper, broker, or order authority (see `.claude/rules/alpha-study.md`).
 - `alpha_cli` is the ONLY layer allowed to compose the backtest engine with the validation gauntlet.
 - `alpha_mcp` and `alpha_web` sit atop the DAG and compose nothing — actions plus provider/system and engine-backed projections subprocess the `alpha` CLI. Their in-process reads are limited to supported public CLI seams (catalog/run store, artifact contract/run projection, job capacity/durable lease, and paper store) plus bounded Polars artifact projection. They never import or execute the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Nothing imports either surface.
 - The MCP surface is consciously **pinned at 62 tools** — adding or removing one is a deliberate governance change that must move `server.py`, the `test_research_mcp.py` pin, and this line together.
@@ -146,16 +146,19 @@ paper trading, QuantPad, Workstation v1–v4, Research Scientist program, resear
 R1–R6, four-family Monte Carlo) is relocated verbatim to `docs/BUILD-STATUS.md` —
 consult it before changing any governed surface; append new delivery records there.
 
-**Generic study composition S5b current state:** the CLI-owned SQLite control plane is schema v5
+**Generic study composition S5b-S6 current state:** the CLI-owned SQLite control plane is schema v5
 with a protected append-only semantic definition/review/freeze ledger and exact v4 backup/lossless
 receipt-check migration boundary. Canonical persisted reads fail closed on hash, sequence,
 transition, source, or receipt linkage defects; after a committed-v5 protected-object failure,
 recovery is an owner-approved forensic assessment followed by a forward migration. The existing
 owner-auth challenge/perform routes special-dispatch `record_semantic_event` through one atomic
 Touch ID receipt/event transaction with read-only response recovery; there is no direct semantic-write
-CLI command. `alpha-study` remains projection-only, the MCP surface remains pinned at 62 tools,
-owner-only D1/D2/promotion authority is unchanged, and S5b adds no screen, UI authority, or public
-semantic presentation.
+CLI command. `alpha research status` additively projects the verified current semantic cycle,
+existing active contract, D1 attempts and budgets, promotion reference/readiness, and next owner
+action as `ResearchStudyStatusV1` with `authority: none`. The existing ResearchCockpit Study tab
+renders that status and the unchanged server-masked semantic GET; it does not derive masking or
+authority in the browser. `alpha-study` remains projection-only, the MCP surface remains pinned at
+62 tools, D1 launch remains owner-CLI-only, and D2/promotion/paper/broker/order authority is unchanged.
 
 ## Claude Code harness (mechanical enforcement)
 Claude Code sessions in this repo run under a hard-blocking hook harness (full doc:

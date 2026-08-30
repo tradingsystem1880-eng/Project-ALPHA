@@ -69,7 +69,7 @@
         ".claude/rules/alpha-web.md",
         "CLAUDE.md"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C2 add deterministic per-project strategy workspaces",

@@ -36,6 +36,17 @@ class _FakeStore:
         self.packet_reads += 1
         return self.inputs
 
+    def read_semantic_state(self, project_id: str) -> tuple[list[dict[str, object]], str]:
+        assert project_id == "project-1"
+        return [], "0" * 64
+
+    def research_promotion_reference(
+        self, project_id: str, contract_id: str
+    ) -> dict[str, object] | None:
+        assert project_id == "project-1"
+        assert contract_id == "rc_" + "0" * 64
+        return None
+
     def list_research_datasets(
         self, *, instrument: str | None = None, limit: int = 100, offset: int = 0
     ) -> list[dict[str, object]]:
@@ -259,9 +270,12 @@ def test_status_json_gains_the_additive_hypothesis_card(
     payload = draft_exploration_contract("SPY bounces after double bottoms on the 4h chart")
     summary: dict[str, object] = {
         "project_id": "project-1",
+        "active_contract_id": "rc_" + "0" * 64,
         "phase": "triage",
         "execution_state": "idle",
         "next_action": "Owner answers the material question batch.",
+        "responsibility": "owner",
+        "source_pack_id": None,
         "active_contract": {"contract_id": "rc_" + "0" * 64, "payload": payload},
     }
     store = _FakeStore(summary, _inputs())
