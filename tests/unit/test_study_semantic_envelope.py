@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 
@@ -59,4 +61,51 @@ def test_verified_read_rejects_mismatched_run_id() -> None:
     payload = value.to_dict()
     payload["run_id"] = "fedcba9876543210"
     with pytest.raises(DataError, match="run_id"):
+        VerifiedBlindSemanticReadV1.from_dict(payload)
+
+
+def test_verified_read_rejects_invalid_envelope_contract_fields() -> None:
+    projection = _projection()
+
+    with pytest.raises(DataError, match="string-keyed mapping"):
+        VerifiedBlindSemanticReadV1.from_dict(cast(Mapping[str, object], []))
+    with pytest.raises(DataError, match="lowercase 16-character hex"):
+        VerifiedBlindSemanticReadV1(run_id="not-a-run-id", projection=projection)
+    with pytest.raises(DataError, match="projection must be"):
+        VerifiedBlindSemanticReadV1(
+            run_id="0123456789abcdef",
+            projection=cast(BlindSemanticProjectionV1, {}),
+        )
+    with pytest.raises(DataError, match="source_verification is fixed"):
+        VerifiedBlindSemanticReadV1(
+            run_id="0123456789abcdef",
+            projection=projection,
+            source_verification="claimed_without_recomputation",
+        )
+    with pytest.raises(DataError, match="has no authority"):
+        VerifiedBlindSemanticReadV1(
+            run_id="0123456789abcdef",
+            projection=projection,
+            authority="execution",
+        )
+
+    payload = VerifiedBlindSemanticReadV1(
+        run_id="0123456789abcdef", projection=projection
+    ).to_dict()
+    payload["run_id"] = " padded "
+    with pytest.raises(DataError, match="canonical text"):
+        VerifiedBlindSemanticReadV1.from_dict(payload)
+
+    payload = VerifiedBlindSemanticReadV1(
+        run_id="0123456789abcdef", projection=projection
+    ).to_dict()
+    payload["content_sha256"] = "not-a-hash"
+    with pytest.raises(DataError, match="64-character SHA-256"):
+        VerifiedBlindSemanticReadV1.from_dict(payload)
+
+    payload = VerifiedBlindSemanticReadV1(
+        run_id="0123456789abcdef", projection=projection
+    ).to_dict()
+    payload["schema_version"] = 2
+    with pytest.raises(DataError, match="unsupported .* schema"):
         VerifiedBlindSemanticReadV1.from_dict(payload)
