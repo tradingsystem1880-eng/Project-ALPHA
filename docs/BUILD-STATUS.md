@@ -259,3 +259,21 @@ tamper recovery, two-project backfill, creation failure timing, and exact CLI/RE
 Workstation walkthrough passes at all three supported viewports. No SQLite identity, run ID,
 artifact layout, research gate, owner-auth ceremony, MCP tool, D1/D2/promotion action, paper,
 broker, or order authority changed.
+
+**Generic study composition S7/S8 closure (2026-08-30)** ✅ — the crypto-readiness release adopts
+no new `alpha-study` adapter or dependency. ADR-0035 records an explicit disposition for TA-Lib,
+Twelve Data, Alphalens, mplfinance, Qlib, RD-Agent, PyPortfolioOpt, Riskfolio-Lib, `bt`, Zipline
+Reloaded, pfhedge, and pybotters. The existing separately locked Qlib diagnostic worker is retained
+unchanged; it is not newly adopted into the study layer. Every future candidate still requires a
+separate ADR-0011 evidence packet.
+
+S8 acceptance uses the existing common contracts: provider-native BTCUSDT technical and registered
+Bybit linear BTCUSDT/USDT crowding events round-trip through `EventTableV1`, while an exact Binance
+spot/USDT BTC/ETH universe round-trips through `FactorObservationTableV1`. The fixtures bind causal
+availability, input, vintage, universe-snapshot, provider, family, venue, instrument, and quote
+identity; future source/universe poison fails closed. The focused study/provider/bias suite passes
+(139 tests), the complete bias-guard family passes (158 tests), two perturbed-environment
+determinism passes are green, and the canonical full gate passes on the exact tree. No empirical
+support, owner decision,
+D2, promotion, execution, paper, broker, order, MCP, or new UI authority is introduced; no legacy
+or immutable artifact is deleted.

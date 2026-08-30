@@ -329,11 +329,38 @@ execution order, verification, rollback, and scope. Its slices are:
     GET plus the additive non-authoritative research-status projection.
 11. S6: read-only D1 linkage mapped to existing contracts, attempts, budgets, promotion dossier,
     and owner guidance; launch remains owner-CLI-only.
-12. S7: individually approved external adapters/workers/oracles.
-13. S8: acceptance studies, UI projections, and cleanup only after parity.
+12. S7: release disposition of external adapter/worker/oracle candidates. For the 2026-08-30
+    private-local crypto closure, no new dependency is adopted; every later adoption still needs
+    its own ADR-0011 evidence packet.
+13. S8: technical-event, crypto-crowding, and cross-sectional crypto acceptance studies through
+    the existing common projection contracts, plus UI projections and cleanup only after parity.
 
 Every slice is additive and independently revertable. No later slice may widen scope
 because an external library or a favorable research result makes it convenient.
+
+## S7 release disposition
+
+The 2026-08-30 crypto-readiness closure found no capability gap that justifies a new generic-study
+dependency. The release disposition is therefore explicit and closed:
+
+| Candidate | Release disposition | Existing boundary retained |
+|---|---|---|
+| TA-Lib | Deferred; no `alpha-study` adapter | ALPHA-owned causal pattern/operator implementations |
+| Twelve Data | Deferred; no provider adapter | Existing qualified provider-native data families |
+| Alphalens | Deferred; no analytical adapter | `alpha_research` and `alpha_validation` evidence contracts |
+| mplfinance | Deferred; no rendering adapter | Existing deterministic figure catalogue and renderer |
+| Qlib | No new `alpha-study` adapter; existing separately locked diagnostic worker is unchanged | Isolated JSON/Parquet worker boundary; never study authority |
+| RD-Agent | Deferred; no autonomous research adapter | Existing owner-governed Research Case workflow |
+| PyPortfolioOpt | Deferred; no portfolio adapter | Existing ALPHA portfolio and validation implementations |
+| Riskfolio-Lib | Deferred; no portfolio/risk adapter | Existing ALPHA portfolio and risk implementations |
+| `bt` | Deferred; no backtest adapter | `alpha-backtest` remains authoritative |
+| Zipline Reloaded | Deferred; no backtest adapter | `alpha-backtest` remains authoritative |
+| pfhedge | Deferred; no hedging adapter | Non-transmitting sandbox remains separate and non-authoritative |
+| pybotters | Deferred; no exchange adapter | Existing provider-native research acquisition only |
+
+No root or worker lock changes in S7. A future candidate requires one separately reviewed ADR-0011
+packet covering the concrete gap, exact version/revision, licence and terms, security and
+maintenance evidence, deterministic offline behavior, secret boundary, provenance, and removal.
 
 ## Non-decisions
 

@@ -98,7 +98,7 @@
         "docs/**",
         "CLAUDE.md"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C4 qualify owner storage and BTC/ETH core providers",

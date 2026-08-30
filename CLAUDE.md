@@ -158,7 +158,7 @@ existing active contract, D1 attempts and budgets, promotion reference/readiness
 action as `ResearchStudyStatusV1` with `authority: none`. The existing ResearchCockpit Study tab
 renders that status and the unchanged server-masked semantic GET; it does not derive masking or
 authority in the browser. `alpha-study` remains projection-only, the MCP surface remains pinned at
-62 tools, D1 launch remains owner-CLI-only, and D2/promotion/paper/broker/order authority is unchanged.
+62 tools, D1 launch remains owner-CLI-only, and D2/promotion/paper/broker/order authority is unchanged. S7 adds no generic-study dependency (the existing isolated Qlib worker is unchanged); S8 accepts technical-event, crypto-crowding, and cross-sectional crypto PIT fixtures only through `EventTableV1`/`FactorObservationTableV1` with `authority: none`.
 Each project also gets one non-authoritative `StrategyProjectWorkspaceV1` under
 `data/strategy-workspaces/`: twelve identifier/hash-only indexes, immutable verified revisions, an
 atomic current pointer, and explicit quarantine recovery. CLI-owned `project workspace

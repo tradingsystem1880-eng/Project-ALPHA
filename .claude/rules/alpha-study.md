@@ -55,3 +55,10 @@ usable PIT lineage. Any future analytical or authority-linked implementation mus
 to that seam before code is added. D1 remains owner-launched, MCP
 remains pinned at 62 tools, and external capabilities remain deferred until separately
 approved and isolated.
+
+S7 adopts no new generic-study dependency for the 2026-08-30 private-local crypto closure. The
+existing separately locked Qlib diagnostic worker remains unchanged and outside `alpha_study`;
+every other named candidate remains deferred behind its own future ADR-0011 packet. S8 accepts
+technical-event and BTCUSDT crowding rows through `EventTableV1`, and cross-sectional BTC/ETH rows
+through `FactorObservationTableV1`. These are deterministic, PIT, non-authoritative projection
+fixtures only; they add no empirical result, D2, promotion, execution, paper, broker, or order seam.

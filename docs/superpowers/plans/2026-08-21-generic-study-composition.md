@@ -1,5 +1,9 @@
 # Generic Study Composition and External Capability Adapters — Implementation Plan
 
+**Delivery state:** Completed 2026-08-30. S7 adopted no new generic-study dependency; S8 closed
+technical-event, crypto-crowding, and cross-sectional crypto acceptance through the existing
+non-authoritative projection contracts. No legacy orchestration or immutable artifact was deleted.
+
 ```json
 {
   "schema_version": 1,
@@ -248,24 +252,22 @@
       "status": "done"
     },
     {
-      "title": "S7 individually approved external adapters",
-      "verify": "Before code, pass a separate ADR-0011 evidence packet covering the concrete capability gap, smallest boundary, exact revision, maintenance/security evidence, direct/transitive lock impact, licence/terms, deterministic offline behavior and test double, secrets, removal path, captured fixtures, and separately authorized network smoke; then run the adapter suite, uv run ruff check ., uv run mypy packages apps tests, uv run lint-imports, uv run python scripts/gate.py fast, and uv run python scripts/gate.py full before commit",
-      "expected": "Each candidate has an explicit adopt/defer/reject decision; each adopted optional adapter has an exact lock/version/licence/provenance record, cannot write authoritative state, preserves provider-native identity, availability, units, and retention constraints, and is not required for normal startup",
-      "rollback": "Revert only the adapter commit and remove its optional extra/worker; preserve all ALPHA-owned artifacts and authority records",
+      "title": "S7 release disposition of external adapter candidates",
+      "verify": "Confirm ADR-0035 records an explicit release disposition for TA-Lib, Twelve Data, Alphalens, mplfinance, Qlib, RD-Agent, PyPortfolioOpt, Riskfolio-Lib, bt, Zipline Reloaded, pfhedge, and pybotters; confirm the root and worker locks are unchanged by S7; run plan/documentation truth checks and git diff --check",
+      "expected": "No new generic-study adapter or dependency is adopted for the 2026-08-30 crypto closure. Qlib's existing separately locked diagnostic worker remains unchanged and outside alpha-study. Every future candidate still requires its own complete ADR-0011 evidence packet before code.",
+      "rollback": "Revert only the S7 disposition documentation; no adapter, optional extra, worker, lock, artifact, or authority record changed in this release",
       "files": [
-        "packages/alpha-study/**",
-        "packages/alpha-data/**",
-        "packages/alpha-strategies/**",
-        "packages/alpha-backtest/**",
-        "workers/**",
-        "tests/adapters/**"
+        "docs/adr/0035-generic-study-composition-and-external-capability-adapters.md",
+        "docs/superpowers/plans/2026-08-21-generic-study-composition.md",
+        "docs/BUILD-STATUS.md",
+        "CLAUDE.md"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
-      "title": "S8 acceptance, UI projections, and cleanup",
-      "verify": "Run the complete Python and frontend gates, the three approved synthetic/technical, macro, and cross-sectional acceptance studies, and an owner parity review before any deletion",
-      "expected": "All studies use the common projection API, no D2/promotion/execution authority is added, existing cases remain behaviorally preserved, and cleanup is separately owner-approved",
+      "title": "S8 crypto acceptance, UI projections, and cleanup",
+      "verify": "Run the complete Python and frontend gates plus technical-event, crypto-crowding, and cross-sectional crypto acceptance studies through the EventTableV1 and FactorObservationTableV1 common projection contracts, including PIT/future-poison, deterministic round-trip, and no-authority checks; require an owner parity review before any deletion",
+      "expected": "All three crypto-relevant studies reuse the common projection API, no D2/promotion/execution authority is added, existing cases remain behaviorally preserved, and cleanup remains separately owner-approved",
       "rollback": "Revert the acceptance/UI/cleanup commit; do not rewrite or delete legacy orchestration until parity evidence is preserved",
       "files": [
         "packages/alpha-study/**",
@@ -274,7 +276,7 @@
         "tests/**",
         "docs/**"
       ],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": ["dag", "protected", "bias", "determinism"],
