@@ -100,7 +100,12 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
   await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   const selector = page.getByLabel('Strategy project')
   const workspace = page.getByRole('region', { name: 'Project workspace' })
+  const firstWorkspaceResponse = page.waitForResponse((response) => (
+    response.request().method() === 'GET'
+    && response.url().endsWith(`/api/projects/${first.project_id}/workspace`)
+  ))
   await selector.selectOption(first.project_id)
+  expect((await firstWorkspaceResponse).ok()).toBe(true)
   await expect(workspace.getByText(first.project_id, { exact: false })).toBeVisible()
   const lateRefreshResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
@@ -109,7 +114,12 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
   await workspace.getByRole('button', { name: 'Refresh generated references' }).click()
   await refreshStarted
 
+  const secondWorkspaceResponse = page.waitForResponse((response) => (
+    response.request().method() === 'GET'
+    && response.url().endsWith(`/api/projects/${second.project_id}/workspace`)
+  ))
   await selector.selectOption(second.project_id)
+  expect((await secondWorkspaceResponse).ok()).toBe(true)
   await expect(workspace.getByText(second.project_id, { exact: false })).toBeVisible()
   releaseRefresh()
   await lateRefreshResponse
