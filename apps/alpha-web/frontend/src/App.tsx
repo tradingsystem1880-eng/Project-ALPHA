@@ -222,7 +222,7 @@ function WorkstationApp() {
       showStrategyLab: () => showPane('build', 'StrategyLab'),
       showProjects: () => showPane('build', 'DevelopmentCenter'),
       showResearchSources: () => showPane('explore', 'Literature'),
-      showResearchData: () => showPane('explore', 'ResearchDataExplorer'),
+      showResearchData: () => showPane('explore', 'DataManager'),
       showProviders: () => showPane('operate', 'ProviderSystem'),
     })
   }, [openRun, showPane])

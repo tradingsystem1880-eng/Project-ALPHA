@@ -95,7 +95,7 @@
       "expected": "The Research screen side area has one `Data Manager` tab: pull form with native date inputs, symbol combobox (stored pairs + profile starter list), venue select, Estimate (first-bar route) with listing hint, failure text with a one-click `Start there` retry; stored pairs table; Expansion SSD datasets table from coverage/storage with honest not-mounted state; reviewed assets with the CLI recipe (no mutation); the existing CryptoDataCenter mounted inside a second tab so the crypto-data e2e journey passes; screens.test and the Playwright harness renamed from `Research Data` to `Data Manager`; screenshot baselines re-snapshotted deliberately; static/app rebuilt and committed.",
       "rollback": "Restore DataExplorer/ResearchDataExplorer in screens.tsx and the previous static/app; the backend is untouched by this slice.",
       "files": ["apps/alpha-web/frontend/src/panels/DataManager.tsx", "apps/alpha-web/frontend/src/panels/DataExplorer.tsx", "apps/alpha-web/frontend/src/panels/ResearchDataExplorer.tsx", "apps/alpha-web/frontend/src/shell/screens.tsx", "apps/alpha-web/frontend/src/shell/screens.test.ts", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "W7 XRP and SOL as reviewed native assets (reviewed-native-v2, v1 kept)",
@@ -205,6 +205,24 @@ Test-architect specification (2026-09-01), 31 tests; the numbers below are its i
   assumption 5.
 * Markers: `network` only on the live first-bar test; **no `bias_guard`** (no PIT reader changes;
   re-checked in W8).
+
+## Deviations recorded during /implement
+
+* **W3** — `since=0` is never sent (Coinbase treats it as "latest"); the listing date comes from a
+  forward 300-bar window scan (assumption 2 rewritten, live-verified on both venues).
+* **W4** — the route takes `symbol` + `exchange` only; `--source ccxt` is fixed server-side because
+  `first-bar` is ccxt-only. `_run_json` now prefers the CLI's own `Error:` line over Click's usage
+  banner for every relaying router (plain message, finding #1).
+* **W5** — `vitest.config.ts` (coverage allow-list) and `DataExplorer.tsx` (a `validateDates`
+  pre-check so the throwing `buildDataPullArgs` never crashes a click handler) were added to the
+  slice's files.
+* **W6** — stored pairs stay clickable chips: the web has no symbols projection carrying venue /
+  bar-count / last-date, so a pair·venue·bars·to table would have invented columns (GAP for W8 /
+  Phase 2). `showResearchData` lands on the Data Manager (Research Data is one inner tab away)
+  because `showPane` carries no params. No `~t s` time estimate: nothing measures it. The
+  `explore-screen` baselines were re-snapshotted with `--update-snapshots=all` (the tab-strip change
+  sat under the 2 % pixel tolerance). Scratchpad-only design files (`$S/…`, `*.dc.html`) are not
+  repo edits.
 
 ## DAG / look-ahead / determinism impact
 

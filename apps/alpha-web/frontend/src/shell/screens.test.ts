@@ -65,8 +65,7 @@ describe('screen definitions', () => {
     expect(side?.[1].map((pane) => pane.name)).toEqual([
       'ResearchBacklog',
       'Literature',
-      'ResearchDataExplorer',
-      'DataExplorer',
+      'DataManager',
       'CodexBench',
     ])
   })

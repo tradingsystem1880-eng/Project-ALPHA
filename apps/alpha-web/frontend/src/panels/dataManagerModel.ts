@@ -17,6 +17,18 @@ export function pullDefaults(profile: Profile): PullDefaults {
     : { symbol: 'AAPL', source: 'tiingo', exchange: 'binance' }
 }
 
+/** The profile's starter watchlist, offered beside the stored pairs in the symbol combobox. */
+export function starterSymbols(profile: Profile): string[] {
+  return profile === 'crypto' ? ['BTC/USDT', 'ETH/USDT', 'XRP/USDT', 'SOL/USDT'] : ['SPY', 'AAPL']
+}
+
+const RETRY_START = /\(--start (\d{4}-\d{2}-\d{2})\)/
+
+/** The retry start the CLI itself proposes in a pre-listing failure, else null. */
+export function retryStartFrom(message: string | null): string | null {
+  return message === null ? null : (RETRY_START.exec(message)?.[1] ?? null)
+}
+
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 function calendarProblem(name: 'start' | 'end', value: string): string | null {

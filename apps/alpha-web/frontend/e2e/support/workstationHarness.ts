@@ -2579,6 +2579,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
 
   // The Research data panel serves registered refs with audit badges and the forever badge.
+  await page.getByRole('tab', { name: 'Data Manager', exact: true }).click()
   await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
   await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
   await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
@@ -2591,6 +2592,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
 export async function cryptoDataCenterJourney(page: Page): Promise<void> {
   await preparePage(page, { researchDataRefreshDelayMs: 400 })
 
+  await page.getByRole('tab', { name: 'Data Manager', exact: true }).click()
   await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
   const center = page.getByRole('region', { name: 'Crypto Data Center' })
   await expect(center.getByText('Select qualified datasets for one exact frozen snapshot.')).toBeVisible()
@@ -2765,6 +2767,37 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
   await page.getByRole('button', { name: 'live log' }).click()
   await expect(page.getByText(/Waiting for process output/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'hide log' })).toBeVisible()
+  await expectReleaseAccessibility(page)
+})
+
+test('a failed job row shows the CLI error message, never a box border', async ({ page }) => {
+  const message = 'No data for XRP/USDT on binance before 2018-05-04 (first listed). Start there? (--start 2018-05-04)'
+  await preparePage(page, {
+    jobs: [
+      {
+        job_id: 'job-failed-fixture',
+        command: 'data pull XRP/USDT --source ccxt --exchange binance --start 2015-01-01 --end 2026-06-30',
+        command_path: 'data pull',
+        kind: null,
+        status: 'failed',
+        created_at: Date.now() / 1_000 - 30,
+        finished_at: Date.now() / 1_000 - 20,
+        elapsed_seconds: 10,
+        current_step: message,
+        progress_mode: 'terminal',
+        progress_fraction: null,
+        eta_seconds: null,
+        eta_sample_count: 0,
+        run_id: null,
+        session_id: null,
+        returncode: 2,
+        n_lines: 3,
+      },
+    ],
+  })
+  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await expect(page.getByTitle(message)).toBeVisible()
+  await expect(page.getByText(/[─│╭╮╰╯]/)).toHaveCount(0)
   await expectReleaseAccessibility(page)
 })
 

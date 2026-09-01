@@ -183,7 +183,7 @@ export function PriceChart(props: PanelHandleProps) {
         {error ? (
           <Placeholder big="no data">{error}</Placeholder>
         ) : !symbol ? (
-          <Placeholder big="no symbol">Pick one in Data Explorer or a run, or type it above</Placeholder>
+          <Placeholder big="no symbol">Pick one in Data Manager or a run, or type it above</Placeholder>
         ) : !bars ? (
           <Placeholder>loading…</Placeholder>
         ) : bars.length === 0 ? (

@@ -17,7 +17,7 @@ import type { PanelHandleProps } from '../context/panelHandle'
 import { ActivityFeed } from '../panels/ActivityFeed'
 import { AiConsole } from '../panels/AiConsole'
 import { CodexBench } from '../panels/CodexBench'
-import { DataExplorer } from '../panels/DataExplorer'
+import { DataManager } from '../panels/DataManager'
 import { EvidenceHub } from '../panels/EvidenceHub'
 import { Glossary } from '../panels/Glossary'
 import { JobMonitor } from '../panels/JobMonitor'
@@ -30,7 +30,6 @@ import { PriceChart } from '../panels/PriceChart'
 import { ProviderSystem } from '../panels/ProviderSystem'
 import { ResearchBacklog } from '../panels/ResearchBacklog'
 import { ResearchCockpit } from '../panels/ResearchCockpit'
-import { ResearchDataExplorer } from '../panels/ResearchDataExplorer'
 import { RiskMonitor } from '../panels/RiskMonitor'
 import { Screener } from '../panels/Screener'
 import { StrategyLab } from '../panels/StrategyLab'
@@ -79,8 +78,7 @@ export const SCREENS: ScreenDefinition[] = [
         component: EvidenceHub,
         params: { initialSection: 'literature', compactLiterature: true },
       },
-      { area: 'side', name: 'ResearchDataExplorer', title: 'Research Data', component: ResearchDataExplorer },
-      { area: 'side', name: 'DataExplorer', title: 'Market Data', component: DataExplorer },
+      { area: 'side', name: 'DataManager', title: 'Data Manager', component: DataManager },
       { area: 'side', name: 'CodexBench', title: 'Codex Research', component: CodexBench },
     ],
   },

@@ -1,11 +1,38 @@
 import { describe, expect, it } from 'vitest'
 
-import { listingHint, pullDefaults, storageRow, validateDates } from './dataManagerModel'
+import {
+  listingHint,
+  pullDefaults,
+  retryStartFrom,
+  starterSymbols,
+  storageRow,
+  validateDates,
+} from './dataManagerModel'
 
 describe('pull defaults', () => {
   it('starts the crypto profile on XRP/USDT at Binance and equities on AAPL at Tiingo', () => {
     expect(pullDefaults('crypto')).toEqual({ symbol: 'XRP/USDT', source: 'ccxt', exchange: 'binance' })
     expect(pullDefaults('equities')).toEqual({ symbol: 'AAPL', source: 'tiingo', exchange: 'binance' })
+  })
+})
+
+describe('starter symbols', () => {
+  it('offers the profile watchlist for the symbol combobox', () => {
+    expect(starterSymbols('crypto')).toEqual(['BTC/USDT', 'ETH/USDT', 'XRP/USDT', 'SOL/USDT'])
+    expect(starterSymbols('equities')).toEqual(['SPY', 'AAPL'])
+  })
+})
+
+describe('retry start from a failed pull', () => {
+  it("reads the CLI's own retry start out of the pre-listing failure", () => {
+    const message =
+      'No data for XRP/USDT on binance before 2018-05-04 (first listed). Start there? (--start 2018-05-04)'
+    expect(retryStartFrom(message)).toBe('2018-05-04')
+  })
+
+  it('offers nothing for any other failure', () => {
+    expect(retryStartFrom('Invalid value: --end 2015-01-01 precedes --start 2020-01-01')).toBeNull()
+    expect(retryStartFrom(null)).toBeNull()
   })
 })
 
