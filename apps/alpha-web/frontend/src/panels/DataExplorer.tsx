@@ -13,6 +13,7 @@ import {
   historicalProviders,
   providerOptionDefault,
 } from './controlPlane'
+import { validateDates } from './dataManagerModel'
 
 export function DataExplorer() {
   const [symbols, setSymbols] = useState<string[] | null>(null)
@@ -56,6 +57,11 @@ export function DataExplorer() {
   }
 
   function pull(): void {
+    const problem = validateDates(start, end)
+    if (problem) {
+      setError(problem)
+      return
+    }
     setError(null)
     const args = buildDataPullArgs({ symbol: sym, source, start, end, exchange })
     void api

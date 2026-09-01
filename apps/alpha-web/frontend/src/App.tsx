@@ -45,7 +45,7 @@ function StatusCluster() {
 }
 
 function SettingsMenu() {
-  const { density, explain } = useSettings()
+  const { density, explain, profile } = useSettings()
   const [open, setOpen] = useState(false)
   return (
     <div className="settings-menu">
@@ -54,6 +54,13 @@ function SettingsMenu() {
       </button>
       {open ? (
         <div className="settings-pop" role="dialog" aria-label="View settings">
+          <button
+            className="settings-row"
+            onClick={() => setSettings({ profile: profile === 'crypto' ? 'equities' : 'crypto' })}
+          >
+            <span>Profile</span>
+            <span className="mono">{profile}</span>
+          </button>
           <button
             className="settings-row"
             onClick={() => setSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })}

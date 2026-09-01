@@ -17,6 +17,7 @@ export default defineConfig({
         'src/context/panelLinkModel.ts',
         'src/panels/chartTableModel.ts',
         'src/panels/codexBenchModel.ts',
+        'src/panels/dataManagerModel.ts',
         'src/panels/durableJobs.ts',
         'src/panels/jobProgress.ts',
         'src/panels/mlTearsheetModel.ts',

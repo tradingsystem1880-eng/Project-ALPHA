@@ -79,15 +79,15 @@
       "expected": "`GET /api/data/first-bar?symbol=XRP/USDT&exchange=binance` relays `alpha data first-bar --source ccxt --json` (the route fixes the source; first-bar is ccxt-only) through _run_json with a strict FirstBar response model; CLI errors map to the existing request_invalid envelope with the plain message; OpenAPI and generated TypeScript are regenerated and clean; alpha_web imports no ccxt.",
       "rollback": "Revert the router, model, client method and regenerated contracts.",
       "files": ["apps/alpha-web/src/alpha_web/api/catalog.py", "apps/alpha-web/src/alpha_web/api/models.py", "apps/alpha-web/src/alpha_web/_catalog.py", "apps/alpha-web/frontend/src/api/client.ts", "apps/alpha-web/frontend/src/api/types.ts", "apps/alpha-web/frontend/src/api/generated.ts", "apps/alpha-web/frontend/openapi.json", "tests/integration/test_web_api_catalog.py", "docs/governance/openapi-operation-classification.json", "docs/governance/capability-authority-matrix.md"],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "W5 profile setting and the pure Data Manager model",
       "verify": "cd apps/alpha-web/frontend && npx vitest run src/state/settings.test.ts src/panels/dataManagerModel.test.ts src/panels/controlPlane.test.ts && npm run lint -- --deny-warnings",
       "expected": "`profile: 'crypto' | 'equities'` persists in alpha.settings (default crypto, garbage falls back), mirrors to html[data-profile], and has a row in the Settings menu; dataManagerModel exports pullDefaults (crypto -> XRP/USDT, ccxt, binance; equities -> AAPL, tiingo), validateDates (impossible dates, non-ISO, end<start named), storageRow (blocker -> `Expansion SSD not mounted`, amber), and listingHint (listed date, bar estimate, retryFrom); buildDataPullArgs refuses invalid dates.",
       "rollback": "Revert settings.ts, App.tsx menu row, the new model and tests.",
-      "files": ["apps/alpha-web/frontend/src/state/settings.ts", "apps/alpha-web/frontend/src/state/settings.test.ts", "apps/alpha-web/frontend/src/App.tsx", "apps/alpha-web/frontend/src/panels/dataManagerModel.ts", "apps/alpha-web/frontend/src/panels/dataManagerModel.test.ts", "apps/alpha-web/frontend/src/panels/controlPlane.ts", "apps/alpha-web/frontend/src/panels/controlPlane.test.ts"],
-      "status": "pending"
+      "files": ["apps/alpha-web/frontend/src/state/settings.ts", "apps/alpha-web/frontend/src/state/settings.test.ts", "apps/alpha-web/frontend/src/App.tsx", "apps/alpha-web/frontend/src/panels/dataManagerModel.ts", "apps/alpha-web/frontend/src/panels/dataManagerModel.test.ts", "apps/alpha-web/frontend/src/panels/controlPlane.ts", "apps/alpha-web/frontend/src/panels/controlPlane.test.ts", "apps/alpha-web/frontend/vitest.config.ts", "apps/alpha-web/frontend/src/panels/DataExplorer.tsx"],
+      "status": "done"
     },
     {
       "title": "W6 one Data Manager panel replaces Market Data and Research Data",
